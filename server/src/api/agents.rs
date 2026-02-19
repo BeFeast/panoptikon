@@ -183,6 +183,51 @@ pub async fn register(
     ))
 }
 
+/// Request body for updating an agent.
+#[derive(Debug, Deserialize)]
+pub struct UpdateAgent {
+    pub name: Option<String>,
+}
+
+/// PATCH /api/v1/agents/:id — update agent name.
+pub async fn update(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<UpdateAgent>,
+) -> Result<Json<Agent>, StatusCode> {
+    sqlx::query("UPDATE agents SET name = ? WHERE id = ?")
+        .bind(&body.name)
+        .bind(&id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| {
+            error!("Failed to update agent {id}: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    // Return updated agent
+    let row = sqlx::query(
+        "SELECT id, device_id, name, platform, version, is_online, last_report_at, created_at \
+         FROM agents WHERE id = ?",
+    )
+    .bind(&id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    .ok_or(StatusCode::NOT_FOUND)?;
+
+    Ok(Json(Agent {
+        id: row.try_get("id").unwrap_or_default(),
+        device_id: row.try_get("device_id").ok(),
+        name: row.try_get("name").ok(),
+        platform: row.try_get("platform").ok(),
+        version: row.try_get("version").ok(),
+        is_online: row.try_get::<i32, _>("is_online").unwrap_or(0) != 0,
+        last_report_at: row.try_get("last_report_at").ok(),
+        created_at: row.try_get("created_at").unwrap_or_default(),
+    }))
+}
+
 /// GET /api/v1/agent/ws — WebSocket endpoint for agent connections.
 /// Agents authenticate via the first message (API key).
 pub async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {

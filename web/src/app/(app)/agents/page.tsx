@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, Plus, Terminal } from "lucide-react";
+import { Check, Copy, Pencil, Plus, Terminal, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,13 +24,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { createAgent, fetchAgents } from "@/lib/api";
+import { apiPatch, createAgent, fetchAgents } from "@/lib/api";
 import type { Agent, AgentCreateResponse } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -106,7 +108,42 @@ export default function AgentsPage() {
               {agents.map((agent) => (
                 <TableRow key={agent.id} className="border-[#2a2a3a]">
                   <TableCell className="font-medium text-white">
-                    {agent.name ?? agent.id.slice(0, 8)}
+                    {renamingId === agent.id ? (
+                      <form
+                        className="flex items-center gap-1"
+                        onSubmit={async (e) => {
+                          e.preventDefault();
+                          await apiPatch(`/api/v1/agents/${agent.id}`, { name: renameValue });
+                          setAgents((prev) =>
+                            prev?.map((a) =>
+                              a.id === agent.id ? { ...a, name: renameValue } : a
+                            ) ?? null
+                          );
+                          setRenamingId(null);
+                        }}
+                      >
+                        <Input
+                          autoFocus
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          className="h-7 w-40 bg-[#0a0a0f] border-blue-500 text-white text-sm px-2"
+                        />
+                        <button type="submit" className="text-green-400 hover:text-green-300">
+                          <Check size={14} />
+                        </button>
+                        <button type="button" onClick={() => setRenamingId(null)} className="text-gray-500 hover:text-gray-300">
+                          <X size={14} />
+                        </button>
+                      </form>
+                    ) : (
+                      <span
+                        className="group flex items-center gap-1 cursor-pointer"
+                        onClick={() => { setRenamingId(agent.id); setRenameValue(agent.name ?? ""); }}
+                      >
+                        {agent.name ?? agent.id.slice(0, 8)}
+                        <Pencil size={12} className="opacity-0 group-hover:opacity-50 text-gray-400" />
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="font-mono text-gray-400">
                     {agent.hostname ?? "—"}
