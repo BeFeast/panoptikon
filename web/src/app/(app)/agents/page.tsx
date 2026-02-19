@@ -252,7 +252,8 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
                 <TabsList className="bg-[#16161f]">
                   <TabsTrigger value="linux-amd64">Linux x86_64</TabsTrigger>
                   <TabsTrigger value="linux-arm64">Linux ARM64</TabsTrigger>
-                  <TabsTrigger value="darwin-arm64">macOS ARM</TabsTrigger>
+                  <TabsTrigger value="darwin-arm64">macOS ARM (M1+)</TabsTrigger>
+                  <TabsTrigger value="darwin-amd64">macOS Intel</TabsTrigger>
                 </TabsList>
                 <TabsContent value="linux-amd64">
                   <CopyBlock
@@ -267,6 +268,11 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
                 <TabsContent value="darwin-arm64">
                   <CopyBlock
                     text={`curl -fsSL ${serverUrl}/api/v1/agent/install/darwin-arm64?key=${result.api_key} | sh`}
+                  />
+                </TabsContent>
+                <TabsContent value="darwin-amd64">
+                  <CopyBlock
+                    text={`curl -fsSL ${serverUrl}/api/v1/agent/install/darwin-amd64?key=${result.api_key} | sh`}
                   />
                 </TabsContent>
               </Tabs>
