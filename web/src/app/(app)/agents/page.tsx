@@ -261,7 +261,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
           Add Agent
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-[min(90vw,680px)] max-w-none overflow-hidden border-[#2a2a3a] bg-[#0d0d14]">
+      <DialogContent className="w-[min(90vw,680px)] max-w-none border-[#2a2a3a] bg-[#0d0d14]">
         <DialogHeader>
           <DialogTitle className="text-white">
             {result ? "Agent Created" : "Add New Agent"}
@@ -391,16 +391,16 @@ function CopyBlock({ text }: { text: string }) {
   };
 
   return (
-    <div className="relative rounded-md bg-[#16161f]">
+    <div className="flex items-stretch overflow-hidden rounded-md bg-[#16161f]">
       <pre
         ref={preRef}
-        className="overflow-x-auto p-3 pr-10 font-mono text-xs text-gray-300 select-all cursor-text"
+        className="min-w-0 flex-1 overflow-x-auto p-3 font-mono text-xs text-gray-300 select-all cursor-text"
       >
         {text}
       </pre>
       <button
         onClick={handleCopy}
-        className="absolute right-2 top-2 rounded-md p-1.5 text-gray-500 transition-colors hover:bg-[#2a2a3a] hover:text-white"
+        className="shrink-0 flex items-center justify-center border-l border-[#2a2a3a] px-3 text-gray-500 transition-colors hover:bg-[#2a2a3a] hover:text-white"
         title="Copy to clipboard"
       >
         {copied ? (
