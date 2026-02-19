@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Pencil, Plus, Terminal, Trash2, X } from "lucide-react";
+import { AlertTriangle, Check, Copy, Pencil, Plus, Terminal, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,6 +23,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiDelete, apiPatch, createAgent, fetchAgents } from "@/lib/api";
 import type { Agent, AgentCreateResponse } from "@/lib/types";
@@ -33,6 +43,9 @@ export default function AgentsPage() {
   const [error, setError] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Agent | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -46,6 +59,20 @@ export default function AgentsPage() {
     const interval = setInterval(load, 10_000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleting(true);
+    try {
+      await apiDelete(`/api/v1/agents/${pendingDelete.id}`);
+      setAgents((prev) => prev?.filter((a) => a.id !== pendingDelete.id) ?? null);
+    } catch (err) {
+      console.error("Delete failed:", err);
+    } finally {
+      setDeleting(false);
+      setPendingDelete(null);
+    }
+  };
 
   if (error) {
     return (
@@ -62,7 +89,6 @@ export default function AgentsPage() {
         <h1 className="text-2xl font-semibold text-white">Agents</h1>
         <AddAgentDialog
           onCreated={() => {
-            // refresh
             fetchAgents().then(setAgents).catch(() => {});
           }}
         />
@@ -102,6 +128,7 @@ export default function AgentsPage() {
                 <TableHead className="text-gray-500">Version</TableHead>
                 <TableHead className="text-gray-500">Last Report</TableHead>
                 <TableHead className="text-gray-500">Status</TableHead>
+                <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -110,9 +137,10 @@ export default function AgentsPage() {
                   <TableCell className="font-medium text-white">
                     {renamingId === agent.id ? (
                       <form
-                        className="flex items-center gap-1"
+                        className="flex flex-col gap-1"
                         onSubmit={async (e) => {
                           e.preventDefault();
+                          setRenameError(null);
                           try {
                             await apiPatch(`/api/v1/agents/${agent.id}`, { name: renameValue });
                             setAgents((prev) =>
@@ -121,29 +149,41 @@ export default function AgentsPage() {
                               ) ?? null
                             );
                             setRenamingId(null);
-                          } catch (err) {
-                            console.error("Rename failed:", err);
-                            alert("Failed to rename agent");
+                          } catch {
+                            setRenameError("Rename failed");
                           }
                         }}
                       >
-                        <Input
-                          autoFocus
-                          value={renameValue}
-                          onChange={(e) => setRenameValue(e.target.value)}
-                          className="h-7 w-40 bg-[#0a0a0f] border-blue-500 text-white text-sm px-2"
-                        />
-                        <button type="submit" className="text-green-400 hover:text-green-300">
-                          <Check size={14} />
-                        </button>
-                        <button type="button" onClick={() => setRenamingId(null)} className="text-gray-500 hover:text-gray-300">
-                          <X size={14} />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <Input
+                            autoFocus
+                            value={renameValue}
+                            onChange={(e) => setRenameValue(e.target.value)}
+                            className="h-7 w-40 bg-[#0a0a0f] border-blue-500 text-white text-sm px-2"
+                          />
+                          <button type="submit" className="text-green-400 hover:text-green-300">
+                            <Check size={14} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setRenamingId(null); setRenameError(null); }}
+                            className="text-gray-500 hover:text-gray-300"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                        {renameError && (
+                          <p className="text-xs text-red-400">{renameError}</p>
+                        )}
                       </form>
                     ) : (
                       <span
                         className="group flex items-center gap-1 cursor-pointer"
-                        onClick={() => { setRenamingId(agent.id); setRenameValue(agent.name ?? ""); }}
+                        onClick={() => {
+                          setRenamingId(agent.id);
+                          setRenameValue(agent.name ?? "");
+                          setRenameError(null);
+                        }}
                       >
                         {agent.name ?? agent.id.slice(0, 8)}
                         <Pencil size={12} className="opacity-0 group-hover:opacity-50 text-gray-400" />
@@ -154,9 +194,7 @@ export default function AgentsPage() {
                     {agent.hostname ?? "—"}
                   </TableCell>
                   <TableCell className="text-gray-400">
-                    {agent.os_name
-                      ? `${agent.os_name} ${agent.os_version ?? ""}`
-                      : "—"}
+                    {agent.os_name ? `${agent.os_name} ${agent.os_version ?? ""}` : "—"}
                   </TableCell>
                   <TableCell className="text-gray-400">
                     {agent.platform ?? "—"}
@@ -165,20 +203,14 @@ export default function AgentsPage() {
                     {agent.version ?? "—"}
                   </TableCell>
                   <TableCell className="text-gray-400">
-                    {agent.last_report_at
-                      ? timeAgo(agent.last_report_at)
-                      : "Never"}
+                    {agent.last_report_at ? timeAgo(agent.last_report_at) : "Never"}
                   </TableCell>
                   <TableCell>
                     <StatusBadge online={agent.is_online} />
                   </TableCell>
                   <TableCell>
                     <button
-                      onClick={async () => {
-                        if (!confirm(`Delete agent "${agent.name ?? agent.id.slice(0,8)}"?`)) return;
-                        await apiDelete(`/api/v1/agents/${agent.id}`);
-                        setAgents(prev => prev?.filter(a => a.id !== agent.id) ?? null);
-                      }}
+                      onClick={() => setPendingDelete(agent)}
                       className="rounded p-1 text-gray-600 hover:bg-red-500/10 hover:text-red-400 transition-colors"
                       title="Delete agent"
                     >
@@ -191,6 +223,41 @@ export default function AgentsPage() {
           </Table>
         )}
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!pendingDelete} onOpenChange={(v) => { if (!v) setPendingDelete(null); }}>
+        <AlertDialogContent className="border-[#2a2a3a] bg-[#0d0d14]">
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/10">
+                <AlertTriangle className="h-5 w-5 text-red-400" />
+              </div>
+              <AlertDialogTitle className="text-white">Delete agent?</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="text-gray-400 pl-[52px]">
+              <span className="font-medium text-white">
+                {pendingDelete?.name ?? pendingDelete?.id.slice(0, 8)}
+              </span>{" "}
+              will be permanently removed. Any running agent process will stop reporting.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="border-[#2a2a3a] bg-transparent text-gray-400 hover:bg-[#1a1a2a] hover:text-white"
+              disabled={deleting}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-red-600 text-white hover:bg-red-500"
+            >
+              {deleting ? "Deleting…" : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -243,7 +310,6 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
 
   const handleClose = () => {
     setOpen(false);
-    // Reset state after close animation
     setTimeout(() => {
       setName("");
       setResult(null);
@@ -251,7 +317,8 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
     }, 200);
   };
 
-  const serverUrl = typeof window !== "undefined" ? window.location.origin : "http://YOUR_SERVER:8080";
+  const serverUrl =
+    typeof window !== "undefined" ? window.location.origin : "http://YOUR_SERVER:8080";
 
   return (
     <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : handleClose())}>
@@ -261,7 +328,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
           Add Agent
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-[min(90vw,680px)] max-w-none border-[#2a2a3a] bg-[#0d0d14]">
+      <DialogContent className="w-[min(90vw,680px)] max-w-none overflow-hidden border-[#2a2a3a] bg-[#0d0d14]">
         <DialogHeader>
           <DialogTitle className="text-white">
             {result ? "Agent Created" : "Add New Agent"}
@@ -291,7 +358,6 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
           </div>
         ) : (
           <div className="space-y-4 pt-2">
-            {/* API Key */}
             <div className="space-y-2">
               <Label className="text-gray-400">API Key</Label>
               <CopyBlock text={result.api_key} />
@@ -300,7 +366,6 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
               </p>
             </div>
 
-            {/* Platform install commands */}
             <div className="space-y-2">
               <Label className="text-gray-400">Install Command</Label>
               <Tabs defaultValue="linux-amd64">
@@ -344,13 +409,14 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
 }
 
 // ─── Copy Block ─────────────────────────────────────────
+// NOTE: use flex layout — NEVER use absolute-positioned button inside overflow-x-auto.
+// The button must be a flex sibling of <pre>, not a child inside the scroll container.
 
 function CopyBlock({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const preRef = useRef<HTMLPreElement>(null);
 
   const handleCopy = async () => {
-    // Method 1: Modern clipboard API (works on HTTPS or localhost)
     if (navigator.clipboard && window.isSecureContext) {
       try {
         await navigator.clipboard.writeText(text);
@@ -360,16 +426,17 @@ function CopyBlock({ text }: { text: string }) {
       } catch {}
     }
 
-    // Method 2: execCommand (HTTP fallback)
+    // HTTP fallback: execCommand
     try {
-      const textarea = document.createElement('textarea');
-      textarea.value = text;
-      textarea.style.cssText = 'position:fixed;top:50%;left:50%;width:2em;height:2em;padding:0;border:none;outline:none;box-shadow:none;background:transparent;opacity:0;';
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.setSelectionRange(0, text.length);
-      const ok = document.execCommand('copy');
-      document.body.removeChild(textarea);
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.cssText =
+        "position:fixed;top:50%;left:50%;width:2em;height:2em;padding:0;border:none;outline:none;background:transparent;opacity:0;";
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
       if (ok) {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -377,21 +444,20 @@ function CopyBlock({ text }: { text: string }) {
       }
     } catch {}
 
-    // Method 3: Select the text in the pre element so user can Ctrl+C manually
+    // Last resort: select text so user can Ctrl+C
     if (preRef.current) {
-      const selection = window.getSelection();
+      const sel = window.getSelection();
       const range = document.createRange();
       range.selectNodeContents(preRef.current);
-      selection?.removeAllRanges();
-      selection?.addRange(range);
-      // Show "Press Ctrl+C" hint
-      setCopied(true); // reuse state to show hint briefly
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+      setCopied(true);
       setTimeout(() => setCopied(false), 3000);
     }
   };
 
   return (
-    <div className="flex items-stretch overflow-hidden rounded-md bg-[#16161f]">
+    <div className="flex items-stretch overflow-hidden rounded-md border border-[#2a2a3a] bg-[#0a0a0f]">
       <pre
         ref={preRef}
         className="min-w-0 flex-1 overflow-x-auto p-3 font-mono text-xs text-gray-300 select-all cursor-text"
@@ -400,7 +466,7 @@ function CopyBlock({ text }: { text: string }) {
       </pre>
       <button
         onClick={handleCopy}
-        className="shrink-0 flex items-center justify-center border-l border-[#2a2a3a] px-3 text-gray-500 transition-colors hover:bg-[#2a2a3a] hover:text-white"
+        className="shrink-0 flex items-center justify-center border-l border-[#2a2a3a] px-3 text-gray-500 transition-colors hover:bg-[#1a1a2a] hover:text-white"
         title="Copy to clipboard"
       >
         {copied ? (
