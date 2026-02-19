@@ -128,11 +128,10 @@ mod tests {
     async fn test_migration_version_recorded() {
         let pool = init(":memory:").await.expect("DB init failed");
 
-        let version: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM _migrations WHERE version = 1")
-                .fetch_one(&pool)
-                .await
-                .expect("Query failed");
+        let version: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM _migrations WHERE version = 1")
+            .fetch_one(&pool)
+            .await
+            .expect("Query failed");
 
         assert_eq!(version, 1, "Migration version 1 should be recorded");
     }
