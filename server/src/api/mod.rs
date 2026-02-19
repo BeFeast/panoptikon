@@ -56,7 +56,8 @@ pub fn router(state: AppState) -> Router {
         .route("/health", get(health))
         .route("/auth/login", post(auth::login))
         .route("/auth/logout", post(auth::logout))
-        .route("/auth/status", get(auth::status));
+        .route("/auth/status", get(auth::status))
+        .route("/auth/change-password", post(auth::change_password));
 
     // Routes that require auth
     let protected_routes = Router::new()

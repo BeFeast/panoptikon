@@ -107,6 +107,67 @@ pub async fn login(
     Ok(response)
 }
 
+/// Change-password request body.
+#[derive(Debug, Deserialize)]
+pub struct ChangePasswordRequest {
+    pub current_password: String,
+    pub new_password: String,
+}
+
+/// POST /api/v1/auth/change-password — change the admin password (requires auth session).
+pub async fn change_password(
+    State(state): State<AppState>,
+    Json(body): Json<ChangePasswordRequest>,
+) -> Result<StatusCode, StatusCode> {
+    if body.new_password.len() < 8 {
+        return Err(StatusCode::UNPROCESSABLE_ENTITY);
+    }
+
+    // Fetch current hash.
+    let row: Option<String> =
+        sqlx::query("SELECT value FROM settings WHERE key = 'admin_password_hash'")
+            .fetch_optional(&state.db)
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to query settings: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?
+            .and_then(|r| r.try_get("value").ok());
+
+    let current_hash = row.ok_or(StatusCode::NOT_FOUND)?;
+
+    // Verify current password.
+    let valid = bcrypt::verify(&body.current_password, &current_hash).map_err(|e| {
+        tracing::error!("Password verification error: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    if !valid {
+        warn!("Change-password: wrong current password");
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    // Hash new password and update.
+    let new_hash = bcrypt::hash(&body.new_password, bcrypt::DEFAULT_COST).map_err(|e| {
+        tracing::error!("Failed to hash new password: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    sqlx::query("UPDATE settings SET value = ? WHERE key = 'admin_password_hash'")
+        .bind(&new_hash)
+        .execute(&state.db)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to update password: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    // Invalidate all existing sessions so the new password takes effect immediately.
+    state.sessions.write().await.clear();
+
+    tracing::info!("Admin password changed, all sessions invalidated");
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// POST /api/v1/auth/logout — clear session cookie.
 pub async fn logout(State(state): State<AppState>, req: Request) -> impl IntoResponse {
     // Try to extract and remove the session from the store.
