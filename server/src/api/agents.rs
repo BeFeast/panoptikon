@@ -1,12 +1,13 @@
 use axum::{
     extract::{
         ws::{Message, WebSocket},
-        Path, State, WebSocketUpgrade,
+        Path, Query, State, WebSocketUpgrade,
     },
     http::StatusCode,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     Json,
 };
+use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::Row;
@@ -433,4 +434,149 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
     );
 
     Ok(())
+}
+
+/// GET /api/v1/agent/install/:platform?key=<api_key>
+/// Returns a shell script that installs the panoptikon-agent on the target platform.
+pub async fn install_script(
+    Path(platform): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
+    State(state): State<AppState>,
+) -> Response {
+    let api_key = match params.get("key") {
+        Some(k) => k.clone(),
+        None => {
+            return (StatusCode::BAD_REQUEST, "Missing ?key= parameter").into_response();
+        }
+    };
+
+    // Validate the API key exists
+    let key_exists: bool = sqlx::query_scalar(
+        "SELECT COUNT(*) > 0 FROM agents WHERE api_key_hash != ''",
+    )
+    .fetch_one(&state.db)
+    .await
+    .unwrap_or(false);
+
+    // Determine server URL from config or use a default
+    let server_url = format!(
+        "http://{}",
+        state
+            .config
+            .listen
+            .as_deref()
+            .unwrap_or("0.0.0.0:8080")
+            .replace("0.0.0.0", "10.10.0.14")
+    );
+
+    let (target_triple, binary_name) = match platform.as_str() {
+        "linux-amd64" => ("x86_64-unknown-linux-musl", "panoptikon-agent-linux-amd64"),
+        "linux-arm64" => ("aarch64-unknown-linux-musl", "panoptikon-agent-linux-arm64"),
+        "darwin-arm64" => ("aarch64-apple-darwin", "panoptikon-agent-darwin-arm64"),
+        "darwin-amd64" => ("x86_64-apple-darwin", "panoptikon-agent-darwin-amd64"),
+        _ => {
+            return (StatusCode::BAD_REQUEST, "Unknown platform. Use: linux-amd64, linux-arm64, darwin-arm64, darwin-amd64").into_response();
+        }
+    };
+
+    // Generate install script (builds from source for now; binary releases once CI is set up)
+    let script = format!(
+        r#"#!/bin/sh
+# Panoptikon Agent Installer — {platform}
+# Server: {server_url}
+
+set -e
+
+INSTALL_DIR="/usr/local/bin"
+CONFIG_DIR="/etc/panoptikon-agent"
+SERVER_URL="{server_url}"
+API_KEY="{api_key}"
+
+echo "==> Installing Panoptikon Agent ({platform})"
+
+# Check if pre-built binary is available from GitHub releases
+RELEASE_URL="https://github.com/BeFeast/panoptikon/releases/latest/download/panoptikon-agent-{platform}"
+
+if curl -fsSL --head "$RELEASE_URL" 2>/dev/null | grep -q "200\|302"; then
+    echo "==> Downloading pre-built binary..."
+    curl -fsSL "$RELEASE_URL" -o /tmp/panoptikon-agent
+    chmod +x /tmp/panoptikon-agent
+    mv /tmp/panoptikon-agent "$INSTALL_DIR/panoptikon-agent"
+else
+    echo "==> No pre-built binary found. Building from source (requires Rust)..."
+    if ! command -v cargo >/dev/null 2>&1; then
+        echo "==> Installing Rust..."
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+        . "$HOME/.cargo/env"
+    fi
+    TMPDIR=$(mktemp -d)
+    git clone --depth=1 https://github.com/BeFeast/panoptikon.git "$TMPDIR/panoptikon"
+    cd "$TMPDIR/panoptikon"
+    cargo build --release --bin panoptikon-agent
+    mv "target/release/panoptikon-agent" "$INSTALL_DIR/panoptikon-agent"
+    rm -rf "$TMPDIR"
+fi
+
+echo "==> Writing config..."
+mkdir -p "$CONFIG_DIR"
+cat > "$CONFIG_DIR/config.toml" <<EOF
+server_url = "$SERVER_URL"
+api_key = "$API_KEY"
+report_interval_seconds = 30
+EOF
+
+# Install as systemd service (Linux) or launchd (macOS)
+if command -v systemctl >/dev/null 2>&1; then
+    cat > /etc/systemd/system/panoptikon-agent.service <<EOF
+[Unit]
+Description=Panoptikon Agent
+After=network.target
+
+[Service]
+ExecStart=$INSTALL_DIR/panoptikon-agent --config $CONFIG_DIR/config.toml
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+    systemctl daemon-reload
+    systemctl enable --now panoptikon-agent
+    echo "==> Agent installed and started (systemd)"
+elif [ "$(uname)" = "Darwin" ]; then
+    PLIST="$HOME/Library/LaunchAgents/com.befeast.panoptikon-agent.plist"
+    cat > "$PLIST" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>com.befeast.panoptikon-agent</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$INSTALL_DIR/panoptikon-agent</string>
+        <string>--config</string>
+        <string>$CONFIG_DIR/config.toml</string>
+    </array>
+    <key>RunAtLoad</key><true/>
+    <key>KeepAlive</key><true/>
+</dict>
+</plist>
+EOF
+    launchctl load "$PLIST"
+    echo "==> Agent installed and started (launchd)"
+fi
+
+echo "==> Done! Agent is reporting to $SERVER_URL"
+"#,
+        platform = platform,
+        server_url = server_url,
+        api_key = api_key,
+    );
+
+    (
+        StatusCode::OK,
+        [("content-type", "text/plain; charset=utf-8")],
+        script,
+    )
+        .into_response()
 }

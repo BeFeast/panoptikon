@@ -18,14 +18,9 @@ export interface Device {
   first_seen_at: string;
   last_seen_at: string;
   is_online: boolean;
-  ips: DeviceIp[];
+  /** Current IP addresses — backend returns plain strings. */
+  ips: string[];
   agent?: AgentSummary | null;
-}
-
-export interface DeviceIp {
-  ip: string;
-  subnet: string | null;
-  is_current: boolean;
 }
 
 export interface AgentSummary {

@@ -87,8 +87,10 @@ pub fn router(state: AppState) -> Router {
             auth::auth_middleware,
         ));
 
-    // Agent WebSocket — uses its own API key auth, not session cookies
-    let agent_ws = Router::new().route("/agent/ws", get(agents::ws_handler));
+    // Agent WebSocket + install script — use API key auth, not session cookies
+    let agent_ws = Router::new()
+        .route("/agent/ws", get(agents::ws_handler))
+        .route("/agent/install/:platform", get(agents::install_script));
 
     // Serve Next.js static export from ../web/out (dev) or ./web (embedded later).
     // Falls back to index.html for client-side routing (SPA behaviour).

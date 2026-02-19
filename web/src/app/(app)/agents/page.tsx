@@ -284,11 +284,28 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
 
 // ─── Copy Block ─────────────────────────────────────────
 
+function copyToClipboard(text: string): void {
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text);
+  } else {
+    // Fallback for HTTP (non-secure context)
+    const el = document.createElement("textarea");
+    el.value = text;
+    el.style.position = "fixed";
+    el.style.opacity = "0";
+    document.body.appendChild(el);
+    el.focus();
+    el.select();
+    document.execCommand("copy");
+    document.body.removeChild(el);
+  }
+}
+
 function CopyBlock({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
 
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(text);
+  const handleCopy = () => {
+    copyToClipboard(text);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

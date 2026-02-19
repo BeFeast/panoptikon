@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Cpu, HardDrive, MemoryStick, Search, Wifi, WifiOff } from "lucide-react";
+import { Cpu, MemoryStick, Search, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -67,7 +67,7 @@ export default function DevicesPage() {
           (d.name ?? "").toLowerCase().includes(q) ||
           (d.hostname ?? "").toLowerCase().includes(q) ||
           (d.mac ?? "").toLowerCase().includes(q) ||
-          (d.ips ?? []).some((ip) => ip.ip.includes(q))
+          (d.ips ?? []).some((ip) => ip.includes(q))
       );
     }
 
@@ -189,7 +189,7 @@ function DeviceCard({
   onClick: () => void;
 }) {
   const ips = device.ips ?? [];
-  const primaryIp = ips.find((ip) => ip.is_current)?.ip ?? ips[0]?.ip ?? "—";
+  const primaryIp = ips[0] ?? "—";
   const displayName = device.name ?? device.hostname ?? "Unknown Device";
 
   return (
@@ -248,7 +248,7 @@ function DeviceCard({
 
 function DeviceDetail({ device }: { device: Device }) {
   const ips = device.ips ?? [];
-  const primaryIp = ips.find((ip) => ip.is_current)?.ip ?? ips[0]?.ip ?? "—";
+  const primaryIp = ips[0] ?? "—";
   const displayName = device.name ?? device.hostname ?? "Unknown Device";
 
   return (
@@ -293,14 +293,8 @@ function DeviceDetail({ device }: { device: Device }) {
             </p>
             <div className="mt-1 space-y-0.5">
               {ips.map((ip) => (
-                <p key={ip.ip} className="font-mono text-sm text-gray-300">
-                  {ip.ip}
-                  {ip.subnet && (
-                    <span className="ml-2 text-xs text-gray-600">{ip.subnet}</span>
-                  )}
-                  {!ip.is_current && (
-                    <span className="ml-2 text-xs text-gray-600">(old)</span>
-                  )}
+                <p key={ip} className="font-mono text-sm text-gray-300">
+                  {ip}
                 </p>
               ))}
             </div>
