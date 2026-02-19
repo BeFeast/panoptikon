@@ -11,8 +11,27 @@ mod ws;
 #[command(name = "panoptikon-agent", version, about)]
 struct Cli {
     /// Path to the configuration file.
-    #[arg(short, long, default_value = "/etc/panoptikon/config.toml")]
-    config: String,
+    /// Defaults: ~/.config/panoptikon-agent/config.toml (user),
+    ///           /etc/panoptikon-agent/config.toml (system).
+    #[arg(short, long)]
+    config: Option<String>,
+}
+
+/// Resolve config path: explicit flag → user dir → system dir.
+fn resolve_config(cli_path: Option<String>) -> String {
+    if let Some(p) = cli_path {
+        return p;
+    }
+    // Try user config first (works without root, matches install script).
+    if let Some(home) = std::env::var_os("HOME") {
+        let user_cfg = std::path::PathBuf::from(home)
+            .join(".config/panoptikon-agent/config.toml");
+        if user_cfg.exists() {
+            return user_cfg.to_string_lossy().into_owned();
+        }
+    }
+    // Fall back to system path.
+    "/etc/panoptikon-agent/config.toml".to_string()
 }
 
 #[tokio::main]
@@ -25,13 +44,14 @@ async fn main() -> Result<()> {
         .init();
 
     let cli = Cli::parse();
+    let config_path = resolve_config(cli.config);
 
     info!(
         version = env!("CARGO_PKG_VERSION"),
         "Starting Panoptikon agent"
     );
 
-    let cfg = config::AgentConfig::from_file(&cli.config)?;
+    let cfg = config::AgentConfig::from_file(&config_path)?;
     info!(
         server = %cfg.server_url,
         agent_id = %cfg.agent_id,

@@ -551,12 +551,24 @@ pub async fn install_script(
 
 set -e
 
-INSTALL_DIR="/usr/local/bin"
-CONFIG_DIR="/etc/panoptikon-agent"
 SERVER_URL="{server_url}"
 API_KEY="{api_key}"
 
+# Detect root vs. unprivileged user and set paths accordingly
+if [ "$(id -u)" = "0" ]; then
+    INSTALL_DIR="/usr/local/bin"
+    CONFIG_DIR="/etc/panoptikon-agent"
+    SYSTEMD_SYSTEM=1
+else
+    INSTALL_DIR="$HOME/.local/bin"
+    CONFIG_DIR="$HOME/.config/panoptikon-agent"
+    SYSTEMD_SYSTEM=0
+    mkdir -p "$INSTALL_DIR"
+fi
+
 echo "==> Installing Panoptikon Agent ({platform})"
+echo "    Binary  : $INSTALL_DIR/panoptikon-agent"
+echo "    Config  : $CONFIG_DIR/config.toml"
 
 # Check if pre-built binary is available from GitHub releases
 RELEASE_URL="https://github.com/BeFeast/panoptikon/releases/latest/download/panoptikon-agent-{platform}"
@@ -569,13 +581,15 @@ if curl -fsSL --head "$RELEASE_URL" 2>/dev/null | grep -q "200\|302"; then
 else
     echo "==> No pre-built binary found. Building from source (requires Rust)..."
     if ! command -v cargo >/dev/null 2>&1; then
-        echo "==> Installing Rust..."
+        echo "==> Installing Rust toolchain..."
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
         . "$HOME/.cargo/env"
     fi
     TMPDIR=$(mktemp -d)
+    echo "==> Cloning repository..."
     git clone --depth=1 https://github.com/BeFeast/panoptikon.git "$TMPDIR/panoptikon"
     cd "$TMPDIR/panoptikon"
+    echo "==> Building (this takes a few minutes)..."
     cargo build --release --bin panoptikon-agent
     mv "target/release/panoptikon-agent" "$INSTALL_DIR/panoptikon-agent"
     rm -rf "$TMPDIR"
@@ -583,15 +597,17 @@ fi
 
 echo "==> Writing config..."
 mkdir -p "$CONFIG_DIR"
-cat > "$CONFIG_DIR/config.toml" <<EOF
+cat > "$CONFIG_DIR/config.toml" <<TOMLEOF
 server_url = "$SERVER_URL"
 api_key = "$API_KEY"
 report_interval_seconds = 30
-EOF
+TOMLEOF
 
 # Install as systemd service (Linux) or launchd (macOS)
 if command -v systemctl >/dev/null 2>&1; then
-    cat > /etc/systemd/system/panoptikon-agent.service <<EOF
+    if [ "$SYSTEMD_SYSTEM" = "1" ]; then
+        SERVICE_FILE="/etc/systemd/system/panoptikon-agent.service"
+        cat > "$SERVICE_FILE" <<SVCEOF
 [Unit]
 Description=Panoptikon Agent
 After=network.target
@@ -603,13 +619,34 @@ RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
-EOF
-    systemctl daemon-reload
-    systemctl enable --now panoptikon-agent
-    echo "==> Agent installed and started (systemd)"
+SVCEOF
+        systemctl daemon-reload
+        systemctl enable --now panoptikon-agent
+        echo "==> Agent installed and started (systemd system)"
+    else
+        SERVICE_DIR="$HOME/.config/systemd/user"
+        mkdir -p "$SERVICE_DIR"
+        cat > "$SERVICE_DIR/panoptikon-agent.service" <<SVCEOF
+[Unit]
+Description=Panoptikon Agent
+After=network.target
+
+[Service]
+ExecStart=$INSTALL_DIR/panoptikon-agent --config $CONFIG_DIR/config.toml
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
+SVCEOF
+        systemctl --user daemon-reload
+        systemctl --user enable --now panoptikon-agent
+        echo "==> Agent installed and started (systemd user)"
+    fi
 elif [ "$(uname)" = "Darwin" ]; then
     PLIST="$HOME/Library/LaunchAgents/com.befeast.panoptikon-agent.plist"
-    cat > "$PLIST" <<EOF
+    mkdir -p "$HOME/Library/LaunchAgents"
+    cat > "$PLIST" <<PLEOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -623,13 +660,23 @@ elif [ "$(uname)" = "Darwin" ]; then
     </array>
     <key>RunAtLoad</key><true/>
     <key>KeepAlive</key><true/>
+    <key>StandardOutPath</key><string>$HOME/Library/Logs/panoptikon-agent.log</string>
+    <key>StandardErrorPath</key><string>$HOME/Library/Logs/panoptikon-agent.log</string>
 </dict>
 </plist>
-EOF
+PLEOF
     launchctl load "$PLIST"
     echo "==> Agent installed and started (launchd)"
 fi
 
+# Ensure INSTALL_DIR is in PATH for non-root installs
+if [ "$SYSTEMD_SYSTEM" = "0" ] && ! echo "$PATH" | grep -q "$INSTALL_DIR"; then
+    echo ""
+    echo "  NOTE: Add $INSTALL_DIR to your PATH:"
+    echo "    echo 'export PATH=\"$INSTALL_DIR:\$PATH\"' >> ~/.zshrc  # or ~/.bashrc"
+fi
+
+echo ""
 echo "==> Done! Agent is reporting to $SERVER_URL"
 "#,
         platform = platform,
