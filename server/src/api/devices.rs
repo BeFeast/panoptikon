@@ -23,6 +23,8 @@ pub struct Device {
     pub first_seen_at: String,
     pub last_seen_at: String,
     pub is_online: bool,
+    /// Current IP address(es) from device_ips table
+    pub ips: Vec<String>,
 }
 
 /// Request body for creating a device.
@@ -51,13 +53,16 @@ impl Device {
             name: row.try_get("name")?,
             hostname: row.try_get("hostname")?,
             vendor: row.try_get("vendor")?,
-            icon: row.try_get::<String, _>("icon").unwrap_or_else(|_| "device".to_string()),
+            icon: row
+                .try_get::<String, _>("icon")
+                .unwrap_or_else(|_| "device".to_string()),
             notes: row.try_get("notes")?,
             is_known: row.try_get::<i32, _>("is_known").unwrap_or(0) != 0,
             is_favorite: row.try_get::<i32, _>("is_favorite").unwrap_or(0) != 0,
             first_seen_at: row.try_get("first_seen_at")?,
             last_seen_at: row.try_get("last_seen_at")?,
             is_online: row.try_get::<i32, _>("is_online").unwrap_or(0) != 0,
+            ips: vec![], // populated after query
         })
     }
 }
@@ -75,10 +80,28 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Device>>, St
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    let devices: Vec<Device> = rows
+    let mut devices: Vec<Device> = rows
         .into_iter()
         .filter_map(|r| Device::from_row(r).ok())
         .collect();
+
+    // Fetch current IPs for all devices in one query
+    if !devices.is_empty() {
+        let ip_rows = sqlx::query(
+            "SELECT device_id, ip FROM device_ips WHERE is_current = 1 ORDER BY device_id",
+        )
+        .fetch_all(&state.db)
+        .await
+        .unwrap_or_default();
+
+        for ip_row in ip_rows {
+            let device_id: String = ip_row.try_get("device_id").unwrap_or_default();
+            let ip: String = ip_row.try_get("ip").unwrap_or_default();
+            if let Some(dev) = devices.iter_mut().find(|d| d.id == device_id) {
+                dev.ips.push(ip);
+            }
+        }
+    }
 
     Ok(Json(devices))
 }
@@ -147,6 +170,7 @@ pub async fn create(
         first_seen_at: now.clone(),
         last_seen_at: now,
         is_online: false,
+        ips: vec![],
     };
 
     Ok((StatusCode::CREATED, Json(device)))

@@ -3,12 +3,12 @@ use axum::{
     routing::{get, post},
     Router,
 };
-use tower_http::services::{ServeDir, ServeFile};
 use sqlx::SqlitePool;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::services::{ServeDir, ServeFile};
 
 use crate::config::AppConfig;
 use crate::ws::hub::WsHub;
@@ -62,7 +62,10 @@ pub fn router(state: AppState) -> Router {
     let protected_routes = Router::new()
         // Device endpoints
         .route("/devices", get(devices::list).post(devices::create))
-        .route("/devices/{id}", get(devices::get_one).patch(devices::update))
+        .route(
+            "/devices/{id}",
+            get(devices::get_one).patch(devices::update),
+        )
         // Agent endpoints
         .route("/agents", get(agents::list).post(agents::register))
         .route("/agents/{id}", get(agents::get_one))
@@ -89,14 +92,15 @@ pub fn router(state: AppState) -> Router {
 
     // Serve Next.js static export from ../web/out (dev) or ./web (embedded later).
     // Falls back to index.html for client-side routing (SPA behaviour).
-    let web_dir = std::env::current_dir()
-        .unwrap_or_default()
-        .join("web/out");
-    let serve_dir = ServeDir::new(&web_dir)
-        .not_found_service(ServeFile::new(web_dir.join("index.html")));
+    let web_dir = std::env::current_dir().unwrap_or_default().join("web/out");
+    let serve_dir =
+        ServeDir::new(&web_dir).not_found_service(ServeFile::new(web_dir.join("index.html")));
 
     Router::new()
-        .nest("/api/v1", public_routes.merge(agent_ws).merge(protected_routes))
+        .nest(
+            "/api/v1",
+            public_routes.merge(agent_ws).merge(protected_routes),
+        )
         .fallback_service(serve_dir)
         .layer(cors)
         .with_state(state)

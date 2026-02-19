@@ -184,10 +184,7 @@ pub async fn register(
 
 /// GET /api/v1/agent/ws — WebSocket endpoint for agent connections.
 /// Agents authenticate via the first message (API key).
-pub async fn ws_handler(
-    ws: WebSocketUpgrade,
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+pub async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {
     ws.on_upgrade(move |socket| handle_agent_ws(socket, state))
 }
 
@@ -265,15 +262,13 @@ async fn handle_agent_ws(mut socket: WebSocket, state: AppState) {
     let mut cmd_rx = state.ws_hub.register_agent(&agent_id).await;
 
     // Broadcast agent online event.
-    state.ws_hub.broadcast(
-        "agent_online",
-        json!({"agent_id": &agent_id}),
-    );
+    state
+        .ws_hub
+        .broadcast("agent_online", json!({"agent_id": &agent_id}));
 
     let _ = socket
         .send(Message::Text(
-            json!({"status": "authenticated", "agent_id": &agent_id})
-                .to_string(),
+            json!({"status": "authenticated", "agent_id": &agent_id}).to_string(),
         ))
         .await;
 
@@ -342,10 +337,9 @@ async fn handle_agent_ws(mut socket: WebSocket, state: AppState) {
     .await;
 
     state.ws_hub.unregister_agent(&agent_id).await;
-    state.ws_hub.broadcast(
-        "agent_offline",
-        json!({"agent_id": &agent_id}),
-    );
+    state
+        .ws_hub
+        .broadcast("agent_offline", json!({"agent_id": &agent_id}));
 }
 
 /// Wait for the first message: an auth message containing the agent's API key.
@@ -379,11 +373,7 @@ async fn wait_for_auth(socket: &mut WebSocket, state: &AppState) -> Option<Strin
 }
 
 /// Process an agent report message and store it in the database.
-async fn handle_agent_report(
-    text: &str,
-    agent_id: &str,
-    state: &AppState,
-) -> anyhow::Result<()> {
+async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> anyhow::Result<()> {
     let report: AgentReport = serde_json::from_str(text)?;
     let now = chrono::Utc::now().to_rfc3339();
 

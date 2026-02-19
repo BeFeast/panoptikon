@@ -2,7 +2,6 @@
 ///
 /// In the future, this will embed the IEEE MA-L database at compile time.
 /// For now, it provides a stub implementation with a handful of common vendors.
-
 use std::collections::HashMap;
 use std::sync::LazyLock;
 

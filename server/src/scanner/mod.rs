@@ -35,11 +35,7 @@ pub async fn scan_subnets(_subnets: &[String]) -> Result<Vec<DiscoveredDevice>> 
 /// 3. Detects online/offline state changes
 /// 4. Creates alerts for new devices, devices going offline, and devices coming back
 /// 5. Broadcasts changes to connected UI clients via the WsHub
-pub fn start_scanner_task(
-    db: SqlitePool,
-    config: ScannerConfig,
-    ws_hub: Arc<WsHub>,
-) {
+pub fn start_scanner_task(db: SqlitePool, config: ScannerConfig, ws_hub: Arc<WsHub>) {
     let interval = std::time::Duration::from_secs(config.interval_seconds);
     let grace = config.offline_grace_seconds;
     let subnets = config.subnets.clone();
@@ -63,9 +59,7 @@ pub fn start_scanner_task(
             match scan_subnets(&subnets).await {
                 Ok(devices) => {
                     info!(count = devices.len(), "ARP scan completed");
-                    if let Err(e) =
-                        process_scan_results(&db, &devices, grace, &ws_hub).await
-                    {
+                    if let Err(e) = process_scan_results(&db, &devices, grace, &ws_hub).await {
                         error!("Failed to process scan results: {e}");
                     }
                 }
@@ -91,17 +85,16 @@ async fn process_scan_results(
         let mac_normalized = dev.mac.to_lowercase();
 
         // Check if device already exists.
-        let existing: Option<(String, bool)> = sqlx::query(
-            "SELECT id, is_online FROM devices WHERE mac = ?",
-        )
-        .bind(&mac_normalized)
-        .fetch_optional(db)
-        .await?
-        .map(|row| {
-            let id: String = sqlx::Row::get(&row, "id");
-            let is_online: bool = sqlx::Row::get::<i32, _>(&row, "is_online") != 0;
-            (id, is_online)
-        });
+        let existing: Option<(String, bool)> =
+            sqlx::query("SELECT id, is_online FROM devices WHERE mac = ?")
+                .bind(&mac_normalized)
+                .fetch_optional(db)
+                .await?
+                .map(|row| {
+                    let id: String = sqlx::Row::get(&row, "id");
+                    let is_online: bool = sqlx::Row::get::<i32, _>(&row, "is_online") != 0;
+                    (id, is_online)
+                });
 
         match existing {
             Some((device_id, was_online)) => {
@@ -147,7 +140,10 @@ async fn process_scan_results(
                     )
                     .bind(&alert_id)
                     .bind(&device_id)
-                    .bind(format!("Device {} ({}) came back online", mac_normalized, dev.ip))
+                    .bind(format!(
+                        "Device {} ({}) came back online",
+                        mac_normalized, dev.ip
+                    ))
                     .bind(&now)
                     .execute(db)
                     .await?;
@@ -167,8 +163,7 @@ async fn process_scan_results(
             None => {
                 // New device discovered.
                 let device_id = uuid::Uuid::new_v4().to_string();
-                let vendor = crate::oui::lookup(&mac_normalized)
-                    .map(|v| v.to_string());
+                let vendor = crate::oui::lookup(&mac_normalized).map(|v| v.to_string());
 
                 sqlx::query(
                     "INSERT INTO devices (id, mac, vendor, first_seen_at, last_seen_at, is_online) \
@@ -214,7 +209,10 @@ async fn process_scan_results(
                     "New device discovered: {} ({}) — {}",
                     mac_normalized, dev.ip, vendor_str
                 ))
-                .bind(json!({"mac": &mac_normalized, "ip": &dev.ip, "vendor": vendor_str}).to_string())
+                .bind(
+                    json!({"mac": &mac_normalized, "ip": &dev.ip, "vendor": vendor_str})
+                        .to_string(),
+                )
                 .bind(&now)
                 .execute(db)
                 .await?;
@@ -244,19 +242,18 @@ async fn process_scan_results(
     let grace_cutoff =
         (Utc::now() - chrono::Duration::seconds(offline_grace_secs as i64)).to_rfc3339();
 
-    let stale_devices: Vec<(String, String)> = sqlx::query(
-        "SELECT id, mac FROM devices WHERE is_online = 1 AND last_seen_at < ?",
-    )
-    .bind(&grace_cutoff)
-    .fetch_all(db)
-    .await?
-    .into_iter()
-    .map(|row| {
-        let id: String = sqlx::Row::get(&row, "id");
-        let mac: String = sqlx::Row::get(&row, "mac");
-        (id, mac)
-    })
-    .collect();
+    let stale_devices: Vec<(String, String)> =
+        sqlx::query("SELECT id, mac FROM devices WHERE is_online = 1 AND last_seen_at < ?")
+            .bind(&grace_cutoff)
+            .fetch_all(db)
+            .await?
+            .into_iter()
+            .map(|row| {
+                let id: String = sqlx::Row::get(&row, "id");
+                let mac: String = sqlx::Row::get(&row, "mac");
+                (id, mac)
+            })
+            .collect();
 
     for (device_id, mac) in &stale_devices {
         // Mark offline.

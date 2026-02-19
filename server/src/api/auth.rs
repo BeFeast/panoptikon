@@ -100,10 +100,9 @@ pub async fn login(
         message: "Login successful".to_string(),
     })
     .into_response();
-    response.headers_mut().insert(
-        header::SET_COOKIE,
-        cookie.parse().unwrap(),
-    );
+    response
+        .headers_mut()
+        .insert(header::SET_COOKIE, cookie.parse().unwrap());
 
     Ok(response)
 }
@@ -115,8 +114,7 @@ pub async fn logout(State(state): State<AppState>, req: Request) -> impl IntoRes
         state.sessions.write().await.remove(&token);
     }
 
-    let cookie =
-        "panoptikon_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0";
+    let cookie = "panoptikon_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0";
 
     let mut response = StatusCode::NO_CONTENT.into_response();
     response
@@ -131,15 +129,14 @@ pub async fn status(
     State(state): State<AppState>,
     req: Request,
 ) -> Result<Json<AuthStatusResponse>, StatusCode> {
-    let needs_setup =
-        sqlx::query("SELECT 1 FROM settings WHERE key = 'admin_password_hash'")
-            .fetch_optional(&state.db)
-            .await
-            .map_err(|e| {
-                tracing::error!("Failed to query settings: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
-            })?
-            .is_none();
+    let needs_setup = sqlx::query("SELECT 1 FROM settings WHERE key = 'admin_password_hash'")
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to query settings: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?
+        .is_none();
 
     let authenticated = if let Some(token) = extract_session_token(&req) {
         let sessions = state.sessions.read().await;
@@ -158,11 +155,7 @@ pub async fn status(
 }
 
 /// Auth middleware: protects routes by checking the session cookie.
-pub async fn auth_middleware(
-    State(state): State<AppState>,
-    req: Request,
-    next: Next,
-) -> Response {
+pub async fn auth_middleware(State(state): State<AppState>, req: Request, next: Next) -> Response {
     let token = extract_session_token(&req);
 
     let valid = if let Some(ref token) = token {

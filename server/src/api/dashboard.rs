@@ -1,11 +1,14 @@
-use axum::{extract::{Query, State}, Json};
-use serde::{Deserialize, Serialize};
 use crate::api::AppState;
 use anyhow::Result;
+use axum::{
+    extract::{Query, State},
+    Json,
+};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
 pub struct DashboardStats {
-    pub router_status: String,       // "connected" | "disconnected" | "unconfigured"
+    pub router_status: String, // "connected" | "disconnected" | "unconfigured"
     pub devices_online: i64,
     pub devices_total: i64,
     pub alerts_unread: i64,
@@ -31,26 +34,21 @@ pub struct LimitQuery {
 
 /// GET /api/v1/dashboard/stats
 pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
-    let devices_online: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM devices WHERE is_online = 1"
-    )
-    .fetch_one(&state.db)
-    .await
-    .unwrap_or(0);
+    let devices_online: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE is_online = 1")
+            .fetch_one(&state.db)
+            .await
+            .unwrap_or(0);
 
-    let devices_total: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM devices"
-    )
-    .fetch_one(&state.db)
-    .await
-    .unwrap_or(0);
+    let devices_total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM devices")
+        .fetch_one(&state.db)
+        .await
+        .unwrap_or(0);
 
-    let alerts_unread: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM alerts WHERE is_read = 0"
-    )
-    .fetch_one(&state.db)
-    .await
-    .unwrap_or(0);
+    let alerts_unread: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM alerts WHERE is_read = 0")
+        .fetch_one(&state.db)
+        .await
+        .unwrap_or(0);
 
     // Check VyOS connectivity
     let router_status = match (&state.config.vyos.url, &state.config.vyos.api_key) {
@@ -69,7 +67,7 @@ pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
         "SELECT COALESCE(rx_bps, 0), COALESCE(tx_bps, 0)
          FROM traffic_samples
          WHERE source = 'vyos'
-         ORDER BY sampled_at DESC LIMIT 1"
+         ORDER BY sampled_at DESC LIMIT 1",
     )
     .fetch_optional(&state.db)
     .await
@@ -94,9 +92,16 @@ pub async fn top_devices(
     let limit = q.limit.unwrap_or(5);
 
     // Join devices with their latest traffic sample
-    let rows: Vec<(String, Option<String>, Option<String>, Option<String>, Option<String>, i64, i64)> =
-        sqlx::query_as(
-            "SELECT d.id, d.name, d.hostname, di.ip, d.vendor,
+    let rows: Vec<(
+        String,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        i64,
+        i64,
+    )> = sqlx::query_as(
+        "SELECT d.id, d.name, d.hostname, di.ip, d.vendor,
                     COALESCE(ts.rx_bps, 0) as rx_bps,
                     COALESCE(ts.tx_bps, 0) as tx_bps
              FROM devices d
@@ -109,23 +114,25 @@ pub async fn top_devices(
              WHERE d.is_online = 1
              ORDER BY (COALESCE(ts.rx_bps, 0) + COALESCE(ts.tx_bps, 0)) DESC
              LIMIT ?",
-        )
-        .bind(limit)
-        .fetch_all(&state.db)
-        .await
-        .unwrap_or_default();
+    )
+    .bind(limit)
+    .fetch_all(&state.db)
+    .await
+    .unwrap_or_default();
 
     Json(
         rows.into_iter()
-            .map(|(id, name, hostname, ip, vendor, rx_bps, tx_bps)| TopDevice {
-                id,
-                name,
-                hostname,
-                ip,
-                vendor,
-                rx_bps,
-                tx_bps,
-            })
+            .map(
+                |(id, name, hostname, ip, vendor, rx_bps, tx_bps)| TopDevice {
+                    id,
+                    name,
+                    hostname,
+                    ip,
+                    vendor,
+                    rx_bps,
+                    tx_bps,
+                },
+            )
             .collect(),
     )
 }

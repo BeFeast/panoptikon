@@ -61,10 +61,7 @@ impl WsHub {
         let (cmd_tx, cmd_rx) = tokio::sync::mpsc::channel(32);
         let conn = AgentConnection { _cmd_tx: cmd_tx };
 
-        self.agents
-            .write()
-            .await
-            .insert(agent_id.to_string(), conn);
+        self.agents.write().await.insert(agent_id.to_string(), conn);
         info!(agent_id = %agent_id, "Agent registered in hub");
 
         cmd_rx

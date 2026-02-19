@@ -19,9 +19,7 @@ pub fn collect() -> Vec<DiskInfo> {
         .filter(|d| {
             // Filter out pseudo-filesystems.
             let fs = d.file_system().to_string_lossy();
-            !fs.starts_with("tmpfs")
-                && !fs.starts_with("devtmpfs")
-                && !fs.starts_with("squashfs")
+            !fs.starts_with("tmpfs") && !fs.starts_with("devtmpfs") && !fs.starts_with("squashfs")
         })
         .map(|d| {
             let total = d.total_space();
