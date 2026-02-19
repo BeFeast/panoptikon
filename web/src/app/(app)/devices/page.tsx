@@ -66,8 +66,8 @@ export default function DevicesPage() {
         (d) =>
           (d.name ?? "").toLowerCase().includes(q) ||
           (d.hostname ?? "").toLowerCase().includes(q) ||
-          d.mac.toLowerCase().includes(q) ||
-          d.ips.some((ip) => ip.ip.includes(q))
+          (d.mac ?? "").toLowerCase().includes(q) ||
+          (d.ips ?? []).some((ip) => ip.ip.includes(q))
       );
     }
 
@@ -188,7 +188,8 @@ function DeviceCard({
   device: Device;
   onClick: () => void;
 }) {
-  const primaryIp = device.ips.find((ip) => ip.is_current)?.ip ?? device.ips[0]?.ip ?? "—";
+  const ips = device.ips ?? [];
+  const primaryIp = ips.find((ip) => ip.is_current)?.ip ?? ips[0]?.ip ?? "—";
   const displayName = device.name ?? device.hostname ?? "Unknown Device";
 
   return (
@@ -246,7 +247,8 @@ function DeviceCard({
 // ─── Device Detail (Sheet) ──────────────────────────────
 
 function DeviceDetail({ device }: { device: Device }) {
-  const primaryIp = device.ips.find((ip) => ip.is_current)?.ip ?? device.ips[0]?.ip ?? "—";
+  const ips = device.ips ?? [];
+  const primaryIp = ips.find((ip) => ip.is_current)?.ip ?? ips[0]?.ip ?? "—";
   const displayName = device.name ?? device.hostname ?? "Unknown Device";
 
   return (
@@ -284,13 +286,13 @@ function DeviceDetail({ device }: { device: Device }) {
         <InfoRow label="Status" value={device.is_known ? "Known" : "Unacknowledged"} />
 
         {/* All IPs */}
-        {device.ips.length > 1 && (
+        {ips.length > 1 && (
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
               All IP Addresses
             </p>
             <div className="mt-1 space-y-0.5">
-              {device.ips.map((ip) => (
+              {ips.map((ip) => (
                 <p key={ip.ip} className="font-mono text-sm text-gray-300">
                   {ip.ip}
                   {ip.subnet && (

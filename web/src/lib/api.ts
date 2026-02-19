@@ -88,6 +88,14 @@ export function fetchTopDevices(limit = 5): Promise<TopDevice[]> {
   return apiGet<TopDevice[]>(`/api/v1/dashboard/top-devices?limit=${limit}`);
 }
 
+export function fetchAlerts(limit = 50): Promise<Alert[]> {
+  return apiGet<Alert[]>(`/api/v1/alerts?limit=${limit}`);
+}
+
+export function markAlertRead(id: string): Promise<void> {
+  return apiPost<void>(`/api/v1/alerts/${id}/read`);
+}
+
 // ─── Devices ────────────────────────────────────────────
 
 export function fetchDevices(): Promise<Device[]> {

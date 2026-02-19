@@ -3,6 +3,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use tower_http::services::{ServeDir, ServeFile};
 use sqlx::SqlitePool;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -15,6 +16,7 @@ use crate::ws::hub::WsHub;
 pub mod agents;
 pub mod alerts;
 pub mod auth;
+pub mod dashboard;
 pub mod devices;
 pub mod vyos;
 
@@ -64,6 +66,9 @@ pub fn router(state: AppState) -> Router {
         // Agent endpoints
         .route("/agents", get(agents::list).post(agents::register))
         .route("/agents/{id}", get(agents::get_one))
+        // Dashboard endpoints
+        .route("/dashboard/stats", get(dashboard::stats))
+        .route("/dashboard/top-devices", get(dashboard::top_devices))
         // Alert endpoints
         .route("/alerts", get(alerts::list))
         .route("/alerts/{id}/read", post(alerts::mark_read))
@@ -82,8 +87,17 @@ pub fn router(state: AppState) -> Router {
     // Agent WebSocket — uses its own API key auth, not session cookies
     let agent_ws = Router::new().route("/agent/ws", get(agents::ws_handler));
 
+    // Serve Next.js static export from ../web/out (dev) or ./web (embedded later).
+    // Falls back to index.html for client-side routing (SPA behaviour).
+    let web_dir = std::env::current_dir()
+        .unwrap_or_default()
+        .join("web/out");
+    let serve_dir = ServeDir::new(&web_dir)
+        .not_found_service(ServeFile::new(web_dir.join("index.html")));
+
     Router::new()
         .nest("/api/v1", public_routes.merge(agent_ws).merge(protected_routes))
+        .fallback_service(serve_dir)
         .layer(cors)
         .with_state(state)
 }

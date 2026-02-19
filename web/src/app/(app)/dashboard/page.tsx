@@ -109,6 +109,19 @@ function StatCardSkeleton() {
   );
 }
 
+// ─── Derive display values from flat stats ──────────────
+
+function routerStatusLabel(s: DashboardStats): { label: string; status: "online" | "offline" | "warning" } {
+  switch (s.router_status) {
+    case "online":
+      return { label: "Online", status: "online" };
+    case "unconfigured":
+      return { label: "Unconfigured", status: "warning" };
+    default:
+      return { label: "Offline", status: "offline" };
+  }
+}
+
 // ─── Page ───────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -126,8 +139,8 @@ export default function DashboardPage() {
           fetchTopDevices(5),
         ]);
         setStats(s);
-        setAlerts(a);
-        setTopDevices(d);
+        setAlerts(Array.isArray(a) ? a : []);
+        setTopDevices(Array.isArray(d) ? d : []);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load dashboard");
       }
@@ -157,35 +170,37 @@ export default function DashboardPage() {
           <>
             <StatCard
               title="Router Status"
-              value={stats.router.is_connected ? "Online" : "Offline"}
+              value={routerStatusLabel(stats).label}
               subtitle={
-                stats.router.is_connected
-                  ? `VyOS ${stats.router.version ?? "?"} • Up ${stats.router.uptime ?? "?"}`
-                  : "Cannot reach VyOS API"
+                stats.router_status === "online"
+                  ? "Connected to router"
+                  : stats.router_status === "unconfigured"
+                  ? "Router not configured yet"
+                  : "Cannot reach router"
               }
               icon={<Router className="h-4 w-4" />}
-              status={stats.router.is_connected ? "online" : "offline"}
+              status={routerStatusLabel(stats).status}
             />
             <StatCard
               title="Active Devices"
-              value={String(stats.device_count.online)}
-              subtitle={`${stats.device_count.total} total known`}
+              value={String(stats.devices_online)}
+              subtitle={`${stats.devices_total} total known`}
               icon={<MonitorSmartphone className="h-4 w-4" />}
               status="online"
             />
             <StatCard
               title="WAN Bandwidth"
-              value={`↓ ${formatBps(stats.bandwidth.rx_bps)}`}
-              subtitle={`↑ ${formatBps(stats.bandwidth.tx_bps)}`}
+              value={`↓ ${formatBps(stats.wan_rx_bps)}`}
+              subtitle={`↑ ${formatBps(stats.wan_tx_bps)}`}
               icon={<Activity className="h-4 w-4" />}
               status="online"
             />
             <StatCard
-              title="Active Alerts"
-              value={String(stats.alert_count.total)}
-              subtitle={`${stats.alert_count.unread} unread`}
+              title="Unread Alerts"
+              value={String(stats.alerts_unread)}
+              subtitle={stats.alerts_unread > 0 ? "Needs attention" : "All clear"}
               icon={<AlertTriangle className="h-4 w-4" />}
-              status={stats.alert_count.unread > 0 ? "warning" : "online"}
+              status={stats.alerts_unread > 0 ? "warning" : "online"}
             />
           </>
         ) : (
@@ -277,7 +292,7 @@ export default function DashboardPage() {
                   {topDevices.map((d) => (
                     <TableRow key={d.id} className="border-[#2a2a3a]">
                       <TableCell className="font-medium text-white">
-                        {d.name ?? d.hostname ?? "Unknown"}
+                        {d.name ?? d.hostname ?? d.ip}
                       </TableCell>
                       <TableCell className="font-mono text-gray-400">
                         {d.ip}

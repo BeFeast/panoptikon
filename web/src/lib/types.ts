@@ -71,28 +71,14 @@ export interface Alert {
 
 // ─── Dashboard / Stats ──────────────────────────────────
 
+/** Shape returned by the /api/v1/dashboard/stats endpoint. */
 export interface DashboardStats {
-  router: RouterStatus;
-  device_count: {
-    total: number;
-    online: number;
-  };
-  bandwidth: {
-    rx_bps: number;
-    tx_bps: number;
-  };
-  alert_count: {
-    total: number;
-    unread: number;
-  };
-}
-
-export interface RouterStatus {
-  is_connected: boolean;
-  version: string | null;
-  uptime: string | null;
-  cpu_percent: number | null;
-  memory_percent: number | null;
+  router_status: string;
+  devices_online: number;
+  devices_total: number;
+  alerts_unread: number;
+  wan_rx_bps: number;
+  wan_tx_bps: number;
 }
 
 export interface TopDevice {
@@ -100,6 +86,7 @@ export interface TopDevice {
   name: string | null;
   hostname: string | null;
   ip: string;
+  vendor: string | null;
   rx_bps: number;
   tx_bps: number;
 }
