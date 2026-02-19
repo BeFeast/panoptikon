@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Pencil, Plus, Terminal, X } from "lucide-react";
+import { Check, Copy, Pencil, Plus, Terminal, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { apiPatch, createAgent, fetchAgents } from "@/lib/api";
+import { apiDelete, apiPatch, createAgent, fetchAgents } from "@/lib/api";
 import type { Agent, AgentCreateResponse } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
 
@@ -113,13 +113,18 @@ export default function AgentsPage() {
                         className="flex items-center gap-1"
                         onSubmit={async (e) => {
                           e.preventDefault();
-                          await apiPatch(`/api/v1/agents/${agent.id}`, { name: renameValue });
-                          setAgents((prev) =>
-                            prev?.map((a) =>
-                              a.id === agent.id ? { ...a, name: renameValue } : a
-                            ) ?? null
-                          );
-                          setRenamingId(null);
+                          try {
+                            await apiPatch(`/api/v1/agents/${agent.id}`, { name: renameValue });
+                            setAgents((prev) =>
+                              prev?.map((a) =>
+                                a.id === agent.id ? { ...a, name: renameValue } : a
+                              ) ?? null
+                            );
+                            setRenamingId(null);
+                          } catch (err) {
+                            console.error("Rename failed:", err);
+                            alert("Failed to rename agent");
+                          }
                         }}
                       >
                         <Input
@@ -166,6 +171,19 @@ export default function AgentsPage() {
                   </TableCell>
                   <TableCell>
                     <StatusBadge online={agent.is_online} />
+                  </TableCell>
+                  <TableCell>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`Delete agent "${agent.name ?? agent.id.slice(0,8)}"?`)) return;
+                        await apiDelete(`/api/v1/agents/${agent.id}`);
+                        setAgents(prev => prev?.filter(a => a.id !== agent.id) ?? null);
+                      }}
+                      className="rounded p-1 text-gray-600 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+                      title="Delete agent"
+                    >
+                      <Trash2 size={14} />
+                    </button>
                   </TableCell>
                 </TableRow>
               ))}

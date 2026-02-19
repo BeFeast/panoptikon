@@ -1,5 +1,4 @@
 use crate::api::AppState;
-use anyhow::Result;
 use axum::{
     extract::{Query, State},
     Json,
@@ -92,6 +91,7 @@ pub async fn top_devices(
     let limit = q.limit.unwrap_or(5);
 
     // Join devices with their latest traffic sample
+    #[allow(clippy::type_complexity)]
     let rows: Vec<(
         String,
         Option<String>,

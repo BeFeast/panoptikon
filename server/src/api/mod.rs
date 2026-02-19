@@ -68,7 +68,12 @@ pub fn router(state: AppState) -> Router {
         )
         // Agent endpoints
         .route("/agents", get(agents::list).post(agents::register))
-        .route("/agents/{id}", get(agents::get_one).patch(agents::update))
+        .route(
+            "/agents/{id}",
+            get(agents::get_one)
+                .patch(agents::update)
+                .delete(agents::delete),
+        )
         // Dashboard endpoints
         .route("/dashboard/stats", get(dashboard::stats))
         .route("/dashboard/top-devices", get(dashboard::top_devices))

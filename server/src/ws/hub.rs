@@ -74,6 +74,7 @@ impl WsHub {
     }
 
     /// Get the number of connected agents.
+    #[allow(dead_code)]
     pub async fn agent_count(&self) -> usize {
         self.agents.read().await.len()
     }

@@ -31,6 +31,7 @@ function getAuthHeaders(): HeadersInit {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
+    credentials: "include",   // always send cookies (same-origin)
     ...init,
     headers: {
       ...getAuthHeaders(),
@@ -38,7 +39,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
   if (res.status === 401) {
-    // Redirect to login on auth failure
     if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
       window.location.href = "/login";
     }
@@ -46,6 +46,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   }
   if (!res.ok) {
     throw new Error(`API error ${res.status}: ${res.statusText}`);
+  }
+  // 204 No Content — return empty object, don't try to parse JSON
+  if (res.status === 204 || res.headers.get("content-length") === "0") {
+    return undefined as unknown as T;
   }
   return res.json();
 }

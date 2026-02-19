@@ -58,6 +58,7 @@ impl VyosClient {
     }
 
     /// Execute a VyOS `retrieve` command (for configuration queries).
+    #[allow(dead_code)]
     pub async fn retrieve(&self, path: &[&str]) -> Result<Value> {
         let url = format!("{}/retrieve", self.base_url);
         let body = json!({

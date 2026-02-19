@@ -228,6 +228,22 @@ pub async fn update(
     }))
 }
 
+/// DELETE /api/v1/agents/:id — remove an agent.
+pub async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> StatusCode {
+    match sqlx::query("DELETE FROM agents WHERE id = ?")
+        .bind(&id)
+        .execute(&state.db)
+        .await
+    {
+        Ok(r) if r.rows_affected() > 0 => StatusCode::NO_CONTENT,
+        Ok(_) => StatusCode::NOT_FOUND,
+        Err(e) => {
+            error!("Failed to delete agent {id}: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        }
+    }
+}
+
 /// GET /api/v1/agent/ws — WebSocket endpoint for agent connections.
 /// Agents authenticate via the first message (API key).
 pub async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {
@@ -495,8 +511,8 @@ pub async fn install_script(
         }
     };
 
-    // Validate the API key exists
-    let key_exists: bool =
+    // Validate the API key exists (future: reject unknown keys)
+    let _key_exists: bool =
         sqlx::query_scalar("SELECT COUNT(*) > 0 FROM agents WHERE api_key_hash != ''")
             .fetch_one(&state.db)
             .await
@@ -513,7 +529,7 @@ pub async fn install_script(
             .replace("0.0.0.0", "10.10.0.14")
     );
 
-    let (target_triple, binary_name) = match platform.as_str() {
+    let (_target_triple, _binary_name) = match platform.as_str() {
         "linux-amd64" => ("x86_64-unknown-linux-musl", "panoptikon-agent-linux-amd64"),
         "linux-arm64" => ("aarch64-unknown-linux-musl", "panoptikon-agent-linux-arm64"),
         "darwin-arm64" => ("aarch64-apple-darwin", "panoptikon-agent-darwin-arm64"),
