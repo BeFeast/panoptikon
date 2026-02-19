@@ -243,7 +243,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
           Add Agent
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-[min(90vw,560px)] max-w-none border-[#2a2a3a] bg-[#0d0d14]">
+      <DialogContent className="w-[min(95vw,780px)] max-w-none border-[#2a2a3a] bg-[#0d0d14]">
         <DialogHeader>
           <DialogTitle className="text-white">
             {result ? "Agent Created" : "Add New Agent"}
@@ -355,7 +355,7 @@ function CopyBlock({ text }: { text: string }) {
 
   return (
     <div className="group relative">
-      <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-md bg-[#16161f] p-3 pr-12 font-mono text-xs text-gray-300">
+      <pre className="overflow-x-auto rounded-md bg-[#16161f] p-3 pr-12 font-mono text-xs text-gray-300">
         {text}
       </pre>
       <button
