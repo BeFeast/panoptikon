@@ -1,17 +1,16 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: "./e2e",
   timeout: 30_000,
-  retries: 0,
+  retries: 1,
+  reporter: [["html", { outputFolder: "playwright-report", open: "never" }], ["list"]],
   use: {
-    baseURL: 'http://localhost:8080',
+    baseURL: "http://10.10.0.14:8080",
+    screenshot: "on",
+    video: "retain-on-failure",
+    trace: "retain-on-failure",
     headless: true,
-    screenshot: 'on',
-    video: 'off',
-    // Accept self-signed certs if needed
-    ignoreHTTPSErrors: true,
   },
-  outputDir: './tests/screenshots',
-  reporter: [['list']],
+  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
 });

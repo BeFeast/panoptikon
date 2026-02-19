@@ -251,6 +251,7 @@ export default function AgentsPage() {
             <AlertDialogAction
               onClick={handleDelete}
               disabled={deleting}
+              autoFocus
               className="bg-red-600 text-white hover:bg-red-500"
             >
               {deleting ? "Deleting…" : "Delete"}
