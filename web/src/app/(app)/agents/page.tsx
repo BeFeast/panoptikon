@@ -329,19 +329,28 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
 
 function copyToClipboard(text: string): void {
   if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
   } else {
-    // Fallback for HTTP (non-secure context)
-    const el = document.createElement("textarea");
-    el.value = text;
-    el.style.position = "fixed";
-    el.style.opacity = "0";
-    document.body.appendChild(el);
-    el.focus();
-    el.select();
-    document.execCommand("copy");
-    document.body.removeChild(el);
+    fallbackCopy(text);
   }
+}
+
+function fallbackCopy(text: string): void {
+  const el = document.createElement("textarea");
+  el.value = text;
+  el.setAttribute("readonly", "");
+  // Must be in viewport and readable for Chrome to allow copy
+  el.style.cssText =
+    "position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0.01;";
+  document.body.appendChild(el);
+  el.focus();
+  el.select();
+  try {
+    document.execCommand("copy");
+  } catch (err) {
+    console.warn("Copy failed:", err);
+  }
+  document.body.removeChild(el);
 }
 
 function CopyBlock({ text }: { text: string }) {
@@ -354,8 +363,8 @@ function CopyBlock({ text }: { text: string }) {
   };
 
   return (
-    <div className="group relative">
-      <pre className="overflow-x-auto rounded-md bg-[#16161f] p-3 pr-12 font-mono text-xs text-gray-300">
+    <div className="relative rounded-md bg-[#16161f]">
+      <pre className="overflow-x-auto p-3 font-mono text-xs text-gray-300 pr-10">
         {text}
       </pre>
       <button
