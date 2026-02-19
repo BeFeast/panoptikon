@@ -46,8 +46,14 @@ async fn run_migrations(pool: &SqlitePool) -> Result<()> {
     if !applied {
         // Split on semicolons and execute each statement.
         for statement in INIT_MIGRATION.split(';') {
-            let stmt = statement.trim();
-            if stmt.is_empty() || stmt.starts_with("--") {
+            // Strip leading comment lines to get to the actual SQL.
+            let code = statement
+                .lines()
+                .skip_while(|l| l.trim().starts_with("--") || l.trim().is_empty())
+                .collect::<Vec<_>>()
+                .join("\n");
+            let stmt = code.trim();
+            if stmt.is_empty() {
                 continue;
             }
             sqlx::query(stmt).execute(pool).await?;

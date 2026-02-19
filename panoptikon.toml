@@ -1,0 +1,16 @@
+listen = "0.0.0.0:8080"
+db_path = "./panoptikon.db"
+
+[vyos]
+url = "https://192.168.1.1"
+api_key = "your-vyos-api-key"
+insecure_tls = true  # VyOS uses self-signed cert
+
+[scanner]
+subnets = ["10.10.0.0/24"]
+interval_seconds = 60
+offline_grace_seconds = 300  # 5 min before marking offline
+
+[auth]
+# Password is set on first run via the web UI setup wizard
+# session_expiry_seconds = 86400  # 24 hours (default)
