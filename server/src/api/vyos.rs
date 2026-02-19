@@ -59,12 +59,14 @@ pub async fn firewall(State(state): State<AppState>) -> Result<Json<Value>, Stat
 fn get_vyos_client(state: &AppState) -> Result<crate::vyos::client::VyosClient, StatusCode> {
     let url = state
         .config
-        .vyos_url
+        .vyos
+        .url
         .as_deref()
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
     let api_key = state
         .config
-        .vyos_api_key
+        .vyos
+        .api_key
         .as_deref()
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
 

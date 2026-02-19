@@ -4,6 +4,17 @@
  * Wraps fetch() with base URL handling, auth headers, and JSON parsing.
  */
 
+import type {
+  Agent,
+  AgentCreateResponse,
+  Alert,
+  AuthStatus,
+  DashboardStats,
+  Device,
+  LoginResponse,
+  TopDevice,
+} from "./types";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 function getAuthHeaders(): HeadersInit {
@@ -18,36 +29,95 @@ function getAuthHeaders(): HeadersInit {
   return headers;
 }
 
-export async function apiGet<T>(path: string): Promise<T> {
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: getAuthHeaders(),
+    ...init,
+    headers: {
+      ...getAuthHeaders(),
+      ...(init?.headers ?? {}),
+    },
   });
+  if (res.status === 401) {
+    // Redirect to login on auth failure
+    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+      window.location.href = "/login";
+    }
+    throw new Error("Unauthorized");
+  }
   if (!res.ok) {
     throw new Error(`API error ${res.status}: ${res.statusText}`);
   }
   return res.json();
+}
+
+// ─── Generic CRUD ───────────────────────────────────────
+
+export async function apiGet<T>(path: string): Promise<T> {
+  return request<T>(path);
 }
 
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  return request<T>(path, {
     method: "POST",
-    headers: getAuthHeaders(),
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) {
-    throw new Error(`API error ${res.status}: ${res.statusText}`);
-  }
-  return res.json();
 }
 
 export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  return request<T>(path, {
     method: "PATCH",
-    headers: getAuthHeaders(),
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    throw new Error(`API error ${res.status}: ${res.statusText}`);
-  }
-  return res.json();
+}
+
+export async function apiDelete(path: string): Promise<void> {
+  await request<void>(path, { method: "DELETE" });
+}
+
+// ─── Dashboard ──────────────────────────────────────────
+
+export function fetchDashboardStats(): Promise<DashboardStats> {
+  return apiGet<DashboardStats>("/api/v1/dashboard/stats");
+}
+
+export function fetchRecentAlerts(limit = 5): Promise<Alert[]> {
+  return apiGet<Alert[]>(`/api/v1/alerts?limit=${limit}`);
+}
+
+export function fetchTopDevices(limit = 5): Promise<TopDevice[]> {
+  return apiGet<TopDevice[]>(`/api/v1/dashboard/top-devices?limit=${limit}`);
+}
+
+// ─── Devices ────────────────────────────────────────────
+
+export function fetchDevices(): Promise<Device[]> {
+  return apiGet<Device[]>("/api/v1/devices");
+}
+
+export function fetchDevice(id: string): Promise<Device> {
+  return apiGet<Device>(`/api/v1/devices/${id}`);
+}
+
+// ─── Agents ─────────────────────────────────────────────
+
+export function fetchAgents(): Promise<Agent[]> {
+  return apiGet<Agent[]>("/api/v1/agents");
+}
+
+export function createAgent(name: string): Promise<AgentCreateResponse> {
+  return apiPost<AgentCreateResponse>("/api/v1/agents", { name });
+}
+
+// ─── Auth ───────────────────────────────────────────────
+
+export function fetchAuthStatus(): Promise<AuthStatus> {
+  return apiGet<AuthStatus>("/api/v1/auth/status");
+}
+
+export function login(password: string): Promise<LoginResponse> {
+  return apiPost<LoginResponse>("/api/v1/auth/login", { password });
+}
+
+export function setupPassword(password: string): Promise<LoginResponse> {
+  return apiPost<LoginResponse>("/api/v1/auth/setup", { password });
 }

@@ -1,26 +1,64 @@
 use anyhow::Result;
 use serde::Deserialize;
 
-/// Application configuration loaded from a TOML file or defaults.
+/// Top-level configuration loaded from a TOML file or defaults.
 #[derive(Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct AppConfig {
-    /// VyOS router HTTP API URL (e.g., "https://10.10.0.1").
-    pub vyos_url: Option<String>,
+    /// Address and port to listen on.
+    #[serde(default = "default_listen")]
+    pub listen: Option<String>,
+
+    /// Path to the SQLite database file.
+    #[serde(default)]
+    pub db_path: Option<String>,
+
+    /// VyOS section.
+    #[serde(default)]
+    pub vyos: VyosConfig,
+
+    /// Scanner section.
+    #[serde(default)]
+    pub scanner: ScannerConfig,
+
+    /// Auth section.
+    #[serde(default)]
+    pub auth: AuthConfig,
+}
+
+fn default_listen() -> Option<String> {
+    Some("0.0.0.0:8080".to_string())
+}
+
+/// VyOS router connection settings.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[allow(dead_code)]
+pub struct VyosConfig {
+    /// VyOS HTTP API URL (e.g., "https://192.168.1.1").
+    pub url: Option<String>,
 
     /// VyOS HTTP API key.
-    pub vyos_api_key: Option<String>,
+    pub api_key: Option<String>,
 
-    /// ARP scan interval in seconds.
-    #[serde(default = "default_scan_interval")]
-    pub scan_interval_secs: u64,
-
-    /// Subnets to scan (CIDR notation). If empty, auto-detect from VyOS.
+    /// Accept self-signed TLS certificates.
     #[serde(default)]
-    pub scan_subnets: Vec<String>,
+    pub insecure_tls: bool,
+}
 
-    /// Grace period in seconds before marking a device as offline.
+/// ARP scanner settings.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ScannerConfig {
+    /// Subnets to scan (CIDR notation).
+    #[serde(default)]
+    pub subnets: Vec<String>,
+
+    /// How often to run the ARP scan, in seconds.
+    #[serde(default = "default_scan_interval")]
+    pub interval_seconds: u64,
+
+    /// Grace period before marking a device offline, in seconds.
     #[serde(default = "default_offline_grace")]
-    pub offline_grace_secs: u64,
+    pub offline_grace_seconds: u64,
 }
 
 fn default_scan_interval() -> u64 {
@@ -31,14 +69,36 @@ fn default_offline_grace() -> u64 {
     300
 }
 
+impl Default for ScannerConfig {
+    fn default() -> Self {
+        Self {
+            subnets: Vec::new(),
+            interval_seconds: default_scan_interval(),
+            offline_grace_seconds: default_offline_grace(),
+        }
+    }
+}
+
+/// Auth settings (mostly configured at runtime via UI).
+#[derive(Debug, Clone, Default, Deserialize)]
+pub struct AuthConfig {
+    /// Session expiry in seconds (default 24 hours).
+    #[serde(default = "default_session_expiry")]
+    pub session_expiry_seconds: u64,
+}
+
+fn default_session_expiry() -> u64 {
+    86400
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
-            vyos_url: None,
-            vyos_api_key: None,
-            scan_interval_secs: default_scan_interval(),
-            scan_subnets: Vec::new(),
-            offline_grace_secs: default_offline_grace(),
+            listen: default_listen(),
+            db_path: None,
+            vyos: VyosConfig::default(),
+            scanner: ScannerConfig::default(),
+            auth: AuthConfig::default(),
         }
     }
 }

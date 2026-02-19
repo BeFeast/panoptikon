@@ -65,8 +65,18 @@ async fn main() -> Result<()> {
     let pool = db::init(&cli.db).await?;
     info!(path = %cli.db, "Database initialized");
 
+    // Build shared application state (contains WsHub, session store, etc.).
+    let state = api::AppState::new(pool, app_config.clone());
+
+    // Start the periodic ARP scanner in the background.
+    scanner::start_scanner_task(
+        state.db.clone(),
+        app_config.scanner.clone(),
+        state.ws_hub.clone(),
+    );
+
     // Build the application router.
-    let app = api::router(pool.clone(), app_config);
+    let app = api::router(state);
 
     // Start listening.
     let listener = tokio::net::TcpListener::bind(&cli.listen).await?;

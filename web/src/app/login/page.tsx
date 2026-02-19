@@ -1,87 +1,169 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { Eye, EyeOff, Lock, Shield } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
+import { fetchAuthStatus, login, setupPassword } from "@/lib/api";
 
 export default function LoginPage() {
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [firstRun, setFirstRun] = useState<boolean | null>(null);
+
+  // Check if this is first-run (no password set yet)
+  useEffect(() => {
+    fetchAuthStatus()
+      .then((status) => {
+        if (status.authenticated) {
+          window.location.href = "/dashboard";
+          return;
+        }
+        setFirstRun(status.first_run);
+      })
+      .catch(() => {
+        // API not reachable — assume login mode
+        setFirstRun(false);
+      });
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
+    if (firstRun && password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (password.length < 1) {
+      setError("Password is required");
+      return;
+    }
+
+    setLoading(true);
     try {
-      const res = await fetch("/api/v1/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (!res.ok) {
-        setError("Invalid credentials");
-        return;
+      let res;
+      if (firstRun) {
+        if (password.length < 8) {
+          setError("Password must be at least 8 characters");
+          setLoading(false);
+          return;
+        }
+        res = await setupPassword(password);
+      } else {
+        res = await login(password);
       }
-
-      const data = await res.json();
-      localStorage.setItem("token", data.token);
+      localStorage.setItem("token", res.token);
       window.location.href = "/dashboard";
     } catch {
-      setError("Connection failed");
+      setError(firstRun ? "Failed to set password" : "Invalid password");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="w-full max-w-sm rounded-lg border border-[#2a2a3a] bg-[#16161f] p-8">
-        <h1 className="mb-2 text-center text-2xl font-bold text-white">
-          Panoptikon
-        </h1>
-        <p className="mb-8 text-center text-sm text-gray-500">
-          Sign in to your network dashboard
-        </p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm text-gray-400">
-              Username
-            </label>
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="w-full rounded-md border border-[#2a2a3a] bg-background px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-accent focus:outline-none"
-              placeholder="admin"
-              required
-            />
+    <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f]">
+      <Card className="w-full max-w-sm border-[#2a2a3a] bg-[#16161f]">
+        <CardHeader className="items-center pb-2">
+          {/* Logo */}
+          <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-xl bg-blue-500 shadow-lg shadow-blue-500/20">
+            <Shield className="h-7 w-7 text-white" />
           </div>
+          <h1 className="text-2xl font-bold text-white">Panoptikon</h1>
+          <p className="text-sm text-gray-500">
+            {firstRun === null
+              ? " "
+              : firstRun
+                ? "Welcome! Set your admin password."
+                : "Sign in to your network dashboard"}
+          </p>
+        </CardHeader>
 
-          <div>
-            <label className="mb-1 block text-sm text-gray-400">
-              Password
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-[#2a2a3a] bg-background px-3 py-2 text-sm text-white placeholder-gray-600 focus:border-accent focus:outline-none"
-              placeholder="••••••••"
-              required
-            />
-          </div>
+        <CardContent>
+          {firstRun === null ? (
+            /* Loading state */
+            <div className="space-y-4 pt-4">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label htmlFor="password">
+                  {firstRun ? "New Password" : "Password"}
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pl-9 pr-9"
+                    placeholder="••••••••"
+                    autoFocus
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
 
-          {error && (
-            <p className="text-sm text-red-400">{error}</p>
+              {firstRun && (
+                <div className="space-y-2">
+                  <Label htmlFor="confirm">Confirm Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                    <Input
+                      id="confirm"
+                      type={showPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="pl-9"
+                      placeholder="••••••••"
+                      required
+                    />
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                  {error}
+                </p>
+              )}
+
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading
+                  ? firstRun
+                    ? "Setting up…"
+                    : "Signing in…"
+                  : firstRun
+                    ? "Set Password & Continue"
+                    : "Sign In"}
+              </Button>
+            </form>
           )}
-
-          <button
-            type="submit"
-            className="w-full rounded-md bg-accent py-2 text-sm font-medium text-white hover:bg-blue-600 transition-colors"
-          >
-            Sign In
-          </button>
-        </form>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
