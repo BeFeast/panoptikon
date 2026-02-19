@@ -341,7 +341,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
         </DialogHeader>
 
         {!result ? (
-          <div className="space-y-4 pt-2">
+          <div className="min-w-0 space-y-4 pt-2">
             <div className="space-y-2">
               <Label>Agent Name</Label>
               <Input
@@ -357,7 +357,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
             </Button>
           </div>
         ) : (
-          <div className="space-y-4 pt-2">
+          <div className="min-w-0 space-y-4 pt-2">
             <div className="space-y-2">
               <Label className="text-gray-400">API Key</Label>
               <CopyBlock text={result.api_key} />
@@ -458,7 +458,7 @@ function CopyBlock({ text }: { text: string }) {
   };
 
   return (
-    <div className="rounded-md border border-[#2a2a3a] bg-[#0a0a0f]">
+    <div className="overflow-hidden rounded-md border border-[#2a2a3a] bg-[#0a0a0f]">
       {/* Header bar: copy button lives here, completely separate from scroll area */}
       <div className="flex items-center justify-end border-b border-[#2a2a3a] px-3 py-1.5">
         <button
