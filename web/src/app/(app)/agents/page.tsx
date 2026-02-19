@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Copy, Pencil, Plus, Terminal, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -243,7 +243,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
           Add Agent
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-[min(95vw,780px)] max-w-none border-[#2a2a3a] bg-[#0d0d14]">
+      <DialogContent className="w-[min(90vw,680px)] max-w-none overflow-hidden border-[#2a2a3a] bg-[#0d0d14]">
         <DialogHeader>
           <DialogTitle className="text-white">
             {result ? "Agent Created" : "Add New Agent"}
@@ -327,44 +327,57 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
 
 // ─── Copy Block ─────────────────────────────────────────
 
-function copyToClipboard(text: string): void {
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(text).catch(() => fallbackCopy(text));
-  } else {
-    fallbackCopy(text);
-  }
-}
-
-function fallbackCopy(text: string): void {
-  const el = document.createElement("textarea");
-  el.value = text;
-  el.setAttribute("readonly", "");
-  // Must be in viewport and readable for Chrome to allow copy
-  el.style.cssText =
-    "position:absolute;left:-9999px;top:0;width:1px;height:1px;opacity:0.01;";
-  document.body.appendChild(el);
-  el.focus();
-  el.select();
-  try {
-    document.execCommand("copy");
-  } catch (err) {
-    console.warn("Copy failed:", err);
-  }
-  document.body.removeChild(el);
-}
-
 function CopyBlock({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
+  const preRef = useRef<HTMLPreElement>(null);
 
-  const handleCopy = () => {
-    copyToClipboard(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    // Method 1: Modern clipboard API (works on HTTPS or localhost)
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        return;
+      } catch {}
+    }
+
+    // Method 2: execCommand (HTTP fallback)
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.cssText = 'position:fixed;top:50%;left:50%;width:2em;height:2em;padding:0;border:none;outline:none;box-shadow:none;background:transparent;opacity:0;';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.setSelectionRange(0, text.length);
+      const ok = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      if (ok) {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+        return;
+      }
+    } catch {}
+
+    // Method 3: Select the text in the pre element so user can Ctrl+C manually
+    if (preRef.current) {
+      const selection = window.getSelection();
+      const range = document.createRange();
+      range.selectNodeContents(preRef.current);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      // Show "Press Ctrl+C" hint
+      setCopied(true); // reuse state to show hint briefly
+      setTimeout(() => setCopied(false), 3000);
+    }
   };
 
   return (
     <div className="relative rounded-md bg-[#16161f]">
-      <pre className="overflow-x-auto p-3 font-mono text-xs text-gray-300 pr-10">
+      <pre
+        ref={preRef}
+        className="overflow-x-auto p-3 pr-10 font-mono text-xs text-gray-300 select-all cursor-text"
+      >
         {text}
       </pre>
       <button

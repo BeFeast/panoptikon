@@ -65,5 +65,39 @@ mod tests {
     #[test]
     fn test_unknown_vendor() {
         assert_eq!(lookup("FF:FF:FF:FF:FF:FF"), None);
+        assert_eq!(lookup("ff:ff:ff:ff:ff:ff"), None);
+        // A made-up prefix not in the table.
+        assert_eq!(lookup("11:22:33:44:55:66"), None);
+    }
+
+    #[test]
+    fn test_known_vendors_vmware() {
+        assert_eq!(lookup("00:50:56:ab:cd:ef"), Some("VMware"));
+        assert_eq!(lookup("00:0c:29:ab:cd:ef"), Some("VMware"));
+    }
+
+    #[test]
+    fn test_known_vendors_qemu_kvm() {
+        assert_eq!(lookup("52:54:00:ab:cd:ef"), Some("QEMU/KVM"));
+    }
+
+    #[test]
+    fn test_known_vendors_virtualbox() {
+        assert_eq!(lookup("08:00:27:ab:cd:ef"), Some("VirtualBox"));
+    }
+
+    #[test]
+    fn test_case_insensitive() {
+        // The lookup uppercases the input, so both cases should match.
+        let upper = lookup("00:50:56:AB:CD:EF");
+        let lower = lookup("00:50:56:ab:cd:ef");
+        assert_eq!(upper, lower, "OUI lookup should be case-insensitive");
+        assert_eq!(upper, Some("VMware"));
+    }
+
+    #[test]
+    fn test_short_mac_returns_none() {
+        // A MAC that's too short to have a full 8-char prefix should return None.
+        assert_eq!(lookup("00:50"), None);
     }
 }

@@ -27,7 +27,7 @@ pub async fn init(database_url: &str) -> Result<SqlitePool> {
 }
 
 /// Apply migrations using a simple version-tracking approach.
-async fn run_migrations(pool: &SqlitePool) -> Result<()> {
+pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
     // Create migrations tracking table if it doesn't exist.
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS _migrations (\
@@ -67,4 +67,73 @@ async fn run_migrations(pool: &SqlitePool) -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_migrations_apply_cleanly() {
+        let pool = init(":memory:").await.expect("DB init failed");
+
+        // Verify all expected tables exist after migration.
+        let expected_tables = [
+            "settings",
+            "devices",
+            "device_ips",
+            "device_state_log",
+            "agents",
+            "agent_reports",
+            "traffic_samples",
+            "alerts",
+        ];
+
+        for table in &expected_tables {
+            let count: i64 = sqlx::query_scalar(&format!(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='{table}'"
+            ))
+            .fetch_one(&pool)
+            .await
+            .unwrap_or_else(|e| panic!("Query failed for table '{table}': {e}"));
+
+            assert_eq!(count, 1, "Table '{table}' should exist after migration");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_migrations_idempotent() {
+        let pool = init(":memory:").await.expect("First init failed");
+        // Running migrations again should not fail (idempotent).
+        run_migrations(&pool)
+            .await
+            .expect("Second migration run should succeed");
+    }
+
+    #[tokio::test]
+    async fn test_migration_tracking_table_exists() {
+        let pool = init(":memory:").await.expect("DB init failed");
+
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='_migrations'",
+        )
+        .fetch_one(&pool)
+        .await
+        .expect("Query failed");
+
+        assert_eq!(count, 1, "_migrations tracking table should exist");
+    }
+
+    #[tokio::test]
+    async fn test_migration_version_recorded() {
+        let pool = init(":memory:").await.expect("DB init failed");
+
+        let version: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM _migrations WHERE version = 1")
+                .fetch_one(&pool)
+                .await
+                .expect("Query failed");
+
+        assert_eq!(version, 1, "Migration version 1 should be recorded");
+    }
 }
