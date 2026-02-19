@@ -1,5 +1,5 @@
 "use client";
-
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   Activity,
@@ -67,15 +67,17 @@ function StatCard({
   subtitle,
   icon,
   status,
+  href,
 }: {
   title: string;
   value: string;
   subtitle: string;
   icon: React.ReactNode;
   status: "online" | "offline" | "warning";
+  href?: string;
 }) {
-  return (
-    <Card className="border-[#2a2a3a] bg-[#16161f]">
+  const inner = (
+    <Card className="border-[#2a2a3a] bg-[#16161f] transition-colors hover:border-blue-500/50 hover:bg-[#1a1a2a]">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-gray-400">
           {title}
@@ -90,6 +92,13 @@ function StatCard({
         <p className="mt-1 text-xs text-gray-500">{subtitle}</p>
       </CardContent>
     </Card>
+  );
+  return href ? (
+    <Link href={href} className="block">
+      {inner}
+    </Link>
+  ) : (
+    inner
   );
 }
 
@@ -170,6 +179,7 @@ export default function DashboardPage() {
           <>
             <StatCard
               title="Router Status"
+              href="/router"
               value={routerStatusLabel(stats).label}
               subtitle={
                 stats.router_status === "online"
@@ -183,6 +193,7 @@ export default function DashboardPage() {
             />
             <StatCard
               title="Active Devices"
+              href="/devices"
               value={String(stats.devices_online)}
               subtitle={`${stats.devices_total} total known`}
               icon={<MonitorSmartphone className="h-4 w-4" />}
@@ -190,6 +201,7 @@ export default function DashboardPage() {
             />
             <StatCard
               title="WAN Bandwidth"
+              href="/traffic"
               value={`↓ ${formatBps(stats.wan_rx_bps)}`}
               subtitle={`↑ ${formatBps(stats.wan_tx_bps)}`}
               icon={<Activity className="h-4 w-4" />}
@@ -197,6 +209,7 @@ export default function DashboardPage() {
             />
             <StatCard
               title="Unread Alerts"
+              href="/alerts"
               value={String(stats.alerts_unread)}
               subtitle={stats.alerts_unread > 0 ? "Needs attention" : "All clear"}
               icon={<AlertTriangle className="h-4 w-4" />}
