@@ -328,7 +328,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
           Add Agent
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-[min(90vw,680px)] max-w-none overflow-hidden border-[#2a2a3a] bg-[#0d0d14]">
+      <DialogContent className="w-full max-w-[680px] border-[#2a2a3a] bg-[#0d0d14]">
         <DialogHeader>
           <DialogTitle className="text-white">
             {result ? "Agent Created" : "Add New Agent"}
@@ -409,14 +409,15 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
 }
 
 // ─── Copy Block ─────────────────────────────────────────
-// NOTE: use flex layout — NEVER use absolute-positioned button inside overflow-x-auto.
-// The button must be a flex sibling of <pre>, not a child inside the scroll container.
+// Header-bar layout: Copy button lives in a separate row ABOVE the <pre>.
+// This avoids ALL overflow-x conflicts — the pre scrolls independently.
 
 function CopyBlock({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   const preRef = useRef<HTMLPreElement>(null);
 
   const handleCopy = async () => {
+    // Modern clipboard API (HTTPS / localhost)
     if (navigator.clipboard && window.isSecureContext) {
       try {
         await navigator.clipboard.writeText(text);
@@ -444,7 +445,7 @@ function CopyBlock({ text }: { text: string }) {
       }
     } catch {}
 
-    // Last resort: select text so user can Ctrl+C
+    // Last resort: select text so user can Ctrl+C manually
     if (preRef.current) {
       const sel = window.getSelection();
       const range = document.createRange();
@@ -457,24 +458,28 @@ function CopyBlock({ text }: { text: string }) {
   };
 
   return (
-    <div className="flex items-stretch overflow-hidden rounded-md border border-[#2a2a3a] bg-[#0a0a0f]">
+    <div className="rounded-md border border-[#2a2a3a] bg-[#0a0a0f]">
+      {/* Header bar: copy button lives here, completely separate from scroll area */}
+      <div className="flex items-center justify-end border-b border-[#2a2a3a] px-3 py-1.5">
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-gray-500 transition-colors hover:bg-[#1a1a2a] hover:text-white"
+        >
+          {copied ? (
+            <Check className="h-3 w-3 text-green-400" />
+          ) : (
+            <Copy className="h-3 w-3" />
+          )}
+          {copied ? "Copied!" : "Copy"}
+        </button>
+      </div>
+      {/* Scrollable pre — independent of the header bar */}
       <pre
         ref={preRef}
-        className="min-w-0 flex-1 overflow-x-auto p-3 font-mono text-xs text-gray-300 select-all cursor-text"
+        className="overflow-x-auto p-3 font-mono text-xs text-gray-300 select-all cursor-text"
       >
         {text}
       </pre>
-      <button
-        onClick={handleCopy}
-        className="shrink-0 flex items-center justify-center border-l border-[#2a2a3a] px-3 text-gray-500 transition-colors hover:bg-[#1a1a2a] hover:text-white"
-        title="Copy to clipboard"
-      >
-        {copied ? (
-          <Check className="h-4 w-4 text-green-400" />
-        ) : (
-          <Copy className="h-4 w-4" />
-        )}
-      </button>
     </div>
   );
 }
