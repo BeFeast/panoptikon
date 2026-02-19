@@ -24,8 +24,7 @@ fn resolve_config(cli_path: Option<String>) -> String {
     }
     // Try user config first (works without root, matches install script).
     if let Some(home) = std::env::var_os("HOME") {
-        let user_cfg = std::path::PathBuf::from(home)
-            .join(".config/panoptikon-agent/config.toml");
+        let user_cfg = std::path::PathBuf::from(home).join(".config/panoptikon-agent/config.toml");
         if user_cfg.exists() {
             return user_cfg.to_string_lossy().into_owned();
         }
