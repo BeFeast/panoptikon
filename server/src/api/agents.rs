@@ -7,10 +7,10 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::Row;
+use std::collections::HashMap;
 use tracing::{error, info, warn};
 
 use super::AppState;
@@ -451,12 +451,11 @@ pub async fn install_script(
     };
 
     // Validate the API key exists
-    let key_exists: bool = sqlx::query_scalar(
-        "SELECT COUNT(*) > 0 FROM agents WHERE api_key_hash != ''",
-    )
-    .fetch_one(&state.db)
-    .await
-    .unwrap_or(false);
+    let key_exists: bool =
+        sqlx::query_scalar("SELECT COUNT(*) > 0 FROM agents WHERE api_key_hash != ''")
+            .fetch_one(&state.db)
+            .await
+            .unwrap_or(false);
 
     // Determine server URL from config or use a default
     let server_url = format!(
@@ -475,7 +474,11 @@ pub async fn install_script(
         "darwin-arm64" => ("aarch64-apple-darwin", "panoptikon-agent-darwin-arm64"),
         "darwin-amd64" => ("x86_64-apple-darwin", "panoptikon-agent-darwin-amd64"),
         _ => {
-            return (StatusCode::BAD_REQUEST, "Unknown platform. Use: linux-amd64, linux-arm64, darwin-arm64, darwin-amd64").into_response();
+            return (
+                StatusCode::BAD_REQUEST,
+                "Unknown platform. Use: linux-amd64, linux-arm64, darwin-arm64, darwin-amd64",
+            )
+                .into_response();
         }
     };
 
