@@ -132,7 +132,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Agent>>, Sta
                 r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used \
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
-           AND r.id = (SELECT id FROM agent_reports WHERE agent_id = a.id ORDER BY reported_at DESC, id DESC LIMIT 1) \
+           AND r.id = (SELECT MAX(id) FROM agent_reports WHERE agent_id = a.id) \
          ORDER BY a.created_at DESC",
     )
     .fetch_all(&state.db)
@@ -142,15 +142,14 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Agent>>, Sta
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    let agents = rows
+    let agents: Vec<Agent> = rows
         .into_iter()
-        .map(|r| {
-            Agent::from_row(r).map_err(|e| {
-                error!("Failed to parse agent row: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
-            })
+        .filter_map(|r| {
+            Agent::from_row(r)
+                .map_err(|e| error!("Failed to parse agent row, skipping: {e}"))
+                .ok()
         })
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect();
 
     Ok(Json(agents))
 }
@@ -166,7 +165,7 @@ pub async fn get_one(
                 r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used \
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
-           AND r.id = (SELECT id FROM agent_reports WHERE agent_id = a.id ORDER BY reported_at DESC, id DESC LIMIT 1) \
+           AND r.id = (SELECT MAX(id) FROM agent_reports WHERE agent_id = a.id) \
          WHERE a.id = ?",
     )
     .bind(&id)
@@ -246,7 +245,7 @@ pub async fn update(
                 r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used \
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
-           AND r.id = (SELECT id FROM agent_reports WHERE agent_id = a.id ORDER BY reported_at DESC, id DESC LIMIT 1) \
+           AND r.id = (SELECT MAX(id) FROM agent_reports WHERE agent_id = a.id) \
          WHERE a.id = ?",
     )
     .bind(&id)
