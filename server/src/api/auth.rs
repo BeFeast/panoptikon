@@ -86,7 +86,8 @@ pub async fn login(
 
     // Generate session token and store it in the database.
     let token = uuid::Uuid::new_v4().to_string();
-    let expiry_secs = state.config.auth.session_expiry_seconds.max(0);
+    // session_expiry_seconds is u64, so it is always non-negative.
+    let expiry_secs = state.config.auth.session_expiry_seconds;
     let expiry_modifier = format!("+{expiry_secs} seconds");
 
     sqlx::query("INSERT INTO sessions (token, expires_at) VALUES (?, datetime('now', ?))")
