@@ -16,6 +16,67 @@ use tracing::{error, info, warn};
 use super::AppState;
 use crate::webhook;
 
+/// A single agent report as returned by the reports history endpoint.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AgentReportRow {
+    pub id: i64,
+    pub cpu_percent: Option<f64>,
+    pub mem_used: Option<i64>,
+    pub mem_total: Option<i64>,
+    pub reported_at: String,
+}
+
+/// Query parameters for the reports history endpoint.
+#[derive(Debug, Deserialize)]
+pub struct ReportsQuery {
+    #[serde(default = "default_reports_limit")]
+    pub limit: u32,
+}
+
+fn default_reports_limit() -> u32 {
+    100
+}
+
+/// GET /api/v1/agents/:id/reports?limit=N — return historical agent reports.
+pub async fn list_reports(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Query(params): Query<ReportsQuery>,
+) -> Result<Json<Vec<AgentReportRow>>, StatusCode> {
+    let limit = params.limit.clamp(1, 500);
+
+    let rows = sqlx::query_as::<_, (i64, Option<f64>, Option<i64>, Option<i64>, String)>(
+        r#"SELECT id, cpu_percent, mem_used, mem_total, reported_at
+           FROM agent_reports
+           WHERE agent_id = ?
+           ORDER BY reported_at DESC
+           LIMIT ?"#,
+    )
+    .bind(&id)
+    .bind(limit)
+    .fetch_all(&state.db)
+    .await
+    .map_err(|e| {
+        error!("Failed to list reports for agent {id}: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    let reports: Vec<AgentReportRow> = rows
+        .into_iter()
+        .map(
+            |(id, cpu_percent, mem_used, mem_total, reported_at)| AgentReportRow {
+                id,
+                cpu_percent,
+                mem_used,
+                mem_total,
+                reported_at,
+            },
+        )
+        .collect();
+
+    Ok(Json(reports))
+}
+
 /// An agent as returned by the API.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Agent {
@@ -997,4 +1058,160 @@ echo "==> Done! Agent is reporting to $SERVER_URL"
         script,
     )
         .into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::db;
+
+    /// Helper: create a fresh in-memory database with all migrations applied.
+    async fn test_db() -> sqlx::SqlitePool {
+        db::init(":memory:")
+            .await
+            .expect("in-memory DB init failed")
+    }
+
+    /// Helper: insert a test agent and return its id.
+    async fn insert_test_agent(pool: &sqlx::SqlitePool) -> String {
+        let id = uuid::Uuid::new_v4().to_string();
+        let hash = bcrypt::hash("test_key", 4).unwrap(); // cost=4 for speed in tests
+        sqlx::query("INSERT INTO agents (id, api_key_hash, name) VALUES (?, ?, ?)")
+            .bind(&id)
+            .bind(&hash)
+            .bind("test-agent")
+            .execute(pool)
+            .await
+            .unwrap();
+        id
+    }
+
+    /// Helper: insert a report for an agent at a given time.
+    async fn insert_report(
+        pool: &sqlx::SqlitePool,
+        agent_id: &str,
+        reported_at: &str,
+        cpu_percent: f64,
+        mem_used: i64,
+        mem_total: i64,
+    ) {
+        sqlx::query(
+            r#"INSERT INTO agent_reports (agent_id, reported_at, cpu_percent, mem_used, mem_total)
+               VALUES (?, ?, ?, ?, ?)"#,
+        )
+        .bind(agent_id)
+        .bind(reported_at)
+        .bind(cpu_percent)
+        .bind(mem_used)
+        .bind(mem_total)
+        .execute(pool)
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_agent_reports_empty() {
+        let pool = test_db().await;
+        let agent_id = insert_test_agent(&pool).await;
+
+        let rows = sqlx::query_as::<_, (i64, Option<f64>, Option<i64>, Option<i64>, String)>(
+            r#"SELECT id, cpu_percent, mem_used, mem_total, reported_at
+               FROM agent_reports
+               WHERE agent_id = ?
+               ORDER BY reported_at DESC
+               LIMIT ?"#,
+        )
+        .bind(&agent_id)
+        .bind(100i32)
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+
+        assert!(rows.is_empty(), "No reports should exist for a fresh agent");
+    }
+
+    #[tokio::test]
+    async fn test_agent_reports_returns_ordered() {
+        let pool = test_db().await;
+        let agent_id = insert_test_agent(&pool).await;
+
+        insert_report(&pool, &agent_id, "2026-01-01T10:00:00Z", 10.0, 100, 1000).await;
+        insert_report(&pool, &agent_id, "2026-01-01T12:00:00Z", 30.0, 300, 1000).await;
+        insert_report(&pool, &agent_id, "2026-01-01T11:00:00Z", 20.0, 200, 1000).await;
+
+        let rows = sqlx::query_as::<_, (i64, Option<f64>, Option<i64>, Option<i64>, String)>(
+            r#"SELECT id, cpu_percent, mem_used, mem_total, reported_at
+               FROM agent_reports
+               WHERE agent_id = ?
+               ORDER BY reported_at DESC
+               LIMIT ?"#,
+        )
+        .bind(&agent_id)
+        .bind(100i32)
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+
+        assert_eq!(rows.len(), 3);
+        // First row should be the most recent (12:00)
+        assert!((rows[0].1.unwrap() - 30.0).abs() < 0.01);
+        assert!((rows[1].1.unwrap() - 20.0).abs() < 0.01);
+        assert!((rows[2].1.unwrap() - 10.0).abs() < 0.01);
+    }
+
+    #[tokio::test]
+    async fn test_agent_reports_limit() {
+        let pool = test_db().await;
+        let agent_id = insert_test_agent(&pool).await;
+
+        for i in 0..10 {
+            let ts = format!("2026-01-01T{:02}:00:00Z", i);
+            insert_report(&pool, &agent_id, &ts, i as f64 * 10.0, 100, 1000).await;
+        }
+
+        let rows = sqlx::query_as::<_, (i64, Option<f64>, Option<i64>, Option<i64>, String)>(
+            r#"SELECT id, cpu_percent, mem_used, mem_total, reported_at
+               FROM agent_reports
+               WHERE agent_id = ?
+               ORDER BY reported_at DESC
+               LIMIT ?"#,
+        )
+        .bind(&agent_id)
+        .bind(5i32)
+        .fetch_all(&pool)
+        .await
+        .unwrap();
+
+        assert_eq!(rows.len(), 5, "Should only return 5 reports when limit=5");
+    }
+
+    #[tokio::test]
+    async fn test_agent_reports_retention_cleanup() {
+        let pool = test_db().await;
+        let agent_id = insert_test_agent(&pool).await;
+
+        // Insert a report older than 7 days
+        insert_report(&pool, &agent_id, "2020-01-01T00:00:00Z", 50.0, 500, 1000).await;
+        // Insert a recent report
+        let now = chrono::Utc::now().to_rfc3339();
+        insert_report(&pool, &agent_id, &now, 60.0, 600, 1000).await;
+
+        // Run the cleanup query
+        sqlx::query("DELETE FROM agent_reports WHERE reported_at < datetime('now', '-7 days')")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let rows =
+            sqlx::query_as::<_, (i64,)>(r#"SELECT id FROM agent_reports WHERE agent_id = ?"#)
+                .bind(&agent_id)
+                .fetch_all(&pool)
+                .await
+                .unwrap();
+
+        assert_eq!(
+            rows.len(),
+            1,
+            "Only the recent report should survive the 7-day cleanup"
+        );
+    }
 }

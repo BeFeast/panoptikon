@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { AlertTriangle, Check, Copy, Pencil, Plus, Terminal, Trash2, X } from "lucide-react";
+import { SparklineChart } from "@/components/sparkline-chart";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,8 +36,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { apiDelete, apiPatch, createAgent, fetchAgents } from "@/lib/api";
-import type { Agent, AgentCreateResponse } from "@/lib/types";
+import { apiDelete, apiPatch, createAgent, fetchAgents, fetchAgentReports } from "@/lib/api";
+import type { Agent, AgentCreateResponse, AgentReport } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
 
@@ -47,14 +49,36 @@ export default function AgentsPage() {
   const [renameError, setRenameError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Agent | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [sparklines, setSparklines] = useState<Record<string, number[]>>({});
+
+  const loadSparklines = useCallback(async (agentList: Agent[]) => {
+    const results: Record<string, number[]> = {};
+    await Promise.allSettled(
+      agentList.map(async (agent) => {
+        try {
+          const reports = await fetchAgentReports(agent.id, 20);
+          // Reverse to chronological order (API returns DESC)
+          results[agent.id] = reports
+            .filter((r) => r.cpu_percent != null)
+            .map((r) => r.cpu_percent!)
+            .reverse();
+        } catch {
+          results[agent.id] = [];
+        }
+      })
+    );
+    setSparklines(results);
+  }, []);
 
   const load = useCallback(async () => {
     try {
-      setAgents(await fetchAgents());
+      const fetched = await fetchAgents();
+      setAgents(fetched);
+      loadSparklines(fetched);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load agents");
     }
-  }, []);
+  }, [loadSparklines]);
 
   useEffect(() => {
     load();
@@ -131,6 +155,7 @@ export default function AgentsPage() {
                 <TableHead className="text-gray-500">OS</TableHead>
                 <TableHead className="text-gray-500">Platform</TableHead>
                 <TableHead className="text-gray-500">Version</TableHead>
+                <TableHead className="text-gray-500">CPU Trend</TableHead>
                 <TableHead className="text-gray-500">Last Report</TableHead>
                 <TableHead className="text-gray-500">Status</TableHead>
                 <TableHead />
@@ -182,16 +207,24 @@ export default function AgentsPage() {
                         )}
                       </form>
                     ) : (
-                      <span
-                        className="group flex items-center gap-1 cursor-pointer"
-                        onClick={() => {
-                          setRenamingId(agent.id);
-                          setRenameValue(agent.name ?? "");
-                          setRenameError(null);
-                        }}
-                      >
-                        {agent.name ?? agent.id.slice(0, 8)}
-                        <Pencil size={12} className="opacity-0 group-hover:opacity-50 text-gray-400" />
+                      <span className="group flex items-center gap-1">
+                        <Link
+                          href={`/agents/detail?id=${agent.id}`}
+                          className="hover:text-blue-400 transition-colors hover:underline"
+                        >
+                          {agent.name ?? agent.id.slice(0, 8)}
+                        </Link>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRenamingId(agent.id);
+                            setRenameValue(agent.name ?? "");
+                            setRenameError(null);
+                          }}
+                          className="opacity-0 group-hover:opacity-50 text-gray-400 hover:text-gray-200"
+                        >
+                          <Pencil size={12} />
+                        </button>
                       </span>
                     )}
                   </TableCell>
@@ -206,6 +239,9 @@ export default function AgentsPage() {
                   </TableCell>
                   <TableCell className="font-mono text-xs text-gray-500">
                     {agent.version ?? "—"}
+                  </TableCell>
+                  <TableCell>
+                    <SparklineChart data={sparklines[agent.id] ?? []} />
                   </TableCell>
                   <TableCell className="text-gray-400">
                     {agent.last_report_at ? timeAgo(agent.last_report_at) : "Never"}

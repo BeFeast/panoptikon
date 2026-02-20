@@ -77,6 +77,7 @@ pub fn router(state: AppState) -> Router {
         .route("/agents/:id", get(agents::get_one))
         .route("/agents/:id", patch(agents::update))
         .route("/agents/:id", delete(agents::delete))
+        .route("/agents/:id/reports", get(agents::list_reports))
         .route("/agents/bulk-delete", post(agents::bulk_delete))
         // Dashboard
         .route("/dashboard/stats", get(dashboard::stats))

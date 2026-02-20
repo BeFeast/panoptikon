@@ -7,6 +7,7 @@
 import type {
   Agent,
   AgentCreateResponse,
+  AgentReport,
   Alert,
   AuthStatus,
   DashboardStats,
@@ -106,6 +107,14 @@ export function fetchAgents(): Promise<Agent[]> {
 
 export function createAgent(name: string): Promise<AgentCreateResponse> {
   return apiPost<AgentCreateResponse>("/api/v1/agents", { name });
+}
+
+export function fetchAgent(id: string): Promise<Agent> {
+  return apiGet<Agent>(`/api/v1/agents/${id}`);
+}
+
+export function fetchAgentReports(id: string, limit = 100): Promise<AgentReport[]> {
+  return apiGet<AgentReport[]>(`/api/v1/agents/${id}/reports?limit=${limit}`);
 }
 
 // ─── Auth ───────────────────────────────────────────────
