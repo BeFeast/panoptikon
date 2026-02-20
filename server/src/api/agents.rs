@@ -132,7 +132,18 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Agent>>, Sta
                 r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used \
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
-           AND r.id = (SELECT MAX(id) FROM agent_reports WHERE agent_id = a.id) \
+           AND r.id = (
+               SELECT ar.id
+               FROM agent_reports ar
+               WHERE ar.agent_id = a.id
+                 AND ar.reported_at = (
+                     SELECT MAX(ar2.reported_at)
+                     FROM agent_reports ar2
+                     WHERE ar2.agent_id = a.id
+                 )
+               ORDER BY ar.id DESC
+               LIMIT 1
+           ) \
          ORDER BY a.created_at DESC",
     )
     .fetch_all(&state.db)
@@ -165,7 +176,18 @@ pub async fn get_one(
                 r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used \
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
-           AND r.id = (SELECT MAX(id) FROM agent_reports WHERE agent_id = a.id) \
+           AND r.id = ( \
+               SELECT ar.id \
+               FROM agent_reports ar \
+               WHERE ar.agent_id = a.id \
+                 AND ar.reported_at = ( \
+                     SELECT MAX(ar2.reported_at) \
+                     FROM agent_reports ar2 \
+                     WHERE ar2.agent_id = a.id \
+                 ) \
+               ORDER BY ar.id DESC \
+               LIMIT 1 \
+           ) \
          WHERE a.id = ?",
     )
     .bind(&id)
@@ -245,7 +267,18 @@ pub async fn update(
                 r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used \
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
-           AND r.id = (SELECT MAX(id) FROM agent_reports WHERE agent_id = a.id) \
+           AND r.id = ( \
+               SELECT ar.id \
+               FROM agent_reports ar \
+               WHERE ar.agent_id = a.id \
+                 AND ar.reported_at = ( \
+                     SELECT MAX(ar2.reported_at) \
+                     FROM agent_reports ar2 \
+                     WHERE ar2.agent_id = a.id \
+                 ) \
+               ORDER BY ar.id DESC \
+               LIMIT 1 \
+           ) \
          WHERE a.id = ?",
     )
     .bind(&id)
