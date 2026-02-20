@@ -126,6 +126,7 @@ mod tests {
             "agent_reports",
             "traffic_samples",
             "alerts",
+            "sessions",
         ];
 
         for table in &expected_tables {

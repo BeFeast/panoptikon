@@ -86,7 +86,7 @@ pub async fn login(
 
     // Generate session token and store it in the database.
     let token = uuid::Uuid::new_v4().to_string();
-    let expiry_secs = state.config.auth.session_expiry_seconds;
+    let expiry_secs = state.config.auth.session_expiry_seconds.max(0);
     let expiry_modifier = format!("+{expiry_secs} seconds");
 
     sqlx::query("INSERT INTO sessions (token, expires_at) VALUES (?, datetime('now', ?))")
@@ -242,18 +242,23 @@ pub async fn status(
 pub async fn auth_middleware(State(state): State<AppState>, req: Request, next: Next) -> Response {
     let token = extract_session_token(&req);
 
-    let valid = if let Some(ref token) = token {
-        sqlx::query("SELECT 1 FROM sessions WHERE token = ? AND expires_at > datetime('now')")
+    let session_row = if let Some(ref token) = token {
+        match sqlx::query("SELECT 1 FROM sessions WHERE token = ? AND expires_at > datetime('now')")
             .bind(token)
             .fetch_optional(&state.db)
             .await
-            .unwrap_or(None)
-            .is_some()
+        {
+            Ok(row) => row,
+            Err(e) => {
+                tracing::error!(error = %e, "DB error in auth middleware");
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
+        }
     } else {
-        false
+        None
     };
 
-    if !valid {
+    if session_row.is_none() {
         debug!("Auth middleware rejected request (no valid session)");
         return StatusCode::UNAUTHORIZED.into_response();
     }
