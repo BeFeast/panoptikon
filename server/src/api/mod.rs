@@ -25,6 +25,7 @@ pub struct AppState {
     pub db: SqlitePool,
     pub config: AppConfig,
     pub ws_hub: Arc<WsHub>,
+    pub rate_limiter: auth::LoginRateLimiter,
 }
 
 impl AppState {
@@ -34,6 +35,7 @@ impl AppState {
             db,
             config,
             ws_hub: WsHub::new(),
+            rate_limiter: auth::LoginRateLimiter::new(),
         }
     }
 }

@@ -68,9 +68,10 @@ async fn main() -> Result<()> {
     // Build shared application state (contains WsHub, session store, etc.).
     let state = api::AppState::new(pool, app_config.clone());
 
-    // Start periodic session cleanup task (every hour, purge expired sessions).
+    // Start periodic maintenance task (every hour): purge expired sessions + stale rate-limit entries.
     {
         let cleanup_pool = state.db.clone();
+        let rate_limiter = state.rate_limiter.clone();
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(std::time::Duration::from_secs(3600));
             interval.tick().await; // skip the immediate first tick
@@ -90,6 +91,7 @@ async fn main() -> Result<()> {
                         tracing::error!("Session cleanup failed: {e}");
                     }
                 }
+                rate_limiter.cleanup_stale();
             }
         });
     }

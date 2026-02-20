@@ -1,15 +1,116 @@
 use axum::{
-    extract::{Request, State},
-    http::{header, StatusCode},
+    extract::{ConnectInfo, Request, State},
+    http::{header, HeaderMap, StatusCode},
     middleware::Next,
     response::{IntoResponse, Response},
     Json,
 };
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
+use std::net::{IpAddr, SocketAddr};
+use std::sync::Arc;
+use std::time::Instant;
 use tracing::{debug, warn};
 
 use super::AppState;
+
+// ---------- Rate limiting ----------
+
+const MAX_LOGIN_ATTEMPTS: usize = 5;
+const RATE_LIMIT_WINDOW_SECS: u64 = 60;
+
+/// Per-IP sliding-window rate limiter for failed login attempts.
+#[derive(Clone)]
+pub struct LoginRateLimiter {
+    /// Map from IP address to timestamps of recent failed login attempts.
+    attempts: Arc<DashMap<IpAddr, Vec<Instant>>>,
+}
+
+impl LoginRateLimiter {
+    pub fn new() -> Self {
+        Self {
+            attempts: Arc::new(DashMap::new()),
+        }
+    }
+
+    /// Atomically check the rate limit and, if not exceeded, reserve a slot.
+    ///
+    /// Returns `Some(retry_after_secs)` if the limit is already hit (caller
+    /// should return 429 immediately). Returns `None` if the attempt is allowed
+    /// and has been recorded in a single lock operation, preventing the TOCTOU
+    /// race that would occur if check and record were separate calls.
+    ///
+    /// On successful authentication call [`clear`] to remove the reserved slot.
+    pub fn try_login_attempt(&self, ip: &IpAddr) -> Option<u64> {
+        let window = std::time::Duration::from_secs(RATE_LIMIT_WINDOW_SECS);
+        let now = Instant::now();
+
+        let mut entry = self.attempts.entry(*ip).or_default();
+        // Prune timestamps outside the sliding window.
+        entry.retain(|t| now.duration_since(*t) < window);
+
+        if entry.len() >= MAX_LOGIN_ATTEMPTS {
+            // Limit hit — return retry-after without reserving another slot.
+            let oldest = entry.first().unwrap();
+            let elapsed = now.duration_since(*oldest);
+            let retry_after = window.saturating_sub(elapsed).as_secs().max(1);
+            return Some(retry_after);
+        }
+
+        // Reserve a slot by recording this attempt now.
+        entry.push(now);
+        None
+    }
+
+    /// Clear the rate-limit counter for the given IP (call on successful login).
+    pub fn clear(&self, ip: &IpAddr) {
+        self.attempts.remove(ip);
+    }
+
+    /// Remove all entries whose window has fully expired.
+    /// Call periodically to prevent unbounded map growth from IPs that
+    /// fail but never succeed (and thus never get cleared).
+    pub fn cleanup_stale(&self) {
+        let window = std::time::Duration::from_secs(RATE_LIMIT_WINDOW_SECS);
+        let now = Instant::now();
+        self.attempts.retain(|_, attempts| {
+            attempts.retain(|t| now.duration_since(*t) < window);
+            !attempts.is_empty()
+        });
+    }
+}
+
+/// Extract the real client IP address.
+///
+/// Only trusts `X-Forwarded-For` when the TCP peer address matches a configured
+/// trusted proxy, preventing spoofing by external clients. Falls back to the
+/// direct connection IP otherwise.
+fn extract_client_ip(headers: &HeaderMap, addr: SocketAddr, trusted_proxies: &[String]) -> IpAddr {
+    let peer_ip = addr.ip();
+
+    let peer_is_trusted = trusted_proxies.iter().any(|proxy| {
+        proxy
+            .parse::<IpAddr>()
+            .map(|trusted| trusted == peer_ip)
+            .unwrap_or(false)
+    });
+
+    if peer_is_trusted {
+        if let Some(forwarded_for) = headers.get("x-forwarded-for") {
+            if let Ok(value) = forwarded_for.to_str() {
+                // X-Forwarded-For may contain "client, proxy1, proxy2" — take the first.
+                if let Some(first_ip) = value.split(',').next() {
+                    if let Ok(ip) = first_ip.trim().parse::<IpAddr>() {
+                        return ip;
+                    }
+                }
+            }
+        }
+    }
+
+    peer_ip
+}
 
 /// Login request body.
 #[derive(Debug, Deserialize)]
@@ -31,10 +132,31 @@ pub struct AuthStatusResponse {
 }
 
 /// POST /api/v1/auth/login — authenticate and set session cookie.
+///
+/// Rate-limited: after 5 failed password attempts within 60 seconds the
+/// endpoint returns `429 Too Many Requests` with a `Retry-After` header.
 pub async fn login(
     State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     Json(body): Json<LoginRequest>,
-) -> Result<impl IntoResponse, StatusCode> {
+) -> Result<Response, Response> {
+    let client_ip = extract_client_ip(&headers, addr, &state.config.auth.trusted_proxies);
+
+    // Atomically check rate limit and reserve a slot. This prevents TOCTOU races
+    // where concurrent requests could all pass a separate check() before any
+    // record_failure() is called. The slot is cleared on successful login.
+    if let Some(retry_after) = state.rate_limiter.try_login_attempt(&client_ip) {
+        warn!(%client_ip, "Login rate limit exceeded");
+        let mut resp = StatusCode::TOO_MANY_REQUESTS.into_response();
+        resp.headers_mut().insert(
+            header::HeaderName::from_static("retry-after"),
+            header::HeaderValue::from_str(&retry_after.to_string())
+                .unwrap_or(header::HeaderValue::from_static("60")),
+        );
+        return Err(resp);
+    }
+
     // Retrieve the stored admin password hash from settings.
     let row: Option<String> =
         sqlx::query("SELECT value FROM settings WHERE key = 'admin_password_hash'")
@@ -42,7 +164,7 @@ pub async fn login(
             .await
             .map_err(|e| {
                 tracing::error!("Failed to query settings: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
             })?
             .and_then(|r| r.try_get("value").ok());
 
@@ -51,23 +173,24 @@ pub async fn login(
             // Verify password against stored hash.
             let valid = bcrypt::verify(&body.password, &hash).map_err(|e| {
                 tracing::error!("Password verification error: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
             })?;
 
             if !valid {
-                warn!("Failed login attempt");
-                return Err(StatusCode::UNAUTHORIZED);
+                // Slot was already reserved by try_login_attempt(); no separate record needed.
+                warn!(%client_ip, "Failed login attempt");
+                return Err(StatusCode::UNAUTHORIZED.into_response());
             }
             hash
         }
         None => {
             // First-run: no password set yet. Validate minimum length before storing.
             if body.password.len() < 8 {
-                return Err(StatusCode::UNPROCESSABLE_ENTITY);
+                return Err(StatusCode::UNPROCESSABLE_ENTITY.into_response());
             }
             let hash = bcrypt::hash(&body.password, bcrypt::DEFAULT_COST).map_err(|e| {
                 tracing::error!("Failed to hash password: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
             })?;
             sqlx::query("INSERT INTO settings (key, value) VALUES ('admin_password_hash', ?)")
                 .bind(&hash)
@@ -75,7 +198,7 @@ pub async fn login(
                 .await
                 .map_err(|e| {
                     tracing::error!("Failed to store password: {e}");
-                    StatusCode::INTERNAL_SERVER_ERROR
+                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
                 })?;
             tracing::info!("Admin password set for the first time");
             hash
@@ -97,10 +220,13 @@ pub async fn login(
         .await
         .map_err(|e| {
             tracing::error!("Failed to store session: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
         })?;
 
-    tracing::info!("Admin logged in, session created");
+    // Clear rate-limiter only after session is successfully persisted.
+    state.rate_limiter.clear(&client_ip);
+
+    tracing::info!(%client_ip, "Admin logged in, session created");
 
     // Build Set-Cookie header.
     let cookie = format!(
@@ -111,9 +237,10 @@ pub async fn login(
         message: "Login successful".to_string(),
     })
     .into_response();
-    response
-        .headers_mut()
-        .insert(header::SET_COOKIE, cookie.parse().unwrap());
+    response.headers_mut().insert(
+        header::SET_COOKIE,
+        header::HeaderValue::from_str(&cookie).expect("cookie value is always valid ASCII"),
+    );
 
     Ok(response)
 }
@@ -201,9 +328,10 @@ pub async fn logout(State(state): State<AppState>, req: Request) -> impl IntoRes
     let cookie = "panoptikon_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0";
 
     let mut response = StatusCode::NO_CONTENT.into_response();
-    response
-        .headers_mut()
-        .insert(header::SET_COOKIE, cookie.parse().unwrap());
+    response.headers_mut().insert(
+        header::SET_COOKIE,
+        header::HeaderValue::from_str(cookie).expect("cookie value is always valid ASCII"),
+    );
     response
 }
 
