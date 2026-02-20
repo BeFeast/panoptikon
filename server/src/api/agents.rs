@@ -530,6 +530,41 @@ async fn wait_for_auth(
     }
 }
 
+/// Normalize a MAC address string to lowercase colon-separated format (`aa:bb:cc:dd:ee:ff`).
+///
+/// Handles:
+/// - Colon-separated: `AA:BB:CC:DD:EE:FF`
+/// - Dash-separated:  `AA-BB-CC-DD-EE-FF`
+/// - Dot-separated (Cisco):   `aabb.ccdd.eeff`
+/// - No separator:    `AABBCCDDEEFF`
+///
+/// Returns `None` if the input is not a valid 6-byte MAC address.
+fn normalize_mac(mac: &str) -> Option<String> {
+    // Strip all separators and lowercase.
+    let hex: String = mac
+        .to_lowercase()
+        .chars()
+        .filter(|c| c.is_ascii_hexdigit())
+        .collect();
+
+    if hex.len() != 12 {
+        return None;
+    }
+
+    // Validate that all chars are hex digits (already filtered above, but be explicit).
+    if !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+        return None;
+    }
+
+    // Reformat as xx:xx:xx:xx:xx:xx
+    let normalized = (0..6)
+        .map(|i| &hex[i * 2..i * 2 + 2])
+        .collect::<Vec<_>>()
+        .join(":");
+
+    Some(normalized)
+}
+
 /// Process an agent report message and store it in the database.
 async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> anyhow::Result<()> {
     let report: AgentReport = serde_json::from_str(text)?;
@@ -588,8 +623,8 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
             ifaces
                 .iter()
                 .filter_map(|iface| iface.mac.as_ref())
-                .map(|mac| mac.to_lowercase().replace('-', ":"))
-                .filter(|mac| mac != "00:00:00:00:00:00" && !mac.is_empty())
+                .filter_map(|mac| normalize_mac(mac))
+                .filter(|mac| mac != "00:00:00:00:00:00")
                 .collect()
         })
         .unwrap_or_default();
@@ -602,7 +637,7 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
             .collect::<Vec<_>>()
             .join(",");
         let query_str = format!(
-            "SELECT id FROM devices WHERE mac IN ({}) LIMIT 1",
+            "SELECT id FROM devices WHERE mac IN ({}) ORDER BY last_seen_at DESC LIMIT 1",
             placeholders
         );
 
@@ -622,7 +657,12 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
                 {
                     warn!(agent_id, error = %e, "Failed to link agent to device");
                 } else {
-                    info!(agent_id, device_id = %device_id, "Linked agent to device via MAC match");
+                    info!(
+                        agent_id,
+                        device_id = %device_id,
+                        macs = ?mac_addresses,
+                        "Linked agent to device via MAC match"
+                    );
                 }
             }
             Ok(None) => {
