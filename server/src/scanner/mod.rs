@@ -323,8 +323,10 @@ async fn process_scan_results(
 
     // --- Phase 1b: Batch reverse DNS lookups with bounded concurrency ---
     if !dns_targets.is_empty() {
-        let resolver = TokioAsyncResolver::tokio_from_system_conf()
-            .unwrap_or_else(|_| TokioAsyncResolver::tokio(Default::default(), Default::default()));
+        let resolver = TokioAsyncResolver::tokio_from_system_conf().unwrap_or_else(|e| {
+            warn!("Failed to load system DNS config, falling back to defaults: {e}");
+            TokioAsyncResolver::tokio(Default::default(), Default::default())
+        });
         let resolver = Arc::new(resolver);
 
         let mut join_set: JoinSet<(String, String, Option<String>)> = JoinSet::new();
