@@ -6,4 +6,4 @@ members = ["server", "agent"]
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/olegkossoy/panoptikon"
+repository = "https://github.com/BeFeast/panoptikon"
