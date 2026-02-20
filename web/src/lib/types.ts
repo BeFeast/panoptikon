@@ -94,6 +94,14 @@ export interface TopDevice {
   tx_bps: number;
 }
 
+// ─── Traffic ────────────────────────────────────────────
+
+export interface TrafficHistoryPoint {
+  minute: string;
+  rx_bps: number;
+  tx_bps: number;
+}
+
 // ─── Auth ───────────────────────────────────────────────
 
 export interface AuthStatus {

@@ -14,6 +14,7 @@ import type {
   Device,
   LoginResponse,
   TopDevice,
+  TrafficHistoryPoint,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -115,6 +116,12 @@ export function fetchAgent(id: string): Promise<Agent> {
 
 export function fetchAgentReports(id: string, limit = 100): Promise<AgentReport[]> {
   return apiGet<AgentReport[]>(`/api/v1/agents/${id}/reports?limit=${limit}`);
+}
+
+// ─── Traffic ────────────────────────────────────────────
+
+export function fetchTrafficHistory(minutes = 60): Promise<TrafficHistoryPoint[]> {
+  return apiGet<TrafficHistoryPoint[]>(`/api/v1/traffic/history?minutes=${minutes}`);
 }
 
 // ─── Auth ───────────────────────────────────────────────
