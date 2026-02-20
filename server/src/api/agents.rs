@@ -133,8 +133,6 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Agent>>, Sta
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
            AND r.id = ( \
-               -- INTEGER PRIMARY KEY in SQLite is an alias for rowid (always monotonically \
-               -- increasing), so ORDER BY reported_at DESC, id DESC is fully deterministic. \
                SELECT ar.id FROM agent_reports ar \
                WHERE ar.agent_id = a.id \
                ORDER BY ar.reported_at DESC, ar.id DESC \
@@ -173,8 +171,6 @@ pub async fn get_one(
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
            AND r.id = ( \
-               -- INTEGER PRIMARY KEY in SQLite = rowid (monotonically increasing), \
-               -- so ORDER BY reported_at DESC, id DESC is fully deterministic on ties. \
                SELECT ar.id FROM agent_reports ar \
                WHERE ar.agent_id = a.id \
                ORDER BY ar.reported_at DESC, ar.id DESC \
@@ -260,8 +256,6 @@ pub async fn update(
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
            AND r.id = ( \
-               -- INTEGER PRIMARY KEY in SQLite = rowid (monotonically increasing), \
-               -- so ORDER BY reported_at DESC, id DESC is fully deterministic on ties. \
                SELECT ar.id FROM agent_reports ar \
                WHERE ar.agent_id = a.id \
                ORDER BY ar.reported_at DESC, ar.id DESC \
