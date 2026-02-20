@@ -65,6 +65,18 @@ pub struct AgentReport {
     pub memory: Option<AgentMemInfo>,
     #[serde(default)]
     pub version: Option<String>,
+    #[serde(default)]
+    pub network_interfaces: Option<Vec<AgentNetworkInterface>>,
+}
+
+/// Network interface info from agent report (used for MAC-based device linking).
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct AgentNetworkInterface {
+    pub name: Option<String>,
+    #[serde(default)]
+    pub mac: Option<String>,
+    // Other fields (tx_bytes, rx_bytes, etc.) are ignored for linking purposes.
 }
 
 #[derive(Debug, Deserialize)]
@@ -518,6 +530,38 @@ async fn wait_for_auth(
     }
 }
 
+/// Normalize a MAC address string to lowercase colon-separated format (`aa:bb:cc:dd:ee:ff`).
+///
+/// Handles:
+/// - Colon-separated: `AA:BB:CC:DD:EE:FF`
+/// - Dash-separated:  `AA-BB-CC-DD-EE-FF`
+/// - Dot-separated (Cisco):   `aabb.ccdd.eeff`
+/// - No separator:    `AABBCCDDEEFF`
+///
+/// Returns `None` if the input is not a valid 6-byte MAC address.
+fn normalize_mac(mac: &str) -> Option<String> {
+    // Only strip known MAC separators (colon, dash, dot) — reject anything else.
+    // This prevents accidentally accepting hex digits embedded in arbitrary strings.
+    let stripped: String = mac
+        .to_lowercase()
+        .chars()
+        .filter(|&c| c != ':' && c != '-' && c != '.')
+        .collect();
+
+    // Must be exactly 12 hex characters (6 bytes).
+    if stripped.len() != 12 || !stripped.chars().all(|c| c.is_ascii_hexdigit()) {
+        return None;
+    }
+
+    // Reformat as xx:xx:xx:xx:xx:xx
+    let normalized = (0..6)
+        .map(|i| &stripped[i * 2..i * 2 + 2])
+        .collect::<Vec<_>>()
+        .join(":");
+
+    Some(normalized)
+}
+
 /// Process an agent report message and store it in the database.
 async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> anyhow::Result<()> {
     let report: AgentReport = serde_json::from_str(text)?;
@@ -565,6 +609,93 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
     .bind(mem.and_then(|m| m.swap_used_bytes))
     .execute(&state.db)
     .await?;
+
+    // --- MAC-based device linking ---
+    // Extract and normalize MAC addresses from the agent's network interfaces.
+    // Normalize to lowercase colon-separated format to match how the ARP scanner stores them.
+    let mac_addresses: Vec<String> = report
+        .network_interfaces
+        .as_ref()
+        .map(|ifaces| {
+            ifaces
+                .iter()
+                .filter_map(|iface| iface.mac.as_ref())
+                .filter_map(|mac| normalize_mac(mac))
+                .filter(|mac| mac != "00:00:00:00:00:00")
+                .collect()
+        })
+        .unwrap_or_default();
+
+    // Deduplicate and cap to avoid unbounded IN (...) queries.
+    let mut mac_addresses = mac_addresses;
+    mac_addresses.sort_unstable();
+    mac_addresses.dedup();
+    mac_addresses.truncate(20);
+
+    if !mac_addresses.is_empty() {
+        // Build a query with placeholders for each MAC address.
+        let placeholders: String = mac_addresses
+            .iter()
+            .map(|_| "?")
+            .collect::<Vec<_>>()
+            .join(",");
+        let query_str = format!(
+            "SELECT id FROM devices WHERE mac IN ({}) ORDER BY last_seen_at DESC LIMIT 1",
+            placeholders
+        );
+
+        let mut query = sqlx::query_scalar::<_, String>(&query_str);
+        for mac in &mac_addresses {
+            query = query.bind(mac);
+        }
+
+        match query.fetch_optional(&state.db).await {
+            Ok(Some(device_id)) => {
+                // Check current device_id to detect reassignment and avoid spurious updates.
+                let current_device_id: Option<String> =
+                    sqlx::query_scalar("SELECT device_id FROM agents WHERE id = ?")
+                        .bind(agent_id)
+                        .fetch_optional(&state.db)
+                        .await
+                        .unwrap_or(None)
+                        .flatten();
+
+                if current_device_id.as_deref() == Some(device_id.as_str()) {
+                    // Already linked to the correct device — no update needed.
+                } else {
+                    if let Some(ref prev) = current_device_id {
+                        warn!(
+                            agent_id,
+                            old_device = %prev,
+                            new_device = %device_id,
+                            "Agent device_id reassigned via MAC match"
+                        );
+                    }
+                    if let Err(e) = sqlx::query("UPDATE agents SET device_id = ? WHERE id = ?")
+                        .bind(&device_id)
+                        .bind(agent_id)
+                        .execute(&state.db)
+                        .await
+                    {
+                        warn!(agent_id, error = %e, "Failed to link agent to device");
+                    } else {
+                        info!(
+                            agent_id,
+                            device_id = %device_id,
+                            macs = ?mac_addresses,
+                            "Linked agent to device via MAC match"
+                        );
+                    }
+                }
+            }
+            Ok(None) => {
+                // No matching device found — this is normal for agents on hosts not yet in the ARP table.
+            }
+            Err(e) => {
+                warn!(agent_id, error = %e, "Failed to query devices for MAC matching");
+            }
+        }
+    }
 
     // Broadcast updated report to UI clients.
     state.ws_hub.broadcast(
