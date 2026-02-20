@@ -23,10 +23,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { fetchDevices } from "@/lib/api";
+import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime } from "@/lib/api";
+import type { DeviceEvent, UptimeStats } from "@/lib/api";
 import type { Device } from "@/lib/types";
 import { formatPercent, timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Filter = "all" | "online" | "offline" | "unknown";
 type ViewMode = "grid" | "table";
@@ -488,72 +490,185 @@ function DeviceDetail({ device }: { device: Device }) {
 
       <Separator className="my-4 bg-[#2a2a3a]" />
 
-      {/* Info grid */}
-      <div className="space-y-4">
-        <InfoRow label="IP Address" value={primaryIp} mono />
-        <InfoRow label="MAC Address" value={device.mac} mono />
-        {device.vendor && <InfoRow label="Vendor" value={device.vendor} />}
-        {device.hostname && <InfoRow label="Hostname" value={device.hostname} />}
-        <InfoRow label="First Seen" value={timeAgo(device.first_seen_at)} />
-        <InfoRow label="Last Seen" value={timeAgo(device.last_seen_at)} />
-        <InfoRow label="Status" value={device.is_known ? "Known" : "Unacknowledged"} />
+      <Tabs defaultValue="info" className="w-full">
+        <TabsList className="mb-4 w-full bg-[#1e1e2e]">
+          <TabsTrigger value="info" className="flex-1">Info</TabsTrigger>
+          <TabsTrigger value="events" className="flex-1">Events</TabsTrigger>
+        </TabsList>
 
-        {/* All IPs */}
-        {ips.length > 1 && (
+        <TabsContent value="info">
+          <DeviceInfoTab device={device} ips={ips} primaryIp={primaryIp} />
+        </TabsContent>
+
+        <TabsContent value="events">
+          <DeviceEventsTab deviceId={device.id} />
+        </TabsContent>
+      </Tabs>
+    </>
+  );
+}
+
+// ─── Device Info Tab ────────────────────────────────────
+
+function DeviceInfoTab({
+  device,
+  ips,
+  primaryIp,
+}: {
+  device: Device;
+  ips: string[];
+  primaryIp: string;
+}) {
+  return (
+    <div className="space-y-4">
+      <InfoRow label="IP Address" value={primaryIp} mono />
+      <InfoRow label="MAC Address" value={device.mac} mono />
+      {device.vendor && <InfoRow label="Vendor" value={device.vendor} />}
+      {device.hostname && <InfoRow label="Hostname" value={device.hostname} />}
+      <InfoRow label="First Seen" value={timeAgo(device.first_seen_at)} />
+      <InfoRow label="Last Seen" value={timeAgo(device.last_seen_at)} />
+      <InfoRow label="Status" value={device.is_known ? "Known" : "Unacknowledged"} />
+
+      {/* All IPs */}
+      {ips.length > 1 && (
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+            All IP Addresses
+          </p>
+          <div className="mt-1 space-y-0.5">
+            {ips.map((ip) => (
+              <p key={ip} className="font-mono text-sm text-gray-300">
+                {ip}
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Agent info */}
+      {device.agent && (
+        <>
+          <Separator className="bg-[#2a2a3a]" />
+          <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+            Agent Telemetry
+          </p>
+          <div className="flex items-center gap-2">
+            {device.agent.is_online ? (
+              <Wifi className="h-4 w-4 text-green-400" />
+            ) : (
+              <WifiOff className="h-4 w-4 text-red-400" />
+            )}
+            <span className="text-sm text-gray-300">
+              {device.agent.is_online ? "Connected" : "Disconnected"}
+            </span>
+          </div>
+          {device.agent.cpu_percent != null && (
+            <InfoRow label="CPU Usage" value={formatPercent(device.agent.cpu_percent)} />
+          )}
+          {device.agent.memory_percent != null && (
+            <InfoRow label="Memory Usage" value={formatPercent(device.agent.memory_percent)} />
+          )}
+        </>
+      )}
+
+      {/* Notes */}
+      {device.notes && (
+        <>
+          <Separator className="bg-[#2a2a3a]" />
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
-              All IP Addresses
+              Notes
             </p>
-            <div className="mt-1 space-y-0.5">
-              {ips.map((ip) => (
-                <p key={ip} className="font-mono text-sm text-gray-300">
-                  {ip}
-                </p>
-              ))}
-            </div>
+            <p className="mt-1 text-sm text-gray-300">{device.notes}</p>
           </div>
-        )}
+        </>
+      )}
+    </div>
+  );
+}
 
-        {/* Agent info */}
-        {device.agent && (
-          <>
-            <Separator className="bg-[#2a2a3a]" />
-            <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
-              Agent Telemetry
-            </p>
-            <div className="flex items-center gap-2">
-              {device.agent.is_online ? (
-                <Wifi className="h-4 w-4 text-green-400" />
-              ) : (
-                <WifiOff className="h-4 w-4 text-red-400" />
-              )}
-              <span className="text-sm text-gray-300">
-                {device.agent.is_online ? "Connected" : "Disconnected"}
+// ─── Device Events Tab ──────────────────────────────────
+
+function DeviceEventsTab({ deviceId }: { deviceId: string }) {
+  const [events, setEvents] = useState<DeviceEvent[] | null>(null);
+  const [uptime, setUptime] = useState<UptimeStats | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const [evts, upt] = await Promise.all([
+          fetchDeviceEvents(deviceId, 50),
+          fetchDeviceUptime(deviceId, 7),
+        ]);
+        if (!cancelled) {
+          setEvents(evts);
+          setUptime(upt);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Failed to load events");
+        }
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [deviceId]);
+
+  if (error) {
+    return <p className="text-sm text-red-400">{error}</p>;
+  }
+
+  if (events === null) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-8 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Uptime badge */}
+      {uptime && (
+        <div className="flex items-center gap-3 rounded-md border border-[#2a2a3a] bg-[#1e1e2e] px-4 py-3">
+          <div className="text-sm text-gray-400">7-day uptime</div>
+          <div className="ml-auto text-lg font-semibold text-white">
+            {uptime.uptime_percent.toFixed(1)}%
+          </div>
+        </div>
+      )}
+
+      {events.length === 0 ? (
+        <p className="py-6 text-center text-sm text-gray-500">
+          No state change events recorded yet.
+        </p>
+      ) : (
+        <div className="space-y-1">
+          {events.map((event) => (
+            <div
+              key={event.id}
+              className="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-[#1e1e2e]"
+            >
+              <span
+                className={`h-2.5 w-2.5 shrink-0 rounded-full ${
+                  event.event_type === "online" ? "bg-green-500" : "bg-gray-500"
+                }`}
+              />
+              <span className="text-sm text-gray-300 capitalize">
+                {event.event_type === "online" ? "Came online" : "Went offline"}
+              </span>
+              <span className="ml-auto text-xs text-gray-500">
+                {timeAgo(event.occurred_at)}
               </span>
             </div>
-            {device.agent.cpu_percent != null && (
-              <InfoRow label="CPU Usage" value={formatPercent(device.agent.cpu_percent)} />
-            )}
-            {device.agent.memory_percent != null && (
-              <InfoRow label="Memory Usage" value={formatPercent(device.agent.memory_percent)} />
-            )}
-          </>
-        )}
-
-        {/* Notes */}
-        {device.notes && (
-          <>
-            <Separator className="bg-[#2a2a3a]" />
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
-                Notes
-              </p>
-              <p className="mt-1 text-sm text-gray-300">{device.notes}</p>
-            </div>
-          </>
-        )}
-      </div>
-    </>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 

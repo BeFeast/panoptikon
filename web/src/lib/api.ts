@@ -103,6 +103,26 @@ export function fetchDevice(id: string): Promise<Device> {
   return apiGet<Device>(`/api/v1/devices/${id}`);
 }
 
+export interface DeviceEvent {
+  id: number;
+  event_type: "online" | "offline";
+  occurred_at: string;
+}
+
+export interface UptimeStats {
+  uptime_percent: number;
+  online_seconds: number;
+  total_seconds: number;
+}
+
+export function fetchDeviceEvents(id: string, limit = 50): Promise<DeviceEvent[]> {
+  return apiGet<DeviceEvent[]>(`/api/v1/devices/${id}/events?limit=${limit}`);
+}
+
+export function fetchDeviceUptime(id: string, days = 7): Promise<UptimeStats> {
+  return apiGet<UptimeStats>(`/api/v1/devices/${id}/uptime?days=${days}`);
+}
+
 // ─── Agents ─────────────────────────────────────────────
 
 export function fetchAgents(): Promise<Agent[]> {

@@ -13,6 +13,9 @@ const SESSIONS_MIGRATION: &str = include_str!("migrations/002_sessions.sql");
 /// Migration 003: clean up leftover test/dev agents.
 const CLEANUP_TEST_AGENTS_MIGRATION: &str = include_str!("migrations/003_cleanup_test_agents.sql");
 
+/// Migration 004: device events table for online/offline history tracking.
+const DEVICE_EVENTS_MIGRATION: &str = include_str!("migrations/004_device_events.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -108,6 +111,22 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 003_cleanup_test_agents.sql");
     }
 
+    // Migration 004: device events table.
+    let applied_4: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 4")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_4 {
+        sqlx::raw_sql(DEVICE_EVENTS_MIGRATION).execute(pool).await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (4)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 004_device_events.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -115,6 +134,16 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         .rows_affected();
     if deleted > 0 {
         info!(deleted, "Purged expired sessions on startup");
+    }
+
+    // Purge device events older than 30 days on startup.
+    let events_deleted =
+        sqlx::query("DELETE FROM device_events WHERE occurred_at < datetime('now', '-30 days')")
+            .execute(pool)
+            .await?
+            .rows_affected();
+    if events_deleted > 0 {
+        info!(events_deleted, "Purged old device events on startup");
     }
 
     Ok(())
@@ -139,6 +168,7 @@ mod tests {
             "traffic_samples",
             "alerts",
             "sessions",
+            "device_events",
         ];
 
         for table in &expected_tables {
