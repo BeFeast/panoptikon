@@ -167,4 +167,28 @@ test.describe("Agents page", () => {
     // cleanup
     await page.request.delete(`/api/v1/agents/${id}`);
   });
+
+  // ── Regression: GET /api/v1/agents must not return 500 ───────────────────
+  // Regression for SQL comments inside Rust backslash-continued strings causing
+  // "incomplete input" SQLite errors (PR fix/sql-comment-regression).
+  test("GET /api/v1/agents returns 200, not 500", async ({ page }) => {
+    const res = await page.request.get("/api/v1/agents");
+    expect(res.status(), "Agents list must not return 500").toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body), "Response must be an array").toBe(true);
+  });
+
+  // ── Regression: Agents page renders list, not error message ──────────────
+  test("Agents page shows list, not API error", async ({ page }) => {
+    // Wait for either the table or the empty state — both mean 200 OK.
+    // An API error 500 renders a red paragraph instead.
+    const errorMsg = page.locator("p.text-red-400");
+    const agentTable = page.locator("table, [data-testid='empty-agents']");
+
+    // Give the page time to load data
+    await page.waitForTimeout(1500);
+
+    const errorVisible = await errorMsg.isVisible();
+    expect(errorVisible, "Should not show an API error on the agents page").toBe(false);
+  });
 });
