@@ -540,25 +540,22 @@ async fn wait_for_auth(
 ///
 /// Returns `None` if the input is not a valid 6-byte MAC address.
 fn normalize_mac(mac: &str) -> Option<String> {
-    // Strip all separators and lowercase.
-    let hex: String = mac
+    // Only strip known MAC separators (colon, dash, dot) — reject anything else.
+    // This prevents accidentally accepting hex digits embedded in arbitrary strings.
+    let stripped: String = mac
         .to_lowercase()
         .chars()
-        .filter(|c| c.is_ascii_hexdigit())
+        .filter(|&c| c != ':' && c != '-' && c != '.')
         .collect();
 
-    if hex.len() != 12 {
-        return None;
-    }
-
-    // Validate that all chars are hex digits (already filtered above, but be explicit).
-    if !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+    // Must be exactly 12 hex characters (6 bytes).
+    if stripped.len() != 12 || !stripped.chars().all(|c| c.is_ascii_hexdigit()) {
         return None;
     }
 
     // Reformat as xx:xx:xx:xx:xx:xx
     let normalized = (0..6)
-        .map(|i| &hex[i * 2..i * 2 + 2])
+        .map(|i| &stripped[i * 2..i * 2 + 2])
         .collect::<Vec<_>>()
         .join(":");
 
@@ -629,6 +626,12 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
         })
         .unwrap_or_default();
 
+    // Deduplicate and cap to avoid unbounded IN (...) queries.
+    let mut mac_addresses = mac_addresses;
+    mac_addresses.sort_unstable();
+    mac_addresses.dedup();
+    mac_addresses.truncate(20);
+
     if !mac_addresses.is_empty() {
         // Build a query with placeholders for each MAC address.
         let placeholders: String = mac_addresses
@@ -648,21 +651,41 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
 
         match query.fetch_optional(&state.db).await {
             Ok(Some(device_id)) => {
-                // Always update device_id (re-link on every report in case device was reassigned).
-                if let Err(e) = sqlx::query("UPDATE agents SET device_id = ? WHERE id = ?")
-                    .bind(&device_id)
-                    .bind(agent_id)
-                    .execute(&state.db)
-                    .await
-                {
-                    warn!(agent_id, error = %e, "Failed to link agent to device");
+                // Check current device_id to detect reassignment and avoid spurious updates.
+                let current_device_id: Option<String> =
+                    sqlx::query_scalar("SELECT device_id FROM agents WHERE id = ?")
+                        .bind(agent_id)
+                        .fetch_optional(&state.db)
+                        .await
+                        .unwrap_or(None)
+                        .flatten();
+
+                if current_device_id.as_deref() == Some(device_id.as_str()) {
+                    // Already linked to the correct device — no update needed.
                 } else {
-                    info!(
-                        agent_id,
-                        device_id = %device_id,
-                        macs = ?mac_addresses,
-                        "Linked agent to device via MAC match"
-                    );
+                    if let Some(ref prev) = current_device_id {
+                        warn!(
+                            agent_id,
+                            old_device = %prev,
+                            new_device = %device_id,
+                            "Agent device_id reassigned via MAC match"
+                        );
+                    }
+                    if let Err(e) = sqlx::query("UPDATE agents SET device_id = ? WHERE id = ?")
+                        .bind(&device_id)
+                        .bind(agent_id)
+                        .execute(&state.db)
+                        .await
+                    {
+                        warn!(agent_id, error = %e, "Failed to link agent to device");
+                    } else {
+                        info!(
+                            agent_id,
+                            device_id = %device_id,
+                            macs = ?mac_addresses,
+                            "Linked agent to device via MAC match"
+                        );
+                    }
                 }
             }
             Ok(None) => {
