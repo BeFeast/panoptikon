@@ -1,13 +1,21 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Cpu, MemoryStick, Search, Wifi, WifiOff } from "lucide-react";
+import { ArrowDown, ArrowUp, Cpu, LayoutGrid, List, MemoryStick, Search, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Sheet,
   SheetContent,
@@ -21,6 +29,9 @@ import { formatPercent, timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
 
 type Filter = "all" | "online" | "offline" | "unknown";
+type ViewMode = "grid" | "table";
+type SortField = "last_seen_at" | "ip" | "hostname";
+type SortDir = "asc" | "desc";
 
 export default function DevicesPage() {
   const [devices, setDevices] = useState<Device[] | null>(null);
@@ -28,6 +39,14 @@ export default function DevicesPage() {
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
+  const [view, setView] = useState<ViewMode>(() => {
+    if (typeof window !== "undefined") {
+      return (localStorage.getItem("devices-view-preference") as ViewMode) || "grid";
+    }
+    return "grid";
+  });
+  const [sortField, setSortField] = useState<SortField>("last_seen_at");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   const load = useCallback(async () => {
     try {
@@ -82,6 +101,57 @@ export default function DevicesPage() {
 
     return list;
   }, [devices, filter, search]);
+
+  const toggleView = useCallback((newView: ViewMode) => {
+    setView(newView);
+    localStorage.setItem("devices-view-preference", newView);
+  }, []);
+
+  const toggleSort = useCallback((field: SortField) => {
+    setSortField((prev) => {
+      if (prev === field) {
+        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+        return field;
+      }
+      setSortDir(field === "last_seen_at" ? "desc" : "asc");
+      return field;
+    });
+  }, []);
+
+  const sorted = useMemo(() => {
+    if (!filtered) return null;
+    const list = [...filtered];
+    list.sort((a, b) => {
+      let cmp = 0;
+      switch (sortField) {
+        case "ip": {
+          const aIp = (a.ips ?? [])[0] ?? "";
+          const bIp = (b.ips ?? [])[0] ?? "";
+          // Numeric IP comparison
+          const aParts = aIp.split(".").map(Number);
+          const bParts = bIp.split(".").map(Number);
+          for (let i = 0; i < 4; i++) {
+            cmp = (aParts[i] ?? 0) - (bParts[i] ?? 0);
+            if (cmp !== 0) break;
+          }
+          break;
+        }
+        case "hostname": {
+          const aH = (a.hostname ?? "").toLowerCase();
+          const bH = (b.hostname ?? "").toLowerCase();
+          cmp = aH.localeCompare(bH);
+          break;
+        }
+        case "last_seen_at":
+        default: {
+          cmp = new Date(a.last_seen_at).getTime() - new Date(b.last_seen_at).getTime();
+          break;
+        }
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return list;
+  }, [filtered, sortField, sortDir]);
 
   if (error) {
     return (
@@ -138,10 +208,32 @@ export default function DevicesPage() {
             className="pl-9"
           />
         </div>
+
+        {/* View toggle */}
+        <div className="flex shrink-0 gap-1">
+          <Button
+            variant={view === "grid" ? "default" : "secondary"}
+            size="icon"
+            className="h-9 w-9"
+            onClick={() => toggleView("grid")}
+            title="Grid view"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={view === "table" ? "default" : "secondary"}
+            size="icon"
+            className="h-9 w-9"
+            onClick={() => toggleView("table")}
+            title="Table view"
+          >
+            <List className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
-      {/* Device grid */}
-      {filtered === null ? (
+      {/* Device list */}
+      {sorted === null ? (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <Card key={i} className="border-[#2a2a3a] bg-[#16161f]">
@@ -154,13 +246,13 @@ export default function DevicesPage() {
             </Card>
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <p className="py-10 text-center text-gray-500">
           No devices match your filters.
         </p>
-      ) : (
+      ) : view === "grid" ? (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
-          {filtered.map((device) => (
+          {sorted.map((device) => (
             <DeviceCard
               key={device.id}
               device={device}
@@ -168,6 +260,14 @@ export default function DevicesPage() {
             />
           ))}
         </div>
+      ) : (
+        <DevicesTable
+          devices={sorted}
+          sortField={sortField}
+          sortDir={sortDir}
+          onSort={toggleSort}
+          onSelect={setSelectedDevice}
+        />
       )}
 
       {/* Slide-in detail panel */}
@@ -250,6 +350,110 @@ function DeviceCard({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// ─── Devices Table ─────────────────────────────────────
+
+function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: SortField; sortDir: SortDir }) {
+  if (field !== sortField) return null;
+  return sortDir === "asc" ? (
+    <ArrowUp className="ml-1 inline h-3 w-3" />
+  ) : (
+    <ArrowDown className="ml-1 inline h-3 w-3" />
+  );
+}
+
+function DevicesTable({
+  devices,
+  sortField,
+  sortDir,
+  onSort,
+  onSelect,
+}: {
+  devices: Device[];
+  sortField: SortField;
+  sortDir: SortDir;
+  onSort: (field: SortField) => void;
+  onSelect: (device: Device) => void;
+}) {
+  return (
+    <div className="rounded-md border border-[#2a2a3a] bg-[#16161f]">
+      <Table>
+        <TableHeader>
+          <TableRow className="border-[#2a2a3a] hover:bg-transparent">
+            <TableHead className="w-12 text-gray-400">Status</TableHead>
+            <TableHead
+              className="cursor-pointer select-none text-gray-400 hover:text-white"
+              onClick={() => onSort("ip")}
+            >
+              IP Address
+              <SortIcon field="ip" sortField={sortField} sortDir={sortDir} />
+            </TableHead>
+            <TableHead
+              className="cursor-pointer select-none text-gray-400 hover:text-white"
+              onClick={() => onSort("hostname")}
+            >
+              Hostname
+              <SortIcon field="hostname" sortField={sortField} sortDir={sortDir} />
+            </TableHead>
+            <TableHead className="text-gray-400">MAC</TableHead>
+            <TableHead className="text-gray-400">Vendor</TableHead>
+            <TableHead className="text-gray-400">Agent</TableHead>
+            <TableHead
+              className="cursor-pointer select-none text-gray-400 hover:text-white"
+              onClick={() => onSort("last_seen_at")}
+            >
+              Last Seen
+              <SortIcon field="last_seen_at" sortField={sortField} sortDir={sortDir} />
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {devices.map((device) => {
+            const primaryIp = (device.ips ?? [])[0] ?? "—";
+            const agentText =
+              device.agent && device.agent.cpu_percent != null && device.agent.memory_percent != null
+                ? `${formatPercent(device.agent.cpu_percent)} / ${formatPercent(device.agent.memory_percent)}`
+                : "—";
+
+            return (
+              <TableRow
+                key={device.id}
+                className="cursor-pointer border-[#2a2a3a] hover:bg-[#1e1e2e]"
+                onClick={() => onSelect(device)}
+              >
+                <TableCell>
+                  <span
+                    className={`inline-block h-2.5 w-2.5 rounded-full ${
+                      device.is_online ? "bg-green-500 status-pulse" : "bg-gray-500"
+                    }`}
+                  />
+                </TableCell>
+                <TableCell className="font-mono text-sm text-gray-300">
+                  {primaryIp}
+                </TableCell>
+                <TableCell className="text-sm text-gray-300">
+                  {device.hostname ?? "—"}
+                </TableCell>
+                <TableCell className="font-mono text-xs text-gray-500">
+                  {device.mac}
+                </TableCell>
+                <TableCell className="text-xs text-gray-500">
+                  {device.vendor ?? "—"}
+                </TableCell>
+                <TableCell className="text-xs text-gray-400">
+                  {agentText}
+                </TableCell>
+                <TableCell className="text-xs text-gray-500">
+                  {timeAgo(device.last_seen_at)}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 
