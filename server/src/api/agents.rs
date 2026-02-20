@@ -303,6 +303,95 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> St
     }
 }
 
+/// Request body for bulk-deleting agents.
+#[derive(Debug, Deserialize)]
+pub struct BulkDeleteRequest {
+    /// List of agent IDs to delete.
+    #[serde(default)]
+    pub ids: Vec<String>,
+    /// Optional name pattern (SQL LIKE) to match agents for deletion.
+    #[serde(default)]
+    pub name_pattern: Option<String>,
+}
+
+/// Response for bulk delete.
+#[derive(Debug, Serialize)]
+pub struct BulkDeleteResponse {
+    pub deleted: u64,
+}
+
+/// POST /api/v1/agents/bulk-delete — delete multiple agents by ID list and/or name pattern.
+pub async fn bulk_delete(
+    State(state): State<AppState>,
+    Json(body): Json<BulkDeleteRequest>,
+) -> Result<Json<BulkDeleteResponse>, StatusCode> {
+    if body.ids.is_empty() && body.name_pattern.is_none() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let mut total_deleted: u64 = 0;
+
+    // Delete by explicit IDs.
+    if !body.ids.is_empty() {
+        // Cap to prevent absurdly large queries.
+        let ids: Vec<&String> = body.ids.iter().take(500).collect();
+        let placeholders: String = ids.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+
+        // First delete related agent_reports to avoid FK issues.
+        let reports_query = format!("DELETE FROM agent_reports WHERE agent_id IN ({placeholders})");
+        let mut q = sqlx::query(&reports_query);
+        for id in &ids {
+            q = q.bind(id.as_str());
+        }
+        let _ = q.execute(&state.db).await.map_err(|e| {
+            error!("Failed to delete agent_reports in bulk: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+        let agents_query = format!("DELETE FROM agents WHERE id IN ({placeholders})");
+        let mut q = sqlx::query(&agents_query);
+        for id in &ids {
+            q = q.bind(id.as_str());
+        }
+        let result = q.execute(&state.db).await.map_err(|e| {
+            error!("Failed to bulk-delete agents by ID: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+        total_deleted += result.rows_affected();
+    }
+
+    // Delete by name pattern.
+    if let Some(ref pattern) = body.name_pattern {
+        // First delete related agent_reports.
+        let _ = sqlx::query(
+            "DELETE FROM agent_reports WHERE agent_id IN (SELECT id FROM agents WHERE name LIKE ?)",
+        )
+        .bind(pattern)
+        .execute(&state.db)
+        .await
+        .map_err(|e| {
+            error!("Failed to delete agent_reports by pattern: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+        let result = sqlx::query("DELETE FROM agents WHERE name LIKE ?")
+            .bind(pattern)
+            .execute(&state.db)
+            .await
+            .map_err(|e| {
+                error!("Failed to bulk-delete agents by pattern: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+        total_deleted += result.rows_affected();
+    }
+
+    info!(deleted = total_deleted, "Bulk-deleted agents");
+
+    Ok(Json(BulkDeleteResponse {
+        deleted: total_deleted,
+    }))
+}
+
 /// GET /api/v1/agent/ws — WebSocket endpoint for agent connections.
 /// Agents authenticate via `Authorization: Bearer <api_key>` header on the WS upgrade request.
 pub async fn ws_handler(

@@ -10,6 +10,9 @@ const INIT_MIGRATION: &str = include_str!("migrations/001_init.sql");
 /// Migration 002: persistent sessions table.
 const SESSIONS_MIGRATION: &str = include_str!("migrations/002_sessions.sql");
 
+/// Migration 003: clean up leftover test/dev agents.
+const CLEANUP_TEST_AGENTS_MIGRATION: &str = include_str!("migrations/003_cleanup_test_agents.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -85,6 +88,24 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
             .await?;
 
         info!("Applied migration 002_sessions.sql");
+    }
+
+    // Migration 003: clean up leftover test/dev agents.
+    let applied_3: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 3")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_3 {
+        sqlx::raw_sql(CLEANUP_TEST_AGENTS_MIGRATION)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (3)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 003_cleanup_test_agents.sql");
     }
 
     // Purge expired sessions on startup.
