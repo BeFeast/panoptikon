@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Cpu, LayoutGrid, List, MemoryStick, Search, Wifi, WifiOff } from "lucide-react";
+import { ArrowDown, ArrowUp, Cpu, LayoutGrid, List, MemoryStick, Power, Search, Wifi, WifiOff } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -23,7 +24,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime } from "@/lib/api";
+import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice } from "@/lib/api";
 import type { DeviceEvent, UptimeStats } from "@/lib/api";
 import type { Device } from "@/lib/types";
 import { formatPercent, timeAgo } from "@/lib/format";
@@ -465,6 +466,19 @@ function DeviceDetail({ device }: { device: Device }) {
   const ips = device.ips ?? [];
   const primaryIp = ips[0] ?? "—";
   const displayName = device.name ?? device.hostname ?? "Unknown Device";
+  const [waking, setWaking] = useState(false);
+
+  const handleWake = async () => {
+    setWaking(true);
+    try {
+      await wakeDevice(device.id);
+      toast.success("Magic packet sent! Device should wake up shortly.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send magic packet");
+    } finally {
+      setWaking(false);
+    }
+  };
 
   return (
     <>
@@ -487,6 +501,25 @@ function DeviceDetail({ device }: { device: Device }) {
           )}
         </SheetDescription>
       </SheetHeader>
+
+      {/* Wake-on-LAN button — only active when device is offline */}
+      {!device.is_online && (
+        <div className="mt-4 space-y-1">
+          <Button
+            variant="secondary"
+            size="sm"
+            className="w-full gap-2"
+            disabled={waking}
+            onClick={handleWake}
+          >
+            <Power className="h-4 w-4" />
+            {waking ? "Sending…" : "Wake"}
+          </Button>
+          <p className="text-center text-[11px] text-gray-600">
+            Requires Wake-on-LAN enabled in BIOS
+          </p>
+        </div>
+      )}
 
       <Separator className="my-4 bg-[#2a2a3a]" />
 

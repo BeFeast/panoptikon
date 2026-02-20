@@ -5,6 +5,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
+use std::net::UdpSocket;
 
 use super::AppState;
 
@@ -435,6 +436,85 @@ pub async fn uptime(
         online_seconds,
         total_seconds,
     }))
+}
+
+/// Build a Wake-on-LAN magic packet from a MAC address string.
+///
+/// The magic packet is 102 bytes: 6 × 0xFF followed by 16 repetitions of the
+/// 6-byte MAC address. Accepts MAC in "aa:bb:cc:dd:ee:ff" or "aa-bb-cc-dd-ee-ff" format.
+pub fn build_magic_packet(mac: &str) -> Result<[u8; 102], String> {
+    let mac_clean = mac.replace([':', '-'], "");
+    if mac_clean.len() != 12 {
+        return Err(format!("Invalid MAC address: {mac}"));
+    }
+
+    let mut mac_bytes = [0u8; 6];
+    for i in 0..6 {
+        mac_bytes[i] = u8::from_str_radix(&mac_clean[i * 2..i * 2 + 2], 16)
+            .map_err(|_| format!("Invalid hex in MAC address: {mac}"))?;
+    }
+
+    let mut packet = [0u8; 102];
+    // First 6 bytes: 0xFF
+    packet[..6].fill(0xFF);
+    // Next 96 bytes: MAC repeated 16 times
+    for i in 0..16 {
+        let offset = 6 + i * 6;
+        packet[offset..offset + 6].copy_from_slice(&mac_bytes);
+    }
+
+    Ok(packet)
+}
+
+/// POST /api/v1/devices/:id/wake — send a Wake-on-LAN magic packet.
+pub async fn wake(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, StatusCode> {
+    // Fetch the device to get its MAC address
+    let row = sqlx::query(r#"SELECT mac FROM devices WHERE id = ?"#)
+        .bind(&id)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to fetch device {id} for WoL: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    let mac: String = row.try_get("mac").map_err(|e| {
+        tracing::error!("Failed to read MAC for device {id}: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    if mac.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let packet = build_magic_packet(&mac).map_err(|e| {
+        tracing::warn!("Invalid MAC for WoL on device {id}: {e}");
+        StatusCode::BAD_REQUEST
+    })?;
+
+    // Send magic packet via UDP broadcast
+    let socket = UdpSocket::bind("0.0.0.0:0").map_err(|e| {
+        tracing::error!("Failed to bind UDP socket for WoL: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    socket.set_broadcast(true).map_err(|e| {
+        tracing::error!("Failed to set SO_BROADCAST for WoL: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    socket.send_to(&packet, "255.255.255.255:9").map_err(|e| {
+        tracing::error!("Failed to send WoL magic packet for device {id}: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    tracing::info!("Sent WoL magic packet for device {id} (MAC: {mac})");
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 #[cfg(test)]
@@ -918,5 +998,56 @@ mod tests {
             surviving_type, "offline",
             "Surviving event should be the recent offline one"
         );
+    }
+
+    // ─── Wake-on-LAN (build_magic_packet) Tests ─────────────
+
+    #[test]
+    fn test_build_magic_packet_correct_length() {
+        let packet = build_magic_packet("AA:BB:CC:DD:EE:FF").unwrap();
+        assert_eq!(packet.len(), 102, "Magic packet must be exactly 102 bytes");
+    }
+
+    #[test]
+    fn test_build_magic_packet_starts_with_ff() {
+        let packet = build_magic_packet("AA:BB:CC:DD:EE:FF").unwrap();
+        assert_eq!(&packet[..6], &[0xFF; 6], "First 6 bytes must all be 0xFF");
+    }
+
+    #[test]
+    fn test_build_magic_packet_mac_repeated_16_times() {
+        let packet = build_magic_packet("AA:BB:CC:DD:EE:FF").unwrap();
+        let expected_mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
+        for i in 0..16 {
+            let offset = 6 + i * 6;
+            assert_eq!(
+                &packet[offset..offset + 6],
+                &expected_mac,
+                "MAC repetition {i} at offset {offset} does not match"
+            );
+        }
+    }
+
+    #[test]
+    fn test_build_magic_packet_invalid_mac() {
+        // Too short
+        assert!(build_magic_packet("AA:BB:CC").is_err());
+        // Invalid hex
+        assert!(build_magic_packet("GG:HH:II:JJ:KK:LL").is_err());
+        // Empty
+        assert!(build_magic_packet("").is_err());
+        // Too many octets
+        assert!(build_magic_packet("AA:BB:CC:DD:EE:FF:00").is_err());
+    }
+
+    #[test]
+    fn test_build_magic_packet_dash_format() {
+        let packet = build_magic_packet("AA-BB-CC-DD-EE-FF").unwrap();
+        assert_eq!(packet.len(), 102);
+        let expected_mac = [0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF];
+        // Verify first repetition
+        assert_eq!(&packet[6..12], &expected_mac);
+        // Verify last repetition
+        assert_eq!(&packet[96..102], &expected_mac);
     }
 }

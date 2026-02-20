@@ -74,6 +74,7 @@ pub fn router(state: AppState) -> Router {
         .route("/devices/:id", patch(devices::update))
         .route("/devices/:id/events", get(devices::events))
         .route("/devices/:id/uptime", get(devices::uptime))
+        .route("/devices/:id/wake", post(devices::wake))
         // Agents
         .route("/agents", get(agents::list))
         .route("/agents", post(agents::register))
