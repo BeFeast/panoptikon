@@ -75,6 +75,7 @@ export default function DevicesPage() {
           (d.name ?? "").toLowerCase().includes(q) ||
           (d.hostname ?? "").toLowerCase().includes(q) ||
           (d.mac ?? "").toLowerCase().includes(q) ||
+          (d.vendor ?? "").toLowerCase().includes(q) ||
           (d.ips ?? []).some((ip) => ip.includes(q))
       );
     }
@@ -131,7 +132,7 @@ export default function DevicesPage() {
         <div className="relative ml-auto w-full max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
           <Input
-            placeholder="Search name, IP, MAC…"
+            placeholder="Search name, IP, MAC, vendor…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
