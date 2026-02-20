@@ -62,7 +62,10 @@ pub async fn login(
             hash
         }
         None => {
-            // First-run: no password set yet. Accept any password and store it.
+            // First-run: no password set yet. Validate minimum length before storing.
+            if body.password.len() < 8 {
+                return Err(StatusCode::UNPROCESSABLE_ENTITY);
+            }
             let hash = bcrypt::hash(&body.password, bcrypt::DEFAULT_COST).map_err(|e| {
                 tracing::error!("Failed to hash password: {e}");
                 StatusCode::INTERNAL_SERVER_ERROR
