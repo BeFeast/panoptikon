@@ -72,6 +72,14 @@ pub struct ScannerConfig {
     /// UDP port for the NetFlow collector (default 9995).
     #[serde(default = "default_netflow_port")]
     pub netflow_port: u16,
+
+    /// Enable passive mDNS/Bonjour discovery of device hostnames and services.
+    #[serde(default = "default_mdns_enabled")]
+    pub mdns_enabled: bool,
+}
+
+fn default_mdns_enabled() -> bool {
+    true
 }
 
 fn default_scan_interval() -> u64 {
@@ -99,6 +107,7 @@ impl Default for ScannerConfig {
             arp_settle_millis: default_arp_settle_millis(),
             netflow_enabled: false,
             netflow_port: default_netflow_port(),
+            mdns_enabled: default_mdns_enabled(),
         }
     }
 }

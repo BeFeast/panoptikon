@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use panoptikon_server::{api, config, db, netflow, scanner};
+use panoptikon_server::{api, config, db, mdns, netflow, scanner};
 use std::net::SocketAddr;
 use tracing::info;
 
@@ -113,6 +113,18 @@ async fn main() -> Result<()> {
         app_config.scanner.clone(),
         state.ws_hub.clone(),
     );
+
+    // Start the passive mDNS/Bonjour discovery if enabled.
+    if app_config.scanner.mdns_enabled {
+        info!("mDNS/Bonjour passive discovery enabled");
+        let mdns_pool = state.db.clone();
+        let mdns_config = app_config.clone();
+        tokio::spawn(async move {
+            mdns::start_mdns_discovery(mdns_pool, mdns_config).await;
+        });
+    } else {
+        info!("mDNS discovery disabled (set mdns_enabled = true in [scanner])");
+    }
 
     // Start the NetFlow v5 UDP collector if enabled.
     if app_config.scanner.netflow_enabled {

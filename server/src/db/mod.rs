@@ -19,6 +19,9 @@ const DEVICE_EVENTS_MIGRATION: &str = include_str!("migrations/004_device_events
 /// Migration 005: port_scans table for caching nmap scan results.
 const PORT_SCANS_MIGRATION: &str = include_str!("migrations/005_port_scans.sql");
 
+/// Migration 006: add mdns_services column to devices table.
+const MDNS_SERVICES_MIGRATION: &str = include_str!("migrations/006_mdns_services.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -144,6 +147,22 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
             .await?;
 
         info!("Applied migration 005_port_scans.sql");
+    }
+
+    // Migration 006: mdns_services column.
+    let applied_6: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 6")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_6 {
+        sqlx::raw_sql(MDNS_SERVICES_MIGRATION).execute(pool).await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (6)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 006_mdns_services.sql");
     }
 
     // Purge expired sessions on startup.
