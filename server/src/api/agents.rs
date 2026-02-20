@@ -3,7 +3,7 @@ use axum::{
         ws::{Message, WebSocket},
         Path, Query, State, WebSocketUpgrade,
     },
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     response::{IntoResponse, Response},
     Json,
 };
@@ -83,10 +83,16 @@ pub struct AgentMemInfo {
     pub swap_used_bytes: Option<i64>,
 }
 
-/// Agent WebSocket auth message (first message after connection).
+/// Agent WebSocket identification message (first message after connection).
+/// The API key is now supplied via the `Authorization: Bearer` header on the WS upgrade
+/// request; the message body only needs to carry `agent_id`. The `api_key` field is kept
+/// (optional) for backward compatibility with older agent versions.
 #[derive(Debug, Deserialize)]
 pub struct AgentAuthMessage {
-    pub api_key: String,
+    /// Ignored — API key is read from the `Authorization` header. Kept for backward compat.
+    #[serde(default)]
+    #[allow(dead_code)]
+    pub api_key: Option<String>,
     pub agent_id: String,
 }
 
@@ -245,9 +251,19 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> St
 }
 
 /// GET /api/v1/agent/ws — WebSocket endpoint for agent connections.
-/// Agents authenticate via the first message (API key).
-pub async fn ws_handler(ws: WebSocketUpgrade, State(state): State<AppState>) -> impl IntoResponse {
-    ws.on_upgrade(move |socket| handle_agent_ws(socket, state))
+/// Agents authenticate via `Authorization: Bearer <api_key>` header on the WS upgrade request.
+pub async fn ws_handler(
+    ws: WebSocketUpgrade,
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> impl IntoResponse {
+    let api_key = headers
+        .get("Authorization")
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.strip_prefix("Bearer "))
+        .map(|s| s.to_owned());
+
+    ws.on_upgrade(move |socket| handle_agent_ws(socket, state, api_key))
 }
 
 /// GET /api/v1/ws — WebSocket endpoint for UI live updates.
@@ -295,11 +311,11 @@ async fn handle_ui_ws(mut socket: WebSocket, state: AppState) {
 }
 
 /// Handle an individual agent WebSocket connection.
-async fn handle_agent_ws(mut socket: WebSocket, state: AppState) {
+async fn handle_agent_ws(mut socket: WebSocket, state: AppState, api_key: Option<String>) {
     info!("Agent WebSocket connection opened");
 
-    // Step 1: Wait for auth message.
-    let agent_id = match wait_for_auth(&mut socket, &state).await {
+    // Step 1: Verify agent via API key from Authorization header + agent_id from first message.
+    let agent_id = match wait_for_auth(&mut socket, &state, api_key).await {
         Some(id) => id,
         None => {
             warn!("Agent WebSocket: auth failed or timed out");
@@ -404,9 +420,23 @@ async fn handle_agent_ws(mut socket: WebSocket, state: AppState) {
         .broadcast("agent_offline", json!({"agent_id": &agent_id}));
 }
 
-/// Wait for the first message: an auth message containing the agent's API key.
-async fn wait_for_auth(socket: &mut WebSocket, state: &AppState) -> Option<String> {
-    // Give the agent 10 seconds to send auth.
+/// Wait for the agent's first message (containing its agent_id) and verify the API key
+/// that was supplied via the `Authorization: Bearer` header during the WS upgrade.
+async fn wait_for_auth(
+    socket: &mut WebSocket,
+    state: &AppState,
+    api_key: Option<String>,
+) -> Option<String> {
+    // Reject immediately if no API key was provided in the upgrade headers.
+    let api_key = match api_key {
+        Some(k) if !k.is_empty() => k,
+        _ => {
+            warn!("Agent WebSocket: no Authorization header provided");
+            return None;
+        }
+    };
+
+    // Give the agent 10 seconds to send its identification message.
     let timeout = tokio::time::Duration::from_secs(10);
     let msg = tokio::time::timeout(timeout, socket.recv()).await.ok()??;
 
@@ -417,7 +447,7 @@ async fn wait_for_auth(socket: &mut WebSocket, state: &AppState) -> Option<Strin
 
     let auth: AgentAuthMessage = serde_json::from_str(&text).ok()?;
 
-    // Verify the API key against the stored hash.
+    // Verify the API key (from header) against the stored hash for this agent.
     let row = sqlx::query("SELECT api_key_hash FROM agents WHERE id = ?")
         .bind(&auth.agent_id)
         .fetch_optional(&state.db)
@@ -426,7 +456,7 @@ async fn wait_for_auth(socket: &mut WebSocket, state: &AppState) -> Option<Strin
 
     let stored_hash: String = row.try_get("api_key_hash").ok()?;
 
-    if bcrypt::verify(&auth.api_key, &stored_hash).unwrap_or(false) {
+    if bcrypt::verify(&api_key, &stored_hash).unwrap_or(false) {
         Some(auth.agent_id)
     } else {
         warn!(agent_id = %auth.agent_id, "Agent API key verification failed");
