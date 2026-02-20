@@ -120,66 +120,10 @@ impl VyosClient {
 
     /// Run an iperf3 client command on VyOS targeting the given server IP.
     ///
-    /// Uses the VyOS `/show` endpoint with iperf3 arguments.
-    /// `reverse` controls the `--reverse` flag (upload measurement).
-    /// Returns the raw iperf3 JSON output as a string.
-    pub async fn run_iperf3(&self, server_ip: &str, reverse: bool) -> Result<String> {
-        // Build a client with a longer timeout (iperf3 --time 5 + overhead)
-        let iperf_http = reqwest::Client::builder()
-            .danger_accept_invalid_certs(true)
-            .timeout(Duration::from_secs(30))
-            .build()
-            .context("failed to build iperf3 reqwest client")?;
-
-        let mut path = vec!["iperf3", "--client", server_ip, "--time", "5", "--json"];
-        if reverse {
-            path.push("--reverse");
-        }
-
-        let data = serde_json::json!({
-            "op": "show",
-            "path": path,
-        });
-
-        let url = format!("{}/show", self.base_url);
-        let data_str = serde_json::to_string(&data)?;
-
-        let form = reqwest::multipart::Form::new()
-            .text("data", data_str)
-            .text("key", self.api_key.clone());
-
-        let resp = iperf_http
-            .post(&url)
-            .multipart(form)
-            .send()
-            .await
-            .context("VyOS iperf3 request failed")?;
-
-        let status = resp.status();
-        let body = resp
-            .text()
-            .await
-            .context("failed to read VyOS iperf3 response body")?;
-
-        if !status.is_success() {
-            anyhow::bail!("VyOS iperf3 returned HTTP {status}: {body}");
-        }
-
-        let parsed: VyosResponse =
-            serde_json::from_str(&body).context("failed to parse VyOS iperf3 response JSON")?;
-
-        if parsed.success {
-            Ok(parsed
-                .data
-                .and_then(|v| v.as_str().map(|s| s.to_string()))
-                .unwrap_or_default())
-        } else {
-            let err_msg = parsed
-                .error
-                .map(|e| e.to_string())
-                .unwrap_or_else(|| "unknown error".to_string());
-            anyhow::bail!("VyOS iperf3 error: {err_msg}");
-        }
+    /// **Deprecated**: This method used the VyOS HTTP API `show iperf3` command
+    /// which doesn't exist. Use [`crate::vyos::iperf3::run_iperf3_local`] instead.
+    pub async fn run_iperf3(&self, _server_ip: &str, _reverse: bool) -> Result<String> {
+        anyhow::bail!("VyOS API does not support 'show iperf3'. Use run_iperf3_local() instead.")
     }
 
     /// Low-level helper: send a multipart form POST to the VyOS API.

@@ -181,30 +181,12 @@ pub fn parse_iperf3_bps(json_str: &str) -> Result<f64, String> {
         .ok_or_else(|| "iperf3 JSON missing 'end.sum_received.bits_per_second' field".to_string())
 }
 
-/// Detect the local IP address that can reach the given target IP.
-fn detect_local_ip(target_host: &str) -> Option<String> {
-    use std::net::{IpAddr, UdpSocket};
-
-    // Parse the target as an IP, stripping any URL components
-    let ip_str = target_host
-        .trim_start_matches("https://")
-        .trim_start_matches("http://")
-        .split(':')
-        .next()
-        .unwrap_or(target_host);
-
-    let target_ip: IpAddr = ip_str.parse().ok()?;
-
-    let socket = UdpSocket::bind("0.0.0.0:0").ok()?;
-    socket.connect((target_ip, 80)).ok()?;
-    let addr = socket.local_addr().ok()?;
-    Some(addr.ip().to_string())
-}
-
 const SPEEDTEST_RATE_LIMIT_SECS: i64 = 60;
-const IPERF3_PORT: u16 = 5201;
 
-/// POST /api/v1/router/speedtest — run an iperf3 speed test via VyOS.
+/// POST /api/v1/router/speedtest — run a WAN speed test using iperf3 against public servers.
+///
+/// Does **not** require VyOS to be configured. Runs iperf3 locally on the
+/// Panoptikon server to measure internet throughput.
 pub async fn speedtest(
     State(state): State<AppState>,
 ) -> Result<Json<SpeedTestResult>, (StatusCode, Json<SpeedTestError>)> {
@@ -244,109 +226,38 @@ pub async fn speedtest(
         ));
     }
 
-    // Get VyOS client
-    let client = get_vyos_client_from_db(&state.db, &state.config)
-        .await
-        .ok_or_else(|| {
-            (
-                StatusCode::SERVICE_UNAVAILABLE,
-                Json(SpeedTestError {
-                    error: "VyOS router not configured".to_string(),
-                }),
-            )
-        })?;
+    tracing::info!("Starting WAN speed test via public iperf3 servers");
 
-    // Detect local IP that VyOS can reach
-    let (vyos_url, _) = get_vyos_settings(&state.db, &state.config).await;
-    let vyos_host = vyos_url.unwrap_or_default();
-    let local_ip = detect_local_ip(&vyos_host).ok_or_else(|| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(SpeedTestError {
-                error: "Could not detect local IP address".to_string(),
-            }),
-        )
-    })?;
+    // --- Download test (--reverse: server sends to us) ---
+    let (download_json, server_name) =
+        crate::vyos::iperf3::run_iperf3_local(true)
+            .await
+            .map_err(|e| {
+                tracing::error!("iperf3 download test failed: {e}");
+                (
+                    StatusCode::BAD_GATEWAY,
+                    Json(SpeedTestError {
+                        error: format!("Download test failed: {e}"),
+                    }),
+                )
+            })?;
 
-    tracing::info!(
-        "Starting speed test: iperf3 server on {local_ip}:{IPERF3_PORT}, VyOS client connecting back"
-    );
-
-    // --- Download test (VyOS sends to us → we receive = download from VyOS perspective) ---
-    // Spawn iperf3 server for download test
-    let mut iperf_server = tokio::process::Command::new("iperf3")
-        .args(["--server", "--one-off", "--port", &IPERF3_PORT.to_string()])
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .kill_on_drop(true)
-        .spawn()
-        .map_err(|e| {
-            tracing::error!("Failed to spawn iperf3 server: {e}");
-            (
+    let download_mbps = match parse_iperf3_bps(&download_json) {
+        Ok(bps) => bps / 1_000_000.0,
+        Err(e) => {
+            tracing::error!("Failed to parse download iperf3 result: {e}");
+            return Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(SpeedTestError {
-                    error: format!("Failed to spawn iperf3 server: {e}"),
-                }),
-            )
-        })?;
-
-    // Give the server a moment to bind
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-
-    // Run iperf3 client on VyOS (download: VyOS → Server, so no --reverse)
-    let download_result = client.run_iperf3(&local_ip, false).await;
-    let _ = iperf_server.kill().await;
-
-    let download_mbps = match download_result {
-        Ok(ref output) => match parse_iperf3_bps(output) {
-            Ok(bps) => bps / 1_000_000.0,
-            Err(e) => {
-                tracing::error!("Failed to parse download iperf3 result: {e}");
-                return Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(SpeedTestError {
-                        error: format!("Failed to parse iperf3 download result: {e}"),
-                    }),
-                ));
-            }
-        },
-        Err(e) => {
-            tracing::error!("VyOS iperf3 download test failed: {e}");
-            return Err((
-                StatusCode::BAD_GATEWAY,
-                Json(SpeedTestError {
-                    error: format!("VyOS iperf3 download test failed: {e}"),
+                    error: format!("Failed to parse iperf3 download result: {e}"),
                 }),
             ));
         }
     };
 
-    // --- Upload test (VyOS receives from us → --reverse flag) ---
-    // Spawn iperf3 server again for upload test
-    let mut iperf_server_upload = tokio::process::Command::new("iperf3")
-        .args(["--server", "--one-off", "--port", &IPERF3_PORT.to_string()])
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .kill_on_drop(true)
-        .spawn()
-        .map_err(|e| {
-            tracing::error!("Failed to spawn iperf3 server for upload: {e}");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(SpeedTestError {
-                    error: format!("Failed to spawn iperf3 server: {e}"),
-                }),
-            )
-        })?;
-
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-
-    // Run iperf3 client on VyOS with --reverse (Server → VyOS = upload)
-    let upload_result = client.run_iperf3(&local_ip, true).await;
-    let _ = iperf_server_upload.kill().await;
-
-    let upload_mbps = match upload_result {
-        Ok(ref output) => match parse_iperf3_bps(output) {
+    // --- Upload test (no --reverse: we send to server) ---
+    let upload_mbps = match crate::vyos::iperf3::run_iperf3_local(false).await {
+        Ok((upload_json, _)) => match parse_iperf3_bps(&upload_json) {
             Ok(bps) => bps / 1_000_000.0,
             Err(e) => {
                 tracing::error!("Failed to parse upload iperf3 result: {e}");
@@ -359,19 +270,18 @@ pub async fn speedtest(
             }
         },
         Err(e) => {
-            tracing::error!("VyOS iperf3 upload test failed: {e}");
+            tracing::error!("iperf3 upload test failed: {e}");
             return Err((
                 StatusCode::BAD_GATEWAY,
                 Json(SpeedTestError {
-                    error: format!("VyOS iperf3 upload test failed: {e}"),
+                    error: format!("Upload test failed: {e}"),
                 }),
             ));
         }
     };
 
-    // Estimate latency from the download result (iperf3 doesn't directly report latency,
-    // but we can use a rough estimate based on the connect time)
-    let latency_ms = 0.0; // iperf3 doesn't provide latency; could ping separately
+    // iperf3 doesn't provide latency; could ping separately
+    let latency_ms = 0.0;
 
     let result = SpeedTestResult {
         download_mbps: (download_mbps * 100.0).round() / 100.0,
@@ -387,7 +297,7 @@ pub async fn speedtest(
     }
 
     tracing::info!(
-        "Speed test complete: download={:.2} Mbps, upload={:.2} Mbps",
+        "WAN speed test complete via {server_name}: download={:.2} Mbps, upload={:.2} Mbps",
         result.download_mbps,
         result.upload_mbps
     );

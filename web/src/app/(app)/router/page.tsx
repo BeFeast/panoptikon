@@ -248,8 +248,8 @@ function SpeedTestSection() {
     setError(null);
     setProgress(0);
 
-    // Animate progress bar over ~12 seconds (download 5s + upload 5s + overhead)
-    const totalMs = 12000;
+    // Animate progress bar over ~15 seconds (download 5s + upload 5s + connection overhead)
+    const totalMs = 15000;
     const intervalMs = 100;
     const steps = totalMs / intervalMs;
     let step = 0;
@@ -271,7 +271,7 @@ function SpeedTestSection() {
         if (e.message.includes("429")) {
           setError("Rate limited — please wait 60 seconds between tests.");
         } else if (e.message.includes("503")) {
-          setError("iperf3 not available or VyOS not configured.");
+          setError("iperf3 not available on the server.");
         } else {
           setError(e.message);
         }
@@ -305,10 +305,10 @@ function SpeedTestSection() {
           <div className="space-y-1">
             <h3 className="flex items-center gap-2 text-base font-medium text-white">
               <Gauge className="h-4 w-4 text-blue-400" />
-              LAN Speed Test
+              Speed Test
             </h3>
             <p className="text-xs text-gray-500">
-              Measures throughput between VyOS router and Panoptikon server using
+              Measures internet throughput from the Panoptikon server using
               iperf3.
             </p>
           </div>
@@ -337,7 +337,7 @@ function SpeedTestSection() {
         <div className="space-y-2">
           <Progress value={progress} />
           <p className="text-center text-xs text-gray-500">
-            Running iperf3 test… download + upload (~12 seconds)
+            Running speed test… download + upload (~15 seconds)
           </p>
         </div>
       )}
@@ -405,8 +405,8 @@ function SpeedTestSection() {
       <div className="flex items-start gap-2 rounded-md border border-amber-500/20 bg-amber-500/5 px-4 py-3">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
         <p className="text-xs text-amber-400/80">
-          Speed test generates ~50 MB of traffic per run. Tests are rate limited
-          to once per 60 seconds.
+          Speed test measures WAN throughput to public iperf3 servers. Tests are
+          rate limited to once per 60 seconds.
         </p>
       </div>
     </div>
