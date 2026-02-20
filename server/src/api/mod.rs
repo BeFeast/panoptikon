@@ -6,6 +6,7 @@ use axum::{
 };
 use sqlx::SqlitePool;
 use std::sync::Arc;
+use tokio::sync::Mutex;
 use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
@@ -28,6 +29,7 @@ pub struct AppState {
     pub config: AppConfig,
     pub ws_hub: Arc<WsHub>,
     pub rate_limiter: auth::LoginRateLimiter,
+    pub last_speedtest: Arc<Mutex<Option<vyos::SpeedTestResult>>>,
 }
 
 impl AppState {
@@ -38,6 +40,7 @@ impl AppState {
             config,
             ws_hub: WsHub::new(),
             rate_limiter: auth::LoginRateLimiter::new(),
+            last_speedtest: Arc::new(Mutex::new(None)),
         }
     }
 }
@@ -103,6 +106,8 @@ pub fn router(state: AppState) -> Router {
         .route("/vyos/routes", get(vyos::routes))
         .route("/vyos/dhcp-leases", get(vyos::dhcp_leases))
         .route("/vyos/firewall", get(vyos::firewall))
+        // Speed test
+        .route("/router/speedtest", post(vyos::speedtest))
         // Traffic
         .route("/traffic/history", get(traffic::history))
         // WebSocket for UI live updates

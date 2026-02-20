@@ -120,6 +120,13 @@ export interface RouterStatus {
   hostname: string | null;
 }
 
+export interface SpeedTestResult {
+  download_mbps: number;
+  upload_mbps: number;
+  latency_ms: number;
+  tested_at: string;
+}
+
 export interface SettingsData {
   webhook_url: string | null;
   vyos_url: string | null;
