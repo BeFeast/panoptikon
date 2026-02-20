@@ -4,4 +4,5 @@ pub mod db;
 pub mod oui;
 pub mod scanner;
 pub mod vyos;
+pub mod webhook;
 pub mod ws;

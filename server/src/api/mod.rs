@@ -17,6 +17,7 @@ pub mod alerts;
 pub mod auth;
 pub mod dashboard;
 pub mod devices;
+pub mod settings;
 pub mod vyos;
 
 /// Shared application state available to all handlers.
@@ -83,6 +84,10 @@ pub fn router(state: AppState) -> Router {
         // Alerts
         .route("/alerts", get(alerts::list))
         .route("/alerts/:id/read", post(alerts::mark_read))
+        // Settings
+        .route("/settings", get(settings::get_settings))
+        .route("/settings", patch(settings::update_settings))
+        .route("/settings/test-webhook", post(settings::test_webhook))
         // VyOS proxy
         .route("/vyos/interfaces", get(vyos::interfaces))
         .route("/vyos/routes", get(vyos::routes))

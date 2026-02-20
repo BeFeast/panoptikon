@@ -187,4 +187,45 @@ mod tests {
 
         assert_eq!(version, 1, "Migration version 1 should be recorded");
     }
+
+    #[tokio::test]
+    async fn test_settings_get_default_empty() {
+        let pool = init(":memory:").await.expect("DB init failed");
+
+        let row: Option<(String,)> =
+            sqlx::query_as(r#"SELECT value FROM settings WHERE key = 'webhook_url'"#)
+                .fetch_optional(&pool)
+                .await
+                .expect("Query failed");
+
+        assert!(row.is_none(), "Fresh DB should have no webhook_url setting");
+    }
+
+    #[tokio::test]
+    async fn test_settings_set_and_get() {
+        let pool = init(":memory:").await.expect("DB init failed");
+
+        let url = "https://example.com/webhook";
+
+        sqlx::query(
+            r#"INSERT INTO settings (key, value) VALUES ('webhook_url', ?)
+               ON CONFLICT(key) DO UPDATE SET value = excluded.value"#,
+        )
+        .bind(url)
+        .execute(&pool)
+        .await
+        .expect("Insert failed");
+
+        let row: Option<(String,)> =
+            sqlx::query_as(r#"SELECT value FROM settings WHERE key = 'webhook_url'"#)
+                .fetch_optional(&pool)
+                .await
+                .expect("Query failed");
+
+        assert_eq!(
+            row.map(|(v,)| v),
+            Some(url.to_string()),
+            "webhook_url should be readable after set"
+        );
+    }
 }
