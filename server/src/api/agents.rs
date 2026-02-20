@@ -43,7 +43,7 @@ pub async fn list_reports(
     Path(id): Path<String>,
     Query(params): Query<ReportsQuery>,
 ) -> Result<Json<Vec<AgentReportRow>>, StatusCode> {
-    let limit = params.limit.min(500).max(1);
+    let limit = params.limit.clamp(1, 500);
 
     let rows = sqlx::query_as::<_, (i64, Option<f64>, Option<i64>, Option<i64>, String)>(
         r#"SELECT id, cpu_percent, mem_used, mem_total, reported_at
