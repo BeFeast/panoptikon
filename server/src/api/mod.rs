@@ -94,6 +94,9 @@ pub fn router(state: AppState) -> Router {
         // Alerts
         .route("/alerts", get(alerts::list))
         .route("/alerts/:id/read", post(alerts::mark_read))
+        .route("/alerts/:id/acknowledge", post(alerts::acknowledge))
+        // Device mute
+        .route("/devices/:id/mute", post(alerts::mute_device))
         // Settings
         .route("/settings", get(settings::get_settings))
         .route("/settings", patch(settings::update_settings))

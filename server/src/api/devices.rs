@@ -43,6 +43,9 @@ pub struct Device {
     /// Linked agent summary (if any)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agent: Option<AgentSummary>,
+    /// Muted until timestamp (if device is muted)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub muted_until: Option<String>,
 }
 
 /// Request body for creating a device.
@@ -94,6 +97,7 @@ impl Device {
             ips: vec![], // populated after query
             mdns_services: row.try_get("mdns_services").unwrap_or(None),
             agent,
+            muted_until: row.try_get("muted_until").unwrap_or(None),
         })
     }
 }
@@ -104,7 +108,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Device>>, St
         r#"
         SELECT d.id, d.mac, d.name, d.hostname, d.vendor, d.icon, d.notes,
                d.is_known, d.is_favorite, d.first_seen_at, d.last_seen_at, d.is_online,
-               d.mdns_services,
+               d.mdns_services, d.muted_until,
                a.id AS agent_id,
                a.name AS agent_name,
                r.cpu_percent AS agent_cpu_percent,
@@ -165,7 +169,7 @@ pub async fn get_one(
         r#"
         SELECT d.id, d.mac, d.name, d.hostname, d.vendor, d.icon, d.notes,
                d.is_known, d.is_favorite, d.first_seen_at, d.last_seen_at, d.is_online,
-               d.mdns_services,
+               d.mdns_services, d.muted_until,
                a.id AS agent_id,
                a.name AS agent_name,
                r.cpu_percent AS agent_cpu_percent,
@@ -254,6 +258,7 @@ pub async fn create(
         ips: vec![],
         mdns_services: None,
         agent: None,
+        muted_until: None,
     };
 
     Ok((StatusCode::CREATED, Json(device)))
@@ -898,7 +903,7 @@ mod tests {
             r#"
             SELECT d.id, d.mac, d.name, d.hostname, d.vendor, d.icon, d.notes,
                    d.is_known, d.is_favorite, d.first_seen_at, d.last_seen_at, d.is_online,
-                   d.mdns_services,
+                   d.mdns_services, d.muted_until,
                    a.id AS agent_id,
                    a.name AS agent_name,
                    r.cpu_percent AS agent_cpu_percent,

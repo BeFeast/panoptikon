@@ -23,6 +23,8 @@ export interface Device {
   /** mDNS/Bonjour discovered service types (comma-separated). */
   mdns_services?: string | null;
   agent?: AgentSummary | null;
+  /** Muted until timestamp (if device is muted). */
+  muted_until?: string | null;
 }
 
 export interface AgentSummary {
@@ -71,6 +73,9 @@ export interface Alert {
   message: string;
   details: string | null;
   is_read: boolean;
+  severity: "INFO" | "WARNING" | "CRITICAL";
+  acknowledged_at: string | null;
+  acknowledged_by: string | null;
   created_at: string;
 }
 

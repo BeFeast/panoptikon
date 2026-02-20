@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Cpu, Loader2, LayoutGrid, List, MemoryStick, Power, Radar, Search, Wifi, WifiOff } from "lucide-react";
+import { ArrowDown, ArrowUp, Cpu, Loader2, LayoutGrid, List, MemoryStick, Power, Radar, Search, VolumeX, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -582,6 +582,16 @@ function DeviceInfoTab({
       <InfoRow label="First Seen" value={timeAgo(device.first_seen_at)} />
       <InfoRow label="Last Seen" value={timeAgo(device.last_seen_at)} />
       <InfoRow label="Status" value={device.is_known ? "Known" : "Unacknowledged"} />
+
+      {/* Muted status */}
+      {device.muted_until && new Date(device.muted_until) > new Date() && (
+        <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+          <VolumeX className="h-4 w-4 text-amber-400" />
+          <span className="text-sm text-amber-400">
+            Muted until {new Date(device.muted_until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          </span>
+        </div>
+      )}
 
       {/* All IPs */}
       {ips.length > 1 && (
