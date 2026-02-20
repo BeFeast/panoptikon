@@ -322,43 +322,55 @@ async fn process_scan_results(
     }
 
     // --- Phase 1b: Batch reverse DNS lookups with bounded concurrency ---
+    // Deduplicate by device_id in case the same device appeared more than once in the scan.
+    dns_targets.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+    dns_targets.dedup_by(|a, b| a.0 == b.0);
+
+    // If the system resolver config cannot be loaded, skip DNS entirely — the default
+    // resolver (8.8.8.8 / 1.1.1.1) will not resolve local PTR records anyway.
+    let dns_resolver = match TokioAsyncResolver::tokio_from_system_conf() {
+        Ok(r) => Some(r),
+        Err(e) => {
+            warn!(error = %e, "Failed to load system DNS config; skipping reverse DNS for this scan cycle");
+            None
+        }
+    };
+
     if !dns_targets.is_empty() {
-        let resolver = TokioAsyncResolver::tokio_from_system_conf().unwrap_or_else(|e| {
-            warn!(error = %e, "Failed to load system DNS config, falling back to defaults");
-            TokioAsyncResolver::tokio(Default::default(), Default::default())
-        });
-        let resolver = Arc::new(resolver);
+        if let Some(resolver) = dns_resolver {
+            let resolver = Arc::new(resolver);
 
-        let mut join_set: JoinSet<(String, String, Option<String>)> = JoinSet::new();
+            let mut join_set: JoinSet<(String, String, Option<String>)> = JoinSet::new();
 
-        for (device_id, ip) in dns_targets {
-            // Limit concurrency: when at the cap, wait for one to finish before spawning.
-            if join_set.len() >= DNS_CONCURRENCY_LIMIT {
-                match join_set.join_next().await {
-                    Some(Ok((did, dip, hostname))) => {
-                        update_hostname(db, &did, &dip, hostname.as_deref(), &now).await;
+            for (device_id, ip) in dns_targets {
+                // Limit concurrency: when at the cap, wait for one to finish before spawning.
+                if join_set.len() >= DNS_CONCURRENCY_LIMIT {
+                    match join_set.join_next().await {
+                        Some(Ok((did, dip, hostname))) => {
+                            update_hostname(db, &did, &dip, hostname.as_deref(), &now).await;
+                        }
+                        Some(Err(e)) => warn!(error = %e, "DNS lookup task failed"),
+                        None => {}
                     }
-                    Some(Err(e)) => warn!(error = %e, "DNS lookup task failed"),
-                    None => {}
                 }
+
+                let resolver = Arc::clone(&resolver);
+                join_set.spawn(async move {
+                    let hostname = reverse_dns_lookup(&resolver, &ip).await;
+                    (device_id, ip, hostname)
+                });
             }
 
-            let resolver = Arc::clone(&resolver);
-            join_set.spawn(async move {
-                let hostname = reverse_dns_lookup(&resolver, &ip).await;
-                (device_id, ip, hostname)
-            });
-        }
-
-        // Drain remaining tasks.
-        while let Some(result) = join_set.join_next().await {
-            match result {
-                Ok((device_id, ip, hostname)) => {
-                    update_hostname(db, &device_id, &ip, hostname.as_deref(), &now).await;
+            // Drain remaining tasks.
+            while let Some(result) = join_set.join_next().await {
+                match result {
+                    Ok((device_id, ip, hostname)) => {
+                        update_hostname(db, &device_id, &ip, hostname.as_deref(), &now).await;
+                    }
+                    Err(e) => warn!(error = %e, "DNS lookup task failed"),
                 }
-                Err(e) => warn!(error = %e, "DNS lookup task failed"),
             }
-        }
+        } // end if let Some(resolver)
     }
 
     // --- Phase 2: Mark stale devices as offline ---
