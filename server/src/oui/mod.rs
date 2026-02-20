@@ -1,55 +1,83 @@
 /// MAC address vendor lookup (OUI — Organizationally Unique Identifier).
 ///
-/// In the future, this will embed the IEEE MA-L database at compile time.
-/// For now, it provides a stub implementation with a handful of common vendors.
+/// Embeds the IEEE MA-L (Manufacturer Assignment - Large) database at compile time.
+/// The database is a trimmed TSV file with ~39k entries mapping 3-byte OUI prefixes
+/// to vendor names.
 use std::collections::HashMap;
-use std::sync::LazyLock;
+use std::sync::OnceLock;
 
-/// Static mapping of common MAC prefixes to vendor names.
-/// This is a placeholder — the real implementation will embed the full IEEE OUI database.
-static OUI_DB: LazyLock<HashMap<&'static str, &'static str>> = LazyLock::new(|| {
-    let mut m = HashMap::new();
-    m.insert("00:50:56", "VMware");
-    m.insert("00:0C:29", "VMware");
-    m.insert("52:54:00", "QEMU/KVM");
-    m.insert("08:00:27", "VirtualBox");
-    m.insert("DC:A6:32", "Raspberry Pi");
-    m.insert("B8:27:EB", "Raspberry Pi");
-    m.insert("E4:5F:01", "Raspberry Pi");
-    m.insert("AA:BB:CC", "Apple, Inc."); // Placeholder
-    m.insert("3C:22:FB", "Apple, Inc.");
-    m.insert("F8:FF:C2", "Apple, Inc.");
-    m.insert("A4:83:E7", "Apple, Inc.");
-    m.insert("60:03:08", "Apple, Inc.");
-    m.insert("AC:DE:48", "Apple, Inc.");
-    m.insert("28:6C:07", "XIAOMI");
-    m.insert("7C:49:EB", "Samsung");
-    m.insert("E8:6F:38", "TP-Link");
-    m.insert("30:B5:C2", "TP-Link");
-    m.insert("B0:BE:76", "TP-Link");
-    m.insert("3C:84:6A", "TP-Link");
-    m.insert("FC:EC:DA", "Ubiquiti");
-    m.insert("80:2A:A8", "Ubiquiti");
-    m.insert("68:D7:9A", "Ubiquiti");
-    m
-});
+/// Raw OUI database embedded at compile time.
+/// Format: one line per entry, `HEXPREFIX\tVendorName\n` (e.g., `001122\tAcme Corp\n`).
+static OUI_RAW: &str = include_str!("oui_db.csv");
 
-/// Look up the vendor name for a given MAC address.
-///
-/// Returns `None` if the MAC prefix is not in the database.
-pub fn lookup(mac: &str) -> Option<&'static str> {
-    // Normalize: uppercase, colon-separated.
-    let mac_upper = mac.to_uppercase();
+/// Parsed OUI database: maps 3-byte prefix to vendor name.
+static OUI_DB: OnceLock<HashMap<[u8; 3], String>> = OnceLock::new();
 
-    // Try the first 3 octets (OUI-24, most common).
-    if mac_upper.len() >= 8 {
-        let prefix = &mac_upper[..8]; // "AA:BB:CC"
-        if let Some(vendor) = OUI_DB.get(prefix) {
-            return Some(vendor);
+/// Parse a hex character to its nibble value.
+fn hex_nibble(b: u8) -> Option<u8> {
+    match b {
+        b'0'..=b'9' => Some(b - b'0'),
+        b'A'..=b'F' => Some(b - b'A' + 10),
+        b'a'..=b'f' => Some(b - b'a' + 10),
+        _ => None,
+    }
+}
+
+/// Parse a 6-character hex string into 3 bytes.
+fn parse_hex_prefix(s: &str) -> Option<[u8; 3]> {
+    let b = s.as_bytes();
+    if b.len() != 6 {
+        return None;
+    }
+    Some([
+        (hex_nibble(b[0])? << 4) | hex_nibble(b[1])?,
+        (hex_nibble(b[2])? << 4) | hex_nibble(b[3])?,
+        (hex_nibble(b[4])? << 4) | hex_nibble(b[5])?,
+    ])
+}
+
+/// Initialize the OUI database from the embedded data.
+fn init_db() -> HashMap<[u8; 3], String> {
+    let mut map = HashMap::with_capacity(40_000);
+    for line in OUI_RAW.lines() {
+        if let Some((hex, vendor)) = line.split_once('\t') {
+            if let Some(prefix) = parse_hex_prefix(hex.trim()) {
+                let vendor = vendor.trim();
+                if !vendor.is_empty() {
+                    map.insert(prefix, vendor.to_string());
+                }
+            }
         }
     }
+    map
+}
 
-    None
+/// Extract the 3-byte OUI prefix from a MAC address string.
+///
+/// Supports formats:
+/// - Colon-separated: `aa:bb:cc:dd:ee:ff`
+/// - Dash-separated: `aa-bb-cc-dd-ee-ff`
+/// - No separator: `aabbccddeeff`
+fn extract_oui_bytes(mac: &str) -> Option<[u8; 3]> {
+    let bytes: Vec<u8> = mac.bytes().filter(|b| b.is_ascii_hexdigit()).collect();
+    if bytes.len() < 6 {
+        return None;
+    }
+    Some([
+        (hex_nibble(bytes[0])? << 4) | hex_nibble(bytes[1])?,
+        (hex_nibble(bytes[2])? << 4) | hex_nibble(bytes[3])?,
+        (hex_nibble(bytes[4])? << 4) | hex_nibble(bytes[5])?,
+    ])
+}
+
+/// Look up the vendor name for a given MAC address string.
+///
+/// Accepts common MAC formats (colon-separated, dash-separated, plain hex).
+/// Returns `None` if the OUI prefix is not in the database.
+pub fn lookup(mac: &str) -> Option<&'static str> {
+    let db = OUI_DB.get_or_init(init_db);
+    let prefix = extract_oui_bytes(mac)?;
+    db.get(&prefix).map(|s| s.as_str())
 }
 
 #[cfg(test)]
@@ -57,47 +85,67 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_known_vendor() {
-        assert_eq!(lookup("52:54:00:12:34:56"), Some("QEMU/KVM"));
-        assert_eq!(lookup("dc:a6:32:ab:cd:ef"), Some("Raspberry Pi"));
+    fn test_parse_hex_prefix() {
+        assert_eq!(parse_hex_prefix("286FB9"), Some([0x28, 0x6F, 0xB9]));
+        assert_eq!(parse_hex_prefix("286fb9"), Some([0x28, 0x6F, 0xB9]));
+        assert_eq!(parse_hex_prefix("ABCDE"), None); // too short
     }
 
     #[test]
-    fn test_unknown_vendor() {
+    fn test_extract_oui_bytes() {
+        // Colon-separated
+        assert_eq!(
+            extract_oui_bytes("28:6f:b9:12:34:56"),
+            Some([0x28, 0x6F, 0xB9])
+        );
+        // Dash-separated
+        assert_eq!(
+            extract_oui_bytes("28-6F-B9-12-34-56"),
+            Some([0x28, 0x6F, 0xB9])
+        );
+        // Plain hex
+        assert_eq!(extract_oui_bytes("286fb9123456"), Some([0x28, 0x6F, 0xB9]));
+        // Too short
+        assert_eq!(extract_oui_bytes("28:6f"), None);
+    }
+
+    #[test]
+    fn test_lookup_known_vendor() {
+        // 286FB9 = Nokia Shanghai Bell Co., Ltd. (first entry in database)
+        let result = lookup("28:6f:b9:12:34:56");
+        assert!(result.is_some(), "Expected to find vendor for 28:6F:B9");
+        assert!(
+            result.unwrap().contains("Nokia"),
+            "Expected Nokia in vendor name, got: {}",
+            result.unwrap()
+        );
+    }
+
+    #[test]
+    fn test_lookup_case_insensitive() {
+        let upper = lookup("28:6F:B9:AB:CD:EF");
+        let lower = lookup("28:6f:b9:ab:cd:ef");
+        assert_eq!(upper, lower, "OUI lookup should be case-insensitive");
+    }
+
+    #[test]
+    fn test_lookup_unknown_vendor() {
         assert_eq!(lookup("FF:FF:FF:FF:FF:FF"), None);
         assert_eq!(lookup("ff:ff:ff:ff:ff:ff"), None);
-        // A made-up prefix not in the table.
-        assert_eq!(lookup("11:22:33:44:55:66"), None);
     }
 
     #[test]
-    fn test_known_vendors_vmware() {
-        assert_eq!(lookup("00:50:56:ab:cd:ef"), Some("VMware"));
-        assert_eq!(lookup("00:0c:29:ab:cd:ef"), Some("VMware"));
-    }
-
-    #[test]
-    fn test_known_vendors_qemu_kvm() {
-        assert_eq!(lookup("52:54:00:ab:cd:ef"), Some("QEMU/KVM"));
-    }
-
-    #[test]
-    fn test_known_vendors_virtualbox() {
-        assert_eq!(lookup("08:00:27:ab:cd:ef"), Some("VirtualBox"));
-    }
-
-    #[test]
-    fn test_case_insensitive() {
-        // The lookup uppercases the input, so both cases should match.
-        let upper = lookup("00:50:56:AB:CD:EF");
-        let lower = lookup("00:50:56:ab:cd:ef");
-        assert_eq!(upper, lower, "OUI lookup should be case-insensitive");
-        assert_eq!(upper, Some("VMware"));
-    }
-
-    #[test]
-    fn test_short_mac_returns_none() {
-        // A MAC that's too short to have a full 8-char prefix should return None.
+    fn test_lookup_short_mac_returns_none() {
         assert_eq!(lookup("00:50"), None);
+    }
+
+    #[test]
+    fn test_db_has_entries() {
+        let db = OUI_DB.get_or_init(init_db);
+        assert!(
+            db.len() > 30_000,
+            "Expected >30k OUI entries, got {}",
+            db.len()
+        );
     }
 }
