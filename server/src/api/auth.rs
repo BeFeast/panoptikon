@@ -284,3 +284,247 @@ fn extract_session_token(req: &Request) -> Option<String> {
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::db;
+
+    /// Helper: create a fresh in-memory database with all migrations applied.
+    async fn test_db() -> sqlx::SqlitePool {
+        db::init(":memory:")
+            .await
+            .expect("in-memory DB init failed")
+    }
+
+    // ── Auth-side tests ──────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_valid_session_found() {
+        let pool = test_db().await;
+
+        sqlx::query(
+            "INSERT INTO sessions (token, expires_at) VALUES ('tok_valid', datetime('now', '+3600 seconds'))",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sessions WHERE token = 'tok_valid' AND expires_at > datetime('now')",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+        assert_eq!(
+            count, 1,
+            "A session expiring in the future must be found by the auth query"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_expired_session_rejected() {
+        let pool = test_db().await;
+
+        sqlx::query(
+            "INSERT INTO sessions (token, expires_at) VALUES ('tok_expired', datetime('now', '-1 second'))",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sessions WHERE token = 'tok_expired' AND expires_at > datetime('now')",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+        assert_eq!(
+            count, 0,
+            "An expired session must NOT be returned by the auth query"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_boundary_session_rejected() {
+        let pool = test_db().await;
+
+        // Insert a session whose expires_at is exactly "now".
+        // With strict `>` the session must NOT be considered valid.
+        sqlx::query(
+            "INSERT INTO sessions (token, expires_at) VALUES ('tok_boundary', datetime('now'))",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sessions WHERE token = 'tok_boundary' AND expires_at > datetime('now')",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+        assert_eq!(
+            count, 0,
+            "A session expiring at exactly 'now' must NOT pass the auth check (strict >)"
+        );
+    }
+
+    // ── Purge-side tests ─────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_purge_removes_expired() {
+        let pool = test_db().await;
+
+        // One expired, one valid.
+        sqlx::query(
+            "INSERT INTO sessions (token, expires_at) VALUES \
+             ('tok_old', datetime('now', '-1 second')), \
+             ('tok_fresh', datetime('now', '+3600 seconds'))",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        // Purge (must use <=, matching production code in db::run_migrations).
+        sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let remaining: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sessions")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            remaining, 1,
+            "Only the valid session should survive the purge"
+        );
+
+        // Make sure the surviving session is the right one.
+        let token: String = sqlx::query_scalar("SELECT token FROM sessions")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            token, "tok_fresh",
+            "The surviving session must be the valid one"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_purge_removes_boundary_expired() {
+        // REGRESSION TEST: with the old `< datetime('now')` a boundary session
+        // was never purged. The fix changed it to `<=`.
+        let pool = test_db().await;
+
+        sqlx::query(
+            "INSERT INTO sessions (token, expires_at) VALUES ('tok_boundary', datetime('now'))",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let remaining: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sessions")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            remaining, 0,
+            "Purge with <= must remove a session expiring at exactly 'now' \
+             (this is the regression that the < vs <= bug would have missed)"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_purge_keeps_valid_sessions() {
+        let pool = test_db().await;
+
+        sqlx::query(
+            "INSERT INTO sessions (token, expires_at) VALUES ('tok_future', datetime('now', '+3600 seconds'))",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM sessions")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(
+            count, 1,
+            "Purge must NOT delete sessions that are still valid"
+        );
+    }
+
+    // ── Meta-regression: auth + purge consistency ────────────────────
+
+    #[tokio::test]
+    async fn test_auth_purge_consistency() {
+        // A session at exact boundary must be:
+        //   1. Rejected by auth (expires_at > datetime('now') → false)
+        //   2. Cleaned up by purge (expires_at <= datetime('now') → true)
+        // If EITHER side used the wrong operator, sessions would leak.
+        let pool = test_db().await;
+
+        sqlx::query(
+            "INSERT INTO sessions (token, expires_at) VALUES ('tok_edge', datetime('now'))",
+        )
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        // 1. Auth check: must NOT find the session.
+        let auth_found: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sessions WHERE token = 'tok_edge' AND expires_at > datetime('now')",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+        assert_eq!(
+            auth_found, 0,
+            "Auth must reject a boundary-expired session (strict >)"
+        );
+
+        // 2. Purge: must delete the session.
+        let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
+            .execute(&pool)
+            .await
+            .unwrap()
+            .rows_affected();
+
+        assert!(
+            deleted >= 1,
+            "Purge must remove the boundary-expired session (<=)"
+        );
+
+        // 3. Consistency: nothing left behind.
+        let leftover: i64 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM sessions WHERE token = 'tok_edge'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+
+        assert_eq!(
+            leftover, 0,
+            "A session rejected by auth must also be cleaned up by purge — no leaks"
+        );
+    }
+}
