@@ -330,7 +330,7 @@ pub async fn logout(State(state): State<AppState>, req: Request) -> impl IntoRes
     let mut response = StatusCode::NO_CONTENT.into_response();
     response.headers_mut().insert(
         header::SET_COOKIE,
-        header::HeaderValue::from_str(&cookie).expect("cookie value is always valid ASCII"),
+        header::HeaderValue::from_str(cookie).expect("cookie value is always valid ASCII"),
     );
     response
 }
