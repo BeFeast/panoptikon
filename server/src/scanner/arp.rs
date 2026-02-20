@@ -35,16 +35,27 @@ pub async fn ping_sweep(subnet: &str) {
 
     // Iterate host IPs without collecting into a Vec — avoids allocating
     // potentially tens of thousands of strings for large CIDRs (/16, etc.).
-    // Exclude the network address (first) and broadcast address (last) explicitly
-    // using the network/broadcast values, which is correct for all prefix lengths.
+    //
+    // RFC 3021: /31 subnets have no network/broadcast — both addresses are
+    // valid hosts. /32 is a single-host route. For prefix >= 31, include all
+    // addresses; otherwise exclude network (first) and broadcast (last).
+    let prefix_len = v4net.prefix();
     let net_addr = v4net.network();
     let bcast_addr = v4net.broadcast();
-    let host_iter = v4net
-        .iter()
-        .filter(move |ip| *ip != net_addr && *ip != bcast_addr);
+    let host_iter = v4net.iter().filter(move |ip| {
+        if prefix_len >= 31 {
+            true
+        } else {
+            *ip != net_addr && *ip != bcast_addr
+        }
+    });
 
-    // Count hosts for logging (cheap — just prefix math).
-    let host_count = v4net.size().saturating_sub(2).max(0);
+    // Count hosts for logging.
+    let host_count = if prefix_len >= 31 {
+        v4net.size()
+    } else {
+        v4net.size().saturating_sub(2).max(0)
+    };
 
     info!(
         subnet = %subnet,
