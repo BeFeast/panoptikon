@@ -324,7 +324,7 @@ async fn process_scan_results(
     // --- Phase 1b: Batch reverse DNS lookups with bounded concurrency ---
     if !dns_targets.is_empty() {
         let resolver = TokioAsyncResolver::tokio_from_system_conf().unwrap_or_else(|e| {
-            warn!("Failed to load system DNS config, falling back to defaults: {e}");
+            warn!(error = %e, "Failed to load system DNS config, falling back to defaults");
             TokioAsyncResolver::tokio(Default::default(), Default::default())
         });
         let resolver = Arc::new(resolver);
@@ -338,7 +338,7 @@ async fn process_scan_results(
                     Some(Ok((did, dip, hostname))) => {
                         update_hostname(db, &did, &dip, hostname.as_deref(), &now).await;
                     }
-                    Some(Err(e)) => warn!("DNS lookup task failed: {e}"),
+                    Some(Err(e)) => warn!(error = %e, "DNS lookup task failed"),
                     None => {}
                 }
             }
@@ -356,7 +356,7 @@ async fn process_scan_results(
                 Ok((device_id, ip, hostname)) => {
                     update_hostname(db, &device_id, &ip, hostname.as_deref(), &now).await;
                 }
-                Err(e) => warn!("DNS lookup task failed: {e}"),
+                Err(e) => warn!(error = %e, "DNS lookup task failed"),
             }
         }
     }
