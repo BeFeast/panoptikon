@@ -88,7 +88,7 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
     }
 
     // Purge expired sessions on startup.
-    let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at < datetime('now')")
+    let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
         .await?
         .rows_affected();

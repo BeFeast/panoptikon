@@ -76,7 +76,7 @@ async fn main() -> Result<()> {
             interval.tick().await; // skip the immediate first tick
             loop {
                 interval.tick().await;
-                match sqlx::query("DELETE FROM sessions WHERE expires_at < datetime('now')")
+                match sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
                     .execute(&cleanup_pool)
                     .await
                 {
