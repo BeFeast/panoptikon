@@ -90,9 +90,9 @@ export interface TopDevice {
 
 export interface AuthStatus {
   authenticated: boolean;
-  first_run: boolean;
+  needs_setup: boolean;
 }
 
 export interface LoginResponse {
-  token: string;
+  message: string;
 }
