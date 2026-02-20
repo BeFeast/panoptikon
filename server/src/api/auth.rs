@@ -34,56 +34,82 @@ impl LoginRateLimiter {
         }
     }
 
-    /// Check if the given IP has exceeded the rate limit.
-    /// Returns `Some(retry_after_secs)` if the limit is exceeded.
-    pub fn check(&self, ip: &IpAddr) -> Option<u64> {
-        let window = std::time::Duration::from_secs(RATE_LIMIT_WINDOW_SECS);
-        let now = Instant::now();
-
-        if let Some(mut entry) = self.attempts.get_mut(ip) {
-            // Prune expired entries.
-            entry.retain(|t| now.duration_since(*t) < window);
-            if entry.len() >= MAX_LOGIN_ATTEMPTS {
-                let oldest = entry.first().unwrap();
-                let elapsed = now.duration_since(*oldest);
-                let retry_after = window.saturating_sub(elapsed).as_secs().max(1);
-                return Some(retry_after);
-            }
-        }
-        None
-    }
-
-    /// Record a failed login attempt for the given IP.
-    pub fn record_failure(&self, ip: &IpAddr) {
+    /// Atomically check the rate limit and, if not exceeded, reserve a slot.
+    ///
+    /// Returns `Some(retry_after_secs)` if the limit is already hit (caller
+    /// should return 429 immediately). Returns `None` if the attempt is allowed
+    /// and has been recorded in a single lock operation, preventing the TOCTOU
+    /// race that would occur if check and record were separate calls.
+    ///
+    /// On successful authentication call [`clear`] to remove the reserved slot.
+    pub fn try_login_attempt(&self, ip: &IpAddr) -> Option<u64> {
         let window = std::time::Duration::from_secs(RATE_LIMIT_WINDOW_SECS);
         let now = Instant::now();
 
         let mut entry = self.attempts.entry(*ip).or_default();
+        // Prune timestamps outside the sliding window.
         entry.retain(|t| now.duration_since(*t) < window);
+
+        if entry.len() >= MAX_LOGIN_ATTEMPTS {
+            // Limit hit — return retry-after without reserving another slot.
+            let oldest = entry.first().unwrap();
+            let elapsed = now.duration_since(*oldest);
+            let retry_after = window.saturating_sub(elapsed).as_secs().max(1);
+            return Some(retry_after);
+        }
+
+        // Reserve a slot by recording this attempt now.
         entry.push(now);
+        None
     }
 
-    /// Clear the rate-limit counter for the given IP (on successful login).
+    /// Clear the rate-limit counter for the given IP (call on successful login).
     pub fn clear(&self, ip: &IpAddr) {
         self.attempts.remove(ip);
+    }
+
+    /// Remove all entries whose window has fully expired.
+    /// Call periodically to prevent unbounded map growth from IPs that
+    /// fail but never succeed (and thus never get cleared).
+    pub fn cleanup_stale(&self) {
+        let window = std::time::Duration::from_secs(RATE_LIMIT_WINDOW_SECS);
+        let now = Instant::now();
+        self.attempts.retain(|_, attempts| {
+            attempts.retain(|t| now.duration_since(*t) < window);
+            !attempts.is_empty()
+        });
     }
 }
 
 /// Extract the real client IP address.
-/// Checks `X-Forwarded-For` first (for reverse-proxy setups), then falls back
-/// to the TCP peer address from `ConnectInfo`.
-fn extract_client_ip(headers: &HeaderMap, addr: SocketAddr) -> IpAddr {
-    if let Some(forwarded_for) = headers.get("x-forwarded-for") {
-        if let Ok(value) = forwarded_for.to_str() {
-            // X-Forwarded-For may contain "client, proxy1, proxy2" — take the first.
-            if let Some(first_ip) = value.split(',').next() {
-                if let Ok(ip) = first_ip.trim().parse::<IpAddr>() {
-                    return ip;
+///
+/// Only trusts `X-Forwarded-For` when the TCP peer address matches a configured
+/// trusted proxy, preventing spoofing by external clients. Falls back to the
+/// direct connection IP otherwise.
+fn extract_client_ip(headers: &HeaderMap, addr: SocketAddr, trusted_proxies: &[String]) -> IpAddr {
+    let peer_ip = addr.ip();
+
+    let peer_is_trusted = trusted_proxies.iter().any(|proxy| {
+        proxy
+            .parse::<IpAddr>()
+            .map(|trusted| trusted == peer_ip)
+            .unwrap_or(false)
+    });
+
+    if peer_is_trusted {
+        if let Some(forwarded_for) = headers.get("x-forwarded-for") {
+            if let Ok(value) = forwarded_for.to_str() {
+                // X-Forwarded-For may contain "client, proxy1, proxy2" — take the first.
+                if let Some(first_ip) = value.split(',').next() {
+                    if let Ok(ip) = first_ip.trim().parse::<IpAddr>() {
+                        return ip;
+                    }
                 }
             }
         }
     }
-    addr.ip()
+
+    peer_ip
 }
 
 /// Login request body.
@@ -115,7 +141,7 @@ pub async fn login(
     headers: HeaderMap,
     Json(body): Json<LoginRequest>,
 ) -> Result<Response, Response> {
-    let client_ip = extract_client_ip(&headers, addr);
+    let client_ip = extract_client_ip(&headers, addr, &state.config.auth.trusted_proxies);
 
     // Check rate limit BEFORE doing any password work.
     if let Some(retry_after) = state.rate_limiter.check(&client_ip) {
@@ -123,7 +149,8 @@ pub async fn login(
         let mut resp = StatusCode::TOO_MANY_REQUESTS.into_response();
         resp.headers_mut().insert(
             header::HeaderName::from_static("retry-after"),
-            retry_after.to_string().parse().unwrap(),
+            header::HeaderValue::from_str(&retry_after.to_string())
+                .unwrap_or(header::HeaderValue::from_static("60")),
         );
         return Err(resp);
     }

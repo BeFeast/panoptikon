@@ -80,15 +80,33 @@ impl Default for ScannerConfig {
 }
 
 /// Auth settings (mostly configured at runtime via UI).
-#[derive(Debug, Clone, Default, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct AuthConfig {
     /// Session expiry in seconds (default 24 hours).
     #[serde(default = "default_session_expiry")]
     pub session_expiry_seconds: u64,
+
+    /// IP addresses of trusted reverse proxies whose X-Forwarded-For header is trusted.
+    /// Only add addresses you control. Defaults to loopback only.
+    #[serde(default = "default_trusted_proxies")]
+    pub trusted_proxies: Vec<String>,
 }
 
 fn default_session_expiry() -> u64 {
     86400
+}
+
+fn default_trusted_proxies() -> Vec<String> {
+    vec!["127.0.0.1".to_string(), "::1".to_string()]
+}
+
+impl Default for AuthConfig {
+    fn default() -> Self {
+        Self {
+            session_expiry_seconds: default_session_expiry(),
+            trusted_proxies: default_trusted_proxies(),
+        }
+    }
 }
 
 impl Default for AppConfig {
