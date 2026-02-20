@@ -25,7 +25,7 @@ export default function LoginPage() {
           window.location.href = "/dashboard";
           return;
         }
-        setFirstRun(status.first_run);
+        setFirstRun(status.needs_setup);
       })
       .catch(() => {
         // API not reachable — assume login mode
@@ -49,18 +49,16 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      let res;
       if (firstRun) {
         if (password.length < 8) {
           setError("Password must be at least 8 characters");
           setLoading(false);
           return;
         }
-        res = await setupPassword(password);
+        await setupPassword(password);
       } else {
-        res = await login(password);
+        await login(password);
       }
-      localStorage.setItem("token", res.token);
       window.location.href = "/dashboard";
     } catch {
       setError(firstRun ? "Failed to set password" : "Invalid password");

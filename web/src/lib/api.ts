@@ -17,24 +17,12 @@ import type {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
-function getAuthHeaders(): HeadersInit {
-  const token =
-    typeof window !== "undefined" ? localStorage.getItem("token") : null;
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
-  if (token) {
-    headers["Authorization"] = `Bearer ${token}`;
-  }
-  return headers;
-}
-
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
-    credentials: "include",   // always send cookies (same-origin)
+    credentials: "include", // always send session cookie (HttpOnly, set by server)
     ...init,
     headers: {
-      ...getAuthHeaders(),
+      "Content-Type": "application/json",
       ...(init?.headers ?? {}),
     },
   });
@@ -131,5 +119,5 @@ export function login(password: string): Promise<LoginResponse> {
 }
 
 export function setupPassword(password: string): Promise<LoginResponse> {
-  return apiPost<LoginResponse>("/api/v1/auth/setup", { password });
+  return apiPost<LoginResponse>("/api/v1/auth/login", { password });
 }
