@@ -4,8 +4,10 @@ use anyhow::Result;
 use chrono::Utc;
 use serde_json::json;
 use sqlx::SqlitePool;
+use std::net::IpAddr;
 use std::sync::Arc;
-use tracing::{error, info, warn};
+use std::time::Duration;
+use tracing::{debug, error, info, warn};
 
 use crate::config::ScannerConfig;
 use crate::ws::hub::WsHub;
@@ -71,6 +73,37 @@ pub fn start_scanner_task(db: SqlitePool, config: ScannerConfig, ws_hub: Arc<WsH
     });
 }
 
+/// Perform a reverse DNS (PTR) lookup for the given IP address.
+///
+/// Returns `Some(hostname)` on success, `None` if the lookup fails or times out.
+/// Uses a 2-second timeout to avoid blocking the scan loop.
+async fn reverse_dns_lookup(ip: &str) -> Option<String> {
+    let addr: IpAddr = match ip.parse() {
+        Ok(a) => a,
+        Err(_) => return None,
+    };
+
+    let result = tokio::time::timeout(Duration::from_secs(2), async {
+        tokio::task::spawn_blocking(move || dns_lookup::lookup_addr(&addr))
+            .await
+            .ok()?
+            .ok()
+    })
+    .await;
+
+    match result {
+        Ok(Some(hostname)) => {
+            // Skip if the hostname is just the IP address repeated back.
+            if hostname == ip {
+                None
+            } else {
+                Some(hostname)
+            }
+        }
+        _ => None,
+    }
+}
+
 /// Process ARP scan results: upsert devices, detect state changes, create alerts.
 async fn process_scan_results(
     db: &SqlitePool,
@@ -96,7 +129,7 @@ async fn process_scan_results(
                     (id, is_online)
                 });
 
-        match existing {
+        let device_id = match existing {
             Some((device_id, was_online)) => {
                 // Update last_seen_at and mark online.
                 sqlx::query(
@@ -159,6 +192,8 @@ async fn process_scan_results(
                         }),
                     );
                 }
+
+                device_id
             }
             None => {
                 // New device discovered.
@@ -233,6 +268,34 @@ async fn process_scan_results(
                         "vendor": vendor_str,
                     }),
                 );
+
+                device_id
+            }
+        };
+
+        // --- Reverse DNS lookup ---
+        // Attempt a PTR lookup for the device IP. On success, update the
+        // hostname column. Failures are logged at debug level and never
+        // block the scan.
+        match reverse_dns_lookup(&dev.ip).await {
+            Some(hostname) => {
+                if let Err(e) = sqlx::query(
+                    "UPDATE devices SET hostname = ?, updated_at = ? WHERE id = ? AND (hostname IS NULL OR hostname != ?)",
+                )
+                .bind(&hostname)
+                .bind(&now)
+                .bind(&device_id)
+                .bind(&hostname)
+                .execute(db)
+                .await
+                {
+                    warn!(ip = %dev.ip, error = %e, "Failed to update hostname in DB");
+                } else {
+                    debug!(ip = %dev.ip, hostname = %hostname, "Reverse DNS resolved");
+                }
+            }
+            None => {
+                debug!(ip = %dev.ip, "Reverse DNS lookup returned no result");
             }
         }
     }
