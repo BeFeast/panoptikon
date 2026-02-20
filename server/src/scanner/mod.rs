@@ -12,6 +12,7 @@ use tokio::task::JoinSet;
 use tracing::{debug, error, info, warn};
 
 use crate::config::ScannerConfig;
+use crate::webhook;
 use crate::ws::hub::WsHub;
 
 /// Discovered device from an ARP scan.
@@ -253,6 +254,16 @@ async fn process_scan_results(
                             "ip": &dev.ip,
                         }),
                     );
+
+                    webhook::dispatch_webhook(
+                        db,
+                        "device_online",
+                        json!({
+                            "device_id": &device_id,
+                            "mac": &mac_normalized,
+                            "ip": &dev.ip,
+                        }),
+                    );
                 }
 
                 device_id
@@ -322,6 +333,17 @@ async fn process_scan_results(
                 );
 
                 ws_hub.broadcast(
+                    "new_device",
+                    json!({
+                        "device_id": &device_id,
+                        "mac": &mac_normalized,
+                        "ip": &dev.ip,
+                        "vendor": vendor_str,
+                    }),
+                );
+
+                webhook::dispatch_webhook(
+                    db,
                     "new_device",
                     json!({
                         "device_id": &device_id,
@@ -447,6 +469,15 @@ async fn process_scan_results(
         info!(mac = %mac, "Device went offline");
 
         ws_hub.broadcast(
+            "device_offline",
+            json!({
+                "device_id": device_id,
+                "mac": mac,
+            }),
+        );
+
+        webhook::dispatch_webhook(
+            db,
             "device_offline",
             json!({
                 "device_id": device_id,

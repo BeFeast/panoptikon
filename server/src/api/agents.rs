@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use tracing::{error, info, warn};
 
 use super::AppState;
+use crate::webhook;
 
 /// An agent as returned by the API.
 #[derive(Debug, Serialize, Deserialize)]
@@ -567,6 +568,8 @@ async fn handle_agent_ws(mut socket: WebSocket, state: AppState, api_key: Option
     state
         .ws_hub
         .broadcast("agent_offline", json!({"agent_id": &agent_id}));
+
+    webhook::dispatch_webhook(&state.db, "agent_offline", json!({"agent_id": &agent_id}));
 }
 
 /// Wait for the agent's first message (containing its agent_id) and verify the API key
