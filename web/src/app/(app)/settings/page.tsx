@@ -10,6 +10,8 @@ import {
   Bell,
   Send,
   Loader2,
+  Router,
+  Plug,
 } from "lucide-react";
 import {
   Card,
@@ -21,6 +23,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { fetchRouterStatus } from "@/lib/api";
 
 type Status = "idle" | "loading" | "success" | "error";
 
@@ -42,14 +45,33 @@ export default function SettingsPage() {
   const [testStatus, setTestStatus] = useState<Status>("idle");
   const [testMsg, setTestMsg] = useState("");
 
+  // --- VyOS state ---
+  const [vyosUrl, setVyosUrl] = useState("");
+  const [savedVyosUrl, setSavedVyosUrl] = useState<string | null>(null);
+  const [vyosApiKey, setVyosApiKey] = useState("");
+  const [vyosApiKeySet, setVyosApiKeySet] = useState(false);
+  const [vyosStatus, setVyosStatus] = useState<Status>("idle");
+  const [vyosMsg, setVyosMsg] = useState("");
+  const [vyosTestStatus, setVyosTestStatus] = useState<Status>("idle");
+  const [vyosTestMsg, setVyosTestMsg] = useState("");
+
   // Load current settings on mount
   useEffect(() => {
     fetch("/api/v1/settings", { credentials: "include" })
       .then((res) => res.json())
-      .then((data: { webhook_url: string | null }) => {
-        setWebhookUrl(data.webhook_url ?? "");
-        setSavedWebhookUrl(data.webhook_url ?? null);
-      })
+      .then(
+        (data: {
+          webhook_url: string | null;
+          vyos_url: string | null;
+          vyos_api_key_set: boolean;
+        }) => {
+          setWebhookUrl(data.webhook_url ?? "");
+          setSavedWebhookUrl(data.webhook_url ?? null);
+          setVyosUrl(data.vyos_url ?? "");
+          setSavedVyosUrl(data.vyos_url ?? null);
+          setVyosApiKeySet(data.vyos_api_key_set);
+        }
+      )
       .catch(() => {});
   }, []);
 
@@ -67,6 +89,8 @@ export default function SettingsPage() {
     pwStatus !== "loading";
 
   const webhookDirty = webhookUrl !== (savedWebhookUrl ?? "");
+  const vyosDirty =
+    vyosUrl !== (savedVyosUrl ?? "") || vyosApiKey.length > 0;
 
   async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -121,7 +145,11 @@ export default function SettingsPage() {
         credentials: "include",
       });
       if (res.ok) {
-        const data: { webhook_url: string | null } = await res.json();
+        const data: {
+          webhook_url: string | null;
+          vyos_url: string | null;
+          vyos_api_key_set: boolean;
+        } = await res.json();
         setSavedWebhookUrl(data.webhook_url ?? null);
         setWebhookUrl(data.webhook_url ?? "");
         setWebhookStatus("success");
@@ -162,9 +190,179 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleVyosSave() {
+    setVyosStatus("loading");
+    setVyosMsg("");
+    try {
+      const body: Record<string, string> = {};
+      if (vyosUrl !== (savedVyosUrl ?? "")) body.vyos_url = vyosUrl;
+      if (vyosApiKey.length > 0) body.vyos_api_key = vyosApiKey;
+
+      const res = await fetch("/api/v1/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data: {
+          webhook_url: string | null;
+          vyos_url: string | null;
+          vyos_api_key_set: boolean;
+        } = await res.json();
+        setSavedVyosUrl(data.vyos_url ?? null);
+        setVyosUrl(data.vyos_url ?? "");
+        setVyosApiKeySet(data.vyos_api_key_set);
+        setVyosApiKey("");
+        setVyosStatus("success");
+        setVyosMsg("VyOS settings saved.");
+        setTimeout(() => setVyosStatus("idle"), 3000);
+      } else {
+        setVyosStatus("error");
+        setVyosMsg(`Failed to save (${res.status}).`);
+      }
+    } catch {
+      setVyosStatus("error");
+      setVyosMsg("Network error.");
+    }
+  }
+
+  async function handleVyosTest() {
+    setVyosTestStatus("loading");
+    setVyosTestMsg("");
+    try {
+      const data = await fetchRouterStatus();
+      if (data.reachable) {
+        setVyosTestStatus("success");
+        setVyosTestMsg(
+          `Connected! ${data.version ? `Version: ${data.version}` : ""} ${data.uptime ? `· Uptime: ${data.uptime}` : ""}`
+        );
+        setTimeout(() => setVyosTestStatus("idle"), 5000);
+      } else if (data.configured) {
+        setVyosTestStatus("error");
+        setVyosTestMsg("Router configured but unreachable. Check URL and network.");
+      } else {
+        setVyosTestStatus("error");
+        setVyosTestMsg("Router not configured. Save URL and API key first.");
+      }
+    } catch {
+      setVyosTestStatus("error");
+      setVyosTestMsg("Failed to test connection.");
+    }
+  }
+
   return (
     <div className="mx-auto max-w-lg space-y-6 py-8">
       <h1 className="text-2xl font-semibold text-white">Settings</h1>
+
+      {/* VyOS Router Connection */}
+      <Card className="border-[#2a2a3a] bg-[#16161f]">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
+              <Router className="h-4 w-4 text-blue-400" />
+            </div>
+            <div>
+              <CardTitle className="text-base text-white">
+                VyOS Router
+              </CardTitle>
+              <CardDescription className="text-xs text-gray-500">
+                Connect to your VyOS router via its HTTP API.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="vyos-url" className="text-xs text-gray-400">
+              Router URL
+            </Label>
+            <Input
+              id="vyos-url"
+              type="url"
+              value={vyosUrl}
+              onChange={(e) => setVyosUrl(e.target.value)}
+              className="border-[#2a2a3a] bg-[#0e0e16] text-white placeholder:text-gray-600"
+              placeholder="https://10.10.0.50"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="vyos-key" className="text-xs text-gray-400">
+              API Key{" "}
+              {vyosApiKeySet && (
+                <span className="text-green-500">(saved)</span>
+              )}
+            </Label>
+            <Input
+              id="vyos-key"
+              type="password"
+              value={vyosApiKey}
+              onChange={(e) => setVyosApiKey(e.target.value)}
+              className="border-[#2a2a3a] bg-[#0e0e16] text-white placeholder:text-gray-600"
+              placeholder={
+                vyosApiKeySet
+                  ? "••••••••  (leave blank to keep current)"
+                  : "Enter VyOS API key"
+              }
+            />
+          </div>
+
+          {/* Status messages */}
+          {vyosStatus === "success" && vyosMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-green-400" />
+              <p className="text-xs text-green-400">{vyosMsg}</p>
+            </div>
+          )}
+          {vyosStatus === "error" && vyosMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+              <p className="text-xs text-red-400">{vyosMsg}</p>
+            </div>
+          )}
+          {vyosTestStatus === "success" && vyosTestMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-green-400" />
+              <p className="text-xs text-green-400">{vyosTestMsg}</p>
+            </div>
+          )}
+          {vyosTestStatus === "error" && vyosTestMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+              <p className="text-xs text-red-400">{vyosTestMsg}</p>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button
+              onClick={handleVyosSave}
+              disabled={!vyosDirty || vyosStatus === "loading"}
+              className="bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
+            >
+              {vyosStatus === "loading" ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : null}
+              Save
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleVyosTest}
+              disabled={
+                (!savedVyosUrl && !vyosUrl) || vyosTestStatus === "loading"
+              }
+              className="border-[#2a2a3a] text-gray-300 hover:bg-[#1e1e2e] disabled:opacity-40"
+            >
+              {vyosTestStatus === "loading" ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Plug className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              Test Connection
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Webhook Notifications */}
       <Card className="border-[#2a2a3a] bg-[#16161f]">

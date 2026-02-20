@@ -102,6 +102,22 @@ export interface TrafficHistoryPoint {
   tx_bps: number;
 }
 
+// ─── Router / VyOS ──────────────────────────────────────
+
+export interface RouterStatus {
+  configured: boolean;
+  reachable: boolean;
+  version: string | null;
+  uptime: string | null;
+  hostname: string | null;
+}
+
+export interface SettingsData {
+  webhook_url: string | null;
+  vyos_url: string | null;
+  vyos_api_key_set: boolean;
+}
+
 // ─── Auth ───────────────────────────────────────────────
 
 export interface AuthStatus {

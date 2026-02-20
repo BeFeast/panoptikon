@@ -9,12 +9,17 @@ use crate::webhook;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SettingsResponse {
     pub webhook_url: Option<String>,
+    pub vyos_url: Option<String>,
+    /// Masked API key — never return the full key to the frontend.
+    pub vyos_api_key_set: bool,
 }
 
 /// Request body for updating settings.
 #[derive(Debug, Deserialize)]
 pub struct UpdateSettingsRequest {
     pub webhook_url: Option<String>,
+    pub vyos_url: Option<String>,
+    pub vyos_api_key: Option<String>,
 }
 
 /// GET /api/v1/settings — return current settings.
@@ -23,7 +28,27 @@ pub async fn get_settings(
 ) -> Result<Json<SettingsResponse>, StatusCode> {
     let webhook_url = webhook::get_webhook_url(&state.db).await;
 
-    Ok(Json(SettingsResponse { webhook_url }))
+    let vyos_url: Option<String> =
+        sqlx::query_scalar(r#"SELECT value FROM settings WHERE key = 'vyos_url'"#)
+            .fetch_optional(&state.db)
+            .await
+            .ok()
+            .flatten();
+
+    let vyos_api_key_set: bool =
+        sqlx::query_scalar::<_, String>(r#"SELECT value FROM settings WHERE key = 'vyos_api_key'"#)
+            .fetch_optional(&state.db)
+            .await
+            .ok()
+            .flatten()
+            .map(|v| !v.is_empty())
+            .unwrap_or(false);
+
+    Ok(Json(SettingsResponse {
+        webhook_url,
+        vyos_url,
+        vyos_api_key_set,
+    }))
 }
 
 /// PATCH /api/v1/settings — update settings.
@@ -32,24 +57,29 @@ pub async fn update_settings(
     Json(body): Json<UpdateSettingsRequest>,
 ) -> Result<Json<SettingsResponse>, StatusCode> {
     if let Some(ref url) = body.webhook_url {
-        sqlx::query(
-            r#"INSERT INTO settings (key, value) VALUES ('webhook_url', ?)
-               ON CONFLICT(key) DO UPDATE SET value = excluded.value"#,
-        )
-        .bind(url)
-        .execute(&state.db)
-        .await
-        .map_err(|e| {
-            error!("Failed to save webhook_url: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
+        upsert_setting(&state, "webhook_url", url).await?;
         info!(webhook_url = %url, "Webhook URL updated");
     }
 
+    if let Some(ref url) = body.vyos_url {
+        upsert_setting(&state, "vyos_url", url).await?;
+        info!(vyos_url = %url, "VyOS URL updated");
+    }
+
+    if let Some(ref key) = body.vyos_api_key {
+        // NOTE: The VyOS API key is stored unencrypted in SQLite.
+        // This is intentional for a single-user self-hosted deployment where
+        // the database file is protected by OS filesystem permissions and the
+        // server requires authentication to read or modify settings.
+        // TODO: Add at-rest encryption (e.g. AES-GCM with a server-generated
+        // key stored outside the database) if multi-user or remote DB support
+        // is added in the future.
+        upsert_setting(&state, "vyos_api_key", key).await?;
+        info!("VyOS API key updated");
+    }
+
     // Return current state.
-    let webhook_url = webhook::get_webhook_url(&state.db).await;
-    Ok(Json(SettingsResponse { webhook_url }))
+    get_settings(State(state)).await
 }
 
 /// POST /api/v1/settings/test-webhook — send a test webhook.
@@ -73,4 +103,21 @@ pub async fn test_webhook(
     webhook::send_webhook(&url, payload).await;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Helper to upsert a key-value pair into the settings table.
+async fn upsert_setting(state: &AppState, key: &str, value: &str) -> Result<(), StatusCode> {
+    sqlx::query(
+        r#"INSERT INTO settings (key, value) VALUES (?, ?)
+           ON CONFLICT(key) DO UPDATE SET value = excluded.value"#,
+    )
+    .bind(key)
+    .bind(value)
+    .execute(&state.db)
+    .await
+    .map_err(|e| {
+        error!("Failed to save setting '{key}': {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+    Ok(())
 }

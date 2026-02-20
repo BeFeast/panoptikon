@@ -90,8 +90,10 @@ pub fn router(state: AppState) -> Router {
         .route("/settings", get(settings::get_settings))
         .route("/settings", patch(settings::update_settings))
         .route("/settings/test-webhook", post(settings::test_webhook))
-        // VyOS proxy
+        // VyOS router proxy
+        .route("/vyos/status", get(vyos::status))
         .route("/vyos/interfaces", get(vyos::interfaces))
+        .route("/vyos/config-interfaces", get(vyos::config_interfaces))
         .route("/vyos/routes", get(vyos::routes))
         .route("/vyos/dhcp-leases", get(vyos::dhcp_leases))
         .route("/vyos/firewall", get(vyos::firewall))

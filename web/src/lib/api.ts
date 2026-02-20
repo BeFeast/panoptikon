@@ -13,6 +13,8 @@ import type {
   DashboardStats,
   Device,
   LoginResponse,
+  RouterStatus,
+  SettingsData,
   TopDevice,
   TrafficHistoryPoint,
 } from "./types";
@@ -136,4 +138,44 @@ export function login(password: string): Promise<LoginResponse> {
 
 export function setupPassword(password: string): Promise<LoginResponse> {
   return apiPost<LoginResponse>("/api/v1/auth/login", { password });
+}
+
+// ─── Router / VyOS ──────────────────────────────────────
+
+export function fetchRouterStatus(): Promise<RouterStatus> {
+  return apiGet<RouterStatus>("/api/v1/vyos/status");
+}
+
+export function fetchRouterInterfaces(): Promise<string> {
+  return apiGet<string>("/api/v1/vyos/interfaces");
+}
+
+export function fetchRouterConfigInterfaces(): Promise<Record<string, unknown>> {
+  return apiGet<Record<string, unknown>>("/api/v1/vyos/config-interfaces");
+}
+
+export function fetchRouterRoutes(): Promise<string> {
+  return apiGet<string>("/api/v1/vyos/routes");
+}
+
+export function fetchRouterDhcpLeases(): Promise<string> {
+  return apiGet<string>("/api/v1/vyos/dhcp-leases");
+}
+
+export function fetchRouterFirewall(): Promise<Record<string, unknown>> {
+  return apiGet<Record<string, unknown>>("/api/v1/vyos/firewall");
+}
+
+// ─── Settings ───────────────────────────────────────────
+
+export function fetchSettings(): Promise<SettingsData> {
+  return apiGet<SettingsData>("/api/v1/settings");
+}
+
+export function updateSettings(body: {
+  webhook_url?: string;
+  vyos_url?: string;
+  vyos_api_key?: string;
+}): Promise<SettingsData> {
+  return apiPatch<SettingsData>("/api/v1/settings", body);
 }

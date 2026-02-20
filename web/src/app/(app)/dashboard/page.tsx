@@ -123,6 +123,7 @@ function StatCardSkeleton() {
 
 function routerStatusLabel(s: DashboardStats): { label: string; status: "online" | "offline" | "warning" } {
   switch (s.router_status) {
+    case "connected":
     case "online":
       return { label: "Online", status: "online" };
     case "unconfigured":
@@ -189,7 +190,7 @@ export default function DashboardPage() {
               href="/router"
               value={routerStatusLabel(stats).label}
               subtitle={
-                stats.router_status === "online"
+                stats.router_status === "connected" || stats.router_status === "online"
                   ? "Connected to router"
                   : stats.router_status === "unconfigured"
                   ? "Router not configured yet"
