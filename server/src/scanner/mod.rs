@@ -23,10 +23,20 @@ pub struct DiscoveredDevice {
 
 /// Run an ARP scan on the specified subnets.
 ///
-/// Falls back to parsing the system ARP table if raw socket scanning
-/// is not available (e.g., no CAP_NET_RAW).
-pub async fn scan_subnets(_subnets: &[String]) -> Result<Vec<DiscoveredDevice>> {
-    // Try reading from the system ARP cache first (always available).
+/// First performs an active ping sweep on each configured subnet to populate
+/// the kernel ARP table with entries for all reachable hosts, then reads the
+/// ARP table. This discovers devices that would otherwise be invisible to
+/// passive ARP cache reading.
+pub async fn scan_subnets(subnets: &[String]) -> Result<Vec<DiscoveredDevice>> {
+    // Phase 0: Active ping sweep — populate the ARP table.
+    for subnet in subnets {
+        arp::ping_sweep(subnet).await;
+    }
+
+    // Brief pause to let the kernel finish updating ARP entries.
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    // Phase 1: Read the (now enriched) ARP cache.
     let devices = arp::read_arp_table().await?;
     Ok(devices)
 }

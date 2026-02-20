@@ -1,7 +1,76 @@
 use anyhow::Result;
-use tracing::debug;
+use ipnetwork::IpNetwork;
+use tokio::task::JoinSet;
+use tracing::{debug, info, warn};
 
 use super::DiscoveredDevice;
+
+/// Maximum number of concurrent ping processes.
+const PING_CONCURRENCY: usize = 64;
+
+/// Send ICMP echo requests to every host IP in a CIDR subnet.
+///
+/// The purpose is **not** to confirm reachability — it is purely to populate
+/// the kernel ARP table so that the subsequent `read_arp_table()` call
+/// discovers all active devices on the subnet.
+///
+/// Each ping is launched as a child process (`ping -c 1 -W 1 <ip>`).
+/// Exit codes are intentionally ignored.
+pub async fn ping_sweep(subnet: &str) {
+    let network: IpNetwork = match subnet.parse() {
+        Ok(n) => n,
+        Err(e) => {
+            warn!(subnet = %subnet, error = %e, "Failed to parse subnet CIDR for ping sweep");
+            return;
+        }
+    };
+
+    let ips: Vec<String> = match network {
+        IpNetwork::V4(v4) => v4.iter().map(|ip| ip.to_string()).collect(),
+        IpNetwork::V6(_) => {
+            debug!(subnet = %subnet, "Skipping ping sweep for IPv6 subnet");
+            return;
+        }
+    };
+
+    // Skip network and broadcast addresses for /24 and larger subnets
+    // (for very small subnets like /31 or /32, keep all).
+    let hosts: Vec<&str> = if ips.len() > 2 {
+        ips[1..ips.len() - 1].iter().map(|s| s.as_str()).collect()
+    } else {
+        ips.iter().map(|s| s.as_str()).collect()
+    };
+
+    info!(
+        subnet = %subnet,
+        host_count = hosts.len(),
+        "Starting ping sweep"
+    );
+
+    let mut join_set: JoinSet<()> = JoinSet::new();
+
+    for ip in hosts {
+        // Limit concurrency: wait for one to finish before spawning another.
+        if join_set.len() >= PING_CONCURRENCY {
+            let _ = join_set.join_next().await;
+        }
+
+        let ip = ip.to_string();
+        join_set.spawn(async move {
+            let _ = tokio::process::Command::new("ping")
+                .args(["-c", "1", "-W", "1", &ip])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .output()
+                .await;
+        });
+    }
+
+    // Wait for all remaining pings to complete.
+    while join_set.join_next().await.is_some() {}
+
+    info!(subnet = %subnet, "Ping sweep complete");
+}
 
 /// Read the system ARP table from /proc/net/arp (Linux).
 ///
