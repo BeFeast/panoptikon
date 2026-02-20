@@ -16,6 +16,7 @@ import type {
   NetflowStatus,
   RouterStatus,
   SettingsData,
+  SpeedTestResult,
   TopDevice,
   TrafficHistoryPoint,
 } from "./types";
@@ -211,6 +212,10 @@ export function fetchRouterDhcpLeases(): Promise<string> {
 
 export function fetchRouterFirewall(): Promise<Record<string, unknown>> {
   return apiGet<Record<string, unknown>>("/api/v1/vyos/firewall");
+}
+
+export function runSpeedTest(): Promise<SpeedTestResult> {
+  return apiPost<SpeedTestResult>("/api/v1/router/speedtest");
 }
 
 // ─── NetFlow ────────────────────────────────────────────
