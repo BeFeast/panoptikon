@@ -65,6 +65,18 @@ pub struct AgentReport {
     pub memory: Option<AgentMemInfo>,
     #[serde(default)]
     pub version: Option<String>,
+    #[serde(default)]
+    pub network_interfaces: Option<Vec<AgentNetworkInterface>>,
+}
+
+/// Network interface info from agent report (used for MAC-based device linking).
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct AgentNetworkInterface {
+    pub name: Option<String>,
+    #[serde(default)]
+    pub mac: Option<String>,
+    // Other fields (tx_bytes, rx_bytes, etc.) are ignored for linking purposes.
 }
 
 #[derive(Debug, Deserialize)]
@@ -565,6 +577,62 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
     .bind(mem.and_then(|m| m.swap_used_bytes))
     .execute(&state.db)
     .await?;
+
+    // --- MAC-based device linking ---
+    // Extract and normalize MAC addresses from the agent's network interfaces.
+    // Normalize to lowercase colon-separated format to match how the ARP scanner stores them.
+    let mac_addresses: Vec<String> = report
+        .network_interfaces
+        .as_ref()
+        .map(|ifaces| {
+            ifaces
+                .iter()
+                .filter_map(|iface| iface.mac.as_ref())
+                .map(|mac| mac.to_lowercase().replace('-', ":"))
+                .filter(|mac| mac != "00:00:00:00:00:00" && !mac.is_empty())
+                .collect()
+        })
+        .unwrap_or_default();
+
+    if !mac_addresses.is_empty() {
+        // Build a query with placeholders for each MAC address.
+        let placeholders: String = mac_addresses
+            .iter()
+            .map(|_| "?")
+            .collect::<Vec<_>>()
+            .join(",");
+        let query_str = format!(
+            "SELECT id FROM devices WHERE mac IN ({}) LIMIT 1",
+            placeholders
+        );
+
+        let mut query = sqlx::query_scalar::<_, String>(&query_str);
+        for mac in &mac_addresses {
+            query = query.bind(mac);
+        }
+
+        match query.fetch_optional(&state.db).await {
+            Ok(Some(device_id)) => {
+                // Always update device_id (re-link on every report in case device was reassigned).
+                if let Err(e) = sqlx::query("UPDATE agents SET device_id = ? WHERE id = ?")
+                    .bind(&device_id)
+                    .bind(agent_id)
+                    .execute(&state.db)
+                    .await
+                {
+                    warn!(agent_id, error = %e, "Failed to link agent to device");
+                } else {
+                    info!(agent_id, device_id = %device_id, "Linked agent to device via MAC match");
+                }
+            }
+            Ok(None) => {
+                // No matching device found — this is normal for agents on hosts not yet in the ARP table.
+            }
+            Err(e) => {
+                warn!(agent_id, error = %e, "Failed to query devices for MAC matching");
+            }
+        }
+    }
 
     // Broadcast updated report to UI clients.
     state.ws_hub.broadcast(
