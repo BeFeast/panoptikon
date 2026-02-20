@@ -26,6 +26,13 @@ pub struct Agent {
     pub is_online: bool,
     pub last_report_at: Option<String>,
     pub created_at: String,
+    // From latest agent_report:
+    pub hostname: Option<String>,
+    pub os_name: Option<String>,
+    pub os_version: Option<String>,
+    pub cpu_percent: Option<f64>,
+    pub mem_total: Option<i64>,
+    pub mem_used: Option<i64>,
 }
 
 /// Request body for registering a new agent.
@@ -107,6 +114,12 @@ impl Agent {
             is_online: row.try_get::<i32, _>("is_online").unwrap_or(0) != 0,
             last_report_at: row.try_get("last_report_at")?,
             created_at: row.try_get("created_at")?,
+            hostname: row.try_get("hostname").ok(),
+            os_name: row.try_get("os_name").ok(),
+            os_version: row.try_get("os_version").ok(),
+            cpu_percent: row.try_get("cpu_percent").ok(),
+            mem_total: row.try_get("mem_total").ok(),
+            mem_used: row.try_get("mem_used").ok(),
         })
     }
 }
@@ -114,8 +127,13 @@ impl Agent {
 /// GET /api/v1/agents — list all agents.
 pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Agent>>, StatusCode> {
     let rows = sqlx::query(
-        "SELECT id, device_id, name, platform, version, is_online, last_report_at, created_at \
-         FROM agents ORDER BY created_at DESC",
+        "SELECT a.id, a.device_id, a.name, a.platform, a.version, a.is_online, \
+                a.last_report_at, a.created_at, \
+                r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used \
+         FROM agents a \
+         LEFT JOIN agent_reports r ON r.agent_id = a.id \
+           AND r.id = (SELECT id FROM agent_reports WHERE agent_id = a.id ORDER BY reported_at DESC LIMIT 1) \
+         ORDER BY a.created_at DESC",
     )
     .fetch_all(&state.db)
     .await
@@ -138,8 +156,13 @@ pub async fn get_one(
     Path(id): Path<String>,
 ) -> Result<Json<Agent>, StatusCode> {
     let row = sqlx::query(
-        "SELECT id, device_id, name, platform, version, is_online, last_report_at, created_at \
-         FROM agents WHERE id = ?",
+        "SELECT a.id, a.device_id, a.name, a.platform, a.version, a.is_online, \
+                a.last_report_at, a.created_at, \
+                r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used \
+         FROM agents a \
+         LEFT JOIN agent_reports r ON r.agent_id = a.id \
+           AND r.id = (SELECT id FROM agent_reports WHERE agent_id = a.id ORDER BY reported_at DESC LIMIT 1) \
+         WHERE a.id = ?",
     )
     .bind(&id)
     .fetch_optional(&state.db)
@@ -213,8 +236,13 @@ pub async fn update(
 
     // Return updated agent
     let row = sqlx::query(
-        "SELECT id, device_id, name, platform, version, is_online, last_report_at, created_at \
-         FROM agents WHERE id = ?",
+        "SELECT a.id, a.device_id, a.name, a.platform, a.version, a.is_online, \
+                a.last_report_at, a.created_at, \
+                r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used \
+         FROM agents a \
+         LEFT JOIN agent_reports r ON r.agent_id = a.id \
+           AND r.id = (SELECT id FROM agent_reports WHERE agent_id = a.id ORDER BY reported_at DESC LIMIT 1) \
+         WHERE a.id = ?",
     )
     .bind(&id)
     .fetch_optional(&state.db)
@@ -222,16 +250,10 @@ pub async fn update(
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     .ok_or(StatusCode::NOT_FOUND)?;
 
-    Ok(Json(Agent {
-        id: row.try_get("id").unwrap_or_default(),
-        device_id: row.try_get("device_id").ok(),
-        name: row.try_get("name").ok(),
-        platform: row.try_get("platform").ok(),
-        version: row.try_get("version").ok(),
-        is_online: row.try_get::<i32, _>("is_online").unwrap_or(0) != 0,
-        last_report_at: row.try_get("last_report_at").ok(),
-        created_at: row.try_get("created_at").unwrap_or_default(),
-    }))
+    Agent::from_row(row).map(Json).map_err(|e| {
+        error!("Failed to parse agent row after update: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })
 }
 
 /// DELETE /api/v1/agents/:id — remove an agent.
