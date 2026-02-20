@@ -228,6 +228,15 @@ async fn process_scan_results(
                     .execute(db)
                     .await?;
 
+                    // Record event in device_events history.
+                    sqlx::query(
+                        r#"INSERT INTO device_events (device_id, event_type, occurred_at) VALUES (?, 'online', ?)"#,
+                    )
+                    .bind(&device_id)
+                    .bind(&now)
+                    .execute(db)
+                    .await?;
+
                     // Create alert.
                     let alert_id = uuid::Uuid::new_v4().to_string();
                     sqlx::query(
@@ -298,6 +307,15 @@ async fn process_scan_results(
                 // Log initial online state.
                 sqlx::query(
                     "INSERT INTO device_state_log (device_id, state, changed_at) VALUES (?, 'online', ?)",
+                )
+                .bind(&device_id)
+                .bind(&now)
+                .execute(db)
+                .await?;
+
+                // Record initial online event in device_events history.
+                sqlx::query(
+                    r#"INSERT INTO device_events (device_id, event_type, occurred_at) VALUES (?, 'online', ?)"#,
                 )
                 .bind(&device_id)
                 .bind(&now)
@@ -447,6 +465,15 @@ async fn process_scan_results(
         // Log state change.
         sqlx::query(
             "INSERT INTO device_state_log (device_id, state, changed_at) VALUES (?, 'offline', ?)",
+        )
+        .bind(device_id)
+        .bind(&now)
+        .execute(db)
+        .await?;
+
+        // Record offline event in device_events history.
+        sqlx::query(
+            r#"INSERT INTO device_events (device_id, event_type, occurred_at) VALUES (?, 'offline', ?)"#,
         )
         .bind(device_id)
         .bind(&now)
