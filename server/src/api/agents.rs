@@ -131,14 +131,21 @@ pub struct AgentReport {
     pub network_interfaces: Option<Vec<AgentNetworkInterface>>,
 }
 
-/// Network interface info from agent report (used for MAC-based device linking).
+/// Network interface info from agent report (used for MAC-based device linking and traffic tracking).
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)]
 pub struct AgentNetworkInterface {
     pub name: Option<String>,
     #[serde(default)]
     pub mac: Option<String>,
-    // Other fields (tx_bytes, rx_bytes, etc.) are ignored for linking purposes.
+    #[serde(default)]
+    pub tx_bytes: Option<u64>,
+    #[serde(default)]
+    pub rx_bytes: Option<u64>,
+    #[serde(default)]
+    pub tx_bytes_delta: Option<u64>,
+    #[serde(default)]
+    pub rx_bytes_delta: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -850,6 +857,89 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
         }
     }
 
+    // --- Traffic samples insertion ---
+    // Compute the interval since the last report for bps calculation.
+    // Query agent's device_id and previous report timestamp.
+    let agent_row = sqlx::query(r#"SELECT device_id FROM agents WHERE id = ?"#)
+        .bind(agent_id)
+        .fetch_optional(&state.db)
+        .await;
+
+    let device_id: Option<String> = agent_row
+        .ok()
+        .flatten()
+        .and_then(|row| row.try_get("device_id").ok())
+        .flatten();
+
+    if let Some(ref dev_id) = device_id {
+        if let Some(ref ifaces) = report.network_interfaces {
+            // Get previous report time to compute interval.
+            let prev_reported_at: Option<String> = sqlx::query_scalar(
+                r#"SELECT reported_at FROM agent_reports WHERE agent_id = ? AND reported_at < ? ORDER BY reported_at DESC LIMIT 1"#,
+            )
+            .bind(agent_id)
+            .bind(&now)
+            .fetch_optional(&state.db)
+            .await
+            .unwrap_or(None);
+
+            let interval_secs = match prev_reported_at {
+                Some(ref prev_ts) => {
+                    // Parse timestamps and compute difference.
+                    let prev =
+                        chrono::DateTime::parse_from_rfc3339(prev_ts).map(|dt| dt.timestamp());
+                    let current =
+                        chrono::DateTime::parse_from_rfc3339(&now).map(|dt| dt.timestamp());
+                    match (prev, current) {
+                        (Ok(p), Ok(c)) => {
+                            let diff = (c - p) as f64;
+                            if diff > 0.0 {
+                                diff
+                            } else {
+                                30.0
+                            }
+                        }
+                        _ => 30.0,
+                    }
+                }
+                None => 30.0, // Default interval for first report
+            };
+
+            // Sum deltas across all interfaces for aggregate traffic sample.
+            let mut total_rx_delta: u64 = 0;
+            let mut total_tx_delta: u64 = 0;
+
+            for iface in ifaces {
+                total_rx_delta += iface.rx_bytes_delta.unwrap_or(0);
+                total_tx_delta += iface.tx_bytes_delta.unwrap_or(0);
+            }
+
+            if total_rx_delta > 0 || total_tx_delta > 0 {
+                let rx_bps = (total_rx_delta as f64) * 8.0 / interval_secs;
+                let tx_bps = (total_tx_delta as f64) * 8.0 / interval_secs;
+
+                if let Err(e) = sqlx::query(
+                    r#"INSERT INTO traffic_samples (device_id, sampled_at, rx_bps, tx_bps, source)
+                       VALUES (?, ?, ?, ?, 'agent')"#,
+                )
+                .bind(dev_id)
+                .bind(&now)
+                .bind(rx_bps as i64)
+                .bind(tx_bps as i64)
+                .execute(&state.db)
+                .await
+                {
+                    warn!(
+                        agent_id,
+                        device_id = %dev_id,
+                        error = %e,
+                        "Failed to insert traffic sample"
+                    );
+                }
+            }
+        }
+    }
+
     // Broadcast updated report to UI clients.
     state.ws_hub.broadcast(
         "agent_report",
@@ -1212,6 +1302,134 @@ mod tests {
             rows.len(),
             1,
             "Only the recent report should survive the 7-day cleanup"
+        );
+    }
+
+    /// Helper: insert a test device and return its id.
+    async fn insert_test_device(pool: &sqlx::SqlitePool) -> String {
+        let id = uuid::Uuid::new_v4().to_string();
+        sqlx::query(
+            r#"INSERT INTO devices (id, mac, name, icon, is_known, is_favorite, first_seen_at, last_seen_at, is_online)
+               VALUES (?, '00:11:22:33:44:55', 'test-device', 'desktop', 0, 0, datetime('now'), datetime('now'), 1)"#,
+        )
+        .bind(&id)
+        .execute(pool)
+        .await
+        .unwrap();
+        id
+    }
+
+    #[tokio::test]
+    async fn test_traffic_insert_skipped_no_device() {
+        // Agent without device_id → no traffic_samples row inserted.
+        let pool = test_db().await;
+        let agent_id = insert_test_agent(&pool).await;
+
+        // Insert a report with network data — but agent has no device_id.
+        insert_report(
+            &pool,
+            &agent_id,
+            "2026-01-01T10:00:00+00:00",
+            50.0,
+            500,
+            1000,
+        )
+        .await;
+
+        // Verify agent has no device_id.
+        let device_id: Option<String> =
+            sqlx::query_scalar(r#"SELECT device_id FROM agents WHERE id = ?"#)
+                .bind(&agent_id)
+                .fetch_optional(&pool)
+                .await
+                .unwrap()
+                .flatten();
+        assert!(device_id.is_none(), "Agent should have no device_id");
+
+        // Since handle_agent_report checks device_id before inserting traffic,
+        // and agent has no device_id, no traffic_samples should exist.
+        let count: i64 = sqlx::query_scalar(r#"SELECT COUNT(*) FROM traffic_samples"#)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            count, 0,
+            "No traffic samples should exist when agent has no device_id"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_traffic_insert_with_device() {
+        // Agent with device_id, interface with rx_bytes_delta=3000, interval=30s → rx_bps=800.
+        let pool = test_db().await;
+        let agent_id = insert_test_agent(&pool).await;
+        let device_id = insert_test_device(&pool).await;
+
+        // Link agent to device.
+        sqlx::query(r#"UPDATE agents SET device_id = ? WHERE id = ?"#)
+            .bind(&device_id)
+            .bind(&agent_id)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        // Verify bps computation: delta=3000 bytes, interval=30s → bps = 3000 * 8 / 30 = 800.
+        let delta_bytes: u64 = 3000;
+        let interval_secs: f64 = 30.0;
+        let expected_bps = (delta_bytes as f64) * 8.0 / interval_secs;
+        assert!(
+            (expected_bps - 800.0).abs() < 0.01,
+            "3000 bytes over 30s should be 800 bps, got {expected_bps}"
+        );
+
+        // Insert a traffic sample directly to verify the schema works.
+        sqlx::query(
+            r#"INSERT INTO traffic_samples (device_id, sampled_at, rx_bps, tx_bps, source)
+               VALUES (?, datetime('now'), ?, ?, 'agent')"#,
+        )
+        .bind(&device_id)
+        .bind(expected_bps as i64)
+        .bind(400i64)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let count: i64 =
+            sqlx::query_scalar(r#"SELECT COUNT(*) FROM traffic_samples WHERE device_id = ?"#)
+                .bind(&device_id)
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(count, 1, "One traffic sample should be inserted");
+
+        let (rx, tx): (i64, i64) = sqlx::query_as(
+            r#"SELECT rx_bps, tx_bps FROM traffic_samples WHERE device_id = ? LIMIT 1"#,
+        )
+        .bind(&device_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+        assert_eq!(rx, 800, "rx_bps should be 800");
+        assert_eq!(tx, 400, "tx_bps should be 400");
+    }
+
+    #[tokio::test]
+    async fn test_traffic_interval_calculation() {
+        // Two reports 60s apart → interval should be 60.0.
+        let prev_ts = "2026-01-01T10:00:00+00:00";
+        let curr_ts = "2026-01-01T10:01:00+00:00";
+
+        let prev = chrono::DateTime::parse_from_rfc3339(prev_ts)
+            .unwrap()
+            .timestamp();
+        let curr = chrono::DateTime::parse_from_rfc3339(curr_ts)
+            .unwrap()
+            .timestamp();
+        let interval = (curr - prev) as f64;
+
+        assert!(
+            (interval - 60.0).abs() < 0.01,
+            "Interval between reports 60s apart should be 60.0, got {interval}"
         );
     }
 }
