@@ -27,3 +27,4 @@ anyhow = "1"
 tokio-tungstenite = "0.21"
 chrono = { version = "0.4", features = ["serde"] }
 toml = "0.8"
+hickory-resolver = "0.24"

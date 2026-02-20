@@ -2,10 +2,14 @@ pub mod arp;
 
 use anyhow::Result;
 use chrono::Utc;
+use hickory_resolver::TokioAsyncResolver;
 use serde_json::json;
 use sqlx::SqlitePool;
+use std::net::IpAddr;
 use std::sync::Arc;
-use tracing::{error, info, warn};
+use std::time::Duration;
+use tokio::task::JoinSet;
+use tracing::{debug, error, info, warn};
 
 use crate::config::ScannerConfig;
 use crate::ws::hub::WsHub;
@@ -71,6 +75,77 @@ pub fn start_scanner_task(db: SqlitePool, config: ScannerConfig, ws_hub: Arc<WsH
     });
 }
 
+/// Perform a reverse DNS (PTR) lookup for the given IP address.
+///
+/// Returns `Some(hostname)` on success, `None` if the lookup fails or times out.
+/// Uses a 2-second timeout. The underlying lookup is fully async via
+/// `hickory-resolver`, so dropping the future on timeout actually cancels
+/// the in-flight DNS query (no lingering background threads).
+async fn reverse_dns_lookup(resolver: &TokioAsyncResolver, ip: &str) -> Option<String> {
+    let addr: IpAddr = match ip.parse() {
+        Ok(a) => a,
+        Err(_) => return None,
+    };
+
+    let result = tokio::time::timeout(Duration::from_secs(2), resolver.reverse_lookup(addr)).await;
+
+    match result {
+        Ok(Ok(lookup)) => {
+            let hostname = lookup.iter().next()?.to_string();
+            // Strip trailing dot from FQDN (e.g. "router.local." → "router.local").
+            let hostname = hostname.trim_end_matches('.').to_string();
+            // Skip if the hostname is just the IP address repeated back.
+            if hostname == ip {
+                None
+            } else {
+                Some(hostname)
+            }
+        }
+        Ok(Err(e)) => {
+            debug!(ip = %ip, error = %e, "Reverse DNS lookup failed");
+            None
+        }
+        Err(_) => {
+            debug!(ip = %ip, "Reverse DNS lookup timed out");
+            None
+        }
+    }
+}
+
+/// Maximum number of concurrent reverse DNS lookups.
+const DNS_CONCURRENCY_LIMIT: usize = 16;
+
+/// Update the hostname column for a device after reverse DNS resolution.
+async fn update_hostname(
+    db: &SqlitePool,
+    device_id: &str,
+    ip: &str,
+    hostname: Option<&str>,
+    now: &str,
+) {
+    match hostname {
+        Some(hostname) => {
+            if let Err(e) = sqlx::query(
+                "UPDATE devices SET hostname = ?, updated_at = ? WHERE id = ? AND (hostname IS NULL OR hostname != ?)",
+            )
+            .bind(hostname)
+            .bind(now)
+            .bind(device_id)
+            .bind(hostname)
+            .execute(db)
+            .await
+            {
+                warn!(ip = %ip, error = %e, "Failed to update hostname in DB");
+            } else {
+                debug!(ip = %ip, hostname = %hostname, "Reverse DNS resolved");
+            }
+        }
+        None => {
+            debug!(ip = %ip, "Reverse DNS lookup returned no result");
+        }
+    }
+}
+
 /// Process ARP scan results: upsert devices, detect state changes, create alerts.
 async fn process_scan_results(
     db: &SqlitePool,
@@ -79,6 +154,9 @@ async fn process_scan_results(
     ws_hub: &WsHub,
 ) -> Result<()> {
     let now = Utc::now().to_rfc3339();
+
+    // Pairs of (device_id, ip) collected during upsert for batch DNS resolution.
+    let mut dns_targets: Vec<(String, String)> = Vec::new();
 
     // --- Phase 1: Upsert discovered devices ---
     for dev in discovered {
@@ -96,7 +174,7 @@ async fn process_scan_results(
                     (id, is_online)
                 });
 
-        match existing {
+        let device_id = match existing {
             Some((device_id, was_online)) => {
                 // Update last_seen_at and mark online.
                 sqlx::query(
@@ -159,6 +237,8 @@ async fn process_scan_results(
                         }),
                     );
                 }
+
+                device_id
             }
             None => {
                 // New device discovered.
@@ -233,8 +313,64 @@ async fn process_scan_results(
                         "vendor": vendor_str,
                     }),
                 );
+
+                device_id
             }
+        };
+
+        dns_targets.push((device_id, dev.ip.clone()));
+    }
+
+    // --- Phase 1b: Batch reverse DNS lookups with bounded concurrency ---
+    // Deduplicate by device_id in case the same device appeared more than once in the scan.
+    dns_targets.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+    dns_targets.dedup_by(|a, b| a.0 == b.0);
+
+    // If the system resolver config cannot be loaded, skip DNS entirely — the default
+    // resolver (8.8.8.8 / 1.1.1.1) will not resolve local PTR records anyway.
+    let dns_resolver = match TokioAsyncResolver::tokio_from_system_conf() {
+        Ok(r) => Some(r),
+        Err(e) => {
+            warn!(error = %e, "Failed to load system DNS config; skipping reverse DNS for this scan cycle");
+            None
         }
+    };
+
+    if !dns_targets.is_empty() {
+        if let Some(resolver) = dns_resolver {
+            let resolver = Arc::new(resolver);
+
+            let mut join_set: JoinSet<(String, String, Option<String>)> = JoinSet::new();
+
+            for (device_id, ip) in dns_targets {
+                // Limit concurrency: when at the cap, wait for one to finish before spawning.
+                if join_set.len() >= DNS_CONCURRENCY_LIMIT {
+                    match join_set.join_next().await {
+                        Some(Ok((did, dip, hostname))) => {
+                            update_hostname(db, &did, &dip, hostname.as_deref(), &now).await;
+                        }
+                        Some(Err(e)) => warn!(error = %e, "DNS lookup task failed"),
+                        None => {}
+                    }
+                }
+
+                let resolver = Arc::clone(&resolver);
+                join_set.spawn(async move {
+                    let hostname = reverse_dns_lookup(&resolver, &ip).await;
+                    (device_id, ip, hostname)
+                });
+            }
+
+            // Drain remaining tasks.
+            while let Some(result) = join_set.join_next().await {
+                match result {
+                    Ok((device_id, ip, hostname)) => {
+                        update_hostname(db, &device_id, &ip, hostname.as_deref(), &now).await;
+                    }
+                    Err(e) => warn!(error = %e, "DNS lookup task failed"),
+                }
+            }
+        } // end if let Some(resolver)
     }
 
     // --- Phase 2: Mark stale devices as offline ---
