@@ -11,11 +11,11 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { Activity } from "lucide-react";
+import { Activity, Radio } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { fetchTrafficHistory, fetchTopDevices } from "@/lib/api";
+import { fetchTrafficHistory, fetchTopDevices, fetchNetflowStatus } from "@/lib/api";
 import { formatBps } from "@/lib/format";
-import type { TrafficHistoryPoint, TopDevice } from "@/lib/types";
+import type { TrafficHistoryPoint, TopDevice, NetflowStatus } from "@/lib/types";
 import {
   Table,
   TableBody,
@@ -38,16 +38,19 @@ function formatTime(iso: string): string {
 export default function TrafficPage() {
   const [history, setHistory] = useState<TrafficHistoryPoint[]>([]);
   const [topDevices, setTopDevices] = useState<TopDevice[]>([]);
+  const [netflow, setNetflow] = useState<NetflowStatus | null>(null);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      const [h, d] = await Promise.all([
+      const [h, d, nf] = await Promise.all([
         fetchTrafficHistory(60),
         fetchTopDevices(10),
+        fetchNetflowStatus(),
       ]);
       setHistory(h);
       setTopDevices(d);
+      setNetflow(nf);
     } catch {
       // Silently ignore errors — data will remain stale until next refresh.
     } finally {
@@ -63,6 +66,26 @@ export default function TrafficPage() {
 
   return (
     <div className="space-y-6">
+      {/* NetFlow Collector Status */}
+      {netflow && (
+        <div className="flex items-center gap-2 rounded-lg border border-[#2a2a3a] bg-[#16161f] px-4 py-2.5">
+          <Radio className={`h-4 w-4 ${netflow.enabled ? "text-green-400" : "text-gray-500"}`} />
+          <span className="text-sm text-gray-400">
+            NetFlow collector:{" "}
+            {netflow.enabled ? (
+              <span className="text-green-400">
+                active on port {netflow.port}
+                <span className="ml-2 text-gray-500">
+                  ({netflow.flows_received.toLocaleString()} flows received)
+                </span>
+              </span>
+            ) : (
+              <span className="text-gray-500">disabled</span>
+            )}
+          </span>
+        </div>
+      )}
+
       {/* Traffic History Chart */}
       <div className="rounded-lg border border-[#2a2a3a] bg-[#16161f] p-4">
         <div className="mb-3 flex items-center gap-2">

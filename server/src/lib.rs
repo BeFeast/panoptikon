@@ -1,6 +1,7 @@
 pub mod api;
 pub mod config;
 pub mod db;
+pub mod netflow;
 pub mod oui;
 pub mod scanner;
 pub mod vyos;

@@ -102,6 +102,14 @@ export interface TrafficHistoryPoint {
   tx_bps: number;
 }
 
+// ─── NetFlow ────────────────────────────────────────────
+
+export interface NetflowStatus {
+  enabled: boolean;
+  port: number;
+  flows_received: number;
+}
+
 // ─── Router / VyOS ──────────────────────────────────────
 
 export interface RouterStatus {

@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use panoptikon_server::{api, config, db, scanner};
+use panoptikon_server::{api, config, db, netflow, scanner};
 use std::net::SocketAddr;
 use tracing::info;
 
@@ -113,6 +113,15 @@ async fn main() -> Result<()> {
         app_config.scanner.clone(),
         state.ws_hub.clone(),
     );
+
+    // Start the NetFlow v5 UDP collector if enabled.
+    if app_config.scanner.netflow_enabled {
+        let port = app_config.scanner.netflow_port;
+        info!(port, "Starting NetFlow v5 collector");
+        netflow::start_collector(state.db.clone(), port);
+    } else {
+        info!("NetFlow collector disabled (set netflow_enabled = true in [scanner])");
+    }
 
     // Build the application router.
     let app = api::router(state);

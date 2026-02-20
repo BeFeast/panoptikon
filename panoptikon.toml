@@ -10,6 +10,8 @@ insecure_tls = true  # VyOS uses self-signed cert
 subnets = ["10.10.0.0/24"]
 interval_seconds = 60
 offline_grace_seconds = 300  # 5 min before marking offline
+netflow_enabled = true
+netflow_port = 9995
 
 [auth]
 # Password is set on first run via the web UI setup wizard

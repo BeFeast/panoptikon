@@ -13,6 +13,7 @@ import type {
   DashboardStats,
   Device,
   LoginResponse,
+  NetflowStatus,
   RouterStatus,
   SettingsData,
   TopDevice,
@@ -164,6 +165,12 @@ export function fetchRouterDhcpLeases(): Promise<string> {
 
 export function fetchRouterFirewall(): Promise<Record<string, unknown>> {
   return apiGet<Record<string, unknown>>("/api/v1/vyos/firewall");
+}
+
+// ─── NetFlow ────────────────────────────────────────────
+
+export function fetchNetflowStatus(): Promise<NetflowStatus> {
+  return apiGet<NetflowStatus>("/api/v1/settings/netflow-status");
 }
 
 // ─── Settings ───────────────────────────────────────────
