@@ -51,6 +51,14 @@ export interface AgentCreateResponse {
   api_key: string;
 }
 
+export interface AgentReport {
+  id: number;
+  cpu_percent: number | null;
+  mem_used: number | null;
+  mem_total: number | null;
+  reported_at: string;
+}
+
 // ─── Alerts ─────────────────────────────────────────────
 
 export interface Alert {

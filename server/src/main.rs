@@ -85,6 +85,23 @@ async fn main() -> Result<()> {
                         tracing::error!("Session cleanup failed: {e}");
                     }
                 }
+                // Purge agent reports older than 7 days.
+                match sqlx::query(
+                    "DELETE FROM agent_reports WHERE reported_at < datetime('now', '-7 days')",
+                )
+                .execute(&cleanup_pool)
+                .await
+                {
+                    Ok(result) => {
+                        let deleted = result.rows_affected();
+                        if deleted > 0 {
+                            info!(deleted, "Purged old agent reports (>7 days)");
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Agent reports cleanup failed: {e}");
+                    }
+                }
                 rate_limiter.cleanup_stale();
             }
         });
