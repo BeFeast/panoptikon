@@ -110,16 +110,8 @@ pub fn collect() -> Vec<NetworkInterface> {
             let (tx_delta, rx_delta) = match previous.as_ref().and_then(|p| p.get(name.as_str())) {
                 Some(prev) => {
                     // Handle counter reset/overflow: if current < previous, treat as 0.
-                    let tx_d = if current_tx >= prev.tx {
-                        current_tx - prev.tx
-                    } else {
-                        0
-                    };
-                    let rx_d = if current_rx >= prev.rx {
-                        current_rx - prev.rx
-                    } else {
-                        0
-                    };
+                    let tx_d = current_tx.saturating_sub(prev.tx);
+                    let rx_d = current_rx.saturating_sub(prev.rx);
                     (tx_d, rx_d)
                 }
                 None => {
@@ -160,16 +152,8 @@ mod tests {
 
         let (tx_delta, rx_delta) = match previous.as_ref().and_then(|p| p.get(name)) {
             Some(prev) => {
-                let tx_d = if current_tx >= prev.tx {
-                    current_tx - prev.tx
-                } else {
-                    0
-                };
-                let rx_d = if current_rx >= prev.rx {
-                    current_rx - prev.rx
-                } else {
-                    0
-                };
+                let tx_d = current_tx.saturating_sub(prev.tx);
+                let rx_d = current_rx.saturating_sub(prev.rx);
                 (tx_d, rx_d)
             }
             None => (0, 0),
@@ -196,16 +180,8 @@ mod tests {
 
         let (tx_delta, rx_delta) = match previous.get(name) {
             Some(prev) => {
-                let tx_d = if current_tx >= prev.tx {
-                    current_tx - prev.tx
-                } else {
-                    0
-                };
-                let rx_d = if current_rx >= prev.rx {
-                    current_rx - prev.rx
-                } else {
-                    0
-                };
+                let tx_d = current_tx.saturating_sub(prev.tx);
+                let rx_d = current_rx.saturating_sub(prev.rx);
                 (tx_d, rx_d)
             }
             None => (0, 0),
@@ -233,16 +209,8 @@ mod tests {
 
         let (tx_delta, rx_delta) = match previous.get(name) {
             Some(prev) => {
-                let tx_d = if current_tx >= prev.tx {
-                    current_tx - prev.tx
-                } else {
-                    0
-                };
-                let rx_d = if current_rx >= prev.rx {
-                    current_rx - prev.rx
-                } else {
-                    0
-                };
+                let tx_d = current_tx.saturating_sub(prev.tx);
+                let rx_d = current_rx.saturating_sub(prev.rx);
                 (tx_d, rx_d)
             }
             None => (0, 0),
