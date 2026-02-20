@@ -21,6 +21,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useWsConnected } from "@/components/providers/WebSocketProvider";
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -35,6 +36,7 @@ const navItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const wsConnected = useWsConnected();
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -108,10 +110,39 @@ export function Sidebar() {
               </>
             )}
           </button>
-          {!collapsed && (
-            <p className="mt-1 px-3 text-[10px] text-gray-700">
-              Panoptikon v0.1.0
-            </p>
+          {!collapsed ? (
+            <div className="mt-1 flex items-center gap-1.5 px-3">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    className={cn(
+                      "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+                      wsConnected ? "bg-green-500" : "bg-gray-600"
+                    )}
+                  />
+                </TooltipTrigger>
+                <TooltipContent side="top" className="border-[#2a2a3a] bg-[#16161f]">
+                  <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
+                </TooltipContent>
+              </Tooltip>
+              <p className="text-[10px] text-gray-700">Panoptikon v0.1.0</p>
+            </div>
+          ) : (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="mt-1 flex justify-center">
+                  <span
+                    className={cn(
+                      "inline-block h-1.5 w-1.5 rounded-full",
+                      wsConnected ? "bg-green-500" : "bg-gray-600"
+                    )}
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="border-[#2a2a3a] bg-[#16161f]">
+                <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
+              </TooltipContent>
+            </Tooltip>
           )}
         </div>
       </aside>
