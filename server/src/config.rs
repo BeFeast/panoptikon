@@ -64,6 +64,14 @@ pub struct ScannerConfig {
     /// populating ARP entries before reading the ARP table.
     #[serde(default = "default_arp_settle_millis")]
     pub arp_settle_millis: u64,
+
+    /// Enable NetFlow v5 UDP collector.
+    #[serde(default)]
+    pub netflow_enabled: bool,
+
+    /// UDP port for the NetFlow collector (default 9995).
+    #[serde(default = "default_netflow_port")]
+    pub netflow_port: u16,
 }
 
 fn default_scan_interval() -> u64 {
@@ -78,6 +86,10 @@ fn default_arp_settle_millis() -> u64 {
     500
 }
 
+fn default_netflow_port() -> u16 {
+    9995
+}
+
 impl Default for ScannerConfig {
     fn default() -> Self {
         Self {
@@ -85,6 +97,8 @@ impl Default for ScannerConfig {
             interval_seconds: default_scan_interval(),
             offline_grace_seconds: default_offline_grace(),
             arp_settle_millis: default_arp_settle_millis(),
+            netflow_enabled: false,
+            netflow_port: default_netflow_port(),
         }
     }
 }

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
 use super::AppState;
-use crate::webhook;
+use crate::{netflow, webhook};
 
 /// Settings object returned by the API.
 #[derive(Debug, Serialize, Deserialize)]
@@ -103,6 +103,23 @@ pub async fn test_webhook(
     webhook::send_webhook(&url, payload).await;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// Response for the netflow-status endpoint.
+#[derive(Debug, Serialize)]
+pub struct NetflowStatusResponse {
+    pub enabled: bool,
+    pub port: u16,
+    pub flows_received: u64,
+}
+
+/// GET /api/v1/settings/netflow-status — return NetFlow collector status.
+pub async fn netflow_status(State(state): State<AppState>) -> Json<NetflowStatusResponse> {
+    Json(NetflowStatusResponse {
+        enabled: state.config.scanner.netflow_enabled,
+        port: state.config.scanner.netflow_port,
+        flows_received: netflow::flows_received(),
+    })
 }
 
 /// Helper to upsert a key-value pair into the settings table.

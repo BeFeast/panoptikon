@@ -90,6 +90,7 @@ pub fn router(state: AppState) -> Router {
         .route("/settings", get(settings::get_settings))
         .route("/settings", patch(settings::update_settings))
         .route("/settings/test-webhook", post(settings::test_webhook))
+        .route("/settings/netflow-status", get(settings::netflow_status))
         // VyOS router proxy
         .route("/vyos/status", get(vyos::status))
         .route("/vyos/interfaces", get(vyos::interfaces))
