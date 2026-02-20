@@ -7,7 +7,8 @@ use sqlx::SqlitePool;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tower_http::cors::{Any, CorsLayer};
+use axum::http::{header, Method};
+use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
 use crate::config::AppConfig;
@@ -47,9 +48,10 @@ impl AppState {
 /// Build the main application router with all API routes.
 pub fn router(state: AppState) -> Router {
     let cors = CorsLayer::new()
-        .allow_origin(Any)
-        .allow_methods(Any)
-        .allow_headers(Any);
+        .allow_origin(tower_http::cors::AllowOrigin::mirror_request())
+        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+        .allow_headers([header::CONTENT_TYPE, header::COOKIE])
+        .allow_credentials(true);
 
     // Public routes — no auth required.
     let public_routes = Router::new()
