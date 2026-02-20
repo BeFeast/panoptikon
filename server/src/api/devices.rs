@@ -355,7 +355,7 @@ pub async fn uptime(
     Path(id): Path<String>,
     Query(params): Query<UptimeQuery>,
 ) -> Result<Json<UptimeStats>, StatusCode> {
-    let days = params.days.unwrap_or(7).max(1).min(365);
+    let days = params.days.unwrap_or(7).clamp(1, 365);
     let total_seconds = days * 86400;
 
     let cutoff = chrono::Utc::now() - chrono::Duration::days(days);
