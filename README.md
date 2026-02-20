@@ -81,6 +81,32 @@ panoptikon/
 └── web/        # Next.js 15 frontend (shadcn/ui, dark theme)
 ```
 
+## Prometheus Integration
+
+Panoptikon exposes metrics at `GET /metrics` in [Prometheus text exposition format](https://prometheus.io/docs/instrumenting/exposition_formats/). No authentication is required for this endpoint.
+
+**Exported metrics:**
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `panoptikon_devices_online_total` | gauge | Devices currently online |
+| `panoptikon_devices_offline_total` | gauge | Devices currently offline |
+| `panoptikon_devices_total` | gauge | Total discovered devices |
+| `panoptikon_agents_online_total` | gauge | Agents seen in the last 120 s |
+| `panoptikon_alerts_total{severity,status}` | gauge | Alerts by severity × status |
+| `panoptikon_traffic_rx_bps{device_id,ip}` | gauge | Latest RX bps per device |
+| `panoptikon_traffic_tx_bps{device_id,ip}` | gauge | Latest TX bps per device |
+| `panoptikon_netflow_flows_received_total` | counter | Total NetFlow v5 records received |
+
+**Prometheus scrape config example (`prometheus.yml`):**
+
+```yaml
+scrape_configs:
+  - job_name: panoptikon
+    static_configs:
+      - targets: ['localhost:8080']
+```
+
 ## License
 
 MIT

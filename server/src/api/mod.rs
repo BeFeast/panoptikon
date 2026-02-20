@@ -18,6 +18,7 @@ pub mod alerts;
 pub mod auth;
 pub mod dashboard;
 pub mod devices;
+pub mod metrics;
 pub mod settings;
 pub mod traffic;
 pub mod vyos;
@@ -125,7 +126,11 @@ pub fn router(state: AppState) -> Router {
     let serve_dir =
         ServeDir::new(&web_dir).not_found_service(ServeFile::new(web_dir.join("index.html")));
 
+    // Prometheus metrics endpoint — outside /api/v1 and outside auth.
+    let metrics_route = Router::new().route("/metrics", get(metrics::handler));
+
     Router::new()
+        .merge(metrics_route)
         .nest(
             "/api/v1",
             public_routes.merge(agent_ws).merge(protected_routes),
