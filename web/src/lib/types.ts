@@ -20,6 +20,8 @@ export interface Device {
   is_online: boolean;
   /** Current IP addresses — backend returns plain strings. */
   ips: string[];
+  /** mDNS/Bonjour discovered service types (comma-separated). */
+  mdns_services?: string | null;
   agent?: AgentSummary | null;
 }
 

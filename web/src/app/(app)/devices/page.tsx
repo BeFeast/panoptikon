@@ -98,7 +98,8 @@ export default function DevicesPage() {
           (d.hostname ?? "").toLowerCase().includes(q) ||
           (d.mac ?? "").toLowerCase().includes(q) ||
           (d.vendor ?? "").toLowerCase().includes(q) ||
-          (d.ips ?? []).some((ip) => ip.includes(q))
+          (d.ips ?? []).some((ip) => ip.includes(q)) ||
+          (d.mdns_services ?? "").toLowerCase().includes(q)
       );
     }
 
@@ -333,6 +334,21 @@ function DeviceCard({
             <p className="text-xs text-gray-500">{device.vendor}</p>
           )}
         </div>
+
+        {/* mDNS service badges */}
+        {device.mdns_services && (
+          <div className="mt-2 flex flex-wrap gap-1">
+            {device.mdns_services.split(",").map((svc) => (
+              <Badge
+                key={svc}
+                variant="outline"
+                className="border-purple-500/50 text-purple-400 text-[10px]"
+              >
+                {svc.trim()}
+              </Badge>
+            ))}
+          </div>
+        )}
 
         {/* Agent badges or last seen */}
         {device.agent && device.agent.is_online ? (
@@ -581,6 +597,29 @@ function DeviceInfoTab({
             ))}
           </div>
         </div>
+      )}
+
+      {/* mDNS Services */}
+      {device.mdns_services && (
+        <>
+          <Separator className="bg-[#2a2a3a]" />
+          <div>
+            <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+              mDNS Services
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {device.mdns_services.split(",").map((svc) => (
+                <Badge
+                  key={svc}
+                  variant="outline"
+                  className="border-purple-500/50 text-purple-400 text-[11px]"
+                >
+                  {svc.trim()}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </>
       )}
 
       {/* Agent info */}
