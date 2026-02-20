@@ -81,6 +81,12 @@ impl LoginRateLimiter {
     }
 }
 
+impl Default for LoginRateLimiter {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Extract the real client IP address.
 ///
 /// Only trusts `X-Forwarded-For` when the TCP peer address matches a configured

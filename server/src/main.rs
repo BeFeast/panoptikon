@@ -1,15 +1,8 @@
 use anyhow::Result;
 use clap::Parser;
+use panoptikon_server::{api, config, db, scanner};
 use std::net::SocketAddr;
 use tracing::info;
-
-mod api;
-mod config;
-mod db;
-mod oui;
-mod scanner;
-mod vyos;
-mod ws;
 
 /// Panoptikon — VyOS router management & network monitoring server.
 #[derive(Parser, Debug)]
