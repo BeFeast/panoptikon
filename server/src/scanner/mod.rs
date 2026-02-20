@@ -334,8 +334,12 @@ async fn process_scan_results(
         for (device_id, ip) in dns_targets {
             // Limit concurrency: when at the cap, wait for one to finish before spawning.
             if join_set.len() >= DNS_CONCURRENCY_LIMIT {
-                if let Some(Ok((did, dip, hostname))) = join_set.join_next().await {
-                    update_hostname(db, &did, &dip, hostname.as_deref(), &now).await;
+                match join_set.join_next().await {
+                    Some(Ok((did, dip, hostname))) => {
+                        update_hostname(db, &did, &dip, hostname.as_deref(), &now).await;
+                    }
+                    Some(Err(e)) => warn!("DNS lookup task failed: {e}"),
+                    None => {}
                 }
             }
 
@@ -347,8 +351,13 @@ async fn process_scan_results(
         }
 
         // Drain remaining tasks.
-        while let Some(Ok((device_id, ip, hostname))) = join_set.join_next().await {
-            update_hostname(db, &device_id, &ip, hostname.as_deref(), &now).await;
+        while let Some(result) = join_set.join_next().await {
+            match result {
+                Ok((device_id, ip, hostname)) => {
+                    update_hostname(db, &device_id, &ip, hostname.as_deref(), &now).await;
+                }
+                Err(e) => warn!("DNS lookup task failed: {e}"),
+            }
         }
     }
 
