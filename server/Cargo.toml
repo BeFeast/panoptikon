@@ -29,6 +29,7 @@ chrono = { version = "0.4", features = ["serde"] }
 toml = "0.8"
 hickory-resolver = "0.24"
 dashmap = "5"
+ipnetwork = "0.20"
 
 [dev-dependencies]
 reqwest = { version = "0.12", default-features = false, features = ["json", "cookies", "rustls-tls"] }

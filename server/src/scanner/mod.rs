@@ -23,10 +23,26 @@ pub struct DiscoveredDevice {
 
 /// Run an ARP scan on the specified subnets.
 ///
-/// Falls back to parsing the system ARP table if raw socket scanning
-/// is not available (e.g., no CAP_NET_RAW).
-pub async fn scan_subnets(_subnets: &[String]) -> Result<Vec<DiscoveredDevice>> {
-    // Try reading from the system ARP cache first (always available).
+/// First performs an active ping sweep on each configured subnet to populate
+/// the kernel ARP table with entries for all reachable hosts, then reads the
+/// ARP table. This discovers devices that would otherwise be invisible to
+/// passive ARP cache reading.
+pub async fn scan_subnets(
+    subnets: &[String],
+    arp_settle_millis: u64,
+) -> Result<Vec<DiscoveredDevice>> {
+    // Phase 0: Active ping sweep — populate the ARP table.
+    for subnet in subnets {
+        arp::ping_sweep(subnet).await;
+    }
+
+    // Wait for the kernel to finish updating ARP entries.
+    // Duration is configurable via panoptikon.toml [scanner] arp_settle_millis.
+    if arp_settle_millis > 0 {
+        tokio::time::sleep(Duration::from_millis(arp_settle_millis)).await;
+    }
+
+    // Phase 1: Read the (now enriched) ARP cache.
     let devices = arp::read_arp_table().await?;
     Ok(devices)
 }
@@ -43,6 +59,7 @@ pub fn start_scanner_task(db: SqlitePool, config: ScannerConfig, ws_hub: Arc<WsH
     let interval = std::time::Duration::from_secs(config.interval_seconds);
     let grace = config.offline_grace_seconds;
     let subnets = config.subnets.clone();
+    let arp_settle_millis = config.arp_settle_millis;
 
     tokio::spawn(async move {
         info!(
@@ -60,7 +77,7 @@ pub fn start_scanner_task(db: SqlitePool, config: ScannerConfig, ws_hub: Arc<WsH
         loop {
             ticker.tick().await;
 
-            match scan_subnets(&subnets).await {
+            match scan_subnets(&subnets, arp_settle_millis).await {
                 Ok(devices) => {
                     info!(count = devices.len(), "ARP scan completed");
                     if let Err(e) = process_scan_results(&db, &devices, grace, &ws_hub).await {

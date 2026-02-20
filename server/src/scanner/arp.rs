@@ -1,7 +1,96 @@
 use anyhow::Result;
-use tracing::debug;
+use ipnetwork::IpNetwork;
+use tokio::task::JoinSet;
+use tracing::{debug, info, warn};
 
 use super::DiscoveredDevice;
+
+/// Maximum number of concurrent ping processes.
+const PING_CONCURRENCY: usize = 64;
+
+/// Send ICMP echo requests to every host IP in a CIDR subnet.
+///
+/// The purpose is **not** to confirm reachability — it is purely to populate
+/// the kernel ARP table so that the subsequent `read_arp_table()` call
+/// discovers all active devices on the subnet.
+///
+/// Each ping is launched as a child process (`ping -c 1 -W 1 <ip>`).
+/// Exit codes are intentionally ignored.
+pub async fn ping_sweep(subnet: &str) {
+    let network: IpNetwork = match subnet.parse() {
+        Ok(n) => n,
+        Err(e) => {
+            warn!(subnet = %subnet, error = %e, "Failed to parse subnet CIDR for ping sweep");
+            return;
+        }
+    };
+
+    let v4net = match network {
+        IpNetwork::V4(v4) => v4,
+        IpNetwork::V6(_) => {
+            debug!(subnet = %subnet, "Skipping ping sweep for IPv6 subnet");
+            return;
+        }
+    };
+
+    // Iterate host IPs without collecting into a Vec — avoids allocating
+    // potentially tens of thousands of strings for large CIDRs (/16, etc.).
+    //
+    // RFC 3021: /31 subnets have no network/broadcast — both addresses are
+    // valid hosts. /32 is a single-host route. For prefix >= 31, include all
+    // addresses; otherwise exclude network (first) and broadcast (last).
+    let prefix_len = v4net.prefix();
+    let net_addr = v4net.network();
+    let bcast_addr = v4net.broadcast();
+    let host_iter = v4net.iter().filter(move |ip| {
+        if prefix_len >= 31 {
+            true
+        } else {
+            *ip != net_addr && *ip != bcast_addr
+        }
+    });
+
+    // Count hosts for logging.
+    let host_count = if prefix_len >= 31 {
+        v4net.size()
+    } else {
+        v4net.size().saturating_sub(2)
+    };
+
+    info!(
+        subnet = %subnet,
+        host_count = host_count,
+        "Starting ping sweep"
+    );
+
+    let mut join_set: JoinSet<()> = JoinSet::new();
+
+    for ip in host_iter {
+        // Limit concurrency: wait for one to finish before spawning another.
+        if join_set.len() >= PING_CONCURRENCY {
+            let _ = join_set.join_next().await;
+        }
+
+        let ip_str = ip.to_string();
+        join_set.spawn(async move {
+            match tokio::process::Command::new("ping")
+                .args(["-c", "1", "-W", "1", &ip_str])
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .output()
+                .await
+            {
+                Ok(_) => {} // exit code ignored intentionally — any response populates ARP
+                Err(e) => debug!(ip = %ip_str, error = %e, "ping process failed to spawn"),
+            }
+        });
+    }
+
+    // Wait for all remaining pings to complete.
+    while join_set.join_next().await.is_some() {}
+
+    info!(subnet = %subnet, "Ping sweep complete");
+}
 
 /// Read the system ARP table from /proc/net/arp (Linux).
 ///
