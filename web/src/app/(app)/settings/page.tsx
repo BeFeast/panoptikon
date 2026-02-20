@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Lock,
   CheckCircle,
@@ -55,8 +55,13 @@ export default function SettingsPage() {
   const [vyosTestStatus, setVyosTestStatus] = useState<Status>("idle");
   const [vyosTestMsg, setVyosTestMsg] = useState("");
 
+  // Guards against race: initial GET /settings resolving after user saves.
+  const settingsLoadTokenRef = useRef(0);
+
   // Load current settings on mount
   useEffect(() => {
+    const loadToken = ++settingsLoadTokenRef.current;
+
     fetch("/api/v1/settings", { credentials: "include" })
       .then((res) => res.json())
       .then(
@@ -65,6 +70,9 @@ export default function SettingsPage() {
           vyos_url: string | null;
           vyos_api_key_set: boolean;
         }) => {
+          // Ignore stale response if a newer local action (e.g. Save) already happened.
+          if (loadToken !== settingsLoadTokenRef.current) return;
+
           setWebhookUrl(data.webhook_url ?? "");
           setSavedWebhookUrl(data.webhook_url ?? null);
           setVyosUrl(data.vyos_url ?? "");
@@ -135,6 +143,9 @@ export default function SettingsPage() {
   }
 
   async function handleWebhookSave() {
+    // Invalidate any in-flight initial settings load.
+    settingsLoadTokenRef.current++;
+
     setWebhookStatus("loading");
     setWebhookMsg("");
     try {
@@ -191,6 +202,9 @@ export default function SettingsPage() {
   }
 
   async function handleVyosSave() {
+    // Invalidate any in-flight initial settings load.
+    settingsLoadTokenRef.current++;
+
     setVyosStatus("loading");
     setVyosMsg("");
     try {
