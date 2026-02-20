@@ -123,6 +123,10 @@ export function fetchDeviceUptime(id: string, days = 7): Promise<UptimeStats> {
   return apiGet<UptimeStats>(`/api/v1/devices/${id}/uptime?days=${days}`);
 }
 
+export function wakeDevice(id: string): Promise<void> {
+  return apiPost<void>(`/api/v1/devices/${id}/wake`);
+}
+
 // ─── Agents ─────────────────────────────────────────────
 
 export function fetchAgents(): Promise<Agent[]> {
