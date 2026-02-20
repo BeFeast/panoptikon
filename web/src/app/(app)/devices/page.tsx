@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Cpu, LayoutGrid, List, MemoryStick, Power, Search, Wifi, WifiOff } from "lucide-react";
+import { ArrowDown, ArrowUp, Cpu, Loader2, LayoutGrid, List, MemoryStick, Power, Radar, Search, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -24,8 +24,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice } from "@/lib/api";
-import type { DeviceEvent, UptimeStats } from "@/lib/api";
+import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan } from "@/lib/api";
+import type { DeviceEvent, UptimeStats, PortScanResult } from "@/lib/api";
 import type { Device } from "@/lib/types";
 import { formatPercent, timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
@@ -526,11 +526,16 @@ function DeviceDetail({ device }: { device: Device }) {
       <Tabs defaultValue="info" className="w-full">
         <TabsList className="mb-4 w-full bg-[#1e1e2e]">
           <TabsTrigger value="info" className="flex-1">Info</TabsTrigger>
+          <TabsTrigger value="ports" className="flex-1">Ports</TabsTrigger>
           <TabsTrigger value="events" className="flex-1">Events</TabsTrigger>
         </TabsList>
 
         <TabsContent value="info">
           <DeviceInfoTab device={device} ips={ips} primaryIp={primaryIp} />
+        </TabsContent>
+
+        <TabsContent value="ports">
+          <DevicePortsTab deviceId={device.id} />
         </TabsContent>
 
         <TabsContent value="events">
@@ -700,6 +705,156 @@ function DeviceEventsTab({ deviceId }: { deviceId: string }) {
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Device Ports Tab ───────────────────────────────────
+
+function DevicePortsTab({ deviceId }: { deviceId: string }) {
+  const [scanResult, setScanResult] = useState<PortScanResult | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Load cached scan result on mount
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const result = await fetchPortScan(deviceId);
+        if (!cancelled) setScanResult(result);
+      } catch {
+        // 404 means no scan yet — that's fine
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [deviceId]);
+
+  const handleScan = async () => {
+    setScanning(true);
+    setError(null);
+    try {
+      const result = await triggerPortScan(deviceId);
+      setScanResult(result);
+    } catch (err) {
+      if (err instanceof Error) {
+        // Try to parse the error body for a friendly message
+        const match = err.message.match(/API error (\d+)/);
+        if (match) {
+          const code = parseInt(match[1]);
+          if (code === 429) {
+            setError("Rate limited — wait 60s between scans.");
+          } else if (code === 503) {
+            setError("VyOS not configured. Set it up in Settings.");
+          } else if (code === 502) {
+            setError("Scan failed — VyOS unreachable or nmap error.");
+          } else {
+            setError(err.message);
+          }
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError("Scan failed");
+      }
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <Skeleton key={i} className="h-8 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Button
+        variant="secondary"
+        size="sm"
+        className="w-full gap-2"
+        disabled={scanning}
+        onClick={handleScan}
+      >
+        {scanning ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Radar className="h-4 w-4" />
+        )}
+        {scanning ? "Scanning…" : "Scan Ports"}
+      </Button>
+
+      {error && (
+        <p className="text-sm text-red-400">{error}</p>
+      )}
+
+      {scanResult && (
+        <>
+          <p className="text-xs text-gray-500">
+            Last scanned: {timeAgo(scanResult.scanned_at)}
+          </p>
+
+          {scanResult.ports.length === 0 ? (
+            <p className="py-6 text-center text-sm text-gray-500">
+              No open ports found.
+            </p>
+          ) : (
+            <div className="rounded-md border border-[#2a2a3a] bg-[#1e1e2e]">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-[#2a2a3a] hover:bg-transparent">
+                    <TableHead className="text-gray-400">Port</TableHead>
+                    <TableHead className="text-gray-400">Proto</TableHead>
+                    <TableHead className="text-gray-400">State</TableHead>
+                    <TableHead className="text-gray-400">Service</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {scanResult.ports.map((port) => (
+                    <TableRow
+                      key={`${port.port}/${port.protocol}`}
+                      className="border-[#2a2a3a]"
+                    >
+                      <TableCell className="font-mono text-sm text-gray-300">
+                        {port.port}
+                      </TableCell>
+                      <TableCell className="text-xs text-gray-400">
+                        {port.protocol}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="border-green-500/50 text-green-400 text-[10px]">
+                          {port.state}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-300">
+                        {port.service}
+                        {port.version && (
+                          <span className="ml-1 text-xs text-gray-500">{port.version}</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </>
+      )}
+
+      {!scanResult && !error && (
+        <p className="py-6 text-center text-sm text-gray-500">
+          No port scan results yet. Click &quot;Scan Ports&quot; to start.
+        </p>
       )}
     </div>
   );

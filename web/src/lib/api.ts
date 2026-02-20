@@ -127,6 +127,28 @@ export function wakeDevice(id: string): Promise<void> {
   return apiPost<void>(`/api/v1/devices/${id}/wake`);
 }
 
+export interface PortEntry {
+  port: number;
+  protocol: string;
+  state: string;
+  service: string;
+  version: string;
+}
+
+export interface PortScanResult {
+  device_id: string;
+  scanned_at: string;
+  ports: PortEntry[];
+}
+
+export function triggerPortScan(id: string): Promise<PortScanResult> {
+  return apiPost<PortScanResult>(`/api/v1/devices/${id}/scan`);
+}
+
+export function fetchPortScan(id: string): Promise<PortScanResult> {
+  return apiGet<PortScanResult>(`/api/v1/devices/${id}/scan`);
+}
+
 // ─── Agents ─────────────────────────────────────────────
 
 export function fetchAgents(): Promise<Agent[]> {

@@ -1,6 +1,7 @@
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{header, StatusCode},
+    response::IntoResponse,
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -515,6 +516,301 @@ pub async fn wake(
     tracing::info!("Sent WoL magic packet for device {id} (MAC: {mac})");
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+// ─── Port Scan ──────────────────────────────────────────
+
+/// A single port entry from an nmap scan result.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct PortEntry {
+    pub port: u16,
+    pub protocol: String,
+    pub state: String,
+    pub service: String,
+    pub version: String,
+}
+
+/// Response for the port scan endpoints.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PortScanResult {
+    pub device_id: String,
+    pub scanned_at: String,
+    pub ports: Vec<PortEntry>,
+}
+
+/// Parse nmap text output into a list of open port entries.
+///
+/// Expects lines like:
+/// ```text
+/// 22/tcp   open  ssh     OpenSSH 8.4p1 Debian 5+deb11u1
+/// 80/tcp   open  http    Apache httpd 2.4.54
+/// 443/tcp  closed https
+/// ```
+///
+/// Only ports with state "open" are returned.
+pub fn parse_nmap_output(output: &str) -> Vec<PortEntry> {
+    let mut results = Vec::new();
+
+    for line in output.lines() {
+        let trimmed = line.trim();
+        // Match lines like "80/tcp   open  http   Apache httpd 2.4"
+        // The pattern is: <port>/<proto>  <state>  <service>  [version...]
+        if let Some(slash_pos) = trimmed.find('/') {
+            // Port number must be at the start
+            let port_str = &trimmed[..slash_pos];
+            let port: u16 = match port_str.parse() {
+                Ok(p) => p,
+                Err(_) => continue,
+            };
+
+            let rest = &trimmed[slash_pos + 1..];
+            // Split on whitespace to get: [proto, state, service, version...]
+            let parts: Vec<&str> = rest.split_whitespace().collect();
+            if parts.len() < 3 {
+                continue;
+            }
+
+            let protocol = parts[0].to_string();
+            let state = parts[1].to_string();
+
+            // Only include open ports
+            if state != "open" {
+                continue;
+            }
+
+            let service = parts[2].to_string();
+            let version = if parts.len() > 3 {
+                parts[3..].join(" ")
+            } else {
+                String::new()
+            };
+
+            results.push(PortEntry {
+                port,
+                protocol,
+                state,
+                service,
+                version,
+            });
+        }
+    }
+
+    results
+}
+
+/// Helper to read VyOS client from DB settings (same pattern as vyos.rs).
+async fn get_vyos_client_from_db(
+    db: &sqlx::SqlitePool,
+    config: &crate::config::AppConfig,
+) -> Option<crate::vyos::client::VyosClient> {
+    let db_url: Option<String> =
+        sqlx::query_scalar(r#"SELECT value FROM settings WHERE key = 'vyos_url'"#)
+            .fetch_optional(db)
+            .await
+            .ok()
+            .flatten();
+
+    let db_key: Option<String> =
+        sqlx::query_scalar(r#"SELECT value FROM settings WHERE key = 'vyos_api_key'"#)
+            .fetch_optional(db)
+            .await
+            .ok()
+            .flatten();
+
+    let url = db_url
+        .filter(|s| !s.is_empty())
+        .or_else(|| config.vyos.url.clone());
+    let key = db_key
+        .filter(|s| !s.is_empty())
+        .or_else(|| config.vyos.api_key.clone());
+
+    match (url, key) {
+        (Some(u), Some(k)) if !u.is_empty() && !k.is_empty() => {
+            Some(crate::vyos::client::VyosClient::new(&u, &k))
+        }
+        _ => None,
+    }
+}
+
+/// POST /api/v1/devices/:id/scan — trigger an nmap scan via VyOS.
+pub async fn trigger_scan(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<impl IntoResponse, impl IntoResponse> {
+    // Check VyOS is configured
+    let client = match get_vyos_client_from_db(&state.db, &state.config).await {
+        Some(c) => c,
+        None => {
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(serde_json::json!({
+                    "error": "VyOS not configured. Set vyos_url and vyos_api_key in settings."
+                })),
+            ));
+        }
+    };
+
+    // Check device exists and get its IP
+    let ip: String = match sqlx::query_scalar(
+        r#"SELECT ip FROM device_ips WHERE device_id = ? AND is_current = 1 LIMIT 1"#,
+    )
+    .bind(&id)
+    .fetch_optional(&state.db)
+    .await
+    {
+        Ok(Some(ip)) => ip,
+        Ok(None) => {
+            // Check if device itself exists
+            let exists: bool =
+                sqlx::query_scalar::<_, i64>(r#"SELECT COUNT(*) FROM devices WHERE id = ?"#)
+                    .bind(&id)
+                    .fetch_one(&state.db)
+                    .await
+                    .unwrap_or(0)
+                    > 0;
+            if !exists {
+                return Err((
+                    StatusCode::NOT_FOUND,
+                    Json(serde_json::json!({"error": "Device not found"})),
+                ));
+            }
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "Device has no current IP address"})),
+            ));
+        }
+        Err(e) => {
+            tracing::error!("Failed to fetch device IP for scan: {e}");
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Internal server error"})),
+            ));
+        }
+    };
+
+    // Rate limit: check last scan time
+    let last_scan_at: Option<String> = sqlx::query_scalar(
+        r#"SELECT scanned_at FROM port_scans WHERE device_id = ? ORDER BY scanned_at DESC LIMIT 1"#,
+    )
+    .bind(&id)
+    .fetch_optional(&state.db)
+    .await
+    .unwrap_or(None);
+
+    if let Some(ref last_at) = last_scan_at {
+        if let Ok(last_time) = chrono::NaiveDateTime::parse_from_str(last_at, "%Y-%m-%d %H:%M:%S") {
+            let now = chrono::Utc::now().naive_utc();
+            let elapsed = (now - last_time).num_seconds();
+            if elapsed < 60 {
+                let retry_after = 60 - elapsed;
+                return Err((
+                    StatusCode::TOO_MANY_REQUESTS,
+                    Json(serde_json::json!({
+                        "error": "Rate limited. Try again later.",
+                        "retry_after": retry_after,
+                    })),
+                ));
+            }
+        }
+    }
+
+    // Run nmap via VyOS
+    let nmap_output = match client.run_nmap(&ip).await {
+        Ok(output) => output,
+        Err(e) => {
+            tracing::error!("nmap scan failed for device {id} (IP: {ip}): {e}");
+            return Err((
+                StatusCode::BAD_GATEWAY,
+                Json(serde_json::json!({"error": format!("nmap scan failed: {e}")})),
+            ));
+        }
+    };
+
+    // Parse output
+    let ports = parse_nmap_output(&nmap_output);
+    let result_json = serde_json::to_string(&ports).unwrap_or_else(|_| "[]".to_string());
+
+    // Store in DB
+    let scanned_at: String = sqlx::query_scalar(
+        r#"INSERT INTO port_scans (device_id, result_json) VALUES (?, ?) RETURNING scanned_at"#,
+    )
+    .bind(&id)
+    .bind(&result_json)
+    .fetch_one(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to store port scan result: {e}");
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({"error": "Failed to store scan result"})),
+        )
+    })?;
+
+    Ok((
+        StatusCode::OK,
+        [(header::CACHE_CONTROL, "no-cache")],
+        Json(PortScanResult {
+            device_id: id,
+            scanned_at,
+            ports,
+        }),
+    ))
+}
+
+/// GET /api/v1/devices/:id/scan — get the latest cached port scan result.
+pub async fn get_scan(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<PortScanResult>, StatusCode> {
+    let row = sqlx::query(
+        r#"SELECT scanned_at, result_json FROM port_scans WHERE device_id = ? ORDER BY scanned_at DESC LIMIT 1"#,
+    )
+    .bind(&id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to fetch port scan for device {id}: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    match row {
+        Some(row) => {
+            let scanned_at: String = row.try_get("scanned_at").unwrap_or_default();
+            let result_json: String = row.try_get("result_json").unwrap_or_default();
+            let ports: Vec<PortEntry> = serde_json::from_str(&result_json).unwrap_or_default();
+
+            Ok(Json(PortScanResult {
+                device_id: id,
+                scanned_at,
+                ports,
+            }))
+        }
+        None => Err(StatusCode::NOT_FOUND),
+    }
+}
+
+/// Check rate limit for port scans. Returns seconds remaining if rate limited.
+pub async fn check_port_scan_rate_limit(
+    db: &sqlx::SqlitePool,
+    device_id: &str,
+) -> Result<Option<i64>, sqlx::Error> {
+    let last_scan_at: Option<String> = sqlx::query_scalar(
+        r#"SELECT scanned_at FROM port_scans WHERE device_id = ? ORDER BY scanned_at DESC LIMIT 1"#,
+    )
+    .bind(device_id)
+    .fetch_optional(db)
+    .await?;
+
+    if let Some(ref last_at) = last_scan_at {
+        if let Ok(last_time) = chrono::NaiveDateTime::parse_from_str(last_at, "%Y-%m-%d %H:%M:%S") {
+            let now = chrono::Utc::now().naive_utc();
+            let elapsed = (now - last_time).num_seconds();
+            if elapsed < 60 {
+                return Ok(Some(60 - elapsed));
+            }
+        }
+    }
+    Ok(None)
 }
 
 #[cfg(test)]
@@ -1049,5 +1345,140 @@ mod tests {
         assert_eq!(&packet[6..12], &expected_mac);
         // Verify last repetition
         assert_eq!(&packet[96..102], &expected_mac);
+    }
+
+    // ─── Port Scan Tests ────────────────────────────────────
+
+    #[test]
+    fn test_parse_nmap_output_open_ports() {
+        let output = r#"Starting Nmap 7.93 ( https://nmap.org ) at 2026-02-20 22:00 UTC
+Nmap scan report for 10.10.0.14
+Host is up (0.0015s latency).
+Not shown: 997 closed tcp ports (conn-refused)
+PORT     STATE SERVICE VERSION
+22/tcp   open  ssh     OpenSSH 8.4p1 Debian 5+deb11u1
+80/tcp   open  http    Apache httpd 2.4.54
+443/tcp  open  https
+
+Service detection performed.
+Nmap done: 1 IP address (1 host up) scanned in 6.42 seconds
+"#;
+        let ports = parse_nmap_output(output);
+        assert_eq!(ports.len(), 3);
+
+        assert_eq!(ports[0].port, 22);
+        assert_eq!(ports[0].protocol, "tcp");
+        assert_eq!(ports[0].state, "open");
+        assert_eq!(ports[0].service, "ssh");
+        assert_eq!(ports[0].version, "OpenSSH 8.4p1 Debian 5+deb11u1");
+
+        assert_eq!(ports[1].port, 80);
+        assert_eq!(ports[1].protocol, "tcp");
+        assert_eq!(ports[1].service, "http");
+        assert_eq!(ports[1].version, "Apache httpd 2.4.54");
+
+        assert_eq!(ports[2].port, 443);
+        assert_eq!(ports[2].service, "https");
+        assert_eq!(ports[2].version, "");
+    }
+
+    #[test]
+    fn test_parse_nmap_output_empty() {
+        let output = r#"Starting Nmap 7.93 ( https://nmap.org ) at 2026-02-20 22:00 UTC
+Nmap scan report for 10.10.0.14
+Host is up (0.0015s latency).
+All 1000 scanned ports on 10.10.0.14 are in ignored states.
+Not shown: 1000 closed tcp ports (conn-refused)
+
+Nmap done: 1 IP address (1 host up) scanned in 0.42 seconds
+"#;
+        let ports = parse_nmap_output(output);
+        assert!(ports.is_empty(), "Empty nmap output should yield no ports");
+    }
+
+    #[test]
+    fn test_parse_nmap_output_mixed_states() {
+        let output = r#"PORT     STATE    SERVICE VERSION
+22/tcp   open     ssh     OpenSSH 8.4p1
+80/tcp   closed   http
+443/tcp  filtered https
+8080/tcp open     http-proxy
+"#;
+        let ports = parse_nmap_output(output);
+        // Only open ports should be included
+        assert_eq!(ports.len(), 2, "Only open ports should be in result");
+        assert_eq!(ports[0].port, 22);
+        assert_eq!(ports[0].service, "ssh");
+        assert_eq!(ports[1].port, 8080);
+        assert_eq!(ports[1].service, "http-proxy");
+    }
+
+    #[tokio::test]
+    async fn test_port_scan_rate_limit_enforced() {
+        let pool = test_db().await;
+        let device_id = insert_test_device(&pool, "AA:BB:CC:DD:EE:20").await;
+
+        // Insert a scan result just now
+        sqlx::query(r#"INSERT INTO port_scans (device_id, result_json) VALUES (?, '[]')"#)
+            .bind(&device_id)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        // Check rate limit — should be enforced (< 60s ago)
+        let result = check_port_scan_rate_limit(&pool, &device_id).await.unwrap();
+        assert!(
+            result.is_some(),
+            "Rate limit should be enforced within 60s of last scan"
+        );
+        let remaining = result.unwrap();
+        assert!(
+            remaining > 0 && remaining <= 60,
+            "Retry-after should be between 1 and 60, got {remaining}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_port_scan_stores_result() {
+        let pool = test_db().await;
+        let device_id = insert_test_device(&pool, "AA:BB:CC:DD:EE:21").await;
+
+        let ports = vec![PortEntry {
+            port: 22,
+            protocol: "tcp".to_string(),
+            state: "open".to_string(),
+            service: "ssh".to_string(),
+            version: "OpenSSH 8.4".to_string(),
+        }];
+        let result_json = serde_json::to_string(&ports).unwrap();
+
+        // Store scan result
+        sqlx::query(r#"INSERT INTO port_scans (device_id, result_json) VALUES (?, ?)"#)
+            .bind(&device_id)
+            .bind(&result_json)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        // Retrieve it
+        let row = sqlx::query(
+            r#"SELECT scanned_at, result_json FROM port_scans WHERE device_id = ? ORDER BY scanned_at DESC LIMIT 1"#,
+        )
+        .bind(&device_id)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+        let stored_json: String = row.try_get("result_json").unwrap();
+        let stored_ports: Vec<PortEntry> = serde_json::from_str(&stored_json).unwrap();
+        let scanned_at: String = row.try_get("scanned_at").unwrap();
+
+        assert_eq!(stored_ports.len(), 1);
+        assert_eq!(stored_ports[0].port, 22);
+        assert_eq!(stored_ports[0].service, "ssh");
+        assert!(
+            !scanned_at.is_empty(),
+            "scanned_at should be auto-populated"
+        );
     }
 }
