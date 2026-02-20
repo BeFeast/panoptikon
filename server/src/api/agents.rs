@@ -144,7 +144,11 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Agent>>, Sta
 
     let agents: Vec<Agent> = rows
         .into_iter()
-        .filter_map(|r| Agent::from_row(r).ok())
+        .filter_map(|r| {
+            Agent::from_row(r)
+                .map_err(|e| warn!("Failed to parse agent row: {e}"))
+                .ok()
+        })
         .collect();
 
     Ok(Json(agents))
