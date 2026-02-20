@@ -207,9 +207,6 @@ pub async fn login(
 
     let _ = password_hash; // used above
 
-    // Login succeeded — clear rate-limiter for this IP.
-    state.rate_limiter.clear(&client_ip);
-
     // Generate session token and store it in the database.
     let token = uuid::Uuid::new_v4().to_string();
     // Ensure at least 1 second; a zero expiry would create an immediately-invalid session.
@@ -226,6 +223,9 @@ pub async fn login(
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         })?;
 
+    // Clear rate-limiter only after session is successfully persisted.
+    state.rate_limiter.clear(&client_ip);
+
     tracing::info!(%client_ip, "Admin logged in, session created");
 
     // Build Set-Cookie header.
@@ -237,9 +237,10 @@ pub async fn login(
         message: "Login successful".to_string(),
     })
     .into_response();
-    response
-        .headers_mut()
-        .insert(header::SET_COOKIE, cookie.parse().unwrap());
+    response.headers_mut().insert(
+        header::SET_COOKIE,
+        header::HeaderValue::from_str(&cookie).expect("cookie value is always valid ASCII"),
+    );
 
     Ok(response)
 }
@@ -327,9 +328,10 @@ pub async fn logout(State(state): State<AppState>, req: Request) -> impl IntoRes
     let cookie = "panoptikon_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0";
 
     let mut response = StatusCode::NO_CONTENT.into_response();
-    response
-        .headers_mut()
-        .insert(header::SET_COOKIE, cookie.parse().unwrap());
+    response.headers_mut().insert(
+        header::SET_COOKIE,
+        header::HeaderValue::from_str(&cookie).expect("cookie value is always valid ASCII"),
+    );
     response
 }
 
