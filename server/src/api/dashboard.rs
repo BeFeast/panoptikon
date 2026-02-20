@@ -49,16 +49,38 @@ pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
         .await
         .unwrap_or(0);
 
-    // Check VyOS connectivity
-    let router_status = match (&state.config.vyos.url, &state.config.vyos.api_key) {
-        (Some(url), Some(key)) if !url.contains("192.168.1.1") => {
-            let client = crate::vyos::client::VyosClient::new(url, key);
-            match client.show(&["system", "host-name"]).await {
-                Ok(_) => "connected".to_string(),
-                Err(_) => "disconnected".to_string(),
+    // Check VyOS connectivity — read settings from DB first, fall back to config.
+    let router_status = {
+        let db_url: Option<String> =
+            sqlx::query_scalar(r#"SELECT value FROM settings WHERE key = 'vyos_url'"#)
+                .fetch_optional(&state.db)
+                .await
+                .ok()
+                .flatten();
+        let db_key: Option<String> =
+            sqlx::query_scalar(r#"SELECT value FROM settings WHERE key = 'vyos_api_key'"#)
+                .fetch_optional(&state.db)
+                .await
+                .ok()
+                .flatten();
+
+        let url = db_url
+            .filter(|s| !s.is_empty())
+            .or_else(|| state.config.vyos.url.clone());
+        let key = db_key
+            .filter(|s| !s.is_empty())
+            .or_else(|| state.config.vyos.api_key.clone());
+
+        match (url, key) {
+            (Some(u), Some(k)) if !u.is_empty() && !k.is_empty() => {
+                let client = crate::vyos::client::VyosClient::new(&u, &k);
+                match client.show(&["system", "uptime"]).await {
+                    Ok(_) => "connected".to_string(),
+                    Err(_) => "disconnected".to_string(),
+                }
             }
+            _ => "unconfigured".to_string(),
         }
-        _ => "unconfigured".to_string(),
     };
 
     // Latest WAN traffic from traffic_samples (source = 'vyos'), most recent entry
