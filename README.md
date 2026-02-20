@@ -34,6 +34,10 @@
      └─────────┘ └─────────┘ └─────────┘
 ```
 
+📋 **[Product Requirements Document (PRD)](docs/PRD.md)** — full feature spec, architecture decisions, and roadmap.
+
+---
+
 ## Quick Start
 
 ### Prerequisites
