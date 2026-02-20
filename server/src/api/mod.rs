@@ -18,6 +18,7 @@ pub mod auth;
 pub mod dashboard;
 pub mod devices;
 pub mod settings;
+pub mod traffic;
 pub mod vyos;
 
 /// Shared application state available to all handlers.
@@ -94,6 +95,8 @@ pub fn router(state: AppState) -> Router {
         .route("/vyos/routes", get(vyos::routes))
         .route("/vyos/dhcp-leases", get(vyos::dhcp_leases))
         .route("/vyos/firewall", get(vyos::firewall))
+        // Traffic
+        .route("/traffic/history", get(traffic::history))
         // WebSocket for UI live updates
         .route("/ws", get(agents::ui_ws_handler))
         .route_layer(middleware::from_fn_with_state(
