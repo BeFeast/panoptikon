@@ -7,6 +7,9 @@ use tracing::info;
 /// The initial migration SQL, embedded at compile time.
 const INIT_MIGRATION: &str = include_str!("migrations/001_init.sql");
 
+/// Migration 002: persistent sessions table.
+const SESSIONS_MIGRATION: &str = include_str!("migrations/002_sessions.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -66,6 +69,33 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 001_init.sql");
     }
 
+    // Migration 002: persistent sessions table.
+    let applied_2: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 2")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_2 {
+        // Use raw_sql to execute the migration as a multi-statement script,
+        // avoiding fragile semicolon-splitting that breaks on embedded semicolons.
+        sqlx::raw_sql(SESSIONS_MIGRATION).execute(pool).await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (2)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 002_sessions.sql");
+    }
+
+    // Purge expired sessions on startup.
+    let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
+        .execute(pool)
+        .await?
+        .rows_affected();
+    if deleted > 0 {
+        info!(deleted, "Purged expired sessions on startup");
+    }
+
     Ok(())
 }
 
@@ -87,6 +117,7 @@ mod tests {
             "agent_reports",
             "traffic_samples",
             "alerts",
+            "sessions",
         ];
 
         for table in &expected_tables {

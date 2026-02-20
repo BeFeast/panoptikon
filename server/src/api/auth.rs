@@ -5,7 +5,6 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
-use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use tracing::{debug, warn};
@@ -85,12 +84,21 @@ pub async fn login(
 
     let _ = password_hash; // used above
 
-    // Generate session token and store it.
+    // Generate session token and store it in the database.
     let token = uuid::Uuid::new_v4().to_string();
-    let expiry_secs = state.config.auth.session_expiry_seconds;
-    let expiry = Utc::now() + Duration::seconds(expiry_secs as i64);
+    // Ensure at least 1 second; a zero expiry would create an immediately-invalid session.
+    let expiry_secs = state.config.auth.session_expiry_seconds.max(1);
+    let expiry_modifier = format!("+{expiry_secs} seconds");
 
-    state.sessions.write().await.insert(token.clone(), expiry);
+    sqlx::query("INSERT INTO sessions (token, expires_at) VALUES (?, datetime('now', ?))")
+        .bind(&token)
+        .bind(&expiry_modifier)
+        .execute(&state.db)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to store session: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     tracing::info!("Admin logged in, session created");
 
@@ -165,7 +173,13 @@ pub async fn change_password(
         })?;
 
     // Invalidate all existing sessions so the new password takes effect immediately.
-    state.sessions.write().await.clear();
+    sqlx::query("DELETE FROM sessions")
+        .execute(&state.db)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to clear sessions: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     tracing::info!("Admin password changed, all sessions invalidated");
     Ok(StatusCode::NO_CONTENT)
@@ -173,9 +187,15 @@ pub async fn change_password(
 
 /// POST /api/v1/auth/logout — clear session cookie.
 pub async fn logout(State(state): State<AppState>, req: Request) -> impl IntoResponse {
-    // Try to extract and remove the session from the store.
+    // Try to extract and remove the session from the database.
     if let Some(token) = extract_session_token(&req) {
-        state.sessions.write().await.remove(&token);
+        if let Err(e) = sqlx::query("DELETE FROM sessions WHERE token = ?")
+            .bind(&token)
+            .execute(&state.db)
+            .await
+        {
+            tracing::warn!(error = %e, "Failed to delete session on logout");
+        }
     }
 
     let cookie = "panoptikon_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0";
@@ -203,11 +223,15 @@ pub async fn status(
         .is_none();
 
     let authenticated = if let Some(token) = extract_session_token(&req) {
-        let sessions = state.sessions.read().await;
-        sessions
-            .get(&token)
-            .map(|exp| Utc::now() < *exp)
-            .unwrap_or(false)
+        sqlx::query("SELECT 1 FROM sessions WHERE token = ? AND expires_at > datetime('now')")
+            .bind(&token)
+            .fetch_optional(&state.db)
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to check session: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?
+            .is_some()
     } else {
         false
     };
@@ -222,17 +246,23 @@ pub async fn status(
 pub async fn auth_middleware(State(state): State<AppState>, req: Request, next: Next) -> Response {
     let token = extract_session_token(&req);
 
-    let valid = if let Some(ref token) = token {
-        let sessions = state.sessions.read().await;
-        sessions
-            .get(token)
-            .map(|exp| Utc::now() < *exp)
-            .unwrap_or(false)
+    let session_row = if let Some(ref token) = token {
+        match sqlx::query("SELECT 1 FROM sessions WHERE token = ? AND expires_at > datetime('now')")
+            .bind(token)
+            .fetch_optional(&state.db)
+            .await
+        {
+            Ok(row) => row,
+            Err(e) => {
+                tracing::error!(error = %e, "DB error in auth middleware");
+                return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+            }
+        }
     } else {
-        false
+        None
     };
 
-    if !valid {
+    if session_row.is_none() {
         debug!("Auth middleware rejected request (no valid session)");
         return StatusCode::UNAUTHORIZED.into_response();
     }
