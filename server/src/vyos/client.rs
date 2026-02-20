@@ -60,6 +60,64 @@ impl VyosClient {
         self.post_form("/show", &data).await
     }
 
+    /// Run an nmap scan against a target IP via VyOS.
+    ///
+    /// Uses the VyOS `/show` endpoint with `path: ["nmap", "-sV", "<ip>"]`.
+    /// Returns the raw nmap text output.
+    pub async fn run_nmap(&self, ip: &str) -> Result<String> {
+        // Build a dedicated client with a longer timeout for nmap scans
+        let nmap_http = reqwest::Client::builder()
+            .danger_accept_invalid_certs(true)
+            .timeout(Duration::from_secs(30))
+            .build()
+            .context("failed to build nmap reqwest client")?;
+
+        let data = serde_json::json!({
+            "op": "show",
+            "path": ["nmap", "-sV", ip],
+        });
+
+        let url = format!("{}/show", self.base_url);
+        let data_str = serde_json::to_string(&data)?;
+
+        let form = reqwest::multipart::Form::new()
+            .text("data", data_str)
+            .text("key", self.api_key.clone());
+
+        let resp = nmap_http
+            .post(&url)
+            .multipart(form)
+            .send()
+            .await
+            .context("VyOS nmap request failed")?;
+
+        let status = resp.status();
+        let body = resp
+            .text()
+            .await
+            .context("failed to read VyOS nmap response body")?;
+
+        if !status.is_success() {
+            anyhow::bail!("VyOS nmap returned HTTP {status}: {body}");
+        }
+
+        let parsed: VyosResponse =
+            serde_json::from_str(&body).context("failed to parse VyOS nmap response JSON")?;
+
+        if parsed.success {
+            Ok(parsed
+                .data
+                .and_then(|v| v.as_str().map(|s| s.to_string()))
+                .unwrap_or_default())
+        } else {
+            let err_msg = parsed
+                .error
+                .map(|e| e.to_string())
+                .unwrap_or_else(|| "unknown error".to_string());
+            anyhow::bail!("VyOS nmap error: {err_msg}");
+        }
+    }
+
     /// Low-level helper: send a multipart form POST to the VyOS API.
     async fn post_form(&self, endpoint: &str, data: &Value) -> Result<Value> {
         let url = format!("{}{endpoint}", self.base_url);

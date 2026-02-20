@@ -16,6 +16,9 @@ const CLEANUP_TEST_AGENTS_MIGRATION: &str = include_str!("migrations/003_cleanup
 /// Migration 004: device events table for online/offline history tracking.
 const DEVICE_EVENTS_MIGRATION: &str = include_str!("migrations/004_device_events.sql");
 
+/// Migration 005: port_scans table for caching nmap scan results.
+const PORT_SCANS_MIGRATION: &str = include_str!("migrations/005_port_scans.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -125,6 +128,22 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
             .await?;
 
         info!("Applied migration 004_device_events.sql");
+    }
+
+    // Migration 005: port_scans table.
+    let applied_5: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 5")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_5 {
+        sqlx::raw_sql(PORT_SCANS_MIGRATION).execute(pool).await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (5)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 005_port_scans.sql");
     }
 
     // Purge expired sessions on startup.
