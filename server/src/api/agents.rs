@@ -258,10 +258,17 @@ pub async fn ws_handler(
     headers: HeaderMap,
 ) -> impl IntoResponse {
     let api_key = headers
-        .get("Authorization")
+        .get(axum::http::header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
-        .and_then(|s| s.strip_prefix("Bearer "))
-        .map(|s| s.to_owned());
+        .and_then(|s| {
+            let s = s.trim();
+            // case-insensitive prefix check, whitespace-tolerant
+            if s.len() > 7 && s[..7].eq_ignore_ascii_case("bearer ") {
+                Some(s[7..].trim().to_owned())
+            } else {
+                None
+            }
+        });
 
     ws.on_upgrade(move |socket| handle_agent_ws(socket, state, api_key))
 }
@@ -445,7 +452,13 @@ async fn wait_for_auth(
         _ => return None,
     };
 
-    let auth: AgentAuthMessage = serde_json::from_str(&text).ok()?;
+    let auth: AgentAuthMessage = match serde_json::from_str(&text) {
+        Ok(a) => a,
+        Err(e) => {
+            warn!("agent ws: failed to parse auth message: {}", e);
+            return None;
+        }
+    };
 
     // Verify the API key (from header) against the stored hash for this agent.
     let row = sqlx::query("SELECT api_key_hash FROM agents WHERE id = ?")

@@ -1,3 +1,4 @@
+use axum::http::{header, Method};
 use axum::{
     middleware::{self},
     routing::{delete, get, patch, post},
@@ -7,7 +8,6 @@ use sqlx::SqlitePool;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use axum::http::{header, Method};
 use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
@@ -50,7 +50,7 @@ pub fn router(state: AppState) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(tower_http::cors::AllowOrigin::mirror_request())
         .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
-        .allow_headers([header::CONTENT_TYPE, header::COOKIE])
+        .allow_headers([header::CONTENT_TYPE, header::COOKIE, header::AUTHORIZATION])
         .allow_credentials(true);
 
     // Public routes — no auth required.
