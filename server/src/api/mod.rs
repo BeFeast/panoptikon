@@ -5,9 +5,7 @@ use axum::{
     Router,
 };
 use sqlx::SqlitePool;
-use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
@@ -21,15 +19,11 @@ pub mod dashboard;
 pub mod devices;
 pub mod vyos;
 
-/// Session entry: maps token → expiry time.
-pub type SessionStore = Arc<RwLock<HashMap<String, chrono::DateTime<chrono::Utc>>>>;
-
 /// Shared application state available to all handlers.
 #[derive(Clone)]
 pub struct AppState {
     pub db: SqlitePool,
     pub config: AppConfig,
-    pub sessions: SessionStore,
     pub ws_hub: Arc<WsHub>,
 }
 
@@ -39,7 +33,6 @@ impl AppState {
         Self {
             db,
             config,
-            sessions: Arc::new(RwLock::new(HashMap::new())),
             ws_hub: WsHub::new(),
         }
     }

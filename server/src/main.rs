@@ -68,6 +68,32 @@ async fn main() -> Result<()> {
     // Build shared application state (contains WsHub, session store, etc.).
     let state = api::AppState::new(pool, app_config.clone());
 
+    // Start periodic session cleanup task (every hour, purge expired sessions).
+    {
+        let cleanup_pool = state.db.clone();
+        tokio::spawn(async move {
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(3600));
+            interval.tick().await; // skip the immediate first tick
+            loop {
+                interval.tick().await;
+                match sqlx::query("DELETE FROM sessions WHERE expires_at < datetime('now')")
+                    .execute(&cleanup_pool)
+                    .await
+                {
+                    Ok(result) => {
+                        let deleted = result.rows_affected();
+                        if deleted > 0 {
+                            info!(deleted, "Purged expired sessions");
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Session cleanup failed: {e}");
+                    }
+                }
+            }
+        });
+    }
+
     // Start the periodic ARP scanner in the background.
     scanner::start_scanner_task(
         state.db.clone(),
