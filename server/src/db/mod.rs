@@ -76,18 +76,9 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         .is_some();
 
     if !applied_2 {
-        for statement in SESSIONS_MIGRATION.split(';') {
-            let code = statement
-                .lines()
-                .skip_while(|l| l.trim().starts_with("--") || l.trim().is_empty())
-                .collect::<Vec<_>>()
-                .join("\n");
-            let stmt = code.trim();
-            if stmt.is_empty() {
-                continue;
-            }
-            sqlx::query(stmt).execute(pool).await?;
-        }
+        // Use raw_sql to execute the migration as a multi-statement script,
+        // avoiding fragile semicolon-splitting that breaks on embedded semicolons.
+        sqlx::raw_sql(SESSIONS_MIGRATION).execute(pool).await?;
 
         sqlx::query("INSERT INTO _migrations (version) VALUES (2)")
             .execute(pool)

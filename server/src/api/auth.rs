@@ -86,8 +86,8 @@ pub async fn login(
 
     // Generate session token and store it in the database.
     let token = uuid::Uuid::new_v4().to_string();
-    // session_expiry_seconds is u64, so it is always non-negative.
-    let expiry_secs = state.config.auth.session_expiry_seconds;
+    // Ensure at least 1 second; a zero expiry would create an immediately-invalid session.
+    let expiry_secs = state.config.auth.session_expiry_seconds.max(1);
     let expiry_modifier = format!("+{expiry_secs} seconds");
 
     sqlx::query("INSERT INTO sessions (token, expires_at) VALUES (?, datetime('now', ?))")
@@ -189,10 +189,13 @@ pub async fn change_password(
 pub async fn logout(State(state): State<AppState>, req: Request) -> impl IntoResponse {
     // Try to extract and remove the session from the database.
     if let Some(token) = extract_session_token(&req) {
-        let _ = sqlx::query("DELETE FROM sessions WHERE token = ?")
+        if let Err(e) = sqlx::query("DELETE FROM sessions WHERE token = ?")
             .bind(&token)
             .execute(&state.db)
-            .await;
+            .await
+        {
+            tracing::warn!(error = %e, "Failed to delete session on logout");
+        }
     }
 
     let cookie = "panoptikon_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0";
