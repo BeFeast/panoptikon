@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -24,6 +24,7 @@ import {
 import { fetchDashboardStats, fetchRecentAlerts, fetchTopDevices } from "@/lib/api";
 import type { Alert, DashboardStats, TopDevice } from "@/lib/types";
 import { formatBps, timeAgo } from "@/lib/format";
+import { useWsEvent } from "@/lib/ws";
 
 // ─── Alert type → icon mapping ──────────────────────────
 
@@ -139,27 +140,33 @@ export default function DashboardPage() {
   const [topDevices, setTopDevices] = useState<TopDevice[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [s, a, d] = await Promise.all([
-          fetchDashboardStats(),
-          fetchRecentAlerts(5),
-          fetchTopDevices(5),
-        ]);
-        setStats(s);
-        setAlerts(Array.isArray(a) ? a : []);
-        setTopDevices(Array.isArray(d) ? d : []);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load dashboard");
-      }
+  const load = useCallback(async () => {
+    try {
+      const [s, a, d] = await Promise.all([
+        fetchDashboardStats(),
+        fetchRecentAlerts(5),
+        fetchTopDevices(5),
+      ]);
+      setStats(s);
+      setAlerts(Array.isArray(a) ? a : []);
+      setTopDevices(Array.isArray(d) ? d : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load dashboard");
     }
-    load();
+  }, []);
 
-    // Refresh every 30s
+  useEffect(() => {
+    load();
+    // Refresh every 30s as fallback
     const interval = setInterval(load, 30_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [load]);
+
+  // Refetch dashboard when any device/agent state changes via WebSocket
+  useWsEvent(
+    ["device_online", "device_offline", "new_device", "agent_online", "agent_offline"],
+    load
+  );
 
   if (error) {
     return (

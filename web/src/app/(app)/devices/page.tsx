@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Cpu, MemoryStick, Search, Wifi, WifiOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ import {
 import { fetchDevices } from "@/lib/api";
 import type { Device } from "@/lib/types";
 import { formatPercent, timeAgo } from "@/lib/format";
+import { useWsEvent } from "@/lib/ws";
 
 type Filter = "all" | "online" | "offline" | "unknown";
 
@@ -28,18 +29,25 @@ export default function DevicesPage() {
   const [search, setSearch] = useState("");
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        setDevices(await fetchDevices());
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load devices");
-      }
+  const load = useCallback(async () => {
+    try {
+      setDevices(await fetchDevices());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load devices");
     }
+  }, []);
+
+  useEffect(() => {
     load();
     const interval = setInterval(load, 15_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [load]);
+
+  // Refetch immediately when a device or agent state change arrives via WebSocket
+  useWsEvent(
+    ["device_online", "device_offline", "new_device", "agent_online", "agent_offline"],
+    load
+  );
 
   const filtered = useMemo(() => {
     if (!devices) return null;

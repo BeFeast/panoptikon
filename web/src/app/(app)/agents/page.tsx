@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, Check, Copy, Pencil, Plus, Terminal, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { apiDelete, apiPatch, createAgent, fetchAgents } from "@/lib/api";
 import type { Agent, AgentCreateResponse } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
+import { useWsEvent } from "@/lib/ws";
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[] | null>(null);
@@ -47,18 +48,22 @@ export default function AgentsPage() {
   const [pendingDelete, setPendingDelete] = useState<Agent | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        setAgents(await fetchAgents());
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load agents");
-      }
+  const load = useCallback(async () => {
+    try {
+      setAgents(await fetchAgents());
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load agents");
     }
+  }, []);
+
+  useEffect(() => {
     load();
     const interval = setInterval(load, 10_000);
     return () => clearInterval(interval);
-  }, []);
+  }, [load]);
+
+  // Refetch immediately when agent state changes arrive via WebSocket
+  useWsEvent(["agent_online", "agent_offline", "agent_report"], load);
 
   const handleDelete = async () => {
     if (!pendingDelete) return;
