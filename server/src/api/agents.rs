@@ -14,6 +14,7 @@ use std::collections::HashMap;
 use tracing::{error, info, warn};
 
 use super::AppState;
+use crate::api::alerts;
 use crate::webhook;
 
 /// A single agent report as returned by the reports history endpoint.
@@ -621,16 +622,34 @@ async fn handle_agent_ws(mut socket: WebSocket, state: AppState, api_key: Option
         .await;
 
     // Create alert for agent going offline.
-    let alert_id = uuid::Uuid::new_v4().to_string();
-    let _ = sqlx::query(
-        "INSERT INTO alerts (id, type, agent_id, message, created_at) VALUES (?, 'agent_offline', ?, ?, ?)",
-    )
-    .bind(&alert_id)
-    .bind(&agent_id)
-    .bind(format!("Agent {} disconnected", &agent_id))
-    .bind(&now)
-    .execute(&state.db)
-    .await;
+    // Check if agent has a linked device that is muted.
+    let agent_device_id: Option<String> =
+        sqlx::query_scalar(r#"SELECT device_id FROM agents WHERE id = ?"#)
+            .bind(&agent_id)
+            .fetch_optional(&state.db)
+            .await
+            .unwrap_or(None)
+            .flatten();
+
+    let device_muted = match agent_device_id {
+        Some(ref did) => alerts::is_device_muted(&state.db, did).await,
+        None => false,
+    };
+
+    if !device_muted {
+        let alert_id = uuid::Uuid::new_v4().to_string();
+        let severity = alerts::severity_for_alert_type("agent_offline");
+        let _ = sqlx::query(
+            r#"INSERT INTO alerts (id, type, agent_id, message, severity, created_at) VALUES (?, 'agent_offline', ?, ?, ?, ?)"#,
+        )
+        .bind(&alert_id)
+        .bind(&agent_id)
+        .bind(format!("Agent {} disconnected", &agent_id))
+        .bind(severity)
+        .bind(&now)
+        .execute(&state.db)
+        .await;
+    }
 
     state.ws_hub.unregister_agent(&agent_id).await;
     state

@@ -11,6 +11,7 @@ use std::time::Duration;
 use tokio::task::JoinSet;
 use tracing::{debug, error, info, warn};
 
+use crate::api::alerts::{is_device_muted, severity_for_alert_type};
 use crate::config::ScannerConfig;
 use crate::webhook;
 use crate::ws::hub::WsHub;
@@ -237,21 +238,25 @@ async fn process_scan_results(
                     .execute(db)
                     .await?;
 
-                    // Create alert.
-                    let alert_id = uuid::Uuid::new_v4().to_string();
-                    sqlx::query(
-                        "INSERT INTO alerts (id, type, device_id, message, created_at) \
-                         VALUES (?, 'device_online', ?, ?, ?)",
-                    )
-                    .bind(&alert_id)
-                    .bind(&device_id)
-                    .bind(format!(
-                        "Device {} ({}) came back online",
-                        mac_normalized, dev.ip
-                    ))
-                    .bind(&now)
-                    .execute(db)
-                    .await?;
+                    // Create alert (skip if device is muted).
+                    if !is_device_muted(db, &device_id).await {
+                        let alert_id = uuid::Uuid::new_v4().to_string();
+                        let severity = severity_for_alert_type("device_online");
+                        sqlx::query(
+                            r#"INSERT INTO alerts (id, type, device_id, message, severity, created_at)
+                             VALUES (?, 'device_online', ?, ?, ?, ?)"#,
+                        )
+                        .bind(&alert_id)
+                        .bind(&device_id)
+                        .bind(format!(
+                            "Device {} ({}) came back online",
+                            mac_normalized, dev.ip
+                        ))
+                        .bind(severity)
+                        .bind(&now)
+                        .execute(db)
+                        .await?;
+                    }
 
                     info!(mac = %mac_normalized, ip = %dev.ip, "Device came back online");
 
@@ -325,9 +330,10 @@ async fn process_scan_results(
                 // Create alert for new unknown device.
                 let alert_id = uuid::Uuid::new_v4().to_string();
                 let vendor_str = vendor.as_deref().unwrap_or("Unknown");
+                let severity = severity_for_alert_type("new_device");
                 sqlx::query(
-                    "INSERT INTO alerts (id, type, device_id, message, details, created_at) \
-                     VALUES (?, 'new_device', ?, ?, ?, ?)",
+                    r#"INSERT INTO alerts (id, type, device_id, message, details, severity, created_at)
+                     VALUES (?, 'new_device', ?, ?, ?, ?, ?)"#,
                 )
                 .bind(&alert_id)
                 .bind(&device_id)
@@ -339,6 +345,7 @@ async fn process_scan_results(
                     json!({"mac": &mac_normalized, "ip": &dev.ip, "vendor": vendor_str})
                         .to_string(),
                 )
+                .bind(severity)
                 .bind(&now)
                 .execute(db)
                 .await?;
@@ -480,18 +487,22 @@ async fn process_scan_results(
         .execute(db)
         .await?;
 
-        // Create alert.
-        let alert_id = uuid::Uuid::new_v4().to_string();
-        sqlx::query(
-            "INSERT INTO alerts (id, type, device_id, message, created_at) \
-             VALUES (?, 'device_offline', ?, ?, ?)",
-        )
-        .bind(&alert_id)
-        .bind(device_id)
-        .bind(format!("Device {} went offline", mac))
-        .bind(&now)
-        .execute(db)
-        .await?;
+        // Create alert (skip if device is muted).
+        if !is_device_muted(db, device_id).await {
+            let alert_id = uuid::Uuid::new_v4().to_string();
+            let severity = severity_for_alert_type("device_offline");
+            sqlx::query(
+                r#"INSERT INTO alerts (id, type, device_id, message, severity, created_at)
+                 VALUES (?, 'device_offline', ?, ?, ?, ?)"#,
+            )
+            .bind(&alert_id)
+            .bind(device_id)
+            .bind(format!("Device {} went offline", mac))
+            .bind(severity)
+            .bind(&now)
+            .execute(db)
+            .await?;
+        }
 
         info!(mac = %mac, "Device went offline");
 

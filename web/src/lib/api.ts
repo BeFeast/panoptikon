@@ -86,12 +86,27 @@ export function fetchTopDevices(limit = 5): Promise<TopDevice[]> {
   return apiGet<TopDevice[]>(`/api/v1/dashboard/top-devices?limit=${limit}`);
 }
 
-export function fetchAlerts(limit = 50): Promise<Alert[]> {
-  return apiGet<Alert[]>(`/api/v1/alerts?limit=${limit}`);
+export function fetchAlerts(
+  limit = 50,
+  status?: "active" | "acknowledged" | "all",
+  severity?: "INFO" | "WARNING" | "CRITICAL"
+): Promise<Alert[]> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (status) params.set("status", status);
+  if (severity) params.set("severity", severity);
+  return apiGet<Alert[]>(`/api/v1/alerts?${params}`);
 }
 
 export function markAlertRead(id: string): Promise<void> {
   return apiPost<void>(`/api/v1/alerts/${id}/read`);
+}
+
+export function acknowledgeAlert(id: string, note?: string): Promise<void> {
+  return apiPost<void>(`/api/v1/alerts/${id}/acknowledge`, { note });
+}
+
+export function muteDevice(id: string, hours: number): Promise<void> {
+  return apiPost<void>(`/api/v1/devices/${id}/mute?hours=${hours}`);
 }
 
 // ─── Devices ────────────────────────────────────────────

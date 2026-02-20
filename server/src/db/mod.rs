@@ -22,6 +22,9 @@ const PORT_SCANS_MIGRATION: &str = include_str!("migrations/005_port_scans.sql")
 /// Migration 006: add mdns_services column to devices table.
 const MDNS_SERVICES_MIGRATION: &str = include_str!("migrations/006_mdns_services.sql");
 
+/// Migration 007: alert management — acknowledge, mute, severity levels.
+const ALERT_MANAGEMENT_MIGRATION: &str = include_str!("migrations/007_alert_management.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -163,6 +166,24 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
             .await?;
 
         info!("Applied migration 006_mdns_services.sql");
+    }
+
+    // Migration 007: alert management — acknowledge, mute, severity levels.
+    let applied_7: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 7")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_7 {
+        sqlx::raw_sql(ALERT_MANAGEMENT_MIGRATION)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (7)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 007_alert_management.sql");
     }
 
     // Purge expired sessions on startup.
