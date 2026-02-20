@@ -166,7 +166,7 @@ async fn update_hostname(
 }
 
 /// Process ARP scan results: upsert devices, detect state changes, create alerts.
-async fn process_scan_results(
+pub async fn process_scan_results(
     db: &SqlitePool,
     discovered: &[DiscoveredDevice],
     offline_grace_secs: u64,

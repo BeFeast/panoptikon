@@ -19,6 +19,7 @@ pub mod auth;
 pub mod dashboard;
 pub mod devices;
 pub mod metrics;
+pub mod scanner;
 pub mod settings;
 pub mod traffic;
 pub mod vyos;
@@ -110,6 +111,8 @@ pub fn router(state: AppState) -> Router {
         .route("/vyos/routes", get(vyos::routes))
         .route("/vyos/dhcp-leases", get(vyos::dhcp_leases))
         .route("/vyos/firewall", get(vyos::firewall))
+        // Scanner
+        .route("/scanner/trigger", post(scanner::trigger))
         // Speed test
         .route("/router/speedtest", post(vyos::speedtest))
         // Traffic
