@@ -67,6 +67,13 @@ pub async fn update_settings(
     }
 
     if let Some(ref key) = body.vyos_api_key {
+        // NOTE: The VyOS API key is stored unencrypted in SQLite.
+        // This is intentional for a single-user self-hosted deployment where
+        // the database file is protected by OS filesystem permissions and the
+        // server requires authentication to read or modify settings.
+        // TODO: Add at-rest encryption (e.g. AES-GCM with a server-generated
+        // key stored outside the database) if multi-user or remote DB support
+        // is added in the future.
         upsert_setting(&state, "vyos_api_key", key).await?;
         info!("VyOS API key updated");
     }
