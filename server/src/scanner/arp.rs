@@ -54,7 +54,7 @@ pub async fn ping_sweep(subnet: &str) {
     let host_count = if prefix_len >= 31 {
         v4net.size()
     } else {
-        v4net.size().saturating_sub(2).max(0)
+        v4net.size().saturating_sub(2)
     };
 
     info!(
