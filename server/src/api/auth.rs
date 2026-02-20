@@ -1,15 +1,90 @@
 use axum::{
-    extract::{Request, State},
-    http::{header, StatusCode},
+    extract::{ConnectInfo, Request, State},
+    http::{header, HeaderMap, StatusCode},
     middleware::Next,
     response::{IntoResponse, Response},
     Json,
 };
+use dashmap::DashMap;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
+use std::net::{IpAddr, SocketAddr};
+use std::sync::Arc;
+use std::time::Instant;
 use tracing::{debug, warn};
 
 use super::AppState;
+
+// ---------- Rate limiting ----------
+
+const MAX_LOGIN_ATTEMPTS: usize = 5;
+const RATE_LIMIT_WINDOW_SECS: u64 = 60;
+
+/// Per-IP sliding-window rate limiter for failed login attempts.
+#[derive(Clone)]
+pub struct LoginRateLimiter {
+    /// Map from IP address to timestamps of recent failed login attempts.
+    attempts: Arc<DashMap<IpAddr, Vec<Instant>>>,
+}
+
+impl LoginRateLimiter {
+    pub fn new() -> Self {
+        Self {
+            attempts: Arc::new(DashMap::new()),
+        }
+    }
+
+    /// Check if the given IP has exceeded the rate limit.
+    /// Returns `Some(retry_after_secs)` if the limit is exceeded.
+    pub fn check(&self, ip: &IpAddr) -> Option<u64> {
+        let window = std::time::Duration::from_secs(RATE_LIMIT_WINDOW_SECS);
+        let now = Instant::now();
+
+        if let Some(mut entry) = self.attempts.get_mut(ip) {
+            // Prune expired entries.
+            entry.retain(|t| now.duration_since(*t) < window);
+            if entry.len() >= MAX_LOGIN_ATTEMPTS {
+                let oldest = entry.first().unwrap();
+                let elapsed = now.duration_since(*oldest);
+                let retry_after = window.saturating_sub(elapsed).as_secs().max(1);
+                return Some(retry_after);
+            }
+        }
+        None
+    }
+
+    /// Record a failed login attempt for the given IP.
+    pub fn record_failure(&self, ip: &IpAddr) {
+        let window = std::time::Duration::from_secs(RATE_LIMIT_WINDOW_SECS);
+        let now = Instant::now();
+
+        let mut entry = self.attempts.entry(*ip).or_default();
+        entry.retain(|t| now.duration_since(*t) < window);
+        entry.push(now);
+    }
+
+    /// Clear the rate-limit counter for the given IP (on successful login).
+    pub fn clear(&self, ip: &IpAddr) {
+        self.attempts.remove(ip);
+    }
+}
+
+/// Extract the real client IP address.
+/// Checks `X-Forwarded-For` first (for reverse-proxy setups), then falls back
+/// to the TCP peer address from `ConnectInfo`.
+fn extract_client_ip(headers: &HeaderMap, addr: SocketAddr) -> IpAddr {
+    if let Some(forwarded_for) = headers.get("x-forwarded-for") {
+        if let Ok(value) = forwarded_for.to_str() {
+            // X-Forwarded-For may contain "client, proxy1, proxy2" — take the first.
+            if let Some(first_ip) = value.split(',').next() {
+                if let Ok(ip) = first_ip.trim().parse::<IpAddr>() {
+                    return ip;
+                }
+            }
+        }
+    }
+    addr.ip()
+}
 
 /// Login request body.
 #[derive(Debug, Deserialize)]
@@ -31,10 +106,28 @@ pub struct AuthStatusResponse {
 }
 
 /// POST /api/v1/auth/login — authenticate and set session cookie.
+///
+/// Rate-limited: after 5 failed password attempts within 60 seconds the
+/// endpoint returns `429 Too Many Requests` with a `Retry-After` header.
 pub async fn login(
     State(state): State<AppState>,
+    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
     Json(body): Json<LoginRequest>,
-) -> Result<impl IntoResponse, StatusCode> {
+) -> Result<Response, Response> {
+    let client_ip = extract_client_ip(&headers, addr);
+
+    // Check rate limit BEFORE doing any password work.
+    if let Some(retry_after) = state.rate_limiter.check(&client_ip) {
+        warn!(%client_ip, "Login rate limit exceeded");
+        let mut resp = StatusCode::TOO_MANY_REQUESTS.into_response();
+        resp.headers_mut().insert(
+            header::HeaderName::from_static("retry-after"),
+            retry_after.to_string().parse().unwrap(),
+        );
+        return Err(resp);
+    }
+
     // Retrieve the stored admin password hash from settings.
     let row: Option<String> =
         sqlx::query("SELECT value FROM settings WHERE key = 'admin_password_hash'")
@@ -42,7 +135,7 @@ pub async fn login(
             .await
             .map_err(|e| {
                 tracing::error!("Failed to query settings: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
             })?
             .and_then(|r| r.try_get("value").ok());
 
@@ -51,23 +144,24 @@ pub async fn login(
             // Verify password against stored hash.
             let valid = bcrypt::verify(&body.password, &hash).map_err(|e| {
                 tracing::error!("Password verification error: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
             })?;
 
             if !valid {
-                warn!("Failed login attempt");
-                return Err(StatusCode::UNAUTHORIZED);
+                state.rate_limiter.record_failure(&client_ip);
+                warn!(%client_ip, "Failed login attempt");
+                return Err(StatusCode::UNAUTHORIZED.into_response());
             }
             hash
         }
         None => {
             // First-run: no password set yet. Validate minimum length before storing.
             if body.password.len() < 8 {
-                return Err(StatusCode::UNPROCESSABLE_ENTITY);
+                return Err(StatusCode::UNPROCESSABLE_ENTITY.into_response());
             }
             let hash = bcrypt::hash(&body.password, bcrypt::DEFAULT_COST).map_err(|e| {
                 tracing::error!("Failed to hash password: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
             })?;
             sqlx::query("INSERT INTO settings (key, value) VALUES ('admin_password_hash', ?)")
                 .bind(&hash)
@@ -75,7 +169,7 @@ pub async fn login(
                 .await
                 .map_err(|e| {
                     tracing::error!("Failed to store password: {e}");
-                    StatusCode::INTERNAL_SERVER_ERROR
+                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
                 })?;
             tracing::info!("Admin password set for the first time");
             hash
@@ -83,6 +177,9 @@ pub async fn login(
     };
 
     let _ = password_hash; // used above
+
+    // Login succeeded — clear rate-limiter for this IP.
+    state.rate_limiter.clear(&client_ip);
 
     // Generate session token and store it in the database.
     let token = uuid::Uuid::new_v4().to_string();
@@ -97,10 +194,10 @@ pub async fn login(
         .await
         .map_err(|e| {
             tracing::error!("Failed to store session: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
         })?;
 
-    tracing::info!("Admin logged in, session created");
+    tracing::info!(%client_ip, "Admin logged in, session created");
 
     // Build Set-Cookie header.
     let cookie = format!(
