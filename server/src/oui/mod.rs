@@ -38,7 +38,7 @@ fn parse_hex_prefix(s: &str) -> Option<[u8; 3]> {
 
 /// Initialize the OUI database from the embedded data.
 fn init_db() -> HashMap<[u8; 3], String> {
-    let mut map = HashMap::with_capacity(40_000);
+    let mut map = HashMap::with_capacity(OUI_RAW.lines().count());
     for line in OUI_RAW.lines() {
         if let Some((hex, vendor)) = line.split_once('\t') {
             if let Some(prefix) = parse_hex_prefix(hex.trim()) {
@@ -58,15 +58,27 @@ fn init_db() -> HashMap<[u8; 3], String> {
 /// - Colon-separated: `aa:bb:cc:dd:ee:ff`
 /// - Dash-separated: `aa-bb-cc-dd-ee-ff`
 /// - No separator: `aabbccddeeff`
+///
+/// Allocation-free: collects only the first 6 hex digits into a fixed array.
 fn extract_oui_bytes(mac: &str) -> Option<[u8; 3]> {
-    let bytes: Vec<u8> = mac.bytes().filter(|b| b.is_ascii_hexdigit()).collect();
-    if bytes.len() < 6 {
+    let mut buf = [0u8; 6];
+    let mut count = 0usize;
+    for b in mac.bytes() {
+        if b.is_ascii_hexdigit() {
+            if count == 6 {
+                break;
+            }
+            buf[count] = b;
+            count += 1;
+        }
+    }
+    if count < 6 {
         return None;
     }
     Some([
-        (hex_nibble(bytes[0])? << 4) | hex_nibble(bytes[1])?,
-        (hex_nibble(bytes[2])? << 4) | hex_nibble(bytes[3])?,
-        (hex_nibble(bytes[4])? << 4) | hex_nibble(bytes[5])?,
+        (hex_nibble(buf[0])? << 4) | hex_nibble(buf[1])?,
+        (hex_nibble(buf[2])? << 4) | hex_nibble(buf[3])?,
+        (hex_nibble(buf[4])? << 4) | hex_nibble(buf[5])?,
     ])
 }
 
