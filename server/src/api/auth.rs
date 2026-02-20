@@ -143,8 +143,10 @@ pub async fn login(
 ) -> Result<Response, Response> {
     let client_ip = extract_client_ip(&headers, addr, &state.config.auth.trusted_proxies);
 
-    // Check rate limit BEFORE doing any password work.
-    if let Some(retry_after) = state.rate_limiter.check(&client_ip) {
+    // Atomically check rate limit and reserve a slot. This prevents TOCTOU races
+    // where concurrent requests could all pass a separate check() before any
+    // record_failure() is called. The slot is cleared on successful login.
+    if let Some(retry_after) = state.rate_limiter.try_login_attempt(&client_ip) {
         warn!(%client_ip, "Login rate limit exceeded");
         let mut resp = StatusCode::TOO_MANY_REQUESTS.into_response();
         resp.headers_mut().insert(
@@ -175,7 +177,7 @@ pub async fn login(
             })?;
 
             if !valid {
-                state.rate_limiter.record_failure(&client_ip);
+                // Slot was already reserved by try_login_attempt(); no separate record needed.
                 warn!(%client_ip, "Failed login attempt");
                 return Err(StatusCode::UNAUTHORIZED.into_response());
             }

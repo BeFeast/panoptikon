@@ -27,5 +27,9 @@ web/node_modules/
 web/.next/
 web/out/
 
+# Playwright test artifacts
+web/playwright-report/
+web/test-results/
+
 # Agent config (contains API keys)
 agent/config.toml
