@@ -59,6 +59,11 @@ pub struct ScannerConfig {
     /// Grace period before marking a device offline, in seconds.
     #[serde(default = "default_offline_grace")]
     pub offline_grace_seconds: u64,
+
+    /// How long to wait (ms) after ping sweep for the kernel to finish
+    /// populating ARP entries before reading the ARP table.
+    #[serde(default = "default_arp_settle_millis")]
+    pub arp_settle_millis: u64,
 }
 
 fn default_scan_interval() -> u64 {
@@ -69,12 +74,17 @@ fn default_offline_grace() -> u64 {
     300
 }
 
+fn default_arp_settle_millis() -> u64 {
+    500
+}
+
 impl Default for ScannerConfig {
     fn default() -> Self {
         Self {
             subnets: Vec::new(),
             interval_seconds: default_scan_interval(),
             offline_grace_seconds: default_offline_grace(),
+            arp_settle_millis: default_arp_settle_millis(),
         }
     }
 }

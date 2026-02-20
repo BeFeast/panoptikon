@@ -25,44 +25,53 @@ pub async fn ping_sweep(subnet: &str) {
         }
     };
 
-    let ips: Vec<String> = match network {
-        IpNetwork::V4(v4) => v4.iter().map(|ip| ip.to_string()).collect(),
+    let v4net = match network {
+        IpNetwork::V4(v4) => v4,
         IpNetwork::V6(_) => {
             debug!(subnet = %subnet, "Skipping ping sweep for IPv6 subnet");
             return;
         }
     };
 
-    // Skip network and broadcast addresses for /24 and larger subnets
-    // (for very small subnets like /31 or /32, keep all).
-    let hosts: Vec<&str> = if ips.len() > 2 {
-        ips[1..ips.len() - 1].iter().map(|s| s.as_str()).collect()
-    } else {
-        ips.iter().map(|s| s.as_str()).collect()
-    };
+    // Iterate host IPs without collecting into a Vec — avoids allocating
+    // potentially tens of thousands of strings for large CIDRs (/16, etc.).
+    // Exclude the network address (first) and broadcast address (last) explicitly
+    // using the network/broadcast values, which is correct for all prefix lengths.
+    let net_addr = v4net.network();
+    let bcast_addr = v4net.broadcast();
+    let host_iter = v4net
+        .iter()
+        .filter(move |ip| *ip != net_addr && *ip != bcast_addr);
+
+    // Count hosts for logging (cheap — just prefix math).
+    let host_count = v4net.size().saturating_sub(2).max(0);
 
     info!(
         subnet = %subnet,
-        host_count = hosts.len(),
+        host_count = host_count,
         "Starting ping sweep"
     );
 
     let mut join_set: JoinSet<()> = JoinSet::new();
 
-    for ip in hosts {
+    for ip in host_iter {
         // Limit concurrency: wait for one to finish before spawning another.
         if join_set.len() >= PING_CONCURRENCY {
             let _ = join_set.join_next().await;
         }
 
-        let ip = ip.to_string();
+        let ip_str = ip.to_string();
         join_set.spawn(async move {
-            let _ = tokio::process::Command::new("ping")
-                .args(["-c", "1", "-W", "1", &ip])
+            match tokio::process::Command::new("ping")
+                .args(["-c", "1", "-W", "1", &ip_str])
                 .stdout(std::process::Stdio::null())
                 .stderr(std::process::Stdio::null())
                 .output()
-                .await;
+                .await
+            {
+                Ok(_) => {} // exit code ignored intentionally — any response populates ARP
+                Err(e) => debug!(ip = %ip_str, error = %e, "ping process failed to spawn"),
+            }
         });
     }
 
