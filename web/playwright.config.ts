@@ -6,7 +6,7 @@ export default defineConfig({
   retries: 1,
   reporter: [["html", { outputFolder: "playwright-report", open: "never" }], ["list"]],
   use: {
-    baseURL: "http://10.10.0.14:8080",
+    baseURL: process.env.PANOPTIKON_URL || "http://localhost:8080",
     screenshot: "on",
     video: "retain-on-failure",
     trace: "retain-on-failure",
