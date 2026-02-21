@@ -18,6 +18,7 @@ pub mod alerts;
 pub mod auth;
 pub mod dashboard;
 pub mod devices;
+pub mod error;
 pub mod export;
 pub mod metrics;
 pub mod scanner;
@@ -25,6 +26,8 @@ pub mod search;
 pub mod settings;
 pub mod traffic;
 pub mod vyos;
+
+pub use error::AppError;
 
 /// Shared application state available to all handlers.
 #[derive(Clone)]

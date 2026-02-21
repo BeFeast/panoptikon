@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use std::net::UdpSocket;
 
-use super::AppState;
+use super::{AppError, AppState};
 
 /// Agent summary attached to a device response.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -164,7 +164,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Device>>, St
 pub async fn get_one(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<Device>, StatusCode> {
+) -> Result<Json<Device>, AppError> {
     let row = sqlx::query(
         r#"
         SELECT d.id, d.mac, d.name, d.hostname, d.vendor, d.icon, d.notes,
@@ -190,17 +190,11 @@ pub async fn get_one(
     )
     .bind(&id)
     .fetch_optional(&state.db)
-    .await
-    .map_err(|e| {
-        tracing::error!("Failed to get device {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?
-    .ok_or(StatusCode::NOT_FOUND)?;
+    .await?
+    .ok_or(AppError::NotFound)?;
 
-    let mut device = Device::from_row(row).map_err(|e| {
-        tracing::error!("Failed to parse device row: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let mut device = Device::from_row(row)
+        .map_err(|e| AppError::Internal(format!("Failed to parse device row: {e}")))?;
 
     // Fetch current IPs for the device.
     let ip_rows = sqlx::query("SELECT ip FROM device_ips WHERE device_id = ? AND is_current = 1")
