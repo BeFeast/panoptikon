@@ -33,15 +33,15 @@ function alertIcon(type: Alert["type"]) {
     case "new_device":
       return <MonitorSmartphone className="h-4 w-4 text-blue-400" />;
     case "device_offline":
-      return <Wifi className="h-4 w-4 text-red-400" />;
+      return <Wifi className="h-4 w-4 text-rose-400" />;
     case "device_online":
-      return <Wifi className="h-4 w-4 text-green-400" />;
+      return <Wifi className="h-4 w-4 text-emerald-400" />;
     case "agent_offline":
-      return <Activity className="h-4 w-4 text-red-400" />;
+      return <Activity className="h-4 w-4 text-rose-400" />;
     case "high_bandwidth":
       return <AlertTriangle className="h-4 w-4 text-amber-400" />;
     default:
-      return <Shield className="h-4 w-4 text-gray-400" />;
+      return <Shield className="h-4 w-4 text-slate-400" />;
   }
 }
 
@@ -49,13 +49,13 @@ function alertIcon(type: Alert["type"]) {
 
 function StatusDot({ status }: { status: "online" | "offline" | "warning" }) {
   const colors = {
-    online: "bg-green-500",
-    offline: "bg-red-500",
-    warning: "bg-amber-500",
+    online: "bg-emerald-500 status-glow-online",
+    offline: "bg-rose-500",
+    warning: "bg-amber-400",
   };
   return (
     <span
-      className={`inline-block h-2.5 w-2.5 rounded-full ${colors[status]} status-pulse`}
+      className={`inline-block h-2.5 w-2.5 rounded-full ${colors[status]}`}
     />
   );
 }
@@ -78,19 +78,19 @@ function StatCard({
   href?: string;
 }) {
   const inner = (
-    <Card className="border-[#2a2a3a] bg-[#16161f] transition-colors hover:border-blue-500/50 hover:bg-[#1a1a2a]">
+    <Card className="border-slate-800 bg-slate-900 transition-all hover:border-blue-500/50 hover:bg-slate-800/50 hover:shadow-lg hover:shadow-blue-500/5">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-gray-400">
+        <CardTitle className="text-sm font-medium text-slate-400">
           {title}
         </CardTitle>
         <div className="flex items-center gap-2">
           <StatusDot status={status} />
-          <span className="text-gray-500">{icon}</span>
+          <span className="text-slate-500">{icon}</span>
         </div>
       </CardHeader>
       <CardContent>
-        <p className="text-2xl font-bold text-white">{value}</p>
-        <p className="mt-1 text-xs text-gray-500">{subtitle}</p>
+        <p className="text-2xl font-bold tabular-nums text-white">{value}</p>
+        <p className="mt-1 text-xs text-slate-500">{subtitle}</p>
       </CardContent>
     </Card>
   );
@@ -107,7 +107,7 @@ function StatCard({
 
 function StatCardSkeleton() {
   return (
-    <Card className="border-[#2a2a3a] bg-[#16161f]">
+    <Card className="border-slate-800 bg-slate-900">
       <CardHeader className="pb-2">
         <Skeleton className="h-4 w-24" />
       </CardHeader>
@@ -172,7 +172,7 @@ export default function DashboardPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-red-400">{error}</p>
+        <p className="text-rose-400">{error}</p>
       </div>
     );
   }
@@ -237,7 +237,7 @@ export default function DashboardPage() {
       {/* ── Bottom panels ──────────────────────────────── */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* Recent Alerts */}
-        <Card className="border-[#2a2a3a] bg-[#16161f]">
+        <Card className="border-slate-800 bg-slate-900">
           <CardHeader>
             <CardTitle className="text-lg font-medium text-white">
               Recent Alerts
@@ -255,7 +255,7 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : alerts.length === 0 ? (
-              <p className="text-sm text-gray-500">No recent alerts — all clear.</p>
+              <p className="text-sm text-slate-500">No recent alerts — all clear.</p>
             ) : (
               <div className="space-y-3">
                 {alerts.map((alert) => (
@@ -266,8 +266,8 @@ export default function DashboardPage() {
                     }`}
                   >
                     <div className="mt-0.5">{alertIcon(alert.type)}</div>
-                    <p className="flex-1 text-sm text-gray-300">{alert.message}</p>
-                    <span className="shrink-0 text-xs text-gray-600">
+                    <p className="flex-1 text-sm text-slate-300">{alert.message}</p>
+                    <span className="shrink-0 text-xs text-slate-600">
                       {timeAgo(alert.created_at)}
                     </span>
                   </div>
@@ -278,7 +278,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Top devices by bandwidth */}
-        <Card className="border-[#2a2a3a] bg-[#16161f]">
+        <Card className="border-slate-800 bg-slate-900">
           <CardHeader>
             <CardTitle className="text-lg font-medium text-white">
               Top Devices by Bandwidth
@@ -292,18 +292,18 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : topDevices.length === 0 ? (
-              <p className="text-sm text-gray-500">No traffic data yet.</p>
+              <p className="text-sm text-slate-500">No traffic data yet.</p>
             ) : (
               <Table>
                 <TableHeader>
-                  <TableRow className="border-[#2a2a3a] hover:bg-transparent">
-                    <TableHead className="text-gray-500">Device</TableHead>
-                    <TableHead className="text-gray-500">IP</TableHead>
-                    <TableHead className="text-right text-gray-500">
+                  <TableRow className="border-slate-800 hover:bg-transparent">
+                    <TableHead className="text-slate-500">Device</TableHead>
+                    <TableHead className="text-slate-500">IP</TableHead>
+                    <TableHead className="text-right text-slate-500">
                       <ArrowDown className="mr-1 inline h-3 w-3" />
                       RX
                     </TableHead>
-                    <TableHead className="text-right text-gray-500">
+                    <TableHead className="text-right text-slate-500">
                       <ArrowUp className="mr-1 inline h-3 w-3" />
                       TX
                     </TableHead>
@@ -311,17 +311,17 @@ export default function DashboardPage() {
                 </TableHeader>
                 <TableBody>
                   {topDevices.map((d) => (
-                    <TableRow key={d.id} className="border-[#2a2a3a]">
+                    <TableRow key={d.id} className="border-slate-800">
                       <TableCell className="font-medium text-white">
                         {d.name ?? d.hostname ?? d.ip}
                       </TableCell>
-                      <TableCell className="font-mono text-gray-400">
+                      <TableCell className="tabular-nums font-mono text-slate-400">
                         {d.ip}
                       </TableCell>
-                      <TableCell className="text-right text-green-400">
+                      <TableCell className="tabular-nums text-right text-emerald-400">
                         {formatBps(d.rx_bps)}
                       </TableCell>
-                      <TableCell className="text-right text-blue-400">
+                      <TableCell className="tabular-nums text-right text-blue-400">
                         {formatBps(d.tx_bps)}
                       </TableCell>
                     </TableRow>

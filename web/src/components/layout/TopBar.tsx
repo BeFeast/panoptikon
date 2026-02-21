@@ -118,7 +118,7 @@ export function TopBar() {
   let runningIndex = 0;
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-[#2a2a3a] bg-[#0d0d14] px-6">
+    <header className="flex h-14 items-center justify-between border-b border-slate-800 bg-slate-950 px-6">
       {/* Search */}
       <div className="relative flex-1 max-w-md" ref={containerRef}>
         <input
@@ -131,14 +131,14 @@ export function TopBar() {
             if (results && query.length >= 2) setIsOpen(true);
           }}
           placeholder="Search devices, IPs, MACs..."
-          className="w-full rounded-md border border-[#2a2a3a] bg-background px-3 py-1.5 text-sm text-white placeholder-gray-600 focus:border-accent focus:outline-none"
+          className="w-full rounded-md border border-slate-800 bg-background px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-accent focus:outline-none"
         />
 
         {/* Search Results Dropdown */}
         {isOpen && (
-          <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-md border border-[#2a2a3a] bg-[#0d0d14] shadow-xl">
+          <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-md border border-slate-800 bg-slate-950 shadow-xl">
             {noResults && (
-              <div className="px-4 py-3 text-sm text-gray-500">
+              <div className="px-4 py-3 text-sm text-slate-500">
                 No results for &ldquo;{query}&rdquo;
               </div>
             )}
@@ -148,7 +148,7 @@ export function TopBar() {
                 {/* Devices */}
                 {results.devices.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
                       Devices
                     </div>
                     {results.devices.map((d: SearchDevice) => {
@@ -156,25 +156,25 @@ export function TopBar() {
                       return (
                         <button
                           key={d.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[#1a1a2e] ${
-                            activeIndex === idx ? "bg-[#1a1a2e]" : ""
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-800 ${
+                            activeIndex === idx ? "bg-slate-800" : ""
                           }`}
                           onClick={() => navigateTo("device", d.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
                         >
                           <span
                             className={`inline-block h-2 w-2 rounded-full ${
-                              d.is_online ? "bg-green-500" : "bg-gray-500"
+                              d.is_online ? "bg-emerald-500" : "bg-slate-500"
                             }`}
                           />
                           <span className="text-white">
                             {d.ip_address || d.mac_address}
                           </span>
                           {d.hostname && (
-                            <span className="text-gray-500">({d.hostname})</span>
+                            <span className="text-slate-500">({d.hostname})</span>
                           )}
                           {d.vendor && (
-                            <span className="ml-auto text-xs text-gray-600">{d.vendor}</span>
+                            <span className="ml-auto text-xs text-slate-600">{d.vendor}</span>
                           )}
                         </button>
                       );
@@ -185,7 +185,7 @@ export function TopBar() {
                 {/* Agents */}
                 {results.agents.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 border-t border-[#2a2a3a]">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-slate-800">
                       Agents
                     </div>
                     {results.agents.map((a: SearchAgent) => {
@@ -193,20 +193,20 @@ export function TopBar() {
                       return (
                         <button
                           key={a.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[#1a1a2e] ${
-                            activeIndex === idx ? "bg-[#1a1a2e]" : ""
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-800 ${
+                            activeIndex === idx ? "bg-slate-800" : ""
                           }`}
                           onClick={() => navigateTo("agent", a.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
                         >
                           <span
                             className={`inline-block h-2 w-2 rounded-full ${
-                              a.is_online ? "bg-green-500" : "bg-gray-500"
+                              a.is_online ? "bg-emerald-500" : "bg-slate-500"
                             }`}
                           />
                           <span className="text-white">{a.name || a.id}</span>
                           {a.hostname && (
-                            <span className="text-gray-500">({a.hostname})</span>
+                            <span className="text-slate-500">({a.hostname})</span>
                           )}
                         </button>
                       );
@@ -217,7 +217,7 @@ export function TopBar() {
                 {/* Alerts */}
                 {results.alerts.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-500 border-t border-[#2a2a3a]">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-slate-800">
                       Alerts
                     </div>
                     {results.alerts.map((al: SearchAlert) => {
@@ -225,8 +225,8 @@ export function TopBar() {
                       return (
                         <button
                           key={al.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-[#1a1a2e] ${
-                            activeIndex === idx ? "bg-[#1a1a2e]" : ""
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-800 ${
+                            activeIndex === idx ? "bg-slate-800" : ""
                           }`}
                           onClick={() => navigateTo("alert", al.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
@@ -251,10 +251,10 @@ export function TopBar() {
       {/* Right side: alerts bell + user avatar */}
       <div className="flex items-center gap-4">
         {/* Alerts bell */}
-        <button className="relative text-gray-400 hover:text-white transition-colors">
+        <button className="relative text-slate-400 hover:text-white transition-colors">
           <span className="text-xl">🔔</span>
           {/* Unread badge */}
-          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">
             2
           </span>
         </button>
@@ -270,7 +270,7 @@ export function TopBar() {
 
 function SeverityBadge({ severity }: { severity: string }) {
   const colors: Record<string, string> = {
-    CRITICAL: "bg-red-500/20 text-red-400 border-red-500/30",
+    CRITICAL: "bg-rose-500/20 text-rose-400 border-rose-500/30",
     WARNING: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
     INFO: "bg-blue-500/20 text-blue-400 border-blue-500/30",
   };

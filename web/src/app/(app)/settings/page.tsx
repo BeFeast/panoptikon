@@ -270,7 +270,7 @@ export default function SettingsPage() {
       <h1 className="text-2xl font-semibold text-white">Settings</h1>
 
       {/* VyOS Router Connection */}
-      <Card className="border-[#2a2a3a] bg-[#16161f]">
+      <Card className="border-slate-800 bg-slate-900">
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
@@ -280,7 +280,7 @@ export default function SettingsPage() {
               <CardTitle className="text-base text-white">
                 VyOS Router
               </CardTitle>
-              <CardDescription className="text-xs text-gray-500">
+              <CardDescription className="text-xs text-slate-500">
                 Connect to your VyOS router via its HTTP API.
               </CardDescription>
             </div>
@@ -288,7 +288,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="vyos-url" className="text-xs text-gray-400">
+            <Label htmlFor="vyos-url" className="text-xs text-slate-400">
               Router URL
             </Label>
             <Input
@@ -296,16 +296,16 @@ export default function SettingsPage() {
               type="url"
               value={vyosUrl}
               onChange={(e) => setVyosUrl(e.target.value)}
-              className="border-[#2a2a3a] bg-[#0e0e16] text-white placeholder:text-gray-600"
+              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
               placeholder="https://10.10.0.50"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="vyos-key" className="text-xs text-gray-400">
+            <Label htmlFor="vyos-key" className="text-xs text-slate-400">
               API Key{" "}
               {vyosApiKeySet && (
-                <span className="text-green-500">(saved)</span>
+                <span className="text-emerald-500">(saved)</span>
               )}
             </Label>
             <Input
@@ -313,7 +313,7 @@ export default function SettingsPage() {
               type="password"
               value={vyosApiKey}
               onChange={(e) => setVyosApiKey(e.target.value)}
-              className="border-[#2a2a3a] bg-[#0e0e16] text-white placeholder:text-gray-600"
+              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
               placeholder={
                 vyosApiKeySet
                   ? "••••••••  (leave blank to keep current)"
@@ -324,27 +324,27 @@ export default function SettingsPage() {
 
           {/* Status messages */}
           {vyosStatus === "success" && vyosMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2">
-              <CheckCircle className="h-4 w-4 shrink-0 text-green-400" />
-              <p className="text-xs text-green-400">{vyosMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+              <p className="text-xs text-emerald-400">{vyosMsg}</p>
             </div>
           )}
           {vyosStatus === "error" && vyosMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-              <p className="text-xs text-red-400">{vyosMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{vyosMsg}</p>
             </div>
           )}
           {vyosTestStatus === "success" && vyosTestMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2">
-              <CheckCircle className="h-4 w-4 shrink-0 text-green-400" />
-              <p className="text-xs text-green-400">{vyosTestMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+              <p className="text-xs text-emerald-400">{vyosTestMsg}</p>
             </div>
           )}
           {vyosTestStatus === "error" && vyosTestMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-              <p className="text-xs text-red-400">{vyosTestMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{vyosTestMsg}</p>
             </div>
           )}
 
@@ -365,7 +365,7 @@ export default function SettingsPage() {
               disabled={
                 (!savedVyosUrl && !vyosUrl) || vyosTestStatus === "loading"
               }
-              className="border-[#2a2a3a] text-gray-300 hover:bg-[#1e1e2e] disabled:opacity-40"
+              className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
             >
               {vyosTestStatus === "loading" ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -379,7 +379,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Webhook Notifications */}
-      <Card className="border-[#2a2a3a] bg-[#16161f]">
+      <Card className="border-slate-800 bg-slate-900">
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-500/10">
@@ -389,7 +389,7 @@ export default function SettingsPage() {
               <CardTitle className="text-base text-white">
                 Webhook Notifications
               </CardTitle>
-              <CardDescription className="text-xs text-gray-500">
+              <CardDescription className="text-xs text-slate-500">
                 POST alert payloads to Discord, Slack, ntfy.sh, or any URL.
               </CardDescription>
             </div>
@@ -397,7 +397,7 @@ export default function SettingsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="webhook-url" className="text-xs text-gray-400">
+            <Label htmlFor="webhook-url" className="text-xs text-slate-400">
               Webhook URL
             </Label>
             <Input
@@ -405,34 +405,34 @@ export default function SettingsPage() {
               type="url"
               value={webhookUrl}
               onChange={(e) => setWebhookUrl(e.target.value)}
-              className="border-[#2a2a3a] bg-[#0e0e16] text-white placeholder:text-gray-600"
+              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
               placeholder="https://ntfy.sh/my-topic or Discord webhook URL"
             />
           </div>
 
           {/* Status messages */}
           {webhookStatus === "success" && webhookMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2">
-              <CheckCircle className="h-4 w-4 shrink-0 text-green-400" />
-              <p className="text-xs text-green-400">{webhookMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+              <p className="text-xs text-emerald-400">{webhookMsg}</p>
             </div>
           )}
           {webhookStatus === "error" && webhookMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-              <p className="text-xs text-red-400">{webhookMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{webhookMsg}</p>
             </div>
           )}
           {testStatus === "success" && testMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2">
-              <CheckCircle className="h-4 w-4 shrink-0 text-green-400" />
-              <p className="text-xs text-green-400">{testMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+              <p className="text-xs text-emerald-400">{testMsg}</p>
             </div>
           )}
           {testStatus === "error" && testMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-              <p className="text-xs text-red-400">{testMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{testMsg}</p>
             </div>
           )}
 
@@ -451,7 +451,7 @@ export default function SettingsPage() {
               variant="outline"
               onClick={handleWebhookTest}
               disabled={!savedWebhookUrl || testStatus === "loading"}
-              className="border-[#2a2a3a] text-gray-300 hover:bg-[#1e1e2e] disabled:opacity-40"
+              className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
             >
               {testStatus === "loading" ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -465,7 +465,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Change Password */}
-      <Card className="border-[#2a2a3a] bg-[#16161f]">
+      <Card className="border-slate-800 bg-slate-900">
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
@@ -475,7 +475,7 @@ export default function SettingsPage() {
               <CardTitle className="text-base text-white">
                 Change Password
               </CardTitle>
-              <CardDescription className="text-xs text-gray-500">
+              <CardDescription className="text-xs text-slate-500">
                 After changing, you&apos;ll be redirected to login again.
               </CardDescription>
             </div>
@@ -484,8 +484,8 @@ export default function SettingsPage() {
         <CardContent>
           {pwStatus === "success" ? (
             <div className="flex flex-col items-center gap-3 py-6 text-center">
-              <CheckCircle className="h-10 w-10 text-green-400" />
-              <p className="text-sm text-green-400">
+              <CheckCircle className="h-10 w-10 text-emerald-400" />
+              <p className="text-sm text-emerald-400">
                 Password changed! Redirecting to login…
               </p>
             </div>
@@ -493,7 +493,7 @@ export default function SettingsPage() {
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               {/* Current password */}
               <div className="space-y-1.5">
-                <Label htmlFor="current" className="text-xs text-gray-400">
+                <Label htmlFor="current" className="text-xs text-slate-400">
                   Current password
                 </Label>
                 <div className="relative">
@@ -502,14 +502,14 @@ export default function SettingsPage() {
                     type={showCurrent ? "text" : "password"}
                     value={current}
                     onChange={(e) => setCurrent(e.target.value)}
-                    className="border-[#2a2a3a] bg-[#0e0e16] pr-10 text-white placeholder:text-gray-600"
+                    className="border-slate-800 bg-slate-950 pr-10 text-white placeholder:text-slate-600"
                     placeholder="••••••••"
                     autoComplete="current-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowCurrent((v) => !v)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                     tabIndex={-1}
                   >
                     {showCurrent ? (
@@ -523,7 +523,7 @@ export default function SettingsPage() {
 
               {/* New password */}
               <div className="space-y-1.5">
-                <Label htmlFor="new" className="text-xs text-gray-400">
+                <Label htmlFor="new" className="text-xs text-slate-400">
                   New password
                 </Label>
                 <div className="relative">
@@ -532,14 +532,14 @@ export default function SettingsPage() {
                     type={showNext ? "text" : "password"}
                     value={next}
                     onChange={(e) => setNext(e.target.value)}
-                    className="border-[#2a2a3a] bg-[#0e0e16] pr-10 text-white placeholder:text-gray-600"
+                    className="border-slate-800 bg-slate-950 pr-10 text-white placeholder:text-slate-600"
                     placeholder="Min. 8 characters"
                     autoComplete="new-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowNext((v) => !v)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
                     tabIndex={-1}
                   >
                     {showNext ? (
@@ -557,11 +557,11 @@ export default function SettingsPage() {
                         className={`h-0.5 flex-1 rounded-full transition-colors ${
                           next.length >= i * 4
                             ? next.length < 8
-                              ? "bg-red-500"
+                              ? "bg-rose-500"
                               : next.length < 12
                                 ? "bg-yellow-500"
-                                : "bg-green-500"
-                            : "bg-[#2a2a3a]"
+                                : "bg-emerald-500"
+                            : "bg-slate-800"
                         }`}
                       />
                     ))}
@@ -571,7 +571,7 @@ export default function SettingsPage() {
 
               {/* Confirm */}
               <div className="space-y-1.5">
-                <Label htmlFor="confirm" className="text-xs text-gray-400">
+                <Label htmlFor="confirm" className="text-xs text-slate-400">
                   Confirm new password
                 </Label>
                 <Input
@@ -579,16 +579,16 @@ export default function SettingsPage() {
                   type="password"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
-                  className="border-[#2a2a3a] bg-[#0e0e16] text-white placeholder:text-gray-600"
+                  className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
                   placeholder="••••••••"
                   autoComplete="new-password"
                 />
               </div>
 
               {(validationError || (pwStatus === "error" && pwError)) && (
-                <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
-                  <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-                  <p className="text-xs text-red-400">
+                <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                  <p className="text-xs text-rose-400">
                     {pwStatus === "error" && pwError ? pwError : validationError}
                   </p>
                 </div>

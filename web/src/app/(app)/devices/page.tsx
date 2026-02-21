@@ -172,7 +172,7 @@ export default function DevicesPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-red-400">{error}</p>
+        <p className="text-rose-400">{error}</p>
       </div>
     );
   }
@@ -242,7 +242,7 @@ export default function DevicesPage() {
         ))}
 
         <div className="relative ml-auto w-full max-w-xs">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
           <Input
             placeholder="Search name, IP, MAC, vendor…"
             value={search}
@@ -297,7 +297,7 @@ export default function DevicesPage() {
       {sorted === null ? (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Card key={i} className="border-[#2a2a3a] bg-[#16161f]">
+            <Card key={i} className="border-slate-800 bg-slate-900">
               <CardContent className="p-5">
                 <Skeleton className="h-5 w-32" />
                 <Skeleton className="mt-3 h-4 w-24" />
@@ -308,7 +308,7 @@ export default function DevicesPage() {
           ))}
         </div>
       ) : sorted.length === 0 ? (
-        <p className="py-10 text-center text-gray-500">
+        <p className="py-10 text-center text-slate-500">
           No devices match your filters.
         </p>
       ) : view === "grid" ? (
@@ -340,7 +340,7 @@ export default function DevicesPage() {
       >
         <SheetContent
           side="right"
-          className="w-full border-[#2a2a3a] bg-[#0d0d14] sm:max-w-md"
+          className="w-full border-slate-800 bg-slate-950 sm:max-w-md"
         >
           {selectedDevice && <DeviceDetail device={selectedDevice} />}
         </SheetContent>
@@ -364,7 +364,7 @@ function DeviceCard({
 
   return (
     <Card
-      className="cursor-pointer border-[#2a2a3a] bg-[#16161f] transition-colors hover:border-blue-500/50"
+      className="cursor-pointer border-slate-800 bg-slate-900 transition-colors hover:border-blue-500/50"
       onClick={onClick}
     >
       <CardContent className="p-5">
@@ -372,7 +372,7 @@ function DeviceCard({
         <div className="flex items-center gap-2">
           <span
             className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-              device.is_online ? "bg-green-500 status-pulse" : "bg-gray-500"
+              device.is_online ? "bg-emerald-500 status-glow-online" : "bg-slate-500"
             }`}
           />
           <span className="truncate font-medium text-white">{displayName}</span>
@@ -385,10 +385,10 @@ function DeviceCard({
 
         {/* Technical info */}
         <div className="mt-3 space-y-1">
-          <p className="font-mono text-sm text-gray-400">{primaryIp}</p>
-          <p className="font-mono text-xs text-gray-600">{device.mac}</p>
+          <p className="font-mono text-sm text-slate-400">{primaryIp}</p>
+          <p className="font-mono text-xs text-slate-600">{device.mac}</p>
           {device.vendor && (
-            <p className="text-xs text-gray-500">{device.vendor}</p>
+            <p className="text-xs text-slate-500">{device.vendor}</p>
           )}
         </div>
 
@@ -420,7 +420,7 @@ function DeviceCard({
             </Badge>
           </div>
         ) : (
-          <p className="mt-3 text-xs text-gray-600">
+          <p className="mt-3 text-xs text-slate-600">
             Last seen {timeAgo(device.last_seen_at)}
           </p>
         )}
@@ -454,30 +454,30 @@ function DevicesTable({
   onSelect: (device: Device) => void;
 }) {
   return (
-    <div className="rounded-md border border-[#2a2a3a] bg-[#16161f]">
+    <div className="rounded-md border border-slate-800 bg-slate-900">
       <Table>
         <TableHeader>
-          <TableRow className="border-[#2a2a3a] hover:bg-transparent">
-            <TableHead className="w-12 text-gray-400">Status</TableHead>
+          <TableRow className="border-slate-800 hover:bg-transparent">
+            <TableHead className="w-12 text-slate-400">Status</TableHead>
             <TableHead
-              className="cursor-pointer select-none text-gray-400 hover:text-white"
+              className="cursor-pointer select-none text-slate-400 hover:text-white"
               onClick={() => onSort("ip")}
             >
               IP Address
               <SortIcon field="ip" sortField={sortField} sortDir={sortDir} />
             </TableHead>
             <TableHead
-              className="cursor-pointer select-none text-gray-400 hover:text-white"
+              className="cursor-pointer select-none text-slate-400 hover:text-white"
               onClick={() => onSort("hostname")}
             >
               Hostname
               <SortIcon field="hostname" sortField={sortField} sortDir={sortDir} />
             </TableHead>
-            <TableHead className="text-gray-400">MAC</TableHead>
-            <TableHead className="text-gray-400">Vendor</TableHead>
-            <TableHead className="text-gray-400">Agent</TableHead>
+            <TableHead className="text-slate-400">MAC</TableHead>
+            <TableHead className="text-slate-400">Vendor</TableHead>
+            <TableHead className="text-slate-400">Agent</TableHead>
             <TableHead
-              className="cursor-pointer select-none text-gray-400 hover:text-white"
+              className="cursor-pointer select-none text-slate-400 hover:text-white"
               onClick={() => onSort("last_seen_at")}
             >
               Last Seen
@@ -496,32 +496,32 @@ function DevicesTable({
             return (
               <TableRow
                 key={device.id}
-                className="cursor-pointer border-[#2a2a3a] hover:bg-[#1e1e2e]"
+                className="cursor-pointer border-slate-800 hover:bg-slate-800"
                 onClick={() => onSelect(device)}
               >
                 <TableCell>
                   <span
                     className={`inline-block h-2.5 w-2.5 rounded-full ${
-                      device.is_online ? "bg-green-500 status-pulse" : "bg-gray-500"
+                      device.is_online ? "bg-emerald-500 status-glow-online" : "bg-slate-500"
                     }`}
                   />
                 </TableCell>
-                <TableCell className="font-mono text-sm text-gray-300">
+                <TableCell className="tabular-nums font-mono text-sm text-slate-300">
                   {primaryIp}
                 </TableCell>
-                <TableCell className="text-sm text-gray-300">
+                <TableCell className="text-sm text-slate-300">
                   {device.hostname ?? "—"}
                 </TableCell>
-                <TableCell className="font-mono text-xs text-gray-500">
+                <TableCell className="tabular-nums font-mono text-xs text-slate-500">
                   {device.mac}
                 </TableCell>
-                <TableCell className="text-xs text-gray-500">
+                <TableCell className="text-xs text-slate-500">
                   {device.vendor ?? "—"}
                 </TableCell>
-                <TableCell className="text-xs text-gray-400">
+                <TableCell className="text-xs text-slate-400">
                   {agentText}
                 </TableCell>
-                <TableCell className="text-xs text-gray-500">
+                <TableCell className="text-xs text-slate-500">
                   {timeAgo(device.last_seen_at)}
                 </TableCell>
               </TableRow>
@@ -559,16 +559,16 @@ function DeviceDetail({ device }: { device: Device }) {
         <div className="flex items-center gap-3">
           <span
             className={`h-3 w-3 rounded-full ${
-              device.is_online ? "bg-green-500 status-pulse" : "bg-gray-500"
+              device.is_online ? "bg-emerald-500 status-glow-online" : "bg-slate-500"
             }`}
           />
           <SheetTitle className="text-white">{displayName}</SheetTitle>
         </div>
         <SheetDescription>
           {device.is_online ? (
-            <span className="text-green-400">Online</span>
+            <span className="text-emerald-400">Online</span>
           ) : (
-            <span className="text-gray-500">
+            <span className="text-slate-500">
               Offline — last seen {timeAgo(device.last_seen_at)}
             </span>
           )}
@@ -588,16 +588,16 @@ function DeviceDetail({ device }: { device: Device }) {
             <Power className="h-4 w-4" />
             {waking ? "Sending…" : "Wake"}
           </Button>
-          <p className="text-center text-[11px] text-gray-600">
+          <p className="text-center text-[11px] text-slate-600">
             Requires Wake-on-LAN enabled in BIOS
           </p>
         </div>
       )}
 
-      <Separator className="my-4 bg-[#2a2a3a]" />
+      <Separator className="my-4 bg-slate-800" />
 
       <Tabs defaultValue="info" className="w-full">
-        <TabsList className="mb-4 w-full bg-[#1e1e2e]">
+        <TabsList className="mb-4 w-full bg-slate-800">
           <TabsTrigger value="info" className="flex-1">Info</TabsTrigger>
           <TabsTrigger value="ports" className="flex-1">Ports</TabsTrigger>
           <TabsTrigger value="events" className="flex-1">Events</TabsTrigger>
@@ -653,12 +653,12 @@ function DeviceInfoTab({
       {/* All IPs */}
       {ips.length > 1 && (
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
             All IP Addresses
           </p>
           <div className="mt-1 space-y-0.5">
             {ips.map((ip) => (
-              <p key={ip} className="font-mono text-sm text-gray-300">
+              <p key={ip} className="tabular-nums font-mono text-sm text-slate-300">
                 {ip}
               </p>
             ))}
@@ -669,9 +669,9 @@ function DeviceInfoTab({
       {/* mDNS Services */}
       {device.mdns_services && (
         <>
-          <Separator className="bg-[#2a2a3a]" />
+          <Separator className="bg-slate-800" />
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
               mDNS Services
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -692,17 +692,17 @@ function DeviceInfoTab({
       {/* Agent info */}
       {device.agent && (
         <>
-          <Separator className="bg-[#2a2a3a]" />
-          <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+          <Separator className="bg-slate-800" />
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
             Agent Telemetry
           </p>
           <div className="flex items-center gap-2">
             {device.agent.is_online ? (
-              <Wifi className="h-4 w-4 text-green-400" />
+              <Wifi className="h-4 w-4 text-emerald-400" />
             ) : (
-              <WifiOff className="h-4 w-4 text-red-400" />
+              <WifiOff className="h-4 w-4 text-rose-400" />
             )}
-            <span className="text-sm text-gray-300">
+            <span className="text-sm text-slate-300">
               {device.agent.is_online ? "Connected" : "Disconnected"}
             </span>
           </div>
@@ -718,12 +718,12 @@ function DeviceInfoTab({
       {/* Notes */}
       {device.notes && (
         <>
-          <Separator className="bg-[#2a2a3a]" />
+          <Separator className="bg-slate-800" />
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-gray-500">
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
               Notes
             </p>
-            <p className="mt-1 text-sm text-gray-300">{device.notes}</p>
+            <p className="mt-1 text-sm text-slate-300">{device.notes}</p>
           </div>
         </>
       )}
@@ -761,7 +761,7 @@ function DeviceEventsTab({ deviceId }: { deviceId: string }) {
   }, [deviceId]);
 
   if (error) {
-    return <p className="text-sm text-red-400">{error}</p>;
+    return <p className="text-sm text-rose-400">{error}</p>;
   }
 
   if (events === null) {
@@ -778,8 +778,8 @@ function DeviceEventsTab({ deviceId }: { deviceId: string }) {
     <div className="space-y-4">
       {/* Uptime badge */}
       {uptime && (
-        <div className="flex items-center gap-3 rounded-md border border-[#2a2a3a] bg-[#1e1e2e] px-4 py-3">
-          <div className="text-sm text-gray-400">7-day uptime</div>
+        <div className="flex items-center gap-3 rounded-md border border-slate-800 bg-slate-800 px-4 py-3">
+          <div className="text-sm text-slate-400">7-day uptime</div>
           <div className="ml-auto text-lg font-semibold text-white">
             {uptime.uptime_percent.toFixed(1)}%
           </div>
@@ -787,7 +787,7 @@ function DeviceEventsTab({ deviceId }: { deviceId: string }) {
       )}
 
       {events.length === 0 ? (
-        <p className="py-6 text-center text-sm text-gray-500">
+        <p className="py-6 text-center text-sm text-slate-500">
           No state change events recorded yet.
         </p>
       ) : (
@@ -795,17 +795,17 @@ function DeviceEventsTab({ deviceId }: { deviceId: string }) {
           {events.map((event) => (
             <div
               key={event.id}
-              className="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-[#1e1e2e]"
+              className="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-slate-800"
             >
               <span
                 className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                  event.event_type === "online" ? "bg-green-500" : "bg-gray-500"
+                  event.event_type === "online" ? "bg-emerald-500" : "bg-slate-500"
                 }`}
               />
-              <span className="text-sm text-gray-300 capitalize">
+              <span className="text-sm text-slate-300 capitalize">
                 {event.event_type === "online" ? "Came online" : "Went offline"}
               </span>
-              <span className="ml-auto text-xs text-gray-500">
+              <span className="ml-auto text-xs text-slate-500">
                 {timeAgo(event.occurred_at)}
               </span>
             </div>
@@ -899,51 +899,51 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
       </Button>
 
       {error && (
-        <p className="text-sm text-red-400">{error}</p>
+        <p className="text-sm text-rose-400">{error}</p>
       )}
 
       {scanResult && (
         <>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-slate-500">
             Last scanned: {timeAgo(scanResult.scanned_at)}
           </p>
 
           {scanResult.ports.length === 0 ? (
-            <p className="py-6 text-center text-sm text-gray-500">
+            <p className="py-6 text-center text-sm text-slate-500">
               No open ports found.
             </p>
           ) : (
-            <div className="rounded-md border border-[#2a2a3a] bg-[#1e1e2e]">
+            <div className="rounded-md border border-slate-800 bg-slate-800">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-[#2a2a3a] hover:bg-transparent">
-                    <TableHead className="text-gray-400">Port</TableHead>
-                    <TableHead className="text-gray-400">Proto</TableHead>
-                    <TableHead className="text-gray-400">State</TableHead>
-                    <TableHead className="text-gray-400">Service</TableHead>
+                  <TableRow className="border-slate-800 hover:bg-transparent">
+                    <TableHead className="text-slate-400">Port</TableHead>
+                    <TableHead className="text-slate-400">Proto</TableHead>
+                    <TableHead className="text-slate-400">State</TableHead>
+                    <TableHead className="text-slate-400">Service</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {scanResult.ports.map((port) => (
                     <TableRow
                       key={`${port.port}/${port.protocol}`}
-                      className="border-[#2a2a3a]"
+                      className="border-slate-800"
                     >
-                      <TableCell className="font-mono text-sm text-gray-300">
+                      <TableCell className="tabular-nums font-mono text-sm text-slate-300">
                         {port.port}
                       </TableCell>
-                      <TableCell className="text-xs text-gray-400">
+                      <TableCell className="text-xs text-slate-400">
                         {port.protocol}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="border-green-500/50 text-green-400 text-[10px]">
+                        <Badge variant="outline" className="border-emerald-500/50 text-emerald-400 text-[10px]">
                           {port.state}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-gray-300">
+                      <TableCell className="text-sm text-slate-300">
                         {port.service}
                         {port.version && (
-                          <span className="ml-1 text-xs text-gray-500">{port.version}</span>
+                          <span className="ml-1 text-xs text-slate-500">{port.version}</span>
                         )}
                       </TableCell>
                     </TableRow>
@@ -956,7 +956,7 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
       )}
 
       {!scanResult && !error && (
-        <p className="py-6 text-center text-sm text-gray-500">
+        <p className="py-6 text-center text-sm text-slate-500">
           No port scan results yet. Click &quot;Scan Ports&quot; to start.
         </p>
       )}
@@ -975,11 +975,11 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-gray-500">
+      <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
         {label}
       </span>
       <span
-        className={`text-sm text-gray-300 ${mono ? "font-mono" : ""}`}
+        className={`text-sm text-slate-300 ${mono ? "font-mono" : ""}`}
       >
         {value}
       </span>

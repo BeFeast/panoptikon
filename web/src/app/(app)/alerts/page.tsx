@@ -41,15 +41,15 @@ function alertIcon(type: Alert["type"]) {
     case "new_device":
       return <MonitorSmartphone className="h-5 w-5 text-blue-400" />;
     case "device_offline":
-      return <Wifi className="h-5 w-5 text-red-400" />;
+      return <Wifi className="h-5 w-5 text-rose-400" />;
     case "device_online":
-      return <Wifi className="h-5 w-5 text-green-400" />;
+      return <Wifi className="h-5 w-5 text-emerald-400" />;
     case "agent_offline":
-      return <Activity className="h-5 w-5 text-red-400" />;
+      return <Activity className="h-5 w-5 text-rose-400" />;
     case "high_bandwidth":
       return <AlertTriangle className="h-5 w-5 text-amber-400" />;
     default:
-      return <Shield className="h-5 w-5 text-gray-400" />;
+      return <Shield className="h-5 w-5 text-slate-400" />;
   }
 }
 
@@ -74,7 +74,7 @@ function severityBadge(severity: Alert["severity"]) {
   switch (severity) {
     case "CRITICAL":
       return (
-        <Badge className="bg-red-500/20 text-red-400 border-red-500/30 text-[10px] px-1.5 py-0">
+        <Badge className="bg-rose-500/20 text-rose-400 border-rose-500/30 text-[10px] px-1.5 py-0">
           CRITICAL
         </Badge>
       );
@@ -173,7 +173,7 @@ export default function AlertsPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-red-400">{error}</p>
+        <p className="text-rose-400">{error}</p>
       </div>
     );
   }
@@ -194,7 +194,7 @@ export default function AlertsPage() {
             </Badge>
           )}
           {acknowledgedCount > 0 && (
-            <Badge variant="outline" className="gap-1 text-gray-400 border-gray-700">
+            <Badge variant="outline" className="gap-1 text-slate-400 border-gray-700">
               <Check className="h-3 w-3" />
               {acknowledgedCount} acknowledged
             </Badge>
@@ -213,7 +213,7 @@ export default function AlertsPage() {
             className={
               statusFilter === f
                 ? ""
-                : "border-gray-700 text-gray-400 hover:text-gray-200"
+                : "border-gray-700 text-slate-400 hover:text-gray-200"
             }
           >
             {f === "all" ? "All" : f === "active" ? "Active" : "Acknowledged"}
@@ -225,7 +225,7 @@ export default function AlertsPage() {
       {alerts === null ? (
         <div className="space-y-3">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="border-[#2a2a3a] bg-[#16161f]">
+            <Card key={i} className="border-slate-800 bg-slate-900">
               <CardContent className="flex items-center gap-4 py-4">
                 <Skeleton className="h-10 w-10 rounded-full" />
                 <div className="flex-1 space-y-2">
@@ -238,10 +238,10 @@ export default function AlertsPage() {
           ))}
         </div>
       ) : alerts.length === 0 ? (
-        <Card className="border-[#2a2a3a] bg-[#16161f]">
+        <Card className="border-slate-800 bg-slate-900">
           <CardContent className="flex flex-col items-center gap-3 py-16">
-            <BellOff className="h-10 w-10 text-gray-600" />
-            <p className="text-sm text-gray-500">No alerts yet — all quiet.</p>
+            <BellOff className="h-10 w-10 text-slate-600" />
+            <p className="text-sm text-slate-500">No alerts yet — all quiet.</p>
           </CardContent>
         </Card>
       ) : (
@@ -249,12 +249,12 @@ export default function AlertsPage() {
           {alerts.map((alert) => (
             <Card
               key={alert.id}
-              className={`border-[#2a2a3a] transition-colors hover:border-blue-500/30 ${
+              className={`border-slate-800 transition-colors hover:border-blue-500/30 ${
                 alert.acknowledged_at
                   ? "bg-[#12121a] opacity-70"
                   : !alert.is_read
-                    ? "border-l-2 border-l-blue-500 bg-[#16161f]"
-                    : "bg-[#16161f]"
+                    ? "border-l-2 border-l-blue-500 bg-slate-900"
+                    : "bg-slate-900"
               }`}
             >
               <CardContent className="flex items-center gap-4 py-4">
@@ -274,7 +274,7 @@ export default function AlertsPage() {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium uppercase tracking-wider text-gray-500">
+                    <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
                       {alertTypeLabel(alert.type)}
                     </span>
                     {severityBadge(alert.severity)}
@@ -282,7 +282,7 @@ export default function AlertsPage() {
                       <span className="h-2 w-2 rounded-full bg-blue-500" />
                     )}
                     {alert.acknowledged_at && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-green-700 text-green-500">
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-green-700 text-emerald-500">
                         <CheckCheck className="mr-0.5 h-3 w-3" />
                         ACK
                       </Badge>
@@ -291,23 +291,23 @@ export default function AlertsPage() {
                   <p
                     className={`mt-0.5 text-sm ${
                       alert.acknowledged_at
-                        ? "text-gray-500"
+                        ? "text-slate-500"
                         : !alert.is_read
                           ? "text-gray-200"
-                          : "text-gray-400"
+                          : "text-slate-400"
                     }`}
                   >
                     {alert.message}
                   </p>
                   {alert.acknowledged_by && (
-                    <p className="mt-0.5 text-xs text-gray-600 italic">
+                    <p className="mt-0.5 text-xs text-slate-600 italic">
                       Note: {alert.acknowledged_by}
                     </p>
                   )}
                 </div>
 
                 {/* Time */}
-                <span className="shrink-0 text-xs text-gray-600">
+                <span className="shrink-0 text-xs text-slate-600">
                   {timeAgo(alert.created_at)}
                 </span>
 
@@ -318,7 +318,7 @@ export default function AlertsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 px-2 text-gray-500 hover:text-gray-200"
+                      className="h-7 px-2 text-slate-500 hover:text-gray-200"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleMarkRead(alert.id);
@@ -333,7 +333,7 @@ export default function AlertsPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 px-2 text-gray-500 hover:text-green-400"
+                      className="h-7 px-2 text-slate-500 hover:text-emerald-400"
                       onClick={(e) => {
                         e.stopPropagation();
                         openAckDialog(alert.id);
@@ -350,7 +350,7 @@ export default function AlertsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 px-2 text-gray-500 hover:text-amber-400"
+                        className="h-7 px-2 text-slate-500 hover:text-amber-400"
                         onClick={(e) => {
                           e.stopPropagation();
                           setMuteDropdownId(
@@ -362,7 +362,7 @@ export default function AlertsPage() {
                         <VolumeX className="h-3.5 w-3.5" />
                       </Button>
                       {muteDropdownId === alert.id && (
-                        <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-md border border-[#2a2a3a] bg-[#1a1a2a] py-1 shadow-lg">
+                        <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-md border border-slate-800 bg-slate-800/50 py-1 shadow-lg">
                           {[
                             { label: "Mute 1h", hours: 1 },
                             { label: "Mute 8h", hours: 8 },
@@ -371,7 +371,7 @@ export default function AlertsPage() {
                           ].map((opt) => (
                             <button
                               key={opt.hours}
-                              className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-gray-300 hover:bg-[#2a2a3a] hover:text-white"
+                              className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-white"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (alert.device_id) {
@@ -396,7 +396,7 @@ export default function AlertsPage() {
 
       {/* Acknowledge Dialog */}
       <Dialog open={ackDialogOpen} onOpenChange={setAckDialogOpen}>
-        <DialogContent className="bg-[#16161f] border-[#2a2a3a]">
+        <DialogContent className="bg-slate-900 border-slate-800">
           <DialogHeader>
             <DialogTitle>Acknowledge Alert</DialogTitle>
             <DialogDescription>
@@ -407,7 +407,7 @@ export default function AlertsPage() {
             placeholder="Add a note (optional)..."
             value={ackNote}
             onChange={(e) => setAckNote(e.target.value)}
-            className="bg-[#12121a] border-[#2a2a3a]"
+            className="bg-[#12121a] border-slate-800"
             onKeyDown={(e) => {
               if (e.key === "Enter") handleAcknowledge();
             }}

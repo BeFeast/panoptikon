@@ -42,12 +42,12 @@ export function Sidebar() {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "flex flex-col border-r border-[#2a2a3a] bg-[#0d0d14] transition-all duration-200",
+          "flex flex-col border-r border-slate-800 bg-slate-950 transition-all duration-200",
           collapsed ? "w-16" : "w-60"
         )}
       >
         {/* Logo */}
-        <div className="flex h-14 items-center border-b border-[#2a2a3a] px-3">
+        <div className="flex h-14 items-center border-b border-slate-800 px-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-500 text-sm font-bold text-white">
             P
           </div>
@@ -71,7 +71,7 @@ export function Sidebar() {
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                   active
                     ? "bg-blue-500/10 text-blue-500"
-                    : "text-gray-400 hover:bg-[#16161f] hover:text-white",
+                    : "text-slate-400 hover:bg-slate-900 hover:text-white",
                   collapsed && "justify-center px-0"
                 )}
               >
@@ -84,7 +84,7 @@ export function Sidebar() {
               return (
                 <Tooltip key={item.href}>
                   <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
-                  <TooltipContent side="right" className="border-[#2a2a3a] bg-[#16161f]">
+                  <TooltipContent side="right" className="border-slate-800 bg-slate-900">
                     <p>{item.label}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -96,10 +96,10 @@ export function Sidebar() {
         </nav>
 
         {/* Collapse toggle + version */}
-        <div className="border-t border-[#2a2a3a] p-2">
+        <div className="border-t border-slate-800 p-2">
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-xs text-gray-600 transition-colors hover:bg-[#16161f] hover:text-gray-400"
+            className="flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-slate-900 hover:text-slate-400"
           >
             {collapsed ? (
               <ChevronRight className="h-4 w-4" />
@@ -117,15 +117,15 @@ export function Sidebar() {
                   <span
                     className={cn(
                       "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
-                      wsConnected ? "bg-green-500" : "bg-gray-600"
+                      wsConnected ? "bg-emerald-500" : "bg-slate-600"
                     )}
                   />
                 </TooltipTrigger>
-                <TooltipContent side="top" className="border-[#2a2a3a] bg-[#16161f]">
+                <TooltipContent side="top" className="border-slate-800 bg-slate-900">
                   <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
                 </TooltipContent>
               </Tooltip>
-              <p className="text-[10px] text-gray-700">Panoptikon v0.1.0</p>
+              <p className="text-[10px] text-slate-700">Panoptikon v0.1.0</p>
             </div>
           ) : (
             <Tooltip>
@@ -134,12 +134,12 @@ export function Sidebar() {
                   <span
                     className={cn(
                       "inline-block h-1.5 w-1.5 rounded-full",
-                      wsConnected ? "bg-green-500" : "bg-gray-600"
+                      wsConnected ? "bg-emerald-500" : "bg-slate-600"
                     )}
                   />
                 </div>
               </TooltipTrigger>
-              <TooltipContent side="right" className="border-[#2a2a3a] bg-[#16161f]">
+              <TooltipContent side="right" className="border-slate-800 bg-slate-900">
                 <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
               </TooltipContent>
             </Tooltip>
