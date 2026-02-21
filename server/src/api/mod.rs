@@ -21,6 +21,7 @@ pub mod devices;
 pub mod export;
 pub mod metrics;
 pub mod scanner;
+pub mod search;
 pub mod settings;
 pub mod traffic;
 pub mod vyos;
@@ -118,6 +119,8 @@ pub fn router(state: AppState) -> Router {
         .route("/router/speedtest", post(vyos::speedtest))
         // Traffic
         .route("/traffic/history", get(traffic::history))
+        // Search
+        .route("/search", get(search::search))
         // Export
         .route("/devices/export", get(export::devices_export))
         .route("/traffic/export", get(export::traffic_export))

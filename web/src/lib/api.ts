@@ -15,6 +15,7 @@ import type {
   LoginResponse,
   NetflowStatus,
   RouterStatus,
+  SearchResponse,
   SettingsData,
   SpeedTestResult,
   TopDevice,
@@ -237,6 +238,12 @@ export function runSpeedTest(): Promise<SpeedTestResult> {
 
 export function fetchNetflowStatus(): Promise<NetflowStatus> {
   return apiGet<NetflowStatus>("/api/v1/settings/netflow-status");
+}
+
+// ─── Search ─────────────────────────────────────────────
+
+export function searchAll(q: string): Promise<SearchResponse> {
+  return apiGet<SearchResponse>(`/api/v1/search?q=${encodeURIComponent(q)}`);
 }
 
 // ─── Settings ───────────────────────────────────────────

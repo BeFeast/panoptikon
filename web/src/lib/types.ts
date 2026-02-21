@@ -140,6 +140,37 @@ export interface SettingsData {
   vyos_api_key_set: boolean;
 }
 
+// ─── Search ─────────────────────────────────────────────
+
+export interface SearchDevice {
+  id: string;
+  ip_address: string | null;
+  hostname: string | null;
+  mac_address: string;
+  vendor: string | null;
+  is_online: boolean;
+}
+
+export interface SearchAgent {
+  id: string;
+  name: string | null;
+  hostname: string | null;
+  is_online: boolean;
+}
+
+export interface SearchAlert {
+  id: string;
+  message: string;
+  severity: "INFO" | "WARNING" | "CRITICAL";
+  created_at: string;
+}
+
+export interface SearchResponse {
+  devices: SearchDevice[];
+  agents: SearchAgent[];
+  alerts: SearchAlert[];
+}
+
 // ─── Auth ───────────────────────────────────────────────
 
 export interface AuthStatus {
