@@ -32,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageTransition } from "@/components/PageTransition";
 
 async function downloadExport(url: string, filename: string) {
   const res = await fetch(url, { credentials: "include" });
@@ -84,6 +85,7 @@ export default function TrafficPage() {
   }, [load]);
 
   return (
+    <PageTransition>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-white">Traffic</h1>
@@ -303,5 +305,6 @@ export default function TrafficPage() {
         )}
       </div>
     </div>
+    </PageTransition>
   );
 }

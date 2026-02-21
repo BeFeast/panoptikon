@@ -36,6 +36,7 @@ import {
 } from "@/lib/api";
 import type { FirewallConfig, FirewallChain, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute } from "@/lib/types";
 import { Progress } from "@/components/ui/progress";
+import { PageTransition } from "@/components/PageTransition";
 
 // ── Not Configured state ────────────────────────────────
 
@@ -1116,10 +1117,10 @@ export default function RouterPage() {
   }
 
   if (!status?.configured) {
-    return <NotConfigured />;
+    return <PageTransition><NotConfigured /></PageTransition>;
   }
 
-  return <RouterTabs status={status} />;
+  return <PageTransition><RouterTabs status={status} /></PageTransition>;
 }
 
 // ── Tabs component (only rendered when configured) ──────

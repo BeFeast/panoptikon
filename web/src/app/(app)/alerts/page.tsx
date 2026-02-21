@@ -35,6 +35,7 @@ import {
 } from "@/lib/api";
 import type { Alert } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
+import { PageTransition } from "@/components/PageTransition";
 
 function alertIcon(type: Alert["type"]) {
   switch (type) {
@@ -182,6 +183,7 @@ export default function AlertsPage() {
   const acknowledgedCount = (alerts ?? []).filter((a) => !!a.acknowledged_at).length;
 
   return (
+    <PageTransition>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -425,5 +427,6 @@ export default function AlertsPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </PageTransition>
   );
 }
