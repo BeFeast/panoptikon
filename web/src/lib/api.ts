@@ -12,6 +12,7 @@ import type {
   AuthStatus,
   DashboardStats,
   Device,
+  FirewallConfig,
   LoginResponse,
   NetflowStatus,
   RouterStatus,
@@ -229,8 +230,8 @@ export function fetchRouterDhcpLeases(): Promise<VyosDhcpLease[]> {
   return apiGet<VyosDhcpLease[]>("/api/v1/vyos/dhcp-leases");
 }
 
-export function fetchRouterFirewall(): Promise<Record<string, unknown>> {
-  return apiGet<Record<string, unknown>>("/api/v1/vyos/firewall");
+export function fetchRouterFirewall(): Promise<FirewallConfig> {
+  return apiGet<FirewallConfig>("/api/v1/vyos/firewall");
 }
 
 export function runSpeedTest(): Promise<SpeedTestResult> {

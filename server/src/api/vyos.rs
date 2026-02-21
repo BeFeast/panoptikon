@@ -574,17 +574,235 @@ pub async fn dhcp_leases(
     Ok(Json(parsed))
 }
 
-/// GET /api/v1/vyos/firewall — fetch firewall config from VyOS.
-pub async fn firewall(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+// ── Parsed VyOS Firewall Config ─────────────────────────
+
+/// A single parsed firewall rule within a chain.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FirewallRule {
+    pub number: u32,
+    pub action: String,
+    pub source: Option<String>,
+    pub destination: Option<String>,
+    pub protocol: Option<String>,
+    pub state: Option<String>,
+    pub description: Option<String>,
+}
+
+/// A firewall chain (e.g. "IPv4 Forward Filter") with its rules.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FirewallChain {
+    pub name: String,
+    pub default_action: String,
+    pub rules: Vec<FirewallRule>,
+}
+
+/// Top-level firewall configuration containing all parsed chains.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FirewallConfig {
+    pub chains: Vec<FirewallChain>,
+}
+
+/// Format a source/destination object into a human-readable string.
+///
+/// VyOS source/destination can contain:
+/// - `{"address": "10.0.0.0/8"}`
+/// - `{"port": "443"}`
+/// - `{"group": {"address-group": "LAN_HOSTS"}}`
+/// - combinations of the above
+fn format_endpoint(val: &Value) -> Option<String> {
+    let obj = val.as_object()?;
+    let mut parts = Vec::new();
+
+    if let Some(addr) = obj.get("address").and_then(|v| v.as_str()) {
+        parts.push(addr.to_string());
+    }
+    if let Some(network) = obj.get("network").and_then(|v| v.as_str()) {
+        parts.push(network.to_string());
+    }
+    if let Some(group) = obj.get("group").and_then(|v| v.as_object()) {
+        for (gtype, gname) in group {
+            if let Some(name) = gname.as_str() {
+                parts.push(format!("{gtype}: {name}"));
+            }
+        }
+    }
+    if let Some(port) = obj.get("port").and_then(|v| v.as_str()) {
+        parts.push(format!("port {port}"));
+    }
+
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts.join(", "))
+    }
+}
+
+/// Format a state object into a human-readable string.
+///
+/// VyOS state object: `{"established": "enable", "related": "enable", "new": "enable"}`
+fn format_state(val: &Value) -> Option<String> {
+    let obj = val.as_object()?;
+    let enabled: Vec<&String> = obj
+        .iter()
+        .filter(|(_, v)| v.as_str() == Some("enable"))
+        .map(|(k, _)| k)
+        .collect();
+
+    if enabled.is_empty() {
+        None
+    } else {
+        Some(enabled.into_iter().cloned().collect::<Vec<_>>().join(", "))
+    }
+}
+
+/// Parse VyOS firewall configuration JSON into a [`FirewallConfig`].
+///
+/// Expected structure:
+/// ```json
+/// {
+///   "ipv4": {
+///     "forward": { "filter": { "default-action": "drop", "rule": { "1": { ... } } } },
+///     "input":   { "filter": { ... } },
+///     "output":  { "filter": { ... } }
+///   },
+///   "ipv6": { ... }
+/// }
+/// ```
+pub fn parse_firewall_config(value: &Value) -> FirewallConfig {
+    let mut chains = Vec::new();
+
+    let obj = match value.as_object() {
+        Some(o) => o,
+        None => return FirewallConfig { chains },
+    };
+
+    // Iterate IP versions: ipv4, ipv6
+    for (ip_version, version_val) in obj {
+        // Skip non-chain keys like "group"
+        let version_obj = match version_val.as_object() {
+            Some(o) => o,
+            None => continue,
+        };
+
+        // Iterate directions: forward, input, output
+        for (direction, direction_val) in version_obj {
+            let direction_obj = match direction_val.as_object() {
+                Some(o) => o,
+                None => continue,
+            };
+
+            // Iterate filter types: filter, raw, etc.
+            for (filter_type, filter_val) in direction_obj {
+                let filter_obj = match filter_val.as_object() {
+                    Some(o) => o,
+                    None => continue,
+                };
+
+                let default_action = filter_obj
+                    .get("default-action")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("accept")
+                    .to_string();
+
+                let chain_name = format!(
+                    "{} {} {}",
+                    ip_version.to_uppercase(),
+                    capitalize(direction),
+                    capitalize(filter_type)
+                );
+
+                let mut rules = Vec::new();
+
+                if let Some(rule_map) = filter_obj.get("rule").and_then(|v| v.as_object()) {
+                    for (rule_num_str, rule_val) in rule_map {
+                        let number = match rule_num_str.parse::<u32>() {
+                            Ok(n) => n,
+                            Err(_) => continue,
+                        };
+
+                        let rule_obj = match rule_val.as_object() {
+                            Some(o) => o,
+                            None => continue,
+                        };
+
+                        let action = rule_obj
+                            .get("action")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown")
+                            .to_string();
+
+                        let source = rule_obj.get("source").and_then(format_endpoint);
+                        let destination = rule_obj.get("destination").and_then(format_endpoint);
+
+                        let protocol = rule_obj
+                            .get("protocol")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
+
+                        let state = rule_obj.get("state").and_then(format_state);
+
+                        let description = rule_obj
+                            .get("description")
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string());
+
+                        rules.push(FirewallRule {
+                            number,
+                            action,
+                            source,
+                            destination,
+                            protocol,
+                            state,
+                            description,
+                        });
+                    }
+                }
+
+                // Sort rules by number
+                rules.sort_by_key(|r| r.number);
+
+                chains.push(FirewallChain {
+                    name: chain_name,
+                    default_action,
+                    rules,
+                });
+            }
+        }
+    }
+
+    // Sort chains by name for consistent ordering
+    chains.sort_by(|a, b| a.name.cmp(&b.name));
+
+    FirewallConfig { chains }
+}
+
+/// Capitalize the first letter of a string.
+fn capitalize(s: &str) -> String {
+    let mut chars = s.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(c) => c.to_uppercase().collect::<String>() + chars.as_str(),
+    }
+}
+
+/// GET /api/v1/vyos/firewall — fetch firewall config from VyOS (parsed).
+///
+/// Calls `showConfig` for the `firewall` path on VyOS, parses the JSON config
+/// into structured chains and rules, and returns a [`FirewallConfig`].
+/// If no firewall is configured, returns an empty chains list.
+pub async fn firewall(State(state): State<AppState>) -> Result<Json<FirewallConfig>, StatusCode> {
     let client = get_vyos_client_or_503(&state).await?;
-    // Firewall may not be configured — that's OK, return empty object
+    // Firewall may not be configured — that's OK, return empty config
     match client.retrieve(&["firewall"]).await {
-        Ok(data) => Ok(Json(data)),
+        Ok(data) => {
+            let config = parse_firewall_config(&data);
+            Ok(Json(config))
+        }
         Err(e) => {
             let msg = e.to_string();
             // VyOS returns error when path is empty (no firewall configured)
             if msg.contains("empty") || msg.contains("does not exist") {
-                Ok(Json(serde_json::json!({})))
+                Ok(Json(FirewallConfig { chains: Vec::new() }))
             } else {
                 tracing::error!("VyOS firewall query failed: {e}");
                 Err(StatusCode::BAD_GATEWAY)
@@ -1174,6 +1392,155 @@ mod tests {
         assert_eq!(l.state, "expired");
         assert_eq!(l.hostname.as_deref(), Some("laptop"));
         assert_eq!(l.pool.as_deref(), Some("GUEST"));
+    }
+
+    #[test]
+    fn test_parse_firewall_with_rules() {
+        let json: Value = serde_json::from_str(
+            r#"{
+                "ipv4": {
+                    "forward": {
+                        "filter": {
+                            "default-action": "drop",
+                            "rule": {
+                                "10": {
+                                    "action": "accept",
+                                    "state": {
+                                        "established": "enable",
+                                        "related": "enable"
+                                    },
+                                    "description": "Allow established/related"
+                                },
+                                "20": {
+                                    "action": "accept",
+                                    "source": {
+                                        "address": "10.0.0.0/8"
+                                    },
+                                    "destination": {
+                                        "port": "443"
+                                    },
+                                    "protocol": "tcp",
+                                    "description": "Allow HTTPS from LAN"
+                                },
+                                "99": {
+                                    "action": "reject",
+                                    "description": "Reject all other"
+                                }
+                            }
+                        }
+                    },
+                    "input": {
+                        "filter": {
+                            "default-action": "accept"
+                        }
+                    }
+                },
+                "ipv6": {
+                    "forward": {
+                        "filter": {
+                            "default-action": "drop"
+                        }
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let config = parse_firewall_config(&json);
+        assert_eq!(config.chains.len(), 3);
+
+        // Chains should be sorted by name
+        assert_eq!(config.chains[0].name, "IPV4 Forward Filter");
+        assert_eq!(config.chains[0].default_action, "drop");
+        assert_eq!(config.chains[0].rules.len(), 3);
+
+        // Rules should be sorted by number
+        let r10 = &config.chains[0].rules[0];
+        assert_eq!(r10.number, 10);
+        assert_eq!(r10.action, "accept");
+        assert_eq!(r10.state.as_deref(), Some("established, related"));
+        assert_eq!(
+            r10.description.as_deref(),
+            Some("Allow established/related")
+        );
+        assert!(r10.source.is_none());
+        assert!(r10.destination.is_none());
+        assert!(r10.protocol.is_none());
+
+        let r20 = &config.chains[0].rules[1];
+        assert_eq!(r20.number, 20);
+        assert_eq!(r20.action, "accept");
+        assert_eq!(r20.source.as_deref(), Some("10.0.0.0/8"));
+        assert_eq!(r20.destination.as_deref(), Some("port 443"));
+        assert_eq!(r20.protocol.as_deref(), Some("tcp"));
+        assert_eq!(r20.description.as_deref(), Some("Allow HTTPS from LAN"));
+
+        let r99 = &config.chains[0].rules[2];
+        assert_eq!(r99.number, 99);
+        assert_eq!(r99.action, "reject");
+        assert_eq!(r99.description.as_deref(), Some("Reject all other"));
+
+        // Input filter chain
+        assert_eq!(config.chains[1].name, "IPV4 Input Filter");
+        assert_eq!(config.chains[1].default_action, "accept");
+        assert!(config.chains[1].rules.is_empty());
+
+        // IPv6 chain
+        assert_eq!(config.chains[2].name, "IPV6 Forward Filter");
+        assert_eq!(config.chains[2].default_action, "drop");
+        assert!(config.chains[2].rules.is_empty());
+    }
+
+    #[test]
+    fn test_parse_firewall_empty() {
+        // Empty object → no chains
+        let json: Value = serde_json::from_str("{}").unwrap();
+        let config = parse_firewall_config(&json);
+        assert!(config.chains.is_empty());
+
+        // Null value
+        let config2 = parse_firewall_config(&Value::Null);
+        assert!(config2.chains.is_empty());
+    }
+
+    #[test]
+    fn test_parse_firewall_with_groups_and_network() {
+        let json: Value = serde_json::from_str(
+            r#"{
+                "ipv4": {
+                    "input": {
+                        "filter": {
+                            "default-action": "drop",
+                            "rule": {
+                                "5": {
+                                    "action": "accept",
+                                    "source": {
+                                        "group": {
+                                            "address-group": "TRUSTED"
+                                        }
+                                    },
+                                    "destination": {
+                                        "network": "192.168.1.0/24",
+                                        "port": "22"
+                                    },
+                                    "protocol": "tcp",
+                                    "description": "SSH from trusted group"
+                                }
+                            }
+                        }
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let config = parse_firewall_config(&json);
+        assert_eq!(config.chains.len(), 1);
+        assert_eq!(config.chains[0].rules.len(), 1);
+
+        let r = &config.chains[0].rules[0];
+        assert_eq!(r.source.as_deref(), Some("address-group: TRUSTED"));
+        assert_eq!(r.destination.as_deref(), Some("192.168.1.0/24, port 22"));
     }
 
     #[tokio::test]

@@ -31,7 +31,7 @@ import {
   fetchRouterConfigInterfaces,
   runSpeedTest,
 } from "@/lib/api";
-import type { RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute } from "@/lib/types";
+import type { FirewallConfig, FirewallChain, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute } from "@/lib/types";
 import { Progress } from "@/components/ui/progress";
 
 // ── Not Configured state ────────────────────────────────
@@ -111,92 +111,6 @@ function StatusHeader({ status }: { status: RouterStatus }) {
         )}
       </div>
     </div>
-  );
-}
-
-// ── Pre-formatted output panel ──────────────────────────
-
-function OutputPanel({
-  data,
-  loading,
-  error,
-  emptyMsg,
-}: {
-  data: string | null;
-  loading: boolean;
-  error: string | null;
-  emptyMsg?: string;
-}) {
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2 py-8 text-gray-500">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Loading…</span>
-      </div>
-    );
-  }
-  if (error) {
-    return (
-      <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
-        <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-        <p className="text-xs text-red-400">{error}</p>
-      </div>
-    );
-  }
-  if (!data || data.trim().length === 0) {
-    return (
-      <p className="py-4 text-sm text-gray-500">
-        {emptyMsg ?? "No data available."}
-      </p>
-    );
-  }
-  return (
-    <pre className="overflow-x-auto rounded-md bg-[#0e0e16] p-4 text-xs leading-relaxed text-gray-300">
-      {data}
-    </pre>
-  );
-}
-
-// ── JSON tree panel ─────────────────────────────────────
-
-function JsonPanel({
-  data,
-  loading,
-  error,
-  emptyMsg,
-}: {
-  data: Record<string, unknown> | null;
-  loading: boolean;
-  error: string | null;
-  emptyMsg?: string;
-}) {
-  if (loading) {
-    return (
-      <div className="flex items-center gap-2 py-8 text-gray-500">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Loading…</span>
-      </div>
-    );
-  }
-  if (error) {
-    return (
-      <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
-        <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-        <p className="text-xs text-red-400">{error}</p>
-      </div>
-    );
-  }
-  if (!data || Object.keys(data).length === 0) {
-    return (
-      <p className="py-4 text-sm text-gray-500">
-        {emptyMsg ?? "No data available."}
-      </p>
-    );
-  }
-  return (
-    <pre className="overflow-x-auto rounded-md bg-[#0e0e16] p-4 text-xs leading-relaxed text-gray-300">
-      {JSON.stringify(data, null, 2)}
-    </pre>
   );
 }
 
@@ -824,6 +738,183 @@ function DhcpLeasesTable({
   );
 }
 
+// ── Firewall Action Badge ───────────────────────────────
+
+function FirewallActionBadge({ action }: { action: string }) {
+  const lower = action.toLowerCase();
+  if (lower === "accept") {
+    return (
+      <Badge
+        variant="outline"
+        className="border-green-500/30 bg-green-500/10 text-green-400"
+      >
+        ACCEPT
+      </Badge>
+    );
+  }
+  if (lower === "drop") {
+    return (
+      <Badge
+        variant="outline"
+        className="border-red-500/30 bg-red-500/10 text-red-400"
+      >
+        DROP
+      </Badge>
+    );
+  }
+  if (lower === "reject") {
+    return (
+      <Badge
+        variant="outline"
+        className="border-orange-500/30 bg-orange-500/10 text-orange-400"
+      >
+        REJECT
+      </Badge>
+    );
+  }
+  return (
+    <Badge
+      variant="outline"
+      className="border-gray-500/30 bg-gray-500/10 text-gray-400"
+    >
+      {action.toUpperCase()}
+    </Badge>
+  );
+}
+
+function DefaultActionBadge({ action }: { action: string }) {
+  const lower = action.toLowerCase();
+  const colors =
+    lower === "drop" || lower === "reject"
+      ? "border-red-500/30 bg-red-500/10 text-red-400"
+      : "border-green-500/30 bg-green-500/10 text-green-400";
+
+  return (
+    <Badge variant="outline" className={colors}>
+      Default: {action.toUpperCase()}
+    </Badge>
+  );
+}
+
+// ── Firewall Chain Card ─────────────────────────────────
+
+function FirewallChainCard({ chain }: { chain: FirewallChain }) {
+  return (
+    <Card className="border-[#2a2a3a] bg-[#16161f]">
+      <CardHeader>
+        <div className="flex flex-wrap items-center gap-3">
+          <CardTitle className="text-base text-white">{chain.name}</CardTitle>
+          <DefaultActionBadge action={chain.default_action} />
+        </div>
+      </CardHeader>
+      <CardContent>
+        {chain.rules.length === 0 ? (
+          <p className="py-2 text-sm text-gray-500">
+            No rules in this chain.
+          </p>
+        ) : (
+          <div className="overflow-x-auto rounded-md border border-[#2a2a3a]">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-[#2a2a3a] bg-[#0e0e16] text-left">
+                  <th className="px-4 py-3 font-medium text-gray-400">#</th>
+                  <th className="px-4 py-3 font-medium text-gray-400">Action</th>
+                  <th className="px-4 py-3 font-medium text-gray-400">Source</th>
+                  <th className="px-4 py-3 font-medium text-gray-400">Destination</th>
+                  <th className="px-4 py-3 font-medium text-gray-400">Protocol</th>
+                  <th className="px-4 py-3 font-medium text-gray-400">Description</th>
+                </tr>
+              </thead>
+              <tbody>
+                {chain.rules.map((rule) => (
+                  <tr
+                    key={rule.number}
+                    className="border-b border-[#2a2a3a] last:border-b-0 hover:bg-[#1a1a2a]"
+                  >
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-gray-300">{rule.number}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <FirewallActionBadge action={rule.action} />
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-xs text-gray-300">
+                        {rule.source ?? "any"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="font-mono text-xs text-gray-300">
+                        {rule.destination ?? "any"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-gray-300">
+                        {rule.protocol ?? "any"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-gray-400">
+                        {rule.description ?? "—"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Firewall Panel ──────────────────────────────────────
+
+function FirewallPanel({
+  config,
+  loading,
+  error,
+}: {
+  config: FirewallConfig | null;
+  loading: boolean;
+  error: string | null;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-8 text-gray-500">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm">Loading…</span>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+        <p className="text-xs text-red-400">{error}</p>
+      </div>
+    );
+  }
+  if (!config || config.chains.length === 0) {
+    return (
+      <Card className="border-[#2a2a3a] bg-[#16161f]">
+        <CardContent className="flex flex-col items-center gap-3 py-12">
+          <Shield className="h-8 w-8 text-gray-600" />
+          <p className="text-sm text-gray-500">No firewall rules configured.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {config.chains.map((chain) => (
+        <FirewallChainCard key={chain.name} chain={chain} />
+      ))}
+    </div>
+  );
+}
+
 // ── Main Page ───────────────────────────────────────────
 
 export default function RouterPage() {
@@ -886,7 +977,7 @@ function RouterTabs({ status }: { status: RouterStatus }) {
     tab === "dhcp"
   );
 
-  const firewall = useAsyncData(
+  const firewall = useAsyncData<FirewallConfig>(
     useCallback(() => fetchRouterFirewall(), []),
     tab === "firewall"
   );
@@ -994,25 +1085,11 @@ function RouterTabs({ status }: { status: RouterStatus }) {
         </TabsContent>
 
         <TabsContent value="firewall">
-          <Card className="border-[#2a2a3a] bg-[#16161f]">
-            <CardHeader>
-              <CardTitle className="text-base text-white">
-                Firewall Rules
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <JsonPanel
-                data={
-                  firewall.data && typeof firewall.data === "object"
-                    ? firewall.data
-                    : null
-                }
-                loading={firewall.loading}
-                error={firewall.error}
-                emptyMsg="No firewall rules configured."
-              />
-            </CardContent>
-          </Card>
+          <FirewallPanel
+            config={firewall.data}
+            loading={firewall.loading}
+            error={firewall.error}
+          />
         </TabsContent>
 
         <TabsContent value="speedtest">
