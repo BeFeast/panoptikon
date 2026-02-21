@@ -24,6 +24,10 @@ pub struct AppConfig {
     /// Auth section.
     #[serde(default)]
     pub auth: AuthConfig,
+
+    /// Retention section — data cleanup periods.
+    #[serde(default)]
+    pub retention: RetentionConfig,
 }
 
 fn default_listen() -> Option<String> {
@@ -142,6 +146,50 @@ impl Default for AuthConfig {
     }
 }
 
+/// Data retention / cleanup periods.
+#[derive(Debug, Clone, Deserialize)]
+pub struct RetentionConfig {
+    /// Delete traffic_samples older than this many hours (default 48).
+    #[serde(default = "default_traffic_samples_hours")]
+    pub traffic_samples_hours: u64,
+
+    /// Delete agent_reports older than this many days (default 7).
+    #[serde(default = "default_agent_reports_days")]
+    pub agent_reports_days: u64,
+
+    /// Delete device_events older than this many days (default 30).
+    #[serde(default = "default_device_events_days")]
+    pub device_events_days: u64,
+
+    /// Delete acknowledged alerts older than this many days (default 90).
+    #[serde(default = "default_alerts_days")]
+    pub alerts_days: u64,
+}
+
+fn default_traffic_samples_hours() -> u64 {
+    48
+}
+fn default_agent_reports_days() -> u64 {
+    7
+}
+fn default_device_events_days() -> u64 {
+    30
+}
+fn default_alerts_days() -> u64 {
+    90
+}
+
+impl Default for RetentionConfig {
+    fn default() -> Self {
+        Self {
+            traffic_samples_hours: default_traffic_samples_hours(),
+            agent_reports_days: default_agent_reports_days(),
+            device_events_days: default_device_events_days(),
+            alerts_days: default_alerts_days(),
+        }
+    }
+}
+
 impl Default for AppConfig {
     fn default() -> Self {
         Self {
@@ -150,6 +198,7 @@ impl Default for AppConfig {
             vyos: VyosConfig::default(),
             scanner: ScannerConfig::default(),
             auth: AuthConfig::default(),
+            retention: RetentionConfig::default(),
         }
     }
 }
