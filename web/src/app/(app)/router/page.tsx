@@ -31,7 +31,7 @@ import {
   fetchRouterConfigInterfaces,
   runSpeedTest,
 } from "@/lib/api";
-import type { RouterStatus, SpeedTestResult, VyosInterface } from "@/lib/types";
+import type { RouterStatus, SpeedTestResult, VyosInterface, VyosRoute } from "@/lib/types";
 import { Progress } from "@/components/ui/progress";
 
 // ── Not Configured state ────────────────────────────────
@@ -550,6 +550,146 @@ function InterfacesTable({
   );
 }
 
+// ── Protocol Badge ──────────────────────────────────────
+
+const PROTOCOL_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  C: { bg: "bg-green-500/10", text: "text-green-400", border: "border-green-500/30" },
+  S: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/30" },
+  K: { bg: "bg-gray-500/10", text: "text-gray-400", border: "border-gray-500/30" },
+  L: { bg: "bg-teal-500/10", text: "text-teal-400", border: "border-teal-500/30" },
+  O: { bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/30" },
+  B: { bg: "bg-purple-500/10", text: "text-purple-400", border: "border-purple-500/30" },
+  R: { bg: "bg-yellow-500/10", text: "text-yellow-400", border: "border-yellow-500/30" },
+  I: { bg: "bg-pink-500/10", text: "text-pink-400", border: "border-pink-500/30" },
+};
+
+const PROTOCOL_NAMES: Record<string, string> = {
+  K: "Kernel",
+  C: "Connected",
+  L: "Local",
+  S: "Static",
+  R: "RIP",
+  O: "OSPF",
+  I: "IS-IS",
+  B: "BGP",
+  E: "EIGRP",
+  N: "NHRP",
+};
+
+function ProtocolBadge({ protocol }: { protocol: string }) {
+  const colors = PROTOCOL_COLORS[protocol] ?? {
+    bg: "bg-gray-500/10",
+    text: "text-gray-400",
+    border: "border-gray-500/30",
+  };
+  const name = PROTOCOL_NAMES[protocol] ?? protocol;
+
+  return (
+    <Badge
+      variant="outline"
+      className={`${colors.bg} ${colors.text} ${colors.border} font-mono`}
+      title={name}
+    >
+      {protocol}
+    </Badge>
+  );
+}
+
+// ── Routes Table ────────────────────────────────────────
+
+function RoutesTable({
+  routes,
+  loading,
+  error,
+}: {
+  routes: VyosRoute[] | null;
+  loading: boolean;
+  error: string | null;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-8 text-gray-500">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm">Loading…</span>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+        <p className="text-xs text-red-400">{error}</p>
+      </div>
+    );
+  }
+  if (!routes || routes.length === 0) {
+    return (
+      <p className="py-4 text-sm text-gray-500">No routes found.</p>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-[#2a2a3a]">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-[#2a2a3a] bg-[#0e0e16] text-left">
+            <th className="px-4 py-3 font-medium text-gray-400">Protocol</th>
+            <th className="px-4 py-3 font-medium text-gray-400">Destination</th>
+            <th className="px-4 py-3 font-medium text-gray-400">Gateway</th>
+            <th className="px-4 py-3 font-medium text-gray-400">Interface</th>
+            <th className="px-4 py-3 font-medium text-gray-400">Metric</th>
+            <th className="px-4 py-3 font-medium text-gray-400">Uptime</th>
+          </tr>
+        </thead>
+        <tbody>
+          {routes.map((route, idx) => (
+            <tr
+              key={`${route.destination}-${idx}`}
+              className="border-b border-[#2a2a3a] last:border-b-0 hover:bg-[#1a1a2a]"
+            >
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <ProtocolBadge protocol={route.protocol} />
+                  {route.selected && (
+                    <span className="text-xs text-green-500" title="Selected / Best route">
+                      ✓
+                    </span>
+                  )}
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono font-medium text-white">
+                  {route.destination}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono text-gray-300">
+                  {route.gateway ?? "—"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono text-gray-300">
+                  {route.interface ?? "—"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono text-xs text-gray-400">
+                  {route.metric ? `[${route.metric}]` : "—"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="text-gray-400">
+                  {route.uptime ?? "—"}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ── Main Page ───────────────────────────────────────────
 
 export default function RouterPage() {
@@ -602,7 +742,7 @@ function RouterTabs({ status }: { status: RouterStatus }) {
     tab === "interfaces"
   );
 
-  const routes = useAsyncData(
+  const routes = useAsyncData<VyosRoute[]>(
     useCallback(() => fetchRouterRoutes(), []),
     tab === "routes"
   );
@@ -693,11 +833,10 @@ function RouterTabs({ status }: { status: RouterStatus }) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <OutputPanel
-                data={typeof routes.data === "string" ? routes.data : null}
+              <RoutesTable
+                routes={Array.isArray(routes.data) ? routes.data : null}
                 loading={routes.loading}
                 error={routes.error}
-                emptyMsg="No routes found."
               />
             </CardContent>
           </Card>

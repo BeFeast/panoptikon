@@ -145,6 +145,16 @@ export interface VyosInterface {
   description: string | null;
 }
 
+export interface VyosRoute {
+  protocol: string;
+  destination: string;
+  gateway: string | null;
+  interface: string | null;
+  metric: string | null;
+  uptime: string | null;
+  selected: boolean;
+}
+
 export interface SettingsData {
   webhook_url: string | null;
   vyos_url: string | null;
