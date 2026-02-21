@@ -198,6 +198,18 @@ export interface SettingsData {
   webhook_url: string | null;
   vyos_url: string | null;
   vyos_api_key_set: boolean;
+  // Network Scanner
+  scan_interval_seconds: number | null;
+  scan_subnets: string | null;
+  ping_sweep_enabled: boolean | null;
+  // Data Retention
+  retention_traffic_hours: number | null;
+  retention_alerts_days: number | null;
+  retention_agent_reports_days: number | null;
+}
+
+export interface DbSizeData {
+  size_bytes: number;
 }
 
 // ─── Search ─────────────────────────────────────────────

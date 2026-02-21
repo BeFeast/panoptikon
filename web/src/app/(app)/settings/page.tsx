@@ -12,6 +12,9 @@ import {
   Loader2,
   Router,
   Plug,
+  Radar,
+  Database,
+  Trash2,
 } from "lucide-react";
 import {
   Card,
@@ -27,6 +30,12 @@ import { fetchRouterStatus } from "@/lib/api";
 import { PageTransition } from "@/components/PageTransition";
 
 type Status = "idle" | "loading" | "success" | "error";
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export default function SettingsPage() {
   // --- Password change state ---
@@ -56,6 +65,29 @@ export default function SettingsPage() {
   const [vyosTestStatus, setVyosTestStatus] = useState<Status>("idle");
   const [vyosTestMsg, setVyosTestMsg] = useState("");
 
+  // --- Network Scanner state ---
+  const [scanInterval, setScanInterval] = useState("60");
+  const [savedScanInterval, setSavedScanInterval] = useState("60");
+  const [scanSubnets, setScanSubnets] = useState("");
+  const [savedScanSubnets, setSavedScanSubnets] = useState("");
+  const [pingSweepEnabled, setPingSweepEnabled] = useState(true);
+  const [savedPingSweepEnabled, setSavedPingSweepEnabled] = useState(true);
+  const [scannerStatus, setScannerStatus] = useState<Status>("idle");
+  const [scannerMsg, setScannerMsg] = useState("");
+
+  // --- Data Retention state ---
+  const [retTrafficHours, setRetTrafficHours] = useState("48");
+  const [savedRetTrafficHours, setSavedRetTrafficHours] = useState("48");
+  const [retAlertsDays, setRetAlertsDays] = useState("90");
+  const [savedRetAlertsDays, setSavedRetAlertsDays] = useState("90");
+  const [retAgentDays, setRetAgentDays] = useState("7");
+  const [savedRetAgentDays, setSavedRetAgentDays] = useState("7");
+  const [retentionStatus, setRetentionStatus] = useState<Status>("idle");
+  const [retentionMsg, setRetentionMsg] = useState("");
+  const [dbSizeBytes, setDbSizeBytes] = useState<number | null>(null);
+  const [vacuumStatus, setVacuumStatus] = useState<Status>("idle");
+  const [vacuumMsg, setVacuumMsg] = useState("");
+
   // Guards against race: initial GET /settings resolving after user saves.
   const settingsLoadTokenRef = useRef(0);
 
@@ -70,6 +102,12 @@ export default function SettingsPage() {
           webhook_url: string | null;
           vyos_url: string | null;
           vyos_api_key_set: boolean;
+          scan_interval_seconds: number | null;
+          scan_subnets: string | null;
+          ping_sweep_enabled: boolean | null;
+          retention_traffic_hours: number | null;
+          retention_alerts_days: number | null;
+          retention_agent_reports_days: number | null;
         }) => {
           // Ignore stale response if a newer local action (e.g. Save) already happened.
           if (loadToken !== settingsLoadTokenRef.current) return;
@@ -79,8 +117,38 @@ export default function SettingsPage() {
           setVyosUrl(data.vyos_url ?? "");
           setSavedVyosUrl(data.vyos_url ?? null);
           setVyosApiKeySet(data.vyos_api_key_set);
+
+          // Network Scanner
+          const interval = String(data.scan_interval_seconds ?? 60);
+          setScanInterval(interval);
+          setSavedScanInterval(interval);
+          const subnets = data.scan_subnets ?? "";
+          setScanSubnets(subnets);
+          setSavedScanSubnets(subnets);
+          const ping = data.ping_sweep_enabled ?? true;
+          setPingSweepEnabled(ping);
+          setSavedPingSweepEnabled(ping);
+
+          // Data Retention
+          const trafficH = String(data.retention_traffic_hours ?? 48);
+          setRetTrafficHours(trafficH);
+          setSavedRetTrafficHours(trafficH);
+          const alertsD = String(data.retention_alerts_days ?? 90);
+          setRetAlertsDays(alertsD);
+          setSavedRetAlertsDays(alertsD);
+          const agentD = String(data.retention_agent_reports_days ?? 7);
+          setRetAgentDays(agentD);
+          setSavedRetAgentDays(agentD);
         }
       )
+      .catch(() => {});
+
+    // Load DB size
+    fetch("/api/v1/settings/db-size", { credentials: "include" })
+      .then((res) => res.json())
+      .then((data: { size_bytes: number }) => {
+        setDbSizeBytes(data.size_bytes);
+      })
       .catch(() => {});
   }, []);
 
@@ -100,6 +168,14 @@ export default function SettingsPage() {
   const webhookDirty = webhookUrl !== (savedWebhookUrl ?? "");
   const vyosDirty =
     vyosUrl !== (savedVyosUrl ?? "") || vyosApiKey.length > 0;
+  const scannerDirty =
+    scanInterval !== savedScanInterval ||
+    scanSubnets !== savedScanSubnets ||
+    pingSweepEnabled !== savedPingSweepEnabled;
+  const retentionDirty =
+    retTrafficHours !== savedRetTrafficHours ||
+    retAlertsDays !== savedRetAlertsDays ||
+    retAgentDays !== savedRetAgentDays;
 
   async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -266,6 +342,138 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleScannerSave() {
+    settingsLoadTokenRef.current++;
+    setScannerStatus("loading");
+    setScannerMsg("");
+    try {
+      const interval = parseInt(scanInterval, 10);
+      if (isNaN(interval) || interval < 10) {
+        setScannerStatus("error");
+        setScannerMsg("Scan interval must be at least 10 seconds.");
+        return;
+      }
+
+      const res = await fetch("/api/v1/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scan_interval_seconds: interval,
+          scan_subnets: scanSubnets,
+          ping_sweep_enabled: pingSweepEnabled,
+        }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const newInterval = String(data.scan_interval_seconds ?? interval);
+        setScanInterval(newInterval);
+        setSavedScanInterval(newInterval);
+        const newSubnets = data.scan_subnets ?? scanSubnets;
+        setScanSubnets(newSubnets);
+        setSavedScanSubnets(newSubnets);
+        const newPing = data.ping_sweep_enabled ?? pingSweepEnabled;
+        setPingSweepEnabled(newPing);
+        setSavedPingSweepEnabled(newPing);
+        setScannerStatus("success");
+        setScannerMsg("Scanner settings saved.");
+        setTimeout(() => setScannerStatus("idle"), 3000);
+      } else {
+        setScannerStatus("error");
+        setScannerMsg(`Failed to save (${res.status}).`);
+      }
+    } catch {
+      setScannerStatus("error");
+      setScannerMsg("Network error.");
+    }
+  }
+
+  async function handleRetentionSave() {
+    settingsLoadTokenRef.current++;
+    setRetentionStatus("loading");
+    setRetentionMsg("");
+    try {
+      const trafficH = parseInt(retTrafficHours, 10);
+      const alertsD = parseInt(retAlertsDays, 10);
+      const agentD = parseInt(retAgentDays, 10);
+
+      if (isNaN(trafficH) || trafficH < 1) {
+        setRetentionStatus("error");
+        setRetentionMsg("Traffic retention must be at least 1 hour.");
+        return;
+      }
+      if (isNaN(alertsD) || alertsD < 1) {
+        setRetentionStatus("error");
+        setRetentionMsg("Alerts retention must be at least 1 day.");
+        return;
+      }
+      if (isNaN(agentD) || agentD < 1) {
+        setRetentionStatus("error");
+        setRetentionMsg("Agent reports retention must be at least 1 day.");
+        return;
+      }
+
+      const res = await fetch("/api/v1/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          retention_traffic_hours: trafficH,
+          retention_alerts_days: alertsD,
+          retention_agent_reports_days: agentD,
+        }),
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const newTraffic = String(data.retention_traffic_hours ?? trafficH);
+        setRetTrafficHours(newTraffic);
+        setSavedRetTrafficHours(newTraffic);
+        const newAlerts = String(data.retention_alerts_days ?? alertsD);
+        setRetAlertsDays(newAlerts);
+        setSavedRetAlertsDays(newAlerts);
+        const newAgent = String(data.retention_agent_reports_days ?? agentD);
+        setRetAgentDays(newAgent);
+        setSavedRetAgentDays(newAgent);
+        setRetentionStatus("success");
+        setRetentionMsg("Retention settings saved.");
+        setTimeout(() => setRetentionStatus("idle"), 3000);
+      } else {
+        setRetentionStatus("error");
+        setRetentionMsg(`Failed to save (${res.status}).`);
+      }
+    } catch {
+      setRetentionStatus("error");
+      setRetentionMsg("Network error.");
+    }
+  }
+
+  async function handleVacuum() {
+    setVacuumStatus("loading");
+    setVacuumMsg("");
+    try {
+      const res = await fetch("/api/v1/settings/vacuum", {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.status === 204) {
+        setVacuumStatus("success");
+        setVacuumMsg("VACUUM completed successfully.");
+        // Refresh DB size.
+        fetch("/api/v1/settings/db-size", { credentials: "include" })
+          .then((r) => r.json())
+          .then((data: { size_bytes: number }) => setDbSizeBytes(data.size_bytes))
+          .catch(() => {});
+        setTimeout(() => setVacuumStatus("idle"), 3000);
+      } else {
+        setVacuumStatus("error");
+        setVacuumMsg(`VACUUM failed (${res.status}).`);
+      }
+    } catch {
+      setVacuumStatus("error");
+      setVacuumMsg("Network error.");
+    }
+  }
+
   return (
     <PageTransition>
     <div className="mx-auto max-w-lg space-y-6 py-8">
@@ -380,6 +588,104 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
+      {/* Network Scanner */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10">
+              <Radar className="h-4 w-4 text-cyan-400" />
+            </div>
+            <div>
+              <CardTitle className="text-base text-white">
+                Network Scanner
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-500">
+                Configure ARP scanning interval, target subnets, and ping sweep.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="scan-interval" className="text-xs text-slate-400">
+              Scan interval (seconds)
+            </Label>
+            <Input
+              id="scan-interval"
+              type="number"
+              min={10}
+              value={scanInterval}
+              onChange={(e) => setScanInterval(e.target.value)}
+              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              placeholder="60"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="scan-subnets" className="text-xs text-slate-400">
+              Subnets to scan (comma-separated CIDR)
+            </Label>
+            <Input
+              id="scan-subnets"
+              type="text"
+              value={scanSubnets}
+              onChange={(e) => setScanSubnets(e.target.value)}
+              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              placeholder="10.0.0.0/24, 192.168.1.0/24"
+            />
+            <p className="text-[10px] text-slate-600">
+              Leave empty to auto-detect from VyOS interfaces.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={pingSweepEnabled}
+              onClick={() => setPingSweepEnabled((v) => !v)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+                pingSweepEnabled ? "bg-cyan-500" : "bg-slate-700"
+              }`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+                  pingSweepEnabled ? "translate-x-4" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+            <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setPingSweepEnabled((v) => !v)}>
+              Active ping sweep
+            </Label>
+          </div>
+
+          {/* Status messages */}
+          {scannerStatus === "success" && scannerMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+              <p className="text-xs text-emerald-400">{scannerMsg}</p>
+            </div>
+          )}
+          {scannerStatus === "error" && scannerMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{scannerMsg}</p>
+            </div>
+          )}
+
+          <Button
+            onClick={handleScannerSave}
+            disabled={!scannerDirty || scannerStatus === "loading"}
+            className="bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
+          >
+            {scannerStatus === "loading" ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : null}
+            Save
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Webhook Notifications */}
       <Card className="border-slate-800 bg-slate-900">
         <CardHeader>
@@ -461,6 +767,131 @@ export default function SettingsPage() {
                 <Send className="mr-1.5 h-3.5 w-3.5" />
               )}
               Test
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Data Retention */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10">
+              <Database className="h-4 w-4 text-amber-400" />
+            </div>
+            <div>
+              <CardTitle className="text-base text-white">
+                Data Retention
+              </CardTitle>
+              <CardDescription className="text-xs text-slate-500">
+                Configure how long data is kept and manage database size.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* DB size display */}
+          <div className="flex items-center justify-between rounded-md border border-slate-800 bg-slate-950 px-3 py-2">
+            <span className="text-xs text-slate-400">Current DB size</span>
+            <span className="text-sm font-medium text-white">
+              {dbSizeBytes !== null ? formatBytes(dbSizeBytes) : "..."}
+            </span>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="ret-traffic" className="text-xs text-slate-400">
+              Traffic samples retention (hours)
+            </Label>
+            <Input
+              id="ret-traffic"
+              type="number"
+              min={1}
+              value={retTrafficHours}
+              onChange={(e) => setRetTrafficHours(e.target.value)}
+              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              placeholder="48"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="ret-alerts" className="text-xs text-slate-400">
+              Acknowledged alerts retention (days)
+            </Label>
+            <Input
+              id="ret-alerts"
+              type="number"
+              min={1}
+              value={retAlertsDays}
+              onChange={(e) => setRetAlertsDays(e.target.value)}
+              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              placeholder="90"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="ret-agent" className="text-xs text-slate-400">
+              Agent reports retention (days)
+            </Label>
+            <Input
+              id="ret-agent"
+              type="number"
+              min={1}
+              value={retAgentDays}
+              onChange={(e) => setRetAgentDays(e.target.value)}
+              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              placeholder="7"
+            />
+          </div>
+
+          {/* Status messages */}
+          {retentionStatus === "success" && retentionMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+              <p className="text-xs text-emerald-400">{retentionMsg}</p>
+            </div>
+          )}
+          {retentionStatus === "error" && retentionMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{retentionMsg}</p>
+            </div>
+          )}
+          {vacuumStatus === "success" && vacuumMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+              <p className="text-xs text-emerald-400">{vacuumMsg}</p>
+            </div>
+          )}
+          {vacuumStatus === "error" && vacuumMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{vacuumMsg}</p>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button
+              onClick={handleRetentionSave}
+              disabled={!retentionDirty || retentionStatus === "loading"}
+              className="bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
+            >
+              {retentionStatus === "loading" ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : null}
+              Save
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleVacuum}
+              disabled={vacuumStatus === "loading"}
+              className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+            >
+              {vacuumStatus === "loading" ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              VACUUM
             </Button>
           </div>
         </CardContent>
