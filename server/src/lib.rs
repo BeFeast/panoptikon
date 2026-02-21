@@ -4,6 +4,7 @@ pub mod db;
 pub mod mdns;
 pub mod netflow;
 pub mod oui;
+pub mod retention;
 pub mod scanner;
 pub mod vyos;
 pub mod webhook;

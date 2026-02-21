@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use panoptikon_server::{api, config, db, mdns, netflow, scanner};
+use panoptikon_server::{api, config, db, mdns, netflow, retention, scanner};
 use std::net::SocketAddr;
 use tracing::info;
 
@@ -85,27 +85,13 @@ async fn main() -> Result<()> {
                         tracing::error!("Session cleanup failed: {e}");
                     }
                 }
-                // Purge agent reports older than 7 days.
-                match sqlx::query(
-                    "DELETE FROM agent_reports WHERE reported_at < datetime('now', '-7 days')",
-                )
-                .execute(&cleanup_pool)
-                .await
-                {
-                    Ok(result) => {
-                        let deleted = result.rows_affected();
-                        if deleted > 0 {
-                            info!(deleted, "Purged old agent reports (>7 days)");
-                        }
-                    }
-                    Err(e) => {
-                        tracing::error!("Agent reports cleanup failed: {e}");
-                    }
-                }
                 rate_limiter.cleanup_stale();
             }
         });
     }
+
+    // Start data retention background task (hourly cleanup + weekly VACUUM).
+    retention::start_retention_task(state.db.clone(), app_config.retention.clone());
 
     // Start the periodic ARP scanner in the background.
     scanner::start_scanner_task(
