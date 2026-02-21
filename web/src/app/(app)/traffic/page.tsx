@@ -11,8 +11,15 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { Activity, Radio } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Activity, ChevronDown, Download, Radio } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { fetchTrafficHistory, fetchTopDevices, fetchNetflowStatus } from "@/lib/api";
 import { formatBps } from "@/lib/format";
 import type { TrafficHistoryPoint, TopDevice, NetflowStatus } from "@/lib/types";
@@ -24,6 +31,17 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+
+async function downloadExport(url: string, filename: string) {
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
 /** Format an ISO minute string to HH:mm for the X axis. */
 function formatTime(iso: string): string {
@@ -66,6 +84,51 @@ export default function TrafficPage() {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-white">Traffic</h1>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="secondary" size="sm">
+              <Download className="mr-2 h-4 w-4" />
+              Export
+              <ChevronDown className="ml-2 h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={async () => {
+                try {
+                  await downloadExport(
+                    "/api/v1/traffic/export?format=csv&minutes=1440",
+                    "panoptikon-traffic.csv"
+                  );
+                  toast.success("Traffic exported as CSV");
+                } catch {
+                  toast.error("Export failed");
+                }
+              }}
+            >
+              Export as CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={async () => {
+                try {
+                  await downloadExport(
+                    "/api/v1/traffic/export?format=json&minutes=1440",
+                    "panoptikon-traffic.json"
+                  );
+                  toast.success("Traffic exported as JSON");
+                } catch {
+                  toast.error("Export failed");
+                }
+              }}
+            >
+              Export as JSON
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       {/* NetFlow Collector Status */}
       {netflow && (
         <div className="flex items-center gap-2 rounded-lg border border-[#2a2a3a] bg-[#16161f] px-4 py-2.5">

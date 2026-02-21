@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Cpu, Loader2, LayoutGrid, List, MemoryStick, Power, Radar, Search, VolumeX, Wifi, WifiOff } from "lucide-react";
+import { ArrowDown, ArrowUp, Cpu, Download, Loader2, LayoutGrid, List, MemoryStick, Power, Radar, Search, VolumeX, Wifi, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,17 @@ type Filter = "all" | "online" | "offline" | "unknown";
 type ViewMode = "grid" | "table";
 type SortField = "last_seen_at" | "ip" | "hostname";
 type SortDir = "asc" | "desc";
+
+async function downloadExport(url: string, filename: string) {
+  const res = await fetch(url, { credentials: "include" });
+  if (!res.ok) throw new Error(`Export failed: ${res.status}`);
+  const blob = await res.blob();
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
 
 export default function DevicesPage() {
   const [devices, setDevices] = useState<Device[] | null>(null);

@@ -18,6 +18,7 @@ pub mod alerts;
 pub mod auth;
 pub mod dashboard;
 pub mod devices;
+pub mod export;
 pub mod metrics;
 pub mod settings;
 pub mod traffic;
@@ -114,6 +115,9 @@ pub fn router(state: AppState) -> Router {
         .route("/router/speedtest", post(vyos::speedtest))
         // Traffic
         .route("/traffic/history", get(traffic::history))
+        // Export
+        .route("/devices/export", get(export::devices_export))
+        .route("/traffic/export", get(export::traffic_export))
         // WebSocket for UI live updates
         .route("/ws", get(agents::ui_ws_handler))
         .route_layer(middleware::from_fn_with_state(
