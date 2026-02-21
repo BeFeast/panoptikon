@@ -126,7 +126,9 @@ export default function AgentDetailContent() {
           >
             <span
               className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
-                agent.is_online ? "bg-emerald-500 status-glow-online" : "bg-rose-500"
+                agent.is_online
+                  ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
+                  : "bg-rose-400 ring-2 ring-rose-400/30 status-glow-offline"
               }`}
             />
             {agent.is_online ? "Online" : "Offline"}
@@ -256,7 +258,7 @@ export default function AgentDetailContent() {
             <TableBody>
               {reports.map((report) => (
                 <TableRow key={report.id} className="border-slate-800">
-                  <TableCell className="text-slate-400 font-mono text-xs">
+                  <TableCell className="text-slate-400 font-mono tabular-nums text-xs">
                     {new Date(report.reported_at).toLocaleString()}
                   </TableCell>
                   <TableCell className="text-white">

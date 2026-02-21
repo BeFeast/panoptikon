@@ -40,7 +40,7 @@ const COLOR_MAP: Record<DeviceType, string> = {
   server: "text-emerald-400",
   printer: "text-amber-400",
   iot: "text-teal-400",
-  gaming: "text-red-400",
+  gaming: "text-rose-400",
   unknown: "text-slate-400",
 };
 

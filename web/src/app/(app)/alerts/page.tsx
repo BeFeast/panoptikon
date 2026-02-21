@@ -249,7 +249,7 @@ export default function AlertsPage() {
           {alerts.map((alert) => (
             <Card
               key={alert.id}
-              className={`border-slate-800 transition-colors hover:border-blue-500/30 ${
+              className={`border-slate-800 transition-colors hover:bg-slate-800/60 hover:border-blue-500/30 ${
                 alert.acknowledged_at
                   ? "bg-[#12121a] opacity-70"
                   : !alert.is_read

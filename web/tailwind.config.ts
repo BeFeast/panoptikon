@@ -44,11 +44,13 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom Panoptikon status colors
-        "status-online": "#22c55e",
-        "status-offline": "#ef4444",
-        "status-warning": "#f59e0b",
-        "status-inactive": "#6b7280",
+        // Deep dark layered surfaces
+        surface: "#334155",
+        // Custom Panoptikon status colors (neon accents)
+        "status-online": "#10b981",   // emerald-500
+        "status-offline": "#f43f5e",  // rose-500
+        "status-warning": "#f59e0b",  // amber-500
+        "status-inactive": "#6b7280", // gray-500
       },
       borderRadius: {
         lg: "var(--radius)",

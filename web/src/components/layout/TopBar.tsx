@@ -156,18 +156,20 @@ export function TopBar() {
                       return (
                         <button
                           key={d.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-800 ${
-                            activeIndex === idx ? "bg-slate-800" : ""
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-800/60 ${
+                            activeIndex === idx ? "bg-slate-800/60" : ""
                           }`}
                           onClick={() => navigateTo("device", d.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
                         >
                           <span
                             className={`inline-block h-2 w-2 rounded-full ${
-                              d.is_online ? "bg-emerald-500" : "bg-slate-500"
+                              d.is_online
+                                ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
+                                : "bg-slate-500"
                             }`}
                           />
-                          <span className="text-white">
+                          <span className="font-mono tabular-nums text-white">
                             {d.ip_address || d.mac_address}
                           </span>
                           {d.hostname && (
@@ -193,15 +195,17 @@ export function TopBar() {
                       return (
                         <button
                           key={a.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-800 ${
-                            activeIndex === idx ? "bg-slate-800" : ""
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-800/60 ${
+                            activeIndex === idx ? "bg-slate-800/60" : ""
                           }`}
                           onClick={() => navigateTo("agent", a.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
                         >
                           <span
                             className={`inline-block h-2 w-2 rounded-full ${
-                              a.is_online ? "bg-emerald-500" : "bg-slate-500"
+                              a.is_online
+                                ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
+                                : "bg-slate-500"
                             }`}
                           />
                           <span className="text-white">{a.name || a.id}</span>
@@ -225,8 +229,8 @@ export function TopBar() {
                       return (
                         <button
                           key={al.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-slate-800 ${
-                            activeIndex === idx ? "bg-slate-800" : ""
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-800/60 ${
+                            activeIndex === idx ? "bg-slate-800/60" : ""
                           }`}
                           onClick={() => navigateTo("alert", al.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
