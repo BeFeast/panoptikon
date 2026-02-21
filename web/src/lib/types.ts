@@ -166,6 +166,28 @@ export interface VyosDhcpLease {
   pool: string | null;
 }
 
+// ─── Firewall ───────────────────────────────────────────
+
+export interface FirewallRule {
+  number: number;
+  action: string;
+  source: string | null;
+  destination: string | null;
+  protocol: string | null;
+  state: string | null;
+  description: string | null;
+}
+
+export interface FirewallChain {
+  name: string;
+  default_action: string;
+  rules: FirewallRule[];
+}
+
+export interface FirewallConfig {
+  chains: FirewallChain[];
+}
+
 export interface SettingsData {
   webhook_url: string | null;
   vyos_url: string | null;
