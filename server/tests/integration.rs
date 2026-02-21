@@ -53,23 +53,23 @@ fn http_client() -> reqwest::Client {
         .expect("failed to build reqwest client")
 }
 
-/// Helper: set up a password on a fresh DB and log in, returning the client
-/// (with session cookie) and base URL.
-async fn login_fresh(password: &str) -> (reqwest::Client, String) {
+/// Helper: run setup on a fresh DB and return the client (with session cookie)
+/// and base URL.
+async fn setup_fresh(password: &str) -> (reqwest::Client, String) {
     let (base_url, _pool) = spawn_test_server().await;
     let client = http_client();
 
     let resp = client
-        .post(format!("{base_url}/api/v1/auth/login"))
+        .post(format!("{base_url}/api/v1/setup"))
         .json(&serde_json::json!({"password": password}))
         .send()
         .await
-        .expect("login request failed");
+        .expect("setup request failed");
 
     assert_eq!(
         resp.status(),
         StatusCode::OK,
-        "first-run login should succeed"
+        "setup should succeed on fresh DB"
     );
 
     (client, base_url)
@@ -79,22 +79,22 @@ async fn login_fresh(password: &str) -> (reqwest::Client, String) {
 
 #[tokio::test]
 async fn test_login_success() {
-    let (base_url, pool) = spawn_test_server().await;
-
-    // Set up a password first (first-run).
-    let password = "correcthorsebatterystaple";
+    let (base_url, _pool) = spawn_test_server().await;
     let client = http_client();
 
+    // Run setup first.
+    let password = "correcthorsebatterystaple";
     let resp = client
-        .post(format!("{base_url}/api/v1/auth/login"))
+        .post(format!("{base_url}/api/v1/setup"))
         .json(&serde_json::json!({"password": password}))
         .send()
         .await
-        .expect("first-run login request failed");
+        .expect("setup request failed");
     assert_eq!(resp.status(), StatusCode::OK);
 
-    // Now log in again with the same password (normal login).
-    let resp = client
+    // Now log in with the same password (normal login) using a new client.
+    let client2 = http_client();
+    let resp = client2
         .post(format!("{base_url}/api/v1/auth/login"))
         .json(&serde_json::json!({"password": password}))
         .send()
@@ -118,8 +118,6 @@ async fn test_login_success() {
         cookie_value.contains("panoptikon_session="),
         "Set-Cookie must contain panoptikon_session"
     );
-
-    drop(pool);
 }
 
 // ── Test 2: Login wrong password ────────────────────────────────────
@@ -129,13 +127,13 @@ async fn test_login_wrong_password() {
     let (base_url, _pool) = spawn_test_server().await;
     let client = http_client();
 
-    // Set up password first.
+    // Run setup first.
     let resp = client
-        .post(format!("{base_url}/api/v1/auth/login"))
+        .post(format!("{base_url}/api/v1/setup"))
         .json(&serde_json::json!({"password": "my_secure_password"}))
         .send()
         .await
-        .expect("first-run login failed");
+        .expect("setup request failed");
     assert_eq!(resp.status(), StatusCode::OK);
 
     // Try wrong password with a NEW client (no session cookie).
@@ -154,50 +152,49 @@ async fn test_login_wrong_password() {
     );
 }
 
-// ── Test 3: Login first run ─────────────────────────────────────────
+// ── Test 3: Setup creates password and auto-logs in ─────────────────
 
 #[tokio::test]
-async fn test_login_first_run() {
+async fn test_setup_creates_password() {
     let (base_url, _pool) = spawn_test_server().await;
     let client = http_client();
 
-    // On first run with no password set, posting a valid password (≥8 chars)
-    // should set the password and return 200.
+    // On a fresh DB, POST /api/v1/setup with valid password should succeed.
     let resp = client
-        .post(format!("{base_url}/api/v1/auth/login"))
+        .post(format!("{base_url}/api/v1/setup"))
         .json(&serde_json::json!({"password": "new_admin_password"}))
         .send()
         .await
-        .expect("login request failed");
+        .expect("setup request failed");
 
     assert_eq!(
         resp.status(),
         StatusCode::OK,
-        "first-run login with valid password should return 200"
+        "setup with valid password should return 200"
     );
 
-    // Verify the session cookie was set.
+    // Verify the session cookie was set (auto-login).
     let set_cookie = resp.headers().get("set-cookie");
     assert!(
         set_cookie.is_some(),
-        "Set-Cookie header must be present on first-run login"
+        "Set-Cookie header must be present after setup"
     );
 }
 
-// ── Test 4: Login short password rejected ───────────────────────────
+// ── Test 4: Setup short password rejected ───────────────────────────
 
 #[tokio::test]
-async fn test_login_short_password_rejected() {
+async fn test_setup_short_password_rejected() {
     let (base_url, _pool) = spawn_test_server().await;
     let client = http_client();
 
-    // On first run, a password shorter than 8 characters should be rejected.
+    // A password shorter than 8 characters should be rejected.
     let resp = client
-        .post(format!("{base_url}/api/v1/auth/login"))
+        .post(format!("{base_url}/api/v1/setup"))
         .json(&serde_json::json!({"password": "short"}))
         .send()
         .await
-        .expect("login request failed");
+        .expect("setup request failed");
 
     assert_eq!(
         resp.status(),
@@ -206,7 +203,102 @@ async fn test_login_short_password_rejected() {
     );
 }
 
-// ── Test 5: Agents requires auth ────────────────────────────────────
+// ── Test 5: Setup cannot be called twice ────────────────────────────
+
+#[tokio::test]
+async fn test_setup_only_works_once() {
+    let (base_url, _pool) = spawn_test_server().await;
+    let client = http_client();
+
+    // First setup should succeed.
+    let resp = client
+        .post(format!("{base_url}/api/v1/setup"))
+        .json(&serde_json::json!({"password": "first_password_ok"}))
+        .send()
+        .await
+        .expect("setup request failed");
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // Second setup should return 409 Conflict.
+    let resp = client
+        .post(format!("{base_url}/api/v1/setup"))
+        .json(&serde_json::json!({"password": "second_attempt"}))
+        .send()
+        .await
+        .expect("setup request failed");
+    assert_eq!(
+        resp.status(),
+        StatusCode::CONFLICT,
+        "second setup call should return 409 Conflict"
+    );
+}
+
+// ── Test 6: Setup with optional VyOS settings ───────────────────────
+
+#[tokio::test]
+async fn test_setup_with_vyos_settings() {
+    let (base_url, pool) = spawn_test_server().await;
+    let client = http_client();
+
+    let resp = client
+        .post(format!("{base_url}/api/v1/setup"))
+        .json(&serde_json::json!({
+            "password": "my_admin_password",
+            "vyos_url": "https://192.168.1.1",
+            "vyos_api_key": "secret_key_123"
+        }))
+        .send()
+        .await
+        .expect("setup request failed");
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // Verify VyOS settings were stored.
+    let vyos_url: Option<String> =
+        sqlx::query_scalar("SELECT value FROM settings WHERE key = 'vyos_url'")
+            .fetch_optional(&pool)
+            .await
+            .expect("query failed");
+    assert_eq!(vyos_url.as_deref(), Some("https://192.168.1.1"));
+
+    let vyos_key: Option<String> =
+        sqlx::query_scalar("SELECT value FROM settings WHERE key = 'vyos_api_key'")
+            .fetch_optional(&pool)
+            .await
+            .expect("query failed");
+    assert_eq!(vyos_key.as_deref(), Some("secret_key_123"));
+
+    // Verify setup_complete was set.
+    let setup_complete: Option<String> =
+        sqlx::query_scalar("SELECT value FROM settings WHERE key = 'setup_complete'")
+            .fetch_optional(&pool)
+            .await
+            .expect("query failed");
+    assert_eq!(setup_complete.as_deref(), Some("true"));
+}
+
+// ── Test 7: Login before setup returns 428 ──────────────────────────
+
+#[tokio::test]
+async fn test_login_before_setup_returns_precondition() {
+    let (base_url, _pool) = spawn_test_server().await;
+    let client = http_client();
+
+    // Without running setup, login should return 428 Precondition Required.
+    let resp = client
+        .post(format!("{base_url}/api/v1/auth/login"))
+        .json(&serde_json::json!({"password": "any_password"}))
+        .send()
+        .await
+        .expect("login request failed");
+
+    assert_eq!(
+        resp.status(),
+        StatusCode::PRECONDITION_REQUIRED,
+        "login before setup should return 428"
+    );
+}
+
+// ── Test 8: Agents requires auth ────────────────────────────────────
 
 #[tokio::test]
 async fn test_agents_requires_auth() {
@@ -227,13 +319,13 @@ async fn test_agents_requires_auth() {
     );
 }
 
-// ── Test 6: Agents with valid session ───────────────────────────────
+// ── Test 9: Agents with valid session ───────────────────────────────
 
 #[tokio::test]
 async fn test_agents_with_valid_session() {
-    let (client, base_url) = login_fresh("integration_test_pw").await;
+    let (client, base_url) = setup_fresh("integration_test_pw").await;
 
-    // Now GET /api/v1/agents with the session cookie from login.
+    // Now GET /api/v1/agents with the session cookie from setup.
     let resp = client
         .get(format!("{base_url}/api/v1/agents"))
         .send()
@@ -251,7 +343,7 @@ async fn test_agents_with_valid_session() {
     assert!(body.is_array(), "response body should be a JSON array");
 }
 
-// ── Test 7: Auth status needs setup ─────────────────────────────────
+// ── Test 10: Auth status needs setup ────────────────────────────────
 
 #[tokio::test]
 async fn test_auth_status_needs_setup() {
@@ -278,7 +370,43 @@ async fn test_auth_status_needs_setup() {
     );
 }
 
-// ── Test 8: ConnectInfo regression test ─────────────────────────────
+// ── Test 11: Auth status after setup ────────────────────────────────
+
+#[tokio::test]
+async fn test_auth_status_after_setup() {
+    let (base_url, _pool) = spawn_test_server().await;
+    let client = http_client();
+
+    // Run setup.
+    let resp = client
+        .post(format!("{base_url}/api/v1/setup"))
+        .json(&serde_json::json!({"password": "my_password_123"}))
+        .send()
+        .await
+        .expect("setup request failed");
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // Auth status should now show setup is complete and user is authenticated.
+    let resp = client
+        .get(format!("{base_url}/api/v1/auth/status"))
+        .send()
+        .await
+        .expect("auth status request failed");
+
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: Value = resp.json().await.expect("failed to parse JSON");
+    assert_eq!(
+        body["needs_setup"], false,
+        "needs_setup should be false after setup"
+    );
+    assert_eq!(
+        body["authenticated"], true,
+        "should be authenticated after setup (auto-login)"
+    );
+}
+
+// ── Test 12: ConnectInfo regression test ─────────────────────────────
 
 #[tokio::test]
 async fn test_connect_info_configured() {

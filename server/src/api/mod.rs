@@ -23,6 +23,7 @@ pub mod metrics;
 pub mod scanner;
 pub mod search;
 pub mod settings;
+pub mod setup;
 pub mod traffic;
 pub mod vyos;
 
@@ -65,7 +66,8 @@ pub fn router(state: AppState) -> Router {
         .route("/auth/login", post(auth::login))
         .route("/auth/logout", post(auth::logout))
         .route("/auth/status", get(auth::status))
-        .route("/auth/change-password", post(auth::change_password));
+        .route("/auth/change-password", post(auth::change_password))
+        .route("/setup", post(setup::setup));
 
     // Agent WebSocket + install script — authenticated via API key, not session cookie.
     let agent_ws = Router::new()
