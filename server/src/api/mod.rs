@@ -1,3 +1,6 @@
+use crate::config::AppConfig;
+use crate::static_files::serve_static_asset;
+use crate::ws::hub::WsHub;
 use axum::http::{header, Method};
 use axum::{
     middleware::{self},
@@ -8,9 +11,6 @@ use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tower_http::cors::CorsLayer;
-use crate::config::AppConfig;
-use crate::static_files::serve_static_asset;
-use crate::ws::hub::WsHub;
 
 pub mod agents;
 pub mod alerts;
