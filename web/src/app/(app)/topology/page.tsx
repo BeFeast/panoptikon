@@ -67,13 +67,17 @@ function getLayoutedElements(
   g.setGraph({ rankdir: 'TB', nodesep: 60, ranksep: 100 })
 
   nodes.forEach((n) => {
+    if (pinnedPositions?.has(n.id)) return
     const isRouter = n.type === 'routerNode'
     g.setNode(n.id, {
       width: isRouter ? ROUTER_WIDTH : DEVICE_WIDTH,
       height: isRouter ? ROUTER_HEIGHT : DEVICE_HEIGHT,
     })
   })
-  edges.forEach((e) => g.setEdge(e.source, e.target))
+  edges.forEach((e) => {
+    if (pinnedPositions?.has(e.source) || pinnedPositions?.has(e.target)) return
+    g.setEdge(e.source, e.target)
+  })
   dagre.layout(g)
 
   return {
