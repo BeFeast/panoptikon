@@ -1,0 +1,19 @@
+version: "3.9"
+
+services:
+  panoptikon:
+    build: .
+    image: panoptikon:latest
+    container_name: panoptikon
+    restart: unless-stopped
+    network_mode: host          # needed for ARP scanning + NetFlow UDP
+    volumes:
+      - panoptikon-data:/data
+    environment:
+      - PANOPTIKON_URL=http://localhost:8080
+    cap_add:
+      - NET_RAW                 # required for nmap raw socket scanning
+      - NET_ADMIN
+
+volumes:
+  panoptikon-data:
