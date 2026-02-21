@@ -49,9 +49,9 @@ function alertIcon(type: Alert["type"]) {
 
 function StatusDot({ status }: { status: "online" | "offline" | "warning" }) {
   const colors = {
-    online: "bg-emerald-500 status-glow-online",
-    offline: "bg-rose-500",
-    warning: "bg-amber-400",
+    online: "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online",
+    offline: "bg-rose-400 ring-2 ring-rose-400/30 status-glow-offline",
+    warning: "bg-amber-400 ring-2 ring-amber-400/30",
   };
   return (
     <span
@@ -78,7 +78,7 @@ function StatCard({
   href?: string;
 }) {
   const inner = (
-    <Card className="border-slate-800 bg-slate-900 transition-all hover:border-blue-500/50 hover:bg-slate-800/50 hover:shadow-lg hover:shadow-blue-500/5">
+    <Card className="border-slate-800 bg-slate-900 transition-all hover:border-blue-500/50 hover:bg-slate-800/60 hover:shadow-lg hover:shadow-blue-500/5">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-slate-400">
           {title}
@@ -318,10 +318,10 @@ export default function DashboardPage() {
                       <TableCell className="tabular-nums font-mono text-slate-400">
                         {d.ip}
                       </TableCell>
-                      <TableCell className="tabular-nums text-right text-emerald-400">
+                      <TableCell className="tabular-nums font-mono text-right text-emerald-400">
                         {formatBps(d.rx_bps)}
                       </TableCell>
-                      <TableCell className="tabular-nums text-right text-blue-400">
+                      <TableCell className="tabular-nums font-mono text-right text-blue-400">
                         {formatBps(d.tx_bps)}
                       </TableCell>
                     </TableRow>

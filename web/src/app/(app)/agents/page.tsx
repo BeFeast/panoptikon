@@ -191,7 +191,7 @@ export default function AgentsPage() {
                             onChange={(e) => setRenameValue(e.target.value)}
                             className="h-7 w-40 bg-slate-950 border-blue-500 text-white text-sm px-2"
                           />
-                          <button type="submit" className="text-emerald-400 hover:text-green-300">
+                          <button type="submit" className="text-emerald-400 hover:text-emerald-300 transition-colors">
                             <Check size={14} />
                           </button>
                           <button
@@ -228,7 +228,7 @@ export default function AgentsPage() {
                       </span>
                     )}
                   </TableCell>
-                  <TableCell className="font-mono text-slate-400">
+                  <TableCell className="font-mono tabular-nums text-slate-400">
                     {agent.hostname ?? "—"}
                   </TableCell>
                   <TableCell className="text-slate-400">
@@ -237,7 +237,7 @@ export default function AgentsPage() {
                   <TableCell className="text-slate-400">
                     {agent.platform ?? "—"}
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-500">
+                  <TableCell className="font-mono tabular-nums text-xs text-slate-500">
                     {agent.version ?? "—"}
                   </TableCell>
                   <TableCell>
@@ -293,7 +293,7 @@ export default function AgentsPage() {
               onClick={handleDelete}
               disabled={deleting}
               autoFocus
-              className="bg-red-600 text-white hover:bg-rose-500"
+              className="bg-rose-600 text-white hover:bg-rose-500"
             >
               {deleting ? "Deleting…" : "Delete"}
             </AlertDialogAction>
@@ -318,7 +318,9 @@ function StatusBadge({ online }: { online: boolean }) {
     >
       <span
         className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
-          online ? "bg-emerald-500 status-glow-online" : "bg-rose-500"
+          online
+            ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
+            : "bg-rose-400 ring-2 ring-rose-400/30 status-glow-offline"
         }`}
       />
       {online ? "Online" : "Offline"}

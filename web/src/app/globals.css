@@ -37,7 +37,7 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-slate-950 text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }
@@ -48,32 +48,42 @@
   font-feature-settings: "tnum" 1;
 }
 
-/* Status dot pulse animation */
-@keyframes pulse-dot {
-  0%, 100% {
-    opacity: 1;
-    box-shadow: 0 0 0 0 currentColor;
-  }
-  50% {
-    opacity: 0.7;
-    box-shadow: 0 0 4px 2px currentColor;
-  }
+/* ── Neon glow status dots ───────────────────────────── */
+
+/* Online: emerald neon glow */
+.status-glow-online {
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
 }
 
-.status-pulse {
-  animation: pulse-dot 2s ease-in-out infinite;
+/* Offline/Critical: rose neon glow */
+.status-glow-offline {
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.4);
 }
 
-/* Glow pulse for online status indicators */
+/* Animated pulse for online status indicators */
 @keyframes glow-pulse {
   0%, 100% {
     box-shadow: 0 0 4px 1px rgba(16, 185, 129, 0.4);
   }
   50% {
-    box-shadow: 0 0 8px 3px rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 10px 3px rgba(16, 185, 129, 0.6);
   }
 }
 
-.status-glow-online {
+.status-glow-online-pulse {
   animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* Rose pulse for critical/offline dots */
+@keyframes glow-pulse-rose {
+  0%, 100% {
+    box-shadow: 0 0 4px 1px rgba(244, 63, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 10px 3px rgba(244, 63, 94, 0.6);
+  }
+}
+
+.status-glow-offline-pulse {
+  animation: glow-pulse-rose 2s ease-in-out infinite;
 }

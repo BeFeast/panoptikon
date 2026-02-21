@@ -71,7 +71,7 @@ export function Sidebar() {
                   "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                   active
                     ? "bg-blue-500/10 text-blue-500"
-                    : "text-slate-400 hover:bg-slate-900 hover:text-white",
+                    : "text-slate-400 hover:bg-slate-800/60 hover:text-white transition-colors",
                   collapsed && "justify-center px-0"
                 )}
               >
@@ -99,7 +99,7 @@ export function Sidebar() {
         <div className="border-t border-slate-800 p-2">
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-slate-900 hover:text-slate-400"
+            className="flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-slate-800/60 hover:text-slate-400"
           >
             {collapsed ? (
               <ChevronRight className="h-4 w-4" />
@@ -117,7 +117,9 @@ export function Sidebar() {
                   <span
                     className={cn(
                       "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
-                      wsConnected ? "bg-emerald-500" : "bg-slate-600"
+                      wsConnected
+                        ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
+                        : "bg-slate-600"
                     )}
                   />
                 </TooltipTrigger>
@@ -134,7 +136,9 @@ export function Sidebar() {
                   <span
                     className={cn(
                       "inline-block h-1.5 w-1.5 rounded-full",
-                      wsConnected ? "bg-emerald-500" : "bg-slate-600"
+                      wsConnected
+                        ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
+                        : "bg-slate-600"
                     )}
                   />
                 </div>

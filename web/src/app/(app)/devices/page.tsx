@@ -364,7 +364,7 @@ function DeviceCard({
 
   return (
     <Card
-      className="cursor-pointer border-slate-800 bg-slate-900 transition-colors hover:border-blue-500/50"
+      className="cursor-pointer border-slate-800 bg-slate-900 transition-colors hover:bg-slate-800/60 hover:border-blue-500/50"
       onClick={onClick}
     >
       <CardContent className="p-5">
@@ -372,7 +372,9 @@ function DeviceCard({
         <div className="flex items-center gap-2">
           <span
             className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-              device.is_online ? "bg-emerald-500 status-glow-online" : "bg-slate-500"
+              device.is_online
+                ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
+                : "bg-slate-500"
             }`}
           />
           <span className="truncate font-medium text-white">{displayName}</span>
@@ -385,8 +387,8 @@ function DeviceCard({
 
         {/* Technical info */}
         <div className="mt-3 space-y-1">
-          <p className="font-mono text-sm text-slate-400">{primaryIp}</p>
-          <p className="font-mono text-xs text-slate-600">{device.mac}</p>
+          <p className="font-mono tabular-nums text-sm text-slate-400">{primaryIp}</p>
+          <p className="font-mono tabular-nums text-xs text-slate-600">{device.mac}</p>
           {device.vendor && (
             <p className="text-xs text-slate-500">{device.vendor}</p>
           )}
@@ -496,13 +498,15 @@ function DevicesTable({
             return (
               <TableRow
                 key={device.id}
-                className="cursor-pointer border-slate-800 hover:bg-slate-800"
+                className="cursor-pointer border-slate-800 transition-colors hover:bg-slate-800/60"
                 onClick={() => onSelect(device)}
               >
                 <TableCell>
                   <span
                     className={`inline-block h-2.5 w-2.5 rounded-full ${
-                      device.is_online ? "bg-emerald-500 status-glow-online" : "bg-slate-500"
+                      device.is_online
+                        ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
+                        : "bg-slate-500"
                     }`}
                   />
                 </TableCell>
@@ -559,7 +563,9 @@ function DeviceDetail({ device }: { device: Device }) {
         <div className="flex items-center gap-3">
           <span
             className={`h-3 w-3 rounded-full ${
-              device.is_online ? "bg-emerald-500 status-glow-online" : "bg-slate-500"
+              device.is_online
+                ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
+                : "bg-slate-500"
             }`}
           />
           <SheetTitle className="text-white">{displayName}</SheetTitle>
@@ -795,11 +801,13 @@ function DeviceEventsTab({ deviceId }: { deviceId: string }) {
           {events.map((event) => (
             <div
               key={event.id}
-              className="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-slate-800"
+              className="flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-slate-800/60"
             >
               <span
                 className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                  event.event_type === "online" ? "bg-emerald-500" : "bg-slate-500"
+                  event.event_type === "online"
+                    ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
+                    : "bg-slate-500"
                 }`}
               />
               <span className="text-sm text-slate-300 capitalize">
@@ -979,7 +987,7 @@ function InfoRow({
         {label}
       </span>
       <span
-        className={`text-sm text-slate-300 ${mono ? "font-mono" : ""}`}
+        className={`text-sm text-slate-300 ${mono ? "font-mono tabular-nums" : ""}`}
       >
         {value}
       </span>

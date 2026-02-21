@@ -267,13 +267,13 @@ export default function TrafficPage() {
                   <TableCell className="text-white">
                     {d.name ?? d.hostname ?? d.id.slice(0, 8)}
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-400">
+                  <TableCell className="font-mono tabular-nums text-xs text-slate-400">
                     {d.ip ?? "—"}
                   </TableCell>
-                  <TableCell className="text-right text-blue-400">
+                  <TableCell className="font-mono tabular-nums text-right text-blue-400">
                     {formatBps(d.rx_bps)}
                   </TableCell>
-                  <TableCell className="text-right text-emerald-400">
+                  <TableCell className="font-mono tabular-nums text-right text-emerald-400">
                     {formatBps(d.tx_bps)}
                   </TableCell>
                 </TableRow>

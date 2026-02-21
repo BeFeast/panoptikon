@@ -280,7 +280,7 @@ function SpeedTestSection() {
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">Download</p>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-2xl font-bold tabular-nums text-white">
                     {result.download_mbps.toFixed(1)}{" "}
                     <span className="text-sm font-normal text-slate-500">
                       Mbps
@@ -298,7 +298,7 @@ function SpeedTestSection() {
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">Upload</p>
-                  <p className="text-2xl font-bold text-white">
+                  <p className="text-2xl font-bold tabular-nums text-white">
                     {result.upload_mbps.toFixed(1)}{" "}
                     <span className="text-sm font-normal text-slate-500">
                       Mbps
@@ -316,7 +316,7 @@ function SpeedTestSection() {
                 <Activity className="h-5 w-5 text-purple-400" />
                 <div>
                   <p className="text-xs text-slate-500">Ping</p>
-                  <p className="text-lg font-semibold text-white">
+                  <p className="text-lg font-semibold tabular-nums text-white">
                     {result.ping_ms.toFixed(1)}{" "}
                     <span className="text-xs font-normal text-slate-500">ms</span>
                   </p>
@@ -329,7 +329,7 @@ function SpeedTestSection() {
                 <Activity className="h-5 w-5 text-yellow-400" />
                 <div>
                   <p className="text-xs text-slate-500">Jitter</p>
-                  <p className="text-lg font-semibold text-white">
+                  <p className="text-lg font-semibold tabular-nums text-white">
                     {result.jitter_ms.toFixed(2)}{" "}
                     <span className="text-xs font-normal text-slate-500">ms</span>
                   </p>
@@ -342,7 +342,7 @@ function SpeedTestSection() {
                 <Wifi className="h-5 w-5 text-cyan-400" />
                 <div>
                   <p className="text-xs text-slate-500">Packet Loss</p>
-                  <p className="text-lg font-semibold text-white">
+                  <p className="text-lg font-semibold tabular-nums text-white">
                     {result.packet_loss.toFixed(1)}
                     <span className="text-xs font-normal text-slate-500">%</span>
                   </p>
@@ -397,10 +397,12 @@ function SpeedTestSection() {
 
 function StatusDot({ admin, link }: { admin: string; link: string }) {
   const isUp = admin === "up" && link === "up";
-  const color = isUp ? "bg-emerald-500" : "bg-rose-500";
+  const cls = isUp
+    ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
+    : "bg-rose-400 ring-2 ring-rose-400/30 status-glow-offline";
   return (
     <span
-      className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${color}`}
+      className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${cls}`}
       title={`Admin: ${admin}, Link: ${link}`}
     />
   );
@@ -490,7 +492,7 @@ function InterfacesTable({
             return (
               <tr
                 key={iface.name}
-                className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/50"
+                className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
               >
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
@@ -499,17 +501,17 @@ function InterfacesTable({
                   </div>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="font-mono font-medium text-white">
+                  <span className="font-mono tabular-nums font-medium text-white">
                     {iface.name}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="font-mono text-slate-300">
+                  <span className="font-mono tabular-nums text-slate-300">
                     {iface.ip_address ?? "—"}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="font-mono text-xs text-slate-400">
+                  <span className="font-mono tabular-nums text-xs text-slate-400">
                     {iface.mac ?? "—"}
                   </span>
                 </td>
@@ -625,7 +627,7 @@ function RoutesTable({
           {routes.map((route, idx) => (
             <tr
               key={`${route.destination}-${idx}`}
-              className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/50"
+              className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
             >
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
@@ -638,22 +640,22 @@ function RoutesTable({
                 </div>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono font-medium text-white">
+                <span className="font-mono tabular-nums font-medium text-white">
                   {route.destination}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono text-slate-300">
+                <span className="font-mono tabular-nums text-slate-300">
                   {route.gateway ?? "—"}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono text-slate-300">
+                <span className="font-mono tabular-nums text-slate-300">
                   {route.interface ?? "—"}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono text-xs text-slate-400">
+                <span className="font-mono tabular-nums text-xs text-slate-400">
                   {route.metric ? `[${route.metric}]` : "—"}
                 </span>
               </td>
@@ -766,15 +768,15 @@ function DhcpLeasesTable({
           {leases.map((lease, idx) => (
             <tr
               key={`${lease.ip}-${idx}`}
-              className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/50"
+              className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
             >
               <td className="px-4 py-3">
-                <span className="font-mono font-medium text-white">
+                <span className="font-mono tabular-nums font-medium text-white">
                   {lease.ip}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono text-xs text-slate-400">
+                <span className="font-mono tabular-nums text-xs text-slate-400">
                   {lease.mac}
                 </span>
               </td>
@@ -789,7 +791,7 @@ function DhcpLeasesTable({
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono text-xs text-slate-400">
+                <span className="font-mono tabular-nums text-xs text-slate-400">
                   {lease.lease_expiry ?? "—"}
                 </span>
               </td>
@@ -895,21 +897,21 @@ function FirewallChainCard({ chain }: { chain: FirewallChain }) {
                 {chain.rules.map((rule) => (
                   <tr
                     key={rule.number}
-                    className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/50"
+                    className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
                   >
                     <td className="px-4 py-3">
-                      <span className="font-mono text-slate-300">{rule.number}</span>
+                      <span className="font-mono tabular-nums text-slate-300">{rule.number}</span>
                     </td>
                     <td className="px-4 py-3">
                       <FirewallActionBadge action={rule.action} />
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-mono text-xs text-slate-300">
+                      <span className="font-mono tabular-nums text-xs text-slate-300">
                         {rule.source ?? "any"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-mono text-xs text-slate-300">
+                      <span className="font-mono tabular-nums text-xs text-slate-300">
                         {rule.destination ?? "any"}
                       </span>
                     </td>
