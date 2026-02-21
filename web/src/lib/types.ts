@@ -155,6 +155,17 @@ export interface VyosRoute {
   selected: boolean;
 }
 
+export interface VyosDhcpLease {
+  ip: string;
+  mac: string;
+  hostname: string | null;
+  state: string;
+  lease_start: string | null;
+  lease_expiry: string | null;
+  remaining: string | null;
+  pool: string | null;
+}
+
 export interface SettingsData {
   webhook_url: string | null;
   vyos_url: string | null;

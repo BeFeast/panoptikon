@@ -20,6 +20,7 @@ import type {
   SpeedTestResult,
   TopDevice,
   TrafficHistoryPoint,
+  VyosDhcpLease,
   VyosInterface,
   VyosRoute,
 } from "./types";
@@ -224,8 +225,8 @@ export function fetchRouterRoutes(): Promise<VyosRoute[]> {
   return apiGet<VyosRoute[]>("/api/v1/vyos/routes");
 }
 
-export function fetchRouterDhcpLeases(): Promise<string> {
-  return apiGet<string>("/api/v1/vyos/dhcp-leases");
+export function fetchRouterDhcpLeases(): Promise<VyosDhcpLease[]> {
+  return apiGet<VyosDhcpLease[]>("/api/v1/vyos/dhcp-leases");
 }
 
 export function fetchRouterFirewall(): Promise<Record<string, unknown>> {
