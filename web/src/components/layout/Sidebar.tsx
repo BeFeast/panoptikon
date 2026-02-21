@@ -125,7 +125,7 @@ export function Sidebar() {
                   <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
                 </TooltipContent>
               </Tooltip>
-              <p className="text-[10px] text-slate-700">Panoptikon v0.1.0</p>
+              <p className="text-[10px] text-slate-700">Panoptikon {process.env.NEXT_PUBLIC_VERSION || "v0.1.0"}</p>
             </div>
           ) : (
             <Tooltip>
