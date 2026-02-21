@@ -172,6 +172,21 @@ export interface VyosDhcpLease {
   pool: string | null;
 }
 
+// ─── DHCP Static Mappings ──────────────────────────────
+
+export interface DhcpStaticMapping {
+  network: string;
+  subnet: string;
+  name: string;
+  mac: string;
+  ip: string;
+}
+
+export interface VyosWriteResponse {
+  success: boolean;
+  message: string;
+}
+
 // ─── Firewall ───────────────────────────────────────────
 
 export interface FirewallRule {

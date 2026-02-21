@@ -13,6 +13,7 @@ import type {
   DashboardStats,
   DbSizeData,
   Device,
+  DhcpStaticMapping,
   FirewallConfig,
   LoginResponse,
   NetflowStatus,
@@ -25,6 +26,7 @@ import type {
   VyosDhcpLease,
   VyosInterface,
   VyosRoute,
+  VyosWriteResponse,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -250,6 +252,39 @@ export function fetchRouterFirewall(): Promise<FirewallConfig> {
 
 export function runSpeedTest(): Promise<SpeedTestResult> {
   return apiPost<SpeedTestResult>("/api/v1/router/speedtest");
+}
+
+export function toggleInterface(
+  name: string,
+  disable: boolean
+): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>(`/api/v1/vyos/interfaces/${name}/toggle`, {
+    disable,
+  });
+}
+
+export function fetchDhcpStaticMappings(): Promise<DhcpStaticMapping[]> {
+  return apiGet<DhcpStaticMapping[]>("/api/v1/vyos/dhcp/static-mappings");
+}
+
+export function createDhcpStaticMapping(body: {
+  network: string;
+  subnet: string;
+  name: string;
+  mac: string;
+  ip: string;
+}): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>("/api/v1/vyos/dhcp/static-mappings", body);
+}
+
+export function deleteDhcpStaticMapping(
+  network: string,
+  subnet: string,
+  name: string
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/dhcp/static-mappings/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}/${encodeURIComponent(name)}`
+  ) as unknown as Promise<VyosWriteResponse>;
 }
 
 // ─── NetFlow ────────────────────────────────────────────

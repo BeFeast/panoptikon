@@ -18,13 +18,38 @@ import {
   ExternalLink,
   Activity,
   Wifi,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   fetchRouterStatus,
   fetchRouterInterfaces,
@@ -33,8 +58,12 @@ import {
   fetchRouterFirewall,
   fetchRouterConfigInterfaces,
   runSpeedTest,
+  toggleInterface,
+  fetchDhcpStaticMappings,
+  createDhcpStaticMapping,
+  deleteDhcpStaticMapping,
 } from "@/lib/api";
-import type { FirewallConfig, FirewallChain, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute } from "@/lib/types";
+import type { FirewallConfig, FirewallChain, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping } from "@/lib/types";
 import { Progress } from "@/components/ui/progress";
 import { PageTransition } from "@/components/PageTransition";
 
@@ -430,12 +459,37 @@ function InterfacesTable({
   configData,
   loading,
   error,
+  onReload,
 }: {
   interfaces: VyosInterface[] | null;
   configData: Record<string, unknown> | null;
   loading: boolean;
   error: string | null;
+  onReload: () => void;
 }) {
+  const [confirmToggle, setConfirmToggle] = useState<{
+    iface: VyosInterface;
+    disable: boolean;
+  } | null>(null);
+  const [toggling, setToggling] = useState<string | null>(null);
+
+  const handleToggle = async () => {
+    if (!confirmToggle) return;
+    const { iface, disable } = confirmToggle;
+    setConfirmToggle(null);
+    setToggling(iface.name);
+    try {
+      const res = await toggleInterface(iface.name, disable);
+      toast.success(res.message);
+      onReload();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Toggle failed";
+      toast.error(msg);
+    } finally {
+      setToggling(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="overflow-x-auto rounded-md border border-slate-800">
@@ -448,6 +502,7 @@ function InterfacesTable({
               <th className="px-4 py-3 font-medium text-slate-400">MAC</th>
               <th className="px-4 py-3 font-medium text-slate-400">MTU</th>
               <th className="px-4 py-3 font-medium text-slate-400">Description</th>
+              <th className="px-4 py-3 font-medium text-slate-400">Enabled</th>
             </tr>
           </thead>
           <tbody>
@@ -459,6 +514,7 @@ function InterfacesTable({
                 <td className="px-4 py-3"><Skeleton className="h-3 w-32" /></td>
                 <td className="px-4 py-3"><Skeleton className="h-4 w-12" /></td>
                 <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-5 w-10" /></td>
               </tr>
             ))}
           </tbody>
@@ -483,7 +539,6 @@ function InterfacesTable({
   // Try to extract config info per interface type (e.g. ethernet.eth0, loopback.lo)
   const getConfigDescription = (name: string): string | null => {
     if (!configData) return null;
-    // Config data is structured like { ethernet: { eth0: { ... } }, loopback: { lo: { ... } } }
     for (const [, typeConfig] of Object.entries(configData)) {
       if (typeConfig && typeof typeConfig === "object" && name in (typeConfig as Record<string, unknown>)) {
         const ifConfig = (typeConfig as Record<string, unknown>)[name] as Record<string, unknown> | undefined;
@@ -495,63 +550,157 @@ function InterfacesTable({
     return null;
   };
 
+  // Check if an interface has the "disable" flag in config
+  const isDisabledInConfig = (name: string): boolean => {
+    if (!configData) return false;
+    for (const [, typeConfig] of Object.entries(configData)) {
+      if (typeConfig && typeof typeConfig === "object" && name in (typeConfig as Record<string, unknown>)) {
+        const ifConfig = (typeConfig as Record<string, unknown>)[name] as Record<string, unknown> | undefined;
+        if (ifConfig && "disable" in ifConfig) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+
+  // Loopback interfaces shouldn't be toggled
+  const canToggle = (name: string) => name !== "lo";
+
   return (
-    <div className="overflow-x-auto rounded-md border border-slate-800">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-slate-800 bg-slate-950 text-left">
-            <th className="px-4 py-3 font-medium text-slate-400">Status</th>
-            <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
-            <th className="px-4 py-3 font-medium text-slate-400">IP Address</th>
-            <th className="px-4 py-3 font-medium text-slate-400">MAC</th>
-            <th className="px-4 py-3 font-medium text-slate-400">MTU</th>
-            <th className="px-4 py-3 font-medium text-slate-400">Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          {interfaces.map((iface) => {
-            const configDesc = getConfigDescription(iface.name);
-            const description = iface.description || configDesc;
-            return (
-              <tr
-                key={iface.name}
-                className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
-              >
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <StatusDot admin={iface.admin_state} link={iface.link_state} />
-                    <StatusBadge admin={iface.admin_state} link={iface.link_state} />
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="font-mono tabular-nums font-medium text-white">
-                    {iface.name}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="font-mono tabular-nums text-slate-300">
-                    {iface.ip_address ?? "—"}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="font-mono tabular-nums text-xs text-slate-400">
-                    {iface.mac ?? "—"}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="text-slate-300">{iface.mtu}</span>
-                </td>
-                <td className="px-4 py-3">
-                  <span className="text-slate-400">
-                    {description ?? "—"}
-                  </span>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+    <>
+      <div className="overflow-x-auto rounded-md border border-slate-800">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-800 bg-slate-950 text-left">
+              <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+              <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
+              <th className="px-4 py-3 font-medium text-slate-400">IP Address</th>
+              <th className="px-4 py-3 font-medium text-slate-400">MAC</th>
+              <th className="px-4 py-3 font-medium text-slate-400">MTU</th>
+              <th className="px-4 py-3 font-medium text-slate-400">Description</th>
+              <th className="px-4 py-3 font-medium text-slate-400">Enabled</th>
+            </tr>
+          </thead>
+          <tbody>
+            {interfaces.map((iface) => {
+              const configDesc = getConfigDescription(iface.name);
+              const description = iface.description || configDesc;
+              const isAdminDown = iface.admin_state === "admin-down" || isDisabledInConfig(iface.name);
+              const isEnabled = !isAdminDown;
+              const isToggling = toggling === iface.name;
+              return (
+                <tr
+                  key={iface.name}
+                  className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                >
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <StatusDot admin={iface.admin_state} link={iface.link_state} />
+                      <StatusBadge admin={iface.admin_state} link={iface.link_state} />
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono tabular-nums font-medium text-white">
+                      {iface.name}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono tabular-nums text-slate-300">
+                      {iface.ip_address ?? "—"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono tabular-nums text-xs text-slate-400">
+                      {iface.mac ?? "—"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-slate-300">{iface.mtu}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-slate-400">
+                      {description ?? "—"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {canToggle(iface.name) ? (
+                      <div className="flex items-center gap-2">
+                        {isToggling ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                        ) : (
+                          <Switch
+                            checked={isEnabled}
+                            onCheckedChange={(checked) => {
+                              setConfirmToggle({
+                                iface,
+                                disable: !checked,
+                              });
+                            }}
+                            className="data-[state=checked]:bg-emerald-600 data-[state=unchecked]:bg-slate-700"
+                          />
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-slate-600">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Interface toggle confirmation dialog */}
+      <AlertDialog
+        open={confirmToggle !== null}
+        onOpenChange={(open) => { if (!open) setConfirmToggle(null); }}
+      >
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              {confirmToggle?.disable ? "Disable" : "Enable"} Interface
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              {confirmToggle?.disable ? (
+                <>
+                  This will disable <span className="font-mono font-medium text-white">{confirmToggle?.iface.name}</span> on the router.
+                  Any traffic on this interface will stop.
+                </>
+              ) : (
+                <>
+                  This will enable <span className="font-mono font-medium text-white">{confirmToggle?.iface.name}</span> on the router.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-md border border-slate-800 bg-slate-950 p-3">
+            <p className="text-xs font-medium text-slate-500">Config change:</p>
+            <code className="mt-1 block text-xs text-blue-400">
+              {confirmToggle?.disable
+                ? `set interfaces ethernet ${confirmToggle?.iface.name} disable`
+                : `delete interfaces ethernet ${confirmToggle?.iface.name} disable`}
+            </code>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-800 text-slate-300 hover:bg-slate-800">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleToggle}
+              className={
+                confirmToggle?.disable
+                  ? "bg-rose-600 text-white hover:bg-rose-700"
+                  : "bg-emerald-600 text-white hover:bg-emerald-700"
+              }
+            >
+              {confirmToggle?.disable ? "Disable" : "Enable"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -873,6 +1022,326 @@ function DhcpLeasesTable({
   );
 }
 
+// ── DHCP Static Mappings ────────────────────────────────
+
+function StaticMappingsTable({
+  mappings,
+  loading,
+  error,
+  onReload,
+}: {
+  mappings: DhcpStaticMapping[] | null;
+  loading: boolean;
+  error: string | null;
+  onReload: () => void;
+}) {
+  const [confirmDelete, setConfirmDelete] = useState<DhcpStaticMapping | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({
+    network: "LAN",
+    subnet: "",
+    name: "",
+    mac: "",
+    ip: "",
+  });
+  const [adding, setAdding] = useState(false);
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    const { network, subnet, name } = confirmDelete;
+    setConfirmDelete(null);
+    setDeleting(name);
+    try {
+      await deleteDhcpStaticMapping(network, subnet, name);
+      toast.success(`Static mapping '${name}' deleted`);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleAdd = async () => {
+    if (!addForm.name || !addForm.mac || !addForm.ip || !addForm.network || !addForm.subnet) {
+      toast.error("All fields are required");
+      return;
+    }
+    setAdding(true);
+    try {
+      const res = await createDhcpStaticMapping(addForm);
+      toast.success(res.message);
+      setShowAdd(false);
+      setAddForm({ network: "LAN", subnet: "", name: "", mac: "", ip: "" });
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Create failed");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  // Pre-fill subnet from existing mappings
+  useEffect(() => {
+    if (mappings && mappings.length > 0 && !addForm.subnet) {
+      setAddForm((prev) => ({
+        ...prev,
+        network: mappings[0].network,
+        subnet: mappings[0].subnet,
+      }));
+    }
+  }, [mappings, addForm.subnet]);
+
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-slate-300">Static Mappings</h3>
+        <Dialog open={showAdd} onOpenChange={setShowAdd}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-slate-800 text-slate-300 hover:bg-slate-800"
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add Static Mapping
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="border-slate-800 bg-slate-900">
+            <DialogHeader>
+              <DialogTitle className="text-white">Add DHCP Static Mapping</DialogTitle>
+              <DialogDescription className="text-slate-400">
+                Create a fixed IP assignment for a MAC address.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Network Name</Label>
+                  <Input
+                    value={addForm.network}
+                    onChange={(e) => setAddForm({ ...addForm, network: e.target.value })}
+                    placeholder="LAN"
+                    className="border-slate-800 bg-slate-950 text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Subnet</Label>
+                  <Input
+                    value={addForm.subnet}
+                    onChange={(e) => setAddForm({ ...addForm, subnet: e.target.value })}
+                    placeholder="10.10.0.0/24"
+                    className="border-slate-800 bg-slate-950 text-white"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Hostname / Name</Label>
+                <Input
+                  value={addForm.name}
+                  onChange={(e) => setAddForm({ ...addForm, name: e.target.value })}
+                  placeholder="my-device"
+                  className="border-slate-800 bg-slate-950 text-white"
+                />
+                <p className="text-xs text-slate-500">
+                  Alphanumeric, hyphens, and underscores only.
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">MAC Address</Label>
+                <Input
+                  value={addForm.mac}
+                  onChange={(e) => setAddForm({ ...addForm, mac: e.target.value })}
+                  placeholder="aa:bb:cc:dd:ee:ff"
+                  className="border-slate-800 bg-slate-950 font-mono text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">IP Address</Label>
+                <Input
+                  value={addForm.ip}
+                  onChange={(e) => setAddForm({ ...addForm, ip: e.target.value })}
+                  placeholder="10.10.0.100"
+                  className="border-slate-800 bg-slate-950 font-mono text-white"
+                />
+              </div>
+              {/* Config diff preview */}
+              {addForm.name && addForm.mac && addForm.ip && (
+                <div className="rounded-md border border-slate-800 bg-slate-950 p-3">
+                  <p className="text-xs font-medium text-slate-500">Config change:</p>
+                  <code className="mt-1 block whitespace-pre-wrap text-xs text-blue-400">
+                    {`set service dhcp-server shared-network-name ${addForm.network} subnet ${addForm.subnet} static-mapping ${addForm.name} mac-address ${addForm.mac}\nset service dhcp-server shared-network-name ${addForm.network} subnet ${addForm.subnet} static-mapping ${addForm.name} ip-address ${addForm.ip}`}
+                  </code>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowAdd(false)}
+                className="border-slate-800 text-slate-300 hover:bg-slate-800"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAdd}
+                disabled={adding}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+              >
+                {adding ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating…
+                  </>
+                ) : (
+                  "Create Mapping"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {loading ? (
+        <div className="overflow-x-auto rounded-md border border-slate-800">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                <th className="px-4 py-3 font-medium text-slate-400">Name</th>
+                <th className="px-4 py-3 font-medium text-slate-400">MAC Address</th>
+                <th className="px-4 py-3 font-medium text-slate-400">IP Address</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Network</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Subnet</th>
+                <th className="px-4 py-3 font-medium text-slate-400"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <tr key={i} className="border-b border-slate-800 last:border-b-0">
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-3 w-32" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-8 w-8" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : error ? (
+        <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+          <p className="text-xs text-rose-400">{error}</p>
+        </div>
+      ) : !mappings || mappings.length === 0 ? (
+        <p className="py-4 text-sm text-slate-500">
+          No static mappings configured.
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-md border border-slate-800">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                <th className="px-4 py-3 font-medium text-slate-400">Name</th>
+                <th className="px-4 py-3 font-medium text-slate-400">MAC Address</th>
+                <th className="px-4 py-3 font-medium text-slate-400">IP Address</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Network</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Subnet</th>
+                <th className="px-4 py-3 font-medium text-slate-400"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {mappings.map((m) => (
+                <tr
+                  key={`${m.network}-${m.subnet}-${m.name}`}
+                  className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                >
+                  <td className="px-4 py-3">
+                    <span className="font-medium text-white">{m.name}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono tabular-nums text-xs text-slate-400">
+                      {m.mac}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono tabular-nums text-slate-300">
+                      {m.ip}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-slate-300">{m.network}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono tabular-nums text-xs text-slate-400">
+                      {m.subnet}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {deleting === m.name ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConfirmDelete(m)}
+                        className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
+      >
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Delete Static Mapping
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              This will remove the static mapping{" "}
+              <span className="font-mono font-medium text-white">
+                {confirmDelete?.name}
+              </span>{" "}
+              ({confirmDelete?.mac} → {confirmDelete?.ip}).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-md border border-slate-800 bg-slate-950 p-3">
+            <p className="text-xs font-medium text-slate-500">Config change:</p>
+            <code className="mt-1 block whitespace-pre-wrap text-xs text-rose-400">
+              {confirmDelete &&
+                `delete service dhcp-server shared-network-name ${confirmDelete.network} subnet ${confirmDelete.subnet} static-mapping ${confirmDelete.name}`}
+            </code>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-800 text-slate-300 hover:bg-slate-800">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 // ── Firewall Action Badge ───────────────────────────────
 
 function FirewallActionBadge({ action }: { action: string }) {
@@ -1148,10 +1617,20 @@ function RouterTabs({ status }: { status: RouterStatus }) {
     tab === "dhcp"
   );
 
+  const staticMappings = useAsyncData<DhcpStaticMapping[]>(
+    useCallback(() => fetchDhcpStaticMappings(), []),
+    tab === "dhcp"
+  );
+
   const firewall = useAsyncData<FirewallConfig>(
     useCallback(() => fetchRouterFirewall(), []),
     tab === "firewall"
   );
+
+  const reloadInterfaces = useCallback(() => {
+    interfaces.reload();
+    configIfaces.reload();
+  }, [interfaces, configIfaces]);
 
   return (
     <div className="space-y-6">
@@ -1178,7 +1657,7 @@ function RouterTabs({ status }: { status: RouterStatus }) {
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
             <Server className="mr-1.5 h-3.5 w-3.5" />
-            DHCP Leases
+            DHCP
           </TabsTrigger>
           <TabsTrigger
             value="firewall"
@@ -1216,6 +1695,7 @@ function RouterTabs({ status }: { status: RouterStatus }) {
                 }
                 loading={interfaces.loading}
                 error={interfaces.error}
+                onReload={reloadInterfaces}
               />
             </CardContent>
           </Card>
@@ -1238,7 +1718,7 @@ function RouterTabs({ status }: { status: RouterStatus }) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="dhcp">
+        <TabsContent value="dhcp" className="space-y-4">
           <Card className="border-slate-800 bg-slate-900">
             <CardHeader>
               <CardTitle className="text-base text-white">
@@ -1250,6 +1730,22 @@ function RouterTabs({ status }: { status: RouterStatus }) {
                 leases={Array.isArray(dhcp.data) ? dhcp.data : null}
                 loading={dhcp.loading}
                 error={dhcp.error}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-800 bg-slate-900">
+            <CardHeader>
+              <CardTitle className="text-base text-white">
+                DHCP Configuration
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <StaticMappingsTable
+                mappings={Array.isArray(staticMappings.data) ? staticMappings.data : null}
+                loading={staticMappings.loading}
+                error={staticMappings.error}
+                onReload={staticMappings.reload}
               />
             </CardContent>
           </Card>
