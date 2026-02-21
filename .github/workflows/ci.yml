@@ -32,6 +32,16 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      # rust-embed requires web/.next/static/ to exist at compile time
+      - name: Setup Bun (for rust-embed assets)
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Build frontend assets (required by rust-embed)
+        working-directory: web
+        run: bun install && bun run build
+
       - name: Check formatting
         run: cargo fmt --all -- --check
 
