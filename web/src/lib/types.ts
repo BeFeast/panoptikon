@@ -130,8 +130,14 @@ export interface RouterStatus {
 export interface SpeedTestResult {
   download_mbps: number;
   upload_mbps: number;
-  latency_ms: number;
+  ping_ms: number;
+  jitter_ms: number;
+  packet_loss: number;
+  isp: string;
+  server: string;
+  result_url: string | null;
   tested_at: string;
+  error: string | null;
 }
 
 export interface VyosInterface {
