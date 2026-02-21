@@ -1,5 +1,4 @@
-import { test, expect } from "@playwright/test";
-import { login } from "./helpers";
+import { test, expect, login } from "./fixtures";
 
 // Unique name per run to avoid collisions
 const AGENT_NAME = `e2e-agent-${Date.now()}`;

@@ -1,14 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
-
-const PASSWORD = 'testpass123';
-
-async function login(page: Page) {
-  await page.goto('/login/');
-  await expect(page.locator('text=Sign in to your network dashboard')).toBeVisible({ timeout: 5000 });
-  await page.fill('#password', PASSWORD);
-  await page.click('button[type="submit"]');
-  await page.waitForURL('**/dashboard**', { timeout: 10000 });
-}
+import { test, expect, login } from '../../e2e/fixtures';
 
 test.describe('Navigation & Layout', () => {
   test.beforeEach(async ({ page }) => {

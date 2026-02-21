@@ -1,6 +1,4 @@
-import { test, expect } from '@playwright/test';
-
-const PASSWORD = 'testpass123';
+import { test, expect, PASSWORD } from '../../e2e/fixtures';
 
 test.describe('Authentication', () => {
   test('login page loads correctly', async ({ page }) => {
