@@ -5,37 +5,55 @@ use axum::{
 };
 use rust_embed::RustEmbed;
 
+/// Embeds the entire Next.js static export output (web/out/).
+/// This ensures HTML pages and JS chunks always come from the same build,
+/// preventing hash mismatches when bun build runs without cargo rebuild.
 #[derive(RustEmbed)]
-#[folder = "$CARGO_MANIFEST_DIR/../web/.next/static/"]
-#[prefix = "_next/static/"]
-struct NextStatic;
-
-#[derive(RustEmbed)]
-#[folder = "$CARGO_MANIFEST_DIR/../web/public/"]
+#[folder = "$CARGO_MANIFEST_DIR/../web/out/"]
 #[prefix = ""]
-struct PublicAssets;
+struct WebOut;
 
 pub async fn serve_static_asset(uri: Uri) -> impl IntoResponse {
-    let path = uri.path().trim_start_matches('/');
+    let raw_path = uri.path().trim_start_matches('/');
 
-    // Try _next/static/ assets first
-    if path.starts_with("_next/static/") {
-        if let Some(file) = NextStatic::get(path) {
-            let mime = mime_guess::from_path(path).first_or_octet_stream();
+    // 1. Try exact path match (JS chunks, CSS, images, etc.)
+    if !raw_path.is_empty() {
+        if let Some(file) = WebOut::get(raw_path) {
+            let mime = mime_guess::from_path(raw_path).first_or_octet_stream();
+            let cache = if raw_path.starts_with("_next/static/") {
+                "public, max-age=31536000, immutable"
+            } else {
+                "no-cache, no-store"
+            };
             return Response::builder()
                 .header(header::CONTENT_TYPE, mime.as_ref())
-                .header(header::CACHE_CONTROL, "public, max-age=31536000, immutable")
+                .header(header::CACHE_CONTROL, cache)
                 .body(Body::from(file.data.into_owned()))
                 .unwrap()
                 .into_response();
         }
     }
 
-    // Try public/ assets
-    if let Some(file) = PublicAssets::get(path) {
-        let mime = mime_guess::from_path(path).first_or_octet_stream();
+    // 2. Try path/index.html (Next.js static export page structure)
+    let index_path = if raw_path.is_empty() {
+        "index.html".to_string()
+    } else {
+        format!("{}/index.html", raw_path.trim_end_matches('/'))
+    };
+    if let Some(file) = WebOut::get(&index_path) {
         return Response::builder()
-            .header(header::CONTENT_TYPE, mime.as_ref())
+            .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
+            .header(header::CACHE_CONTROL, "no-cache, no-store")
+            .body(Body::from(file.data.into_owned()))
+            .unwrap()
+            .into_response();
+    }
+
+    // 3. SPA fallback: serve root index.html for client-side routing
+    if let Some(file) = WebOut::get("index.html") {
+        return Response::builder()
+            .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
+            .header(header::CACHE_CONTROL, "no-cache, no-store")
             .body(Body::from(file.data.into_owned()))
             .unwrap()
             .into_response();
