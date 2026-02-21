@@ -32,3 +32,9 @@ web/test-results/
 
 # Agent config (contains API keys)
 agent/config.toml
+
+# tmux logs
+tmux-*.log
+
+# agent-orchestrator config
+agent-orchestrator.yaml
