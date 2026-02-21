@@ -11,6 +11,7 @@ use tower_http::cors::CorsLayer;
 use tower_http::services::{ServeDir, ServeFile};
 
 use crate::config::AppConfig;
+use crate::static_files::serve_static_asset;
 use crate::ws::hub::WsHub;
 
 pub mod agents;
@@ -142,12 +143,16 @@ pub fn router(state: AppState) -> Router {
     // Prometheus metrics endpoint — outside /api/v1 and outside auth.
     let metrics_route = Router::new().route("/metrics", get(metrics::handler));
 
+    // Embedded static assets from rust-embed (immutable, long cache).
+    let embedded_static = Router::new().route("/_next/static/*path", get(serve_static_asset));
+
     Router::new()
         .merge(metrics_route)
         .nest(
             "/api/v1",
             public_routes.merge(agent_ws).merge(protected_routes),
         )
+        .merge(embedded_static)
         .fallback_service(serve_dir)
         .layer(cors)
         .with_state(state)
