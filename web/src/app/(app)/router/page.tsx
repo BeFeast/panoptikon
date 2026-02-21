@@ -219,6 +219,8 @@ function SpeedTestSection() {
           setError("Rate limited — please wait 60 seconds between tests.");
         } else if (e.message.includes("503")) {
           setError("Speedtest CLI not available on the server.");
+        } else if (e.message.includes("502")) {
+          setError("Speed test failed — the server could not complete the test. Check server logs for details.");
         } else {
           setError(e.message);
         }

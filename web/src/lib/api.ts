@@ -49,7 +49,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error("Unauthorized");
   }
   if (!res.ok) {
-    throw new Error(`API error ${res.status}: ${res.statusText}`);
+    // Try to extract server error message from JSON body
+    let detail = res.statusText;
+    try {
+      const body = await res.json();
+      if (body?.error) detail = body.error;
+    } catch {
+      // body wasn't JSON — keep statusText
+    }
+    throw new Error(`API error ${res.status}: ${detail}`);
   }
   // 204 No Content — return empty object, don't try to parse JSON
   if (res.status === 204 || res.headers.get("content-length") === "0") {

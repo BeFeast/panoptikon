@@ -1314,17 +1314,29 @@ pub async fn speedtest(
         }
     }
 
-    // Check that Ookla Speedtest CLI is installed
-    if tokio::fs::metadata("/usr/local/bin/speedtest")
-        .await
-        .is_err()
-    {
-        return Err((
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(SpeedTestError {
-                error: "Ookla Speedtest CLI not installed on server".to_string(),
-            }),
-        ));
+    // Check that Ookla Speedtest CLI is installed and executable
+    match tokio::fs::metadata("/usr/local/bin/speedtest").await {
+        Err(_) => {
+            return Err((
+                StatusCode::SERVICE_UNAVAILABLE,
+                Json(SpeedTestError {
+                    error: "Ookla Speedtest CLI not installed on server. \
+                            Install it or rebuild the Docker image."
+                        .to_string(),
+                }),
+            ));
+        }
+        Ok(meta) => {
+            use std::os::unix::fs::PermissionsExt;
+            if meta.permissions().mode() & 0o111 == 0 {
+                return Err((
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    Json(SpeedTestError {
+                        error: "Ookla Speedtest CLI exists but is not executable".to_string(),
+                    }),
+                ));
+            }
+        }
     }
 
     tracing::info!("Starting WAN speed test via Ookla Speedtest CLI");
