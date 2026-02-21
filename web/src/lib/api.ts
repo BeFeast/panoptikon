@@ -11,6 +11,7 @@ import type {
   Alert,
   AuthStatus,
   DashboardStats,
+  DbSizeData,
   Device,
   FirewallConfig,
   LoginResponse,
@@ -260,6 +261,20 @@ export function updateSettings(body: {
   webhook_url?: string;
   vyos_url?: string;
   vyos_api_key?: string;
+  scan_interval_seconds?: number;
+  scan_subnets?: string;
+  ping_sweep_enabled?: boolean;
+  retention_traffic_hours?: number;
+  retention_alerts_days?: number;
+  retention_agent_reports_days?: number;
 }): Promise<SettingsData> {
   return apiPatch<SettingsData>("/api/v1/settings", body);
+}
+
+export function fetchDbSize(): Promise<DbSizeData> {
+  return apiGet<DbSizeData>("/api/v1/settings/db-size");
+}
+
+export function triggerVacuum(): Promise<void> {
+  return apiPost<void>("/api/v1/settings/vacuum");
 }
