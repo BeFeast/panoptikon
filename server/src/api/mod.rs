@@ -4,7 +4,7 @@ use crate::ws::hub::WsHub;
 use axum::http::{header, Method};
 use axum::{
     middleware::{self},
-    routing::{delete, get, patch, post},
+    routing::{delete, get, patch, post, put},
     Router,
 };
 use sqlx::SqlitePool;
@@ -24,6 +24,7 @@ pub mod scanner;
 pub mod search;
 pub mod settings;
 pub mod setup;
+pub mod topology;
 pub mod traffic;
 pub mod vyos;
 
@@ -56,7 +57,13 @@ impl AppState {
 pub fn router(state: AppState) -> Router {
     let cors = CorsLayer::new()
         .allow_origin(tower_http::cors::AllowOrigin::mirror_request())
-        .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
+        .allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::PUT,
+            Method::PATCH,
+            Method::DELETE,
+        ])
         .allow_headers([header::CONTENT_TYPE, header::COOKIE, header::AUTHORIZATION])
         .allow_credentials(true);
 
@@ -119,6 +126,10 @@ pub fn router(state: AppState) -> Router {
         .route("/vyos/routes", get(vyos::routes))
         .route("/vyos/dhcp-leases", get(vyos::dhcp_leases))
         .route("/vyos/firewall", get(vyos::firewall))
+        // Topology positions
+        .route("/topology/positions", get(topology::get_positions))
+        .route("/topology/positions", put(topology::save_positions))
+        .route("/topology/positions", delete(topology::delete_positions))
         // Scanner
         .route("/scanner/trigger", post(scanner::trigger))
         // Speed test

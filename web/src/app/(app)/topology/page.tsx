@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ReactFlow,
@@ -19,8 +19,16 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import dagre from '@dagrejs/dagre'
-import { Network, Loader2, RefreshCw } from 'lucide-react'
-import { fetchDevices, fetchTopDevices, fetchRouterInterfaces } from '@/lib/api'
+import { Network, Loader2, RefreshCw, RotateCcw } from 'lucide-react'
+import {
+  fetchDevices,
+  fetchTopDevices,
+  fetchRouterInterfaces,
+  fetchTopologyPositions,
+  saveTopologyPositions,
+  deleteTopologyPositions,
+  type NodePosition,
+} from '@/lib/api'
 import type { Device, TopDevice, VyosInterface } from '@/lib/types'
 import { getDeviceIcon } from '@/lib/device-icons'
 import { PageTransition } from '@/components/PageTransition'
@@ -52,23 +60,33 @@ const DEVICE_HEIGHT = 68
 function getLayoutedElements(
   nodes: TopologyNode[],
   edges: Edge[],
+  pinnedPositions?: Map<string, { x: number; y: number }>,
 ): { nodes: TopologyNode[]; edges: Edge[] } {
   const g = new dagre.graphlib.Graph()
   g.setDefaultEdgeLabel(() => ({}))
   g.setGraph({ rankdir: 'TB', nodesep: 60, ranksep: 100 })
 
   nodes.forEach((n) => {
+    if (pinnedPositions?.has(n.id)) return
     const isRouter = n.type === 'routerNode'
     g.setNode(n.id, {
       width: isRouter ? ROUTER_WIDTH : DEVICE_WIDTH,
       height: isRouter ? ROUTER_HEIGHT : DEVICE_HEIGHT,
     })
   })
-  edges.forEach((e) => g.setEdge(e.source, e.target))
+  edges.forEach((e) => {
+    if (pinnedPositions?.has(e.source) || pinnedPositions?.has(e.target)) return
+    g.setEdge(e.source, e.target)
+  })
   dagre.layout(g)
 
   return {
     nodes: nodes.map((n) => {
+      // Use saved position if this node was pinned
+      const pinned = pinnedPositions?.get(n.id)
+      if (pinned) {
+        return { ...n, position: { x: pinned.x, y: pinned.y } }
+      }
       const pos = g.node(n.id)
       const isRouter = n.type === 'routerNode'
       const w = isRouter ? ROUTER_WIDTH : DEVICE_WIDTH
@@ -174,14 +192,31 @@ export default function TopologyPage() {
   const [error, setError] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
 
+  // Track pinned positions locally so refreshes preserve them
+  const pinnedRef = useRef<Map<string, { x: number; y: number }>>(new Map())
+
   const buildGraph = useCallback(
     async (isInitial: boolean) => {
       try {
-        const [devices, topDevices, interfaces] = await Promise.all([
+        const fetches: [Promise<Device[]>, Promise<TopDevice[]>, Promise<VyosInterface[]>, Promise<NodePosition[]>?] = [
           fetchDevices(),
           fetchTopDevices(100),
           fetchRouterInterfaces().catch(() => [] as VyosInterface[]),
-        ])
+        ]
+
+        // Fetch saved positions on initial load
+        if (isInitial) {
+          fetches.push(fetchTopologyPositions().catch(() => [] as NodePosition[]))
+        }
+
+        const [devices, topDevices, interfaces, savedPositions] = await Promise.all(fetches)
+
+        // Populate pinned map from server on initial load
+        if (isInitial && savedPositions) {
+          pinnedRef.current = new Map(
+            savedPositions.filter((p) => p.pinned).map((p) => [p.node_id, { x: p.x, y: p.y }]),
+          )
+        }
 
         // Find WAN IP from router interfaces
         const wanIf = interfaces.find(
@@ -241,9 +276,9 @@ export default function TopologyPage() {
           }
         })
 
-        // Apply dagre layout only on initial load
+        // Apply dagre layout only on initial load; pinned nodes keep saved positions
         if (isInitial) {
-          const layouted = getLayoutedElements(allNodes, allEdges)
+          const layouted = getLayoutedElements(allNodes, allEdges, pinnedRef.current)
           setNodes(layouted.nodes)
           setEdges(layouted.edges)
         } else {
@@ -278,6 +313,26 @@ export default function TopologyPage() {
   useEffect(() => {
     const interval = setInterval(() => buildGraph(false), 30_000)
     return () => clearInterval(interval)
+  }, [buildGraph])
+
+  // Persist position when a node is dragged
+  const onNodeDragStop = useCallback(
+    (_event: React.MouseEvent, node: TopologyNode) => {
+      const pos = { x: node.position.x, y: node.position.y }
+      pinnedRef.current.set(node.id, pos)
+      saveTopologyPositions([
+        { node_id: node.id, x: pos.x, y: pos.y, pinned: true },
+      ]).catch(() => {})
+    },
+    [],
+  )
+
+  // Reset layout — clear all saved positions and re-run dagre
+  const resetLayout = useCallback(async () => {
+    pinnedRef.current.clear()
+    await deleteTopologyPositions().catch(() => {})
+    setLoading(true)
+    buildGraph(true)
   }, [buildGraph])
 
   // Click handler — navigate to devices page with device selected
@@ -334,6 +389,7 @@ export default function TopologyPage() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={onNodeClick}
+          onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
           fitView
           fitViewOptions={{ padding: 0.15 }}
@@ -357,8 +413,16 @@ export default function TopologyPage() {
           />
           <Background variant={BackgroundVariant.Dots} color="#334155" gap={24} size={1} />
 
-          {/* Floating refresh indicator */}
+          {/* Floating toolbar */}
           <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/80 px-3 py-1.5 backdrop-blur-sm">
+            <button
+              onClick={resetLayout}
+              className="text-slate-400 transition-colors hover:text-white"
+              title="Reset layout"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+            </button>
+            <div className="h-3 w-px bg-slate-700" />
             <button
               onClick={() => buildGraph(false)}
               className="text-slate-400 transition-colors hover:text-white"

@@ -76,6 +76,13 @@ export async function apiPatch<T>(path: string, body: unknown): Promise<T> {
   });
 }
 
+export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function apiDelete(path: string): Promise<void> {
   await request<void>(path, { method: "DELETE" });
 }
@@ -283,4 +290,25 @@ export function fetchDbSize(): Promise<DbSizeData> {
 
 export function triggerVacuum(): Promise<void> {
   return apiPost<void>("/api/v1/settings/vacuum");
+}
+
+// ─── Topology Positions ──────────────────────────────────
+
+export interface NodePosition {
+  node_id: string;
+  x: number;
+  y: number;
+  pinned: boolean;
+}
+
+export function fetchTopologyPositions(): Promise<NodePosition[]> {
+  return apiGet<NodePosition[]>("/api/v1/topology/positions");
+}
+
+export function saveTopologyPositions(positions: NodePosition[]): Promise<void> {
+  return apiPut<void>("/api/v1/topology/positions", { positions });
+}
+
+export function deleteTopologyPositions(): Promise<void> {
+  return apiDelete("/api/v1/topology/positions");
 }
