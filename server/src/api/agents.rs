@@ -13,7 +13,7 @@ use sqlx::Row;
 use std::collections::HashMap;
 use tracing::{error, info, warn};
 
-use super::AppState;
+use super::{AppError, AppState};
 use crate::api::alerts;
 use crate::webhook;
 
@@ -245,7 +245,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Agent>>, Sta
 pub async fn get_one(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<Agent>, StatusCode> {
+) -> Result<Json<Agent>, AppError> {
     let row = sqlx::query(
         "SELECT a.id, a.device_id, a.name, a.platform, a.version, a.is_online, \
                 a.last_report_at, a.created_at, \
@@ -262,17 +262,11 @@ pub async fn get_one(
     )
     .bind(&id)
     .fetch_optional(&state.db)
-    .await
-    .map_err(|e| {
-        error!("Failed to get agent {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?
-    .ok_or(StatusCode::NOT_FOUND)?;
+    .await?
+    .ok_or(AppError::NotFound)?;
 
-    let agent = Agent::from_row(row).map_err(|e| {
-        error!("Failed to parse agent row: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let agent = Agent::from_row(row)
+        .map_err(|e| AppError::Internal(format!("Failed to parse agent row: {e}")))?;
 
     Ok(Json(agent))
 }
