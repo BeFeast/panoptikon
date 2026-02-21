@@ -6,6 +6,139 @@ use sqlx::SqlitePool;
 
 use super::AppState;
 
+// ── Parsed VyOS interface ───────────────────────────────
+
+/// A single parsed VyOS network interface from `show interfaces` output.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct VyosInterface {
+    pub name: String,
+    pub ip_address: Option<String>,
+    pub mac: Option<String>,
+    pub vrf: Option<String>,
+    pub mtu: u32,
+    pub admin_state: String,
+    pub link_state: String,
+    pub description: Option<String>,
+}
+
+/// Parse the text output of `show interfaces` into a vec of [`VyosInterface`].
+///
+/// Expected format (after header):
+/// ```text
+/// Interface    IP Address     MAC                VRF        MTU  S/L    Description
+/// -----------  -------------  -----------------  -------  -----  -----  -------------
+/// eth0         10.10.0.50/24  bc:24:11:12:9f:fa  default   1500  u/u
+/// lo           127.0.0.1/8    00:00:00:00:00:00  default  65536  u/u
+///              ::1/128
+/// ```
+pub fn parse_interfaces_text(text: &str) -> Vec<VyosInterface> {
+    let mut interfaces = Vec::new();
+
+    for line in text.lines() {
+        let trimmed = line.trim();
+
+        // Skip empty lines, header descriptions, and separator lines
+        if trimmed.is_empty()
+            || trimmed.starts_with("Codes:")
+            || trimmed.starts_with("Interface")
+            || trimmed.starts_with("---")
+        {
+            continue;
+        }
+
+        // Continuation lines (start with whitespace, contain only an IP like ::1/128)
+        // These are additional IPs for the previous interface — skip for now
+        if line.starts_with(' ') || line.starts_with('\t') {
+            continue;
+        }
+
+        // Parse a main interface line
+        // Fields are whitespace-separated: Name  IP  MAC  VRF  MTU  S/L  [Description]
+        let parts: Vec<&str> = trimmed.split_whitespace().collect();
+        if parts.len() < 6 {
+            continue;
+        }
+
+        let name = parts[0].to_string();
+        let ip_raw = parts[1];
+        let mac_raw = parts[2];
+        let vrf_raw = parts[3];
+        // MTU might not parse if the line is malformed
+        let mtu = match parts[4].parse::<u32>() {
+            Ok(m) => m,
+            Err(_) => continue,
+        };
+        let state_field = parts[5]; // e.g. "u/u", "D/D", "A/D"
+
+        // Parse admin/link state from S/L field
+        let (admin_state, link_state) = parse_state_field(state_field);
+
+        // IP: "-" means no address
+        let ip_address = if ip_raw == "-" {
+            None
+        } else {
+            Some(ip_raw.to_string())
+        };
+
+        // MAC: "-" or all zeros for loopback
+        let mac = if mac_raw == "-" {
+            None
+        } else {
+            Some(mac_raw.to_string())
+        };
+
+        // VRF: "-" means no VRF
+        let vrf = if vrf_raw == "-" {
+            None
+        } else {
+            Some(vrf_raw.to_string())
+        };
+
+        // Description: everything after the 6th field
+        let description = if parts.len() > 6 {
+            Some(parts[6..].join(" "))
+        } else {
+            None
+        };
+
+        interfaces.push(VyosInterface {
+            name,
+            ip_address,
+            mac,
+            vrf,
+            mtu,
+            admin_state,
+            link_state,
+            description,
+        });
+    }
+
+    interfaces
+}
+
+/// Parse the S/L state field (e.g. "u/u", "D/D", "A/D") into (admin_state, link_state).
+fn parse_state_field(field: &str) -> (String, String) {
+    let parts: Vec<&str> = field.split('/').collect();
+    if parts.len() != 2 {
+        return ("unknown".to_string(), "unknown".to_string());
+    }
+
+    let admin = match parts[0] {
+        "u" => "up",
+        "D" => "down",
+        "A" => "admin-down",
+        other => other,
+    };
+
+    let link = match parts[1] {
+        "u" => "up",
+        "D" => "down",
+        other => other,
+    };
+
+    (admin.to_string(), link.to_string())
+}
+
 /// Status response for the router.
 #[derive(Debug, Serialize)]
 pub struct RouterStatus {
@@ -68,13 +201,22 @@ pub async fn status(State(state): State<AppState>) -> Json<RouterStatus> {
     })
 }
 
-/// GET /api/v1/vyos/interfaces — fetch VyOS interface information (operational).
-pub async fn interfaces(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+/// GET /api/v1/vyos/interfaces — fetch VyOS interface information (parsed).
+///
+/// Calls `show interfaces` on VyOS, parses the tabular text output, and returns
+/// a JSON array of [`VyosInterface`] objects.
+pub async fn interfaces(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<VyosInterface>>, StatusCode> {
     let client = get_vyos_client_or_503(&state).await?;
-    client.show(&["interfaces"]).await.map(Json).map_err(|e| {
+    let raw_value = client.show(&["interfaces"]).await.map_err(|e| {
         tracing::error!("VyOS interfaces query failed: {e}");
         StatusCode::BAD_GATEWAY
-    })
+    })?;
+
+    let text = raw_value.as_str().unwrap_or("");
+    let parsed = parse_interfaces_text(text);
+    Ok(Json(parsed))
 }
 
 /// GET /api/v1/vyos/routes — fetch VyOS routing table.
@@ -445,6 +587,104 @@ mod tests {
         assert!(
             err.contains("failed to parse"),
             "expected parse error, got: {err}"
+        );
+    }
+
+    #[test]
+    fn test_parse_interfaces_up() {
+        let text = "Codes: S - State, L - Link, u - Up, D - Down, A - Admin Down\n\
+            Interface    IP Address     MAC                VRF        MTU  S/L    Description\n\
+            -----------  -------------  -----------------  -------  -----  -----  -------------\n\
+            eth0         10.10.0.50/24  bc:24:11:12:9f:fa  default   1500  u/u\n\
+            lo           127.0.0.1/8    00:00:00:00:00:00  default  65536  u/u\n\
+                         ::1/128\n";
+
+        let ifaces = parse_interfaces_text(text);
+        assert_eq!(ifaces.len(), 2);
+
+        let eth0 = &ifaces[0];
+        assert_eq!(eth0.name, "eth0");
+        assert_eq!(eth0.ip_address.as_deref(), Some("10.10.0.50/24"));
+        assert_eq!(eth0.mac.as_deref(), Some("bc:24:11:12:9f:fa"));
+        assert_eq!(eth0.mtu, 1500);
+        assert_eq!(eth0.admin_state, "up");
+        assert_eq!(eth0.link_state, "up");
+        assert!(eth0.description.is_none());
+
+        let lo = &ifaces[1];
+        assert_eq!(lo.name, "lo");
+        assert_eq!(lo.ip_address.as_deref(), Some("127.0.0.1/8"));
+        assert_eq!(lo.mtu, 65536);
+        assert_eq!(lo.admin_state, "up");
+        assert_eq!(lo.link_state, "up");
+    }
+
+    #[test]
+    fn test_parse_interfaces_down() {
+        let text = "Codes: S - State, L - Link, u - Up, D - Down, A - Admin Down\n\
+            Interface    IP Address     MAC                VRF        MTU  S/L    Description\n\
+            -----------  -------------  -----------------  -------  -----  -----  -------------\n\
+            eth1         -              aa:bb:cc:dd:ee:ff  -         1500  D/D    LAN port\n";
+
+        let ifaces = parse_interfaces_text(text);
+        assert_eq!(ifaces.len(), 1);
+
+        let eth1 = &ifaces[0];
+        assert_eq!(eth1.name, "eth1");
+        assert!(eth1.ip_address.is_none());
+        assert_eq!(eth1.mac.as_deref(), Some("aa:bb:cc:dd:ee:ff"));
+        assert!(eth1.vrf.is_none());
+        assert_eq!(eth1.mtu, 1500);
+        assert_eq!(eth1.admin_state, "down");
+        assert_eq!(eth1.link_state, "down");
+        assert_eq!(eth1.description.as_deref(), Some("LAN port"));
+    }
+
+    #[test]
+    fn test_parse_interfaces_admin_down() {
+        let text = "Codes: S - State, L - Link, u - Up, D - Down, A - Admin Down\n\
+            Interface    IP Address     MAC                VRF        MTU  S/L    Description\n\
+            -----------  -------------  -----------------  -------  -----  -----  -------------\n\
+            eth2         192.168.1.1/24 aa:bb:cc:dd:ee:00  default   1500  A/D    Management\n";
+
+        let ifaces = parse_interfaces_text(text);
+        assert_eq!(ifaces.len(), 1);
+
+        let eth2 = &ifaces[0];
+        assert_eq!(eth2.admin_state, "admin-down");
+        assert_eq!(eth2.link_state, "down");
+        assert_eq!(eth2.description.as_deref(), Some("Management"));
+    }
+
+    #[test]
+    fn test_parse_interfaces_empty() {
+        assert!(parse_interfaces_text("").is_empty());
+        assert!(parse_interfaces_text("   \n\n  ").is_empty());
+        assert!(parse_interfaces_text(
+            "Codes: S - State, L - Link, u - Up, D - Down, A - Admin Down\n\
+             Interface    IP Address     MAC                VRF        MTU  S/L    Description\n\
+             -----------  -------------  -----------------  -------  -----  -----  -------------\n"
+        )
+        .is_empty());
+    }
+
+    #[test]
+    fn test_parse_state_field() {
+        assert_eq!(
+            parse_state_field("u/u"),
+            ("up".to_string(), "up".to_string())
+        );
+        assert_eq!(
+            parse_state_field("D/D"),
+            ("down".to_string(), "down".to_string())
+        );
+        assert_eq!(
+            parse_state_field("A/D"),
+            ("admin-down".to_string(), "down".to_string())
+        );
+        assert_eq!(
+            parse_state_field("invalid"),
+            ("unknown".to_string(), "unknown".to_string())
         );
     }
 

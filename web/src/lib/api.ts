@@ -20,6 +20,7 @@ import type {
   SpeedTestResult,
   TopDevice,
   TrafficHistoryPoint,
+  VyosInterface,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -210,8 +211,8 @@ export function fetchRouterStatus(): Promise<RouterStatus> {
   return apiGet<RouterStatus>("/api/v1/vyos/status");
 }
 
-export function fetchRouterInterfaces(): Promise<string> {
-  return apiGet<string>("/api/v1/vyos/interfaces");
+export function fetchRouterInterfaces(): Promise<VyosInterface[]> {
+  return apiGet<VyosInterface[]>("/api/v1/vyos/interfaces");
 }
 
 export function fetchRouterConfigInterfaces(): Promise<Record<string, unknown>> {

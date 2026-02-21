@@ -31,7 +31,7 @@ import {
   fetchRouterConfigInterfaces,
   runSpeedTest,
 } from "@/lib/api";
-import type { RouterStatus, SpeedTestResult } from "@/lib/types";
+import type { RouterStatus, SpeedTestResult, VyosInterface } from "@/lib/types";
 import { Progress } from "@/components/ui/progress";
 
 // ── Not Configured state ────────────────────────────────
@@ -413,6 +413,143 @@ function SpeedTestSection() {
   );
 }
 
+// ── Interfaces Table ────────────────────────────────────
+
+function StatusDot({ admin, link }: { admin: string; link: string }) {
+  const isUp = admin === "up" && link === "up";
+  const color = isUp ? "bg-green-500" : "bg-red-500";
+  return (
+    <span
+      className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${color}`}
+      title={`Admin: ${admin}, Link: ${link}`}
+    />
+  );
+}
+
+function StatusBadge({ admin, link }: { admin: string; link: string }) {
+  const isUp = admin === "up" && link === "up";
+  return (
+    <Badge
+      variant="outline"
+      className={
+        isUp
+          ? "border-green-500/30 bg-green-500/10 text-green-400"
+          : "border-red-500/30 bg-red-500/10 text-red-400"
+      }
+    >
+      {isUp ? "Up" : "Down"}
+    </Badge>
+  );
+}
+
+function InterfacesTable({
+  interfaces,
+  configData,
+  loading,
+  error,
+}: {
+  interfaces: VyosInterface[] | null;
+  configData: Record<string, unknown> | null;
+  loading: boolean;
+  error: string | null;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-8 text-gray-500">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm">Loading…</span>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+        <p className="text-xs text-red-400">{error}</p>
+      </div>
+    );
+  }
+  if (!interfaces || interfaces.length === 0) {
+    return (
+      <p className="py-4 text-sm text-gray-500">No interfaces found.</p>
+    );
+  }
+
+  // Try to extract config info per interface type (e.g. ethernet.eth0, loopback.lo)
+  const getConfigDescription = (name: string): string | null => {
+    if (!configData) return null;
+    // Config data is structured like { ethernet: { eth0: { ... } }, loopback: { lo: { ... } } }
+    for (const [, typeConfig] of Object.entries(configData)) {
+      if (typeConfig && typeof typeConfig === "object" && name in (typeConfig as Record<string, unknown>)) {
+        const ifConfig = (typeConfig as Record<string, unknown>)[name] as Record<string, unknown> | undefined;
+        if (ifConfig?.description && typeof ifConfig.description === "string") {
+          return ifConfig.description;
+        }
+      }
+    }
+    return null;
+  };
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-[#2a2a3a]">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-[#2a2a3a] bg-[#0e0e16] text-left">
+            <th className="px-4 py-3 font-medium text-gray-400">Status</th>
+            <th className="px-4 py-3 font-medium text-gray-400">Interface</th>
+            <th className="px-4 py-3 font-medium text-gray-400">IP Address</th>
+            <th className="px-4 py-3 font-medium text-gray-400">MAC</th>
+            <th className="px-4 py-3 font-medium text-gray-400">MTU</th>
+            <th className="px-4 py-3 font-medium text-gray-400">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          {interfaces.map((iface) => {
+            const configDesc = getConfigDescription(iface.name);
+            const description = iface.description || configDesc;
+            return (
+              <tr
+                key={iface.name}
+                className="border-b border-[#2a2a3a] last:border-b-0 hover:bg-[#1a1a2a]"
+              >
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <StatusDot admin={iface.admin_state} link={iface.link_state} />
+                    <StatusBadge admin={iface.admin_state} link={iface.link_state} />
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="font-mono font-medium text-white">
+                    {iface.name}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="font-mono text-gray-300">
+                    {iface.ip_address ?? "—"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="font-mono text-xs text-gray-400">
+                    {iface.mac ?? "—"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="text-gray-300">{iface.mtu}</span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="text-gray-400">
+                    {description ?? "—"}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ── Main Page ───────────────────────────────────────────
 
 export default function RouterPage() {
@@ -455,12 +592,12 @@ export default function RouterPage() {
 function RouterTabs({ status }: { status: RouterStatus }) {
   const [tab, setTab] = useState("interfaces");
 
-  const interfaces = useAsyncData(
+  const interfaces = useAsyncData<VyosInterface[]>(
     useCallback(() => fetchRouterInterfaces(), []),
     tab === "interfaces"
   );
 
-  const configIfaces = useAsyncData(
+  const configIfaces = useAsyncData<Record<string, unknown>>(
     useCallback(() => fetchRouterConfigInterfaces(), []),
     tab === "interfaces"
   );
@@ -527,35 +664,22 @@ function RouterTabs({ status }: { status: RouterStatus }) {
           <Card className="border-[#2a2a3a] bg-[#16161f]">
             <CardHeader>
               <CardTitle className="text-base text-white">
-                Interface Status
+                Network Interfaces
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <OutputPanel
-                data={typeof interfaces.data === "string" ? interfaces.data : null}
-                loading={interfaces.loading}
-                error={interfaces.error}
-                emptyMsg="No interfaces found."
-              />
-            </CardContent>
-          </Card>
-          <Card className="border-[#2a2a3a] bg-[#16161f]">
-            <CardHeader>
-              <CardTitle className="text-base text-white">
-                Interface Configuration
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <JsonPanel
-                data={
+              <InterfacesTable
+                interfaces={
+                  Array.isArray(interfaces.data) ? interfaces.data : null
+                }
+                configData={
                   configIfaces.data &&
                   typeof configIfaces.data === "object"
                     ? configIfaces.data
                     : null
                 }
-                loading={configIfaces.loading}
-                error={configIfaces.error}
-                emptyMsg="No interface configuration found."
+                loading={interfaces.loading}
+                error={interfaces.error}
               />
             </CardContent>
           </Card>
