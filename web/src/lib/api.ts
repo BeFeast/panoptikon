@@ -38,7 +38,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     },
   });
   if (res.status === 401) {
-    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+    if (typeof window !== "undefined"
+        && !window.location.pathname.startsWith("/login")
+        && !window.location.pathname.startsWith("/setup")) {
       window.location.href = "/login";
     }
     throw new Error("Unauthorized");
@@ -204,8 +206,12 @@ export function login(password: string): Promise<LoginResponse> {
   return apiPost<LoginResponse>("/api/v1/auth/login", { password });
 }
 
-export function setupPassword(password: string): Promise<LoginResponse> {
-  return apiPost<LoginResponse>("/api/v1/auth/login", { password });
+export function runSetup(body: {
+  password: string;
+  vyos_url?: string;
+  vyos_api_key?: string;
+}): Promise<LoginResponse> {
+  return apiPost<LoginResponse>("/api/v1/setup", body);
 }
 
 // ─── Router / VyOS ──────────────────────────────────────

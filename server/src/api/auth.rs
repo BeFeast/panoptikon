@@ -174,44 +174,27 @@ pub async fn login(
             })?
             .and_then(|r| r.try_get("value").ok());
 
-    let password_hash = match row {
-        Some(hash) => {
-            // Verify password against stored hash.
-            let valid = bcrypt::verify(&body.password, &hash).map_err(|e| {
-                tracing::error!("Password verification error: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            })?;
-
-            if !valid {
-                // Slot was already reserved by try_login_attempt(); no separate record needed.
-                warn!(%client_ip, "Failed login attempt");
-                return Err(StatusCode::UNAUTHORIZED.into_response());
-            }
-            hash
-        }
+    let hash = match row {
+        Some(hash) => hash,
         None => {
-            // First-run: no password set yet. Validate minimum length before storing.
-            if body.password.len() < 8 {
-                return Err(StatusCode::UNPROCESSABLE_ENTITY.into_response());
-            }
-            let hash = bcrypt::hash(&body.password, bcrypt::DEFAULT_COST).map_err(|e| {
-                tracing::error!("Failed to hash password: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            })?;
-            sqlx::query("INSERT INTO settings (key, value) VALUES ('admin_password_hash', ?)")
-                .bind(&hash)
-                .execute(&state.db)
-                .await
-                .map_err(|e| {
-                    tracing::error!("Failed to store password: {e}");
-                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
-                })?;
-            tracing::info!("Admin password set for the first time");
-            hash
+            // No password set — setup hasn't been completed yet.
+            // The user must go through POST /api/v1/setup first.
+            state.rate_limiter.clear(&client_ip);
+            return Err(StatusCode::PRECONDITION_REQUIRED.into_response());
         }
     };
 
-    let _ = password_hash; // used above
+    // Verify password against stored hash.
+    let valid = bcrypt::verify(&body.password, &hash).map_err(|e| {
+        tracing::error!("Password verification error: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR.into_response()
+    })?;
+
+    if !valid {
+        // Slot was already reserved by try_login_attempt(); no separate record needed.
+        warn!(%client_ip, "Failed login attempt");
+        return Err(StatusCode::UNAUTHORIZED.into_response());
+    }
 
     // Generate session token and store it in the database.
     let token = uuid::Uuid::new_v4().to_string();
