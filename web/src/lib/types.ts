@@ -134,6 +134,17 @@ export interface SpeedTestResult {
   tested_at: string;
 }
 
+export interface VyosInterface {
+  name: string;
+  ip_address: string | null;
+  mac: string | null;
+  vrf: string | null;
+  mtu: number;
+  admin_state: string;
+  link_state: string;
+  description: string | null;
+}
+
 export interface SettingsData {
   webhook_url: string | null;
   vyos_url: string | null;
