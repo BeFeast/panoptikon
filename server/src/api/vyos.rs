@@ -521,7 +521,7 @@ pub fn parse_dhcp_leases_text(text: &str) -> Vec<VyosDhcpLease> {
         // A data line should start with an IP-like pattern (digit)
         // But use column position instead for robustness
         let ip = match extract_field(line, "ip") {
-            Some(ip) if ip.chars().next().map_or(false, |c| c.is_ascii_digit()) => ip,
+            Some(ip) if ip.chars().next().is_some_and(|c| c.is_ascii_digit()) => ip,
             _ => continue,
         };
 
