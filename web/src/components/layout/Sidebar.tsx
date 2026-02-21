@@ -11,6 +11,7 @@ import {
   Cpu,
   LayoutDashboard,
   MonitorSmartphone,
+  Network,
   Router,
   Settings,
 } from "lucide-react";
@@ -28,6 +29,7 @@ const navItems = [
   { href: "/devices", label: "Devices", icon: MonitorSmartphone },
   { href: "/agents", label: "Agents", icon: Cpu },
   { href: "/router", label: "Router", icon: Router },
+  { href: "/topology", label: "Topology", icon: Network },
   { href: "/traffic", label: "Traffic", icon: Activity },
   { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/settings", label: "Settings", icon: Settings },
