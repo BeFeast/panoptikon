@@ -49,6 +49,7 @@ async function downloadExport(url: string, filename: string) {
 
 export default function DevicesPage() {
   const [devices, setDevices] = useState<Device[] | null>(null);
+  const [scanningNetwork, setScanningNetwork] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
@@ -190,7 +191,33 @@ export default function DevicesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-white">Devices</h1>
-        <Button>Scan Now</Button>
+        <Button
+          disabled={scanningNetwork}
+          onClick={async () => {
+            setScanningNetwork(true);
+            try {
+              await fetch("/api/v1/scanner/trigger", { method: "POST", credentials: "include" });
+              toast.success("Network scan complete");
+              await load();
+            } catch {
+              toast.error("Network scan failed");
+            } finally {
+              setTimeout(() => setScanningNetwork(false), 5000);
+            }
+          }}
+        >
+          {scanningNetwork ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Scanning…
+            </>
+          ) : (
+            <>
+              <Radar className="mr-2 h-4 w-4" />
+              Scan Now
+            </>
+          )}
+        </Button>
       </div>
 
       {/* Filter bar */}
@@ -223,6 +250,25 @@ export default function DevicesPage() {
             className="pl-9"
           />
         </div>
+
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={async () => {
+            try {
+              await downloadExport(
+                "/api/v1/devices/export?format=csv",
+                "panoptikon-devices.csv"
+              );
+              toast.success("Devices exported");
+            } catch {
+              toast.error("Export failed");
+            }
+          }}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Export CSV
+        </Button>
 
         {/* View toggle */}
         <div className="flex shrink-0 gap-1">
@@ -809,10 +855,8 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
           const code = parseInt(match[1]);
           if (code === 429) {
             setError("Rate limited — wait 60s between scans.");
-          } else if (code === 503) {
-            setError("VyOS not configured. Set it up in Settings.");
-          } else if (code === 502) {
-            setError("Scan failed — VyOS unreachable or nmap error.");
+          } else if (code === 500) {
+            setError("Scan failed — nmap error.");
           } else {
             setError(err.message);
           }

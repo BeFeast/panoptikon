@@ -610,58 +610,11 @@ pub fn parse_nmap_output(output: &str) -> Vec<PortEntry> {
     results
 }
 
-/// Helper to read VyOS client from DB settings (same pattern as vyos.rs).
-async fn get_vyos_client_from_db(
-    db: &sqlx::SqlitePool,
-    config: &crate::config::AppConfig,
-) -> Option<crate::vyos::client::VyosClient> {
-    let db_url: Option<String> =
-        sqlx::query_scalar(r#"SELECT value FROM settings WHERE key = 'vyos_url'"#)
-            .fetch_optional(db)
-            .await
-            .ok()
-            .flatten();
-
-    let db_key: Option<String> =
-        sqlx::query_scalar(r#"SELECT value FROM settings WHERE key = 'vyos_api_key'"#)
-            .fetch_optional(db)
-            .await
-            .ok()
-            .flatten();
-
-    let url = db_url
-        .filter(|s| !s.is_empty())
-        .or_else(|| config.vyos.url.clone());
-    let key = db_key
-        .filter(|s| !s.is_empty())
-        .or_else(|| config.vyos.api_key.clone());
-
-    match (url, key) {
-        (Some(u), Some(k)) if !u.is_empty() && !k.is_empty() => {
-            Some(crate::vyos::client::VyosClient::new(&u, &k))
-        }
-        _ => None,
-    }
-}
-
-/// POST /api/v1/devices/:id/scan — trigger an nmap scan via VyOS.
+/// POST /api/v1/devices/:id/scan — trigger a local nmap port scan.
 pub async fn trigger_scan(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<impl IntoResponse, impl IntoResponse> {
-    // Check VyOS is configured
-    let client = match get_vyos_client_from_db(&state.db, &state.config).await {
-        Some(c) => c,
-        None => {
-            return Err((
-                StatusCode::SERVICE_UNAVAILABLE,
-                Json(serde_json::json!({
-                    "error": "VyOS not configured. Set vyos_url and vyos_api_key in settings."
-                })),
-            ));
-        }
-    };
-
     // Check device exists and get its IP
     let ip: String = match sqlx::query_scalar(
         r#"SELECT ip FROM device_ips WHERE device_id = ? AND is_current = 1 LIMIT 1"#,
@@ -672,7 +625,6 @@ pub async fn trigger_scan(
     {
         Ok(Some(ip)) => ip,
         Ok(None) => {
-            // Check if device itself exists
             let exists: bool =
                 sqlx::query_scalar::<_, i64>(r#"SELECT COUNT(*) FROM devices WHERE id = ?"#)
                     .bind(&id)
@@ -726,14 +678,38 @@ pub async fn trigger_scan(
         }
     }
 
-    // Run nmap via VyOS
-    let nmap_output = match client.run_nmap(&ip).await {
-        Ok(output) => output,
+    // Validate IP to prevent command injection
+    if ip.parse::<std::net::IpAddr>().is_err() {
+        tracing::error!("Invalid IP address for scan: {ip}");
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "Invalid IP address"})),
+        ));
+    }
+
+    // Run nmap locally
+    let nmap_output = match tokio::process::Command::new("nmap")
+        .args(["-sV", "--open", "-T4", "--host-timeout", "30s"])
+        .arg(&ip)
+        .output()
+        .await
+    {
+        Ok(output) => {
+            if !output.status.success() {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                tracing::error!("nmap exited with {}: {stderr}", output.status);
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": format!("nmap failed: {stderr}")})),
+                ));
+            }
+            String::from_utf8_lossy(&output.stdout).to_string()
+        }
         Err(e) => {
-            tracing::error!("nmap scan failed for device {id} (IP: {ip}): {e}");
+            tracing::error!("Failed to execute nmap for device {id} (IP: {ip}): {e}");
             return Err((
-                StatusCode::BAD_GATEWAY,
-                Json(serde_json::json!({"error": format!("nmap scan failed: {e}")})),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": format!("Failed to execute nmap: {e}")})),
             ));
         }
     };
