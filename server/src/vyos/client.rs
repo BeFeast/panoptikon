@@ -60,6 +60,30 @@ impl VyosClient {
         self.post_form("/show", &data).await
     }
 
+    /// POST /configure — set a configuration path.
+    ///
+    /// Example: `configure_set(&["interfaces", "ethernet", "eth0", "disable"])`
+    /// sets the `disable` flag on `eth0`.
+    pub async fn configure_set(&self, path: &[&str]) -> Result<Value> {
+        let data = serde_json::json!({
+            "op": "set",
+            "path": path,
+        });
+        self.post_form("/configure", &data).await
+    }
+
+    /// POST /configure — delete a configuration path.
+    ///
+    /// Example: `configure_delete(&["interfaces", "ethernet", "eth0", "disable"])`
+    /// removes the `disable` flag from `eth0`.
+    pub async fn configure_delete(&self, path: &[&str]) -> Result<Value> {
+        let data = serde_json::json!({
+            "op": "delete",
+            "path": path,
+        });
+        self.post_form("/configure", &data).await
+    }
+
     /// Run an nmap scan against a target IP via VyOS.
     ///
     /// Uses the VyOS `/show` endpoint with `path: ["nmap", "-sV", "<ip>"]`.

@@ -1,4 +1,8 @@
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -824,6 +828,439 @@ pub async fn config_interfaces(State(state): State<AppState>) -> Result<Json<Val
         })
 }
 
+// ── Interface enable/disable ─────────────────────────────────────────────────
+
+/// Request body for the interface toggle endpoint.
+#[derive(Debug, Deserialize)]
+pub struct InterfaceToggleRequest {
+    /// `true` to disable the interface, `false` to enable it.
+    pub disable: bool,
+}
+
+/// Response for write operations.
+#[derive(Debug, Serialize)]
+pub struct VyosWriteResponse {
+    pub success: bool,
+    pub message: String,
+}
+
+/// Derive the VyOS interface type prefix from the interface name.
+///
+/// e.g. "eth0" → "ethernet", "bond0" → "bonding", "br0" → "bridge", "lo" → "loopback"
+fn interface_type(name: &str) -> Option<&'static str> {
+    if name.starts_with("eth") {
+        Some("ethernet")
+    } else if name.starts_with("bond") {
+        Some("bonding")
+    } else if name.starts_with("br") {
+        Some("bridge")
+    } else if name.starts_with("wg") {
+        Some("wireguard")
+    } else if name == "lo" || name.starts_with("lo") {
+        Some("loopback")
+    } else if name.starts_with("vtun") {
+        Some("openvpn")
+    } else if name.starts_with("tun") {
+        Some("tunnel")
+    } else if name.starts_with("vti") {
+        Some("vti")
+    } else if name.starts_with("pppoe") {
+        Some("pppoe")
+    } else {
+        None
+    }
+}
+
+/// POST /api/v1/vyos/interfaces/:name/toggle — enable or disable a VyOS interface.
+///
+/// Sends `set interfaces <type> <name> disable` or
+/// `delete interfaces <type> <name> disable` to VyOS.
+pub async fn interface_toggle(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    Json(body): Json<InterfaceToggleRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    let iface_type = interface_type(&name).ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: format!("Cannot determine interface type for '{name}'"),
+            }),
+        )
+    })?;
+
+    let action = if body.disable { "disable" } else { "enable" };
+    tracing::info!("VyOS: {action} interface {iface_type} {name}");
+
+    let result = if body.disable {
+        client
+            .configure_set(&["interfaces", iface_type, &name, "disable"])
+            .await
+    } else {
+        client
+            .configure_delete(&["interfaces", iface_type, &name, "disable"])
+            .await
+    };
+
+    match result {
+        Ok(_) => Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Interface {name} {action}d successfully"),
+        })),
+        Err(e) => {
+            tracing::error!("VyOS interface {action} failed for {name}: {e}");
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("VyOS error: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
+// ── DHCP Static Mappings ────────────────────────────────────────────────────
+
+/// A DHCP static mapping entry.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DhcpStaticMapping {
+    /// The shared-network-name (e.g. "LAN")
+    pub network: String,
+    /// The subnet CIDR (e.g. "10.10.0.0/24")
+    pub subnet: String,
+    /// Mapping name / identifier
+    pub name: String,
+    /// MAC address
+    pub mac: String,
+    /// IP address assigned
+    pub ip: String,
+}
+
+/// Request body for creating a DHCP static mapping.
+#[derive(Debug, Deserialize)]
+pub struct CreateDhcpStaticMappingRequest {
+    /// The shared-network-name (e.g. "LAN")
+    pub network: String,
+    /// The subnet CIDR (e.g. "10.10.0.0/24")
+    pub subnet: String,
+    /// Mapping name / hostname identifier
+    pub name: String,
+    /// MAC address (XX:XX:XX:XX:XX:XX)
+    pub mac: String,
+    /// IP address to assign
+    pub ip: String,
+}
+
+/// GET /api/v1/vyos/dhcp/static-mappings — list DHCP static mappings.
+///
+/// Reads VyOS config at `service dhcp-server` and parses static-mapping entries.
+pub async fn dhcp_static_mappings(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<DhcpStaticMapping>>, StatusCode> {
+    let client = get_vyos_client_or_503(&state).await?;
+
+    let config = match client.retrieve(&["service", "dhcp-server"]).await {
+        Ok(c) => c,
+        Err(e) => {
+            let msg = e.to_string();
+            if msg.contains("empty") || msg.contains("does not exist") {
+                return Ok(Json(Vec::new()));
+            }
+            tracing::error!("VyOS DHCP config query failed: {e}");
+            return Err(StatusCode::BAD_GATEWAY);
+        }
+    };
+
+    let mappings = parse_dhcp_static_mappings(&config);
+    Ok(Json(mappings))
+}
+
+/// Parse DHCP static mappings from VyOS DHCP server config JSON.
+fn parse_dhcp_static_mappings(config: &Value) -> Vec<DhcpStaticMapping> {
+    let mut mappings = Vec::new();
+
+    let networks = match config
+        .get("shared-network-name")
+        .and_then(|v| v.as_object())
+    {
+        Some(n) => n,
+        None => return mappings,
+    };
+
+    for (network_name, network_val) in networks {
+        let subnets = match network_val.get("subnet").and_then(|v| v.as_object()) {
+            Some(s) => s,
+            None => continue,
+        };
+
+        for (subnet_cidr, subnet_val) in subnets {
+            let statics = match subnet_val.get("static-mapping").and_then(|v| v.as_object()) {
+                Some(s) => s,
+                None => continue,
+            };
+
+            for (mapping_name, mapping_val) in statics {
+                let mac = mapping_val
+                    .get("mac-address")
+                    // VyOS 1.3 uses "mac" instead of "mac-address"
+                    .or_else(|| mapping_val.get("mac"))
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                let ip = mapping_val
+                    .get("ip-address")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+
+                if !mac.is_empty() && !ip.is_empty() {
+                    mappings.push(DhcpStaticMapping {
+                        network: network_name.clone(),
+                        subnet: subnet_cidr.clone(),
+                        name: mapping_name.clone(),
+                        mac,
+                        ip,
+                    });
+                }
+            }
+        }
+    }
+
+    mappings.sort_by(|a, b| a.ip.cmp(&b.ip));
+    mappings
+}
+
+/// POST /api/v1/vyos/dhcp/static-mappings — create a DHCP static mapping.
+pub async fn create_dhcp_static_mapping(
+    State(state): State<AppState>,
+    Json(body): Json<CreateDhcpStaticMappingRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    // Validate MAC address format
+    if !is_valid_mac(&body.mac) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid MAC address format. Expected XX:XX:XX:XX:XX:XX".to_string(),
+            }),
+        ));
+    }
+
+    // Validate IP address format
+    if body.ip.parse::<std::net::Ipv4Addr>().is_err() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid IP address format".to_string(),
+            }),
+        ));
+    }
+
+    // Validate name (alphanumeric, hyphens, underscores only)
+    if body.name.is_empty()
+        || !body
+            .name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid mapping name. Use alphanumeric characters, hyphens, and underscores only.".to_string(),
+            }),
+        ));
+    }
+
+    let base_path = format!(
+        "service dhcp-server shared-network-name {} subnet {} static-mapping {}",
+        body.network, body.subnet, body.name
+    );
+
+    tracing::info!(
+        "VyOS: creating DHCP static mapping {}: {} -> {} (network={}, subnet={})",
+        body.name,
+        body.mac,
+        body.ip,
+        body.network,
+        body.subnet
+    );
+
+    // Set mac-address
+    let mac_result = client
+        .configure_set(&[
+            "service",
+            "dhcp-server",
+            "shared-network-name",
+            &body.network,
+            "subnet",
+            &body.subnet,
+            "static-mapping",
+            &body.name,
+            "mac-address",
+            &body.mac,
+        ])
+        .await;
+
+    if let Err(e) = mac_result {
+        tracing::error!("VyOS DHCP static-mapping mac set failed: {e}");
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: format!("Failed to set MAC address: {e}"),
+            }),
+        ));
+    }
+
+    // Set ip-address
+    let ip_result = client
+        .configure_set(&[
+            "service",
+            "dhcp-server",
+            "shared-network-name",
+            &body.network,
+            "subnet",
+            &body.subnet,
+            "static-mapping",
+            &body.name,
+            "ip-address",
+            &body.ip,
+        ])
+        .await;
+
+    if let Err(e) = ip_result {
+        tracing::error!("VyOS DHCP static-mapping ip set failed: {e}");
+        // Try to clean up the mac we just set
+        let _ = client
+            .configure_delete(&[
+                "service",
+                "dhcp-server",
+                "shared-network-name",
+                &body.network,
+                "subnet",
+                &body.subnet,
+                "static-mapping",
+                &body.name,
+            ])
+            .await;
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: format!("Failed to set IP address: {e}"),
+            }),
+        ));
+    }
+
+    tracing::info!(
+        "VyOS: DHCP static mapping '{}' created ({base_path})",
+        body.name
+    );
+
+    Ok(Json(VyosWriteResponse {
+        success: true,
+        message: format!(
+            "Static mapping '{}' created: {} -> {}",
+            body.name, body.mac, body.ip
+        ),
+    }))
+}
+
+/// Path parameters for deleting a DHCP static mapping.
+#[derive(Debug, Deserialize)]
+pub struct DhcpStaticMappingPath {
+    pub network: String,
+    pub subnet: String,
+    pub name: String,
+}
+
+/// DELETE /api/v1/vyos/dhcp/static-mappings/:network/:subnet/:name — delete a DHCP static mapping.
+pub async fn delete_dhcp_static_mapping(
+    State(state): State<AppState>,
+    Path(path): Path<DhcpStaticMappingPath>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    tracing::info!(
+        "VyOS: deleting DHCP static mapping '{}' (network={}, subnet={})",
+        path.name,
+        path.network,
+        path.subnet
+    );
+
+    let result = client
+        .configure_delete(&[
+            "service",
+            "dhcp-server",
+            "shared-network-name",
+            &path.network,
+            "subnet",
+            &path.subnet,
+            "static-mapping",
+            &path.name,
+        ])
+        .await;
+
+    match result {
+        Ok(_) => Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Static mapping '{}' deleted", path.name),
+        })),
+        Err(e) => {
+            tracing::error!("VyOS DHCP static-mapping delete failed: {e}");
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("VyOS error: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
+/// Validate MAC address format (XX:XX:XX:XX:XX:XX, case-insensitive).
+fn is_valid_mac(mac: &str) -> bool {
+    let parts: Vec<&str> = mac.split(':').collect();
+    parts.len() == 6
+        && parts
+            .iter()
+            .all(|p| p.len() == 2 && p.chars().all(|c| c.is_ascii_hexdigit()))
+}
+
 // ── Speed Test ──────────────────────────────────────────────────────────────
 
 /// Speed test result returned to the frontend.
@@ -1470,6 +1907,165 @@ mod tests {
         let r = &config.chains[0].rules[0];
         assert_eq!(r.source.as_deref(), Some("address-group: TRUSTED"));
         assert_eq!(r.destination.as_deref(), Some("192.168.1.0/24, port 22"));
+    }
+
+    // ── Interface type detection ────────────────────────────
+
+    #[test]
+    fn test_interface_type_ethernet() {
+        assert_eq!(interface_type("eth0"), Some("ethernet"));
+        assert_eq!(interface_type("eth1"), Some("ethernet"));
+        assert_eq!(interface_type("eth10"), Some("ethernet"));
+    }
+
+    #[test]
+    fn test_interface_type_bonding() {
+        assert_eq!(interface_type("bond0"), Some("bonding"));
+        assert_eq!(interface_type("bond1"), Some("bonding"));
+    }
+
+    #[test]
+    fn test_interface_type_bridge() {
+        assert_eq!(interface_type("br0"), Some("bridge"));
+    }
+
+    #[test]
+    fn test_interface_type_wireguard() {
+        assert_eq!(interface_type("wg0"), Some("wireguard"));
+    }
+
+    #[test]
+    fn test_interface_type_loopback() {
+        assert_eq!(interface_type("lo"), Some("loopback"));
+    }
+
+    #[test]
+    fn test_interface_type_unknown() {
+        assert_eq!(interface_type("unknown0"), None);
+        assert_eq!(interface_type("xyz"), None);
+    }
+
+    // ── MAC address validation ──────────────────────────────
+
+    #[test]
+    fn test_valid_mac_addresses() {
+        assert!(is_valid_mac("aa:bb:cc:dd:ee:ff"));
+        assert!(is_valid_mac("AA:BB:CC:DD:EE:FF"));
+        assert!(is_valid_mac("00:11:22:33:44:55"));
+        assert!(is_valid_mac("aA:bB:cC:dD:eE:fF"));
+    }
+
+    #[test]
+    fn test_invalid_mac_addresses() {
+        assert!(!is_valid_mac(""));
+        assert!(!is_valid_mac("aa:bb:cc:dd:ee"));
+        assert!(!is_valid_mac("aa:bb:cc:dd:ee:ff:00"));
+        assert!(!is_valid_mac("aa-bb-cc-dd-ee-ff"));
+        assert!(!is_valid_mac("aabb.ccdd.eeff"));
+        assert!(!is_valid_mac("gg:hh:ii:jj:kk:ll"));
+        assert!(!is_valid_mac("a:bb:cc:dd:ee:ff"));
+    }
+
+    // ── DHCP static mappings parsing ────────────────────────
+
+    #[test]
+    fn test_parse_dhcp_static_mappings_basic() {
+        let config: Value = serde_json::from_str(
+            r#"{
+                "shared-network-name": {
+                    "LAN": {
+                        "subnet": {
+                            "10.10.0.0/24": {
+                                "static-mapping": {
+                                    "myhost": {
+                                        "mac-address": "aa:bb:cc:dd:ee:ff",
+                                        "ip-address": "10.10.0.100"
+                                    },
+                                    "server": {
+                                        "mac-address": "11:22:33:44:55:66",
+                                        "ip-address": "10.10.0.200"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let mappings = parse_dhcp_static_mappings(&config);
+        assert_eq!(mappings.len(), 2);
+
+        // Sorted by IP
+        assert_eq!(mappings[0].name, "myhost");
+        assert_eq!(mappings[0].mac, "aa:bb:cc:dd:ee:ff");
+        assert_eq!(mappings[0].ip, "10.10.0.100");
+        assert_eq!(mappings[0].network, "LAN");
+        assert_eq!(mappings[0].subnet, "10.10.0.0/24");
+
+        assert_eq!(mappings[1].name, "server");
+        assert_eq!(mappings[1].mac, "11:22:33:44:55:66");
+        assert_eq!(mappings[1].ip, "10.10.0.200");
+    }
+
+    #[test]
+    fn test_parse_dhcp_static_mappings_empty() {
+        let config: Value = serde_json::from_str("{}").unwrap();
+        assert!(parse_dhcp_static_mappings(&config).is_empty());
+
+        let config2: Value = serde_json::from_str(
+            r#"{"shared-network-name": {"LAN": {"subnet": {"10.10.0.0/24": {}}}}}"#,
+        )
+        .unwrap();
+        assert!(parse_dhcp_static_mappings(&config2).is_empty());
+    }
+
+    #[test]
+    fn test_parse_dhcp_static_mappings_multiple_networks() {
+        let config: Value = serde_json::from_str(
+            r#"{
+                "shared-network-name": {
+                    "LAN": {
+                        "subnet": {
+                            "10.10.0.0/24": {
+                                "static-mapping": {
+                                    "host1": {
+                                        "mac-address": "aa:bb:cc:dd:ee:ff",
+                                        "ip-address": "10.10.0.50"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "GUEST": {
+                        "subnet": {
+                            "192.168.1.0/24": {
+                                "static-mapping": {
+                                    "printer": {
+                                        "mac-address": "11:22:33:44:55:66",
+                                        "ip-address": "192.168.1.10"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let mappings = parse_dhcp_static_mappings(&config);
+        assert_eq!(mappings.len(), 2);
+
+        // Should be sorted by IP
+        let lan = mappings.iter().find(|m| m.network == "LAN").unwrap();
+        assert_eq!(lan.name, "host1");
+        assert_eq!(lan.ip, "10.10.0.50");
+
+        let guest = mappings.iter().find(|m| m.network == "GUEST").unwrap();
+        assert_eq!(guest.name, "printer");
+        assert_eq!(guest.ip, "192.168.1.10");
     }
 
     #[tokio::test]

@@ -126,6 +126,23 @@ pub fn router(state: AppState) -> Router {
         .route("/vyos/routes", get(vyos::routes))
         .route("/vyos/dhcp-leases", get(vyos::dhcp_leases))
         .route("/vyos/firewall", get(vyos::firewall))
+        // VyOS write operations
+        .route(
+            "/vyos/interfaces/:name/toggle",
+            post(vyos::interface_toggle),
+        )
+        .route(
+            "/vyos/dhcp/static-mappings",
+            get(vyos::dhcp_static_mappings),
+        )
+        .route(
+            "/vyos/dhcp/static-mappings",
+            post(vyos::create_dhcp_static_mapping),
+        )
+        .route(
+            "/vyos/dhcp/static-mappings/:network/:subnet/:name",
+            delete(vyos::delete_dhcp_static_mapping),
+        )
         // Topology positions
         .route("/topology/positions", get(topology::get_positions))
         .route("/topology/positions", put(topology::save_positions))
