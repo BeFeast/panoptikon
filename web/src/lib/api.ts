@@ -21,6 +21,7 @@ import type {
   TopDevice,
   TrafficHistoryPoint,
   VyosInterface,
+  VyosRoute,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -219,8 +220,8 @@ export function fetchRouterConfigInterfaces(): Promise<Record<string, unknown>> 
   return apiGet<Record<string, unknown>>("/api/v1/vyos/config-interfaces");
 }
 
-export function fetchRouterRoutes(): Promise<string> {
-  return apiGet<string>("/api/v1/vyos/routes");
+export function fetchRouterRoutes(): Promise<VyosRoute[]> {
+  return apiGet<VyosRoute[]>("/api/v1/vyos/routes");
 }
 
 export function fetchRouterDhcpLeases(): Promise<string> {

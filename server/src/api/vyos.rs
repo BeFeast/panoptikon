@@ -6,6 +6,157 @@ use sqlx::SqlitePool;
 
 use super::AppState;
 
+// ── Parsed VyOS route ───────────────────────────────────
+
+/// A single parsed VyOS route from `show ip route` output.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct VyosRoute {
+    /// Protocol code: C, L, S, K, O, B, R, etc.
+    pub protocol: String,
+    /// Destination CIDR (e.g. "0.0.0.0/0", "10.10.0.0/24")
+    pub destination: String,
+    /// Next-hop gateway IP (None for directly connected)
+    pub gateway: Option<String>,
+    /// Outgoing interface (e.g. "eth0")
+    pub interface: Option<String>,
+    /// Metric string from [admin/metric] bracket (e.g. "1/0")
+    pub metric: Option<String>,
+    /// Uptime / age of the route (e.g. "01:23:45", "15:03:56")
+    pub uptime: Option<String>,
+    /// Whether this is a selected/best route (indicated by '>' and/or '*')
+    pub selected: bool,
+}
+
+/// Parse the text output of `show ip route` into a vec of [`VyosRoute`].
+///
+/// Expected route line formats:
+/// ```text
+/// S>* 0.0.0.0/0 [1/0] via 10.10.0.1, eth0, weight 1, 15:01:21
+/// C>* 10.10.0.0/24 is directly connected, eth0, weight 1, 15:03:56
+/// L>* 10.10.0.50/32 is directly connected, eth0, weight 1, 15:03:56
+/// K>* 0.0.0.0/0 [0/0] via 192.168.1.1, eth0, 00:05:00
+/// O   10.0.0.0/8 [110/20] via 10.10.0.2, eth1, weight 1, 02:00:00
+/// O>* 10.0.0.0/8 [110/20] via 10.10.0.2, eth1, weight 1, 02:00:00
+/// B>  172.16.0.0/12 [20/0] via 10.10.0.3, eth0, weight 1, 1d00h00m
+/// ```
+pub fn parse_routes_text(text: &str) -> Vec<VyosRoute> {
+    let mut routes = Vec::new();
+
+    for line in text.lines() {
+        let trimmed = line.trim();
+
+        // Skip empty lines, header/legend lines, separator lines
+        if trimmed.is_empty()
+            || trimmed.starts_with("Codes:")
+            || trimmed.starts_with("IPv")
+            || trimmed.starts_with('>')
+            || trimmed.starts_with('*')
+            || trimmed.starts_with("---")
+        {
+            continue;
+        }
+
+        // Continuation lines from the legend block (start with spaces and contain descriptive text)
+        if line.starts_with(' ') || line.starts_with('\t') {
+            continue;
+        }
+
+        // Route lines start with a letter code (protocol)
+        let first_char = match trimmed.chars().next() {
+            Some(c) if c.is_ascii_alphabetic() => c,
+            _ => continue,
+        };
+
+        // Extract protocol code (first letter or letters before '>' or '*' or ' ')
+        // Common: single letter like S, C, L, K, O, B, R, etc.
+        let protocol = first_char.to_string();
+
+        // Determine if selected: look for '>' and/or '*' after protocol
+        let rest_after_proto = &trimmed[1..];
+        let selected = rest_after_proto.starts_with(">*")
+            || rest_after_proto.starts_with('>')
+            || rest_after_proto.starts_with("*>");
+
+        // Find the destination: first CIDR-like token (x.x.x.x/n)
+        let parts: Vec<&str> = trimmed.split_whitespace().collect();
+
+        // The destination is typically the second token (after "S>*" etc.)
+        // but the first token may be "S>*" or "S" or "S>" etc.
+        let dest_idx = if parts.len() > 1 && parts[1].contains('/') {
+            1
+        } else if parts.len() > 2 && parts[2].contains('/') {
+            2
+        } else {
+            continue;
+        };
+
+        let destination = parts[dest_idx].to_string();
+
+        // Extract metric from [admin/metric] bracket
+        let metric = parts.iter().find_map(|p| {
+            if p.starts_with('[') && p.ends_with(']') {
+                Some(p.trim_start_matches('[').trim_end_matches(']').to_string())
+            } else {
+                None
+            }
+        });
+
+        // Check if "via" is present → gateway route
+        let via_pos = parts.iter().position(|p| *p == "via");
+        let gateway = via_pos
+            .and_then(|i| parts.get(i + 1))
+            .map(|g| g.trim_end_matches(',').to_string());
+
+        // Check if "directly connected" → no gateway, extract interface after comma
+        let is_connected = trimmed.contains("is directly connected");
+
+        // Extract interface: it's the token after "via <ip>," or after "is directly connected,"
+        let interface = if let Some(via_i) = via_pos {
+            // Interface is typically 2 positions after "via": "via 10.10.0.1, eth0,"
+            parts
+                .get(via_i + 2)
+                .map(|s| s.trim_end_matches(',').to_string())
+        } else if is_connected {
+            // Find "connected," and the next token is the interface
+            parts
+                .iter()
+                .position(|p| p.trim_end_matches(',') == "connected")
+                .and_then(|i| parts.get(i + 1))
+                .map(|s| s.trim_end_matches(',').to_string())
+        } else {
+            None
+        };
+
+        // Extract uptime: the last token that looks like a time (HH:MM:SS or NdNNhNNm)
+        let uptime = parts.last().and_then(|last| {
+            let s = last.trim_end_matches(',');
+            // Match patterns like "15:01:21", "1d00h00m", "00:05:00"
+            if s.contains(':')
+                && s.chars().any(|c| c.is_ascii_digit())
+                && !s.contains('/')
+                && !s.contains('.')
+                && !s.starts_with('[')
+            {
+                Some(s.to_string())
+            } else {
+                None
+            }
+        });
+
+        routes.push(VyosRoute {
+            protocol,
+            destination,
+            gateway,
+            interface,
+            metric,
+            uptime,
+            selected,
+        });
+    }
+
+    routes
+}
+
 // ── Parsed VyOS interface ───────────────────────────────
 
 /// A single parsed VyOS network interface from `show interfaces` output.
@@ -219,13 +370,20 @@ pub async fn interfaces(
     Ok(Json(parsed))
 }
 
-/// GET /api/v1/vyos/routes — fetch VyOS routing table.
-pub async fn routes(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+/// GET /api/v1/vyos/routes — fetch VyOS routing table (parsed).
+///
+/// Calls `show ip route` on VyOS, parses the text output, and returns
+/// a JSON array of [`VyosRoute`] objects.
+pub async fn routes(State(state): State<AppState>) -> Result<Json<Vec<VyosRoute>>, StatusCode> {
     let client = get_vyos_client_or_503(&state).await?;
-    client.show(&["ip", "route"]).await.map(Json).map_err(|e| {
+    let raw_value = client.show(&["ip", "route"]).await.map_err(|e| {
         tracing::error!("VyOS routes query failed: {e}");
         StatusCode::BAD_GATEWAY
-    })
+    })?;
+
+    let text = raw_value.as_str().unwrap_or("");
+    let parsed = parse_routes_text(text);
+    Ok(Json(parsed))
 }
 
 /// GET /api/v1/vyos/dhcp-leases — fetch DHCP server leases from VyOS.
@@ -543,6 +701,103 @@ mod tests {
             }
         }
     }"#;
+
+    #[test]
+    fn test_parse_route_static() {
+        let text = "S>* 0.0.0.0/0 [1/0] via 10.10.0.1, eth0, 01:23:45";
+        let routes = parse_routes_text(text);
+        assert_eq!(routes.len(), 1);
+        let r = &routes[0];
+        assert_eq!(r.protocol, "S");
+        assert_eq!(r.destination, "0.0.0.0/0");
+        assert_eq!(r.gateway.as_deref(), Some("10.10.0.1"));
+        assert_eq!(r.interface.as_deref(), Some("eth0"));
+        assert_eq!(r.metric.as_deref(), Some("1/0"));
+        assert_eq!(r.uptime.as_deref(), Some("01:23:45"));
+        assert!(r.selected);
+    }
+
+    #[test]
+    fn test_parse_route_connected() {
+        let text = "C>* 10.10.0.0/24 is directly connected, eth0";
+        let routes = parse_routes_text(text);
+        assert_eq!(routes.len(), 1);
+        let r = &routes[0];
+        assert_eq!(r.protocol, "C");
+        assert_eq!(r.destination, "10.10.0.0/24");
+        assert!(r.gateway.is_none());
+        assert_eq!(r.interface.as_deref(), Some("eth0"));
+        assert!(r.selected);
+    }
+
+    #[test]
+    fn test_parse_route_local() {
+        let text = "L>* 10.10.0.50/32 is directly connected, eth0, weight 1, 15:03:56";
+        let routes = parse_routes_text(text);
+        assert_eq!(routes.len(), 1);
+        let r = &routes[0];
+        assert_eq!(r.protocol, "L");
+        assert_eq!(r.destination, "10.10.0.50/32");
+        assert!(r.gateway.is_none());
+        assert_eq!(r.interface.as_deref(), Some("eth0"));
+        assert_eq!(r.uptime.as_deref(), Some("15:03:56"));
+        assert!(r.selected);
+    }
+
+    #[test]
+    fn test_parse_routes_empty() {
+        assert!(parse_routes_text("").is_empty());
+        assert!(parse_routes_text("   \n\n  ").is_empty());
+        assert!(parse_routes_text(
+            "Codes: K - kernel route, C - connected, L - local, S - static,\n\
+             IPv4 unicast VRF default:\n"
+        )
+        .is_empty());
+    }
+
+    #[test]
+    fn test_parse_routes_full_output() {
+        let text = "Codes: K - kernel route, C - connected, L - local, S - static,\n\
+                    \x20      R - RIP, O - OSPF, I - IS-IS, B - BGP, E - EIGRP, N - NHRP,\n\
+                    \x20      T - Table, v - VNC, V - VNC-Direct, A - Babel, F - PBR,\n\
+                    \x20      f - OpenFabric, t - Table-Direct,\n\
+                    \x20      > - selected route, * - FIB route, q - queued, r - rejected, b - backup\n\
+                    \x20      t - trapped, o - offload failure\n\
+                    \n\
+                    IPv4 unicast VRF default:\n\
+                    S>* 0.0.0.0/0 [1/0] via 10.10.0.1, eth0, weight 1, 15:01:21\n\
+                    C>* 10.10.0.0/24 is directly connected, eth0, weight 1, 15:03:56\n\
+                    L>* 10.10.0.50/32 is directly connected, eth0, weight 1, 15:03:56\n";
+
+        let routes = parse_routes_text(text);
+        assert_eq!(routes.len(), 3);
+
+        assert_eq!(routes[0].protocol, "S");
+        assert_eq!(routes[0].destination, "0.0.0.0/0");
+        assert_eq!(routes[0].gateway.as_deref(), Some("10.10.0.1"));
+        assert!(routes[0].selected);
+
+        assert_eq!(routes[1].protocol, "C");
+        assert_eq!(routes[1].destination, "10.10.0.0/24");
+        assert!(routes[1].gateway.is_none());
+        assert!(routes[1].selected);
+
+        assert_eq!(routes[2].protocol, "L");
+        assert_eq!(routes[2].destination, "10.10.0.50/32");
+        assert!(routes[2].gateway.is_none());
+        assert!(routes[2].selected);
+    }
+
+    #[test]
+    fn test_parse_route_not_selected() {
+        let text = "O   10.0.0.0/8 [110/20] via 10.10.0.2, eth1, weight 1, 02:00:00";
+        let routes = parse_routes_text(text);
+        assert_eq!(routes.len(), 1);
+        let r = &routes[0];
+        assert_eq!(r.protocol, "O");
+        assert!(!r.selected);
+        assert_eq!(r.metric.as_deref(), Some("110/20"));
+    }
 
     #[test]
     fn test_parse_iperf3_json_result() {
