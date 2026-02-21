@@ -121,9 +121,9 @@ impl VyosClient {
     /// Run an iperf3 client command on VyOS targeting the given server IP.
     ///
     /// **Deprecated**: This method used the VyOS HTTP API `show iperf3` command
-    /// which doesn't exist. Use [`crate::vyos::iperf3::run_iperf3_local`] instead.
+    /// which doesn't exist. Use [`crate::vyos::speedtest_ookla::run_speedtest_ookla`] instead.
     pub async fn run_iperf3(&self, _server_ip: &str, _reverse: bool) -> Result<String> {
-        anyhow::bail!("VyOS API does not support 'show iperf3'. Use run_iperf3_local() instead.")
+        anyhow::bail!("VyOS API does not support 'show iperf3'. Use run_speedtest_ookla() instead.")
     }
 
     /// Low-level helper: send a multipart form POST to the VyOS API.

@@ -15,6 +15,9 @@ import {
   ArrowUp,
   Clock,
   AlertTriangle,
+  ExternalLink,
+  Activity,
+  Wifi,
 } from "lucide-react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -162,8 +165,8 @@ function SpeedTestSection() {
     setError(null);
     setProgress(0);
 
-    // Animate progress bar over ~15 seconds (download 5s + upload 5s + connection overhead)
-    const totalMs = 15000;
+    // Animate progress bar over ~60 seconds (Ookla speedtest takes 30–60s)
+    const totalMs = 60000;
     const intervalMs = 100;
     const steps = totalMs / intervalMs;
     let step = 0;
@@ -185,7 +188,7 @@ function SpeedTestSection() {
         if (e.message.includes("429")) {
           setError("Rate limited — please wait 60 seconds between tests.");
         } else if (e.message.includes("503")) {
-          setError("iperf3 not available on the server.");
+          setError("Speedtest CLI not available on the server.");
         } else {
           setError(e.message);
         }
@@ -222,8 +225,8 @@ function SpeedTestSection() {
               Speed Test
             </h3>
             <p className="text-xs text-gray-500">
-              Measures internet throughput from the Panoptikon server using
-              iperf3.
+              Measures internet speed from the Panoptikon server using Ookla
+              Speedtest.
             </p>
           </div>
           <Button
@@ -251,7 +254,7 @@ function SpeedTestSection() {
         <div className="space-y-2">
           <Progress value={progress} />
           <p className="text-center text-xs text-gray-500">
-            Running speed test… download + upload (~15 seconds)
+            Running speed test… this may take up to 60 seconds
           </p>
         </div>
       )}
@@ -267,6 +270,7 @@ function SpeedTestSection() {
       {/* Result cards */}
       {result && !running && (
         <div className="space-y-4">
+          {/* Download + Upload */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* Download */}
             <Card className="border-[#2a2a3a] bg-[#16161f]">
@@ -305,12 +309,74 @@ function SpeedTestSection() {
             </Card>
           </div>
 
-          {/* Metadata */}
-          <div className="flex items-center justify-between px-1">
+          {/* Ping, Jitter, Packet Loss */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Card className="border-[#2a2a3a] bg-[#16161f]">
+              <CardContent className="flex items-center gap-3 py-4">
+                <Activity className="h-5 w-5 text-purple-400" />
+                <div>
+                  <p className="text-xs text-gray-500">Ping</p>
+                  <p className="text-lg font-semibold text-white">
+                    {result.ping_ms.toFixed(1)}{" "}
+                    <span className="text-xs font-normal text-gray-500">ms</span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-[#2a2a3a] bg-[#16161f]">
+              <CardContent className="flex items-center gap-3 py-4">
+                <Activity className="h-5 w-5 text-yellow-400" />
+                <div>
+                  <p className="text-xs text-gray-500">Jitter</p>
+                  <p className="text-lg font-semibold text-white">
+                    {result.jitter_ms.toFixed(2)}{" "}
+                    <span className="text-xs font-normal text-gray-500">ms</span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-[#2a2a3a] bg-[#16161f]">
+              <CardContent className="flex items-center gap-3 py-4">
+                <Wifi className="h-5 w-5 text-cyan-400" />
+                <div>
+                  <p className="text-xs text-gray-500">Packet Loss</p>
+                  <p className="text-lg font-semibold text-white">
+                    {result.packet_loss.toFixed(1)}
+                    <span className="text-xs font-normal text-gray-500">%</span>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Metadata: ISP, Server, Tested at, Result link */}
+          <div className="space-y-1 px-1">
             <p className="flex items-center gap-1 text-xs text-gray-500">
-              <Clock className="h-3 w-3" />
-              Last tested: {timeAgo(result.tested_at)}
+              <Globe className="h-3 w-3" />
+              ISP: <span className="text-gray-400">{result.isp}</span>
             </p>
+            <p className="flex items-center gap-1 text-xs text-gray-500">
+              <Server className="h-3 w-3" />
+              Server: <span className="text-gray-400">{result.server}</span>
+            </p>
+            <div className="flex items-center justify-between">
+              <p className="flex items-center gap-1 text-xs text-gray-500">
+                <Clock className="h-3 w-3" />
+                Last tested: {timeAgo(result.tested_at)}
+              </p>
+              {result.result_url && (
+                <a
+                  href={result.result_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                >
+                  View Result <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -319,7 +385,7 @@ function SpeedTestSection() {
       <div className="flex items-start gap-2 rounded-md border border-amber-500/20 bg-amber-500/5 px-4 py-3">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
         <p className="text-xs text-amber-400/80">
-          Speed test measures WAN throughput to public iperf3 servers. Tests are
+          Speed test measures WAN throughput using Ookla Speedtest. Tests are
           rate limited to once per 60 seconds.
         </p>
       </div>

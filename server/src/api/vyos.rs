@@ -824,15 +824,21 @@ pub async fn config_interfaces(State(state): State<AppState>) -> Result<Json<Val
         })
 }
 
-// ── Speed Test ──────────────────────────────────────────────────────
+// ── Speed Test ──────────────────────────────────────────────────────────────
 
 /// Speed test result returned to the frontend.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SpeedTestResult {
     pub download_mbps: f64,
     pub upload_mbps: f64,
-    pub latency_ms: f64,
+    pub ping_ms: f64,
+    pub jitter_ms: f64,
+    pub packet_loss: f64,
+    pub isp: String,
+    pub server: String,
+    pub result_url: Option<String>,
     pub tested_at: DateTime<Utc>,
+    pub error: Option<String>,
 }
 
 /// Error response for the speed test endpoint.
@@ -841,45 +847,12 @@ pub struct SpeedTestError {
     pub error: String,
 }
 
-/// Parsed iperf3 end-of-test summary.
-#[derive(Debug, Deserialize)]
-struct Iperf3End {
-    sum_received: Option<Iperf3Sum>,
-}
-
-#[derive(Debug, Deserialize)]
-struct Iperf3Sum {
-    bits_per_second: Option<f64>,
-}
-
-#[derive(Debug, Deserialize)]
-struct Iperf3Result {
-    end: Option<Iperf3End>,
-}
-
-/// Parse iperf3 JSON output and extract bits_per_second from sum_received.
-pub fn parse_iperf3_bps(json_str: &str) -> Result<f64, String> {
-    let parsed: Iperf3Result =
-        serde_json::from_str(json_str).map_err(|e| format!("failed to parse iperf3 JSON: {e}"))?;
-
-    let end = parsed
-        .end
-        .ok_or_else(|| "iperf3 JSON missing 'end' field".to_string())?;
-
-    let sum = end
-        .sum_received
-        .ok_or_else(|| "iperf3 JSON missing 'end.sum_received' field".to_string())?;
-
-    sum.bits_per_second
-        .ok_or_else(|| "iperf3 JSON missing 'end.sum_received.bits_per_second' field".to_string())
-}
-
 const SPEEDTEST_RATE_LIMIT_SECS: i64 = 60;
 
-/// POST /api/v1/router/speedtest — run a WAN speed test using iperf3 against public servers.
+/// POST /api/v1/router/speedtest — run a WAN speed test using Ookla Speedtest CLI.
 ///
-/// Does **not** require VyOS to be configured. Runs iperf3 locally on the
-/// Panoptikon server to measure internet throughput.
+/// Does **not** require VyOS to be configured. Runs the Ookla Speedtest CLI
+/// locally on the Panoptikon server to measure internet throughput.
 pub async fn speedtest(
     State(state): State<AppState>,
 ) -> Result<Json<SpeedTestResult>, (StatusCode, Json<SpeedTestError>)> {
@@ -904,83 +877,51 @@ pub async fn speedtest(
         }
     }
 
-    // Check iperf3 is installed locally
-    let iperf3_check = tokio::process::Command::new("iperf3")
-        .arg("--version")
-        .output()
-        .await;
-
-    if iperf3_check.is_err() || !iperf3_check.unwrap().status.success() {
+    // Check that Ookla Speedtest CLI is installed
+    if tokio::fs::metadata("/usr/local/bin/speedtest")
+        .await
+        .is_err()
+    {
         return Err((
             StatusCode::SERVICE_UNAVAILABLE,
             Json(SpeedTestError {
-                error: "iperf3 not installed on server".to_string(),
+                error: "Ookla Speedtest CLI not installed on server".to_string(),
             }),
         ));
     }
 
-    tracing::info!("Starting WAN speed test via public iperf3 servers");
+    tracing::info!("Starting WAN speed test via Ookla Speedtest CLI");
 
-    // --- Download test (--reverse: server sends to us) ---
-    let (download_json, server_name) =
-        crate::vyos::iperf3::run_iperf3_local(true)
-            .await
-            .map_err(|e| {
-                tracing::error!("iperf3 download test failed: {e}");
-                (
-                    StatusCode::BAD_GATEWAY,
-                    Json(SpeedTestError {
-                        error: format!("Download test failed: {e}"),
-                    }),
-                )
-            })?;
-
-    let download_mbps = match parse_iperf3_bps(&download_json) {
-        Ok(bps) => bps / 1_000_000.0,
-        Err(e) => {
-            tracing::error!("Failed to parse download iperf3 result: {e}");
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(SpeedTestError {
-                    error: format!("Failed to parse iperf3 download result: {e}"),
-                }),
-            ));
-        }
-    };
-
-    // --- Upload test (no --reverse: we send to server) ---
-    let upload_mbps = match crate::vyos::iperf3::run_iperf3_local(false).await {
-        Ok((upload_json, _)) => match parse_iperf3_bps(&upload_json) {
-            Ok(bps) => bps / 1_000_000.0,
-            Err(e) => {
-                tracing::error!("Failed to parse upload iperf3 result: {e}");
-                return Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(SpeedTestError {
-                        error: format!("Failed to parse iperf3 upload result: {e}"),
-                    }),
-                ));
-            }
-        },
-        Err(e) => {
-            tracing::error!("iperf3 upload test failed: {e}");
-            return Err((
+    let ookla_result = crate::vyos::speedtest_ookla::run_speedtest_ookla()
+        .await
+        .map_err(|e| {
+            tracing::error!("Ookla Speedtest failed: {e}");
+            (
                 StatusCode::BAD_GATEWAY,
                 Json(SpeedTestError {
-                    error: format!("Upload test failed: {e}"),
+                    error: format!("Speed test failed: {e}"),
                 }),
-            ));
-        }
-    };
+            )
+        })?;
 
-    // iperf3 doesn't provide latency; could ping separately
-    let latency_ms = 0.0;
+    let download_mbps = ookla_result.download.bandwidth as f64 * 8.0 / 1_000_000.0;
+    let upload_mbps = ookla_result.upload.bandwidth as f64 * 8.0 / 1_000_000.0;
+    let server = format!(
+        "{} - {}, {}",
+        ookla_result.server.name, ookla_result.server.location, ookla_result.server.country
+    );
 
     let result = SpeedTestResult {
         download_mbps: (download_mbps * 100.0).round() / 100.0,
         upload_mbps: (upload_mbps * 100.0).round() / 100.0,
-        latency_ms,
+        ping_ms: ookla_result.ping.latency,
+        jitter_ms: ookla_result.ping.jitter,
+        packet_loss: ookla_result.packet_loss,
+        isp: ookla_result.isp,
+        server: server.clone(),
+        result_url: ookla_result.result.url,
         tested_at: Utc::now(),
+        error: None,
     };
 
     // Cache the result
@@ -990,9 +931,10 @@ pub async fn speedtest(
     }
 
     tracing::info!(
-        "WAN speed test complete via {server_name}: download={:.2} Mbps, upload={:.2} Mbps",
+        "WAN speed test complete via {server}: download={:.2} Mbps, upload={:.2} Mbps, ping={:.1} ms",
         result.download_mbps,
-        result.upload_mbps
+        result.upload_mbps,
+        result.ping_ms,
     );
 
     Ok(Json(result))
@@ -1059,40 +1001,28 @@ async fn get_vyos_client_or_503(
 mod tests {
     use super::*;
 
-    /// A realistic iperf3 JSON output for testing.
-    const IPERF3_SAMPLE_JSON: &str = r#"{
-        "start": {
-            "connecting_to": {
-                "host": "10.10.0.14",
-                "port": 5201
-            },
-            "version": "iperf 3.6",
-            "timestamp": {
-                "time": "Fri, 21 Feb 2026 00:00:00 GMT",
-                "timesecs": 1771545600
-            }
+    /// A realistic Ookla Speedtest CLI JSON output for testing.
+    const SPEEDTEST_SAMPLE_JSON: &str = r#"{
+        "type": "result",
+        "timestamp": "2026-02-21T12:28:32Z",
+        "ping": {"jitter": 0.286, "latency": 3.106, "low": 2.773, "high": 3.655},
+        "download": {
+            "bandwidth": 117080776,
+            "bytes": 422974092,
+            "elapsed": 3616,
+            "latency": {"iqm": 7.728, "low": 2.577, "high": 9.582, "jitter": 0.672}
         },
-        "intervals": [],
-        "end": {
-            "sum_sent": {
-                "start": 0,
-                "end": 5.000050,
-                "seconds": 5.000050,
-                "bytes": 587202560,
-                "bits_per_second": 939513379.456,
-                "retransmits": 0,
-                "sender": true
-            },
-            "sum_received": {
-                "start": 0,
-                "end": 5.000050,
-                "seconds": 5.000050,
-                "bytes": 585105408,
-                "bits_per_second": 936157654.123,
-                "retransmits": 0,
-                "sender": false
-            }
-        }
+        "upload": {
+            "bandwidth": 62761164,
+            "bytes": 226159578,
+            "elapsed": 3602,
+            "latency": {"iqm": 17.696, "low": 2.594, "high": 23.776, "jitter": 0.887}
+        },
+        "packetLoss": 0,
+        "isp": "Partner Communications",
+        "interface": {"internalIp": "10.10.0.14", "name": "enp6s18", "macAddr": "BC:24:11:5C:C6:0A", "isVpn": false, "externalIp": "176.229.191.84"},
+        "server": {"id": 14215, "host": "speedtest1.partner.co.il", "port": 8080, "name": "Partner Communications", "location": "Petah Tikva", "country": "Israel", "ip": "212.199.201.70"},
+        "result": {"id": "test-uuid", "url": "https://www.speedtest.net/result/c/test-uuid", "persisted": true}
     }"#;
 
     #[test]
@@ -1193,49 +1123,48 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_iperf3_json_result() {
-        let bps = parse_iperf3_bps(IPERF3_SAMPLE_JSON).expect("should parse successfully");
-        let mbps = bps / 1_000_000.0;
-        // 936157654.123 / 1_000_000 ≈ 936.16
+    fn test_parse_ookla_speedtest_json() {
+        use crate::vyos::speedtest_ookla::OoklaSpeedtestResult;
+
+        let result: OoklaSpeedtestResult =
+            serde_json::from_str(SPEEDTEST_SAMPLE_JSON).expect("should parse speedtest JSON");
+
+        let download_mbps = result.download.bandwidth as f64 * 8.0 / 1_000_000.0;
         assert!(
-            (mbps - 936.16).abs() < 0.1,
-            "expected ~936.16 Mbps, got {mbps}"
+            (download_mbps - 936.65).abs() < 0.1,
+            "expected ~936.65 Mbps download, got {download_mbps}"
+        );
+
+        let upload_mbps = result.upload.bandwidth as f64 * 8.0 / 1_000_000.0;
+        assert!(
+            (upload_mbps - 502.09).abs() < 0.1,
+            "expected ~502.09 Mbps upload, got {upload_mbps}"
+        );
+
+        assert!((result.ping.latency - 3.106).abs() < 0.001);
+        assert!((result.ping.jitter - 0.286).abs() < 0.001);
+        assert!((result.packet_loss - 0.0).abs() < 0.001);
+        assert_eq!(result.isp, "Partner Communications");
+        assert_eq!(result.server.name, "Partner Communications");
+        assert_eq!(result.server.location, "Petah Tikva");
+        assert_eq!(result.server.country, "Israel");
+        assert_eq!(
+            result.result.url.as_deref(),
+            Some("https://www.speedtest.net/result/c/test-uuid")
         );
     }
 
     #[test]
-    fn test_parse_iperf3_missing_fields() {
-        // Missing 'end' field entirely
-        let no_end = r#"{"start": {}}"#;
-        let err = parse_iperf3_bps(no_end).unwrap_err();
-        assert!(
-            err.contains("missing 'end' field"),
-            "expected 'missing end' error, got: {err}"
-        );
+    fn test_parse_ookla_invalid_json() {
+        use crate::vyos::speedtest_ookla::OoklaSpeedtestResult;
 
-        // Missing 'sum_received'
-        let no_sum = r#"{"end": {"sum_sent": {"bits_per_second": 100}}}"#;
-        let err = parse_iperf3_bps(no_sum).unwrap_err();
-        assert!(
-            err.contains("missing 'end.sum_received' field"),
-            "expected 'missing sum_received' error, got: {err}"
-        );
-
-        // Missing 'bits_per_second'
-        let no_bps = r#"{"end": {"sum_received": {}}}"#;
-        let err = parse_iperf3_bps(no_bps).unwrap_err();
-        assert!(
-            err.contains("missing 'end.sum_received.bits_per_second' field"),
-            "expected 'missing bits_per_second' error, got: {err}"
-        );
-
-        // Invalid JSON
         let bad_json = "not json at all";
-        let err = parse_iperf3_bps(bad_json).unwrap_err();
-        assert!(
-            err.contains("failed to parse"),
-            "expected parse error, got: {err}"
-        );
+        let err = serde_json::from_str::<OoklaSpeedtestResult>(bad_json);
+        assert!(err.is_err(), "should fail on invalid JSON");
+
+        let incomplete = r#"{"ping": {"latency": 1.0}}"#;
+        let err = serde_json::from_str::<OoklaSpeedtestResult>(incomplete);
+        assert!(err.is_err(), "should fail on incomplete JSON");
     }
 
     #[test]
@@ -1552,8 +1481,14 @@ mod tests {
         let recent_result = SpeedTestResult {
             download_mbps: 500.0,
             upload_mbps: 450.0,
-            latency_ms: 0.5,
+            ping_ms: 3.1,
+            jitter_ms: 0.3,
+            packet_loss: 0.0,
+            isp: "Test ISP".to_string(),
+            server: "Test Server - Test City, Test Country".to_string(),
+            result_url: None,
             tested_at: Utc::now(),
+            error: None,
         };
 
         let last_speedtest: Arc<Mutex<Option<SpeedTestResult>>> =
@@ -1577,8 +1512,14 @@ mod tests {
         let old_result = SpeedTestResult {
             download_mbps: 500.0,
             upload_mbps: 450.0,
-            latency_ms: 0.5,
+            ping_ms: 3.1,
+            jitter_ms: 0.3,
+            packet_loss: 0.0,
+            isp: "Test ISP".to_string(),
+            server: "Test Server - Test City, Test Country".to_string(),
+            result_url: None,
             tested_at: Utc::now() - chrono::Duration::seconds(120),
+            error: None,
         };
 
         let last_speedtest_old: Arc<Mutex<Option<SpeedTestResult>>> =
