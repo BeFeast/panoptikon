@@ -212,12 +212,19 @@ pub async fn mute_device(
 
 /// Check if a device is currently muted (muted_until > now).
 /// Returns true if the device is muted and alerts should be suppressed.
-pub async fn is_device_muted(db: &sqlx::SqlitePool, device_id: &str) -> bool {
+///
+/// Accepts any sqlx executor — `&SqlitePool`, `&mut SqliteConnection`, or a
+/// transaction reference (`&mut *tx`), so callers inside a transaction don't
+/// need a separate pool connection.
+pub async fn is_device_muted<'e, E>(executor: E, device_id: &str) -> bool
+where
+    E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+{
     let result: Option<i64> = sqlx::query_scalar(
         r#"SELECT 1 FROM devices WHERE id = ? AND muted_until IS NOT NULL AND muted_until > datetime('now')"#,
     )
     .bind(device_id)
-    .fetch_optional(db)
+    .fetch_optional(executor)
     .await
     .unwrap_or(None);
 
