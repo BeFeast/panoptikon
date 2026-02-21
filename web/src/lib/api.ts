@@ -122,6 +122,10 @@ export function acknowledgeAlert(id: string, note?: string): Promise<void> {
   return apiPost<void>(`/api/v1/alerts/${id}/acknowledge`, { note });
 }
 
+export function markAllAlertsRead(): Promise<void> {
+  return apiPost<void>("/api/v1/alerts/mark-all-read");
+}
+
 export function muteDevice(id: string, hours: number): Promise<void> {
   return apiPost<void>(`/api/v1/devices/${id}/mute?hours=${hours}`);
 }
@@ -214,6 +218,10 @@ export function fetchAuthStatus(): Promise<AuthStatus> {
 
 export function login(password: string): Promise<LoginResponse> {
   return apiPost<LoginResponse>("/api/v1/auth/login", { password });
+}
+
+export function logout(): Promise<void> {
+  return apiPost<void>("/api/v1/auth/logout");
 }
 
 export function runSetup(body: {

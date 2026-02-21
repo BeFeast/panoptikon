@@ -108,6 +108,7 @@ pub fn router(state: AppState) -> Router {
         .route("/dashboard/top-devices", get(dashboard::top_devices))
         // Alerts
         .route("/alerts", get(alerts::list))
+        .route("/alerts/mark-all-read", post(alerts::mark_all_read))
         .route("/alerts/:id/read", post(alerts::mark_read))
         .route("/alerts/:id/acknowledge", post(alerts::acknowledge))
         // Device mute
