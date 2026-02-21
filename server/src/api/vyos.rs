@@ -386,17 +386,192 @@ pub async fn routes(State(state): State<AppState>) -> Result<Json<Vec<VyosRoute>
     Ok(Json(parsed))
 }
 
-/// GET /api/v1/vyos/dhcp-leases — fetch DHCP server leases from VyOS.
-pub async fn dhcp_leases(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+// ── Parsed VyOS DHCP lease ──────────────────────────────
+
+/// A single parsed VyOS DHCP lease from `show dhcp server leases` output.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct VyosDhcpLease {
+    pub ip: String,
+    pub mac: String,
+    pub hostname: Option<String>,
+    pub state: String,
+    pub lease_start: Option<String>,
+    pub lease_expiry: Option<String>,
+    pub remaining: Option<String>,
+    pub pool: Option<String>,
+}
+
+/// Parse the text output of `show dhcp server leases` into a vec of [`VyosDhcpLease`].
+///
+/// Expected format (header + data rows):
+/// ```text
+/// IP Address    MAC Address        State    Lease start          Lease expiration     Remaining  Pool       Hostname
+/// -----------   -----------------  ------   -------------------  -------------------  ---------  ---------  --------
+/// 10.10.0.100   aa:bb:cc:dd:ee:ff  active   2026/02/21 10:00:00  2026/02/21 22:00:00  11:30:00   LAN        myhost
+/// 10.10.0.101   11:22:33:44:55:66  active   2026/02/21 09:00:00  2026/02/21 21:00:00  10:00:00   LAN        -
+/// ```
+///
+/// Column order may vary across VyOS versions; we parse positionally based on headers.
+/// If the output indicates DHCP is not configured, returns an empty vec.
+pub fn parse_dhcp_leases_text(text: &str) -> Vec<VyosDhcpLease> {
+    let mut leases = Vec::new();
+    let text_lower = text.to_lowercase();
+
+    // If DHCP is not configured, return empty
+    if text_lower.contains("not configured")
+        || text_lower.contains("no leases")
+        || text.trim().is_empty()
+    {
+        return leases;
+    }
+
+    let lines: Vec<&str> = text.lines().collect();
+    if lines.is_empty() {
+        return leases;
+    }
+
+    // Find the header line (contains "IP Address" or "IP address")
+    let header_idx = lines.iter().position(|l| {
+        let lower = l.to_lowercase();
+        lower.contains("ip address") && lower.contains("mac")
+    });
+
+    let header_idx = match header_idx {
+        Some(i) => i,
+        None => return leases, // No recognizable header
+    };
+
+    // Parse column positions from header
+    let header = lines[header_idx];
+    let header_lower = header.to_lowercase();
+
+    // Find column start positions
+    let col_ip = header_lower.find("ip address").unwrap_or(0);
+    let col_mac = header_lower.find("mac");
+    let col_state = header_lower.find("state");
+    let col_start = header_lower
+        .find("lease start")
+        .or_else(|| header_lower.find("start"));
+    let col_expiry = header_lower
+        .find("lease expiration")
+        .or_else(|| header_lower.find("expir"));
+    let col_remaining = header_lower.find("remaining");
+    let col_pool = header_lower.find("pool");
+    let col_hostname = header_lower.find("hostname");
+
+    // Collect all column positions in order for boundary calculation
+    let mut all_cols: Vec<(&str, usize)> = Vec::new();
+    all_cols.push(("ip", col_ip));
+    if let Some(c) = col_mac {
+        all_cols.push(("mac", c));
+    }
+    if let Some(c) = col_state {
+        all_cols.push(("state", c));
+    }
+    if let Some(c) = col_start {
+        all_cols.push(("start", c));
+    }
+    if let Some(c) = col_expiry {
+        all_cols.push(("expiry", c));
+    }
+    if let Some(c) = col_remaining {
+        all_cols.push(("remaining", c));
+    }
+    if let Some(c) = col_pool {
+        all_cols.push(("pool", c));
+    }
+    if let Some(c) = col_hostname {
+        all_cols.push(("hostname", c));
+    }
+    all_cols.sort_by_key(|&(_, pos)| pos);
+
+    // Helper: extract field value given its start position
+    let extract_field = |line: &str, col_name: &str| -> Option<String> {
+        let idx = all_cols.iter().position(|&(n, _)| n == col_name)?;
+        let start = all_cols[idx].1;
+        let end = all_cols
+            .get(idx + 1)
+            .map(|&(_, pos)| pos)
+            .unwrap_or(line.len());
+
+        if start >= line.len() {
+            return None;
+        }
+
+        let end = end.min(line.len());
+        let val = line.get(start..end)?.trim();
+        if val.is_empty() || val == "-" {
+            None
+        } else {
+            Some(val.to_string())
+        }
+    };
+
+    // Skip header + separator line(s)
+    let data_start = header_idx + 1;
+
+    for line in &lines[data_start..] {
+        let trimmed = line.trim();
+
+        // Skip empty lines and separator lines
+        if trimmed.is_empty() || trimmed.starts_with("---") || trimmed.starts_with("===") {
+            continue;
+        }
+
+        // A data line should start with an IP-like pattern (digit)
+        // But use column position instead for robustness
+        let ip = match extract_field(line, "ip") {
+            Some(ip) if ip.chars().next().is_some_and(|c| c.is_ascii_digit()) => ip,
+            _ => continue,
+        };
+
+        let mac = extract_field(line, "mac").unwrap_or_default();
+        if mac.is_empty() {
+            continue; // Must have a MAC
+        }
+
+        let state = extract_field(line, "state").unwrap_or_else(|| "unknown".to_string());
+        let lease_start = extract_field(line, "start");
+        let lease_expiry = extract_field(line, "expiry");
+        let remaining = extract_field(line, "remaining");
+        let pool = extract_field(line, "pool");
+        let hostname = extract_field(line, "hostname");
+
+        leases.push(VyosDhcpLease {
+            ip,
+            mac,
+            hostname,
+            state,
+            lease_start,
+            lease_expiry,
+            remaining,
+            pool,
+        });
+    }
+
+    leases
+}
+
+/// GET /api/v1/vyos/dhcp-leases — fetch DHCP server leases from VyOS (parsed).
+///
+/// Calls `show dhcp server leases` on VyOS, parses the tabular text output,
+/// and returns a JSON array of [`VyosDhcpLease`] objects.
+/// If DHCP is not configured, returns an empty array (not an error).
+pub async fn dhcp_leases(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<VyosDhcpLease>>, StatusCode> {
     let client = get_vyos_client_or_503(&state).await?;
-    client
+    let raw_value = client
         .show(&["dhcp", "server", "leases"])
         .await
-        .map(Json)
         .map_err(|e| {
             tracing::error!("VyOS DHCP leases query failed: {e}");
             StatusCode::BAD_GATEWAY
-        })
+        })?;
+
+    let text = raw_value.as_str().unwrap_or("");
+    let parsed = parse_dhcp_leases_text(text);
+    Ok(Json(parsed))
 }
 
 /// GET /api/v1/vyos/firewall — fetch firewall config from VyOS.
@@ -941,6 +1116,64 @@ mod tests {
             parse_state_field("invalid"),
             ("unknown".to_string(), "unknown".to_string())
         );
+    }
+
+    #[test]
+    fn test_parse_dhcp_lease_active() {
+        let text = "IP Address    MAC Address        State    Lease start          Lease expiration     Remaining  Pool       Hostname\n\
+                    ----------    -----------------  ------   -------------------  -------------------  ---------  ---------  --------\n\
+                    10.10.0.100   aa:bb:cc:dd:ee:ff  active   2026/02/21 10:00:00  2026/02/21 22:00:00  11:30:00   LAN        myhost\n\
+                    10.10.0.101   11:22:33:44:55:66  active   2026/02/21 09:00:00  2026/02/21 21:00:00  10:00:00   LAN        -\n";
+
+        let leases = parse_dhcp_leases_text(text);
+        assert_eq!(leases.len(), 2);
+
+        let l0 = &leases[0];
+        assert_eq!(l0.ip, "10.10.0.100");
+        assert_eq!(l0.mac, "aa:bb:cc:dd:ee:ff");
+        assert_eq!(l0.state, "active");
+        assert_eq!(l0.hostname.as_deref(), Some("myhost"));
+        assert_eq!(l0.pool.as_deref(), Some("LAN"));
+        assert_eq!(l0.lease_start.as_deref(), Some("2026/02/21 10:00:00"));
+        assert_eq!(l0.lease_expiry.as_deref(), Some("2026/02/21 22:00:00"));
+        assert_eq!(l0.remaining.as_deref(), Some("11:30:00"));
+
+        let l1 = &leases[1];
+        assert_eq!(l1.ip, "10.10.0.101");
+        assert_eq!(l1.mac, "11:22:33:44:55:66");
+        assert!(l1.hostname.is_none()); // "-" should be None
+    }
+
+    #[test]
+    fn test_parse_dhcp_empty() {
+        // "Not configured" message
+        assert!(parse_dhcp_leases_text("DHCP server is not configured\n").is_empty());
+
+        // Empty string
+        assert!(parse_dhcp_leases_text("").is_empty());
+
+        // Whitespace only
+        assert!(parse_dhcp_leases_text("   \n\n  ").is_empty());
+
+        // Error message
+        assert!(parse_dhcp_leases_text("No leases found\n").is_empty());
+    }
+
+    #[test]
+    fn test_parse_dhcp_single_lease() {
+        let text = "IP Address    MAC Address        State    Lease start          Lease expiration     Remaining  Pool       Hostname\n\
+                    ----------    -----------------  ------   -------------------  -------------------  ---------  ---------  --------\n\
+                    192.168.1.50  de:ad:be:ef:00:01  expired  2026/02/20 08:00:00  2026/02/20 20:00:00  00:00:00   GUEST      laptop\n";
+
+        let leases = parse_dhcp_leases_text(text);
+        assert_eq!(leases.len(), 1);
+
+        let l = &leases[0];
+        assert_eq!(l.ip, "192.168.1.50");
+        assert_eq!(l.mac, "de:ad:be:ef:00:01");
+        assert_eq!(l.state, "expired");
+        assert_eq!(l.hostname.as_deref(), Some("laptop"));
+        assert_eq!(l.pool.as_deref(), Some("GUEST"));
     }
 
     #[tokio::test]

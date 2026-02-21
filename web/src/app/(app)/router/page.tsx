@@ -31,7 +31,7 @@ import {
   fetchRouterConfigInterfaces,
   runSpeedTest,
 } from "@/lib/api";
-import type { RouterStatus, SpeedTestResult, VyosInterface, VyosRoute } from "@/lib/types";
+import type { RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute } from "@/lib/types";
 import { Progress } from "@/components/ui/progress";
 
 // ── Not Configured state ────────────────────────────────
@@ -690,6 +690,140 @@ function RoutesTable({
   );
 }
 
+// ── DHCP State Badge ────────────────────────────────────
+
+function DhcpStateBadge({ state }: { state: string }) {
+  const lower = state.toLowerCase();
+  if (lower === "active") {
+    return (
+      <Badge
+        variant="outline"
+        className="border-green-500/30 bg-green-500/10 text-green-400"
+      >
+        active
+      </Badge>
+    );
+  }
+  if (lower === "expired") {
+    return (
+      <Badge
+        variant="outline"
+        className="border-red-500/30 bg-red-500/10 text-red-400"
+      >
+        expired
+      </Badge>
+    );
+  }
+  if (lower === "free") {
+    return (
+      <Badge
+        variant="outline"
+        className="border-gray-500/30 bg-gray-500/10 text-gray-400"
+      >
+        free
+      </Badge>
+    );
+  }
+  return (
+    <Badge
+      variant="outline"
+      className="border-gray-500/30 bg-gray-500/10 text-gray-400"
+    >
+      {state}
+    </Badge>
+  );
+}
+
+// ── DHCP Leases Table ───────────────────────────────────
+
+function DhcpLeasesTable({
+  leases,
+  loading,
+  error,
+}: {
+  leases: VyosDhcpLease[] | null;
+  loading: boolean;
+  error: string | null;
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-8 text-gray-500">
+        <Loader2 className="h-4 w-4 animate-spin" />
+        <span className="text-sm">Loading…</span>
+      </div>
+    );
+  }
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+        <p className="text-xs text-red-400">{error}</p>
+      </div>
+    );
+  }
+  if (!leases || leases.length === 0) {
+    return (
+      <p className="py-4 text-sm text-gray-500">
+        No DHCP leases found. DHCP server may not be configured.
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-[#2a2a3a]">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-[#2a2a3a] bg-[#0e0e16] text-left">
+            <th className="px-4 py-3 font-medium text-gray-400">IP Address</th>
+            <th className="px-4 py-3 font-medium text-gray-400">MAC Address</th>
+            <th className="px-4 py-3 font-medium text-gray-400">Hostname</th>
+            <th className="px-4 py-3 font-medium text-gray-400">Pool</th>
+            <th className="px-4 py-3 font-medium text-gray-400">Expires</th>
+            <th className="px-4 py-3 font-medium text-gray-400">State</th>
+          </tr>
+        </thead>
+        <tbody>
+          {leases.map((lease, idx) => (
+            <tr
+              key={`${lease.ip}-${idx}`}
+              className="border-b border-[#2a2a3a] last:border-b-0 hover:bg-[#1a1a2a]"
+            >
+              <td className="px-4 py-3">
+                <span className="font-mono font-medium text-white">
+                  {lease.ip}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono text-xs text-gray-400">
+                  {lease.mac}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="text-gray-300">
+                  {lease.hostname ?? "—"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="text-gray-300">
+                  {lease.pool ?? "—"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono text-xs text-gray-400">
+                  {lease.lease_expiry ?? "—"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <DhcpStateBadge state={lease.state} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ── Main Page ───────────────────────────────────────────
 
 export default function RouterPage() {
@@ -747,7 +881,7 @@ function RouterTabs({ status }: { status: RouterStatus }) {
     tab === "routes"
   );
 
-  const dhcp = useAsyncData(
+  const dhcp = useAsyncData<VyosDhcpLease[]>(
     useCallback(() => fetchRouterDhcpLeases(), []),
     tab === "dhcp"
   );
@@ -850,11 +984,10 @@ function RouterTabs({ status }: { status: RouterStatus }) {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <OutputPanel
-                data={typeof dhcp.data === "string" ? dhcp.data : null}
+              <DhcpLeasesTable
+                leases={Array.isArray(dhcp.data) ? dhcp.data : null}
                 loading={dhcp.loading}
                 error={dhcp.error}
-                emptyMsg="DHCP server is not configured or has no leases."
               />
             </CardContent>
           </Card>
