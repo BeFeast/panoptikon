@@ -107,6 +107,27 @@ scrape_configs:
       - targets: ['localhost:8080']
 ```
 
+## Docker Deployment
+
+Build and run Panoptikon in a container:
+
+```bash
+# Build the image
+docker build -t panoptikon .
+
+# Run with docker-compose (recommended)
+docker-compose up -d
+```
+
+The multi-stage Dockerfile builds the Rust server, Next.js frontend, and packages them into a minimal `debian:bookworm-slim` runtime image with `nmap` and `iperf3` pre-installed.
+
+**Important notes:**
+
+- **`network_mode: host`** is required for ARP scanning and receiving NetFlow UDP packets on the host network.
+- **`NET_RAW` capability** is required for nmap raw socket scanning.
+- **`NET_ADMIN` capability** is required for ARP table access and network administration.
+- Data (SQLite database) is persisted in a Docker volume mounted at `/data`.
+
 ## License
 
 MIT
