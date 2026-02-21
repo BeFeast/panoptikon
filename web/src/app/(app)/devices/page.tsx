@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowDown, ArrowUp, Cpu, Download, Loader2, LayoutGrid, List, MemoryStick, Power, Radar, Search, VolumeX, Wifi, WifiOff } from "lucide-react";
+import { getDeviceIcon } from "@/lib/device-icons";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -361,6 +362,12 @@ function DeviceCard({
   const ips = device.ips ?? [];
   const primaryIp = ips[0] ?? "—";
   const displayName = device.name ?? device.hostname ?? "Unknown Device";
+  const { icon: DevIcon } = getDeviceIcon(device.vendor, device.hostname, device.mdns_services);
+  const vendorDisplay = device.vendor
+    ? device.vendor.length > 20
+      ? device.vendor.slice(0, 20) + "…"
+      : device.vendor
+    : null;
 
   return (
     <Card
@@ -368,30 +375,52 @@ function DeviceCard({
       onClick={onClick}
     >
       <CardContent className="p-5">
-        {/* Name row */}
-        <div className="flex items-center gap-2">
-          <span
-            className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-              device.is_online
-                ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-                : "bg-slate-500"
+        {/* Name row with icon */}
+        <div className="flex items-start gap-3">
+          {/* Device type icon container */}
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-800 ${
+              device.is_online ? "ring-1 ring-emerald-500/20" : ""
             }`}
-          />
-          <span className="truncate font-medium text-white">{displayName}</span>
-          {!device.is_known && (
-            <Badge variant="outline" className="ml-auto shrink-0 border-amber-500/50 text-amber-400 text-[10px]">
-              NEW
-            </Badge>
-          )}
+          >
+            <DevIcon
+              className={`h-5 w-5 ${
+                device.is_online ? "text-emerald-400" : "text-slate-500"
+              }`}
+            />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <span
+                className={`h-2 w-2 shrink-0 rounded-full ${
+                  device.is_online
+                    ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
+                    : "bg-slate-500"
+                }`}
+              />
+              <span className="truncate font-medium text-white">{displayName}</span>
+              {device.agent?.is_online && (
+                <span className="ml-auto shrink-0 rounded border border-blue-500/30 bg-blue-500/20 px-1.5 py-0.5 text-xs text-blue-400">
+                  Agent
+                </span>
+              )}
+              {!device.is_known && (
+                <Badge variant="outline" className="ml-auto shrink-0 border-amber-500/50 text-amber-400 text-[10px]">
+                  NEW
+                </Badge>
+              )}
+            </div>
+            {vendorDisplay && (
+              <p className="mt-0.5 text-xs text-slate-400">{vendorDisplay}</p>
+            )}
+          </div>
         </div>
 
         {/* Technical info */}
         <div className="mt-3 space-y-1">
           <p className="font-mono tabular-nums text-sm text-slate-400">{primaryIp}</p>
           <p className="font-mono tabular-nums text-xs text-slate-600">{device.mac}</p>
-          {device.vendor && (
-            <p className="text-xs text-slate-500">{device.vendor}</p>
-          )}
         </div>
 
         {/* mDNS service badges */}
@@ -460,6 +489,7 @@ function DevicesTable({
       <Table>
         <TableHeader>
           <TableRow className="border-slate-800 hover:bg-transparent">
+            <TableHead className="w-10 text-slate-400">Type</TableHead>
             <TableHead className="w-12 text-slate-400">Status</TableHead>
             <TableHead
               className="cursor-pointer select-none text-slate-400 hover:text-white"
@@ -490,10 +520,12 @@ function DevicesTable({
         <TableBody>
           {devices.map((device) => {
             const primaryIp = (device.ips ?? [])[0] ?? "—";
-            const agentText =
-              device.agent && device.agent.cpu_percent != null && device.agent.memory_percent != null
-                ? `${formatPercent(device.agent.cpu_percent)} / ${formatPercent(device.agent.memory_percent)}`
-                : "—";
+            const { icon: RowIcon } = getDeviceIcon(device.vendor, device.hostname, device.mdns_services);
+            const vendorDisplay = device.vendor
+              ? device.vendor.length > 20
+                ? device.vendor.slice(0, 20) + "…"
+                : device.vendor
+              : "—";
 
             return (
               <TableRow
@@ -501,6 +533,19 @@ function DevicesTable({
                 className="cursor-pointer border-slate-800 transition-colors hover:bg-slate-800/60"
                 onClick={() => onSelect(device)}
               >
+                <TableCell>
+                  <div
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 ${
+                      device.is_online ? "ring-1 ring-emerald-500/20" : ""
+                    }`}
+                  >
+                    <RowIcon
+                      className={`h-4 w-4 ${
+                        device.is_online ? "text-emerald-400" : "text-slate-500"
+                      }`}
+                    />
+                  </div>
+                </TableCell>
                 <TableCell>
                   <span
                     className={`inline-block h-2.5 w-2.5 rounded-full ${
@@ -513,17 +558,28 @@ function DevicesTable({
                 <TableCell className="tabular-nums font-mono text-sm text-slate-300">
                   {primaryIp}
                 </TableCell>
-                <TableCell className="text-sm text-slate-300">
-                  {device.hostname ?? "—"}
+                <TableCell>
+                  <div>
+                    <span className="text-sm text-slate-300">
+                      {device.hostname ?? "—"}
+                    </span>
+                    {device.agent?.is_online && (
+                      <span className="ml-2 rounded border border-blue-500/30 bg-blue-500/20 px-1.5 py-0.5 text-xs text-blue-400">
+                        Agent
+                      </span>
+                    )}
+                  </div>
                 </TableCell>
                 <TableCell className="tabular-nums font-mono text-xs text-slate-500">
                   {device.mac}
                 </TableCell>
-                <TableCell className="text-xs text-slate-500">
-                  {device.vendor ?? "—"}
+                <TableCell className="text-xs text-slate-400">
+                  {vendorDisplay}
                 </TableCell>
                 <TableCell className="text-xs text-slate-400">
-                  {agentText}
+                  {device.agent && device.agent.cpu_percent != null && device.agent.memory_percent != null
+                    ? `${formatPercent(device.agent.cpu_percent)} / ${formatPercent(device.agent.memory_percent)}`
+                    : "—"}
                 </TableCell>
                 <TableCell className="text-xs text-slate-500">
                   {timeAgo(device.last_seen_at)}
@@ -544,6 +600,16 @@ function DeviceDetail({ device }: { device: Device }) {
   const primaryIp = ips[0] ?? "—";
   const displayName = device.name ?? device.hostname ?? "Unknown Device";
   const [waking, setWaking] = useState(false);
+  const { icon: DetailIcon, label: deviceTypeLabel } = getDeviceIcon(
+    device.vendor,
+    device.hostname,
+    device.mdns_services
+  );
+  const vendorDisplay = device.vendor
+    ? device.vendor.length > 20
+      ? device.vendor.slice(0, 20) + "…"
+      : device.vendor
+    : null;
 
   const handleWake = async () => {
     setWaking(true);
@@ -561,14 +627,33 @@ function DeviceDetail({ device }: { device: Device }) {
     <>
       <SheetHeader>
         <div className="flex items-center gap-3">
-          <span
-            className={`h-3 w-3 rounded-full ${
-              device.is_online
-                ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-                : "bg-slate-500"
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-800 ${
+              device.is_online ? "ring-1 ring-emerald-500/20" : ""
             }`}
-          />
-          <SheetTitle className="text-white">{displayName}</SheetTitle>
+          >
+            <DetailIcon
+              className={`h-5 w-5 ${
+                device.is_online ? "text-emerald-400" : "text-slate-500"
+              }`}
+            />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <SheetTitle className="text-white">{displayName}</SheetTitle>
+              {device.agent?.is_online && (
+                <span className="shrink-0 rounded border border-blue-500/30 bg-blue-500/20 px-1.5 py-0.5 text-xs text-blue-400">
+                  Agent
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {vendorDisplay && (
+                <span className="text-xs text-slate-400">{vendorDisplay}</span>
+              )}
+              <span className="text-xs text-slate-500">{deviceTypeLabel}</span>
+            </div>
+          </div>
         </div>
         <SheetDescription>
           {device.is_online ? (
