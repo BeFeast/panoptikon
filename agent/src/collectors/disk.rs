@@ -10,10 +10,8 @@ pub struct DiskInfo {
     pub used_bytes: u64,
 }
 
-/// Collect disk usage for all mounted filesystems.
-pub fn collect() -> Vec<DiskInfo> {
-    let disks = Disks::new_with_refreshed_list();
-
+/// Collect disk usage from a pre-refreshed `Disks` instance.
+pub fn collect_from(disks: &Disks) -> Vec<DiskInfo> {
     disks
         .iter()
         .filter(|d| {
