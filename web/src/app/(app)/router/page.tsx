@@ -437,9 +437,31 @@ function InterfacesTable({
 }) {
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-slate-500">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Loading…</span>
+      <div className="overflow-x-auto rounded-md border border-slate-800">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-800 bg-slate-950 text-left">
+              <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+              <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
+              <th className="px-4 py-3 font-medium text-slate-400">IP Address</th>
+              <th className="px-4 py-3 font-medium text-slate-400">MAC</th>
+              <th className="px-4 py-3 font-medium text-slate-400">MTU</th>
+              <th className="px-4 py-3 font-medium text-slate-400">Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <tr key={i} className="border-b border-slate-800 last:border-b-0">
+                <td className="px-4 py-3"><div className="flex items-center gap-2"><Skeleton className="h-2.5 w-2.5 rounded-full" /><Skeleton className="h-5 w-10 rounded-full" /></div></td>
+                <td className="px-4 py-3"><Skeleton className="h-5 w-16" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-3 w-32" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-12" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   }
@@ -590,9 +612,31 @@ function RoutesTable({
 }) {
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-slate-500">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Loading…</span>
+      <div className="overflow-x-auto rounded-md border border-slate-800">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-800 bg-slate-950 text-left">
+              <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+              <th className="px-4 py-3 font-medium text-slate-400">Destination</th>
+              <th className="px-4 py-3 font-medium text-slate-400">Gateway</th>
+              <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
+              <th className="px-4 py-3 font-medium text-slate-400">Metric</th>
+              <th className="px-4 py-3 font-medium text-slate-400">Uptime</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <tr key={i} className="border-b border-slate-800 last:border-b-0">
+                <td className="px-4 py-3"><Skeleton className="h-5 w-8 rounded-full" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-5 w-28" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-3 w-10" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   }
@@ -729,9 +773,31 @@ function DhcpLeasesTable({
 }) {
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-slate-500">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Loading…</span>
+      <div className="overflow-x-auto rounded-md border border-slate-800">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-800 bg-slate-950 text-left">
+              <th className="px-4 py-3 font-medium text-slate-400">IP Address</th>
+              <th className="px-4 py-3 font-medium text-slate-400">MAC Address</th>
+              <th className="px-4 py-3 font-medium text-slate-400">Hostname</th>
+              <th className="px-4 py-3 font-medium text-slate-400">Pool</th>
+              <th className="px-4 py-3 font-medium text-slate-400">Expires</th>
+              <th className="px-4 py-3 font-medium text-slate-400">State</th>
+            </tr>
+          </thead>
+          <tbody>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <tr key={i} className="border-b border-slate-800 last:border-b-0">
+                <td className="px-4 py-3"><Skeleton className="h-5 w-24" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-3 w-32" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-3 w-28" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   }
@@ -949,9 +1015,45 @@ function FirewallPanel({
 }) {
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-slate-500">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Loading…</span>
+      <div className="space-y-4">
+        {Array.from({ length: 2 }).map((_, ci) => (
+          <Card key={ci} className="border-slate-800 bg-slate-900">
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-5 w-24 rounded-full" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto rounded-md border border-slate-800">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                      <th className="px-4 py-3 font-medium text-slate-400">#</th>
+                      <th className="px-4 py-3 font-medium text-slate-400">Action</th>
+                      <th className="px-4 py-3 font-medium text-slate-400">Source</th>
+                      <th className="px-4 py-3 font-medium text-slate-400">Destination</th>
+                      <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+                      <th className="px-4 py-3 font-medium text-slate-400">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from({ length: 3 }).map((_, ri) => (
+                      <tr key={ri} className="border-b border-slate-800 last:border-b-0">
+                        <td className="px-4 py-3"><Skeleton className="h-4 w-8" /></td>
+                        <td className="px-4 py-3"><Skeleton className="h-5 w-16 rounded-full" /></td>
+                        <td className="px-4 py-3"><Skeleton className="h-3 w-24" /></td>
+                        <td className="px-4 py-3"><Skeleton className="h-3 w-24" /></td>
+                        <td className="px-4 py-3"><Skeleton className="h-4 w-12" /></td>
+                        <td className="px-4 py-3"><Skeleton className="h-4 w-32" /></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     );
   }

@@ -296,18 +296,65 @@ export default function DevicesPage() {
 
       {/* Device list */}
       {sorted === null ? (
+        view === "grid" ? (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <Card key={i} className="border-slate-800 bg-slate-900">
               <CardContent className="p-5">
-                <Skeleton className="h-5 w-32" />
-                <Skeleton className="mt-3 h-4 w-24" />
-                <Skeleton className="mt-2 h-3 w-36" />
-                <Skeleton className="mt-2 h-3 w-20" />
+                {/* Icon + name row — matches DeviceCard layout */}
+                <div className="flex items-start gap-3">
+                  <Skeleton className="h-10 w-10 shrink-0 rounded-xl" />
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <Skeleton className="h-2 w-2 rounded-full" />
+                      <Skeleton className="h-4 w-[60%]" />
+                    </div>
+                    <Skeleton className="h-3 w-[40%]" />
+                  </div>
+                </div>
+                {/* Technical info */}
+                <div className="mt-3 space-y-1">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-3 w-36" />
+                </div>
+                {/* Last seen */}
+                <Skeleton className="mt-3 h-3 w-24" />
               </CardContent>
             </Card>
           ))}
         </div>
+        ) : (
+        <div className="rounded-md border border-slate-800 bg-slate-900">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-slate-800 hover:bg-transparent">
+                <TableHead className="w-10 text-slate-400">Type</TableHead>
+                <TableHead className="w-12 text-slate-400">Status</TableHead>
+                <TableHead className="text-slate-400">IP Address</TableHead>
+                <TableHead className="text-slate-400">Hostname</TableHead>
+                <TableHead className="text-slate-400">MAC</TableHead>
+                <TableHead className="text-slate-400">Vendor</TableHead>
+                <TableHead className="text-slate-400">Agent</TableHead>
+                <TableHead className="text-slate-400">Last Seen</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i} className="border-slate-800">
+                  <TableCell><Skeleton className="h-8 w-8 rounded-lg" /></TableCell>
+                  <TableCell><Skeleton className="h-2.5 w-2.5 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-3 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-3 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-3 w-12" /></TableCell>
+                  <TableCell><Skeleton className="h-3 w-16" /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+        )
       ) : sorted.length === 0 ? (
         <p className="py-10 text-center text-slate-500">
           No devices match your filters.

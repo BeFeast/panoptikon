@@ -126,18 +126,36 @@ export default function AgentsPage() {
       {/* Agents table */}
       <div className="rounded-lg border border-slate-800 bg-slate-900">
         {agents === null ? (
-          <div className="space-y-0">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 border-b border-slate-800 p-4 last:border-0">
-                <Skeleton className="h-5 w-24" />
-                <Skeleton className="h-5 w-32" />
-                <Skeleton className="h-5 w-20" />
-                <Skeleton className="h-5 w-20" />
-                <Skeleton className="h-5 w-16" />
-                <Skeleton className="h-5 w-12" />
-              </div>
-            ))}
-          </div>
+          <Table>
+            <TableHeader>
+              <TableRow className="border-slate-800 hover:bg-transparent">
+                <TableHead className="text-slate-500">Name</TableHead>
+                <TableHead className="text-slate-500">Hostname</TableHead>
+                <TableHead className="text-slate-500">OS</TableHead>
+                <TableHead className="text-slate-500">Platform</TableHead>
+                <TableHead className="text-slate-500">Version</TableHead>
+                <TableHead className="text-slate-500">CPU Trend</TableHead>
+                <TableHead className="text-slate-500">Last Report</TableHead>
+                <TableHead className="text-slate-500">Status</TableHead>
+                <TableHead />
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <TableRow key={i} className="border-slate-800">
+                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-14" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-20 rounded" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-4 rounded" /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         ) : agents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Terminal className="mb-4 h-12 w-12 text-slate-600" />

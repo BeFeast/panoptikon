@@ -31,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 
 async function downloadExport(url: string, filename: string) {
   const res = await fetch(url, { credentials: "include" });
@@ -158,7 +159,9 @@ export default function TrafficPage() {
           </h2>
         </div>
 
-        {history.length > 0 ? (
+        {loading && history.length === 0 ? (
+          <Skeleton className="h-[200px] w-full rounded-xl" />
+        ) : history.length > 0 ? (
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={history}>
@@ -229,9 +232,7 @@ export default function TrafficPage() {
           </div>
         ) : (
           <div className="flex h-[200px] items-center justify-center">
-            <p className="text-sm text-slate-500">
-              {loading ? "Loading traffic data…" : "No traffic data available yet."}
-            </p>
+            <p className="text-sm text-slate-500">No traffic data available yet.</p>
           </div>
         )}
       </div>
@@ -243,10 +244,29 @@ export default function TrafficPage() {
             Top Devices by Bandwidth
           </h2>
         </div>
-        {topDevices.length === 0 ? (
-          <div className="p-8 text-center text-slate-500">
-            {loading ? "Loading…" : "No active devices."}
-          </div>
+        {loading && topDevices.length === 0 ? (
+          <Table>
+            <TableHeader>
+              <TableRow className="border-slate-800 hover:bg-transparent">
+                <TableHead className="text-slate-500">Device</TableHead>
+                <TableHead className="text-slate-500">IP</TableHead>
+                <TableHead className="text-right text-slate-500">Download</TableHead>
+                <TableHead className="text-right text-slate-500">Upload</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i} className="border-slate-800">
+                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                  <TableCell><Skeleton className="h-3 w-24" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="ml-auto h-4 w-16" /></TableCell>
+                  <TableCell className="text-right"><Skeleton className="ml-auto h-4 w-16" /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        ) : topDevices.length === 0 ? (
+          <div className="p-8 text-center text-slate-500">No active devices.</div>
         ) : (
           <Table>
             <TableHeader>
