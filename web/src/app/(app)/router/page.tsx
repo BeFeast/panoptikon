@@ -42,7 +42,7 @@ import { Progress } from "@/components/ui/progress";
 function NotConfigured() {
   return (
     <div className="flex min-h-[60vh] items-center justify-center">
-      <Card className="w-full max-w-md border-[#2a2a3a] bg-[#16161f]">
+      <Card className="w-full max-w-md border-slate-800 bg-slate-900">
         <CardContent className="flex flex-col items-center gap-4 py-12">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10">
             <Router className="h-8 w-8 text-amber-400" />
@@ -50,14 +50,14 @@ function NotConfigured() {
           <h1 className="text-xl font-semibold text-white">
             Router Not Configured
           </h1>
-          <p className="text-center text-sm text-gray-500">
+          <p className="text-center text-sm text-slate-500">
             Connect to your VyOS router by adding its URL and API key in
             Settings.
           </p>
           <Link href="/settings">
             <Button
               variant="outline"
-              className="border-[#2a2a3a] text-gray-300 hover:bg-[#1e1e2e]"
+              className="border-slate-800 text-slate-300 hover:bg-slate-800"
             >
               <Settings className="mr-2 h-4 w-4" />
               Go to Settings
@@ -80,10 +80,10 @@ function StatusHeader({ status }: { status: RouterStatus }) {
         </div>
         <div>
           <h1 className="text-2xl font-semibold text-white">Router</h1>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-slate-500">
             {status.hostname ?? "VyOS"}{" "}
             {status.version && (
-              <span className="text-gray-600">· {status.version}</span>
+              <span className="text-slate-600">· {status.version}</span>
             )}
           </p>
         </div>
@@ -92,14 +92,14 @@ function StatusHeader({ status }: { status: RouterStatus }) {
         {status.reachable ? (
           <Badge
             variant="outline"
-            className="border-green-500/30 bg-green-500/10 text-green-400"
+            className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
           >
             ● Connected
           </Badge>
         ) : (
           <Badge
             variant="outline"
-            className="border-red-500/30 bg-red-500/10 text-red-400"
+            className="border-rose-500/30 bg-rose-500/10 text-rose-400"
           >
             ● Unreachable
           </Badge>
@@ -107,7 +107,7 @@ function StatusHeader({ status }: { status: RouterStatus }) {
         {status.uptime && (
           <Badge
             variant="outline"
-            className="border-[#2a2a3a] text-gray-400"
+            className="border-slate-800 text-slate-400"
           >
             Uptime: {status.uptime}
           </Badge>
@@ -217,14 +217,14 @@ function SpeedTestSection() {
   return (
     <div className="space-y-4">
       {/* Action row */}
-      <Card className="border-[#2a2a3a] bg-[#16161f]">
+      <Card className="border-slate-800 bg-slate-900">
         <CardContent className="flex flex-col gap-4 py-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <h3 className="flex items-center gap-2 text-base font-medium text-white">
               <Gauge className="h-4 w-4 text-blue-400" />
               Speed Test
             </h3>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-slate-500">
               Measures internet speed from the Panoptikon server using Ookla
               Speedtest.
             </p>
@@ -253,7 +253,7 @@ function SpeedTestSection() {
       {running && (
         <div className="space-y-2">
           <Progress value={progress} />
-          <p className="text-center text-xs text-gray-500">
+          <p className="text-center text-xs text-slate-500">
             Running speed test… this may take up to 60 seconds
           </p>
         </div>
@@ -261,9 +261,9 @@ function SpeedTestSection() {
 
       {/* Error display */}
       {error && (
-        <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-4 py-3">
-          <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-          <p className="text-sm text-red-400">{error}</p>
+        <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-4 py-3">
+          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+          <p className="text-sm text-rose-400">{error}</p>
         </div>
       )}
 
@@ -273,16 +273,16 @@ function SpeedTestSection() {
           {/* Download + Upload */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {/* Download */}
-            <Card className="border-[#2a2a3a] bg-[#16161f]">
+            <Card className="border-slate-800 bg-slate-900">
               <CardContent className="flex items-center gap-4 py-6">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/10">
-                  <ArrowDown className="h-6 w-6 text-green-400" />
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-500/10">
+                  <ArrowDown className="h-6 w-6 text-emerald-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Download</p>
+                  <p className="text-sm text-slate-500">Download</p>
                   <p className="text-2xl font-bold text-white">
                     {result.download_mbps.toFixed(1)}{" "}
-                    <span className="text-sm font-normal text-gray-500">
+                    <span className="text-sm font-normal text-slate-500">
                       Mbps
                     </span>
                   </p>
@@ -291,16 +291,16 @@ function SpeedTestSection() {
             </Card>
 
             {/* Upload */}
-            <Card className="border-[#2a2a3a] bg-[#16161f]">
+            <Card className="border-slate-800 bg-slate-900">
               <CardContent className="flex items-center gap-4 py-6">
                 <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-500/10">
                   <ArrowUp className="h-6 w-6 text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Upload</p>
+                  <p className="text-sm text-slate-500">Upload</p>
                   <p className="text-2xl font-bold text-white">
                     {result.upload_mbps.toFixed(1)}{" "}
-                    <span className="text-sm font-normal text-gray-500">
+                    <span className="text-sm font-normal text-slate-500">
                       Mbps
                     </span>
                   </p>
@@ -311,40 +311,40 @@ function SpeedTestSection() {
 
           {/* Ping, Jitter, Packet Loss */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <Card className="border-[#2a2a3a] bg-[#16161f]">
+            <Card className="border-slate-800 bg-slate-900">
               <CardContent className="flex items-center gap-3 py-4">
                 <Activity className="h-5 w-5 text-purple-400" />
                 <div>
-                  <p className="text-xs text-gray-500">Ping</p>
+                  <p className="text-xs text-slate-500">Ping</p>
                   <p className="text-lg font-semibold text-white">
                     {result.ping_ms.toFixed(1)}{" "}
-                    <span className="text-xs font-normal text-gray-500">ms</span>
+                    <span className="text-xs font-normal text-slate-500">ms</span>
                   </p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-[#2a2a3a] bg-[#16161f]">
+            <Card className="border-slate-800 bg-slate-900">
               <CardContent className="flex items-center gap-3 py-4">
                 <Activity className="h-5 w-5 text-yellow-400" />
                 <div>
-                  <p className="text-xs text-gray-500">Jitter</p>
+                  <p className="text-xs text-slate-500">Jitter</p>
                   <p className="text-lg font-semibold text-white">
                     {result.jitter_ms.toFixed(2)}{" "}
-                    <span className="text-xs font-normal text-gray-500">ms</span>
+                    <span className="text-xs font-normal text-slate-500">ms</span>
                   </p>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-[#2a2a3a] bg-[#16161f]">
+            <Card className="border-slate-800 bg-slate-900">
               <CardContent className="flex items-center gap-3 py-4">
                 <Wifi className="h-5 w-5 text-cyan-400" />
                 <div>
-                  <p className="text-xs text-gray-500">Packet Loss</p>
+                  <p className="text-xs text-slate-500">Packet Loss</p>
                   <p className="text-lg font-semibold text-white">
                     {result.packet_loss.toFixed(1)}
-                    <span className="text-xs font-normal text-gray-500">%</span>
+                    <span className="text-xs font-normal text-slate-500">%</span>
                   </p>
                 </div>
               </CardContent>
@@ -353,16 +353,16 @@ function SpeedTestSection() {
 
           {/* Metadata: ISP, Server, Tested at, Result link */}
           <div className="space-y-1 px-1">
-            <p className="flex items-center gap-1 text-xs text-gray-500">
+            <p className="flex items-center gap-1 text-xs text-slate-500">
               <Globe className="h-3 w-3" />
-              ISP: <span className="text-gray-400">{result.isp}</span>
+              ISP: <span className="text-slate-400">{result.isp}</span>
             </p>
-            <p className="flex items-center gap-1 text-xs text-gray-500">
+            <p className="flex items-center gap-1 text-xs text-slate-500">
               <Server className="h-3 w-3" />
-              Server: <span className="text-gray-400">{result.server}</span>
+              Server: <span className="text-slate-400">{result.server}</span>
             </p>
             <div className="flex items-center justify-between">
-              <p className="flex items-center gap-1 text-xs text-gray-500">
+              <p className="flex items-center gap-1 text-xs text-slate-500">
                 <Clock className="h-3 w-3" />
                 Last tested: {timeAgo(result.tested_at)}
               </p>
@@ -397,7 +397,7 @@ function SpeedTestSection() {
 
 function StatusDot({ admin, link }: { admin: string; link: string }) {
   const isUp = admin === "up" && link === "up";
-  const color = isUp ? "bg-green-500" : "bg-red-500";
+  const color = isUp ? "bg-emerald-500" : "bg-rose-500";
   return (
     <span
       className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${color}`}
@@ -413,8 +413,8 @@ function StatusBadge({ admin, link }: { admin: string; link: string }) {
       variant="outline"
       className={
         isUp
-          ? "border-green-500/30 bg-green-500/10 text-green-400"
-          : "border-red-500/30 bg-red-500/10 text-red-400"
+          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+          : "border-rose-500/30 bg-rose-500/10 text-rose-400"
       }
     >
       {isUp ? "Up" : "Down"}
@@ -435,7 +435,7 @@ function InterfacesTable({
 }) {
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-gray-500">
+      <div className="flex items-center gap-2 py-8 text-slate-500">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span className="text-sm">Loading…</span>
       </div>
@@ -443,15 +443,15 @@ function InterfacesTable({
   }
   if (error) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
-        <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-        <p className="text-xs text-red-400">{error}</p>
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{error}</p>
       </div>
     );
   }
   if (!interfaces || interfaces.length === 0) {
     return (
-      <p className="py-4 text-sm text-gray-500">No interfaces found.</p>
+      <p className="py-4 text-sm text-slate-500">No interfaces found.</p>
     );
   }
 
@@ -471,16 +471,16 @@ function InterfacesTable({
   };
 
   return (
-    <div className="overflow-x-auto rounded-md border border-[#2a2a3a]">
+    <div className="overflow-x-auto rounded-md border border-slate-800">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-[#2a2a3a] bg-[#0e0e16] text-left">
-            <th className="px-4 py-3 font-medium text-gray-400">Status</th>
-            <th className="px-4 py-3 font-medium text-gray-400">Interface</th>
-            <th className="px-4 py-3 font-medium text-gray-400">IP Address</th>
-            <th className="px-4 py-3 font-medium text-gray-400">MAC</th>
-            <th className="px-4 py-3 font-medium text-gray-400">MTU</th>
-            <th className="px-4 py-3 font-medium text-gray-400">Description</th>
+          <tr className="border-b border-slate-800 bg-slate-950 text-left">
+            <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+            <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
+            <th className="px-4 py-3 font-medium text-slate-400">IP Address</th>
+            <th className="px-4 py-3 font-medium text-slate-400">MAC</th>
+            <th className="px-4 py-3 font-medium text-slate-400">MTU</th>
+            <th className="px-4 py-3 font-medium text-slate-400">Description</th>
           </tr>
         </thead>
         <tbody>
@@ -490,7 +490,7 @@ function InterfacesTable({
             return (
               <tr
                 key={iface.name}
-                className="border-b border-[#2a2a3a] last:border-b-0 hover:bg-[#1a1a2a]"
+                className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/50"
               >
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
@@ -504,20 +504,20 @@ function InterfacesTable({
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="font-mono text-gray-300">
+                  <span className="font-mono text-slate-300">
                     {iface.ip_address ?? "—"}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="font-mono text-xs text-gray-400">
+                  <span className="font-mono text-xs text-slate-400">
                     {iface.mac ?? "—"}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-gray-300">{iface.mtu}</span>
+                  <span className="text-slate-300">{iface.mtu}</span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-gray-400">
+                  <span className="text-slate-400">
                     {description ?? "—"}
                   </span>
                 </td>
@@ -533,9 +533,9 @@ function InterfacesTable({
 // ── Protocol Badge ──────────────────────────────────────
 
 const PROTOCOL_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  C: { bg: "bg-green-500/10", text: "text-green-400", border: "border-green-500/30" },
+  C: { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/30" },
   S: { bg: "bg-blue-500/10", text: "text-blue-400", border: "border-blue-500/30" },
-  K: { bg: "bg-gray-500/10", text: "text-gray-400", border: "border-gray-500/30" },
+  K: { bg: "bg-slate-500/10", text: "text-slate-400", border: "border-gray-500/30" },
   L: { bg: "bg-teal-500/10", text: "text-teal-400", border: "border-teal-500/30" },
   O: { bg: "bg-orange-500/10", text: "text-orange-400", border: "border-orange-500/30" },
   B: { bg: "bg-purple-500/10", text: "text-purple-400", border: "border-purple-500/30" },
@@ -558,8 +558,8 @@ const PROTOCOL_NAMES: Record<string, string> = {
 
 function ProtocolBadge({ protocol }: { protocol: string }) {
   const colors = PROTOCOL_COLORS[protocol] ?? {
-    bg: "bg-gray-500/10",
-    text: "text-gray-400",
+    bg: "bg-slate-500/10",
+    text: "text-slate-400",
     border: "border-gray-500/30",
   };
   const name = PROTOCOL_NAMES[protocol] ?? protocol;
@@ -588,7 +588,7 @@ function RoutesTable({
 }) {
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-gray-500">
+      <div className="flex items-center gap-2 py-8 text-slate-500">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span className="text-sm">Loading…</span>
       </div>
@@ -596,42 +596,42 @@ function RoutesTable({
   }
   if (error) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
-        <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-        <p className="text-xs text-red-400">{error}</p>
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{error}</p>
       </div>
     );
   }
   if (!routes || routes.length === 0) {
     return (
-      <p className="py-4 text-sm text-gray-500">No routes found.</p>
+      <p className="py-4 text-sm text-slate-500">No routes found.</p>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border border-[#2a2a3a]">
+    <div className="overflow-x-auto rounded-md border border-slate-800">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-[#2a2a3a] bg-[#0e0e16] text-left">
-            <th className="px-4 py-3 font-medium text-gray-400">Protocol</th>
-            <th className="px-4 py-3 font-medium text-gray-400">Destination</th>
-            <th className="px-4 py-3 font-medium text-gray-400">Gateway</th>
-            <th className="px-4 py-3 font-medium text-gray-400">Interface</th>
-            <th className="px-4 py-3 font-medium text-gray-400">Metric</th>
-            <th className="px-4 py-3 font-medium text-gray-400">Uptime</th>
+          <tr className="border-b border-slate-800 bg-slate-950 text-left">
+            <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+            <th className="px-4 py-3 font-medium text-slate-400">Destination</th>
+            <th className="px-4 py-3 font-medium text-slate-400">Gateway</th>
+            <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
+            <th className="px-4 py-3 font-medium text-slate-400">Metric</th>
+            <th className="px-4 py-3 font-medium text-slate-400">Uptime</th>
           </tr>
         </thead>
         <tbody>
           {routes.map((route, idx) => (
             <tr
               key={`${route.destination}-${idx}`}
-              className="border-b border-[#2a2a3a] last:border-b-0 hover:bg-[#1a1a2a]"
+              className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/50"
             >
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
                   <ProtocolBadge protocol={route.protocol} />
                   {route.selected && (
-                    <span className="text-xs text-green-500" title="Selected / Best route">
+                    <span className="text-xs text-emerald-500" title="Selected / Best route">
                       ✓
                     </span>
                   )}
@@ -643,22 +643,22 @@ function RoutesTable({
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono text-gray-300">
+                <span className="font-mono text-slate-300">
                   {route.gateway ?? "—"}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono text-gray-300">
+                <span className="font-mono text-slate-300">
                   {route.interface ?? "—"}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono text-xs text-gray-400">
+                <span className="font-mono text-xs text-slate-400">
                   {route.metric ? `[${route.metric}]` : "—"}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="text-gray-400">
+                <span className="text-slate-400">
                   {route.uptime ?? "—"}
                 </span>
               </td>
@@ -678,7 +678,7 @@ function DhcpStateBadge({ state }: { state: string }) {
     return (
       <Badge
         variant="outline"
-        className="border-green-500/30 bg-green-500/10 text-green-400"
+        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
       >
         active
       </Badge>
@@ -688,7 +688,7 @@ function DhcpStateBadge({ state }: { state: string }) {
     return (
       <Badge
         variant="outline"
-        className="border-red-500/30 bg-red-500/10 text-red-400"
+        className="border-rose-500/30 bg-rose-500/10 text-rose-400"
       >
         expired
       </Badge>
@@ -698,7 +698,7 @@ function DhcpStateBadge({ state }: { state: string }) {
     return (
       <Badge
         variant="outline"
-        className="border-gray-500/30 bg-gray-500/10 text-gray-400"
+        className="border-gray-500/30 bg-slate-500/10 text-slate-400"
       >
         free
       </Badge>
@@ -707,7 +707,7 @@ function DhcpStateBadge({ state }: { state: string }) {
   return (
     <Badge
       variant="outline"
-      className="border-gray-500/30 bg-gray-500/10 text-gray-400"
+      className="border-gray-500/30 bg-slate-500/10 text-slate-400"
     >
       {state}
     </Badge>
@@ -727,7 +727,7 @@ function DhcpLeasesTable({
 }) {
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-gray-500">
+      <div className="flex items-center gap-2 py-8 text-slate-500">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span className="text-sm">Loading…</span>
       </div>
@@ -735,38 +735,38 @@ function DhcpLeasesTable({
   }
   if (error) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
-        <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-        <p className="text-xs text-red-400">{error}</p>
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{error}</p>
       </div>
     );
   }
   if (!leases || leases.length === 0) {
     return (
-      <p className="py-4 text-sm text-gray-500">
+      <p className="py-4 text-sm text-slate-500">
         No DHCP leases found. DHCP server may not be configured.
       </p>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border border-[#2a2a3a]">
+    <div className="overflow-x-auto rounded-md border border-slate-800">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-[#2a2a3a] bg-[#0e0e16] text-left">
-            <th className="px-4 py-3 font-medium text-gray-400">IP Address</th>
-            <th className="px-4 py-3 font-medium text-gray-400">MAC Address</th>
-            <th className="px-4 py-3 font-medium text-gray-400">Hostname</th>
-            <th className="px-4 py-3 font-medium text-gray-400">Pool</th>
-            <th className="px-4 py-3 font-medium text-gray-400">Expires</th>
-            <th className="px-4 py-3 font-medium text-gray-400">State</th>
+          <tr className="border-b border-slate-800 bg-slate-950 text-left">
+            <th className="px-4 py-3 font-medium text-slate-400">IP Address</th>
+            <th className="px-4 py-3 font-medium text-slate-400">MAC Address</th>
+            <th className="px-4 py-3 font-medium text-slate-400">Hostname</th>
+            <th className="px-4 py-3 font-medium text-slate-400">Pool</th>
+            <th className="px-4 py-3 font-medium text-slate-400">Expires</th>
+            <th className="px-4 py-3 font-medium text-slate-400">State</th>
           </tr>
         </thead>
         <tbody>
           {leases.map((lease, idx) => (
             <tr
               key={`${lease.ip}-${idx}`}
-              className="border-b border-[#2a2a3a] last:border-b-0 hover:bg-[#1a1a2a]"
+              className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/50"
             >
               <td className="px-4 py-3">
                 <span className="font-mono font-medium text-white">
@@ -774,22 +774,22 @@ function DhcpLeasesTable({
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono text-xs text-gray-400">
+                <span className="font-mono text-xs text-slate-400">
                   {lease.mac}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="text-gray-300">
+                <span className="text-slate-300">
                   {lease.hostname ?? "—"}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="text-gray-300">
+                <span className="text-slate-300">
                   {lease.pool ?? "—"}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono text-xs text-gray-400">
+                <span className="font-mono text-xs text-slate-400">
                   {lease.lease_expiry ?? "—"}
                 </span>
               </td>
@@ -812,7 +812,7 @@ function FirewallActionBadge({ action }: { action: string }) {
     return (
       <Badge
         variant="outline"
-        className="border-green-500/30 bg-green-500/10 text-green-400"
+        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
       >
         ACCEPT
       </Badge>
@@ -822,7 +822,7 @@ function FirewallActionBadge({ action }: { action: string }) {
     return (
       <Badge
         variant="outline"
-        className="border-red-500/30 bg-red-500/10 text-red-400"
+        className="border-rose-500/30 bg-rose-500/10 text-rose-400"
       >
         DROP
       </Badge>
@@ -841,7 +841,7 @@ function FirewallActionBadge({ action }: { action: string }) {
   return (
     <Badge
       variant="outline"
-      className="border-gray-500/30 bg-gray-500/10 text-gray-400"
+      className="border-gray-500/30 bg-slate-500/10 text-slate-400"
     >
       {action.toUpperCase()}
     </Badge>
@@ -852,8 +852,8 @@ function DefaultActionBadge({ action }: { action: string }) {
   const lower = action.toLowerCase();
   const colors =
     lower === "drop" || lower === "reject"
-      ? "border-red-500/30 bg-red-500/10 text-red-400"
-      : "border-green-500/30 bg-green-500/10 text-green-400";
+      ? "border-rose-500/30 bg-rose-500/10 text-rose-400"
+      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400";
 
   return (
     <Badge variant="outline" className={colors}>
@@ -866,7 +866,7 @@ function DefaultActionBadge({ action }: { action: string }) {
 
 function FirewallChainCard({ chain }: { chain: FirewallChain }) {
   return (
-    <Card className="border-[#2a2a3a] bg-[#16161f]">
+    <Card className="border-slate-800 bg-slate-900">
       <CardHeader>
         <div className="flex flex-wrap items-center gap-3">
           <CardTitle className="text-base text-white">{chain.name}</CardTitle>
@@ -875,51 +875,51 @@ function FirewallChainCard({ chain }: { chain: FirewallChain }) {
       </CardHeader>
       <CardContent>
         {chain.rules.length === 0 ? (
-          <p className="py-2 text-sm text-gray-500">
+          <p className="py-2 text-sm text-slate-500">
             No rules in this chain.
           </p>
         ) : (
-          <div className="overflow-x-auto rounded-md border border-[#2a2a3a]">
+          <div className="overflow-x-auto rounded-md border border-slate-800">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#2a2a3a] bg-[#0e0e16] text-left">
-                  <th className="px-4 py-3 font-medium text-gray-400">#</th>
-                  <th className="px-4 py-3 font-medium text-gray-400">Action</th>
-                  <th className="px-4 py-3 font-medium text-gray-400">Source</th>
-                  <th className="px-4 py-3 font-medium text-gray-400">Destination</th>
-                  <th className="px-4 py-3 font-medium text-gray-400">Protocol</th>
-                  <th className="px-4 py-3 font-medium text-gray-400">Description</th>
+                <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                  <th className="px-4 py-3 font-medium text-slate-400">#</th>
+                  <th className="px-4 py-3 font-medium text-slate-400">Action</th>
+                  <th className="px-4 py-3 font-medium text-slate-400">Source</th>
+                  <th className="px-4 py-3 font-medium text-slate-400">Destination</th>
+                  <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+                  <th className="px-4 py-3 font-medium text-slate-400">Description</th>
                 </tr>
               </thead>
               <tbody>
                 {chain.rules.map((rule) => (
                   <tr
                     key={rule.number}
-                    className="border-b border-[#2a2a3a] last:border-b-0 hover:bg-[#1a1a2a]"
+                    className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/50"
                   >
                     <td className="px-4 py-3">
-                      <span className="font-mono text-gray-300">{rule.number}</span>
+                      <span className="font-mono text-slate-300">{rule.number}</span>
                     </td>
                     <td className="px-4 py-3">
                       <FirewallActionBadge action={rule.action} />
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-mono text-xs text-gray-300">
+                      <span className="font-mono text-xs text-slate-300">
                         {rule.source ?? "any"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="font-mono text-xs text-gray-300">
+                      <span className="font-mono text-xs text-slate-300">
                         {rule.destination ?? "any"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-gray-300">
+                      <span className="text-slate-300">
                         {rule.protocol ?? "any"}
                       </span>
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-gray-400">
+                      <span className="text-slate-400">
                         {rule.description ?? "—"}
                       </span>
                     </td>
@@ -947,7 +947,7 @@ function FirewallPanel({
 }) {
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-gray-500">
+      <div className="flex items-center gap-2 py-8 text-slate-500">
         <Loader2 className="h-4 w-4 animate-spin" />
         <span className="text-sm">Loading…</span>
       </div>
@@ -955,18 +955,18 @@ function FirewallPanel({
   }
   if (error) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
-        <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
-        <p className="text-xs text-red-400">{error}</p>
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{error}</p>
       </div>
     );
   }
   if (!config || config.chains.length === 0) {
     return (
-      <Card className="border-[#2a2a3a] bg-[#16161f]">
+      <Card className="border-slate-800 bg-slate-900">
         <CardContent className="flex flex-col items-center gap-3 py-12">
-          <Shield className="h-8 w-8 text-gray-600" />
-          <p className="text-sm text-gray-500">No firewall rules configured.</p>
+          <Shield className="h-8 w-8 text-slate-600" />
+          <p className="text-sm text-slate-500">No firewall rules configured.</p>
         </CardContent>
       </Card>
     );
@@ -1053,38 +1053,38 @@ function RouterTabs({ status }: { status: RouterStatus }) {
       <StatusHeader status={status} />
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="border-[#2a2a3a] bg-[#0e0e16]">
+        <TabsList className="border-slate-800 bg-slate-950">
           <TabsTrigger
             value="interfaces"
-            className="data-[state=active]:bg-[#1e1e2e] data-[state=active]:text-white"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
             <Network className="mr-1.5 h-3.5 w-3.5" />
             Interfaces
           </TabsTrigger>
           <TabsTrigger
             value="routes"
-            className="data-[state=active]:bg-[#1e1e2e] data-[state=active]:text-white"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
             <Globe className="mr-1.5 h-3.5 w-3.5" />
             Routes
           </TabsTrigger>
           <TabsTrigger
             value="dhcp"
-            className="data-[state=active]:bg-[#1e1e2e] data-[state=active]:text-white"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
             <Server className="mr-1.5 h-3.5 w-3.5" />
             DHCP Leases
           </TabsTrigger>
           <TabsTrigger
             value="firewall"
-            className="data-[state=active]:bg-[#1e1e2e] data-[state=active]:text-white"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
             <Shield className="mr-1.5 h-3.5 w-3.5" />
             Firewall
           </TabsTrigger>
           <TabsTrigger
             value="speedtest"
-            className="data-[state=active]:bg-[#1e1e2e] data-[state=active]:text-white"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
             <Gauge className="mr-1.5 h-3.5 w-3.5" />
             Speed Test
@@ -1092,7 +1092,7 @@ function RouterTabs({ status }: { status: RouterStatus }) {
         </TabsList>
 
         <TabsContent value="interfaces" className="space-y-4">
-          <Card className="border-[#2a2a3a] bg-[#16161f]">
+          <Card className="border-slate-800 bg-slate-900">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 Network Interfaces
@@ -1117,7 +1117,7 @@ function RouterTabs({ status }: { status: RouterStatus }) {
         </TabsContent>
 
         <TabsContent value="routes">
-          <Card className="border-[#2a2a3a] bg-[#16161f]">
+          <Card className="border-slate-800 bg-slate-900">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 Routing Table
@@ -1134,7 +1134,7 @@ function RouterTabs({ status }: { status: RouterStatus }) {
         </TabsContent>
 
         <TabsContent value="dhcp">
-          <Card className="border-[#2a2a3a] bg-[#16161f]">
+          <Card className="border-slate-800 bg-slate-900">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 DHCP Server Leases

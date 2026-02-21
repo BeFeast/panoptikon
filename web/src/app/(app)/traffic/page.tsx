@@ -131,29 +131,29 @@ export default function TrafficPage() {
 
       {/* NetFlow Collector Status */}
       {netflow && (
-        <div className="flex items-center gap-2 rounded-lg border border-[#2a2a3a] bg-[#16161f] px-4 py-2.5">
-          <Radio className={`h-4 w-4 ${netflow.enabled ? "text-green-400" : "text-gray-500"}`} />
-          <span className="text-sm text-gray-400">
+        <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900 px-4 py-2.5">
+          <Radio className={`h-4 w-4 ${netflow.enabled ? "text-emerald-400" : "text-slate-500"}`} />
+          <span className="text-sm text-slate-400">
             NetFlow collector:{" "}
             {netflow.enabled ? (
-              <span className="text-green-400">
+              <span className="text-emerald-400">
                 active on port {netflow.port}
-                <span className="ml-2 text-gray-500">
+                <span className="ml-2 text-slate-500">
                   ({netflow.flows_received.toLocaleString()} flows received)
                 </span>
               </span>
             ) : (
-              <span className="text-gray-500">disabled</span>
+              <span className="text-slate-500">disabled</span>
             )}
           </span>
         </div>
       )}
 
       {/* Traffic History Chart */}
-      <div className="rounded-lg border border-[#2a2a3a] bg-[#16161f] p-4">
+      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
         <div className="mb-3 flex items-center gap-2">
           <Activity className="h-4 w-4 text-blue-400" />
-          <h2 className="text-sm font-medium text-gray-400">
+          <h2 className="text-sm font-medium text-slate-400">
             Traffic — Last 60 minutes
           </h2>
         </div>
@@ -172,24 +172,24 @@ export default function TrafficPage() {
                     <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                 <XAxis
                   dataKey="minute"
                   tickFormatter={formatTime}
                   tick={{ fill: "#6b7280", fontSize: 11 }}
-                  stroke="#2a2a3a"
+                  stroke="#1e293b"
                   interval="preserveStartEnd"
                 />
                 <YAxis
                   tickFormatter={(v: number) => formatBps(v)}
                   tick={{ fill: "#6b7280", fontSize: 11 }}
-                  stroke="#2a2a3a"
+                  stroke="#1e293b"
                   width={70}
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: "#16161f",
-                    border: "1px solid #2a2a3a",
+                    backgroundColor: "#0f172a",
+                    border: "1px solid #1e293b",
                     borderRadius: "6px",
                     color: "#fff",
                     fontSize: "12px",
@@ -229,7 +229,7 @@ export default function TrafficPage() {
           </div>
         ) : (
           <div className="flex h-[200px] items-center justify-center">
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-500">
               {loading ? "Loading traffic data…" : "No traffic data available yet."}
             </p>
           </div>
@@ -237,43 +237,43 @@ export default function TrafficPage() {
       </div>
 
       {/* Top Devices by Bandwidth */}
-      <div className="rounded-lg border border-[#2a2a3a] bg-[#16161f]">
-        <div className="border-b border-[#2a2a3a] px-4 py-3">
-          <h2 className="text-sm font-medium text-gray-400">
+      <div className="rounded-lg border border-slate-800 bg-slate-900">
+        <div className="border-b border-slate-800 px-4 py-3">
+          <h2 className="text-sm font-medium text-slate-400">
             Top Devices by Bandwidth
           </h2>
         </div>
         {topDevices.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
+          <div className="p-8 text-center text-slate-500">
             {loading ? "Loading…" : "No active devices."}
           </div>
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="border-[#2a2a3a] hover:bg-transparent">
-                <TableHead className="text-gray-500">Device</TableHead>
-                <TableHead className="text-gray-500">IP</TableHead>
-                <TableHead className="text-right text-gray-500">
+              <TableRow className="border-slate-800 hover:bg-transparent">
+                <TableHead className="text-slate-500">Device</TableHead>
+                <TableHead className="text-slate-500">IP</TableHead>
+                <TableHead className="text-right text-slate-500">
                   Download
                 </TableHead>
-                <TableHead className="text-right text-gray-500">
+                <TableHead className="text-right text-slate-500">
                   Upload
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {topDevices.map((d) => (
-                <TableRow key={d.id} className="border-[#2a2a3a]">
+                <TableRow key={d.id} className="border-slate-800">
                   <TableCell className="text-white">
                     {d.name ?? d.hostname ?? d.id.slice(0, 8)}
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-gray-400">
+                  <TableCell className="font-mono text-xs text-slate-400">
                     {d.ip ?? "—"}
                   </TableCell>
                   <TableCell className="text-right text-blue-400">
                     {formatBps(d.rx_bps)}
                   </TableCell>
-                  <TableCell className="text-right text-green-400">
+                  <TableCell className="text-right text-emerald-400">
                     {formatBps(d.tx_bps)}
                   </TableCell>
                 </TableRow>

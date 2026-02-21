@@ -27,7 +27,7 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body
         className={`${inter.variable} ${jetbrainsMono.variable} font-sans antialiased`}
-        style={{ backgroundColor: "#0a0a0f", color: "#f2f2f2" }}
+        style={{ backgroundColor: "#0b1120", color: "#f0f4f8" }}
       >
         {children}
         <Toaster theme="dark" position="bottom-right" richColors />

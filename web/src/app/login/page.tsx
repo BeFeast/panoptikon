@@ -68,15 +68,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f]">
-      <Card className="w-full max-w-sm border-[#2a2a3a] bg-[#16161f]">
+    <div className="flex min-h-screen items-center justify-center bg-slate-950">
+      <Card className="w-full max-w-sm border-slate-800 bg-slate-900">
         <CardHeader className="items-center pb-2">
           {/* Logo */}
           <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-xl bg-blue-500 shadow-lg shadow-blue-500/20">
             <Shield className="h-7 w-7 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">Panoptikon</h1>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-slate-500">
             {firstRun === null
               ? " "
               : firstRun
@@ -99,7 +99,7 @@ export default function LoginPage() {
                   {firstRun ? "New Password" : "Password"}
                 </Label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                  <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
@@ -113,7 +113,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
                     tabIndex={-1}
                   >
                     {showPassword ? (
@@ -129,7 +129,7 @@ export default function LoginPage() {
                 <div className="space-y-2">
                   <Label htmlFor="confirm">Confirm Password</Label>
                   <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                     <Input
                       id="confirm"
                       type={showPassword ? "text" : "password"}
@@ -144,7 +144,7 @@ export default function LoginPage() {
               )}
 
               {error && (
-                <p className="rounded-md bg-red-500/10 px-3 py-2 text-sm text-red-400">
+                <p className="rounded-md bg-rose-500/10 px-3 py-2 text-sm text-rose-400">
                   {error}
                 </p>
               )}

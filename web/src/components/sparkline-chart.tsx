@@ -15,7 +15,7 @@ export function SparklineChart({
   width = 80,
   height = 24,
 }: SparklineChartProps) {
-  if (data.length === 0) return <span className="text-gray-600 text-xs">—</span>;
+  if (data.length === 0) return <span className="text-slate-600 text-xs">—</span>;
 
   const chartData = data.map((value, index) => ({ index, value }));
 

@@ -106,7 +106,7 @@ export default function AgentsPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-red-400">{error}</p>
+        <p className="text-rose-400">{error}</p>
       </div>
     );
   }
@@ -124,11 +124,11 @@ export default function AgentsPage() {
       </div>
 
       {/* Agents table */}
-      <div className="rounded-lg border border-[#2a2a3a] bg-[#16161f]">
+      <div className="rounded-lg border border-slate-800 bg-slate-900">
         {agents === null ? (
           <div className="space-y-0">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex items-center gap-4 border-b border-[#2a2a3a] p-4 last:border-0">
+              <div key={i} className="flex items-center gap-4 border-b border-slate-800 p-4 last:border-0">
                 <Skeleton className="h-5 w-24" />
                 <Skeleton className="h-5 w-32" />
                 <Skeleton className="h-5 w-20" />
@@ -140,30 +140,30 @@ export default function AgentsPage() {
           </div>
         ) : agents.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Terminal className="mb-4 h-12 w-12 text-gray-600" />
-            <p className="text-lg font-medium text-gray-400">No agents yet</p>
-            <p className="mt-1 text-sm text-gray-600">
+            <Terminal className="mb-4 h-12 w-12 text-slate-600" />
+            <p className="text-lg font-medium text-slate-400">No agents yet</p>
+            <p className="mt-1 text-sm text-slate-600">
               Click &quot;Add Agent&quot; to generate an install command.
             </p>
           </div>
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="border-[#2a2a3a] hover:bg-transparent">
-                <TableHead className="text-gray-500">Name</TableHead>
-                <TableHead className="text-gray-500">Hostname</TableHead>
-                <TableHead className="text-gray-500">OS</TableHead>
-                <TableHead className="text-gray-500">Platform</TableHead>
-                <TableHead className="text-gray-500">Version</TableHead>
-                <TableHead className="text-gray-500">CPU Trend</TableHead>
-                <TableHead className="text-gray-500">Last Report</TableHead>
-                <TableHead className="text-gray-500">Status</TableHead>
+              <TableRow className="border-slate-800 hover:bg-transparent">
+                <TableHead className="text-slate-500">Name</TableHead>
+                <TableHead className="text-slate-500">Hostname</TableHead>
+                <TableHead className="text-slate-500">OS</TableHead>
+                <TableHead className="text-slate-500">Platform</TableHead>
+                <TableHead className="text-slate-500">Version</TableHead>
+                <TableHead className="text-slate-500">CPU Trend</TableHead>
+                <TableHead className="text-slate-500">Last Report</TableHead>
+                <TableHead className="text-slate-500">Status</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
             <TableBody>
               {agents.map((agent) => (
-                <TableRow key={agent.id} className="border-[#2a2a3a]">
+                <TableRow key={agent.id} className="border-slate-800">
                   <TableCell className="font-medium text-white">
                     {renamingId === agent.id ? (
                       <form
@@ -189,21 +189,21 @@ export default function AgentsPage() {
                             autoFocus
                             value={renameValue}
                             onChange={(e) => setRenameValue(e.target.value)}
-                            className="h-7 w-40 bg-[#0a0a0f] border-blue-500 text-white text-sm px-2"
+                            className="h-7 w-40 bg-slate-950 border-blue-500 text-white text-sm px-2"
                           />
-                          <button type="submit" className="text-green-400 hover:text-green-300">
+                          <button type="submit" className="text-emerald-400 hover:text-green-300">
                             <Check size={14} />
                           </button>
                           <button
                             type="button"
                             onClick={() => { setRenamingId(null); setRenameError(null); }}
-                            className="text-gray-500 hover:text-gray-300"
+                            className="text-slate-500 hover:text-slate-300"
                           >
                             <X size={14} />
                           </button>
                         </div>
                         {renameError && (
-                          <p className="text-xs text-red-400">{renameError}</p>
+                          <p className="text-xs text-rose-400">{renameError}</p>
                         )}
                       </form>
                     ) : (
@@ -221,29 +221,29 @@ export default function AgentsPage() {
                             setRenameValue(agent.name ?? "");
                             setRenameError(null);
                           }}
-                          className="opacity-0 group-hover:opacity-50 text-gray-400 hover:text-gray-200"
+                          className="opacity-0 group-hover:opacity-50 text-slate-400 hover:text-gray-200"
                         >
                           <Pencil size={12} />
                         </button>
                       </span>
                     )}
                   </TableCell>
-                  <TableCell className="font-mono text-gray-400">
+                  <TableCell className="font-mono text-slate-400">
                     {agent.hostname ?? "—"}
                   </TableCell>
-                  <TableCell className="text-gray-400">
+                  <TableCell className="text-slate-400">
                     {agent.os_name ? `${agent.os_name} ${agent.os_version ?? ""}` : "—"}
                   </TableCell>
-                  <TableCell className="text-gray-400">
+                  <TableCell className="text-slate-400">
                     {agent.platform ?? "—"}
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-gray-500">
+                  <TableCell className="font-mono text-xs text-slate-500">
                     {agent.version ?? "—"}
                   </TableCell>
                   <TableCell>
                     <SparklineChart data={sparklines[agent.id] ?? []} />
                   </TableCell>
-                  <TableCell className="text-gray-400">
+                  <TableCell className="text-slate-400">
                     {agent.last_report_at ? timeAgo(agent.last_report_at) : "Never"}
                   </TableCell>
                   <TableCell>
@@ -252,7 +252,7 @@ export default function AgentsPage() {
                   <TableCell>
                     <button
                       onClick={() => setPendingDelete(agent)}
-                      className="rounded p-1 text-gray-600 hover:bg-red-500/10 hover:text-red-400 transition-colors"
+                      className="rounded p-1 text-slate-600 hover:bg-rose-500/10 hover:text-rose-400 transition-colors"
                       title="Delete agent"
                     >
                       <Trash2 size={14} />
@@ -267,15 +267,15 @@ export default function AgentsPage() {
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={!!pendingDelete} onOpenChange={(v) => { if (!v) setPendingDelete(null); }}>
-        <AlertDialogContent className="border-[#2a2a3a] bg-[#0d0d14]">
+        <AlertDialogContent className="border-slate-800 bg-slate-950">
           <AlertDialogHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-500/10">
-                <AlertTriangle className="h-5 w-5 text-red-400" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10">
+                <AlertTriangle className="h-5 w-5 text-rose-400" />
               </div>
               <AlertDialogTitle className="text-white">Delete agent?</AlertDialogTitle>
             </div>
-            <AlertDialogDescription className="text-gray-400 pl-[52px]">
+            <AlertDialogDescription className="text-slate-400 pl-[52px]">
               <span className="font-medium text-white">
                 {pendingDelete?.name ?? pendingDelete?.id.slice(0, 8)}
               </span>{" "}
@@ -284,7 +284,7 @@ export default function AgentsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
-              className="border-[#2a2a3a] bg-transparent text-gray-400 hover:bg-[#1a1a2a] hover:text-white"
+              className="border-slate-800 bg-transparent text-slate-400 hover:bg-slate-800/50 hover:text-white"
               disabled={deleting}
             >
               Cancel
@@ -293,7 +293,7 @@ export default function AgentsPage() {
               onClick={handleDelete}
               disabled={deleting}
               autoFocus
-              className="bg-red-600 text-white hover:bg-red-500"
+              className="bg-red-600 text-white hover:bg-rose-500"
             >
               {deleting ? "Deleting…" : "Delete"}
             </AlertDialogAction>
@@ -312,13 +312,13 @@ function StatusBadge({ online }: { online: boolean }) {
       variant="outline"
       className={
         online
-          ? "border-green-500/50 text-green-400"
-          : "border-red-500/50 text-red-400"
+          ? "border-emerald-500/50 text-emerald-400"
+          : "border-rose-500/50 text-rose-400"
       }
     >
       <span
         className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
-          online ? "bg-green-500 status-pulse" : "bg-red-500"
+          online ? "bg-emerald-500 status-glow-online" : "bg-rose-500"
         }`}
       />
       {online ? "Online" : "Offline"}
@@ -370,7 +370,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
           Add Agent
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-full max-w-[680px] border-[#2a2a3a] bg-[#0d0d14]">
+      <DialogContent className="w-full max-w-[680px] border-slate-800 bg-slate-950">
         <DialogHeader>
           <DialogTitle className="text-white">
             {result ? "Agent Created" : "Add New Agent"}
@@ -393,7 +393,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
                 onKeyDown={(e) => e.key === "Enter" && handleCreate()}
               />
             </div>
-            {error && <p className="text-sm text-red-400">{error}</p>}
+            {error && <p className="text-sm text-rose-400">{error}</p>}
             <Button onClick={handleCreate} disabled={loading || !name.trim()} className="w-full">
               {loading ? "Creating…" : "Generate API Key"}
             </Button>
@@ -401,7 +401,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
         ) : (
           <div className="min-w-0 space-y-4 pt-2">
             <div className="space-y-2">
-              <Label className="text-gray-400">API Key</Label>
+              <Label className="text-slate-400">API Key</Label>
               <CopyBlock text={result.api_key} />
               <p className="text-xs text-amber-400">
                 ⚠ Save this key — it won&apos;t be shown again.
@@ -409,9 +409,9 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-gray-400">Install Command</Label>
+              <Label className="text-slate-400">Install Command</Label>
               <Tabs defaultValue="linux-amd64">
-                <TabsList className="bg-[#16161f]">
+                <TabsList className="bg-slate-900">
                   <TabsTrigger value="linux-amd64">Linux x86_64</TabsTrigger>
                   <TabsTrigger value="linux-arm64">Linux ARM64</TabsTrigger>
                   <TabsTrigger value="darwin-arm64">macOS ARM (M1+)</TabsTrigger>
@@ -500,15 +500,15 @@ function CopyBlock({ text }: { text: string }) {
   };
 
   return (
-    <div className="overflow-hidden rounded-md border border-[#2a2a3a] bg-[#0a0a0f]">
+    <div className="overflow-hidden rounded-md border border-slate-800 bg-slate-950">
       {/* Header bar: copy button lives here, completely separate from scroll area */}
-      <div className="flex items-center justify-end border-b border-[#2a2a3a] px-3 py-1.5">
+      <div className="flex items-center justify-end border-b border-slate-800 px-3 py-1.5">
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-gray-500 transition-colors hover:bg-[#1a1a2a] hover:text-white"
+          className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-slate-800/50 hover:text-white"
         >
           {copied ? (
-            <Check className="h-3 w-3 text-green-400" />
+            <Check className="h-3 w-3 text-emerald-400" />
           ) : (
             <Copy className="h-3 w-3" />
           )}
@@ -518,7 +518,7 @@ function CopyBlock({ text }: { text: string }) {
       {/* Scrollable pre — independent of the header bar */}
       <pre
         ref={preRef}
-        className="overflow-x-auto p-3 font-mono text-xs text-gray-300 select-all cursor-text"
+        className="overflow-x-auto p-3 font-mono text-xs text-slate-300 select-all cursor-text"
       >
         {text}
       </pre>

@@ -68,7 +68,7 @@ export default function AgentDetailContent() {
   if (error) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-red-400">{error}</p>
+        <p className="text-rose-400">{error}</p>
       </div>
     );
   }
@@ -107,7 +107,7 @@ export default function AgentDetailContent() {
       <div>
         <Link
           href="/agents"
-          className="inline-flex items-center gap-1 text-sm text-gray-400 hover:text-white transition-colors mb-3"
+          className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white transition-colors mb-3"
         >
           <ArrowLeft size={14} />
           Back to Agents
@@ -120,19 +120,19 @@ export default function AgentDetailContent() {
             variant="outline"
             className={
               agent.is_online
-                ? "border-green-500/50 text-green-400"
-                : "border-red-500/50 text-red-400"
+                ? "border-emerald-500/50 text-emerald-400"
+                : "border-rose-500/50 text-rose-400"
             }
           >
             <span
               className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
-                agent.is_online ? "bg-green-500 status-pulse" : "bg-red-500"
+                agent.is_online ? "bg-emerald-500 status-glow-online" : "bg-rose-500"
               }`}
             />
             {agent.is_online ? "Online" : "Offline"}
           </Badge>
         </div>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-slate-500 mt-1">
           Last seen: {agent.last_report_at ? timeAgo(agent.last_report_at) : "Never"}
           {agent.hostname && <> · {agent.hostname}</>}
           {agent.os_name && <> · {agent.os_name} {agent.os_version ?? ""}</>}
@@ -143,28 +143,28 @@ export default function AgentDetailContent() {
       {chartData.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* CPU Chart */}
-          <div className="rounded-lg border border-[#2a2a3a] bg-[#16161f] p-4">
-            <h2 className="text-sm font-medium text-gray-400 mb-3">CPU Usage %</h2>
+          <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+            <h2 className="text-sm font-medium text-slate-400 mb-3">CPU Usage %</h2>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                   <XAxis
                     dataKey="time"
                     tick={{ fill: "#6b7280", fontSize: 11 }}
-                    stroke="#2a2a3a"
+                    stroke="#1e293b"
                     interval="preserveStartEnd"
                   />
                   <YAxis
                     domain={[0, 100]}
                     tick={{ fill: "#6b7280", fontSize: 11 }}
-                    stroke="#2a2a3a"
+                    stroke="#1e293b"
                     width={35}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#16161f",
-                      border: "1px solid #2a2a3a",
+                      backgroundColor: "#0f172a",
+                      border: "1px solid #1e293b",
                       borderRadius: "6px",
                       color: "#fff",
                       fontSize: "12px",
@@ -186,28 +186,28 @@ export default function AgentDetailContent() {
           </div>
 
           {/* RAM Chart */}
-          <div className="rounded-lg border border-[#2a2a3a] bg-[#16161f] p-4">
-            <h2 className="text-sm font-medium text-gray-400 mb-3">RAM Usage %</h2>
+          <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+            <h2 className="text-sm font-medium text-slate-400 mb-3">RAM Usage %</h2>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2a3a" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
                   <XAxis
                     dataKey="time"
                     tick={{ fill: "#6b7280", fontSize: 11 }}
-                    stroke="#2a2a3a"
+                    stroke="#1e293b"
                     interval="preserveStartEnd"
                   />
                   <YAxis
                     domain={[0, 100]}
                     tick={{ fill: "#6b7280", fontSize: 11 }}
-                    stroke="#2a2a3a"
+                    stroke="#1e293b"
                     width={35}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#16161f",
-                      border: "1px solid #2a2a3a",
+                      backgroundColor: "#0f172a",
+                      border: "1px solid #1e293b",
                       borderRadius: "6px",
                       color: "#fff",
                       fontSize: "12px",
@@ -229,34 +229,34 @@ export default function AgentDetailContent() {
           </div>
         </div>
       ) : (
-        <div className="rounded-lg border border-[#2a2a3a] bg-[#16161f] p-8 text-center">
-          <p className="text-gray-500">No report data available yet.</p>
+        <div className="rounded-lg border border-slate-800 bg-slate-900 p-8 text-center">
+          <p className="text-slate-500">No report data available yet.</p>
         </div>
       )}
 
       {/* Reports table */}
-      <div className="rounded-lg border border-[#2a2a3a] bg-[#16161f]">
-        <div className="px-4 py-3 border-b border-[#2a2a3a]">
-          <h2 className="text-sm font-medium text-gray-400">
+      <div className="rounded-lg border border-slate-800 bg-slate-900">
+        <div className="px-4 py-3 border-b border-slate-800">
+          <h2 className="text-sm font-medium text-slate-400">
             Recent Reports ({reports.length})
           </h2>
         </div>
         {reports.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">No reports yet.</div>
+          <div className="p-8 text-center text-slate-500">No reports yet.</div>
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="border-[#2a2a3a] hover:bg-transparent">
-                <TableHead className="text-gray-500">Time</TableHead>
-                <TableHead className="text-gray-500">CPU %</TableHead>
-                <TableHead className="text-gray-500">RAM Used</TableHead>
-                <TableHead className="text-gray-500">RAM Total</TableHead>
+              <TableRow className="border-slate-800 hover:bg-transparent">
+                <TableHead className="text-slate-500">Time</TableHead>
+                <TableHead className="text-slate-500">CPU %</TableHead>
+                <TableHead className="text-slate-500">RAM Used</TableHead>
+                <TableHead className="text-slate-500">RAM Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {reports.map((report) => (
-                <TableRow key={report.id} className="border-[#2a2a3a]">
-                  <TableCell className="text-gray-400 font-mono text-xs">
+                <TableRow key={report.id} className="border-slate-800">
+                  <TableCell className="text-slate-400 font-mono text-xs">
                     {new Date(report.reported_at).toLocaleString()}
                   </TableCell>
                   <TableCell className="text-white">
