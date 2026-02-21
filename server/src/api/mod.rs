@@ -144,7 +144,7 @@ pub fn router(state: AppState) -> Router {
     let metrics_route = Router::new().route("/metrics", get(metrics::handler));
 
     // Embedded static assets from rust-embed (immutable, long cache).
-    let embedded_static = Router::new().route("/_next/static/{*path}", get(serve_static_asset));
+    let embedded_static = Router::new().route("/_next/static/*path", get(serve_static_asset));
 
     Router::new()
         .merge(metrics_route)
