@@ -130,7 +130,7 @@ export function TopBar() {
           onFocus={() => {
             if (results && query.length >= 2) setIsOpen(true);
           }}
-          placeholder="Search devices, IPs, MACs..."
+          placeholder="Search devices, IPs, MACs...  ⌘K"
           className="w-full rounded-md border border-slate-800 bg-background px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-accent focus:outline-none"
         />
 
