@@ -8,8 +8,6 @@ use sqlx::SqlitePool;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tower_http::cors::CorsLayer;
-use tower_http::services::{ServeDir, ServeFile};
-
 use crate::config::AppConfig;
 use crate::static_files::serve_static_asset;
 use crate::ws::hub::WsHub;
@@ -135,16 +133,8 @@ pub fn router(state: AppState) -> Router {
             auth::auth_middleware,
         ));
 
-    // Serve Next.js static export; fall back to index.html for client-side routing.
-    let web_dir = std::env::current_dir().unwrap_or_default().join("web/out");
-    let serve_dir =
-        ServeDir::new(&web_dir).not_found_service(ServeFile::new(web_dir.join("index.html")));
-
     // Prometheus metrics endpoint — outside /api/v1 and outside auth.
     let metrics_route = Router::new().route("/metrics", get(metrics::handler));
-
-    // Embedded static assets from rust-embed (immutable, long cache).
-    let embedded_static = Router::new().route("/_next/static/*path", get(serve_static_asset));
 
     Router::new()
         .merge(metrics_route)
@@ -152,8 +142,7 @@ pub fn router(state: AppState) -> Router {
             "/api/v1",
             public_routes.merge(agent_ws).merge(protected_routes),
         )
-        .merge(embedded_static)
-        .fallback_service(serve_dir)
+        .fallback(serve_static_asset)
         .layer(cors)
         .with_state(state)
 }
