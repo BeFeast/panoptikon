@@ -973,6 +973,7 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
 pub async fn install_script(
     Path(platform): Path<String>,
     Query(params): Query<HashMap<String, String>>,
+    headers: HeaderMap,
     State(state): State<AppState>,
 ) -> Response {
     let api_key = match params.get("key") {
@@ -989,16 +990,14 @@ pub async fn install_script(
             .await
             .unwrap_or(false);
 
-    // Determine server URL from config or use a default
-    let server_url = format!(
-        "http://{}",
-        state
-            .config
-            .listen
-            .as_deref()
-            .unwrap_or("0.0.0.0:8080")
-            .replace("0.0.0.0", "10.10.0.14")
-    );
+    // Determine server URL: prefer the Host header from the incoming request,
+    // fall back to config listen address (without hardcoded IPs).
+    let server_url = if let Some(host) = headers.get("host").and_then(|v| v.to_str().ok()) {
+        format!("http://{}", host)
+    } else {
+        let listen = state.config.listen.as_deref().unwrap_or("0.0.0.0:8080");
+        format!("http://{}", listen)
+    };
 
     let (_target_triple, _binary_name) = match platform.as_str() {
         "linux-amd64" => ("x86_64-unknown-linux-musl", "panoptikon-agent-linux-amd64"),
