@@ -58,6 +58,11 @@ async fn main() -> Result<()> {
         "Configuration loaded"
     );
 
+    // Create the system collector once — it holds sysinfo structs across
+    // reconnections, avoiding expensive re-enumeration on every cycle.
+    let mut collector = collectors::SystemCollector::new();
+    info!("System collector initialised");
+
     // Main loop: connect, report, reconnect on failure.
     let mut backoff_secs = 1u64;
     let max_backoff = 60u64;
@@ -65,7 +70,7 @@ async fn main() -> Result<()> {
     loop {
         info!("Connecting to server...");
 
-        match ws::run_session(&cfg).await {
+        match ws::run_session(&cfg, &mut collector).await {
             Ok(()) => {
                 info!("Session ended gracefully");
                 backoff_secs = 1; // Reset backoff on clean disconnect.

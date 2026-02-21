@@ -3,14 +3,14 @@ use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use tracing::{debug, info, warn};
 
-use crate::collectors;
+use crate::collectors::SystemCollector;
 use crate::config::AgentConfig;
 
 /// Run a single WebSocket session: connect, authenticate, then loop sending reports.
 ///
 /// Returns Ok(()) if the server closes the connection gracefully.
 /// Returns Err on connection failure or protocol errors.
-pub async fn run_session(config: &AgentConfig) -> Result<()> {
+pub async fn run_session(config: &AgentConfig, collector: &mut SystemCollector) -> Result<()> {
     let ws_url = format!(
         "{}/api/v1/agent/ws",
         config.server_url.trim_end_matches('/')
@@ -38,8 +38,8 @@ pub async fn run_session(config: &AgentConfig) -> Result<()> {
     let interval = std::time::Duration::from_secs(config.report_interval_secs);
 
     loop {
-        // Collect system metrics.
-        let report = collectors::collect_all(config);
+        // Collect system metrics (incremental refresh).
+        let report = collector.collect(config);
         let json = serde_json::to_string(&report)?;
         debug!(bytes = json.len(), "Sending report");
 
