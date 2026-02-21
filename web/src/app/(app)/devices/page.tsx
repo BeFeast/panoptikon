@@ -31,6 +31,9 @@ import type { Device } from "@/lib/types";
 import { formatPercent, timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PageTransition } from "@/components/PageTransition";
+import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
+import { MotionCard } from "@/components/MotionCard";
 
 type Filter = "all" | "online" | "offline" | "unknown";
 type ViewMode = "grid" | "table";
@@ -188,6 +191,7 @@ export default function DevicesPage() {
     : null;
 
   return (
+    <PageTransition>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -360,15 +364,18 @@ export default function DevicesPage() {
           No devices match your filters.
         </p>
       ) : view === "grid" ? (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+        <StaggerContainer className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
           {sorted.map((device) => (
-            <DeviceCard
-              key={device.id}
-              device={device}
-              onClick={() => setSelectedDevice(device)}
-            />
+            <StaggerItem key={device.id}>
+              <MotionCard>
+                <DeviceCard
+                  device={device}
+                  onClick={() => setSelectedDevice(device)}
+                />
+              </MotionCard>
+            </StaggerItem>
           ))}
-        </div>
+        </StaggerContainer>
       ) : (
         <DevicesTable
           devices={sorted}
@@ -394,6 +401,7 @@ export default function DevicesPage() {
         </SheetContent>
       </Sheet>
     </div>
+    </PageTransition>
   );
 }
 

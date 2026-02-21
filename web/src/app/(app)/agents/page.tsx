@@ -40,6 +40,7 @@ import { apiDelete, apiPatch, createAgent, fetchAgents, fetchAgentReports } from
 import type { Agent, AgentCreateResponse, AgentReport } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
+import { PageTransition } from "@/components/PageTransition";
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[] | null>(null);
@@ -112,6 +113,7 @@ export default function AgentsPage() {
   }
 
   return (
+    <PageTransition>
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -319,6 +321,7 @@ export default function AgentsPage() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+    </PageTransition>
   );
 }
 

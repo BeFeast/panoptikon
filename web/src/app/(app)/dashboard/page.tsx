@@ -32,6 +32,8 @@ import {
 } from "@/lib/api";
 import type { Alert, DashboardStats, TopDevice, TrafficHistoryPoint, Device } from "@/lib/types";
 import { formatBps, timeAgo } from "@/lib/format";
+import { PageTransition } from "@/components/PageTransition";
+import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
 import { useWsEvent } from "@/lib/ws";
 import { getDeviceIcon } from "@/lib/device-icons";
 import type { DeviceType } from "@/lib/device-type";
@@ -285,13 +287,14 @@ export default function DashboardPage() {
   }
 
   return (
+    <PageTransition>
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
 
       {/* ── Bento Grid ─────────────────────────────────── */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+      <StaggerContainer className="grid grid-cols-1 gap-4 lg:grid-cols-5">
         {/* ── Health Score Ring ─────────────────────────── */}
-        <Card className="border-slate-800 bg-slate-900 lg:col-span-1">
+        <StaggerItem><Card className="border-slate-800 bg-slate-900 lg:col-span-1">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-slate-400">
               System Health
@@ -304,10 +307,10 @@ export default function DashboardPage() {
               <Skeleton className="h-28 w-28 rounded-full" />
             )}
           </CardContent>
-        </Card>
+        </Card></StaggerItem>
 
         {/* ── Stat Cards Row ───────────────────────────── */}
-        <div className="grid grid-cols-2 gap-4 lg:col-span-4 lg:grid-cols-4">
+        <StaggerItem className="lg:col-span-4"><div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {stats ? (
             <>
               <StatCard
@@ -357,10 +360,10 @@ export default function DashboardPage() {
               <StatCardSkeleton />
             </>
           )}
-        </div>
+        </div></StaggerItem>
 
         {/* ── WAN Traffic Chart (wide) ─────────────────── */}
-        <Card className="border-slate-800 bg-slate-900 lg:col-span-3">
+        <StaggerItem className="lg:col-span-3"><Card className="border-slate-800 bg-slate-900">
           <CardHeader className="pb-2">
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-blue-400" />
@@ -439,10 +442,10 @@ export default function DashboardPage() {
               </div>
             )}
           </CardContent>
-        </Card>
+        </Card></StaggerItem>
 
         {/* ── Alert Feed ───────────────────────────────── */}
-        <Card className="border-slate-800 bg-slate-900 lg:col-span-2">
+        <StaggerItem className="lg:col-span-2"><Card className="border-slate-800 bg-slate-900">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium text-slate-400">
@@ -494,10 +497,10 @@ export default function DashboardPage() {
               </div>
             )}
           </CardContent>
-        </Card>
+        </Card></StaggerItem>
 
         {/* ── Device Type Breakdown ────────────────────── */}
-        <Card className="border-slate-800 bg-slate-900 lg:col-span-5">
+        <StaggerItem className="lg:col-span-5"><Card className="border-slate-800 bg-slate-900">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium text-slate-400">
@@ -549,9 +552,10 @@ export default function DashboardPage() {
               </div>
             )}
           </CardContent>
-        </Card>
-      </div>
+        </Card></StaggerItem>
+      </StaggerContainer>
     </div>
+    </PageTransition>
   );
 }
 

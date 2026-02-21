@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { fetchRouterStatus } from "@/lib/api";
+import { PageTransition } from "@/components/PageTransition";
 
 type Status = "idle" | "loading" | "success" | "error";
 
@@ -266,6 +267,7 @@ export default function SettingsPage() {
   }
 
   return (
+    <PageTransition>
     <div className="mx-auto max-w-lg space-y-6 py-8">
       <h1 className="text-2xl font-semibold text-white">Settings</h1>
 
@@ -606,5 +608,6 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
     </div>
+    </PageTransition>
   );
 }
