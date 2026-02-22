@@ -228,23 +228,32 @@ export default function AgentsPage() {
                       </form>
                     ) : (
                       <span className="group flex items-center gap-1">
-                        <Link
-                          href={`/agents/detail?id=${agent.id}`}
-                          className="hover:text-blue-400 transition-colors hover:underline"
-                        >
-                          {agent.name ?? agent.id.slice(0, 8)}
-                        </Link>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRenamingId(agent.id);
-                            setRenameValue(agent.name ?? "");
-                            setRenameError(null);
-                          }}
-                          className="opacity-0 group-hover:opacity-50 text-slate-400 hover:text-gray-200"
-                        >
-                          <Pencil size={12} />
-                        </button>
+                        <span className="flex flex-col">
+                          <span className="flex items-center gap-1">
+                            <Link
+                              href={`/agents/detail?id=${agent.id}`}
+                              className="hover:text-blue-400 transition-colors hover:underline"
+                            >
+                              {agent.name ?? agent.id.slice(0, 8)}
+                            </Link>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setRenamingId(agent.id);
+                                setRenameValue(agent.name ?? "");
+                                setRenameError(null);
+                              }}
+                              className="opacity-0 group-hover:opacity-50 text-slate-400 hover:text-gray-200"
+                            >
+                              <Pencil size={12} />
+                            </button>
+                          </span>
+                          {agent.cpu_name && (
+                            <span className="text-xs text-slate-500 font-normal truncate max-w-[200px]" title={agent.cpu_name}>
+                              {agent.cpu_name}
+                            </span>
+                          )}
+                        </span>
                       </span>
                     )}
                   </TableCell>

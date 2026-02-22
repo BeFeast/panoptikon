@@ -96,6 +96,25 @@ pub struct Agent {
     pub cpu_percent: Option<f64>,
     pub mem_total: Option<i64>,
     pub mem_used: Option<i64>,
+    // From device_sysinfo (hardware inventory):
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hardware_model: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cpu_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cpu_cores: Option<i32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cpu_speed: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gpu_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disk_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disk_size: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub serial_number: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uptime_seconds: Option<i64>,
 }
 
 /// Request body for registering a new agent.
@@ -219,6 +238,15 @@ impl Agent {
             cpu_percent: row.try_get("cpu_percent").ok(),
             mem_total: row.try_get("mem_total").ok(),
             mem_used: row.try_get("mem_used").ok(),
+            hardware_model: row.try_get("hardware_model").ok().flatten(),
+            cpu_name: row.try_get("cpu_name").ok().flatten(),
+            cpu_cores: row.try_get("cpu_cores").ok().flatten(),
+            cpu_speed: row.try_get("cpu_speed").ok().flatten(),
+            gpu_name: row.try_get("gpu_name").ok().flatten(),
+            disk_name: row.try_get("disk_name").ok().flatten(),
+            disk_size: row.try_get("disk_size").ok().flatten(),
+            serial_number: row.try_get("serial_number").ok().flatten(),
+            uptime_seconds: row.try_get("uptime_seconds").ok().flatten(),
         })
     }
 }
@@ -228,7 +256,9 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Agent>>, Sta
     let rows = sqlx::query(
         "SELECT a.id, a.device_id, a.name, a.platform, a.version, a.is_online, \
                 a.last_report_at, a.created_at, \
-                r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used \
+                r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used, \
+                ds.hardware_model, ds.cpu_name, ds.cpu_cores, ds.cpu_speed, \
+                ds.gpu_name, ds.disk_name, ds.disk_size, ds.serial_number, ds.uptime_seconds \
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
            AND r.id = ( \
@@ -237,6 +267,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Agent>>, Sta
                ORDER BY ar.reported_at DESC, ar.id DESC \
                LIMIT 1 \
            ) \
+         LEFT JOIN device_sysinfo ds ON ds.device_id = a.device_id \
          ORDER BY a.created_at DESC",
     )
     .fetch_all(&state.db)
@@ -266,7 +297,9 @@ pub async fn get_one(
     let row = sqlx::query(
         "SELECT a.id, a.device_id, a.name, a.platform, a.version, a.is_online, \
                 a.last_report_at, a.created_at, \
-                r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used \
+                r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used, \
+                ds.hardware_model, ds.cpu_name, ds.cpu_cores, ds.cpu_speed, \
+                ds.gpu_name, ds.disk_name, ds.disk_size, ds.serial_number, ds.uptime_seconds \
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
            AND r.id = ( \
@@ -275,6 +308,7 @@ pub async fn get_one(
                ORDER BY ar.reported_at DESC, ar.id DESC \
                LIMIT 1 \
            ) \
+         LEFT JOIN device_sysinfo ds ON ds.device_id = a.device_id \
          WHERE a.id = ?",
     )
     .bind(&id)
@@ -345,7 +379,9 @@ pub async fn update(
     let row = sqlx::query(
         "SELECT a.id, a.device_id, a.name, a.platform, a.version, a.is_online, \
                 a.last_report_at, a.created_at, \
-                r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used \
+                r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used, \
+                ds.hardware_model, ds.cpu_name, ds.cpu_cores, ds.cpu_speed, \
+                ds.gpu_name, ds.disk_name, ds.disk_size, ds.serial_number, ds.uptime_seconds \
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
            AND r.id = ( \
@@ -354,6 +390,7 @@ pub async fn update(
                ORDER BY ar.reported_at DESC, ar.id DESC \
                LIMIT 1 \
            ) \
+         LEFT JOIN device_sysinfo ds ON ds.device_id = a.device_id \
          WHERE a.id = ?",
     )
     .bind(&id)
