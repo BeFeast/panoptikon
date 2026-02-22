@@ -187,6 +187,18 @@ export interface VyosWriteResponse {
   message: string;
 }
 
+// ─── NAT Destination (Port Forwarding) ──────────────────
+
+export interface NatDestinationRule {
+  rule: number;
+  description: string | null;
+  inbound_interface: string | null;
+  external_port: string | null;
+  internal_ip: string | null;
+  internal_port: string | null;
+  protocol: string | null;
+}
+
 // ─── Firewall ───────────────────────────────────────────
 
 export interface FirewallRule {

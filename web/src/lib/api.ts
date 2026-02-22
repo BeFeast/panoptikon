@@ -16,6 +16,7 @@ import type {
   DhcpStaticMapping,
   FirewallConfig,
   LoginResponse,
+  NatDestinationRule,
   NetflowStatus,
   RouterStatus,
   SearchResponse,
@@ -308,6 +309,30 @@ export function deleteDhcpStaticMapping(
 ): Promise<VyosWriteResponse> {
   return apiDelete(
     `/api/v1/vyos/dhcp/static-mappings/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}/${encodeURIComponent(name)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+// ─── NAT Destination (Port Forwarding) ──────────────────
+
+export function fetchNatDestinationRules(): Promise<NatDestinationRule[]> {
+  return apiGet<NatDestinationRule[]>("/api/v1/router/nat/destination");
+}
+
+export function createNatDestinationRule(body: {
+  rule: number;
+  description: string;
+  inbound_interface: string;
+  external_port: string;
+  protocol: string;
+  internal_ip: string;
+  internal_port?: string;
+}): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>("/api/v1/router/nat/destination", body);
+}
+
+export function deleteNatDestinationRule(rule: number): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/router/nat/destination/${rule}`
   ) as unknown as Promise<VyosWriteResponse>;
 }
 

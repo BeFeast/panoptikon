@@ -20,6 +20,7 @@ import {
   Wifi,
   Plus,
   Trash2,
+  ArrowRightLeft,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -62,8 +63,11 @@ import {
   fetchDhcpStaticMappings,
   createDhcpStaticMapping,
   deleteDhcpStaticMapping,
+  fetchNatDestinationRules,
+  createNatDestinationRule,
+  deleteNatDestinationRule,
 } from "@/lib/api";
-import type { FirewallConfig, FirewallChain, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping } from "@/lib/types";
+import type { FirewallConfig, FirewallChain, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, NatDestinationRule } from "@/lib/types";
 import { Progress } from "@/components/ui/progress";
 import { PageTransition } from "@/components/PageTransition";
 
@@ -1344,6 +1348,418 @@ function StaticMappingsTable({
   );
 }
 
+// ── NAT Port Forwarding Table ────────────────────────────
+
+function NatPortForwardTable({
+  rules,
+  interfaces,
+  loading,
+  error,
+  onReload,
+}: {
+  rules: NatDestinationRule[] | null;
+  interfaces: VyosInterface[] | null;
+  loading: boolean;
+  error: string | null;
+  onReload: () => void;
+}) {
+  const [confirmDelete, setConfirmDelete] = useState<NatDestinationRule | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [addForm, setAddForm] = useState({
+    rule: "",
+    description: "",
+    inbound_interface: "",
+    external_port: "",
+    protocol: "tcp",
+    internal_ip: "",
+    internal_port: "",
+  });
+  const [adding, setAdding] = useState(false);
+
+  // Auto-suggest next rule number
+  useEffect(() => {
+    if (rules && rules.length > 0 && !addForm.rule) {
+      const maxRule = Math.max(...rules.map((r) => r.rule));
+      const next = Math.ceil((maxRule + 10) / 10) * 10;
+      setAddForm((prev) => ({ ...prev, rule: String(next) }));
+    } else if ((!rules || rules.length === 0) && !addForm.rule) {
+      setAddForm((prev) => ({ ...prev, rule: "10" }));
+    }
+  }, [rules, addForm.rule]);
+
+  // Pre-fill interface from first available
+  useEffect(() => {
+    if (interfaces && interfaces.length > 0 && !addForm.inbound_interface) {
+      const first = interfaces.find((i) => i.name.startsWith("eth")) ?? interfaces[0];
+      setAddForm((prev) => ({ ...prev, inbound_interface: first.name }));
+    }
+  }, [interfaces, addForm.inbound_interface]);
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    const { rule } = confirmDelete;
+    setConfirmDelete(null);
+    setDeleting(rule);
+    try {
+      await deleteNatDestinationRule(rule);
+      toast.success(`Port forward rule ${rule} deleted`);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleAdd = async () => {
+    const ruleNum = parseInt(addForm.rule, 10);
+    if (!ruleNum || !addForm.description || !addForm.inbound_interface || !addForm.external_port || !addForm.internal_ip) {
+      toast.error("Description, interface, external port, and internal IP are required");
+      return;
+    }
+    setAdding(true);
+    try {
+      const res = await createNatDestinationRule({
+        rule: ruleNum,
+        description: addForm.description,
+        inbound_interface: addForm.inbound_interface,
+        external_port: addForm.external_port,
+        protocol: addForm.protocol,
+        internal_ip: addForm.internal_ip,
+        internal_port: addForm.internal_port || undefined,
+      });
+      toast.success(res.message);
+      setShowAdd(false);
+      setAddForm({
+        rule: "",
+        description: "",
+        inbound_interface: "",
+        external_port: "",
+        protocol: "tcp",
+        internal_ip: "",
+        internal_port: "",
+      });
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Create failed");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const protocolLabel = (p: string | null) => {
+    if (!p) return "—";
+    return p.toUpperCase().replace("_", "+");
+  };
+
+  return (
+    <>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-slate-300">Port Forwarding Rules</h3>
+        <Dialog open={showAdd} onOpenChange={setShowAdd}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-slate-800 text-slate-300 hover:bg-slate-800"
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add Port Forward
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="border-slate-800 bg-slate-900">
+            <DialogHeader>
+              <DialogTitle className="text-white">Add Port Forward</DialogTitle>
+              <DialogDescription className="text-slate-400">
+                Create a destination NAT rule to forward external traffic to an internal host.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Rule Number</Label>
+                  <Input
+                    type="number"
+                    value={addForm.rule}
+                    onChange={(e) => setAddForm({ ...addForm, rule: e.target.value })}
+                    placeholder="10"
+                    className="border-slate-800 bg-slate-950 font-mono text-white"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Protocol</Label>
+                  <select
+                    value={addForm.protocol}
+                    onChange={(e) => setAddForm({ ...addForm, protocol: e.target.value })}
+                    className="flex h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-1 text-sm text-white shadow-sm"
+                  >
+                    <option value="tcp">TCP</option>
+                    <option value="udp">UDP</option>
+                    <option value="tcp_udp">TCP+UDP</option>
+                  </select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Description</Label>
+                <Input
+                  value={addForm.description}
+                  onChange={(e) => setAddForm({ ...addForm, description: e.target.value })}
+                  placeholder="Home Assistant"
+                  className="border-slate-800 bg-slate-950 text-white"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Inbound Interface</Label>
+                {interfaces && interfaces.length > 0 ? (
+                  <select
+                    value={addForm.inbound_interface}
+                    onChange={(e) => setAddForm({ ...addForm, inbound_interface: e.target.value })}
+                    className="flex h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-1 text-sm text-white shadow-sm"
+                  >
+                    {interfaces.map((iface) => (
+                      <option key={iface.name} value={iface.name}>
+                        {iface.name}{iface.description ? ` (${iface.description})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <Input
+                    value={addForm.inbound_interface}
+                    onChange={(e) => setAddForm({ ...addForm, inbound_interface: e.target.value })}
+                    placeholder="eth0"
+                    className="border-slate-800 bg-slate-950 font-mono text-white"
+                  />
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-slate-300">External Port</Label>
+                  <Input
+                    value={addForm.external_port}
+                    onChange={(e) => setAddForm({ ...addForm, external_port: e.target.value })}
+                    placeholder="8123"
+                    className="border-slate-800 bg-slate-950 font-mono text-white"
+                  />
+                  <p className="text-xs text-slate-500">Port or range (e.g. 8000-8100)</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Internal Port</Label>
+                  <Input
+                    value={addForm.internal_port}
+                    onChange={(e) => setAddForm({ ...addForm, internal_port: e.target.value })}
+                    placeholder={addForm.external_port || "same as external"}
+                    className="border-slate-800 bg-slate-950 font-mono text-white"
+                  />
+                  <p className="text-xs text-slate-500">Defaults to external port</p>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-slate-300">Internal IP</Label>
+                <Input
+                  value={addForm.internal_ip}
+                  onChange={(e) => setAddForm({ ...addForm, internal_ip: e.target.value })}
+                  placeholder="192.168.1.10"
+                  className="border-slate-800 bg-slate-950 font-mono text-white"
+                />
+              </div>
+              {/* Config diff preview */}
+              {addForm.description && addForm.external_port && addForm.internal_ip && (
+                <div className="rounded-md border border-slate-800 bg-slate-950 p-3">
+                  <p className="text-xs font-medium text-slate-500">Config change:</p>
+                  <code className="mt-1 block whitespace-pre-wrap text-xs text-blue-400">
+                    {[
+                      `set nat destination rule ${addForm.rule} description '${addForm.description}'`,
+                      `set nat destination rule ${addForm.rule} inbound-interface name ${addForm.inbound_interface}`,
+                      `set nat destination rule ${addForm.rule} destination port ${addForm.external_port}`,
+                      `set nat destination rule ${addForm.rule} protocol ${addForm.protocol}`,
+                      `set nat destination rule ${addForm.rule} translation address ${addForm.internal_ip}`,
+                      `set nat destination rule ${addForm.rule} translation port ${addForm.internal_port || addForm.external_port}`,
+                    ].join("\n")}
+                  </code>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowAdd(false)}
+                className="border-slate-800 text-slate-300 hover:bg-slate-800"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleAdd}
+                disabled={adding}
+                className="bg-blue-600 text-white hover:bg-blue-700"
+              >
+                {adding ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating…
+                  </>
+                ) : (
+                  "Create Rule"
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {loading ? (
+        <div className="overflow-x-auto rounded-md border border-slate-800">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                <th className="px-4 py-3 font-medium text-slate-400">#</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Description</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
+                <th className="px-4 py-3 font-medium text-slate-400">External Port</th>
+                <th className="px-4 py-3 font-medium text-slate-400"></th>
+                <th className="px-4 py-3 font-medium text-slate-400">Internal IP:Port</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+                <th className="px-4 py-3 font-medium text-slate-400"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <tr key={i} className="border-b border-slate-800 last:border-b-0">
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-8" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-12" /></td>
+                  <td className="px-4 py-3"></td>
+                  <td className="px-4 py-3"><Skeleton className="h-4 w-32" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-5 w-12 rounded-full" /></td>
+                  <td className="px-4 py-3"><Skeleton className="h-8 w-8" /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : error ? (
+        <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+          <p className="text-xs text-rose-400">{error}</p>
+        </div>
+      ) : !rules || rules.length === 0 ? (
+        <p className="py-4 text-sm text-slate-500">
+          No port forwarding rules configured.
+        </p>
+      ) : (
+        <div className="overflow-x-auto rounded-md border border-slate-800">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                <th className="px-4 py-3 font-medium text-slate-400">#</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Description</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
+                <th className="px-4 py-3 font-medium text-slate-400">External Port</th>
+                <th className="px-4 py-3 font-medium text-slate-400"></th>
+                <th className="px-4 py-3 font-medium text-slate-400">Internal IP:Port</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+                <th className="px-4 py-3 font-medium text-slate-400"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {rules.map((rule) => (
+                <tr
+                  key={rule.rule}
+                  className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                >
+                  <td className="px-4 py-3">
+                    <span className="font-mono tabular-nums text-slate-300">{rule.rule}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-medium text-white">{rule.description ?? "—"}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono tabular-nums text-slate-300">{rule.inbound_interface ?? "—"}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono tabular-nums text-slate-300">{rule.external_port ?? "—"}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-slate-600">&rarr;</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono tabular-nums text-slate-300">
+                      {rule.internal_ip ?? "—"}
+                      {rule.internal_port ? `:${rule.internal_port}` : ""}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge
+                      variant="outline"
+                      className="border-blue-500/30 bg-blue-500/10 text-blue-400"
+                    >
+                      {protocolLabel(rule.protocol)}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-3">
+                    {deleting === rule.rule ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setConfirmDelete(rule)}
+                        className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
+      >
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Delete Port Forward Rule
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              This will remove rule{" "}
+              <span className="font-mono font-medium text-white">
+                {confirmDelete?.rule}
+              </span>{" "}
+              ({confirmDelete?.description ?? "unnamed"}).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-md border border-slate-800 bg-slate-950 p-3">
+            <p className="text-xs font-medium text-slate-500">Config change:</p>
+            <code className="mt-1 block whitespace-pre-wrap text-xs text-rose-400">
+              {confirmDelete &&
+                `delete nat destination rule ${confirmDelete.rule}`}
+            </code>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-800 text-slate-300 hover:bg-slate-800">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 // ── Firewall Action Badge ───────────────────────────────
 
 function FirewallActionBadge({ action }: { action: string }) {
@@ -1624,6 +2040,16 @@ function RouterTabs({ status }: { status: RouterStatus }) {
     tab === "dhcp"
   );
 
+  const natRules = useAsyncData<NatDestinationRule[]>(
+    useCallback(() => fetchNatDestinationRules(), []),
+    tab === "nat"
+  );
+
+  const natInterfaces = useAsyncData<VyosInterface[]>(
+    useCallback(() => fetchRouterInterfaces(), []),
+    tab === "nat"
+  );
+
   const firewall = useAsyncData<FirewallConfig>(
     useCallback(() => fetchRouterFirewall(), []),
     tab === "firewall"
@@ -1660,6 +2086,13 @@ function RouterTabs({ status }: { status: RouterStatus }) {
           >
             <Server className="mr-1.5 h-3.5 w-3.5" />
             DHCP
+          </TabsTrigger>
+          <TabsTrigger
+            value="nat"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+          >
+            <ArrowRightLeft className="mr-1.5 h-3.5 w-3.5" />
+            NAT
           </TabsTrigger>
           <TabsTrigger
             value="firewall"
@@ -1748,6 +2181,25 @@ function RouterTabs({ status }: { status: RouterStatus }) {
                 loading={staticMappings.loading}
                 error={staticMappings.error}
                 onReload={staticMappings.reload}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="nat">
+          <Card className="border-slate-800 bg-slate-900">
+            <CardHeader>
+              <CardTitle className="text-base text-white">
+                Port Forwarding (Destination NAT)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <NatPortForwardTable
+                rules={Array.isArray(natRules.data) ? natRules.data : null}
+                interfaces={Array.isArray(natInterfaces.data) ? natInterfaces.data : null}
+                loading={natRules.loading}
+                error={natRules.error}
+                onReload={natRules.reload}
               />
             </CardContent>
           </Card>

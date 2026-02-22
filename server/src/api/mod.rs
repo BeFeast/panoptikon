@@ -147,6 +147,19 @@ pub fn router(state: AppState) -> Router {
             "/vyos/dhcp/static-mappings/:network/:subnet/:name",
             delete(vyos::delete_dhcp_static_mapping),
         )
+        // NAT destination (port forwarding)
+        .route(
+            "/router/nat/destination",
+            get(vyos::nat_destination_rules),
+        )
+        .route(
+            "/router/nat/destination",
+            post(vyos::create_nat_destination_rule),
+        )
+        .route(
+            "/router/nat/destination/:rule",
+            delete(vyos::delete_nat_destination_rule),
+        )
         // Topology positions
         .route("/topology/positions", get(topology::get_positions))
         .route("/topology/positions", put(topology::save_positions))

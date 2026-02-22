@@ -1261,6 +1261,397 @@ fn is_valid_mac(mac: &str) -> bool {
             .all(|p| p.len() == 2 && p.chars().all(|c| c.is_ascii_hexdigit()))
 }
 
+// ── NAT Destination (Port Forwarding) ────────────────────────────────────────
+
+/// A single NAT destination (port forwarding) rule.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct NatDestinationRule {
+    /// Rule number (e.g. 10, 20, 30)
+    pub rule: u32,
+    /// Human-readable description
+    pub description: Option<String>,
+    /// Inbound interface name (e.g. "eth0")
+    pub inbound_interface: Option<String>,
+    /// External destination port or range
+    pub external_port: Option<String>,
+    /// Internal translation IP address
+    pub internal_ip: Option<String>,
+    /// Internal translation port
+    pub internal_port: Option<String>,
+    /// Protocol: tcp, udp, tcp_udp
+    pub protocol: Option<String>,
+}
+
+/// Request body for creating a NAT destination rule.
+#[derive(Debug, Deserialize)]
+pub struct CreateNatDestinationRequest {
+    /// Rule number
+    pub rule: u32,
+    /// Human-readable description (required)
+    pub description: String,
+    /// Inbound interface name (e.g. "eth0")
+    pub inbound_interface: String,
+    /// External destination port or range
+    pub external_port: String,
+    /// Protocol: tcp, udp, tcp_udp
+    pub protocol: String,
+    /// Internal translation IP address
+    pub internal_ip: String,
+    /// Internal translation port (defaults to external_port if omitted)
+    pub internal_port: Option<String>,
+}
+
+/// Parse NAT destination rules from VyOS config JSON.
+///
+/// Expected structure from `showConfig` at path `["nat", "destination"]`:
+/// ```json
+/// {
+///   "rule": {
+///     "10": {
+///       "description": "Home Assistant",
+///       "inbound-interface": { "name": "eth0" },
+///       "destination": { "port": "8123" },
+///       "translation": { "address": "192.168.1.10", "port": "8123" },
+///       "protocol": "tcp"
+///     }
+///   }
+/// }
+/// ```
+pub fn parse_nat_destination_rules(config: &Value) -> Vec<NatDestinationRule> {
+    let mut rules = Vec::new();
+
+    let rule_map = match config.get("rule").and_then(|v| v.as_object()) {
+        Some(m) => m,
+        None => return rules,
+    };
+
+    for (rule_num_str, rule_val) in rule_map {
+        let rule_num = match rule_num_str.parse::<u32>() {
+            Ok(n) => n,
+            Err(_) => continue,
+        };
+
+        let rule_obj = match rule_val.as_object() {
+            Some(o) => o,
+            None => continue,
+        };
+
+        let description = rule_obj
+            .get("description")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        // inbound-interface can be either a string or {"name": "eth0"}
+        let inbound_interface = rule_obj
+            .get("inbound-interface")
+            .and_then(|v| {
+                v.as_str()
+                    .map(|s| s.to_string())
+                    .or_else(|| {
+                        v.get("name")
+                            .and_then(|n| n.as_str())
+                            .map(|s| s.to_string())
+                    })
+            });
+
+        let external_port = rule_obj
+            .get("destination")
+            .and_then(|v| v.get("port"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        let internal_ip = rule_obj
+            .get("translation")
+            .and_then(|v| v.get("address"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        let internal_port = rule_obj
+            .get("translation")
+            .and_then(|v| v.get("port"))
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        let protocol = rule_obj
+            .get("protocol")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        rules.push(NatDestinationRule {
+            rule: rule_num,
+            description,
+            inbound_interface,
+            external_port,
+            internal_ip,
+            internal_port,
+            protocol,
+        });
+    }
+
+    rules.sort_by_key(|r| r.rule);
+    rules
+}
+
+/// GET /api/v1/router/nat/destination — list NAT destination (port forwarding) rules.
+pub async fn nat_destination_rules(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<NatDestinationRule>>, StatusCode> {
+    let client = get_vyos_client_or_503(&state).await?;
+
+    let config = match client.retrieve(&["nat", "destination"]).await {
+        Ok(c) => c,
+        Err(e) => {
+            let msg = e.to_string();
+            if msg.contains("empty") || msg.contains("does not exist") {
+                return Ok(Json(Vec::new()));
+            }
+            tracing::error!("VyOS NAT destination query failed: {e}");
+            return Err(StatusCode::BAD_GATEWAY);
+        }
+    };
+
+    let rules = parse_nat_destination_rules(&config);
+    Ok(Json(rules))
+}
+
+/// Validate a port or port range string (e.g. "8123", "8000-8100").
+fn is_valid_port(port: &str) -> bool {
+    if let Some((start, end)) = port.split_once('-') {
+        // Port range
+        match (start.parse::<u16>(), end.parse::<u16>()) {
+            (Ok(s), Ok(e)) => s > 0 && e > 0 && s <= e,
+            _ => false,
+        }
+    } else {
+        // Single port
+        matches!(port.parse::<u16>(), Ok(p) if p > 0)
+    }
+}
+
+/// POST /api/v1/router/nat/destination — create a NAT destination rule.
+pub async fn create_nat_destination_rule(
+    State(state): State<AppState>,
+    Json(body): Json<CreateNatDestinationRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    // Validate rule number
+    if body.rule == 0 || body.rule > 99999 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Rule number must be between 1 and 99999".to_string(),
+            }),
+        ));
+    }
+
+    // Validate description
+    if body.description.trim().is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Description is required".to_string(),
+            }),
+        ));
+    }
+
+    // Validate inbound interface
+    if body.inbound_interface.trim().is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Inbound interface is required".to_string(),
+            }),
+        ));
+    }
+
+    // Validate external port
+    if !is_valid_port(&body.external_port) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid external port. Use a number (1-65535) or range (e.g. 8000-8100)"
+                    .to_string(),
+            }),
+        ));
+    }
+
+    // Validate protocol
+    let protocol = body.protocol.to_lowercase();
+    if !["tcp", "udp", "tcp_udp"].contains(&protocol.as_str()) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Protocol must be tcp, udp, or tcp_udp".to_string(),
+            }),
+        ));
+    }
+
+    // Validate internal IP
+    if body.internal_ip.parse::<std::net::Ipv4Addr>().is_err() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid internal IP address".to_string(),
+            }),
+        ));
+    }
+
+    // Validate internal port if provided
+    let internal_port = body
+        .internal_port
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .unwrap_or(&body.external_port);
+    if !is_valid_port(internal_port) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid internal port".to_string(),
+            }),
+        ));
+    }
+
+    let rule_str = body.rule.to_string();
+
+    tracing::info!(
+        "VyOS: creating NAT destination rule {}: {}:{} -> {}:{} ({})",
+        body.rule,
+        body.inbound_interface,
+        body.external_port,
+        body.internal_ip,
+        internal_port,
+        protocol
+    );
+
+    // Set description
+    let set_ops: Vec<(&str, Vec<&str>)> = vec![
+        (
+            "description",
+            vec![
+                "nat", "destination", "rule", &rule_str, "description", &body.description,
+            ],
+        ),
+        (
+            "inbound-interface",
+            vec![
+                "nat", "destination", "rule", &rule_str, "inbound-interface", "name",
+                &body.inbound_interface,
+            ],
+        ),
+        (
+            "destination port",
+            vec![
+                "nat", "destination", "rule", &rule_str, "destination", "port",
+                &body.external_port,
+            ],
+        ),
+        (
+            "protocol",
+            vec![
+                "nat", "destination", "rule", &rule_str, "protocol", &protocol,
+            ],
+        ),
+        (
+            "translation address",
+            vec![
+                "nat", "destination", "rule", &rule_str, "translation", "address",
+                &body.internal_ip,
+            ],
+        ),
+        (
+            "translation port",
+            vec![
+                "nat", "destination", "rule", &rule_str, "translation", "port", internal_port,
+            ],
+        ),
+    ];
+
+    for (label, path) in &set_ops {
+        let path_refs: Vec<&str> = path.iter().copied().collect();
+        if let Err(e) = client.configure_set(&path_refs).await {
+            tracing::error!("VyOS NAT destination rule set {label} failed: {e}");
+            // Clean up partial rule
+            let _ = client
+                .configure_delete(&["nat", "destination", "rule", &rule_str])
+                .await;
+            return Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("Failed to set {label}: {e}"),
+                }),
+            ));
+        }
+    }
+
+    tracing::info!("VyOS: NAT destination rule {} created", body.rule);
+
+    Ok(Json(VyosWriteResponse {
+        success: true,
+        message: format!(
+            "Port forward rule {} created: {}:{} -> {}:{}",
+            body.rule, body.inbound_interface, body.external_port, body.internal_ip, internal_port
+        ),
+    }))
+}
+
+/// DELETE /api/v1/router/nat/destination/:rule — delete a NAT destination rule.
+pub async fn delete_nat_destination_rule(
+    State(state): State<AppState>,
+    Path(rule): Path<u32>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    let rule_str = rule.to_string();
+
+    tracing::info!("VyOS: deleting NAT destination rule {rule}");
+
+    let result = client
+        .configure_delete(&["nat", "destination", "rule", &rule_str])
+        .await;
+
+    match result {
+        Ok(_) => Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("NAT destination rule {rule} deleted"),
+        })),
+        Err(e) => {
+            tracing::error!("VyOS NAT destination rule delete failed: {e}");
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("VyOS error: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
 // ── Speed Test ──────────────────────────────────────────────────────────────
 
 /// Speed test result returned to the frontend.
@@ -2145,5 +2536,129 @@ mod tests {
                 );
             }
         }
+    }
+
+    // ── NAT destination rules parsing ────────────────────────
+
+    #[test]
+    fn test_parse_nat_destination_rules_basic() {
+        let config: Value = serde_json::from_str(
+            r#"{
+                "rule": {
+                    "10": {
+                        "description": "Home Assistant",
+                        "inbound-interface": { "name": "eth0" },
+                        "destination": { "port": "8123" },
+                        "translation": { "address": "192.168.1.10", "port": "8123" },
+                        "protocol": "tcp"
+                    },
+                    "20": {
+                        "description": "SSH server",
+                        "inbound-interface": { "name": "eth0" },
+                        "destination": { "port": "2222" },
+                        "translation": { "address": "192.168.1.5", "port": "22" },
+                        "protocol": "tcp"
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let rules = parse_nat_destination_rules(&config);
+        assert_eq!(rules.len(), 2);
+
+        // Sorted by rule number
+        assert_eq!(rules[0].rule, 10);
+        assert_eq!(rules[0].description.as_deref(), Some("Home Assistant"));
+        assert_eq!(rules[0].inbound_interface.as_deref(), Some("eth0"));
+        assert_eq!(rules[0].external_port.as_deref(), Some("8123"));
+        assert_eq!(rules[0].internal_ip.as_deref(), Some("192.168.1.10"));
+        assert_eq!(rules[0].internal_port.as_deref(), Some("8123"));
+        assert_eq!(rules[0].protocol.as_deref(), Some("tcp"));
+
+        assert_eq!(rules[1].rule, 20);
+        assert_eq!(rules[1].description.as_deref(), Some("SSH server"));
+        assert_eq!(rules[1].external_port.as_deref(), Some("2222"));
+        assert_eq!(rules[1].internal_ip.as_deref(), Some("192.168.1.5"));
+        assert_eq!(rules[1].internal_port.as_deref(), Some("22"));
+    }
+
+    #[test]
+    fn test_parse_nat_destination_rules_empty() {
+        let config: Value = serde_json::from_str("{}").unwrap();
+        assert!(parse_nat_destination_rules(&config).is_empty());
+
+        let config2: Value = serde_json::from_str(r#"{"rule": {}}"#).unwrap();
+        assert!(parse_nat_destination_rules(&config2).is_empty());
+    }
+
+    #[test]
+    fn test_parse_nat_destination_rules_string_interface() {
+        // VyOS 1.3 may use a string instead of object for inbound-interface
+        let config: Value = serde_json::from_str(
+            r#"{
+                "rule": {
+                    "10": {
+                        "description": "Web Server",
+                        "inbound-interface": "eth0",
+                        "destination": { "port": "80" },
+                        "translation": { "address": "10.0.0.5" },
+                        "protocol": "tcp"
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let rules = parse_nat_destination_rules(&config);
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].inbound_interface.as_deref(), Some("eth0"));
+        assert!(rules[0].internal_port.is_none());
+    }
+
+    #[test]
+    fn test_parse_nat_destination_rules_partial() {
+        // Rule with minimal fields
+        let config: Value = serde_json::from_str(
+            r#"{
+                "rule": {
+                    "5": {
+                        "protocol": "udp"
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let rules = parse_nat_destination_rules(&config);
+        assert_eq!(rules.len(), 1);
+        assert_eq!(rules[0].rule, 5);
+        assert!(rules[0].description.is_none());
+        assert!(rules[0].inbound_interface.is_none());
+        assert!(rules[0].external_port.is_none());
+        assert!(rules[0].internal_ip.is_none());
+        assert!(rules[0].internal_port.is_none());
+        assert_eq!(rules[0].protocol.as_deref(), Some("udp"));
+    }
+
+    // ── Port validation ────────────────────────────────────
+
+    #[test]
+    fn test_valid_ports() {
+        assert!(is_valid_port("80"));
+        assert!(is_valid_port("443"));
+        assert!(is_valid_port("8080"));
+        assert!(is_valid_port("65535"));
+        assert!(is_valid_port("8000-8100"));
+        assert!(is_valid_port("1-65535"));
+    }
+
+    #[test]
+    fn test_invalid_ports() {
+        assert!(!is_valid_port("0"));
+        assert!(!is_valid_port(""));
+        assert!(!is_valid_port("abc"));
+        assert!(!is_valid_port("99999"));
+        assert!(!is_valid_port("8100-8000")); // reversed range
     }
 }
