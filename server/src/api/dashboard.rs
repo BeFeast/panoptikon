@@ -4,6 +4,7 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 #[derive(Serialize)]
 pub struct DashboardStats {
@@ -74,9 +75,14 @@ pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
         match (url, key) {
             (Some(u), Some(k)) if !u.is_empty() && !k.is_empty() => {
                 let client = crate::vyos::client::VyosClient::new(&u, &k);
-                match client.show(&["system", "uptime"]).await {
-                    Ok(_) => "connected".to_string(),
-                    Err(_) => "disconnected".to_string(),
+                match tokio::time::timeout(
+                    Duration::from_secs(5),
+                    client.show(&["system", "uptime"]),
+                )
+                .await
+                {
+                    Ok(Ok(_)) => "connected".to_string(),
+                    _ => "disconnected".to_string(),
                 }
             }
             _ => "unconfigured".to_string(),

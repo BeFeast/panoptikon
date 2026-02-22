@@ -4,13 +4,10 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Activity,
   AlertTriangle,
-  ArrowDown,
-  ArrowUp,
   ArrowRight,
   MonitorSmartphone,
   Router,
-  Shield,
-  Wifi,
+  WifiOff,
 } from "lucide-react";
 import {
   AreaChart,
@@ -26,11 +23,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   fetchDashboardStats,
   fetchRecentAlerts,
-  fetchTopDevices,
   fetchTrafficHistory,
   fetchDevices,
 } from "@/lib/api";
-import type { Alert, DashboardStats, TopDevice, TrafficHistoryPoint, Device } from "@/lib/types";
+import type { Alert, DashboardStats, TrafficHistoryPoint, Device } from "@/lib/types";
 import { formatBps, timeAgo } from "@/lib/format";
 import { PageTransition } from "@/components/PageTransition";
 import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
@@ -190,6 +186,17 @@ function StatCardSkeleton() {
   );
 }
 
+// ─── Error card shown when a section fails to load ──────
+
+function SectionError({ message }: { message: string }) {
+  return (
+    <div className="flex items-center gap-2 py-4 text-sm text-rose-400">
+      <WifiOff className="h-4 w-4 shrink-0" />
+      <span>{message}</span>
+    </div>
+  );
+}
+
 // ─── Derive display values from flat stats ──────────────
 
 function routerStatusLabel(s: DashboardStats): { label: string; status: "online" | "offline" | "warning" } {
@@ -223,41 +230,79 @@ const TYPE_COLORS: Record<string, string> = {
 // ─── Page ───────────────────────────────────────────────
 
 export default function DashboardPage() {
+  // Each section has independent data + error state.
+  // null = still loading (show skeleton), non-null = loaded.
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [alerts, setAlerts] = useState<Alert[] | null>(null);
-  const [topDevices, setTopDevices] = useState<TopDevice[] | null>(null);
-  const [trafficHistory, setTrafficHistory] = useState<TrafficHistoryPoint[]>([]);
-  const [devices, setDevices] = useState<Device[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [statsError, setStatsError] = useState(false);
 
-  const load = useCallback(async () => {
+  const [alerts, setAlerts] = useState<Alert[] | null>(null);
+  const [alertsError, setAlertsError] = useState(false);
+
+  const [trafficHistory, setTrafficHistory] = useState<TrafficHistoryPoint[] | null>(null);
+  const [trafficError, setTrafficError] = useState(false);
+
+  const [devices, setDevices] = useState<Device[] | null>(null);
+  const [devicesError, setDevicesError] = useState(false);
+
+  // ── Independent loaders — each resolves on its own ────
+
+  const loadStats = useCallback(async () => {
     try {
-      const [s, a, d, th, devs] = await Promise.all([
-        fetchDashboardStats(),
-        fetchRecentAlerts(5),
-        fetchTopDevices(5),
-        fetchTrafficHistory(60),
-        fetchDevices(),
-      ]);
+      const s = await fetchDashboardStats();
       setStats(s);
-      setAlerts(Array.isArray(a) ? a : []);
-      setTopDevices(Array.isArray(d) ? d : []);
-      setTrafficHistory(th);
-      setDevices(Array.isArray(devs) ? devs : []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load dashboard");
+      setStatsError(false);
+    } catch {
+      setStatsError(true);
     }
   }, []);
 
+  const loadAlerts = useCallback(async () => {
+    try {
+      const a = await fetchRecentAlerts(5);
+      setAlerts(Array.isArray(a) ? a : []);
+      setAlertsError(false);
+    } catch {
+      setAlertsError(true);
+    }
+  }, []);
+
+  const loadTraffic = useCallback(async () => {
+    try {
+      const th = await fetchTrafficHistory(60);
+      setTrafficHistory(th);
+      setTrafficError(false);
+    } catch {
+      setTrafficError(true);
+    }
+  }, []);
+
+  const loadDevices = useCallback(async () => {
+    try {
+      const devs = await fetchDevices();
+      setDevices(Array.isArray(devs) ? devs : []);
+      setDevicesError(false);
+    } catch {
+      setDevicesError(true);
+    }
+  }, []);
+
+  // Fire all fetches in parallel — each resolves independently
+  const loadAll = useCallback(() => {
+    loadStats();
+    loadAlerts();
+    loadTraffic();
+    loadDevices();
+  }, [loadStats, loadAlerts, loadTraffic, loadDevices]);
+
   useEffect(() => {
-    load();
-    const interval = setInterval(load, 30_000);
+    loadAll();
+    const interval = setInterval(loadAll, 30_000);
     return () => clearInterval(interval);
-  }, [load]);
+  }, [loadAll]);
 
   useWsEvent(
     ["device_online", "device_offline", "new_device", "agent_online", "agent_offline"],
-    load
+    loadAll
   );
 
   // ── Compute device type breakdown ──────────────────────
@@ -269,22 +314,12 @@ export default function DashboardPage() {
       counts.set(type, (counts.get(type) ?? 0) + 1);
     }
     for (const [type, count] of counts) {
-      const { label } = getDeviceIcon(type, null, null);
-      // Use label from a dummy call — but we can use the LABEL_MAP via getDeviceIcon
       deviceBreakdown.push({ type, label: getCategoryLabel(type), count });
     }
     deviceBreakdown.sort((a, b) => b.count - a.count);
   }
 
   const maxCount = deviceBreakdown.length > 0 ? Math.max(...deviceBreakdown.map((d) => d.count)) : 1;
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-rose-400">{error}</p>
-      </div>
-    );
-  }
 
   return (
     <PageTransition>
@@ -301,7 +336,9 @@ export default function DashboardPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="flex items-center justify-center pb-4">
-            {stats ? (
+            {statsError ? (
+              <SectionError message="Failed to load" />
+            ) : stats ? (
               <HealthRing online={stats.devices_online} total={stats.devices_total} />
             ) : (
               <Skeleton className="h-28 w-28 rounded-full" />
@@ -311,7 +348,42 @@ export default function DashboardPage() {
 
         {/* ── Stat Cards Row ───────────────────────────── */}
         <StaggerItem className="lg:col-span-4"><div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {stats ? (
+          {statsError ? (
+            <>
+              <StatCard
+                title="Router Status"
+                href="/router"
+                value="Unreachable"
+                subtitle="Cannot load stats"
+                icon={<Router className="h-4 w-4" />}
+                status="offline"
+              />
+              <StatCard
+                title="Active Devices"
+                href="/devices"
+                value="—"
+                subtitle="Cannot load stats"
+                icon={<MonitorSmartphone className="h-4 w-4" />}
+                status="offline"
+              />
+              <StatCard
+                title="WAN Bandwidth"
+                href="/traffic"
+                value="—"
+                subtitle="Cannot load stats"
+                icon={<Activity className="h-4 w-4" />}
+                status="offline"
+              />
+              <StatCard
+                title="Unread Alerts"
+                href="/alerts"
+                value="—"
+                subtitle="Cannot load stats"
+                icon={<AlertTriangle className="h-4 w-4" />}
+                status="offline"
+              />
+            </>
+          ) : stats ? (
             <>
               <StatCard
                 title="Router Status"
@@ -373,7 +445,16 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {trafficHistory.length > 0 ? (
+            {trafficError ? (
+              <div className="flex h-[200px] items-center justify-center">
+                <SectionError message="Failed to load traffic data" />
+              </div>
+            ) : trafficHistory === null ? (
+              <div className="h-[200px] space-y-3 pt-4">
+                <Skeleton className="h-[160px] w-full" />
+                <Skeleton className="mx-auto h-3 w-48" />
+              </div>
+            ) : trafficHistory.length > 0 ? (
               <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={trafficHistory}>
@@ -460,7 +541,9 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {alerts === null ? (
+            {alertsError ? (
+              <SectionError message="Failed to load alerts" />
+            ) : alerts === null ? (
               <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="flex items-center gap-3">
@@ -515,7 +598,9 @@ export default function DashboardPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {devices === null ? (
+            {devicesError ? (
+              <SectionError message="Failed to load devices" />
+            ) : devices === null ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Skeleton key={i} className="h-10 w-full" />

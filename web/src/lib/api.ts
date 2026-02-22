@@ -65,46 +65,60 @@ import type {
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
+const DEFAULT_TIMEOUT_MS = 15_000;
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    credentials: "include", // always send session cookie (HttpOnly, set by server)
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
-  if (res.status === 401) {
-    if (typeof window !== "undefined"
-        && !window.location.pathname.startsWith("/login")
-        && !window.location.pathname.startsWith("/setup")) {
-      window.location.href = "/login";
+async function request<T>(
+  path: string,
+  init?: RequestInit & { timeoutMs?: number },
+): Promise<T> {
+  const timeoutMs = init?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetch(`${API_BASE}${path}`, {
+      credentials: "include", // always send session cookie (HttpOnly, set by server)
+      ...init,
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {}),
+      },
+    });
+    if (res.status === 401) {
+      if (typeof window !== "undefined"
+          && !window.location.pathname.startsWith("/login")
+          && !window.location.pathname.startsWith("/setup")) {
+        window.location.href = "/login";
+      }
+      throw new Error("Unauthorized");
     }
-    throw new Error("Unauthorized");
-  }
-  if (!res.ok) {
-    // Try to extract server error message from JSON body
-    let detail = res.statusText;
-    try {
-      const body = await res.json();
-      if (body?.error) detail = body.error;
-    } catch {
-      // body wasn't JSON — keep statusText
+    if (!res.ok) {
+      let detail = res.statusText;
+      try {
+        const body = await res.json();
+        if (body?.error) detail = body.error;
+      } catch {
+        // body wasn't JSON — keep statusText
+      }
+      throw new Error(`API error ${res.status}: ${detail}`);
     }
-    throw new Error(`API error ${res.status}: ${detail}`);
+    if (res.status === 204 || res.headers.get("content-length") === "0") {
+      return undefined as unknown as T;
+    }
+    return res.json();
+  } finally {
+    clearTimeout(timer);
   }
-  // 204 No Content — return empty object, don't try to parse JSON
-  if (res.status === 204 || res.headers.get("content-length") === "0") {
-    return undefined as unknown as T;
-  }
-  return res.json();
 }
 
 // ─── Generic CRUD ───────────────────────────────────────
 
-export async function apiGet<T>(path: string): Promise<T> {
-  return request<T>(path);
+export async function apiGet<T>(
+  path: string,
+  opts?: { timeoutMs?: number },
+): Promise<T> {
+  return request<T>(path, opts);
 }
 
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
@@ -134,16 +148,24 @@ export async function apiDelete(path: string): Promise<void> {
 
 // ─── Dashboard ──────────────────────────────────────────
 
+const DASHBOARD_TIMEOUT_MS = 8_000;
+
 export function fetchDashboardStats(): Promise<DashboardStats> {
-  return apiGet<DashboardStats>("/api/v1/dashboard/stats");
+  return apiGet<DashboardStats>("/api/v1/dashboard/stats", {
+    timeoutMs: DASHBOARD_TIMEOUT_MS,
+  });
 }
 
 export function fetchRecentAlerts(limit = 5): Promise<Alert[]> {
-  return apiGet<Alert[]>(`/api/v1/alerts?limit=${limit}`);
+  return apiGet<Alert[]>(`/api/v1/alerts?limit=${limit}`, {
+    timeoutMs: DASHBOARD_TIMEOUT_MS,
+  });
 }
 
 export function fetchTopDevices(limit = 5): Promise<TopDevice[]> {
-  return apiGet<TopDevice[]>(`/api/v1/dashboard/top-devices?limit=${limit}`);
+  return apiGet<TopDevice[]>(`/api/v1/dashboard/top-devices?limit=${limit}`, {
+    timeoutMs: DASHBOARD_TIMEOUT_MS,
+  });
 }
 
 export function fetchAlerts(
@@ -298,7 +320,9 @@ export function fetchAgentReports(id: string, limit = 100): Promise<AgentReport[
 // ─── Traffic ────────────────────────────────────────────
 
 export function fetchTrafficHistory(minutes = 60): Promise<TrafficHistoryPoint[]> {
-  return apiGet<TrafficHistoryPoint[]>(`/api/v1/traffic/history?minutes=${minutes}`);
+  return apiGet<TrafficHistoryPoint[]>(`/api/v1/traffic/history?minutes=${minutes}`, {
+    timeoutMs: DASHBOARD_TIMEOUT_MS,
+  });
 }
 
 // ─── Auth ───────────────────────────────────────────────
