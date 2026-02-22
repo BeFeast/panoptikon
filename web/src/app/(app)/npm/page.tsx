@@ -44,6 +44,10 @@ import {
 import {
   fetchNpmStatus,
   fetchNpmProxyHosts,
+  createNpmProxyHost,
+  updateNpmProxyHost,
+  deleteNpmProxyHost,
+  toggleNpmProxyHost,
   fetchNpmRedirectionHosts,
   createNpmRedirectionHost,
   updateNpmRedirectionHost,
@@ -66,6 +70,7 @@ import type {
   NpmAccessListClient,
   NpmConnectionStatus,
   NpmProxyHost,
+  NpmProxyHostRequest,
   NpmRedirectionHost,
   NpmStream,
   NpmDeadHost,
@@ -73,19 +78,167 @@ import type {
 
 // ─── Proxy Hosts Table ──────────────────────────────────
 
+interface ProxyHostFormData {
+  domain_names: string;
+  forward_host: string;
+  forward_port: number;
+  forward_scheme: string;
+  ssl_forced: boolean;
+  block_exploits: boolean;
+  allow_websocket_upgrade: boolean;
+  http2_support: boolean;
+  hsts_enabled: boolean;
+  access_list_id: number | string;
+  advanced_config: string;
+}
+
+const emptyProxyForm: ProxyHostFormData = {
+  domain_names: "",
+  forward_host: "",
+  forward_port: 80,
+  forward_scheme: "http",
+  ssl_forced: false,
+  block_exploits: false,
+  allow_websocket_upgrade: false,
+  http2_support: false,
+  hsts_enabled: false,
+  access_list_id: 0,
+  advanced_config: "",
+};
+
 function ProxyHostsTable({
   hosts,
   loading,
   accessLists,
+  onReload,
 }: {
   hosts: NpmProxyHost[];
   loading: boolean;
   accessLists: NpmAccessList[];
+  onReload: () => void;
 }) {
+  const [showForm, setShowForm] = useState(false);
+  const [editHost, setEditHost] = useState<NpmProxyHost | null>(null);
+  const [form, setForm] = useState<ProxyHostFormData>(emptyProxyForm);
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<NpmProxyHost | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [toggling, setToggling] = useState<number | null>(null);
+
   const getAccessListName = (id: number | string | null) => {
     if (!id || id === 0 || id === "0") return null;
     const al = accessLists.find((a) => a.id === Number(id));
     return al?.name ?? null;
+  };
+
+  const openCreate = () => {
+    setEditHost(null);
+    setForm(emptyProxyForm);
+    setShowForm(true);
+  };
+
+  const openEdit = (h: NpmProxyHost) => {
+    setEditHost(h);
+    setForm({
+      domain_names: h.domain_names.join(", "),
+      forward_host: h.forward_host,
+      forward_port: h.forward_port,
+      forward_scheme: h.forward_scheme,
+      ssl_forced: h.ssl_forced,
+      block_exploits: h.block_exploits,
+      allow_websocket_upgrade: h.allow_websocket_upgrade,
+      http2_support: h.http2_support,
+      hsts_enabled: h.hsts_enabled,
+      access_list_id: h.access_list_id ?? 0,
+      advanced_config: h.advanced_config ?? "",
+    });
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    const domainNames = form.domain_names
+      .split(",")
+      .map((d) => d.trim())
+      .filter(Boolean);
+    if (domainNames.length === 0) {
+      toast.error("At least one domain name is required");
+      return;
+    }
+    if (!form.forward_host.trim()) {
+      toast.error("Forward host is required");
+      return;
+    }
+    if (form.forward_port <= 0 || form.forward_port > 65535) {
+      toast.error("Port must be between 1 and 65535");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload: NpmProxyHostRequest = {
+        domain_names: domainNames,
+        forward_host: form.forward_host.trim(),
+        forward_port: form.forward_port,
+        forward_scheme: form.forward_scheme,
+        certificate_id: 0,
+        access_list_id: form.access_list_id,
+        ssl_forced: form.ssl_forced,
+        hsts_enabled: form.hsts_enabled,
+        http2_support: form.http2_support,
+        block_exploits: form.block_exploits,
+        allow_websocket_upgrade: form.allow_websocket_upgrade,
+        advanced_config: form.advanced_config,
+      };
+
+      if (editHost) {
+        if (editHost.certificate_id) {
+          payload.certificate_id = editHost.certificate_id;
+        }
+        await updateNpmProxyHost(editHost.id, payload);
+        toast.success("Proxy host updated");
+      } else {
+        await createNpmProxyHost(payload);
+        toast.success("Proxy host created");
+      }
+
+      setShowForm(false);
+      setEditHost(null);
+      setForm(emptyProxyForm);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    const { id } = confirmDelete;
+    setConfirmDelete(null);
+    setDeleting(id);
+    try {
+      await deleteNpmProxyHost(id);
+      toast.success("Proxy host deleted");
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleToggle = async (h: NpmProxyHost) => {
+    setToggling(h.id);
+    try {
+      await toggleNpmProxyHost(h.id, !h.enabled);
+      toast.success(h.enabled ? "Proxy host disabled" : "Proxy host enabled");
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Toggle failed");
+    } finally {
+      setToggling(null);
+    }
   };
 
   if (loading) {
@@ -98,84 +251,329 @@ function ProxyHostsTable({
     );
   }
 
-  if (hosts.length === 0) {
-    return (
-      <p className="px-4 py-8 text-center text-sm text-slate-500">
-        No proxy hosts found.
-      </p>
-    );
-  }
-
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-slate-800 text-left text-xs uppercase text-slate-500">
-            <th className="px-4 py-2">Domain(s)</th>
-            <th className="px-4 py-2">Forward To</th>
-            <th className="px-4 py-2">SSL</th>
-            <th className="px-4 py-2">Access List</th>
-            <th className="px-4 py-2">Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {hosts.map((h) => {
-            const alName = getAccessListName(h.access_list_id);
-            return (
-              <tr
-                key={h.id}
-                className="border-b border-slate-800/50 hover:bg-slate-800/30"
-              >
-                <td className="px-4 py-2.5">
-                  <div className="flex flex-wrap gap-1">
-                    {h.domain_names.map((d) => (
-                      <span key={d} className="font-mono text-xs text-white">
-                        {d}
-                      </span>
-                    ))}
-                  </div>
-                </td>
-                <td className="px-4 py-2.5 font-mono text-xs text-slate-300">
-                  {h.forward_scheme}://{h.forward_host}:{h.forward_port}
-                </td>
-                <td className="px-4 py-2.5">
-                  {h.ssl_forced ? (
-                    <Lock className="h-3.5 w-3.5 text-emerald-400" />
-                  ) : (
-                    <span className="text-xs text-slate-600">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-2.5">
-                  {alName ? (
-                    <Badge
-                      variant="outline"
-                      className="border-amber-500/30 text-amber-400"
-                    >
-                      <Shield className="mr-1 h-3 w-3" />
-                      {alName}
-                    </Badge>
-                  ) : (
-                    <span className="text-xs text-slate-600">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-2.5">
-                  <Badge
-                    variant="outline"
-                    className={
-                      h.enabled
-                        ? "border-emerald-500/30 text-emerald-400"
-                        : "border-slate-700 text-slate-500"
-                    }
-                  >
-                    {h.enabled ? "Enabled" : "Disabled"}
-                  </Badge>
-                </td>
+    <>
+      <div className="flex items-center justify-between px-4 py-3">
+        <p className="text-xs text-slate-500">
+          {hosts.length} proxy host{hosts.length !== 1 ? "s" : ""}
+        </p>
+        <Button variant="outline" size="sm" onClick={openCreate}>
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          Add Proxy Host
+        </Button>
+      </div>
+
+      {hosts.length === 0 ? (
+        <p className="px-4 pb-6 text-center text-sm text-slate-500">
+          No proxy hosts found.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-800 text-left text-xs uppercase text-slate-500">
+                <th className="px-4 py-2">Domain(s)</th>
+                <th className="px-4 py-2">Forward To</th>
+                <th className="px-4 py-2">SSL</th>
+                <th className="px-4 py-2">Access List</th>
+                <th className="px-4 py-2">Enabled</th>
+                <th className="px-4 py-2 text-right">Actions</th>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+            </thead>
+            <tbody>
+              {hosts.map((h) => {
+                const alName = getAccessListName(h.access_list_id);
+                return (
+                  <tr
+                    key={h.id}
+                    className="border-b border-slate-800/50 hover:bg-slate-800/30"
+                  >
+                    <td className="px-4 py-2.5">
+                      <div className="flex flex-wrap gap-1">
+                        {h.domain_names.map((d) => (
+                          <span
+                            key={d}
+                            className="font-mono text-xs text-white"
+                          >
+                            {d}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-slate-300">
+                      {h.forward_scheme}://{h.forward_host}:{h.forward_port}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {h.ssl_forced ? (
+                        <Lock className="h-3.5 w-3.5 text-emerald-400" />
+                      ) : (
+                        <span className="text-xs text-slate-600">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      {alName ? (
+                        <Badge
+                          variant="outline"
+                          className="border-amber-500/30 text-amber-400"
+                        >
+                          <Shield className="mr-1 h-3 w-3" />
+                          {alName}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-slate-600">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <Switch
+                        checked={h.enabled}
+                        disabled={toggling === h.id}
+                        onCheckedChange={() => handleToggle(h)}
+                      />
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-slate-400 hover:text-white"
+                          onClick={() => openEdit(h)}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400"
+                          disabled={deleting === h.id}
+                          onClick={() => setConfirmDelete(h)}
+                        >
+                          {deleting === h.id ? (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Create / Edit Dialog */}
+      <Dialog
+        open={showForm}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowForm(false);
+            setEditHost(null);
+          }
+        }}
+      >
+        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {editHost ? "Edit Proxy Host" : "New Proxy Host"}
+            </DialogTitle>
+            <DialogDescription>
+              {editHost
+                ? "Update the proxy host rule."
+                : "Create a new reverse proxy host."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Domain Names */}
+            <div className="space-y-1.5">
+              <Label htmlFor="proxy-domains">
+                Domain Name(s){" "}
+                <span className="text-xs text-slate-500">
+                  (comma-separated)
+                </span>
+              </Label>
+              <Input
+                id="proxy-domains"
+                className="border-slate-800 bg-slate-950 text-white"
+                placeholder="app.example.com, www.example.com"
+                value={form.domain_names}
+                onChange={(e) =>
+                  setForm({ ...form, domain_names: e.target.value })
+                }
+              />
+            </div>
+
+            {/* Forward Host + Scheme + Port */}
+            <div className="grid grid-cols-[1fr_auto_auto] gap-3 items-end">
+              <div className="space-y-1.5">
+                <Label htmlFor="proxy-fwd-host">Forward Host</Label>
+                <Input
+                  id="proxy-fwd-host"
+                  className="border-slate-800 bg-slate-950 text-white"
+                  placeholder="192.168.1.100"
+                  value={form.forward_host}
+                  onChange={(e) =>
+                    setForm({ ...form, forward_host: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="proxy-scheme">Scheme</Label>
+                <select
+                  id="proxy-scheme"
+                  className="h-9 rounded-md border border-slate-800 bg-slate-950 px-2 text-sm text-white"
+                  value={form.forward_scheme}
+                  onChange={(e) =>
+                    setForm({ ...form, forward_scheme: e.target.value })
+                  }
+                >
+                  <option value="http">http</option>
+                  <option value="https">https</option>
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="proxy-port">Port</Label>
+                <Input
+                  id="proxy-port"
+                  type="number"
+                  className="w-24 border-slate-800 bg-slate-950 text-white"
+                  placeholder="80"
+                  value={form.forward_port || ""}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      forward_port: parseInt(e.target.value, 10) || 0,
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Access List */}
+            <div className="space-y-1.5">
+              <Label htmlFor="proxy-access-list">Access List</Label>
+              <select
+                id="proxy-access-list"
+                className="h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-2 text-sm text-white"
+                value={String(form.access_list_id)}
+                onChange={(e) =>
+                  setForm({ ...form, access_list_id: Number(e.target.value) })
+                }
+              >
+                <option value="0">Publicly Accessible</option>
+                {accessLists.map((al) => (
+                  <option key={al.id} value={String(al.id)}>
+                    {al.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Toggles */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="proxy-ssl" className="cursor-pointer">
+                  Force SSL
+                </Label>
+                <Switch
+                  id="proxy-ssl"
+                  checked={form.ssl_forced}
+                  onCheckedChange={(v) => setForm({ ...form, ssl_forced: v })}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="proxy-http2" className="cursor-pointer">
+                  HTTP/2 Support
+                </Label>
+                <Switch
+                  id="proxy-http2"
+                  checked={form.http2_support}
+                  onCheckedChange={(v) =>
+                    setForm({ ...form, http2_support: v })
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="proxy-exploits" className="cursor-pointer">
+                  Block Exploits
+                </Label>
+                <Switch
+                  id="proxy-exploits"
+                  checked={form.block_exploits}
+                  onCheckedChange={(v) =>
+                    setForm({ ...form, block_exploits: v })
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="proxy-websocket" className="cursor-pointer">
+                  WebSocket Support
+                </Label>
+                <Switch
+                  id="proxy-websocket"
+                  checked={form.allow_websocket_upgrade}
+                  onCheckedChange={(v) =>
+                    setForm({ ...form, allow_websocket_upgrade: v })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowForm(false);
+                setEditHost(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              )}
+              {editHost ? "Save Changes" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+      >
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Delete Proxy Host?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              The proxy host for{" "}
+              <span className="font-mono text-white">
+                {confirmDelete?.domain_names.join(", ")}
+              </span>{" "}
+              will be permanently removed from Nginx Proxy Manager.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -1954,7 +2352,7 @@ export default function NpmPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-0 pb-2">
-                <ProxyHostsTable hosts={proxyHosts} loading={loadingProxy} accessLists={accessLists} />
+                <ProxyHostsTable hosts={proxyHosts} loading={loadingProxy} accessLists={accessLists} onReload={loadProxyHosts} />
               </CardContent>
             </Card>
           </TabsContent>
