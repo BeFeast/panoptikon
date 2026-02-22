@@ -3991,10 +3991,7 @@ pub async fn delete_dns_domain_override(
     tracing::info!("VyOS: deleting DNS domain override {}", domain);
 
     let audit_desc = format!("Delete DNS domain override: {}", domain);
-    let audit_commands = vec![format!(
-        "delete service dns forwarding domain {}",
-        domain
-    )];
+    let audit_commands = vec![format!("delete service dns forwarding domain {}", domain)];
 
     let result = client
         .configure_delete(&["service", "dns", "forwarding", "domain", &domain])
@@ -6217,10 +6214,7 @@ mod tests {
 
     #[test]
     fn test_parse_dns_forwarding_config_single_server() {
-        let json: Value = serde_json::from_str(
-            r#"{ "name-server": "1.1.1.1" }"#,
-        )
-        .unwrap();
+        let json: Value = serde_json::from_str(r#"{ "name-server": "1.1.1.1" }"#).unwrap();
 
         let config = parse_dns_forwarding_config(&json);
         assert_eq!(config.name_servers, vec!["1.1.1.1"]);

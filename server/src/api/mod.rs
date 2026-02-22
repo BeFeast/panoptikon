@@ -223,10 +223,7 @@ pub fn router(state: AppState) -> Router {
             delete(vyos::remove_port_group_member),
         )
         // DNS Forwarding
-        .route(
-            "/vyos/dns/forwarding",
-            get(vyos::dns_forwarding),
-        )
+        .route("/vyos/dns/forwarding", get(vyos::dns_forwarding))
         .route(
             "/vyos/dns/forwarding/name-servers",
             post(vyos::add_dns_name_server),
