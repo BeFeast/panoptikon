@@ -222,6 +222,31 @@ pub fn router(state: AppState) -> Router {
             "/vyos/firewall/groups/port-group/:name/members/:value",
             delete(vyos::remove_port_group_member),
         )
+        // DNS Forwarding
+        .route(
+            "/vyos/dns/forwarding",
+            get(vyos::dns_forwarding),
+        )
+        .route(
+            "/vyos/dns/forwarding/name-servers",
+            post(vyos::add_dns_name_server),
+        )
+        .route(
+            "/vyos/dns/forwarding/name-servers/:server",
+            delete(vyos::delete_dns_name_server),
+        )
+        .route(
+            "/vyos/dns/forwarding/domain-overrides",
+            post(vyos::add_dns_domain_override),
+        )
+        .route(
+            "/vyos/dns/forwarding/domain-overrides/:domain",
+            put(vyos::edit_dns_domain_override),
+        )
+        .route(
+            "/vyos/dns/forwarding/domain-overrides/:domain",
+            delete(vyos::delete_dns_domain_override),
+        )
         // WireGuard VPN
         .route("/vyos/wireguard", get(vyos::wireguard_list))
         .route("/vyos/wireguard", post(vyos::wireguard_create))

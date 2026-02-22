@@ -3495,6 +3495,547 @@ pub async fn remove_port_group_member(
     }
 }
 
+// ── DNS Forwarding ──────────────────────────────────────────────────────────
+
+/// DNS forwarding configuration returned to the frontend.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DnsForwardingConfig {
+    pub name_servers: Vec<String>,
+    pub domain_overrides: Vec<DnsDomainOverride>,
+    pub listen_addresses: Vec<String>,
+    pub allow_from: Vec<String>,
+    pub cache_size: Option<u32>,
+}
+
+/// A DNS domain override (forward a specific domain to a given server).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DnsDomainOverride {
+    pub domain: String,
+    pub server: String,
+}
+
+/// Parse DNS forwarding config from VyOS config JSON.
+///
+/// Expected structure under `service.dns.forwarding`:
+/// ```json
+/// {
+///   "name-server": "1.1.1.1",           // or ["1.1.1.1", "8.8.8.8"]
+///   "listen-address": "10.10.0.50",     // or ["10.10.0.50", "127.0.0.1"]
+///   "allow-from": "10.10.0.0/24",       // or ["10.10.0.0/24", "192.168.0.0/16"]
+///   "cache-size": "10000",
+///   "domain": {
+///     "example.com": { "server": "10.10.0.1" },
+///     "corp.local": { "server": "10.10.0.2" }
+///   }
+/// }
+/// ```
+fn parse_dns_forwarding_config(value: &Value) -> DnsForwardingConfig {
+    let obj = match value.as_object() {
+        Some(o) => o,
+        None => {
+            return DnsForwardingConfig {
+                name_servers: Vec::new(),
+                domain_overrides: Vec::new(),
+                listen_addresses: Vec::new(),
+                allow_from: Vec::new(),
+                cache_size: None,
+            }
+        }
+    };
+
+    let name_servers = json_string_or_array(obj.get("name-server"));
+    let listen_addresses = json_string_or_array(obj.get("listen-address"));
+    let allow_from = json_string_or_array(obj.get("allow-from"));
+
+    let cache_size = obj.get("cache-size").and_then(|v| {
+        v.as_str()
+            .and_then(|s| s.parse::<u32>().ok())
+            .or_else(|| v.as_u64().map(|n| n as u32))
+    });
+
+    let mut domain_overrides = Vec::new();
+    if let Some(domains) = obj.get("domain").and_then(|v| v.as_object()) {
+        for (domain_name, domain_val) in domains {
+            // domain_val might have "server": "x.x.x.x" or "name-server": "x.x.x.x"
+            let server = domain_val
+                .get("server")
+                .or_else(|| domain_val.get("name-server"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+
+            if !server.is_empty() {
+                domain_overrides.push(DnsDomainOverride {
+                    domain: domain_name.clone(),
+                    server,
+                });
+            }
+        }
+    }
+
+    domain_overrides.sort_by(|a, b| a.domain.cmp(&b.domain));
+
+    DnsForwardingConfig {
+        name_servers,
+        domain_overrides,
+        listen_addresses,
+        allow_from,
+        cache_size,
+    }
+}
+
+/// Helper: extract a Vec<String> from a JSON value that may be a single string or an array of strings.
+fn json_string_or_array(val: Option<&Value>) -> Vec<String> {
+    match val {
+        Some(Value::String(s)) => vec![s.clone()],
+        Some(Value::Array(arr)) => arr
+            .iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// GET /api/v1/vyos/dns/forwarding — fetch DNS forwarding configuration.
+pub async fn dns_forwarding(
+    State(state): State<AppState>,
+) -> Result<Json<DnsForwardingConfig>, StatusCode> {
+    let client = get_vyos_client_or_503(&state).await?;
+
+    let config = match client.retrieve(&["service", "dns", "forwarding"]).await {
+        Ok(c) => c,
+        Err(e) => {
+            let msg = e.to_string();
+            if msg.contains("empty") || msg.contains("does not exist") {
+                return Ok(Json(DnsForwardingConfig {
+                    name_servers: Vec::new(),
+                    domain_overrides: Vec::new(),
+                    listen_addresses: Vec::new(),
+                    allow_from: Vec::new(),
+                    cache_size: None,
+                }));
+            }
+            tracing::error!("VyOS DNS forwarding config query failed: {e}");
+            return Err(StatusCode::BAD_GATEWAY);
+        }
+    };
+
+    let parsed = parse_dns_forwarding_config(&config);
+    Ok(Json(parsed))
+}
+
+/// Request body for adding a DNS name server.
+#[derive(Debug, Deserialize)]
+pub struct AddDnsNameServerRequest {
+    pub server: String,
+}
+
+/// POST /api/v1/vyos/dns/forwarding/name-servers — add a DNS name server.
+pub async fn add_dns_name_server(
+    State(state): State<AppState>,
+    Json(body): Json<AddDnsNameServerRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    if !is_valid_ip(&body.server) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid IP address for name server".to_string(),
+            }),
+        ));
+    }
+
+    tracing::info!("VyOS: adding DNS name server {}", body.server);
+
+    let audit_desc = format!("Add DNS name server {}", body.server);
+    let audit_commands = vec![format!(
+        "set service dns forwarding name-server {}",
+        body.server
+    )];
+
+    let result = client
+        .configure_set(&["service", "dns", "forwarding", "name-server", &body.server])
+        .await;
+
+    match result {
+        Ok(_) => {
+            audit::log_success(
+                &state.db,
+                "dns_name_server_add",
+                &audit_desc,
+                &audit_commands,
+            )
+            .await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Name server {} added", body.server),
+            }))
+        }
+        Err(e) => {
+            tracing::error!("VyOS DNS name server add failed: {e}");
+            let msg = format!("Failed to add name server: {e}");
+            audit::log_failure(
+                &state.db,
+                "dns_name_server_add",
+                &audit_desc,
+                &audit_commands,
+                &msg,
+            )
+            .await;
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: msg,
+                }),
+            ))
+        }
+    }
+}
+
+/// DELETE /api/v1/vyos/dns/forwarding/name-servers/:server — remove a DNS name server.
+pub async fn delete_dns_name_server(
+    State(state): State<AppState>,
+    Path(server): Path<String>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    tracing::info!("VyOS: removing DNS name server {}", server);
+
+    let audit_desc = format!("Remove DNS name server {}", server);
+    let audit_commands = vec![format!(
+        "delete service dns forwarding name-server {}",
+        server
+    )];
+
+    let result = client
+        .configure_delete(&["service", "dns", "forwarding", "name-server", &server])
+        .await;
+
+    match result {
+        Ok(_) => {
+            audit::log_success(
+                &state.db,
+                "dns_name_server_delete",
+                &audit_desc,
+                &audit_commands,
+            )
+            .await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Name server {} removed", server),
+            }))
+        }
+        Err(e) => {
+            tracing::error!("VyOS DNS name server delete failed: {e}");
+            let msg = format!("Failed to remove name server: {e}");
+            audit::log_failure(
+                &state.db,
+                "dns_name_server_delete",
+                &audit_desc,
+                &audit_commands,
+                &msg,
+            )
+            .await;
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: msg,
+                }),
+            ))
+        }
+    }
+}
+
+/// Request body for adding/editing a DNS domain override.
+#[derive(Debug, Deserialize)]
+pub struct DnsDomainOverrideRequest {
+    pub domain: String,
+    pub server: String,
+}
+
+/// Validate a domain name (simple check: non-empty, valid characters).
+fn is_valid_domain(domain: &str) -> bool {
+    !domain.is_empty()
+        && domain.len() <= 253
+        && domain
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '.')
+        && !domain.starts_with('-')
+        && !domain.starts_with('.')
+}
+
+/// POST /api/v1/vyos/dns/forwarding/domain-overrides — add a domain override.
+pub async fn add_dns_domain_override(
+    State(state): State<AppState>,
+    Json(body): Json<DnsDomainOverrideRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    if !is_valid_domain(&body.domain) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid domain name".to_string(),
+            }),
+        ));
+    }
+
+    if !is_valid_ip(&body.server) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid IP address for DNS server".to_string(),
+            }),
+        ));
+    }
+
+    tracing::info!(
+        "VyOS: adding DNS domain override {} -> {}",
+        body.domain,
+        body.server
+    );
+
+    let audit_desc = format!(
+        "Add DNS domain override: {} -> {}",
+        body.domain, body.server
+    );
+    let audit_commands = vec![format!(
+        "set service dns forwarding domain {} server {}",
+        body.domain, body.server
+    )];
+
+    let result = client
+        .configure_set(&[
+            "service",
+            "dns",
+            "forwarding",
+            "domain",
+            &body.domain,
+            "server",
+            &body.server,
+        ])
+        .await;
+
+    match result {
+        Ok(_) => {
+            audit::log_success(
+                &state.db,
+                "dns_domain_override_add",
+                &audit_desc,
+                &audit_commands,
+            )
+            .await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Domain override {} -> {} added", body.domain, body.server),
+            }))
+        }
+        Err(e) => {
+            tracing::error!("VyOS DNS domain override add failed: {e}");
+            let msg = format!("Failed to add domain override: {e}");
+            audit::log_failure(
+                &state.db,
+                "dns_domain_override_add",
+                &audit_desc,
+                &audit_commands,
+                &msg,
+            )
+            .await;
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: msg,
+                }),
+            ))
+        }
+    }
+}
+
+/// PUT /api/v1/vyos/dns/forwarding/domain-overrides/:domain — edit a domain override.
+pub async fn edit_dns_domain_override(
+    State(state): State<AppState>,
+    Path(domain): Path<String>,
+    Json(body): Json<DnsDomainOverrideRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    if !is_valid_ip(&body.server) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid IP address for DNS server".to_string(),
+            }),
+        ));
+    }
+
+    tracing::info!(
+        "VyOS: updating DNS domain override {} -> {}",
+        domain,
+        body.server
+    );
+
+    let audit_desc = format!("Update DNS domain override: {} -> {}", domain, body.server);
+    let audit_commands = vec![format!(
+        "set service dns forwarding domain {} server {}",
+        domain, body.server
+    )];
+
+    // Delete existing server config for this domain first, then set new one
+    let _ = client
+        .configure_delete(&["service", "dns", "forwarding", "domain", &domain, "server"])
+        .await;
+
+    let result = client
+        .configure_set(&[
+            "service",
+            "dns",
+            "forwarding",
+            "domain",
+            &domain,
+            "server",
+            &body.server,
+        ])
+        .await;
+
+    match result {
+        Ok(_) => {
+            audit::log_success(
+                &state.db,
+                "dns_domain_override_edit",
+                &audit_desc,
+                &audit_commands,
+            )
+            .await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Domain override {} updated to {}", domain, body.server),
+            }))
+        }
+        Err(e) => {
+            tracing::error!("VyOS DNS domain override edit failed: {e}");
+            let msg = format!("Failed to update domain override: {e}");
+            audit::log_failure(
+                &state.db,
+                "dns_domain_override_edit",
+                &audit_desc,
+                &audit_commands,
+                &msg,
+            )
+            .await;
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: msg,
+                }),
+            ))
+        }
+    }
+}
+
+/// DELETE /api/v1/vyos/dns/forwarding/domain-overrides/:domain — delete a domain override.
+pub async fn delete_dns_domain_override(
+    State(state): State<AppState>,
+    Path(domain): Path<String>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    tracing::info!("VyOS: deleting DNS domain override {}", domain);
+
+    let audit_desc = format!("Delete DNS domain override: {}", domain);
+    let audit_commands = vec![format!(
+        "delete service dns forwarding domain {}",
+        domain
+    )];
+
+    let result = client
+        .configure_delete(&["service", "dns", "forwarding", "domain", &domain])
+        .await;
+
+    match result {
+        Ok(_) => {
+            audit::log_success(
+                &state.db,
+                "dns_domain_override_delete",
+                &audit_desc,
+                &audit_commands,
+            )
+            .await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Domain override {} deleted", domain),
+            }))
+        }
+        Err(e) => {
+            tracing::error!("VyOS DNS domain override delete failed: {e}");
+            let msg = format!("Failed to delete domain override: {e}");
+            audit::log_failure(
+                &state.db,
+                "dns_domain_override_delete",
+                &audit_desc,
+                &audit_commands,
+                &msg,
+            )
+            .await;
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: msg,
+                }),
+            ))
+        }
+    }
+}
+
 // ── Speed Test ──────────────────────────────────────────────────────────────
 
 /// Speed test result returned to the frontend.
@@ -5633,5 +6174,78 @@ mod tests {
         let config = parse_firewall_config(&json);
         assert_eq!(config.chains.len(), 1);
         assert_eq!(config.chains[0].path, vec!["ipv4", "forward", "filter"]);
+    }
+
+    #[test]
+    fn test_parse_dns_forwarding_config_full() {
+        let json: Value = serde_json::from_str(
+            r#"{
+                "name-server": ["1.1.1.1", "8.8.8.8"],
+                "listen-address": "10.10.0.50",
+                "allow-from": ["10.10.0.0/24", "192.168.0.0/16"],
+                "cache-size": "10000",
+                "domain": {
+                    "example.com": { "server": "10.10.0.1" },
+                    "corp.local": { "server": "10.10.0.2" }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let config = parse_dns_forwarding_config(&json);
+        assert_eq!(config.name_servers, vec!["1.1.1.1", "8.8.8.8"]);
+        assert_eq!(config.listen_addresses, vec!["10.10.0.50"]);
+        assert_eq!(config.allow_from, vec!["10.10.0.0/24", "192.168.0.0/16"]);
+        assert_eq!(config.cache_size, Some(10000));
+        assert_eq!(config.domain_overrides.len(), 2);
+        assert_eq!(config.domain_overrides[0].domain, "corp.local");
+        assert_eq!(config.domain_overrides[0].server, "10.10.0.2");
+        assert_eq!(config.domain_overrides[1].domain, "example.com");
+        assert_eq!(config.domain_overrides[1].server, "10.10.0.1");
+    }
+
+    #[test]
+    fn test_parse_dns_forwarding_config_empty() {
+        let json: Value = serde_json::from_str("{}").unwrap();
+        let config = parse_dns_forwarding_config(&json);
+        assert!(config.name_servers.is_empty());
+        assert!(config.domain_overrides.is_empty());
+        assert!(config.listen_addresses.is_empty());
+        assert!(config.allow_from.is_empty());
+        assert_eq!(config.cache_size, None);
+    }
+
+    #[test]
+    fn test_parse_dns_forwarding_config_single_server() {
+        let json: Value = serde_json::from_str(
+            r#"{ "name-server": "1.1.1.1" }"#,
+        )
+        .unwrap();
+
+        let config = parse_dns_forwarding_config(&json);
+        assert_eq!(config.name_servers, vec!["1.1.1.1"]);
+    }
+
+    #[test]
+    fn test_is_valid_domain() {
+        assert!(is_valid_domain("example.com"));
+        assert!(is_valid_domain("corp.local"));
+        assert!(is_valid_domain("sub.domain.example.com"));
+        assert!(!is_valid_domain(""));
+        assert!(!is_valid_domain(".example.com"));
+        assert!(!is_valid_domain("-example.com"));
+    }
+
+    #[test]
+    fn test_json_string_or_array() {
+        assert_eq!(
+            json_string_or_array(Some(&Value::String("a".to_string()))),
+            vec!["a"]
+        );
+        assert_eq!(
+            json_string_or_array(Some(&serde_json::json!(["a", "b"]))),
+            vec!["a", "b"]
+        );
+        assert!(json_string_or_array(None).is_empty());
     }
 }
