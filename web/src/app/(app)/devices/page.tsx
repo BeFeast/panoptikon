@@ -25,9 +25,9 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDeviceEnrichment } from "@/lib/api";
+import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDeviceEnrichment, fetchDeviceSysinfo } from "@/lib/api";
 import type { DeviceEvent, UptimeStats, PortScanResult, EnrichmentCorrection } from "@/lib/api";
-import type { Device } from "@/lib/types";
+import type { Device, DeviceSysinfo } from "@/lib/types";
 import { formatPercent, timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
 import { getOsDisplay } from "@/lib/os-icons";
@@ -763,12 +763,17 @@ function DeviceDetail({ device }: { device: Device }) {
       <Tabs defaultValue="info" className="w-full">
         <TabsList className="mb-4 w-full bg-slate-800">
           <TabsTrigger value="info" className="flex-1">Info</TabsTrigger>
+          <TabsTrigger value="system" className="flex-1">System</TabsTrigger>
           <TabsTrigger value="ports" className="flex-1">Ports</TabsTrigger>
           <TabsTrigger value="events" className="flex-1">Events</TabsTrigger>
         </TabsList>
 
         <TabsContent value="info">
           <DeviceInfoTab device={device} ips={ips} primaryIp={primaryIp} />
+        </TabsContent>
+
+        <TabsContent value="system">
+          <DeviceSystemTab deviceId={device.id} />
         </TabsContent>
 
         <TabsContent value="ports">
@@ -797,7 +802,19 @@ function DeviceInfoTab({
   return (
     <div className="space-y-4">
       <InfoRow label="IP Address" value={primaryIp} mono />
-      <InfoRow label="MAC Address" value={device.mac} mono />
+      <div className="flex items-baseline justify-between gap-4">
+        <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
+          MAC Address
+        </span>
+        <span className="flex items-center gap-1.5 font-mono tabular-nums text-sm text-slate-300">
+          {device.mac}
+          {device.is_randomized_mac && (
+            <span className="rounded bg-amber-500/20 px-1 py-0.5 text-[10px] font-medium text-amber-400">
+              Random
+            </span>
+          )}
+        </span>
+      </div>
       {device.vendor && <InfoRow label="Vendor" value={device.vendor} />}
       {device.hostname && <InfoRow label="Hostname" value={device.hostname} />}
       <InfoRow label="First Seen" value={timeAgo(device.first_seen_at)} />
@@ -924,6 +941,137 @@ function DeviceInfoTab({
           <EnrichmentFeedback device={device} />
         </>
       )}
+    </div>
+  );
+}
+
+// ─── Device System Tab (neofetch-style) ─────────────────
+
+function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const mins = Math.floor((seconds % 3600) / 60);
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  parts.push(`${mins}m`);
+  return parts.join(" ");
+}
+
+function DeviceSystemTab({ deviceId }: { deviceId: string }) {
+  const [sysinfo, setSysinfo] = useState<DeviceSysinfo | null | undefined>(undefined);
+  const [showSerial, setShowSerial] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchDeviceSysinfo(deviceId).then((data) => {
+      if (!cancelled) setSysinfo(data);
+    }).catch(() => {
+      if (!cancelled) setSysinfo(null);
+    });
+    return () => { cancelled = true; };
+  }, [deviceId]);
+
+  if (sysinfo === undefined) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-48 w-full bg-slate-800" />
+      </div>
+    );
+  }
+
+  if (!sysinfo) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <Cpu className="mb-2 h-8 w-8 text-slate-600" />
+        <p className="text-sm text-slate-500">No system info available</p>
+        <p className="mt-1 text-xs text-slate-600">
+          Install an agent on this device to collect hardware inventory
+        </p>
+      </div>
+    );
+  }
+
+  // Build neofetch-style rows
+  const rows: [string, string][] = [];
+  if (sysinfo.hostname) rows.push(["Host", sysinfo.hostname]);
+  if (sysinfo.os_name) {
+    const osStr = [sysinfo.os_name, sysinfo.os_version].filter(Boolean).join(" ");
+    rows.push(["OS", osStr]);
+  }
+  if (sysinfo.os_build) rows.push(["Kernel", sysinfo.os_build]);
+  if (sysinfo.hardware_model) rows.push(["Model", sysinfo.hardware_model]);
+  if (sysinfo.cpu_name) {
+    const cpuStr = sysinfo.cpu_cores
+      ? `${sysinfo.cpu_name} (${sysinfo.cpu_cores} cores)`
+      : sysinfo.cpu_name;
+    rows.push(["CPU", cpuStr]);
+  }
+  if (sysinfo.cpu_speed) rows.push(["CPU Speed", sysinfo.cpu_speed]);
+  if (sysinfo.ram_total) rows.push(["Memory", sysinfo.ram_total]);
+  if (sysinfo.gpu_name) rows.push(["GPU", sysinfo.gpu_name]);
+  if (sysinfo.disk_name || sysinfo.disk_size) {
+    const diskStr = [sysinfo.disk_name, sysinfo.disk_size].filter(Boolean).join(" — ");
+    rows.push(["Disk", diskStr]);
+  }
+  if (sysinfo.uptime_seconds != null) rows.push(["Uptime", formatUptime(sysinfo.uptime_seconds)]);
+
+  const title = sysinfo.hostname ?? "device";
+
+  return (
+    <div className="space-y-4">
+      {/* Neofetch-style terminal card */}
+      <div className="overflow-hidden rounded-lg border border-slate-700 bg-slate-950 font-mono text-[13px]">
+        {/* Title bar */}
+        <div className="flex items-center gap-1.5 border-b border-slate-800 px-3 py-2">
+          <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
+          <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
+          <span className="h-2.5 w-2.5 rounded-full bg-green-500/80" />
+          <span className="ml-2 text-xs text-slate-500">{title}</span>
+        </div>
+        {/* Content */}
+        <div className="p-4">
+          <p className="text-cyan-400">
+            {title}
+            <span className="text-slate-500">@</span>
+            <span className="text-cyan-400">panoptikon</span>
+          </p>
+          <p className="text-slate-700">{"─".repeat(Math.min(40, title.length + 12))}</p>
+          {rows.map(([label, value]) => (
+            <p key={label} className="leading-relaxed">
+              <span className="text-cyan-400">{label}</span>
+              <span className="text-slate-500">: </span>
+              <span className="text-slate-300">{value}</span>
+            </p>
+          ))}
+          {/* Color palette row */}
+          <div className="mt-3 flex gap-0">
+            {["bg-slate-900", "bg-red-500", "bg-green-500", "bg-yellow-500", "bg-blue-500", "bg-purple-500", "bg-cyan-500", "bg-slate-300"].map((c) => (
+              <span key={c} className={`inline-block h-3 w-3 ${c}`} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Serial number — hidden by default */}
+      {sysinfo.serial_number && (
+        <div className="space-y-1">
+          <button
+            onClick={() => setShowSerial(!showSerial)}
+            className="text-xs text-slate-500 underline decoration-dotted hover:text-slate-400"
+          >
+            {showSerial ? "Hide" : "Show"} serial number
+          </button>
+          {showSerial && (
+            <p className="font-mono text-sm text-slate-400">{sysinfo.serial_number}</p>
+          )}
+        </div>
+      )}
+
+      {/* Last reported */}
+      <p className="text-[10px] text-slate-600">
+        Last reported {timeAgo(sysinfo.reported_at)}
+      </p>
     </div>
   );
 }

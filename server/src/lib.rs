@@ -1,12 +1,14 @@
 pub mod api;
 pub mod config;
 pub mod db;
+pub mod dhcp;
 pub mod enrichment;
 pub mod mdns;
 pub mod netflow;
 pub mod oui;
 pub mod retention;
 pub mod scanner;
+pub mod ssdp;
 pub mod static_files;
 pub mod vyos;
 pub mod webhook;

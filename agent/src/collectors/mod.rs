@@ -1,5 +1,6 @@
 pub mod cpu;
 pub mod disk;
+pub mod hardware;
 pub mod memory;
 pub mod network;
 pub mod os;
@@ -24,6 +25,9 @@ pub struct AgentReport {
     pub memory: memory::MemoryInfo,
     pub disks: Vec<disk::DiskInfo>,
     pub network_interfaces: Vec<network::NetworkInterface>,
+    /// Static hardware inventory (model, GPU, serial, etc.).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hardware: Option<hardware::HardwareInfo>,
 }
 
 /// Long-lived system metrics collector.
@@ -38,6 +42,8 @@ pub struct SystemCollector {
     networks: Networks,
     report_count: u64,
     prev_net_counters: HashMap<String, (u64, u64)>,
+    /// Cached hardware inventory (collected once at startup).
+    hardware_info: hardware::HardwareInfo,
 }
 
 impl SystemCollector {
@@ -54,12 +60,16 @@ impl SystemCollector {
         let disks = Disks::new_with_refreshed_list();
         let networks = Networks::new_with_refreshed_list();
 
+        // Collect static hardware info once.
+        let hardware_info = hardware::collect(&sys);
+
         Self {
             sys,
             disks,
             networks,
             report_count: 0,
             prev_net_counters: HashMap::new(),
+            hardware_info,
         }
     }
 
@@ -94,6 +104,7 @@ impl SystemCollector {
             memory: memory::collect(&self.sys),
             disks: disk::collect_from(&self.disks),
             network_interfaces,
+            hardware: Some(self.hardware_info.clone()),
         }
     }
 

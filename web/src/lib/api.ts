@@ -18,6 +18,7 @@ import type {
   DashboardStats,
   DbSizeData,
   Device,
+  DeviceSysinfo,
   DhcpServerConfig,
   DhcpStaticMapping,
   DnsForwardingConfig,
@@ -231,6 +232,10 @@ export function updateDeviceEnrichment(
   body: EnrichmentCorrection
 ): Promise<void> {
   return apiPatch<void>(`/api/v1/devices/${id}/enrichment`, body);
+}
+
+export function fetchDeviceSysinfo(id: string): Promise<DeviceSysinfo | null> {
+  return apiGet<DeviceSysinfo | null>(`/api/v1/devices/${id}/sysinfo`);
 }
 
 // ─── Agents ─────────────────────────────────────────────
