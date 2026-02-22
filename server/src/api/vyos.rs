@@ -4642,30 +4642,24 @@ fn parse_dns_config(fwd: &Value, host_mappings: &Value) -> DnsConfig {
     domain_forwarding.sort_by(|a, b| a.domain.cmp(&b.domain));
 
     // Parse listen-address
-    listen_address = fwd
-        .get("listen-address")
-        .and_then(|v| match v {
-            Value::String(s) => Some(s.clone()),
-            Value::Object(map) => map.keys().next().cloned(),
-            _ => None,
-        });
+    listen_address = fwd.get("listen-address").and_then(|v| match v {
+        Value::String(s) => Some(s.clone()),
+        Value::Object(map) => map.keys().next().cloned(),
+        _ => None,
+    });
 
     // Parse cache-size
-    cache_size = fwd
-        .get("cache-size")
-        .and_then(|v| match v {
-            Value::Number(n) => n.as_u64().map(|n| n as u32),
-            Value::String(s) => s.parse().ok(),
-            _ => None,
-        });
+    cache_size = fwd.get("cache-size").and_then(|v| match v {
+        Value::Number(n) => n.as_u64().map(|n| n as u32),
+        Value::String(s) => s.parse().ok(),
+        _ => None,
+    });
 
     // Parse DNSSEC
-    dnssec = fwd
-        .get("dnssec")
-        .and_then(|v| match v {
-            Value::String(s) => Some(s.clone()),
-            _ => None,
-        });
+    dnssec = fwd.get("dnssec").and_then(|v| match v {
+        Value::String(s) => Some(s.clone()),
+        _ => None,
+    });
 
     // Parse static host-name mappings
     let mut host_overrides = Vec::new();
@@ -4705,9 +4699,7 @@ fn parse_dns_config(fwd: &Value, host_mappings: &Value) -> DnsConfig {
 }
 
 /// GET /api/v1/vyos/dns — fetch DNS forwarding config + host overrides.
-pub async fn dns_config(
-    State(state): State<AppState>,
-) -> Result<Json<DnsConfig>, StatusCode> {
+pub async fn dns_config(State(state): State<AppState>) -> Result<Json<DnsConfig>, StatusCode> {
     let client = get_vyos_client_or_503(&state).await?;
 
     // Fetch DNS forwarding config
@@ -4794,8 +4786,14 @@ pub async fn add_dns_nameserver(
         }
         Err(e) => {
             let msg = format!("VyOS error: {e}");
-            audit::log_failure(&state.db, "dns_nameserver_add", &description, &commands, &msg)
-                .await;
+            audit::log_failure(
+                &state.db,
+                "dns_nameserver_add",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
             Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
@@ -4872,9 +4870,7 @@ fn is_valid_domain(domain: &str) -> bool {
     domain.split('.').all(|label| {
         !label.is_empty()
             && label.len() <= 63
-            && label
-                .chars()
-                .all(|c| c.is_ascii_alphanumeric() || c == '-')
+            && label.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
             && !label.starts_with('-')
             && !label.ends_with('-')
     })
@@ -4942,13 +4938,7 @@ pub async fn add_dns_domain_forward(
         .await
     {
         Ok(_) => {
-            audit::log_success(
-                &state.db,
-                "dns_domain_forward_add",
-                &description,
-                &commands,
-            )
-            .await;
+            audit::log_success(&state.db, "dns_domain_forward_add", &description, &commands).await;
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Domain forwarding for {} added", body.domain),
@@ -4991,9 +4981,7 @@ pub async fn delete_dns_domain_forward(
     })?;
 
     let description = format!("Delete DNS domain forwarding for {domain}");
-    let commands = vec![format!(
-        "delete service dns forwarding domain {domain}"
-    )];
+    let commands = vec![format!("delete service dns forwarding domain {domain}")];
 
     match client
         .configure_delete(&["service", "dns", "forwarding", "domain", &domain])
@@ -5093,13 +5081,7 @@ pub async fn add_dns_host_override(
         .await
     {
         Ok(_) => {
-            audit::log_success(
-                &state.db,
-                "dns_host_override_add",
-                &description,
-                &commands,
-            )
-            .await;
+            audit::log_success(&state.db, "dns_host_override_add", &description, &commands).await;
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Host override {} → {} added", body.hostname, body.ip),
@@ -5147,12 +5129,7 @@ pub async fn delete_dns_host_override(
     )];
 
     match client
-        .configure_delete(&[
-            "system",
-            "static-host-mapping",
-            "host-name",
-            &hostname,
-        ])
+        .configure_delete(&["system", "static-host-mapping", "host-name", &hostname])
         .await
     {
         Ok(_) => {
@@ -5252,9 +5229,7 @@ pub async fn update_dns_settings(
                 ));
             }
         } else {
-            audit_commands.push(format!(
-                "set service dns forwarding listen-address {addr}"
-            ));
+            audit_commands.push(format!("set service dns forwarding listen-address {addr}"));
             if let Err(e) = client
                 .configure_set(&["service", "dns", "forwarding", "listen-address", addr])
                 .await
@@ -5283,9 +5258,7 @@ pub async fn update_dns_settings(
     // Update cache-size
     if let Some(size) = body.cache_size {
         let size_str = size.to_string();
-        audit_commands.push(format!(
-            "set service dns forwarding cache-size {size_str}"
-        ));
+        audit_commands.push(format!("set service dns forwarding cache-size {size_str}"));
         if let Err(e) = client
             .configure_set(&["service", "dns", "forwarding", "cache-size", &size_str])
             .await
