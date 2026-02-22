@@ -307,7 +307,7 @@ pub struct RouterStatus {
 
 /// GET /api/v1/vyos/status — check if VyOS is configured and reachable.
 pub async fn status(State(state): State<AppState>) -> Json<RouterStatus> {
-    let client = match get_vyos_client_from_db(&state.db, &state.config).await {
+    let client = match get_vyos_client_from_db(&state.db, &state.config, &state.vyos_http).await {
         Some(c) => c,
         None => {
             return Json(RouterStatus {
@@ -320,10 +320,15 @@ pub async fn status(State(state): State<AppState>) -> Json<RouterStatus> {
         }
     };
 
-    // Try to fetch version and uptime
-    let version = client.show(&["version"]).await.ok().and_then(|v| {
+    // Fetch version, uptime, and hostname in parallel.
+    let (ver_res, up_res, host_res) = tokio::join!(
+        client.show(&["version"]),
+        client.show(&["system", "uptime"]),
+        client.show(&["host", "name"]),
+    );
+
+    let version = ver_res.ok().and_then(|v| {
         v.as_str().map(|s| {
-            // Extract "Version: VyOS xxx" line
             s.lines()
                 .find(|l| l.starts_with("Version:"))
                 .map(|l| l.trim_start_matches("Version:").trim().to_string())
@@ -331,7 +336,7 @@ pub async fn status(State(state): State<AppState>) -> Json<RouterStatus> {
         })
     });
 
-    let uptime = client.show(&["system", "uptime"]).await.ok().and_then(|v| {
+    let uptime = up_res.ok().and_then(|v| {
         v.as_str().map(|s| {
             s.lines()
                 .find(|l| l.starts_with("Uptime:"))
@@ -340,9 +345,7 @@ pub async fn status(State(state): State<AppState>) -> Json<RouterStatus> {
         })
     });
 
-    let hostname = client
-        .show(&["host", "name"])
-        .await
+    let hostname = host_res
         .ok()
         .and_then(|v| v.as_str().map(|s| s.trim().to_string()));
 
@@ -357,13 +360,202 @@ pub async fn status(State(state): State<AppState>) -> Json<RouterStatus> {
     })
 }
 
+/// Combined router summary returned by the bulk endpoint.
+#[derive(Debug, Serialize)]
+pub struct RouterSummary {
+    pub status: RouterStatus,
+    pub interfaces: Vec<VyosInterface>,
+    pub routes: Vec<VyosRoute>,
+    pub dhcp_leases: Vec<VyosDhcpLease>,
+    pub firewall: FirewallConfig,
+}
+
+/// GET /api/v1/vyos/router-summary — fetch all router data in a single request.
+///
+/// Runs status, interfaces, routes, DHCP leases, and firewall queries in
+/// parallel using `tokio::join!`, collapsing what would be 5+ sequential
+/// round-trips into one.
+pub async fn router_summary(
+    State(state): State<AppState>,
+) -> Result<Json<RouterSummary>, StatusCode> {
+    use crate::vyos::cache::cache_key;
+
+    let client = match get_vyos_client_from_db(&state.db, &state.config, &state.vyos_http).await {
+        Some(c) => c,
+        None => {
+            return Ok(Json(RouterSummary {
+                status: RouterStatus {
+                    configured: false,
+                    reachable: false,
+                    version: None,
+                    uptime: None,
+                    hostname: None,
+                },
+                interfaces: Vec::new(),
+                routes: Vec::new(),
+                dhcp_leases: Vec::new(),
+                firewall: FirewallConfig { chains: Vec::new() },
+            }));
+        }
+    };
+
+    // Check cache for each sub-query; fetch from VyOS only on cache miss.
+    let iface_key = cache_key("show", &["interfaces"]);
+    let route_key = cache_key("show", &["ip", "route"]);
+    let dhcp_key = cache_key("show", &["dhcp", "server", "leases"]);
+    let fw_key = cache_key("retrieve", &["firewall"]);
+
+    let cached_iface = state.vyos_cache.get(&iface_key);
+    let cached_routes = state.vyos_cache.get(&route_key);
+    let cached_dhcp = state.vyos_cache.get(&dhcp_key);
+    let cached_fw = state.vyos_cache.get(&fw_key);
+
+    // Fire all uncached fetches in parallel alongside status queries.
+    let (ver_res, up_res, host_res, iface_res, route_res, dhcp_res, fw_res) = tokio::join!(
+        client.show(&["version"]),
+        client.show(&["system", "uptime"]),
+        client.show(&["host", "name"]),
+        async {
+            if cached_iface.is_some() {
+                Ok(Value::Null)
+            } else {
+                client.show(&["interfaces"]).await
+            }
+        },
+        async {
+            if cached_routes.is_some() {
+                Ok(Value::Null)
+            } else {
+                client.show(&["ip", "route"]).await
+            }
+        },
+        async {
+            if cached_dhcp.is_some() {
+                Ok(Value::Null)
+            } else {
+                client.show(&["dhcp", "server", "leases"]).await
+            }
+        },
+        async {
+            if cached_fw.is_some() {
+                Ok(Value::Null)
+            } else {
+                client.retrieve(&["firewall"]).await
+            }
+        },
+    );
+
+    // --- Status ---
+    let version = ver_res.ok().and_then(|v| {
+        v.as_str().map(|s| {
+            s.lines()
+                .find(|l| l.starts_with("Version:"))
+                .map(|l| l.trim_start_matches("Version:").trim().to_string())
+                .unwrap_or_else(|| s.to_string())
+        })
+    });
+    let uptime = up_res.ok().and_then(|v| {
+        v.as_str().map(|s| {
+            s.lines()
+                .find(|l| l.starts_with("Uptime:"))
+                .map(|l| l.trim_start_matches("Uptime:").trim().to_string())
+                .unwrap_or_else(|| s.to_string())
+        })
+    });
+    let hostname = host_res
+        .ok()
+        .and_then(|v| v.as_str().map(|s| s.trim().to_string()));
+    let reachable = version.is_some() || uptime.is_some();
+
+    // --- Interfaces ---
+    let interfaces = if let Some(cached) = cached_iface {
+        serde_json::from_value(cached).unwrap_or_default()
+    } else {
+        let text = iface_res
+            .ok()
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .unwrap_or_default();
+        let parsed = parse_interfaces_text(&text);
+        if let Ok(v) = serde_json::to_value(&parsed) {
+            state.vyos_cache.set(iface_key, v);
+        }
+        parsed
+    };
+
+    // --- Routes ---
+    let routes_parsed = if let Some(cached) = cached_routes {
+        serde_json::from_value(cached).unwrap_or_default()
+    } else {
+        let text = route_res
+            .ok()
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .unwrap_or_default();
+        let parsed = parse_routes_text(&text);
+        if let Ok(v) = serde_json::to_value(&parsed) {
+            state.vyos_cache.set(route_key, v);
+        }
+        parsed
+    };
+
+    // --- DHCP leases ---
+    let dhcp_leases_parsed = if let Some(cached) = cached_dhcp {
+        serde_json::from_value(cached).unwrap_or_default()
+    } else {
+        let text = dhcp_res
+            .ok()
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .unwrap_or_default();
+        let parsed = parse_dhcp_leases_text(&text);
+        if let Ok(v) = serde_json::to_value(&parsed) {
+            state.vyos_cache.set(dhcp_key, v);
+        }
+        parsed
+    };
+
+    // --- Firewall ---
+    let firewall_parsed = if let Some(cached) = cached_fw {
+        serde_json::from_value(cached).unwrap_or(FirewallConfig { chains: Vec::new() })
+    } else {
+        let config = match fw_res {
+            Ok(data) => parse_firewall_config(&data),
+            Err(_) => FirewallConfig { chains: Vec::new() },
+        };
+        if let Ok(v) = serde_json::to_value(&config) {
+            state.vyos_cache.set(fw_key, v);
+        }
+        config
+    };
+
+    Ok(Json(RouterSummary {
+        status: RouterStatus {
+            configured: true,
+            reachable,
+            version,
+            uptime,
+            hostname,
+        },
+        interfaces,
+        routes: routes_parsed,
+        dhcp_leases: dhcp_leases_parsed,
+        firewall: firewall_parsed,
+    }))
+}
+
 /// GET /api/v1/vyos/interfaces — fetch VyOS interface information (parsed).
 ///
 /// Calls `show interfaces` on VyOS, parses the tabular text output, and returns
-/// a JSON array of [`VyosInterface`] objects.
+/// a JSON array of [`VyosInterface`] objects. Results are cached for 30 s.
 pub async fn interfaces(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<VyosInterface>>, StatusCode> {
+    use crate::vyos::cache::cache_key;
+
+    let key = cache_key("show", &["interfaces"]);
+    if let Some(cached) = state.vyos_cache.get(&key) {
+        let parsed: Vec<VyosInterface> = serde_json::from_value(cached).unwrap_or_default();
+        return Ok(Json(parsed));
+    }
+
     let client = get_vyos_client_or_503(&state).await?;
     let raw_value = client.show(&["interfaces"]).await.map_err(|e| {
         tracing::error!("VyOS interfaces query failed: {e}");
@@ -372,14 +564,25 @@ pub async fn interfaces(
 
     let text = raw_value.as_str().unwrap_or("");
     let parsed = parse_interfaces_text(text);
+    if let Ok(v) = serde_json::to_value(&parsed) {
+        state.vyos_cache.set(key, v);
+    }
     Ok(Json(parsed))
 }
 
 /// GET /api/v1/vyos/routes — fetch VyOS routing table (parsed).
 ///
 /// Calls `show ip route` on VyOS, parses the text output, and returns
-/// a JSON array of [`VyosRoute`] objects.
+/// a JSON array of [`VyosRoute`] objects. Results are cached for 30 s.
 pub async fn routes(State(state): State<AppState>) -> Result<Json<Vec<VyosRoute>>, StatusCode> {
+    use crate::vyos::cache::cache_key;
+
+    let key = cache_key("show", &["ip", "route"]);
+    if let Some(cached) = state.vyos_cache.get(&key) {
+        let parsed: Vec<VyosRoute> = serde_json::from_value(cached).unwrap_or_default();
+        return Ok(Json(parsed));
+    }
+
     let client = get_vyos_client_or_503(&state).await?;
     let raw_value = client.show(&["ip", "route"]).await.map_err(|e| {
         tracing::error!("VyOS routes query failed: {e}");
@@ -388,6 +591,9 @@ pub async fn routes(State(state): State<AppState>) -> Result<Json<Vec<VyosRoute>
 
     let text = raw_value.as_str().unwrap_or("");
     let parsed = parse_routes_text(text);
+    if let Ok(v) = serde_json::to_value(&parsed) {
+        state.vyos_cache.set(key, v);
+    }
     Ok(Json(parsed))
 }
 
@@ -562,9 +768,18 @@ pub fn parse_dhcp_leases_text(text: &str) -> Vec<VyosDhcpLease> {
 /// Calls `show dhcp server leases` on VyOS, parses the tabular text output,
 /// and returns a JSON array of [`VyosDhcpLease`] objects.
 /// If DHCP is not configured, returns an empty array (not an error).
+/// Results are cached for 30 s.
 pub async fn dhcp_leases(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<VyosDhcpLease>>, StatusCode> {
+    use crate::vyos::cache::cache_key;
+
+    let key = cache_key("show", &["dhcp", "server", "leases"]);
+    if let Some(cached) = state.vyos_cache.get(&key) {
+        let parsed: Vec<VyosDhcpLease> = serde_json::from_value(cached).unwrap_or_default();
+        return Ok(Json(parsed));
+    }
+
     let client = get_vyos_client_or_503(&state).await?;
     let raw_value = client
         .show(&["dhcp", "server", "leases"])
@@ -576,6 +791,9 @@ pub async fn dhcp_leases(
 
     let text = raw_value.as_str().unwrap_or("");
     let parsed = parse_dhcp_leases_text(text);
+    if let Ok(v) = serde_json::to_value(&parsed) {
+        state.vyos_cache.set(key, v);
+    }
     Ok(Json(parsed))
 }
 
@@ -803,12 +1021,25 @@ fn capitalize(s: &str) -> String {
 /// Calls `showConfig` for the `firewall` path on VyOS, parses the JSON config
 /// into structured chains and rules, and returns a [`FirewallConfig`].
 /// If no firewall is configured, returns an empty chains list.
+/// Results are cached for 30 s.
 pub async fn firewall(State(state): State<AppState>) -> Result<Json<FirewallConfig>, StatusCode> {
+    use crate::vyos::cache::cache_key;
+
+    let key = cache_key("retrieve", &["firewall"]);
+    if let Some(cached) = state.vyos_cache.get(&key) {
+        let config: FirewallConfig =
+            serde_json::from_value(cached).unwrap_or(FirewallConfig { chains: Vec::new() });
+        return Ok(Json(config));
+    }
+
     let client = get_vyos_client_or_503(&state).await?;
     // Firewall may not be configured — that's OK, return empty config
     match client.retrieve(&["firewall"]).await {
         Ok(data) => {
             let config = parse_firewall_config(&data);
+            if let Ok(v) = serde_json::to_value(&config) {
+                state.vyos_cache.set(key, v);
+            }
             Ok(Json(config))
         }
         Err(e) => {
@@ -1470,16 +1701,23 @@ pub async fn toggle_firewall_rule(
 }
 
 /// GET /api/v1/vyos/config-interfaces — fetch interface configuration (structured).
+/// Results are cached for 30 s.
 pub async fn config_interfaces(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+    use crate::vyos::cache::cache_key;
+
+    let key = cache_key("retrieve", &["interfaces"]);
+    if let Some(cached) = state.vyos_cache.get(&key) {
+        return Ok(Json(cached));
+    }
+
     let client = get_vyos_client_or_503(&state).await?;
-    client
-        .retrieve(&["interfaces"])
-        .await
-        .map(Json)
-        .map_err(|e| {
-            tracing::error!("VyOS config-interfaces query failed: {e}");
-            StatusCode::BAD_GATEWAY
-        })
+    let value = client.retrieve(&["interfaces"]).await.map_err(|e| {
+        tracing::error!("VyOS config-interfaces query failed: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    state.vyos_cache.set(key, value.clone());
+    Ok(Json(value))
 }
 
 // ── Interface enable/disable ─────────────────────────────────────────────────
@@ -5135,12 +5373,13 @@ async fn get_vyos_settings(
 async fn get_vyos_client_from_db(
     db: &SqlitePool,
     config: &crate::config::AppConfig,
+    http: &reqwest::Client,
 ) -> Option<crate::vyos::client::VyosClient> {
     let (url, key) = get_vyos_settings(db, config).await;
     match (url, key) {
-        (Some(u), Some(k)) if !u.is_empty() && !k.is_empty() => {
-            Some(crate::vyos::client::VyosClient::new(&u, &k))
-        }
+        (Some(u), Some(k)) if !u.is_empty() && !k.is_empty() => Some(
+            crate::vyos::client::VyosClient::with_http(&u, &k, http.clone()),
+        ),
         _ => None,
     }
 }
@@ -5149,7 +5388,7 @@ async fn get_vyos_client_from_db(
 pub(crate) async fn get_vyos_client_or_503(
     state: &AppState,
 ) -> Result<crate::vyos::client::VyosClient, StatusCode> {
-    get_vyos_client_from_db(&state.db, &state.config)
+    get_vyos_client_from_db(&state.db, &state.config, &state.vyos_http)
         .await
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)
 }

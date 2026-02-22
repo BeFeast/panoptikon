@@ -1,9 +1,11 @@
 use crate::config::AppConfig;
 use crate::static_files::serve_static_asset;
 use crate::ws::hub::WsHub;
+use axum::extract::State;
 use axum::http::{header, Method};
 use axum::{
-    middleware::{self},
+    middleware::{self, Next},
+    response::Response,
     routing::{delete, get, patch, post, put},
     Router,
 };
@@ -40,6 +42,10 @@ pub struct AppState {
     pub ws_hub: Arc<WsHub>,
     pub rate_limiter: auth::LoginRateLimiter,
     pub last_speedtest: Arc<Mutex<Option<vyos::SpeedTestResult>>>,
+    /// Shared reqwest::Client for VyOS API — reuses connection pool & TLS sessions.
+    pub vyos_http: reqwest::Client,
+    /// TTL cache for VyOS read operations (show / retrieve).
+    pub vyos_cache: Arc<crate::vyos::cache::VyosCache>,
 }
 
 impl AppState {
@@ -51,6 +57,8 @@ impl AppState {
             ws_hub: WsHub::new(),
             rate_limiter: auth::LoginRateLimiter::new(),
             last_speedtest: Arc::new(Mutex::new(None)),
+            vyos_http: crate::vyos::client::shared_http_client(),
+            vyos_cache: Arc::new(crate::vyos::cache::VyosCache::new()),
         }
     }
 }
@@ -127,6 +135,7 @@ pub fn router(state: AppState) -> Router {
         .route("/settings/db-size", get(settings::db_size))
         .route("/settings/vacuum", post(settings::vacuum))
         // VyOS router proxy
+        .route("/vyos/router-summary", get(vyos::router_summary))
         .route("/vyos/status", get(vyos::status))
         .route("/vyos/interfaces", get(vyos::interfaces))
         .route("/vyos/config-interfaces", get(vyos::config_interfaces))
@@ -293,6 +302,10 @@ pub fn router(state: AppState) -> Router {
         .route("/ws", get(agents::ui_ws_handler))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
+            vyos_cache_invalidation,
+        ))
+        .route_layer(middleware::from_fn_with_state(
+            state.clone(),
             auth::auth_middleware,
         ));
 
@@ -308,6 +321,22 @@ pub fn router(state: AppState) -> Router {
         .fallback(serve_static_asset)
         .layer(cors)
         .with_state(state)
+}
+
+/// Middleware that clears the VyOS response cache after any successful
+/// mutating request (POST / PUT / PATCH / DELETE) to a `/vyos/` path.
+async fn vyos_cache_invalidation(
+    State(state): State<AppState>,
+    request: axum::extract::Request,
+    next: Next,
+) -> Response {
+    let is_write =
+        !matches!(*request.method(), Method::GET) && request.uri().path().contains("/vyos/");
+    let response = next.run(request).await;
+    if is_write && response.status().is_success() {
+        state.vyos_cache.clear();
+    }
+    response
 }
 
 /// Simple health check endpoint.
