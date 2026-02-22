@@ -407,9 +407,15 @@ pub async fn status(State(state): State<AppState>) -> Json<RouterStatus> {
 pub struct RouterSummary {
     pub status: RouterStatus,
     pub interfaces: Vec<VyosInterface>,
+    pub config_interfaces: Value,
     pub routes: Vec<VyosRoute>,
     pub dhcp_leases: Vec<VyosDhcpLease>,
+    pub dhcp_static_mappings: Vec<DhcpStaticMapping>,
+    pub dhcp_server_config: DhcpServerConfig,
     pub firewall: FirewallConfig,
+    pub firewall_groups: FirewallGroups,
+    pub dns_forwarding: DnsForwardingConfig,
+    pub wireguard: Vec<WireguardInterface>,
 }
 
 /// GET /api/v1/vyos/router-summary — fetch all router data in a single request.
@@ -434,9 +440,27 @@ pub async fn router_summary(
                     hostname: None,
                 },
                 interfaces: Vec::new(),
+                config_interfaces: Value::Null,
                 routes: Vec::new(),
                 dhcp_leases: Vec::new(),
+                dhcp_static_mappings: Vec::new(),
+                dhcp_server_config: DhcpServerConfig {
+                    shared_networks: Vec::new(),
+                },
                 firewall: FirewallConfig { chains: Vec::new() },
+                firewall_groups: FirewallGroups {
+                    address_groups: Vec::new(),
+                    network_groups: Vec::new(),
+                    port_groups: Vec::new(),
+                },
+                dns_forwarding: DnsForwardingConfig {
+                    name_servers: Vec::new(),
+                    domain_overrides: Vec::new(),
+                    listen_addresses: Vec::new(),
+                    allow_from: Vec::new(),
+                    cache_size: None,
+                },
+                wireguard: Vec::new(),
             }));
         }
     };
@@ -446,14 +470,29 @@ pub async fn router_summary(
     let route_key = cache_key("show", &["ip", "route"]);
     let dhcp_key = cache_key("show", &["dhcp", "server", "leases"]);
     let fw_key = cache_key("retrieve", &["firewall"]);
+    let config_iface_key = cache_key("retrieve", &["interfaces"]);
 
     let cached_iface = state.vyos_cache.get(&iface_key);
     let cached_routes = state.vyos_cache.get(&route_key);
     let cached_dhcp = state.vyos_cache.get(&dhcp_key);
     let cached_fw = state.vyos_cache.get(&fw_key);
+    let cached_config_iface = state.vyos_cache.get(&config_iface_key);
 
     // Fire all uncached fetches in parallel alongside status queries.
-    let (ver_res, up_res, host_res, iface_res, route_res, dhcp_res, fw_res) = tokio::join!(
+    let (
+        ver_res,
+        up_res,
+        host_res,
+        iface_res,
+        route_res,
+        dhcp_res,
+        fw_res,
+        config_iface_res,
+        dhcp_server_res,
+        fw_groups_res,
+        dns_fwd_res,
+        wg_config_res,
+    ) = tokio::join!(
         client.show(&["version"]),
         client.show(&["system", "uptime"]),
         client.show(&["host", "name"]),
@@ -485,6 +524,17 @@ pub async fn router_summary(
                 client.retrieve(&["firewall"]).await
             }
         },
+        async {
+            if cached_config_iface.is_some() {
+                Ok(Value::Null)
+            } else {
+                client.retrieve(&["interfaces"]).await
+            }
+        },
+        client.retrieve(&["service", "dhcp-server"]),
+        client.retrieve(&["firewall", "group"]),
+        client.retrieve(&["service", "dns", "forwarding"]),
+        client.retrieve(&["interfaces", "wireguard"]),
     );
 
     // --- Status ---
@@ -510,18 +560,32 @@ pub async fn router_summary(
     let reachable = version.is_some() || uptime.is_some();
 
     // --- Interfaces ---
+    let iface_text = if cached_iface.is_some() {
+        None
+    } else {
+        iface_res
+            .ok()
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+    };
     let interfaces = if let Some(cached) = cached_iface {
         serde_json::from_value(cached).unwrap_or_default()
     } else {
-        let text = iface_res
-            .ok()
-            .and_then(|v| v.as_str().map(|s| s.to_string()))
-            .unwrap_or_default();
-        let parsed = parse_interfaces_text(&text);
+        let parsed = parse_interfaces_text(iface_text.as_deref().unwrap_or(""));
         if let Ok(v) = serde_json::to_value(&parsed) {
             state.vyos_cache.set(iface_key, v);
         }
         parsed
+    };
+
+    // --- Config Interfaces ---
+    let config_interfaces = if let Some(cached) = cached_config_iface {
+        cached
+    } else {
+        let value = config_iface_res.unwrap_or(Value::Null);
+        if !value.is_null() {
+            state.vyos_cache.set(config_iface_key, value.clone());
+        }
+        value
     };
 
     // --- Routes ---
@@ -554,6 +618,11 @@ pub async fn router_summary(
         parsed
     };
 
+    // --- DHCP static mappings & server config (same source data) ---
+    let dhcp_server_val = dhcp_server_res.unwrap_or(Value::Null);
+    let dhcp_static_mappings = parse_dhcp_static_mappings(&dhcp_server_val);
+    let dhcp_server_config = parse_dhcp_server_config(&dhcp_server_val);
+
     // --- Firewall ---
     let firewall_parsed = if let Some(cached) = cached_fw {
         serde_json::from_value(cached).unwrap_or(FirewallConfig { chains: Vec::new() })
@@ -568,6 +637,55 @@ pub async fn router_summary(
         config
     };
 
+    // --- Firewall Groups ---
+    let firewall_groups = match fw_groups_res {
+        Ok(data) => parse_firewall_groups(&data),
+        Err(_) => FirewallGroups {
+            address_groups: Vec::new(),
+            network_groups: Vec::new(),
+            port_groups: Vec::new(),
+        },
+    };
+
+    // --- DNS Forwarding ---
+    let dns_forwarding = match dns_fwd_res {
+        Ok(data) => parse_dns_forwarding_config(&data),
+        Err(_) => DnsForwardingConfig {
+            name_servers: Vec::new(),
+            domain_overrides: Vec::new(),
+            listen_addresses: Vec::new(),
+            allow_from: Vec::new(),
+            cache_size: None,
+        },
+    };
+
+    // --- WireGuard ---
+    let mut wireguard = match wg_config_res {
+        Ok(data) => parse_wireguard_config(&data),
+        Err(_) => Vec::new(),
+    };
+    // Merge link status from interfaces data (already fetched above)
+    let iface_list_for_wg: Option<Vec<VyosInterface>> = if let Some(ref text) = iface_text {
+        Some(parse_interfaces_text(text))
+    } else {
+        // interfaces were from cache — reuse them
+        Some(interfaces.clone())
+    };
+    if let Some(iface_list) = &iface_list_for_wg {
+        for wg in &mut wireguard {
+            if let Some(sys_iface) = iface_list.iter().find(|i| i.name == wg.name) {
+                wg.status = Some(sys_iface.link_state.clone());
+            }
+        }
+    }
+    // Fetch per-interface runtime stats
+    for wg in &mut wireguard {
+        if let Ok(raw) = client.show(&["interfaces", "wireguard", &wg.name]).await {
+            let text = raw.as_str().unwrap_or("");
+            merge_wireguard_runtime_stats(wg, text);
+        }
+    }
+
     Ok(Json(RouterSummary {
         status: RouterStatus {
             configured: true,
@@ -577,9 +695,15 @@ pub async fn router_summary(
             hostname,
         },
         interfaces,
+        config_interfaces,
         routes: routes_parsed,
         dhcp_leases: dhcp_leases_parsed,
+        dhcp_static_mappings,
+        dhcp_server_config,
         firewall: firewall_parsed,
+        firewall_groups,
+        dns_forwarding,
+        wireguard,
     }))
 }
 

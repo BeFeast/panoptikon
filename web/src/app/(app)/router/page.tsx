@@ -72,7 +72,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
-  fetchRouterStatus,
+  fetchRouterSummary,
   fetchRouterInterfaces,
   fetchRouterRoutes,
   fetchRouterDhcpLeases,
@@ -121,7 +121,7 @@ import {
   fetchSystemInfo,
   fetchSyslog,
 } from "@/lib/api";
-import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, SpeedTestResult, SpeedTestHistoryEntry, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, DhcpServerConfig, DhcpSubnetConfig, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride, SystemInfo, SyslogResponse } from "@/lib/types";
+import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, RouterSummary, SpeedTestResult, SpeedTestHistoryEntry, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, DhcpServerConfig, DhcpSubnetConfig, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride, SystemInfo, SyslogResponse } from "@/lib/types";
 import QRCode from "qrcode";
 import { Progress } from "@/components/ui/progress";
 import { PageTransition } from "@/components/PageTransition";
@@ -486,23 +486,22 @@ function SystemInfoPanel({
   );
 }
 
-// ── Hook: fetch with loading/error ──────────────────────
+// ── Hook: pre-populated data with reload ────────────────
 
-function useAsyncData<T>(
-  fetcher: () => Promise<T>,
-  enabled: boolean
+/** State pre-populated from the router summary with reload via individual endpoint. */
+function useSummaryData<T>(
+  initial: T,
+  fetcher: () => Promise<T>
 ): { data: T | null; loading: boolean; error: string | null; reload: () => void } {
-  const [data, setData] = useState<T | null>(null);
+  const [data, setData] = useState<T | null>(initial);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    if (!enabled) return;
+  const reload = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const result = await fetcher();
-      setData(result);
+      setData(await fetcher());
     } catch (e) {
       if (e instanceof Error && e.message.includes("503")) {
         setError("Router not configured");
@@ -512,13 +511,9 @@ function useAsyncData<T>(
     } finally {
       setLoading(false);
     }
-  }, [fetcher, enabled]);
+  }, [fetcher]);
 
-  useEffect(() => {
-    load();
-  }, [load]);
-
-  return { data, loading, error, reload: load };
+  return { data, loading, error, reload };
 }
 
 // ── DNS Forwarding Panel ────────────────────────────────
@@ -4919,25 +4914,31 @@ function GenerateClientConfigDialog({
 // ── Main Page ───────────────────────────────────────────
 
 export default function RouterPage() {
-  const [status, setStatus] = useState<RouterStatus | null>(null);
-  const [statusLoading, setStatusLoading] = useState(true);
+  const [summary, setSummary] = useState<RouterSummary | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchRouterStatus()
-      .then(setStatus)
+    fetchRouterSummary()
+      .then(setSummary)
       .catch(() =>
-        setStatus({
-          configured: false,
-          reachable: false,
-          version: null,
-          uptime: null,
-          hostname: null,
+        setSummary({
+          status: { configured: false, reachable: false, version: null, uptime: null, hostname: null },
+          interfaces: [],
+          config_interfaces: {},
+          routes: [],
+          dhcp_leases: [],
+          dhcp_static_mappings: [],
+          dhcp_server_config: { shared_networks: [] },
+          firewall: { chains: [] },
+          firewall_groups: { address_groups: [], network_groups: [], port_groups: [] },
+          dns_forwarding: { name_servers: [], domain_overrides: [], listen_addresses: [], allow_from: [], cache_size: null },
+          wireguard: [],
         })
       )
-      .finally(() => setStatusLoading(false));
+      .finally(() => setLoading(false));
   }, []);
 
-  if (statusLoading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-10 w-64" />
@@ -4946,66 +4947,67 @@ export default function RouterPage() {
     );
   }
 
-  if (!status?.configured) {
+  if (!summary?.status.configured) {
     return <PageTransition><NotConfigured /></PageTransition>;
   }
 
-  return <PageTransition><RouterTabs status={status} /></PageTransition>;
+  return <PageTransition><RouterTabs summary={summary} /></PageTransition>;
 }
 
 // ── Tabs component (only rendered when configured) ──────
 
-function RouterTabs({ status }: { status: RouterStatus }) {
+function RouterTabs({ summary }: { summary: RouterSummary }) {
   const [tab, setTab] = useState("system");
+  const { status } = summary;
 
-  const interfaces = useAsyncData<VyosInterface[]>(
-    useCallback(() => fetchRouterInterfaces(), []),
-    tab === "interfaces"
+  const interfaces = useSummaryData(
+    summary.interfaces,
+    useCallback(() => fetchRouterInterfaces(), [])
   );
 
-  const configIfaces = useAsyncData<Record<string, unknown>>(
-    useCallback(() => fetchRouterConfigInterfaces(), []),
-    tab === "interfaces"
+  const configIfaces = useSummaryData(
+    summary.config_interfaces,
+    useCallback(() => fetchRouterConfigInterfaces(), [])
   );
 
-  const routes = useAsyncData<VyosRoute[]>(
-    useCallback(() => fetchRouterRoutes(), []),
-    tab === "routes"
+  const routes = useSummaryData(
+    summary.routes,
+    useCallback(() => fetchRouterRoutes(), [])
   );
 
-  const dhcp = useAsyncData<VyosDhcpLease[]>(
-    useCallback(() => fetchRouterDhcpLeases(), []),
-    tab === "dhcp"
+  const dhcp = useSummaryData(
+    summary.dhcp_leases,
+    useCallback(() => fetchRouterDhcpLeases(), [])
   );
 
-  const staticMappings = useAsyncData<DhcpStaticMapping[]>(
-    useCallback(() => fetchDhcpStaticMappings(), []),
-    tab === "dhcp"
+  const staticMappings = useSummaryData(
+    summary.dhcp_static_mappings,
+    useCallback(() => fetchDhcpStaticMappings(), [])
   );
 
-  const dhcpConfig = useAsyncData<DhcpServerConfig>(
-    useCallback(() => fetchDhcpServerConfig(), []),
-    tab === "dhcp"
+  const dhcpConfig = useSummaryData(
+    summary.dhcp_server_config,
+    useCallback(() => fetchDhcpServerConfig(), [])
   );
 
-  const firewall = useAsyncData<FirewallConfig>(
-    useCallback(() => fetchRouterFirewall(), []),
-    tab === "firewall"
+  const firewall = useSummaryData(
+    summary.firewall,
+    useCallback(() => fetchRouterFirewall(), [])
   );
 
-  const firewallGroups = useAsyncData<FirewallGroups>(
-    useCallback(() => fetchFirewallGroups(), []),
-    tab === "firewall"
+  const firewallGroups = useSummaryData(
+    summary.firewall_groups,
+    useCallback(() => fetchFirewallGroups(), [])
   );
 
-  const dnsForwarding = useAsyncData<DnsForwardingConfig>(
-    useCallback(() => fetchDnsForwarding(), []),
-    tab === "dns"
+  const dnsForwarding = useSummaryData(
+    summary.dns_forwarding,
+    useCallback(() => fetchDnsForwarding(), [])
   );
 
-  const wireguard = useAsyncData<WireguardInterface[]>(
-    useCallback(() => fetchWireguardInterfaces(), []),
-    tab === "vpn"
+  const wireguard = useSummaryData(
+    summary.wireguard,
+    useCallback(() => fetchWireguardInterfaces(), [])
   );
 
   const reloadInterfaces = useCallback(() => {
