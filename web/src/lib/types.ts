@@ -209,12 +209,28 @@ export interface FirewallRule {
   protocol: string | null;
   state: string | null;
   description: string | null;
+  disabled: boolean;
 }
 
 export interface FirewallChain {
   name: string;
   default_action: string;
   rules: FirewallRule[];
+  /** VyOS config path components: [ip_version, direction, filter_type] */
+  path: string[];
+}
+
+export interface FirewallRuleRequest {
+  number: number;
+  action: string;
+  protocol?: string;
+  source_address?: string;
+  source_port?: string;
+  destination_address?: string;
+  destination_port?: string;
+  description?: string;
+  state?: string[];
+  disabled: boolean;
 }
 
 export interface FirewallConfig {

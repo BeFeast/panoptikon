@@ -15,8 +15,8 @@ import type {
   Device,
   DhcpStaticMapping,
   FirewallConfig,
+  FirewallRuleRequest,
   LoginResponse,
-  NatDestinationRule,
   NetflowStatus,
   RouterStatus,
   SearchResponse,
@@ -312,28 +312,52 @@ export function deleteDhcpStaticMapping(
   ) as unknown as Promise<VyosWriteResponse>;
 }
 
-// ─── NAT Destination (Port Forwarding) ──────────────────
+// ─── Firewall CRUD ───────────────────────────────────────
 
-export function fetchNatDestinationRules(): Promise<NatDestinationRule[]> {
-  return apiGet<NatDestinationRule[]>("/api/v1/router/nat/destination");
+/** Chain path is dot-separated: "ipv4.forward.filter" */
+function chainPath(chain: { path: string[] }): string {
+  return chain.path.join(".");
 }
 
-export function createNatDestinationRule(body: {
-  rule: number;
-  description: string;
-  inbound_interface: string;
-  external_port: string;
-  protocol: string;
-  internal_ip: string;
-  internal_port?: string;
-}): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>("/api/v1/router/nat/destination", body);
+export function createFirewallRule(
+  chain: { path: string[] },
+  body: FirewallRuleRequest
+): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>(
+    `/api/v1/vyos/firewall/${encodeURIComponent(chainPath(chain))}/rules`,
+    body
+  );
 }
 
-export function deleteNatDestinationRule(rule: number): Promise<VyosWriteResponse> {
+export function updateFirewallRule(
+  chain: { path: string[] },
+  number: number,
+  body: FirewallRuleRequest
+): Promise<VyosWriteResponse> {
+  return apiPut<VyosWriteResponse>(
+    `/api/v1/vyos/firewall/${encodeURIComponent(chainPath(chain))}/rules/${number}`,
+    body
+  );
+}
+
+export function deleteFirewallRule(
+  chain: { path: string[] },
+  number: number
+): Promise<VyosWriteResponse> {
   return apiDelete(
-    `/api/v1/router/nat/destination/${rule}`
+    `/api/v1/vyos/firewall/${encodeURIComponent(chainPath(chain))}/rules/${number}`
   ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function toggleFirewallRule(
+  chain: { path: string[] },
+  number: number,
+  disabled: boolean
+): Promise<VyosWriteResponse> {
+  return apiPatch<VyosWriteResponse>(
+    `/api/v1/vyos/firewall/${encodeURIComponent(chainPath(chain))}/rules/${number}/enabled`,
+    { disabled }
+  );
 }
 
 // ─── NetFlow ────────────────────────────────────────────

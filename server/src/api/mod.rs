@@ -147,15 +147,22 @@ pub fn router(state: AppState) -> Router {
             "/vyos/dhcp/static-mappings/:network/:subnet/:name",
             delete(vyos::delete_dhcp_static_mapping),
         )
-        // NAT destination (port forwarding)
-        .route("/router/nat/destination", get(vyos::nat_destination_rules))
+        // Firewall write operations
         .route(
-            "/router/nat/destination",
-            post(vyos::create_nat_destination_rule),
+            "/vyos/firewall/:chain/rules",
+            post(vyos::create_firewall_rule),
         )
         .route(
-            "/router/nat/destination/:rule",
-            delete(vyos::delete_nat_destination_rule),
+            "/vyos/firewall/:chain/rules/:number",
+            put(vyos::update_firewall_rule),
+        )
+        .route(
+            "/vyos/firewall/:chain/rules/:number",
+            delete(vyos::delete_firewall_rule),
+        )
+        .route(
+            "/vyos/firewall/:chain/rules/:number/enabled",
+            patch(vyos::toggle_firewall_rule),
         )
         // Topology positions
         .route("/topology/positions", get(topology::get_positions))

@@ -590,6 +590,8 @@ pub struct FirewallRule {
     pub protocol: Option<String>,
     pub state: Option<String>,
     pub description: Option<String>,
+    #[serde(default)]
+    pub disabled: bool,
 }
 
 /// A firewall chain (e.g. "IPv4 Forward Filter") with its rules.
@@ -598,6 +600,8 @@ pub struct FirewallChain {
     pub name: String,
     pub default_action: String,
     pub rules: Vec<FirewallRule>,
+    /// VyOS config path components: [ip_version, direction, filter_type]
+    pub path: Vec<String>,
 }
 
 /// Top-level firewall configuration containing all parsed chains.
@@ -750,6 +754,8 @@ pub fn parse_firewall_config(value: &Value) -> FirewallConfig {
                             .and_then(|v| v.as_str())
                             .map(|s| s.to_string());
 
+                        let disabled = rule_obj.contains_key("disable");
+
                         rules.push(FirewallRule {
                             number,
                             action,
@@ -758,6 +764,7 @@ pub fn parse_firewall_config(value: &Value) -> FirewallConfig {
                             protocol,
                             state,
                             description,
+                            disabled,
                         });
                     }
                 }
@@ -769,6 +776,7 @@ pub fn parse_firewall_config(value: &Value) -> FirewallConfig {
                     name: chain_name,
                     default_action,
                     rules,
+                    path: vec![ip_version.clone(), direction.clone(), filter_type.clone()],
                 });
             }
         }
@@ -811,6 +819,556 @@ pub async fn firewall(State(state): State<AppState>) -> Result<Json<FirewallConf
                 tracing::error!("VyOS firewall query failed: {e}");
                 Err(StatusCode::BAD_GATEWAY)
             }
+        }
+    }
+}
+
+// ── Firewall Rule CRUD ──────────────────────────────────────────────────────
+
+/// Path parameters for firewall chain endpoints.
+#[derive(Debug, Deserialize)]
+pub struct FirewallChainPath {
+    /// Chain name as VyOS path: "ipv4.forward.filter"
+    pub chain: String,
+}
+
+/// Path parameters for firewall rule endpoints.
+#[derive(Debug, Deserialize)]
+pub struct FirewallRulePath {
+    /// Chain name as VyOS path: "ipv4.forward.filter"
+    pub chain: String,
+    /// Rule number
+    pub number: u32,
+}
+
+/// Request body for creating or updating a firewall rule.
+#[derive(Debug, Deserialize)]
+pub struct FirewallRuleRequest {
+    pub number: u32,
+    pub action: String,
+    #[serde(default)]
+    pub protocol: Option<String>,
+    #[serde(default)]
+    pub source_address: Option<String>,
+    #[serde(default)]
+    pub source_port: Option<String>,
+    #[serde(default)]
+    pub destination_address: Option<String>,
+    #[serde(default)]
+    pub destination_port: Option<String>,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub state: Option<Vec<String>>,
+    #[serde(default)]
+    pub disabled: bool,
+}
+
+/// Request body for toggling a firewall rule's enabled state.
+#[derive(Debug, Deserialize)]
+pub struct FirewallRuleToggleRequest {
+    pub disabled: bool,
+}
+
+/// Parse a chain path string "ipv4.forward.filter" into VyOS config path segments.
+fn parse_chain_path(chain: &str) -> Result<Vec<&str>, String> {
+    let parts: Vec<&str> = chain.split('.').collect();
+    if parts.len() != 3 {
+        return Err(format!(
+            "Invalid chain path '{}': expected format 'ipv4.forward.filter'",
+            chain
+        ));
+    }
+    let ip_version = parts[0];
+    let direction = parts[1];
+    let filter_type = parts[2];
+
+    // Validate
+    if !matches!(ip_version, "ipv4" | "ipv6") {
+        return Err(format!("Invalid IP version: '{}'", ip_version));
+    }
+    if !matches!(direction, "forward" | "input" | "output") {
+        return Err(format!("Invalid direction: '{}'", direction));
+    }
+    if filter_type.is_empty()
+        || !filter_type
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    {
+        return Err(format!("Invalid filter type: '{}'", filter_type));
+    }
+    Ok(parts)
+}
+
+/// Build the VyOS config path prefix for a chain + rule number.
+fn firewall_rule_base_path(chain_parts: &[&str], rule_number: u32) -> Vec<String> {
+    vec![
+        "firewall".to_string(),
+        chain_parts[0].to_string(),
+        chain_parts[1].to_string(),
+        chain_parts[2].to_string(),
+        "rule".to_string(),
+        rule_number.to_string(),
+    ]
+}
+
+/// Validate a firewall rule request body.
+fn validate_firewall_rule(body: &FirewallRuleRequest) -> Result<(), String> {
+    if body.number == 0 || body.number > 99999 {
+        return Err("Rule number must be between 1 and 99999".to_string());
+    }
+
+    if !matches!(
+        body.action.as_str(),
+        "accept" | "drop" | "reject" | "jump" | "return" | "queue"
+    ) {
+        return Err(format!("Invalid action: '{}'", body.action));
+    }
+
+    if let Some(ref proto) = body.protocol {
+        if !matches!(
+            proto.as_str(),
+            "tcp" | "udp" | "tcp_udp" | "icmp" | "all" | "ah" | "esp" | "gre"
+        ) {
+            return Err(format!("Invalid protocol: '{}'", proto));
+        }
+    }
+
+    // Validate IP addresses (simple check for CIDR or plain IP)
+    if let Some(ref addr) = body.source_address {
+        if !is_valid_ip_or_cidr(addr) {
+            return Err(format!("Invalid source address: '{}'", addr));
+        }
+    }
+    if let Some(ref addr) = body.destination_address {
+        if !is_valid_ip_or_cidr(addr) {
+            return Err(format!("Invalid destination address: '{}'", addr));
+        }
+    }
+
+    // Validate ports (only if protocol is tcp/udp)
+    if let Some(ref port) = body.source_port {
+        if !is_valid_port(port) {
+            return Err(format!("Invalid source port: '{}'", port));
+        }
+    }
+    if let Some(ref port) = body.destination_port {
+        if !is_valid_port(port) {
+            return Err(format!("Invalid destination port: '{}'", port));
+        }
+    }
+
+    // Validate state values
+    if let Some(ref states) = body.state {
+        for s in states {
+            if !matches!(s.as_str(), "new" | "established" | "related" | "invalid") {
+                return Err(format!("Invalid state: '{}'", s));
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Check if a string looks like a valid IPv4/IPv6 address or CIDR.
+fn is_valid_ip_or_cidr(addr: &str) -> bool {
+    // Allow "!" prefix for negation
+    let addr = addr.strip_prefix('!').unwrap_or(addr);
+    if addr.is_empty() {
+        return false;
+    }
+    // Check for CIDR notation
+    if let Some((ip_part, prefix)) = addr.split_once('/') {
+        if prefix.parse::<u8>().is_err() {
+            return false;
+        }
+        return ip_part.parse::<std::net::IpAddr>().is_ok();
+    }
+    // Plain IP address
+    addr.parse::<std::net::IpAddr>().is_ok()
+}
+
+/// Check if a port string is valid (single port or range like "80" or "1024-65535").
+fn is_valid_port(port: &str) -> bool {
+    if port.is_empty() {
+        return false;
+    }
+    // Port range: "1024-65535"
+    if let Some((start, end)) = port.split_once('-') {
+        return start.parse::<u16>().is_ok() && end.parse::<u16>().is_ok();
+    }
+    // Comma-separated: "80,443"
+    port.split(',').all(|p| p.trim().parse::<u16>().is_ok())
+}
+
+/// Apply a single firewall rule's configuration values to VyOS.
+async fn apply_firewall_rule_config(
+    client: &crate::vyos::client::VyosClient,
+    base: &[String],
+    body: &FirewallRuleRequest,
+) -> Result<(), String> {
+    let base_strs: Vec<&str> = base.iter().map(|s| s.as_str()).collect();
+
+    // Set action (required)
+    let mut action_path = base_strs.clone();
+    action_path.push("action");
+    action_path.push(&body.action);
+    client
+        .configure_set(&action_path)
+        .await
+        .map_err(|e| format!("Failed to set action: {e}"))?;
+
+    // Set protocol
+    if let Some(ref proto) = body.protocol {
+        let mut path = base_strs.clone();
+        path.push("protocol");
+        path.push(proto);
+        client
+            .configure_set(&path)
+            .await
+            .map_err(|e| format!("Failed to set protocol: {e}"))?;
+    }
+
+    // Set source address
+    if let Some(ref addr) = body.source_address {
+        let mut path = base_strs.clone();
+        path.push("source");
+        path.push("address");
+        path.push(addr);
+        client
+            .configure_set(&path)
+            .await
+            .map_err(|e| format!("Failed to set source address: {e}"))?;
+    }
+
+    // Set source port
+    if let Some(ref port) = body.source_port {
+        let mut path = base_strs.clone();
+        path.push("source");
+        path.push("port");
+        path.push(port);
+        client
+            .configure_set(&path)
+            .await
+            .map_err(|e| format!("Failed to set source port: {e}"))?;
+    }
+
+    // Set destination address
+    if let Some(ref addr) = body.destination_address {
+        let mut path = base_strs.clone();
+        path.push("destination");
+        path.push("address");
+        path.push(addr);
+        client
+            .configure_set(&path)
+            .await
+            .map_err(|e| format!("Failed to set destination address: {e}"))?;
+    }
+
+    // Set destination port
+    if let Some(ref port) = body.destination_port {
+        let mut path = base_strs.clone();
+        path.push("destination");
+        path.push("port");
+        path.push(port);
+        client
+            .configure_set(&path)
+            .await
+            .map_err(|e| format!("Failed to set destination port: {e}"))?;
+    }
+
+    // Set description
+    if let Some(ref desc) = body.description {
+        let mut path = base_strs.clone();
+        path.push("description");
+        path.push(desc);
+        client
+            .configure_set(&path)
+            .await
+            .map_err(|e| format!("Failed to set description: {e}"))?;
+    }
+
+    // Set state flags
+    if let Some(ref states) = body.state {
+        for s in states {
+            let enable_str = "enable";
+            let mut path = base_strs.clone();
+            path.push("state");
+            path.push(s);
+            path.push(enable_str);
+            client
+                .configure_set(&path)
+                .await
+                .map_err(|e| format!("Failed to set state {s}: {e}"))?;
+        }
+    }
+
+    // Set disabled flag
+    if body.disabled {
+        let mut path = base_strs.clone();
+        path.push("disable");
+        client
+            .configure_set(&path)
+            .await
+            .map_err(|e| format!("Failed to set disable: {e}"))?;
+    }
+
+    Ok(())
+}
+
+/// POST /api/v1/vyos/firewall/:chain/rules — create a firewall rule.
+pub async fn create_firewall_rule(
+    State(state): State<AppState>,
+    Path(path): Path<FirewallChainPath>,
+    Json(body): Json<FirewallRuleRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    let chain_parts = parse_chain_path(&path.chain).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: e,
+            }),
+        )
+    })?;
+
+    if let Err(e) = validate_firewall_rule(&body) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: e,
+            }),
+        ));
+    }
+
+    let base = firewall_rule_base_path(&chain_parts, body.number);
+
+    tracing::info!(
+        "VyOS: creating firewall rule {} in chain {} (action={})",
+        body.number,
+        path.chain,
+        body.action
+    );
+
+    if let Err(e) = apply_firewall_rule_config(&client, &base, &body).await {
+        tracing::error!("VyOS firewall rule create failed: {e}");
+        // Attempt cleanup on failure
+        let base_strs: Vec<&str> = base.iter().map(|s| s.as_str()).collect();
+        let _ = client.configure_delete(&base_strs).await;
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: e,
+            }),
+        ));
+    }
+
+    Ok(Json(VyosWriteResponse {
+        success: true,
+        message: format!("Rule {} created in {}", body.number, path.chain),
+    }))
+}
+
+/// PUT /api/v1/vyos/firewall/:chain/rules/:number — update a firewall rule.
+///
+/// Deletes the existing rule first, then re-creates it with the new values.
+pub async fn update_firewall_rule(
+    State(state): State<AppState>,
+    Path(path): Path<FirewallRulePath>,
+    Json(body): Json<FirewallRuleRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    let chain_parts = parse_chain_path(&path.chain).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: e,
+            }),
+        )
+    })?;
+
+    if let Err(e) = validate_firewall_rule(&body) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: e,
+            }),
+        ));
+    }
+
+    let base = firewall_rule_base_path(&chain_parts, path.number);
+    let base_strs: Vec<&str> = base.iter().map(|s| s.as_str()).collect();
+
+    tracing::info!(
+        "VyOS: updating firewall rule {} in chain {} (action={})",
+        path.number,
+        path.chain,
+        body.action
+    );
+
+    // Delete the existing rule first
+    if let Err(e) = client.configure_delete(&base_strs).await {
+        tracing::error!("VyOS firewall rule delete (for update) failed: {e}");
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: format!("Failed to delete existing rule for update: {e}"),
+            }),
+        ));
+    }
+
+    // Re-create with the updated values
+    if let Err(e) = apply_firewall_rule_config(&client, &base, &body).await {
+        tracing::error!("VyOS firewall rule re-create (for update) failed: {e}");
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: e,
+            }),
+        ));
+    }
+
+    Ok(Json(VyosWriteResponse {
+        success: true,
+        message: format!("Rule {} updated in {}", path.number, path.chain),
+    }))
+}
+
+/// DELETE /api/v1/vyos/firewall/:chain/rules/:number — delete a firewall rule.
+pub async fn delete_firewall_rule(
+    State(state): State<AppState>,
+    Path(path): Path<FirewallRulePath>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    let chain_parts = parse_chain_path(&path.chain).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: e,
+            }),
+        )
+    })?;
+
+    let base = firewall_rule_base_path(&chain_parts, path.number);
+    let base_strs: Vec<&str> = base.iter().map(|s| s.as_str()).collect();
+
+    tracing::info!(
+        "VyOS: deleting firewall rule {} from chain {}",
+        path.number,
+        path.chain
+    );
+
+    match client.configure_delete(&base_strs).await {
+        Ok(_) => Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Rule {} deleted from {}", path.number, path.chain),
+        })),
+        Err(e) => {
+            tracing::error!("VyOS firewall rule delete failed: {e}");
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("VyOS error: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
+/// PATCH /api/v1/vyos/firewall/:chain/rules/:number/enabled — toggle a rule.
+pub async fn toggle_firewall_rule(
+    State(state): State<AppState>,
+    Path(path): Path<FirewallRulePath>,
+    Json(body): Json<FirewallRuleToggleRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    let chain_parts = parse_chain_path(&path.chain).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: e,
+            }),
+        )
+    })?;
+
+    let base = firewall_rule_base_path(&chain_parts, path.number);
+    let mut disable_path: Vec<&str> = base.iter().map(|s| s.as_str()).collect();
+    disable_path.push("disable");
+
+    let action = if body.disabled { "disable" } else { "enable" };
+    tracing::info!(
+        "VyOS: {} firewall rule {} in chain {}",
+        action,
+        path.number,
+        path.chain
+    );
+
+    let result = if body.disabled {
+        client.configure_set(&disable_path).await
+    } else {
+        client.configure_delete(&disable_path).await
+    };
+
+    match result {
+        Ok(_) => Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Rule {} {}d in {}", path.number, action, path.chain),
+        })),
+        Err(e) => {
+            tracing::error!("VyOS firewall rule toggle failed: {e}");
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("VyOS error: {e}"),
+                }),
+            ))
         }
     }
 }
@@ -1259,424 +1817,6 @@ fn is_valid_mac(mac: &str) -> bool {
         && parts
             .iter()
             .all(|p| p.len() == 2 && p.chars().all(|c| c.is_ascii_hexdigit()))
-}
-
-// ── NAT Destination (Port Forwarding) ────────────────────────────────────────
-
-/// A single NAT destination (port forwarding) rule.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct NatDestinationRule {
-    /// Rule number (e.g. 10, 20, 30)
-    pub rule: u32,
-    /// Human-readable description
-    pub description: Option<String>,
-    /// Inbound interface name (e.g. "eth0")
-    pub inbound_interface: Option<String>,
-    /// External destination port or range
-    pub external_port: Option<String>,
-    /// Internal translation IP address
-    pub internal_ip: Option<String>,
-    /// Internal translation port
-    pub internal_port: Option<String>,
-    /// Protocol: tcp, udp, tcp_udp
-    pub protocol: Option<String>,
-}
-
-/// Request body for creating a NAT destination rule.
-#[derive(Debug, Deserialize)]
-pub struct CreateNatDestinationRequest {
-    /// Rule number
-    pub rule: u32,
-    /// Human-readable description (required)
-    pub description: String,
-    /// Inbound interface name (e.g. "eth0")
-    pub inbound_interface: String,
-    /// External destination port or range
-    pub external_port: String,
-    /// Protocol: tcp, udp, tcp_udp
-    pub protocol: String,
-    /// Internal translation IP address
-    pub internal_ip: String,
-    /// Internal translation port (defaults to external_port if omitted)
-    pub internal_port: Option<String>,
-}
-
-/// Parse NAT destination rules from VyOS config JSON.
-///
-/// Expected structure from `showConfig` at path `["nat", "destination"]`:
-/// ```json
-/// {
-///   "rule": {
-///     "10": {
-///       "description": "Home Assistant",
-///       "inbound-interface": { "name": "eth0" },
-///       "destination": { "port": "8123" },
-///       "translation": { "address": "192.168.1.10", "port": "8123" },
-///       "protocol": "tcp"
-///     }
-///   }
-/// }
-/// ```
-pub fn parse_nat_destination_rules(config: &Value) -> Vec<NatDestinationRule> {
-    let mut rules = Vec::new();
-
-    let rule_map = match config.get("rule").and_then(|v| v.as_object()) {
-        Some(m) => m,
-        None => return rules,
-    };
-
-    for (rule_num_str, rule_val) in rule_map {
-        let rule_num = match rule_num_str.parse::<u32>() {
-            Ok(n) => n,
-            Err(_) => continue,
-        };
-
-        let rule_obj = match rule_val.as_object() {
-            Some(o) => o,
-            None => continue,
-        };
-
-        let description = rule_obj
-            .get("description")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
-
-        // inbound-interface can be either a string or {"name": "eth0"}
-        let inbound_interface = rule_obj.get("inbound-interface").and_then(|v| {
-            v.as_str().map(|s| s.to_string()).or_else(|| {
-                v.get("name")
-                    .and_then(|n| n.as_str())
-                    .map(|s| s.to_string())
-            })
-        });
-
-        let external_port = rule_obj
-            .get("destination")
-            .and_then(|v| v.get("port"))
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
-
-        let internal_ip = rule_obj
-            .get("translation")
-            .and_then(|v| v.get("address"))
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
-
-        let internal_port = rule_obj
-            .get("translation")
-            .and_then(|v| v.get("port"))
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
-
-        let protocol = rule_obj
-            .get("protocol")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string());
-
-        rules.push(NatDestinationRule {
-            rule: rule_num,
-            description,
-            inbound_interface,
-            external_port,
-            internal_ip,
-            internal_port,
-            protocol,
-        });
-    }
-
-    rules.sort_by_key(|r| r.rule);
-    rules
-}
-
-/// GET /api/v1/router/nat/destination — list NAT destination (port forwarding) rules.
-pub async fn nat_destination_rules(
-    State(state): State<AppState>,
-) -> Result<Json<Vec<NatDestinationRule>>, StatusCode> {
-    let client = get_vyos_client_or_503(&state).await?;
-
-    let config = match client.retrieve(&["nat", "destination"]).await {
-        Ok(c) => c,
-        Err(e) => {
-            let msg = e.to_string();
-            if msg.contains("empty") || msg.contains("does not exist") {
-                return Ok(Json(Vec::new()));
-            }
-            tracing::error!("VyOS NAT destination query failed: {e}");
-            return Err(StatusCode::BAD_GATEWAY);
-        }
-    };
-
-    let rules = parse_nat_destination_rules(&config);
-    Ok(Json(rules))
-}
-
-/// Validate a port or port range string (e.g. "8123", "8000-8100").
-fn is_valid_port(port: &str) -> bool {
-    if let Some((start, end)) = port.split_once('-') {
-        // Port range
-        match (start.parse::<u16>(), end.parse::<u16>()) {
-            (Ok(s), Ok(e)) => s > 0 && e > 0 && s <= e,
-            _ => false,
-        }
-    } else {
-        // Single port
-        matches!(port.parse::<u16>(), Ok(p) if p > 0)
-    }
-}
-
-/// POST /api/v1/router/nat/destination — create a NAT destination rule.
-pub async fn create_nat_destination_rule(
-    State(state): State<AppState>,
-    Json(body): Json<CreateNatDestinationRequest>,
-) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
-    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
-        (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(VyosWriteResponse {
-                success: false,
-                message: "Router not configured".to_string(),
-            }),
-        )
-    })?;
-
-    // Validate rule number
-    if body.rule == 0 || body.rule > 99999 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(VyosWriteResponse {
-                success: false,
-                message: "Rule number must be between 1 and 99999".to_string(),
-            }),
-        ));
-    }
-
-    // Validate description
-    if body.description.trim().is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(VyosWriteResponse {
-                success: false,
-                message: "Description is required".to_string(),
-            }),
-        ));
-    }
-
-    // Validate inbound interface
-    if body.inbound_interface.trim().is_empty() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(VyosWriteResponse {
-                success: false,
-                message: "Inbound interface is required".to_string(),
-            }),
-        ));
-    }
-
-    // Validate external port
-    if !is_valid_port(&body.external_port) {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(VyosWriteResponse {
-                success: false,
-                message: "Invalid external port. Use a number (1-65535) or range (e.g. 8000-8100)"
-                    .to_string(),
-            }),
-        ));
-    }
-
-    // Validate protocol
-    let protocol = body.protocol.to_lowercase();
-    if !["tcp", "udp", "tcp_udp"].contains(&protocol.as_str()) {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(VyosWriteResponse {
-                success: false,
-                message: "Protocol must be tcp, udp, or tcp_udp".to_string(),
-            }),
-        ));
-    }
-
-    // Validate internal IP
-    if body.internal_ip.parse::<std::net::Ipv4Addr>().is_err() {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(VyosWriteResponse {
-                success: false,
-                message: "Invalid internal IP address".to_string(),
-            }),
-        ));
-    }
-
-    // Validate internal port if provided
-    let internal_port = body
-        .internal_port
-        .as_deref()
-        .filter(|s| !s.is_empty())
-        .unwrap_or(&body.external_port);
-    if !is_valid_port(internal_port) {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(VyosWriteResponse {
-                success: false,
-                message: "Invalid internal port".to_string(),
-            }),
-        ));
-    }
-
-    let rule_str = body.rule.to_string();
-
-    tracing::info!(
-        "VyOS: creating NAT destination rule {}: {}:{} -> {}:{} ({})",
-        body.rule,
-        body.inbound_interface,
-        body.external_port,
-        body.internal_ip,
-        internal_port,
-        protocol
-    );
-
-    // Set description
-    let set_ops: Vec<(&str, Vec<&str>)> = vec![
-        (
-            "description",
-            vec![
-                "nat",
-                "destination",
-                "rule",
-                &rule_str,
-                "description",
-                &body.description,
-            ],
-        ),
-        (
-            "inbound-interface",
-            vec![
-                "nat",
-                "destination",
-                "rule",
-                &rule_str,
-                "inbound-interface",
-                "name",
-                &body.inbound_interface,
-            ],
-        ),
-        (
-            "destination port",
-            vec![
-                "nat",
-                "destination",
-                "rule",
-                &rule_str,
-                "destination",
-                "port",
-                &body.external_port,
-            ],
-        ),
-        (
-            "protocol",
-            vec![
-                "nat",
-                "destination",
-                "rule",
-                &rule_str,
-                "protocol",
-                &protocol,
-            ],
-        ),
-        (
-            "translation address",
-            vec![
-                "nat",
-                "destination",
-                "rule",
-                &rule_str,
-                "translation",
-                "address",
-                &body.internal_ip,
-            ],
-        ),
-        (
-            "translation port",
-            vec![
-                "nat",
-                "destination",
-                "rule",
-                &rule_str,
-                "translation",
-                "port",
-                internal_port,
-            ],
-        ),
-    ];
-
-    for (label, path) in &set_ops {
-        let path_refs: Vec<&str> = path.iter().copied().collect();
-        if let Err(e) = client.configure_set(&path_refs).await {
-            tracing::error!("VyOS NAT destination rule set {label} failed: {e}");
-            // Clean up partial rule
-            let _ = client
-                .configure_delete(&["nat", "destination", "rule", &rule_str])
-                .await;
-            return Err((
-                StatusCode::BAD_GATEWAY,
-                Json(VyosWriteResponse {
-                    success: false,
-                    message: format!("Failed to set {label}: {e}"),
-                }),
-            ));
-        }
-    }
-
-    tracing::info!("VyOS: NAT destination rule {} created", body.rule);
-
-    Ok(Json(VyosWriteResponse {
-        success: true,
-        message: format!(
-            "Port forward rule {} created: {}:{} -> {}:{}",
-            body.rule, body.inbound_interface, body.external_port, body.internal_ip, internal_port
-        ),
-    }))
-}
-
-/// DELETE /api/v1/router/nat/destination/:rule — delete a NAT destination rule.
-pub async fn delete_nat_destination_rule(
-    State(state): State<AppState>,
-    Path(rule): Path<u32>,
-) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
-    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
-        (
-            StatusCode::SERVICE_UNAVAILABLE,
-            Json(VyosWriteResponse {
-                success: false,
-                message: "Router not configured".to_string(),
-            }),
-        )
-    })?;
-
-    let rule_str = rule.to_string();
-
-    tracing::info!("VyOS: deleting NAT destination rule {rule}");
-
-    let result = client
-        .configure_delete(&["nat", "destination", "rule", &rule_str])
-        .await;
-
-    match result {
-        Ok(_) => Ok(Json(VyosWriteResponse {
-            success: true,
-            message: format!("NAT destination rule {rule} deleted"),
-        })),
-        Err(e) => {
-            tracing::error!("VyOS NAT destination rule delete failed: {e}");
-            Err((
-                StatusCode::BAD_GATEWAY,
-                Json(VyosWriteResponse {
-                    success: false,
-                    message: format!("VyOS error: {e}"),
-                }),
-            ))
-        }
-    }
 }
 
 // ── Speed Test ──────────────────────────────────────────────────────────────
@@ -2565,127 +2705,197 @@ mod tests {
         }
     }
 
-    // ── NAT destination rules parsing ────────────────────────
+    // ── Firewall CRUD helpers ─────────────────────────────
 
     #[test]
-    fn test_parse_nat_destination_rules_basic() {
-        let config: Value = serde_json::from_str(
-            r#"{
-                "rule": {
-                    "10": {
-                        "description": "Home Assistant",
-                        "inbound-interface": { "name": "eth0" },
-                        "destination": { "port": "8123" },
-                        "translation": { "address": "192.168.1.10", "port": "8123" },
-                        "protocol": "tcp"
-                    },
-                    "20": {
-                        "description": "SSH server",
-                        "inbound-interface": { "name": "eth0" },
-                        "destination": { "port": "2222" },
-                        "translation": { "address": "192.168.1.5", "port": "22" },
-                        "protocol": "tcp"
-                    }
-                }
-            }"#,
-        )
-        .unwrap();
+    fn test_parse_chain_path_valid() {
+        let parts = parse_chain_path("ipv4.forward.filter").unwrap();
+        assert_eq!(parts, vec!["ipv4", "forward", "filter"]);
 
-        let rules = parse_nat_destination_rules(&config);
-        assert_eq!(rules.len(), 2);
+        let parts = parse_chain_path("ipv6.input.raw").unwrap();
+        assert_eq!(parts, vec!["ipv6", "input", "raw"]);
 
-        // Sorted by rule number
-        assert_eq!(rules[0].rule, 10);
-        assert_eq!(rules[0].description.as_deref(), Some("Home Assistant"));
-        assert_eq!(rules[0].inbound_interface.as_deref(), Some("eth0"));
-        assert_eq!(rules[0].external_port.as_deref(), Some("8123"));
-        assert_eq!(rules[0].internal_ip.as_deref(), Some("192.168.1.10"));
-        assert_eq!(rules[0].internal_port.as_deref(), Some("8123"));
-        assert_eq!(rules[0].protocol.as_deref(), Some("tcp"));
-
-        assert_eq!(rules[1].rule, 20);
-        assert_eq!(rules[1].description.as_deref(), Some("SSH server"));
-        assert_eq!(rules[1].external_port.as_deref(), Some("2222"));
-        assert_eq!(rules[1].internal_ip.as_deref(), Some("192.168.1.5"));
-        assert_eq!(rules[1].internal_port.as_deref(), Some("22"));
+        let parts = parse_chain_path("ipv4.output.filter").unwrap();
+        assert_eq!(parts, vec!["ipv4", "output", "filter"]);
     }
 
     #[test]
-    fn test_parse_nat_destination_rules_empty() {
-        let config: Value = serde_json::from_str("{}").unwrap();
-        assert!(parse_nat_destination_rules(&config).is_empty());
-
-        let config2: Value = serde_json::from_str(r#"{"rule": {}}"#).unwrap();
-        assert!(parse_nat_destination_rules(&config2).is_empty());
+    fn test_parse_chain_path_invalid() {
+        assert!(parse_chain_path("").is_err());
+        assert!(parse_chain_path("ipv4.forward").is_err());
+        assert!(parse_chain_path("ipv4.forward.filter.extra").is_err());
+        assert!(parse_chain_path("ipv5.forward.filter").is_err());
+        assert!(parse_chain_path("ipv4.sideways.filter").is_err());
     }
 
     #[test]
-    fn test_parse_nat_destination_rules_string_interface() {
-        // VyOS 1.3 may use a string instead of object for inbound-interface
-        let config: Value = serde_json::from_str(
-            r#"{
-                "rule": {
-                    "10": {
-                        "description": "Web Server",
-                        "inbound-interface": "eth0",
-                        "destination": { "port": "80" },
-                        "translation": { "address": "10.0.0.5" },
-                        "protocol": "tcp"
-                    }
-                }
-            }"#,
-        )
-        .unwrap();
-
-        let rules = parse_nat_destination_rules(&config);
-        assert_eq!(rules.len(), 1);
-        assert_eq!(rules[0].inbound_interface.as_deref(), Some("eth0"));
-        assert!(rules[0].internal_port.is_none());
+    fn test_firewall_rule_base_path() {
+        let parts = vec!["ipv4", "forward", "filter"];
+        let base = firewall_rule_base_path(&parts, 100);
+        assert_eq!(
+            base,
+            vec!["firewall", "ipv4", "forward", "filter", "rule", "100"]
+        );
     }
 
     #[test]
-    fn test_parse_nat_destination_rules_partial() {
-        // Rule with minimal fields
-        let config: Value = serde_json::from_str(
-            r#"{
-                "rule": {
-                    "5": {
-                        "protocol": "udp"
-                    }
-                }
-            }"#,
-        )
-        .unwrap();
-
-        let rules = parse_nat_destination_rules(&config);
-        assert_eq!(rules.len(), 1);
-        assert_eq!(rules[0].rule, 5);
-        assert!(rules[0].description.is_none());
-        assert!(rules[0].inbound_interface.is_none());
-        assert!(rules[0].external_port.is_none());
-        assert!(rules[0].internal_ip.is_none());
-        assert!(rules[0].internal_port.is_none());
-        assert_eq!(rules[0].protocol.as_deref(), Some("udp"));
+    fn test_validate_firewall_rule_valid() {
+        let rule = FirewallRuleRequest {
+            number: 100,
+            action: "drop".to_string(),
+            protocol: Some("tcp".to_string()),
+            source_address: Some("10.0.0.0/8".to_string()),
+            source_port: Some("1024-65535".to_string()),
+            destination_address: Some("192.168.1.1".to_string()),
+            destination_port: Some("443".to_string()),
+            description: Some("Test rule".to_string()),
+            state: Some(vec!["new".to_string(), "established".to_string()]),
+            disabled: false,
+        };
+        assert!(validate_firewall_rule(&rule).is_ok());
     }
 
-    // ── Port validation ────────────────────────────────────
+    #[test]
+    fn test_validate_firewall_rule_invalid_action() {
+        let rule = FirewallRuleRequest {
+            number: 10,
+            action: "allow".to_string(), // invalid
+            protocol: None,
+            source_address: None,
+            source_port: None,
+            destination_address: None,
+            destination_port: None,
+            description: None,
+            state: None,
+            disabled: false,
+        };
+        assert!(validate_firewall_rule(&rule).is_err());
+    }
 
     #[test]
-    fn test_valid_ports() {
+    fn test_validate_firewall_rule_invalid_number() {
+        let rule = FirewallRuleRequest {
+            number: 0, // invalid
+            action: "drop".to_string(),
+            protocol: None,
+            source_address: None,
+            source_port: None,
+            destination_address: None,
+            destination_port: None,
+            description: None,
+            state: None,
+            disabled: false,
+        };
+        assert!(validate_firewall_rule(&rule).is_err());
+    }
+
+    #[test]
+    fn test_validate_firewall_rule_invalid_protocol() {
+        let rule = FirewallRuleRequest {
+            number: 10,
+            action: "drop".to_string(),
+            protocol: Some("http".to_string()), // invalid
+            source_address: None,
+            source_port: None,
+            destination_address: None,
+            destination_port: None,
+            description: None,
+            state: None,
+            disabled: false,
+        };
+        assert!(validate_firewall_rule(&rule).is_err());
+    }
+
+    #[test]
+    fn test_validate_firewall_rule_invalid_state() {
+        let rule = FirewallRuleRequest {
+            number: 10,
+            action: "accept".to_string(),
+            protocol: None,
+            source_address: None,
+            source_port: None,
+            destination_address: None,
+            destination_port: None,
+            description: None,
+            state: Some(vec!["bogus".to_string()]),
+            disabled: false,
+        };
+        assert!(validate_firewall_rule(&rule).is_err());
+    }
+
+    #[test]
+    fn test_is_valid_ip_or_cidr() {
+        assert!(is_valid_ip_or_cidr("10.0.0.0/8"));
+        assert!(is_valid_ip_or_cidr("192.168.1.1"));
+        assert!(is_valid_ip_or_cidr("!10.0.0.0/8")); // negation
+        assert!(is_valid_ip_or_cidr("::1"));
+        assert!(is_valid_ip_or_cidr("fe80::1/64"));
+        assert!(!is_valid_ip_or_cidr(""));
+        assert!(!is_valid_ip_or_cidr("not-an-ip"));
+        assert!(!is_valid_ip_or_cidr("10.0.0.0/999"));
+    }
+
+    #[test]
+    fn test_is_valid_port() {
         assert!(is_valid_port("80"));
         assert!(is_valid_port("443"));
-        assert!(is_valid_port("8080"));
-        assert!(is_valid_port("65535"));
-        assert!(is_valid_port("8000-8100"));
-        assert!(is_valid_port("1-65535"));
-    }
-
-    #[test]
-    fn test_invalid_ports() {
-        assert!(!is_valid_port("0"));
+        assert!(is_valid_port("1024-65535"));
+        assert!(is_valid_port("80,443"));
         assert!(!is_valid_port(""));
         assert!(!is_valid_port("abc"));
         assert!(!is_valid_port("99999"));
-        assert!(!is_valid_port("8100-8000")); // reversed range
+    }
+
+    #[test]
+    fn test_parse_firewall_disabled_rule() {
+        let json: Value = serde_json::from_str(
+            r#"{
+                "ipv4": {
+                    "forward": {
+                        "filter": {
+                            "default-action": "drop",
+                            "rule": {
+                                "10": {
+                                    "action": "accept",
+                                    "description": "Enabled rule"
+                                },
+                                "20": {
+                                    "action": "drop",
+                                    "disable": "",
+                                    "description": "Disabled rule"
+                                }
+                            }
+                        }
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let config = parse_firewall_config(&json);
+        assert_eq!(config.chains.len(), 1);
+        assert_eq!(config.chains[0].rules.len(), 2);
+        assert!(!config.chains[0].rules[0].disabled);
+        assert!(config.chains[0].rules[1].disabled);
+    }
+
+    #[test]
+    fn test_parse_firewall_chain_path() {
+        let json: Value = serde_json::from_str(
+            r#"{
+                "ipv4": {
+                    "forward": {
+                        "filter": {
+                            "default-action": "accept"
+                        }
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let config = parse_firewall_config(&json);
+        assert_eq!(config.chains.len(), 1);
+        assert_eq!(config.chains[0].path, vec!["ipv4", "forward", "filter"]);
     }
 }
