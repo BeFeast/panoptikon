@@ -30,7 +30,7 @@ const navItems = [
   { href: "/devices", label: "Devices", icon: MonitorSmartphone },
   { href: "/agents", label: "Agents", icon: Cpu },
   { href: "/router", label: "Router", icon: Router },
-  { href: "/npm", label: "Proxy Hosts", icon: Globe },
+  { href: "/npm", label: "NPM", icon: Globe },
   { href: "/topology", label: "Topology", icon: Network },
   { href: "/traffic", label: "Traffic", icon: Activity },
   { href: "/alerts", label: "Alerts", icon: Bell },

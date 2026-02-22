@@ -411,6 +411,18 @@ export interface NpmProxyHostRequest {
   advanced_config: string;
 }
 
+export interface NpmRedirectionHost {
+  id: number;
+  domain_names: string[];
+  forward_http_code: number;
+  forward_scheme: string;
+  forward_domain_name: string;
+  preserve_path: boolean;
+  ssl_forced: boolean;
+  block_exploits: boolean;
+  enabled: boolean;
+}
+
 export interface DbSizeData {
   size_bytes: number;
 }

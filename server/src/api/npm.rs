@@ -7,7 +7,9 @@ use serde::{Deserialize, Serialize};
 use tracing::error;
 
 use super::AppState;
-use crate::npm::client::{NpmClient, NpmConnectionStatus, NpmProxyHostPayload};
+use crate::npm::client::{
+    NpmClient, NpmConnectionStatus, NpmProxyHostPayload, NpmRedirectionHostPayload,
+};
 
 /// GET /api/v1/npm/status — check NPM connection health.
 ///
@@ -90,6 +92,8 @@ pub async fn proxy_hosts(
 
     Ok(Json(summaries))
 }
+
+// ─── Proxy Hosts ────────────────────────────────────────
 
 /// Request body for creating / updating a proxy host.
 #[derive(Debug, Deserialize)]
@@ -252,6 +256,173 @@ pub async fn toggle_proxy_host(
     }
     .map_err(|e| {
         error!("NPM toggle proxy host {id} failed: {e}");
+        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// ─── Redirection Hosts ──────────────────────────────────
+
+/// Summary returned by the redirection hosts list endpoint.
+#[derive(Debug, Serialize)]
+pub struct RedirectionHostSummary {
+    pub id: i64,
+    pub domain_names: Vec<String>,
+    pub forward_http_code: u16,
+    pub forward_scheme: String,
+    pub forward_domain_name: String,
+    pub preserve_path: bool,
+    pub ssl_forced: bool,
+    pub block_exploits: bool,
+    pub enabled: bool,
+}
+
+/// GET /api/v1/npm/redirection-hosts — list all redirection hosts from NPM.
+pub async fn redirection_hosts(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<RedirectionHostSummary>>, StatusCode> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let hosts = client.list_redirection_hosts().await.map_err(|e| {
+        error!("NPM list redirection hosts failed: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let summaries: Vec<RedirectionHostSummary> = hosts
+        .into_iter()
+        .map(|h| RedirectionHostSummary {
+            id: h.id,
+            domain_names: h.domain_names,
+            forward_http_code: h.forward_http_code,
+            forward_scheme: h.forward_scheme,
+            forward_domain_name: h.forward_domain_name,
+            preserve_path: h.preserve_path,
+            ssl_forced: h.ssl_forced,
+            block_exploits: h.block_exploits,
+            enabled: h.enabled,
+        })
+        .collect();
+
+    Ok(Json(summaries))
+}
+
+/// Request body for creating / updating a redirection host.
+#[derive(Debug, Deserialize)]
+pub struct RedirectionHostRequest {
+    pub domain_names: Vec<String>,
+    pub forward_http_code: u16,
+    pub forward_scheme: String,
+    pub forward_domain_name: String,
+    #[serde(default)]
+    pub preserve_path: bool,
+    #[serde(default)]
+    pub ssl_forced: bool,
+    #[serde(default)]
+    pub block_exploits: bool,
+    pub enabled: Option<bool>,
+}
+
+/// POST /api/v1/npm/redirection-hosts — create a new redirection host.
+pub async fn create_redirection_host(
+    State(state): State<AppState>,
+    Json(body): Json<RedirectionHostRequest>,
+) -> Result<Json<RedirectionHostSummary>, (StatusCode, Json<ErrorBody>)> {
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
+
+    let payload = NpmRedirectionHostPayload {
+        domain_names: body.domain_names,
+        forward_http_code: body.forward_http_code,
+        forward_scheme: body.forward_scheme,
+        forward_domain_name: body.forward_domain_name,
+        preserve_path: body.preserve_path,
+        certificate_id: serde_json::Value::Number(0.into()),
+        ssl_forced: body.ssl_forced,
+        block_exploits: body.block_exploits,
+        enabled: body.enabled,
+        meta: serde_json::json!({}),
+    };
+
+    let host = client
+        .create_redirection_host(&payload)
+        .await
+        .map_err(|e| {
+            error!("NPM create redirection host failed: {e}");
+            error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        })?;
+
+    Ok(Json(RedirectionHostSummary {
+        id: host.id,
+        domain_names: host.domain_names,
+        forward_http_code: host.forward_http_code,
+        forward_scheme: host.forward_scheme,
+        forward_domain_name: host.forward_domain_name,
+        preserve_path: host.preserve_path,
+        ssl_forced: host.ssl_forced,
+        block_exploits: host.block_exploits,
+        enabled: host.enabled,
+    }))
+}
+
+/// PUT /api/v1/npm/redirection-hosts/:id — update a redirection host.
+pub async fn update_redirection_host(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+    Json(body): Json<RedirectionHostRequest>,
+) -> Result<Json<RedirectionHostSummary>, (StatusCode, Json<ErrorBody>)> {
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
+
+    let payload = NpmRedirectionHostPayload {
+        domain_names: body.domain_names,
+        forward_http_code: body.forward_http_code,
+        forward_scheme: body.forward_scheme,
+        forward_domain_name: body.forward_domain_name,
+        preserve_path: body.preserve_path,
+        certificate_id: serde_json::Value::Number(0.into()),
+        ssl_forced: body.ssl_forced,
+        block_exploits: body.block_exploits,
+        enabled: body.enabled,
+        meta: serde_json::json!({}),
+    };
+
+    let host = client
+        .update_redirection_host(id, &payload)
+        .await
+        .map_err(|e| {
+            error!("NPM update redirection host {id} failed: {e}");
+            error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        })?;
+
+    Ok(Json(RedirectionHostSummary {
+        id: host.id,
+        domain_names: host.domain_names,
+        forward_http_code: host.forward_http_code,
+        forward_scheme: host.forward_scheme,
+        forward_domain_name: host.forward_domain_name,
+        preserve_path: host.preserve_path,
+        ssl_forced: host.ssl_forced,
+        block_exploits: host.block_exploits,
+        enabled: host.enabled,
+    }))
+}
+
+/// DELETE /api/v1/npm/redirection-hosts/:id — delete a redirection host.
+pub async fn delete_redirection_host(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
+
+    client.delete_redirection_host(id).await.map_err(|e| {
+        error!("NPM delete redirection host {id} failed: {e}");
         error_response(StatusCode::BAD_GATEWAY, e.to_string())
     })?;
 
