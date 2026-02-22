@@ -141,6 +141,14 @@ export interface RouterStatus {
   hostname: string | null;
 }
 
+export interface RouterSummary {
+  status: RouterStatus;
+  interfaces: VyosInterface[];
+  routes: VyosRoute[];
+  dhcp_leases: VyosDhcpLease[];
+  firewall: FirewallConfig;
+}
+
 export interface SpeedTestResult {
   download_mbps: number;
   upload_mbps: number;

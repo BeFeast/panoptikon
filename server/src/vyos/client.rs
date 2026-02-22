@@ -5,7 +5,7 @@
 
 use anyhow::{Context, Result};
 use serde_json::Value;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 /// A lightweight client for the VyOS HTTP API.
 #[derive(Debug, Clone)]
@@ -23,18 +23,35 @@ struct VyosResponse {
     error: Option<Value>,
 }
 
+/// Build the default shared `reqwest::Client` for VyOS API calls.
+///
+/// This client accepts self-signed certificates and uses connection pooling
+/// with keep-alive so that TLS handshakes are amortised across requests.
+pub fn shared_http_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .timeout(Duration::from_secs(10))
+        .pool_max_idle_per_host(4)
+        .tcp_keepalive(Duration::from_secs(30))
+        .build()
+        .expect("failed to build shared reqwest client for VyOS")
+}
+
 impl VyosClient {
     /// Create a new VyOS client.
     ///
     /// `base_url` should be the scheme + host, e.g. `"https://10.10.0.50"`.
     /// Self-signed certificates are accepted.
     pub fn new(base_url: &str, api_key: &str) -> Self {
-        let http = reqwest::Client::builder()
-            .danger_accept_invalid_certs(true)
-            .timeout(Duration::from_secs(10))
-            .build()
-            .expect("failed to build reqwest client for VyOS");
+        Self::with_http(base_url, api_key, shared_http_client())
+    }
 
+    /// Create a VyOS client reusing an existing `reqwest::Client`.
+    ///
+    /// This avoids creating a new connection pool per request. Pass the
+    /// shared client from [`AppState`] to benefit from keep-alive and
+    /// TLS session reuse.
+    pub fn with_http(base_url: &str, api_key: &str, http: reqwest::Client) -> Self {
         Self {
             base_url: base_url.trim_end_matches('/').to_string(),
             api_key: api_key.to_string(),
@@ -178,6 +195,7 @@ impl VyosClient {
             .text("data", data_str)
             .text("key", self.api_key.clone());
 
+        let start = Instant::now();
         let resp = self
             .http
             .post(&url)
@@ -191,6 +209,14 @@ impl VyosClient {
             .text()
             .await
             .context("failed to read VyOS API response body")?;
+
+        let elapsed = start.elapsed();
+        tracing::info!(
+            endpoint,
+            http_status = %status,
+            elapsed_ms = elapsed.as_millis() as u64,
+            "VyOS API response"
+        );
 
         if !status.is_success() {
             anyhow::bail!("VyOS API returned HTTP {status}: {body}");

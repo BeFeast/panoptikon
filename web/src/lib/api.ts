@@ -25,6 +25,7 @@ import type {
   LoginResponse,
   NetflowStatus,
   RouterStatus,
+  RouterSummary,
   SearchResponse,
   SettingsData,
   SpeedTestResult,
@@ -277,6 +278,10 @@ export function runSetup(body: {
 
 export function fetchRouterStatus(): Promise<RouterStatus> {
   return apiGet<RouterStatus>("/api/v1/vyos/status");
+}
+
+export function fetchRouterSummary(): Promise<RouterSummary> {
+  return apiGet<RouterSummary>("/api/v1/vyos/router-summary");
 }
 
 export function fetchRouterInterfaces(): Promise<VyosInterface[]> {
