@@ -836,7 +836,6 @@ export function fetchNpmProxyHosts(): Promise<NpmProxyHost[]> {
   return apiGet<NpmProxyHost[]>("/api/v1/npm/proxy-hosts");
 }
 
-<<<<<<< HEAD
 // ─── Proxy Hosts ────────────────────────────────────────
 
 export function createNpmProxyHost(
