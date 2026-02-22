@@ -67,6 +67,9 @@ pub struct Device {
     /// Whether user has manually corrected the enrichment
     #[serde(skip_serializing_if = "Option::is_none")]
     pub enrichment_corrected: Option<bool>,
+    /// Whether the MAC address is locally administered (randomized)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_randomized_mac: Option<bool>,
 }
 
 /// Request body for creating a device.
@@ -129,6 +132,10 @@ impl Device {
                 .try_get::<i32, _>("enrichment_corrected")
                 .ok()
                 .map(|v| v != 0),
+            is_randomized_mac: row
+                .try_get::<i32, _>("is_randomized_mac")
+                .ok()
+                .map(|v| v != 0),
         })
     }
 }
@@ -141,7 +148,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Device>>, St
                d.is_known, d.is_favorite, d.first_seen_at, d.last_seen_at, d.is_online,
                d.mdns_services, d.muted_until,
                d.os_family, d.os_version, d.device_type, d.device_model,
-               d.device_brand, d.enrichment_source, d.enrichment_corrected,
+               d.device_brand, d.enrichment_source, d.enrichment_corrected, d.is_randomized_mac,
                a.id AS agent_id,
                a.name AS agent_name,
                r.cpu_percent AS agent_cpu_percent,
@@ -204,7 +211,7 @@ pub async fn get_one(
                d.is_known, d.is_favorite, d.first_seen_at, d.last_seen_at, d.is_online,
                d.mdns_services, d.muted_until,
                d.os_family, d.os_version, d.device_type, d.device_model,
-               d.device_brand, d.enrichment_source, d.enrichment_corrected,
+               d.device_brand, d.enrichment_source, d.enrichment_corrected, d.is_randomized_mac,
                a.id AS agent_id,
                a.name AS agent_name,
                r.cpu_percent AS agent_cpu_percent,
@@ -295,6 +302,7 @@ pub async fn create(
         device_brand: None,
         enrichment_source: None,
         enrichment_corrected: None,
+        is_randomized_mac: None,
     };
 
     Ok((StatusCode::CREATED, Json(device)))
@@ -893,6 +901,69 @@ pub async fn check_port_scan_rate_limit(
     Ok(None)
 }
 
+/// Device sysinfo response — hardware inventory from agent.
+#[derive(Debug, Serialize)]
+pub struct DeviceSysinfo {
+    pub device_id: String,
+    pub reported_at: String,
+    pub os_name: Option<String>,
+    pub os_version: Option<String>,
+    pub os_build: Option<String>,
+    pub hardware_model: Option<String>,
+    pub cpu_name: Option<String>,
+    pub cpu_cores: Option<i32>,
+    pub cpu_speed: Option<String>,
+    pub ram_total: Option<String>,
+    pub gpu_name: Option<String>,
+    pub disk_name: Option<String>,
+    pub disk_size: Option<String>,
+    pub serial_number: Option<String>,
+    pub hostname: Option<String>,
+    pub uptime_seconds: Option<i64>,
+}
+
+/// GET /api/v1/devices/:id/sysinfo — hardware inventory from agent.
+pub async fn get_sysinfo(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<Option<DeviceSysinfo>>, AppError> {
+    let row = sqlx::query(
+        r#"SELECT device_id, reported_at, os_name, os_version, os_build,
+                  hardware_model, cpu_name, cpu_cores, cpu_speed, ram_total,
+                  gpu_name, disk_name, disk_size, serial_number,
+                  hostname, uptime_seconds
+           FROM device_sysinfo
+           WHERE device_id = ?"#,
+    )
+    .bind(&id)
+    .fetch_optional(&state.db)
+    .await?;
+
+    let sysinfo = match row {
+        Some(row) => Some(DeviceSysinfo {
+            device_id: row.try_get("device_id")?,
+            reported_at: row.try_get("reported_at")?,
+            os_name: row.try_get("os_name")?,
+            os_version: row.try_get("os_version")?,
+            os_build: row.try_get("os_build")?,
+            hardware_model: row.try_get("hardware_model")?,
+            cpu_name: row.try_get("cpu_name")?,
+            cpu_cores: row.try_get("cpu_cores")?,
+            cpu_speed: row.try_get("cpu_speed")?,
+            ram_total: row.try_get("ram_total")?,
+            gpu_name: row.try_get("gpu_name")?,
+            disk_name: row.try_get("disk_name")?,
+            disk_size: row.try_get("disk_size")?,
+            serial_number: row.try_get("serial_number")?,
+            hostname: row.try_get("hostname")?,
+            uptime_seconds: row.try_get("uptime_seconds")?,
+        }),
+        None => None,
+    };
+
+    Ok(Json(sysinfo))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -973,7 +1044,7 @@ mod tests {
                    d.is_known, d.is_favorite, d.first_seen_at, d.last_seen_at, d.is_online,
                    d.mdns_services, d.muted_until,
                    d.os_family, d.os_version, d.device_type, d.device_model,
-                   d.device_brand, d.enrichment_source, d.enrichment_corrected,
+                   d.device_brand, d.enrichment_source, d.enrichment_corrected, d.is_randomized_mac,
                    a.id AS agent_id,
                    a.name AS agent_name,
                    r.cpu_percent AS agent_cpu_percent,

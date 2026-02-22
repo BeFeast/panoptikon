@@ -34,16 +34,36 @@ pub struct EnrichmentInput {
     pub mac: String,
 }
 
+/// Check if a MAC address is locally administered (randomized).
+///
+/// The second-least-significant bit of the first octet indicates a locally
+/// administered address. Devices with randomized MACs (iOS 14+, Android 10+,
+/// Windows 10+) set this bit. OUI lookups are meaningless for such addresses.
+pub fn is_randomized_mac(mac: &str) -> bool {
+    // Strip separators and parse first octet.
+    let clean: String = mac.chars().filter(|c| c.is_ascii_hexdigit()).collect();
+    if clean.len() < 2 {
+        return false;
+    }
+    match u8::from_str_radix(&clean[..2], 16) {
+        Ok(first_byte) => (first_byte & 0x02) != 0,
+        Err(_) => false,
+    }
+}
+
 /// Run all enrichment heuristics and merge results by priority.
 ///
 /// Priority (highest wins): DHCP > hostname > mDNS > TTL > vendor/OUI
 /// If the device has `enrichment_corrected = 1`, skip automatic enrichment.
 pub fn enrich(input: &EnrichmentInput) -> EnrichmentResult {
     let mut result = EnrichmentResult::default();
+    let mac_randomized = is_randomized_mac(&input.mac);
 
-    // Layer 1: OUI vendor gives brand hints
-    if let Some(ref vendor) = input.vendor {
-        apply_vendor_hints(vendor, &mut result);
+    // Layer 1: OUI vendor gives brand hints (skip for randomized MACs)
+    if !mac_randomized {
+        if let Some(ref vendor) = input.vendor {
+            apply_vendor_hints(vendor, &mut result);
+        }
     }
 
     // Layer 2: TTL-based OS family (broad strokes)
@@ -71,8 +91,8 @@ pub fn enrich(input: &EnrichmentInput) -> EnrichmentResult {
         apply_apple_model_lookup(hostname, &mut result);
     }
 
-    // Derive brand from MAC OUI if not already set
-    if result.device_brand.is_none() {
+    // Derive brand from MAC OUI if not already set (skip for randomized MACs)
+    if result.device_brand.is_none() && !mac_randomized {
         if let Some(ref vendor) = input.vendor {
             result.device_brand = infer_brand_from_vendor(vendor);
         }
@@ -940,6 +960,41 @@ mod tests {
         assert_eq!(result.os_family.as_deref(), Some("iOS"));
         assert_eq!(result.device_type.as_deref(), Some("phone"));
         assert_eq!(result.device_brand.as_deref(), Some("Apple"));
+    }
+
+    #[test]
+    fn test_randomized_mac_detected() {
+        // Locally administered bit set (0x02 in first octet)
+        assert!(is_randomized_mac("02:00:00:00:00:00"));
+        assert!(is_randomized_mac("06:AB:CD:EF:12:34"));
+        assert!(is_randomized_mac("0A:00:00:00:00:00"));
+        assert!(is_randomized_mac("0E:00:00:00:00:00"));
+        assert!(is_randomized_mac("BE:83:28:45:3C:5A")); // 0xBE = 1011_1110, bit 1 set
+        assert!(is_randomized_mac("DA:A1:19:00:00:00")); // 0xDA = 1101_1010, bit 1 set
+    }
+
+    #[test]
+    fn test_non_randomized_mac() {
+        // Normal OUI MACs (locally administered bit NOT set)
+        assert!(!is_randomized_mac("00:11:22:33:44:55"));
+        assert!(!is_randomized_mac("AC:DE:48:00:11:22")); // 0xAC = 1010_1100, bit 1 = 0
+        assert!(!is_randomized_mac("28:6F:B9:00:00:00")); // Nokia OUI
+        assert!(!is_randomized_mac("DC:A6:32:00:00:00")); // Raspberry Pi
+    }
+
+    #[test]
+    fn test_randomized_mac_skips_vendor_hints() {
+        let input = EnrichmentInput {
+            vendor: Some("Apple, Inc.".to_string()),
+            mac: "DA:A1:19:00:00:00".to_string(), // randomized MAC
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        // Vendor hints should be skipped for randomized MACs
+        assert!(
+            result.device_brand.is_none(),
+            "Brand should not be set from OUI for randomized MAC"
+        );
     }
 
     #[test]

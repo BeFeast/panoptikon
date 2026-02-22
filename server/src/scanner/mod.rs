@@ -312,15 +312,21 @@ pub async fn process_scan_results(
             None => {
                 // New device discovered.
                 let device_id = uuid::Uuid::new_v4().to_string();
-                let vendor = crate::oui::lookup(&mac_normalized).map(|v| v.to_string());
+                let mac_is_randomized = crate::enrichment::is_randomized_mac(&mac_normalized);
+                let vendor = if mac_is_randomized {
+                    None // Don't look up OUI for randomized MACs
+                } else {
+                    crate::oui::lookup(&mac_normalized).map(|v| v.to_string())
+                };
 
                 sqlx::query(
-                    "INSERT INTO devices (id, mac, vendor, first_seen_at, last_seen_at, is_online) \
-                     VALUES (?, ?, ?, ?, ?, 1)",
+                    "INSERT INTO devices (id, mac, vendor, is_randomized_mac, first_seen_at, last_seen_at, is_online) \
+                     VALUES (?, ?, ?, ?, ?, ?, 1)",
                 )
                 .bind(&device_id)
                 .bind(&mac_normalized)
                 .bind(&vendor)
+                .bind(mac_is_randomized as i32)
                 .bind(&now)
                 .bind(&now)
                 .execute(&mut *tx)

@@ -130,6 +130,23 @@ pub struct AgentReport {
     pub version: Option<String>,
     #[serde(default)]
     pub network_interfaces: Option<Vec<AgentNetworkInterface>>,
+    #[serde(default)]
+    pub hardware: Option<AgentHardwareInfo>,
+}
+
+/// Hardware inventory from agent (static info collected at startup).
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct AgentHardwareInfo {
+    pub hardware_model: Option<String>,
+    pub cpu_name: Option<String>,
+    pub cpu_cores: Option<i32>,
+    pub cpu_speed_mhz: Option<i64>,
+    pub ram_total_bytes: Option<i64>,
+    pub gpu_name: Option<String>,
+    pub disk_name: Option<String>,
+    pub disk_size_bytes: Option<i64>,
+    pub serial_number: Option<String>,
 }
 
 /// Network interface info from agent report (used for MAC-based device linking and traffic tracking).
@@ -953,6 +970,60 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
         }
     }
 
+    // --- Device sysinfo upsert ---
+    // Store hardware inventory in device_sysinfo when agent is linked to a device.
+    if let (Some(ref dev_id), Some(ref hw)) = (&device_id, &report.hardware) {
+        let ram_total_str = hw.ram_total_bytes.map(format_bytes);
+        let cpu_speed_str = hw.cpu_speed_mhz.map(|mhz| format!("{} MHz", mhz));
+        let disk_size_str = hw.disk_size_bytes.map(format_bytes);
+        let os_build = os.and_then(|o| o.kernel.as_deref());
+
+        if let Err(e) = sqlx::query(
+            r#"INSERT INTO device_sysinfo
+               (device_id, os_name, os_version, os_build, hardware_model,
+                cpu_name, cpu_cores, cpu_speed, ram_total,
+                gpu_name, disk_name, disk_size, serial_number,
+                hostname, uptime_seconds, reported_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+               ON CONFLICT(device_id) DO UPDATE SET
+                   os_name = COALESCE(excluded.os_name, device_sysinfo.os_name),
+                   os_version = COALESCE(excluded.os_version, device_sysinfo.os_version),
+                   os_build = COALESCE(excluded.os_build, device_sysinfo.os_build),
+                   hardware_model = COALESCE(excluded.hardware_model, device_sysinfo.hardware_model),
+                   cpu_name = COALESCE(excluded.cpu_name, device_sysinfo.cpu_name),
+                   cpu_cores = COALESCE(excluded.cpu_cores, device_sysinfo.cpu_cores),
+                   cpu_speed = COALESCE(excluded.cpu_speed, device_sysinfo.cpu_speed),
+                   ram_total = COALESCE(excluded.ram_total, device_sysinfo.ram_total),
+                   gpu_name = COALESCE(excluded.gpu_name, device_sysinfo.gpu_name),
+                   disk_name = COALESCE(excluded.disk_name, device_sysinfo.disk_name),
+                   disk_size = COALESCE(excluded.disk_size, device_sysinfo.disk_size),
+                   serial_number = COALESCE(excluded.serial_number, device_sysinfo.serial_number),
+                   hostname = COALESCE(excluded.hostname, device_sysinfo.hostname),
+                   uptime_seconds = excluded.uptime_seconds,
+                   reported_at = datetime('now')"#,
+        )
+        .bind(dev_id)
+        .bind(os.and_then(|o| o.name.as_deref()))
+        .bind(os.and_then(|o| o.version.as_deref()))
+        .bind(os_build)
+        .bind(hw.hardware_model.as_deref())
+        .bind(hw.cpu_name.as_deref())
+        .bind(hw.cpu_cores)
+        .bind(cpu_speed_str.as_deref())
+        .bind(ram_total_str.as_deref())
+        .bind(hw.gpu_name.as_deref())
+        .bind(hw.disk_name.as_deref())
+        .bind(disk_size_str.as_deref())
+        .bind(hw.serial_number.as_deref())
+        .bind(&report.hostname)
+        .bind(report.uptime_seconds)
+        .execute(&state.db)
+        .await
+        {
+            warn!(agent_id, device_id = %dev_id, error = %e, "Failed to upsert device_sysinfo");
+        }
+    }
+
     // Broadcast updated report to UI clients.
     state.ws_hub.broadcast(
         "agent_report",
@@ -966,6 +1037,23 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
     );
 
     Ok(())
+}
+
+/// Format bytes as a human-readable string (e.g. "16.0 GB").
+fn format_bytes(bytes: i64) -> String {
+    const GB: f64 = 1_073_741_824.0;
+    const MB: f64 = 1_048_576.0;
+    const TB: f64 = 1_099_511_627_776.0;
+    let b = bytes as f64;
+    if b >= TB {
+        format!("{:.1} TB", b / TB)
+    } else if b >= GB {
+        format!("{:.1} GB", b / GB)
+    } else if b >= MB {
+        format!("{:.0} MB", b / MB)
+    } else {
+        format!("{} B", bytes)
+    }
 }
 
 /// GET /api/v1/agent/install/:platform?key=<api_key>
