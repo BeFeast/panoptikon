@@ -3636,6 +3636,27 @@ function FirewallGroupsPanel({
   );
 }
 
+// ── WireGuard helpers ────────────────────────────────────
+
+/** Format a UNIX timestamp as a relative "time ago" string. */
+function formatHandshake(ts: number): string {
+  const now = Date.now() / 1000;
+  const diff = Math.max(0, Math.floor(now - ts));
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+/** Format bytes into a human-readable string (KiB, MiB, GiB). */
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
+  if (bytes < 1024 * 1024 * 1024)
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GiB`;
+}
+
 // ── WireGuard VPN Panel ──────────────────────────────────
 
 function WireGuardPanel({
@@ -3883,7 +3904,21 @@ function WireGuardInterfaceCard({
             <Lock className="h-4 w-4 text-indigo-400" />
           </div>
           <div>
-            <h3 className="font-semibold text-white">{iface.name}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-white">{iface.name}</h3>
+              {iface.status && (
+                <Badge
+                  variant="outline"
+                  className={
+                    iface.status === "u"
+                      ? "border-emerald-700 bg-emerald-950/50 text-emerald-400 text-[10px] px-1.5 py-0"
+                      : "border-red-700 bg-red-950/50 text-red-400 text-[10px] px-1.5 py-0"
+                  }
+                >
+                  {iface.status === "u" ? "UP" : "DOWN"}
+                </Badge>
+              )}
+            </div>
             <div className="flex gap-3 text-xs text-slate-400">
               {iface.address && <span>{iface.address}</span>}
               {iface.port && <span>Port {iface.port}</span>}
@@ -3952,6 +3987,9 @@ function WireGuardInterfaceCard({
                   <th className="pb-2 pr-4">Peer</th>
                   <th className="pb-2 pr-4">Public Key</th>
                   <th className="pb-2 pr-4">Allowed IPs</th>
+                  <th className="pb-2 pr-4">Endpoint</th>
+                  <th className="pb-2 pr-4">Last Handshake</th>
+                  <th className="pb-2 pr-4">Transfer</th>
                   <th className="pb-2 text-right">Actions</th>
                 </tr>
               </thead>
@@ -4044,6 +4082,24 @@ function PeerRow({
         </td>
         <td className="py-2 pr-4 text-slate-300">
           {peer.allowed_ips.join(", ") || "—"}
+        </td>
+        <td className="py-2 pr-4 text-xs text-slate-400">
+          {peer.endpoint || "—"}
+        </td>
+        <td className="py-2 pr-4 text-xs text-slate-400">
+          {peer.last_handshake ? formatHandshake(peer.last_handshake) : "—"}
+        </td>
+        <td className="py-2 pr-4 text-xs text-slate-400">
+          {peer.rx_bytes != null || peer.tx_bytes != null ? (
+            <span>
+              <ArrowDown className="mr-0.5 inline h-3 w-3 text-emerald-400" />
+              {formatBytes(peer.rx_bytes ?? 0)}
+              <ArrowUp className="ml-1.5 mr-0.5 inline h-3 w-3 text-blue-400" />
+              {formatBytes(peer.tx_bytes ?? 0)}
+            </span>
+          ) : (
+            "—"
+          )}
         </td>
         <td className="py-2 text-right">
           <div className="flex items-center justify-end gap-1">
