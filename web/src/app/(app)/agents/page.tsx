@@ -442,22 +442,22 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
                 </TabsList>
                 <TabsContent value="linux-amd64">
                   <CopyBlock
-                    text={`curl -fsSL ${serverUrl}/api/v1/agent/install/linux-amd64?key=${result.api_key} | sh`}
+                    text={`curl -fsSL ${serverUrl}/api/v1/agent/install/linux-amd64?key=${result.api_key}&id=${result.id} | sh`}
                   />
                 </TabsContent>
                 <TabsContent value="linux-arm64">
                   <CopyBlock
-                    text={`curl -fsSL ${serverUrl}/api/v1/agent/install/linux-arm64?key=${result.api_key} | sh`}
+                    text={`curl -fsSL ${serverUrl}/api/v1/agent/install/linux-arm64?key=${result.api_key}&id=${result.id} | sh`}
                   />
                 </TabsContent>
                 <TabsContent value="darwin-arm64">
                   <CopyBlock
-                    text={`curl -fsSL ${serverUrl}/api/v1/agent/install/darwin-arm64?key=${result.api_key} | sh`}
+                    text={`curl -fsSL ${serverUrl}/api/v1/agent/install/darwin-arm64?key=${result.api_key}&id=${result.id} | sh`}
                   />
                 </TabsContent>
                 <TabsContent value="darwin-amd64">
                   <CopyBlock
-                    text={`curl -fsSL ${serverUrl}/api/v1/agent/install/darwin-amd64?key=${result.api_key} | sh`}
+                    text={`curl -fsSL ${serverUrl}/api/v1/agent/install/darwin-amd64?key=${result.api_key}&id=${result.id} | sh`}
                   />
                 </TabsContent>
               </Tabs>

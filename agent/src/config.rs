@@ -19,6 +19,8 @@ pub struct AgentConfig {
     pub api_key: String,
 
     /// Unique agent identifier (UUID, assigned by the server).
+    /// Optional — not required for WebSocket auth (server identifies by api_key).
+    #[serde(default)]
     pub agent_id: String,
 
     /// How often to send reports, in seconds.
