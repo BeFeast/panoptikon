@@ -129,6 +129,11 @@ pub fn router(state: AppState) -> Router {
         .route("/vyos/interfaces", get(vyos::interfaces))
         .route("/vyos/config-interfaces", get(vyos::config_interfaces))
         .route("/vyos/routes", get(vyos::routes))
+        .route("/vyos/routes/static", post(vyos::create_static_route))
+        .route(
+            "/vyos/routes/static/:destination",
+            delete(vyos::delete_static_route),
+        )
         .route("/vyos/dhcp-leases", get(vyos::dhcp_leases))
         .route("/vyos/firewall", get(vyos::firewall))
         // VyOS write operations

@@ -72,6 +72,8 @@ import {
   deleteFirewallRule,
   toggleFirewallRule,
   fetchFirewallGroups,
+  createStaticRoute,
+  deleteStaticRoute,
   createAddressGroup,
   deleteAddressGroup,
   addAddressGroupMember,
@@ -779,25 +781,48 @@ function RoutesTable({
   routes,
   loading,
   error,
+  onReload,
 }: {
   routes: VyosRoute[] | null;
   loading: boolean;
   error: string | null;
+  onReload: () => void;
 }) {
+  const [confirmDelete, setConfirmDelete] = useState<VyosRoute | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      const res = await deleteStaticRoute(confirmDelete.destination);
+      toast.success(res.message);
+      setConfirmDelete(null);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete route");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  const headerCols = (
+    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+      <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Destination</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Gateway</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Metric</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Uptime</th>
+      <th className="px-4 py-3 font-medium text-slate-400 w-16"></th>
+    </tr>
+  );
+
   if (loading) {
     return (
       <div className="overflow-x-auto rounded-md border border-slate-800">
         <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-800 bg-slate-950 text-left">
-              <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
-              <th className="px-4 py-3 font-medium text-slate-400">Destination</th>
-              <th className="px-4 py-3 font-medium text-slate-400">Gateway</th>
-              <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
-              <th className="px-4 py-3 font-medium text-slate-400">Metric</th>
-              <th className="px-4 py-3 font-medium text-slate-400">Uptime</th>
-            </tr>
-          </thead>
+          <thead>{headerCols}</thead>
           <tbody>
             {Array.from({ length: 5 }).map((_, i) => (
               <tr key={i} className="border-b border-slate-800 last:border-b-0">
@@ -807,6 +832,7 @@ function RoutesTable({
                 <td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
                 <td className="px-4 py-3"><Skeleton className="h-3 w-10" /></td>
                 <td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
+                <td className="px-4 py-3"></td>
               </tr>
             ))}
           </tbody>
@@ -829,64 +855,290 @@ function RoutesTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border border-slate-800">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-slate-800 bg-slate-950 text-left">
-            <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
-            <th className="px-4 py-3 font-medium text-slate-400">Destination</th>
-            <th className="px-4 py-3 font-medium text-slate-400">Gateway</th>
-            <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
-            <th className="px-4 py-3 font-medium text-slate-400">Metric</th>
-            <th className="px-4 py-3 font-medium text-slate-400">Uptime</th>
-          </tr>
-        </thead>
-        <tbody>
-          {routes.map((route, idx) => (
-            <tr
-              key={`${route.destination}-${idx}`}
-              className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
-            >
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <ProtocolBadge protocol={route.protocol} />
-                  {route.selected && (
-                    <span className="text-xs text-emerald-500" title="Selected / Best route">
-                      ✓
-                    </span>
+    <>
+      <div className="overflow-x-auto rounded-md border border-slate-800">
+        <table className="w-full text-sm">
+          <thead>{headerCols}</thead>
+          <tbody>
+            {routes.map((route, idx) => (
+              <tr
+                key={`${route.destination}-${idx}`}
+                className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+              >
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <ProtocolBadge protocol={route.protocol} />
+                    {route.selected && (
+                      <span className="text-xs text-emerald-500" title="Selected / Best route">
+                        ✓
+                      </span>
+                    )}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="font-mono tabular-nums font-medium text-white">
+                    {route.destination}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="font-mono tabular-nums text-slate-300">
+                    {route.gateway ?? "—"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="font-mono tabular-nums text-slate-300">
+                    {route.interface ?? "—"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="font-mono tabular-nums text-xs text-slate-400">
+                    {route.metric ? `[${route.metric}]` : "—"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="text-slate-400">
+                    {route.uptime ?? "—"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  {route.protocol === "S" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-rose-400 hover:text-rose-300 hover:bg-rose-500/10"
+                      title="Delete static route"
+                      onClick={() => setConfirmDelete(route)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   )}
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <span className="font-mono tabular-nums font-medium text-white">
-                  {route.destination}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <span className="font-mono tabular-nums text-slate-300">
-                  {route.gateway ?? "—"}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <span className="font-mono tabular-nums text-slate-300">
-                  {route.interface ?? "—"}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <span className="font-mono tabular-nums text-xs text-slate-400">
-                  {route.metric ? `[${route.metric}]` : "—"}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <span className="text-slate-400">
-                  {route.uptime ?? "—"}
-                </span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!confirmDelete} onOpenChange={(open) => !open && setConfirmDelete(null)}>
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete Static Route</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to delete the static route to{" "}
+              <span className="font-mono font-medium text-white">{confirmDelete?.destination}</span>
+              {confirmDelete?.gateway && (
+                <>
+                  {" "}via <span className="font-mono font-medium text-white">{confirmDelete.gateway}</span>
+                </>
+              )}
+              ? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 text-slate-300 hover:bg-slate-800">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 text-white hover:bg-rose-700"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+// ── Add Static Route Dialog ─────────────────────────────
+
+function AddStaticRouteDialog({
+  open,
+  onOpenChange,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onSaved: () => void;
+}) {
+  const [destination, setDestination] = useState("");
+  const [nextHop, setNextHop] = useState("");
+  const [distance, setDistance] = useState("");
+  const [description, setDescription] = useState("");
+  const [blackhole, setBlackhole] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  function reset() {
+    setDestination("");
+    setNextHop("");
+    setDistance("");
+    setDescription("");
+    setBlackhole(false);
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const body: {
+        destination: string;
+        next_hop?: string;
+        distance?: number;
+        description?: string;
+        blackhole?: boolean;
+      } = { destination };
+
+      if (blackhole) {
+        body.blackhole = true;
+      } else {
+        body.next_hop = nextHop;
+      }
+
+      if (distance) {
+        body.distance = parseInt(distance, 10);
+      }
+      if (description.trim()) {
+        body.description = description.trim();
+      }
+
+      const res = await createStaticRoute(body);
+      toast.success(res.message);
+      reset();
+      onOpenChange(false);
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create route");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (!v) reset();
+        onOpenChange(v);
+      }}
+    >
+      <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-white">Add Static Route</DialogTitle>
+          <DialogDescription className="text-slate-400">
+            Create a new static route on the router.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="sr-dest" className="text-slate-300">
+              Destination CIDR <span className="text-rose-400">*</span>
+            </Label>
+            <Input
+              id="sr-dest"
+              placeholder="10.0.0.0/8"
+              value={destination}
+              onChange={(e) => setDestination(e.target.value)}
+              className="border-slate-700 bg-slate-800 font-mono text-white"
+              required
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              id="sr-blackhole"
+              type="checkbox"
+              checked={blackhole}
+              onChange={(e) => setBlackhole(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500/30"
+            />
+            <Label htmlFor="sr-blackhole" className="text-slate-300 cursor-pointer">
+              Blackhole (null route — drops traffic)
+            </Label>
+          </div>
+
+          {!blackhole && (
+            <div className="space-y-2">
+              <Label htmlFor="sr-nexthop" className="text-slate-300">
+                Next-hop IP <span className="text-rose-400">*</span>
+              </Label>
+              <Input
+                id="sr-nexthop"
+                placeholder="192.168.1.1"
+                value={nextHop}
+                onChange={(e) => setNextHop(e.target.value)}
+                className="border-slate-700 bg-slate-800 font-mono text-white"
+                required={!blackhole}
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="sr-distance" className="text-slate-300">
+              Admin Distance <span className="text-slate-500 text-xs">(optional, 0–255)</span>
+            </Label>
+            <Input
+              id="sr-distance"
+              type="number"
+              min={0}
+              max={255}
+              placeholder="1"
+              value={distance}
+              onChange={(e) => setDistance(e.target.value)}
+              className="border-slate-700 bg-slate-800 text-white"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="sr-desc" className="text-slate-300">
+              Description <span className="text-slate-500 text-xs">(optional)</span>
+            </Label>
+            <Input
+              id="sr-desc"
+              placeholder="Route description"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="border-slate-700 bg-slate-800 text-white"
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onOpenChange(false)}
+              className="text-slate-400 hover:text-white"
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving} className="bg-blue-600 text-white hover:bg-blue-700">
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Add Route
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddStaticRouteButton({ onSaved }: { onSaved: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button
+        size="sm"
+        className="bg-blue-600 text-white hover:bg-blue-700"
+        onClick={() => setOpen(true)}
+      >
+        <Plus className="mr-1.5 h-3.5 w-3.5" />
+        Add Static Route
+      </Button>
+      <AddStaticRouteDialog open={open} onOpenChange={setOpen} onSaved={onSaved} />
+    </>
   );
 }
 
@@ -2805,16 +3057,18 @@ function RouterTabs({ status }: { status: RouterStatus }) {
 
         <TabsContent value="routes">
           <Card className="border-slate-800 bg-slate-900">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base text-white">
                 Routing Table
               </CardTitle>
+              <AddStaticRouteButton onSaved={routes.reload} />
             </CardHeader>
             <CardContent>
               <RoutesTable
                 routes={Array.isArray(routes.data) ? routes.data : null}
                 loading={routes.loading}
                 error={routes.error}
+                onReload={routes.reload}
               />
             </CardContent>
           </Card>

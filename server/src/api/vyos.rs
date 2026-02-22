@@ -1994,6 +1994,265 @@ fn is_valid_mac(mac: &str) -> bool {
             .all(|p| p.len() == 2 && p.chars().all(|c| c.is_ascii_hexdigit()))
 }
 
+// ── Static Routes ───────────────────────────────────────────────────────────
+
+/// Request body for creating a static route.
+#[derive(Debug, Deserialize)]
+pub struct CreateStaticRouteRequest {
+    /// Destination CIDR (e.g., "10.0.0.0/8")
+    pub destination: String,
+    /// Next-hop IP (e.g., "192.168.1.1"). Omit for blackhole routes.
+    pub next_hop: Option<String>,
+    /// Admin distance (optional, default: 1)
+    pub distance: Option<u32>,
+    /// Description (optional)
+    pub description: Option<String>,
+    /// Blackhole (null route) — drops traffic to destination
+    pub blackhole: Option<bool>,
+}
+
+/// POST /api/v1/vyos/routes/static — create a static route.
+pub async fn create_static_route(
+    State(state): State<AppState>,
+    Json(body): Json<CreateStaticRouteRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    // Validate destination CIDR
+    if !is_valid_cidr(&body.destination) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid destination CIDR. Expected format: x.x.x.x/n".to_string(),
+            }),
+        ));
+    }
+
+    let is_blackhole = body.blackhole.unwrap_or(false);
+
+    // Require either next_hop or blackhole
+    if !is_blackhole && body.next_hop.is_none() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Either next-hop IP or blackhole option is required".to_string(),
+            }),
+        ));
+    }
+
+    // Validate next-hop IP if provided
+    if let Some(ref nh) = body.next_hop {
+        if !is_valid_ip(nh) {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: "Invalid next-hop IP address".to_string(),
+                }),
+            ));
+        }
+    }
+
+    // Validate distance if provided
+    if let Some(d) = body.distance {
+        if d > 255 {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: "Distance must be between 0 and 255".to_string(),
+                }),
+            ));
+        }
+    }
+
+    if is_blackhole {
+        // Blackhole route: set protocols static route <dest> blackhole
+        tracing::info!(
+            "VyOS: creating blackhole static route for {}",
+            body.destination
+        );
+
+        let result = client
+            .configure_set(&[
+                "protocols",
+                "static",
+                "route",
+                &body.destination,
+                "blackhole",
+            ])
+            .await;
+
+        if let Err(e) = result {
+            tracing::error!("VyOS static route blackhole set failed: {e}");
+            return Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("Failed to create blackhole route: {e}"),
+                }),
+            ));
+        }
+
+        // Set description if provided
+        if let Some(ref desc) = body.description {
+            if !desc.is_empty() {
+                let _ = client
+                    .configure_set(&[
+                        "protocols",
+                        "static",
+                        "route",
+                        &body.destination,
+                        "description",
+                        desc,
+                    ])
+                    .await;
+            }
+        }
+
+        // Set distance if provided
+        if let Some(d) = body.distance {
+            let dist_str = d.to_string();
+            let _ = client
+                .configure_set(&[
+                    "protocols",
+                    "static",
+                    "route",
+                    &body.destination,
+                    "blackhole",
+                    "distance",
+                    &dist_str,
+                ])
+                .await;
+        }
+
+        Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Blackhole route for {} created", body.destination),
+        }))
+    } else {
+        let next_hop = body.next_hop.as_deref().unwrap();
+
+        tracing::info!(
+            "VyOS: creating static route {} via {}",
+            body.destination,
+            next_hop
+        );
+
+        // Set next-hop
+        let result = client
+            .configure_set(&[
+                "protocols",
+                "static",
+                "route",
+                &body.destination,
+                "next-hop",
+                next_hop,
+            ])
+            .await;
+
+        if let Err(e) = result {
+            tracing::error!("VyOS static route next-hop set failed: {e}");
+            return Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("Failed to create static route: {e}"),
+                }),
+            ));
+        }
+
+        // Set distance if provided
+        if let Some(d) = body.distance {
+            let dist_str = d.to_string();
+            let _ = client
+                .configure_set(&[
+                    "protocols",
+                    "static",
+                    "route",
+                    &body.destination,
+                    "next-hop",
+                    next_hop,
+                    "distance",
+                    &dist_str,
+                ])
+                .await;
+        }
+
+        // Set description if provided
+        if let Some(ref desc) = body.description {
+            if !desc.is_empty() {
+                let _ = client
+                    .configure_set(&[
+                        "protocols",
+                        "static",
+                        "route",
+                        &body.destination,
+                        "description",
+                        desc,
+                    ])
+                    .await;
+            }
+        }
+
+        Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Static route {} via {} created", body.destination, next_hop),
+        }))
+    }
+}
+
+/// DELETE /api/v1/vyos/routes/static/:destination — delete a static route.
+pub async fn delete_static_route(
+    State(state): State<AppState>,
+    Path(destination): Path<String>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    // The destination comes URL-encoded (e.g., "10.0.0.0%2F8" → "10.0.0.0/8")
+    // Axum decodes path parameters automatically.
+    tracing::info!("VyOS: deleting static route {}", destination);
+
+    let result = client
+        .configure_delete(&["protocols", "static", "route", &destination])
+        .await;
+
+    match result {
+        Ok(_) => Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Static route {} deleted", destination),
+        })),
+        Err(e) => {
+            tracing::error!("VyOS static route delete failed: {e}");
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("VyOS error: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
 // ── Firewall Groups ─────────────────────────────────────────────────────────
 
 /// A firewall address group (a named set of IP addresses).
