@@ -203,9 +203,7 @@ pub async fn delete_one(
 }
 
 /// DELETE /api/v1/alerts — delete all alerts.
-pub async fn delete_all(
-    State(state): State<AppState>,
-) -> Result<StatusCode, StatusCode> {
+pub async fn delete_all(State(state): State<AppState>) -> Result<StatusCode, StatusCode> {
     sqlx::query("DELETE FROM alerts")
         .execute(&state.db)
         .await
@@ -218,9 +216,7 @@ pub async fn delete_all(
 }
 
 /// PATCH /api/v1/alerts/read-all — mark all unread alerts as read.
-pub async fn mark_all_read(
-    State(state): State<AppState>,
-) -> Result<StatusCode, StatusCode> {
+pub async fn mark_all_read(State(state): State<AppState>) -> Result<StatusCode, StatusCode> {
     sqlx::query("UPDATE alerts SET is_read = 1 WHERE is_read = 0")
         .execute(&state.db)
         .await
@@ -514,11 +510,10 @@ mod tests {
         insert_test_alert(&pool, &device_id, "new_device", "INFO").await;
 
         // Verify both are unread
-        let unread: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM alerts WHERE is_read = 0")
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let unread: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM alerts WHERE is_read = 0")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         assert_eq!(unread, 2, "Both alerts should start as unread");
 
         // Mark all as read
@@ -527,11 +522,10 @@ mod tests {
             .await
             .unwrap();
 
-        let unread_after: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM alerts WHERE is_read = 0")
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let unread_after: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM alerts WHERE is_read = 0")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         assert_eq!(unread_after, 0, "No unread alerts should remain");
     }
 
