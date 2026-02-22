@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ArrowRightLeft,
   ExternalLink,
@@ -11,8 +11,10 @@ import {
   Pencil,
   Plus,
   Radio,
+  Search,
   Shield,
   Trash2,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -124,6 +126,18 @@ function ProxyHostsTable({
   const [confirmDelete, setConfirmDelete] = useState<NpmProxyHost | null>(null);
   const [deleting, setDeleting] = useState<number | null>(null);
   const [toggling, setToggling] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
+
+  const filtered = useMemo(() => {
+    if (!search) return hosts;
+    const q = search.toLowerCase();
+    return hosts.filter(
+      (h) =>
+        h.domain_names.some((d) => d.toLowerCase().includes(q)) ||
+        h.forward_host?.toLowerCase().includes(q) ||
+        String(h.forward_port).includes(q),
+    );
+  }, [hosts, search]);
 
   const getAccessListName = (id: number | string | null) => {
     if (!id || id === 0 || id === "0") return null;
@@ -253,17 +267,41 @@ function ProxyHostsTable({
 
   return (
     <>
-      <div className="flex items-center justify-between px-4 py-3">
-        <p className="text-xs text-slate-500">
-          {hosts.length} proxy host{hosts.length !== 1 ? "s" : ""}
-        </p>
-        <Button variant="outline" size="sm" onClick={openCreate}>
+      <div className="flex items-center gap-3 px-4 py-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <Input
+            placeholder="Filter by domain, host, or port…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="border-slate-700 bg-slate-800/50 pl-9 pr-8 text-sm text-white placeholder:text-slate-500"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-500 hover:text-white"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        {search ? (
+          <span className="text-xs text-slate-500">
+            Showing {filtered.length} of {hosts.length} hosts
+          </span>
+        ) : (
+          <p className="text-xs text-slate-500">
+            {hosts.length} proxy host{hosts.length !== 1 ? "s" : ""}
+          </p>
+        )}
+        <Button variant="outline" size="sm" className="ml-auto" onClick={openCreate}>
           <Plus className="mr-1.5 h-3.5 w-3.5" />
           Add Proxy Host
         </Button>
       </div>
 
-      {hosts.length === 0 ? (
+      {hosts.length === 0 && !search ? (
         <p className="px-4 pb-6 text-center text-sm text-slate-500">
           No proxy hosts found.
         </p>
@@ -281,7 +319,14 @@ function ProxyHostsTable({
               </tr>
             </thead>
             <tbody>
-              {hosts.map((h) => {
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
+                    No hosts match &ldquo;{search}&rdquo;
+                  </td>
+                </tr>
+              ) : (
+              filtered.map((h) => {
                 const alName = getAccessListName(h.access_list_id);
                 return (
                   <tr
@@ -357,7 +402,8 @@ function ProxyHostsTable({
                     </td>
                   </tr>
                 );
-              })}
+              })
+              )}
             </tbody>
           </table>
         </div>
