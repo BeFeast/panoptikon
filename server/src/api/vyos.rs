@@ -3731,25 +3731,21 @@ fn parse_wireguard_config(config: &Value) -> Vec<WireguardInterface> {
             None => continue,
         };
 
-        let address = iface_obj
-            .get("address")
-            .and_then(|v| {
-                if let Some(s) = v.as_str() {
-                    Some(s.to_string())
-                } else if let Some(arr) = v.as_array() {
-                    arr.first().and_then(|a| a.as_str().map(|s| s.to_string()))
-                } else {
-                    None
-                }
-            });
+        let address = iface_obj.get("address").and_then(|v| {
+            if let Some(s) = v.as_str() {
+                Some(s.to_string())
+            } else if let Some(arr) = v.as_array() {
+                arr.first().and_then(|a| a.as_str().map(|s| s.to_string()))
+            } else {
+                None
+            }
+        });
 
-        let port = iface_obj
-            .get("port")
-            .and_then(|v| {
-                v.as_u64().map(|n| n as u32).or_else(|| {
-                    v.as_str().and_then(|s| s.parse().ok())
-                })
-            });
+        let port = iface_obj.get("port").and_then(|v| {
+            v.as_u64()
+                .map(|n| n as u32)
+                .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+        });
 
         // Get public key from private-key config or from operational data
         // VyOS stores private-key in config; public key is derived
@@ -3789,13 +3785,11 @@ fn parse_wireguard_config(config: &Value) -> Vec<WireguardInterface> {
                     .get("endpoint")
                     .and_then(|v| v.as_str().map(|s| s.to_string()));
 
-                let persistent_keepalive = peer_obj
-                    .get("persistent-keepalive")
-                    .and_then(|v| {
-                        v.as_u64().map(|n| n as u32).or_else(|| {
-                            v.as_str().and_then(|s| s.parse().ok())
-                        })
-                    });
+                let persistent_keepalive = peer_obj.get("persistent-keepalive").and_then(|v| {
+                    v.as_u64()
+                        .map(|n| n as u32)
+                        .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+                });
 
                 peers.push(WireguardPeer {
                     name: peer_name.clone(),
@@ -3893,9 +3887,7 @@ pub async fn wireguard_create(
     );
 
     // Generate WireGuard keypair via VyOS
-    let keypair_result = client
-        .generate(&["wireguard", "key-pair"])
-        .await;
+    let keypair_result = client.generate(&["wireguard", "key-pair"]).await;
 
     let keypair_text = match keypair_result {
         Ok(val) => val.as_str().unwrap_or("").to_string(),
@@ -3951,7 +3943,13 @@ pub async fn wireguard_create(
 
     // Set address
     if let Err(e) = client
-        .configure_set(&["interfaces", "wireguard", &body.name, "address", &body.address])
+        .configure_set(&[
+            "interfaces",
+            "wireguard",
+            &body.name,
+            "address",
+            &body.address,
+        ])
         .await
     {
         let msg = format!("Failed to set WG address: {e}");
@@ -4177,8 +4175,9 @@ pub async fn wireguard_add_peer(
             StatusCode::BAD_REQUEST,
             Json(VyosWriteResponse {
                 success: false,
-                message: "Invalid peer name. Use alphanumeric characters, hyphens, and underscores."
-                    .to_string(),
+                message:
+                    "Invalid peer name. Use alphanumeric characters, hyphens, and underscores."
+                        .to_string(),
             }),
         ));
     }
@@ -4352,13 +4351,7 @@ pub async fn wireguard_delete_peer(
         .await
     {
         Ok(_) => {
-            audit::log_success(
-                &state.db,
-                "wireguard_peer_delete",
-                &description,
-                &commands,
-            )
-            .await;
+            audit::log_success(&state.db, "wireguard_peer_delete", &description, &commands).await;
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Peer {} deleted from {}", params.peer, params.name),
@@ -4468,16 +4461,15 @@ pub async fn wireguard_generate_client_config(
         },
     };
 
-    let (client_private, client_public) =
-        parse_wireguard_keypair(&keypair_text).map_err(|e| {
-            (
-                StatusCode::BAD_GATEWAY,
-                Json(VyosWriteResponse {
-                    success: false,
-                    message: e,
-                }),
-            )
-        })?;
+    let (client_private, client_public) = parse_wireguard_keypair(&keypair_text).map_err(|e| {
+        (
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: e,
+            }),
+        )
+    })?;
 
     // 2. Set client public key in peer config
     let description = format!(
@@ -4543,9 +4535,9 @@ pub async fn wireguard_generate_client_config(
         .unwrap_or_else(|| "51820".to_string());
 
     // 4. Build the client config
-    let endpoint = body.endpoint.unwrap_or_else(|| {
-        format!("YOUR_SERVER_IP:{}", router_port)
-    });
+    let endpoint = body
+        .endpoint
+        .unwrap_or_else(|| format!("YOUR_SERVER_IP:{}", router_port));
     let dns = body.dns.unwrap_or_else(|| "1.1.1.1".to_string());
     let allowed_ips = body
         .allowed_ips

@@ -224,10 +224,7 @@ pub fn router(state: AppState) -> Router {
         // WireGuard VPN
         .route("/vyos/wireguard", get(vyos::wireguard_list))
         .route("/vyos/wireguard", post(vyos::wireguard_create))
-        .route(
-            "/vyos/wireguard/:name",
-            delete(vyos::wireguard_delete),
-        )
+        .route("/vyos/wireguard/:name", delete(vyos::wireguard_delete))
         .route(
             "/vyos/wireguard/:name/peers",
             post(vyos::wireguard_add_peer),
