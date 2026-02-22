@@ -17,6 +17,7 @@ import type {
   DashboardStats,
   DbSizeData,
   Device,
+  DhcpServerConfig,
   DhcpStaticMapping,
   DnsForwardingConfig,
   FirewallConfig,
@@ -484,6 +485,18 @@ export function createDhcpStaticMapping(body: {
   return apiPost<VyosWriteResponse>("/api/v1/vyos/dhcp/static-mappings", body);
 }
 
+export function updateDhcpStaticMapping(
+  network: string,
+  subnet: string,
+  name: string,
+  body: { network: string; subnet: string; name: string; mac: string; ip: string }
+): Promise<VyosWriteResponse> {
+  return apiPut<VyosWriteResponse>(
+    `/api/v1/vyos/dhcp/static-mappings/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}/${encodeURIComponent(name)}`,
+    body
+  );
+}
+
 export function deleteDhcpStaticMapping(
   network: string,
   subnet: string,
@@ -492,6 +505,21 @@ export function deleteDhcpStaticMapping(
   return apiDelete(
     `/api/v1/vyos/dhcp/static-mappings/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}/${encodeURIComponent(name)}`
   ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function fetchDhcpServerConfig(): Promise<DhcpServerConfig> {
+  return apiGet<DhcpServerConfig>("/api/v1/vyos/dhcp/config");
+}
+
+export function toggleDhcpSubnet(
+  network: string,
+  subnet: string,
+  disable: boolean
+): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>(
+    `/api/v1/vyos/dhcp/subnets/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}/toggle`,
+    { disable }
+  );
 }
 
 // ─── Static Routes ──────────────────────────────────────
