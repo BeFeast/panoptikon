@@ -825,13 +825,13 @@ pub async fn syslog(
     let line_count = params.lines.unwrap_or(50).min(500);
     let count_str = line_count.to_string();
 
-    let raw = client
-        .show(&["log", "tail", &count_str])
-        .await
-        .map_err(|e| {
-            tracing::error!("VyOS syslog query failed: {e}");
-            StatusCode::BAD_GATEWAY
-        })?;
+    let raw = match client.show(&["log", "tail", &count_str]).await {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::warn!("VyOS syslog query failed (returning empty): {e}");
+            return Ok(Json(SyslogResponse { lines: vec![] }));
+        }
+    };
 
     let text = raw.as_str().unwrap_or("");
     let mut lines: Vec<String> = text.lines().map(|l| l.to_string()).collect();
@@ -867,10 +867,13 @@ pub async fn interfaces(
     }
 
     let client = get_vyos_client_or_503(&state).await?;
-    let raw_value = client.show(&["interfaces"]).await.map_err(|e| {
-        tracing::error!("VyOS interfaces query failed: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
+    let raw_value = match client.show(&["interfaces"]).await {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::warn!("VyOS interfaces query failed (returning empty): {e}");
+            return Ok(Json(vec![]));
+        }
+    };
 
     let text = raw_value.as_str().unwrap_or("");
     let parsed = parse_interfaces_text(text);
@@ -894,10 +897,13 @@ pub async fn routes(State(state): State<AppState>) -> Result<Json<Vec<VyosRoute>
     }
 
     let client = get_vyos_client_or_503(&state).await?;
-    let raw_value = client.show(&["ip", "route"]).await.map_err(|e| {
-        tracing::error!("VyOS routes query failed: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
+    let raw_value = match client.show(&["ip", "route"]).await {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::warn!("VyOS routes query failed (returning empty): {e}");
+            return Ok(Json(vec![]));
+        }
+    };
 
     let text = raw_value.as_str().unwrap_or("");
     let parsed = parse_routes_text(text);
@@ -1091,13 +1097,13 @@ pub async fn dhcp_leases(
     }
 
     let client = get_vyos_client_or_503(&state).await?;
-    let raw_value = client
-        .show(&["dhcp", "server", "leases"])
-        .await
-        .map_err(|e| {
-            tracing::error!("VyOS DHCP leases query failed: {e}");
-            StatusCode::BAD_GATEWAY
-        })?;
+    let raw_value = match client.show(&["dhcp", "server", "leases"]).await {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::warn!("VyOS DHCP leases query failed (returning empty): {e}");
+            return Ok(Json(vec![]));
+        }
+    };
 
     let text = raw_value.as_str().unwrap_or("");
     let parsed = parse_dhcp_leases_text(text);
@@ -1353,14 +1359,8 @@ pub async fn firewall(State(state): State<AppState>) -> Result<Json<FirewallConf
             Ok(Json(config))
         }
         Err(e) => {
-            let msg = e.to_string();
-            // VyOS returns error when path is empty (no firewall configured)
-            if msg.contains("empty") || msg.contains("does not exist") {
-                Ok(Json(FirewallConfig { chains: Vec::new() }))
-            } else {
-                tracing::error!("VyOS firewall query failed: {e}");
-                Err(StatusCode::BAD_GATEWAY)
-            }
+            tracing::warn!("VyOS firewall query failed (returning empty): {e}");
+            Ok(Json(FirewallConfig { chains: Vec::new() }))
         }
     }
 }
@@ -2193,12 +2193,8 @@ pub async fn dhcp_static_mappings(
     let config = match client.retrieve(&["service", "dhcp-server"]).await {
         Ok(c) => c,
         Err(e) => {
-            let msg = e.to_string();
-            if msg.contains("empty") || msg.contains("does not exist") {
-                return Ok(Json(Vec::new()));
-            }
-            tracing::error!("VyOS DHCP config query failed: {e}");
-            return Err(StatusCode::BAD_GATEWAY);
+            tracing::warn!("VyOS DHCP config query failed (returning empty): {e}");
+            return Ok(Json(Vec::new()));
         }
     };
 
@@ -2694,14 +2690,10 @@ pub async fn dhcp_server_config(
     let config = match client.retrieve(&["service", "dhcp-server"]).await {
         Ok(c) => c,
         Err(e) => {
-            let msg = e.to_string();
-            if msg.contains("empty") || msg.contains("does not exist") {
-                return Ok(Json(DhcpServerConfig {
-                    shared_networks: Vec::new(),
-                }));
-            }
-            tracing::error!("VyOS DHCP server config query failed: {e}");
-            return Err(StatusCode::BAD_GATEWAY);
+            tracing::warn!("VyOS DHCP server config query failed (returning empty): {e}");
+            return Ok(Json(DhcpServerConfig {
+                shared_networks: Vec::new(),
+            }));
         }
     };
 
@@ -4582,18 +4574,14 @@ pub async fn dns_forwarding(
     let config = match client.retrieve(&["service", "dns", "forwarding"]).await {
         Ok(c) => c,
         Err(e) => {
-            let msg = e.to_string();
-            if msg.contains("empty") || msg.contains("does not exist") {
-                return Ok(Json(DnsForwardingConfig {
-                    name_servers: Vec::new(),
-                    domain_overrides: Vec::new(),
-                    listen_addresses: Vec::new(),
-                    allow_from: Vec::new(),
-                    cache_size: None,
-                }));
-            }
-            tracing::error!("VyOS DNS forwarding config query failed: {e}");
-            return Err(StatusCode::BAD_GATEWAY);
+            tracing::warn!("VyOS DNS forwarding config query failed (returning empty): {e}");
+            return Ok(Json(DnsForwardingConfig {
+                name_servers: Vec::new(),
+                domain_overrides: Vec::new(),
+                listen_addresses: Vec::new(),
+                allow_from: Vec::new(),
+                cache_size: None,
+            }));
         }
     };
 
@@ -5243,13 +5231,13 @@ pub async fn wireguard_list(
 ) -> Result<Json<Vec<WireguardInterface>>, StatusCode> {
     let client = get_vyos_client_or_503(&state).await?;
 
-    let config = client
-        .retrieve(&["interfaces", "wireguard"])
-        .await
-        .map_err(|e| {
-            tracing::error!("VyOS wireguard config query failed: {e}");
-            StatusCode::BAD_GATEWAY
-        })?;
+    let config = match client.retrieve(&["interfaces", "wireguard"]).await {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::warn!("VyOS wireguard config query failed (returning empty): {e}");
+            return Ok(Json(vec![]));
+        }
+    };
 
     let mut interfaces = parse_wireguard_config(&config);
 
