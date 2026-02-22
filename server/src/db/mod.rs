@@ -31,6 +31,9 @@ const TOPOLOGY_POSITIONS_MIGRATION: &str = include_str!("migrations/008_topology
 /// Migration 009: audit log for VyOS write operations.
 const AUDIT_LOG_MIGRATION: &str = include_str!("migrations/009_audit_log.sql");
 
+/// Migration 010: device enrichment — OS fingerprinting, device type, model.
+const DEVICE_ENRICHMENT_MIGRATION: &str = include_str!("migrations/010_device_enrichment.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -224,6 +227,24 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
             .await?;
 
         info!("Applied migration 009_audit_log.sql");
+    }
+
+    // Migration 010: device enrichment columns.
+    let applied_10: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 10")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_10 {
+        sqlx::raw_sql(DEVICE_ENRICHMENT_MIGRATION)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (10)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 010_device_enrichment.sql");
     }
 
     // Purge expired sessions on startup.

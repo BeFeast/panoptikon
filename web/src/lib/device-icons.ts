@@ -50,12 +50,24 @@ const LABEL_MAP: Record<DeviceType, string> = {
 
 /**
  * Get device icon and label from vendor/hostname/mdns data.
+ * If the backend has enriched the device with a device_type, prefer that.
  */
 export function getDeviceIcon(
   vendor?: string | null,
   hostname?: string | null,
-  mdnsServices?: string | null
+  mdnsServices?: string | null,
+  backendDeviceType?: string | null
 ): { icon: LucideIcon; label: string; type: DeviceType } {
+  // Prefer backend enrichment if available and valid
+  if (backendDeviceType && backendDeviceType in ICON_MAP) {
+    const dt = backendDeviceType as DeviceType;
+    return {
+      icon: ICON_MAP[dt],
+      label: LABEL_MAP[dt],
+      type: dt,
+    };
+  }
+
   const type = inferDeviceType(vendor, hostname, mdnsServices);
   return {
     icon: ICON_MAP[type],

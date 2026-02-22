@@ -96,6 +96,7 @@ pub fn router(state: AppState) -> Router {
         .route("/devices/:id/wake", post(devices::wake))
         .route("/devices/:id/scan", get(devices::get_scan))
         .route("/devices/:id/scan", post(devices::trigger_scan))
+        .route("/devices/:id/enrichment", patch(devices::update_enrichment))
         // Agents
         .route("/agents", get(agents::list))
         .route("/agents", post(agents::register))

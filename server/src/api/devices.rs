@@ -46,6 +46,27 @@ pub struct Device {
     /// Muted until timestamp (if device is muted)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub muted_until: Option<String>,
+    /// OS family (e.g. "iOS", "Android", "Windows", "Linux", "macOS")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub os_family: Option<String>,
+    /// OS version string (if known)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub os_version: Option<String>,
+    /// Device type (e.g. "phone", "laptop", "router", "printer")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_type: Option<String>,
+    /// Device model name (e.g. "iPhone SE 2022")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_model: Option<String>,
+    /// Device brand (e.g. "Apple", "Samsung")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub device_brand: Option<String>,
+    /// Which enrichment source provided the identification
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enrichment_source: Option<String>,
+    /// Whether user has manually corrected the enrichment
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enrichment_corrected: Option<bool>,
 }
 
 /// Request body for creating a device.
@@ -98,6 +119,16 @@ impl Device {
             mdns_services: row.try_get("mdns_services").unwrap_or(None),
             agent,
             muted_until: row.try_get("muted_until").unwrap_or(None),
+            os_family: row.try_get("os_family").unwrap_or(None),
+            os_version: row.try_get("os_version").unwrap_or(None),
+            device_type: row.try_get("device_type").unwrap_or(None),
+            device_model: row.try_get("device_model").unwrap_or(None),
+            device_brand: row.try_get("device_brand").unwrap_or(None),
+            enrichment_source: row.try_get("enrichment_source").unwrap_or(None),
+            enrichment_corrected: row
+                .try_get::<i32, _>("enrichment_corrected")
+                .ok()
+                .map(|v| v != 0),
         })
     }
 }
@@ -109,6 +140,8 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Device>>, St
         SELECT d.id, d.mac, d.name, d.hostname, d.vendor, d.icon, d.notes,
                d.is_known, d.is_favorite, d.first_seen_at, d.last_seen_at, d.is_online,
                d.mdns_services, d.muted_until,
+               d.os_family, d.os_version, d.device_type, d.device_model,
+               d.device_brand, d.enrichment_source, d.enrichment_corrected,
                a.id AS agent_id,
                a.name AS agent_name,
                r.cpu_percent AS agent_cpu_percent,
@@ -170,6 +203,8 @@ pub async fn get_one(
         SELECT d.id, d.mac, d.name, d.hostname, d.vendor, d.icon, d.notes,
                d.is_known, d.is_favorite, d.first_seen_at, d.last_seen_at, d.is_online,
                d.mdns_services, d.muted_until,
+               d.os_family, d.os_version, d.device_type, d.device_model,
+               d.device_brand, d.enrichment_source, d.enrichment_corrected,
                a.id AS agent_id,
                a.name AS agent_name,
                r.cpu_percent AS agent_cpu_percent,
@@ -253,6 +288,13 @@ pub async fn create(
         mdns_services: None,
         agent: None,
         muted_until: None,
+        os_family: None,
+        os_version: None,
+        device_type: None,
+        device_model: None,
+        device_brand: None,
+        enrichment_source: None,
+        enrichment_corrected: None,
     };
 
     Ok((StatusCode::CREATED, Json(device)))
@@ -771,6 +813,62 @@ pub async fn get_scan(
     }
 }
 
+// ─── Enrichment Feedback ────────────────────────────────
+
+/// Request body for correcting device enrichment.
+#[derive(Debug, Deserialize)]
+pub struct EnrichmentCorrection {
+    pub os_family: Option<String>,
+    pub os_version: Option<String>,
+    pub device_type: Option<String>,
+    pub device_model: Option<String>,
+    pub device_brand: Option<String>,
+}
+
+/// PATCH /api/v1/devices/:id/enrichment — correct device enrichment data.
+///
+/// Sets `enrichment_corrected = 1` so automatic enrichment won't overwrite
+/// the user's corrections.
+pub async fn update_enrichment(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<EnrichmentCorrection>,
+) -> Result<StatusCode, StatusCode> {
+    let now = chrono::Utc::now().to_rfc3339();
+
+    let result = sqlx::query(
+        "UPDATE devices SET \
+         os_family = COALESCE(?, os_family), \
+         os_version = COALESCE(?, os_version), \
+         device_type = COALESCE(?, device_type), \
+         device_model = COALESCE(?, device_model), \
+         device_brand = COALESCE(?, device_brand), \
+         enrichment_corrected = 1, \
+         enrichment_source = 'manual', \
+         updated_at = ? \
+         WHERE id = ?",
+    )
+    .bind(&body.os_family)
+    .bind(&body.os_version)
+    .bind(&body.device_type)
+    .bind(&body.device_model)
+    .bind(&body.device_brand)
+    .bind(&now)
+    .bind(&id)
+    .execute(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to update enrichment for device {id}: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    if result.rows_affected() == 0 {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// Check rate limit for port scans. Returns seconds remaining if rate limited.
 pub async fn check_port_scan_rate_limit(
     db: &sqlx::SqlitePool,
@@ -874,6 +972,8 @@ mod tests {
             SELECT d.id, d.mac, d.name, d.hostname, d.vendor, d.icon, d.notes,
                    d.is_known, d.is_favorite, d.first_seen_at, d.last_seen_at, d.is_online,
                    d.mdns_services, d.muted_until,
+                   d.os_family, d.os_version, d.device_type, d.device_model,
+                   d.device_brand, d.enrichment_source, d.enrichment_corrected,
                    a.id AS agent_id,
                    a.name AS agent_name,
                    r.cpu_percent AS agent_cpu_percent,

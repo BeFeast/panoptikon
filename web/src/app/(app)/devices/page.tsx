@@ -25,11 +25,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan } from "@/lib/api";
-import type { DeviceEvent, UptimeStats, PortScanResult } from "@/lib/api";
+import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDeviceEnrichment } from "@/lib/api";
+import type { DeviceEvent, UptimeStats, PortScanResult, EnrichmentCorrection } from "@/lib/api";
 import type { Device } from "@/lib/types";
 import { formatPercent, timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
+import { getOsDisplay } from "@/lib/os-icons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageTransition } from "@/components/PageTransition";
 import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
@@ -417,7 +418,7 @@ function DeviceCard({
   const ips = device.ips ?? [];
   const primaryIp = ips[0] ?? "—";
   const displayName = device.name ?? device.hostname ?? "Unknown Device";
-  const { icon: DevIcon } = getDeviceIcon(device.vendor, device.hostname, device.mdns_services);
+  const { icon: DevIcon } = getDeviceIcon(device.vendor, device.hostname, device.mdns_services, device.device_type);
   const vendorDisplay = device.vendor
     ? device.vendor.length > 20
       ? device.vendor.slice(0, 20) + "…"
@@ -471,6 +472,23 @@ function DeviceCard({
             )}
           </div>
         </div>
+
+        {/* Enrichment badges: OS + model */}
+        {(device.os_family || device.device_model) && (
+          <div className="mt-2 flex flex-wrap items-center gap-1">
+            {device.os_family && (() => {
+              const os = getOsDisplay(device.os_family);
+              return os ? (
+                <Badge variant="outline" className={`text-[10px] ${os.colorClass}`}>
+                  {os.label}{device.os_version ? ` ${device.os_version}` : ""}
+                </Badge>
+              ) : null;
+            })()}
+            {device.device_model && (
+              <span className="text-[10px] text-slate-500">{device.device_model}</span>
+            )}
+          </div>
+        )}
 
         {/* Technical info */}
         <div className="mt-3 space-y-1">
@@ -575,7 +593,7 @@ function DevicesTable({
         <TableBody>
           {devices.map((device) => {
             const primaryIp = (device.ips ?? [])[0] ?? "—";
-            const { icon: RowIcon } = getDeviceIcon(device.vendor, device.hostname, device.mdns_services);
+            const { icon: RowIcon } = getDeviceIcon(device.vendor, device.hostname, device.mdns_services, device.device_type);
             const vendorDisplay = device.vendor
               ? device.vendor.length > 20
                 ? device.vendor.slice(0, 20) + "…"
@@ -786,6 +804,31 @@ function DeviceInfoTab({
       <InfoRow label="Last Seen" value={timeAgo(device.last_seen_at)} />
       <InfoRow label="Status" value={device.is_known ? "Known" : "Unacknowledged"} />
 
+      {/* Device enrichment */}
+      {(device.os_family || device.device_type || device.device_brand || device.device_model) && (
+        <>
+          <Separator className="bg-slate-800" />
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+            Device Identity
+          </p>
+          {device.os_family && (
+            <InfoRow
+              label="OS"
+              value={device.os_version ? `${device.os_family} ${device.os_version}` : device.os_family}
+            />
+          )}
+          {device.device_type && <InfoRow label="Type" value={device.device_type} />}
+          {device.device_brand && <InfoRow label="Brand" value={device.device_brand} />}
+          {device.device_model && <InfoRow label="Model" value={device.device_model} />}
+          {device.enrichment_source && (
+            <p className="text-[10px] text-slate-600">
+              Identified via {device.enrichment_source}
+              {device.enrichment_corrected ? " (user-corrected)" : ""}
+            </p>
+          )}
+        </>
+      )}
+
       {/* Muted status */}
       {device.muted_until && new Date(device.muted_until) > new Date() && (
         <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
@@ -871,6 +914,14 @@ function DeviceInfoTab({
             </p>
             <p className="mt-1 text-sm text-slate-300">{device.notes}</p>
           </div>
+        </>
+      )}
+
+      {/* Enrichment Feedback */}
+      {(device.os_family || device.device_type || device.device_brand) && (
+        <>
+          <Separator className="bg-slate-800" />
+          <EnrichmentFeedback device={device} />
         </>
       )}
     </div>
@@ -1108,6 +1159,107 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
           No port scan results yet. Click &quot;Scan Ports&quot; to start.
         </p>
       )}
+    </div>
+  );
+}
+
+// ─── Enrichment Feedback ────────────────────────────────
+
+function EnrichmentFeedback({ device }: { device: Device }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [osFamily, setOsFamily] = useState(device.os_family ?? "");
+  const [deviceType, setDeviceType] = useState(device.device_type ?? "");
+  const [deviceModel, setDeviceModel] = useState(device.device_model ?? "");
+  const [deviceBrand, setDeviceBrand] = useState(device.device_brand ?? "");
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const body: EnrichmentCorrection = {};
+      if (osFamily) body.os_family = osFamily;
+      if (deviceType) body.device_type = deviceType;
+      if (deviceModel) body.device_model = deviceModel;
+      if (deviceBrand) body.device_brand = deviceBrand;
+      await updateDeviceEnrichment(device.id, body);
+      toast.success("Device identity updated");
+      setEditing(false);
+    } catch {
+      toast.error("Failed to update device identity");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!editing) {
+    return (
+      <Button
+        variant="ghost"
+        size="sm"
+        className="w-full text-xs text-slate-500 hover:text-slate-300"
+        onClick={() => setEditing(true)}
+      >
+        Did we get it right? Click to correct
+      </Button>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+        Correct Device Identity
+      </p>
+      <div className="space-y-2">
+        <div>
+          <label className="text-[11px] text-slate-500">OS</label>
+          <Input
+            value={osFamily}
+            onChange={(e) => setOsFamily(e.target.value)}
+            placeholder="e.g. iOS, Android, Windows"
+            className="h-8 text-sm"
+          />
+        </div>
+        <div>
+          <label className="text-[11px] text-slate-500">Type</label>
+          <Input
+            value={deviceType}
+            onChange={(e) => setDeviceType(e.target.value)}
+            placeholder="e.g. phone, laptop, router"
+            className="h-8 text-sm"
+          />
+        </div>
+        <div>
+          <label className="text-[11px] text-slate-500">Brand</label>
+          <Input
+            value={deviceBrand}
+            onChange={(e) => setDeviceBrand(e.target.value)}
+            placeholder="e.g. Apple, Samsung"
+            className="h-8 text-sm"
+          />
+        </div>
+        <div>
+          <label className="text-[11px] text-slate-500">Model</label>
+          <Input
+            value={deviceModel}
+            onChange={(e) => setDeviceModel(e.target.value)}
+            placeholder="e.g. iPhone SE 2022"
+            className="h-8 text-sm"
+          />
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <Button size="sm" className="flex-1" disabled={saving} onClick={handleSave}>
+          {saving ? "Saving…" : "Save"}
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="flex-1"
+          onClick={() => setEditing(false)}
+        >
+          Cancel
+        </Button>
+      </div>
     </div>
   );
 }
