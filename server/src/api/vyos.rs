@@ -4594,9 +4594,6 @@ pub struct DnsHostOverride {
 fn parse_dns_config(fwd: &Value, host_mappings: &Value) -> DnsConfig {
     let mut nameservers = Vec::new();
     let mut domain_forwarding = Vec::new();
-    let listen_address;
-    let cache_size;
-    let dnssec;
 
     // Parse nameservers — can be a single string or an object with keys
     if let Some(ns) = fwd.get("name-server") {
@@ -4642,21 +4639,21 @@ fn parse_dns_config(fwd: &Value, host_mappings: &Value) -> DnsConfig {
     domain_forwarding.sort_by(|a, b| a.domain.cmp(&b.domain));
 
     // Parse listen-address
-    listen_address = fwd.get("listen-address").and_then(|v| match v {
+    let listen_address = fwd.get("listen-address").and_then(|v| match v {
         Value::String(s) => Some(s.clone()),
         Value::Object(map) => map.keys().next().cloned(),
         _ => None,
     });
 
     // Parse cache-size
-    cache_size = fwd.get("cache-size").and_then(|v| match v {
+    let cache_size = fwd.get("cache-size").and_then(|v| match v {
         Value::Number(n) => n.as_u64().map(|n| n as u32),
         Value::String(s) => s.parse().ok(),
         _ => None,
     });
 
     // Parse DNSSEC
-    dnssec = fwd.get("dnssec").and_then(|v| match v {
+    let dnssec = fwd.get("dnssec").and_then(|v| match v {
         Value::String(s) => Some(s.clone()),
         _ => None,
     });
