@@ -28,6 +28,7 @@ pub mod scanner;
 pub mod search;
 pub mod settings;
 pub mod setup;
+pub mod speedtest;
 pub mod topology;
 pub mod traffic;
 pub mod vyos;
@@ -292,6 +293,7 @@ pub fn router(state: AppState) -> Router {
         .route("/scanner/trigger", post(scanner::trigger))
         // Speed test
         .route("/router/speedtest", post(vyos::speedtest))
+        .route("/router/speedtest/history", get(speedtest::history))
         // Traffic
         .route("/traffic/history", get(traffic::history))
         // Config backups

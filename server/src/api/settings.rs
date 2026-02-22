@@ -20,6 +20,9 @@ pub struct SettingsResponse {
     pub retention_traffic_hours: Option<u64>,
     pub retention_alerts_days: Option<u64>,
     pub retention_agent_reports_days: Option<u64>,
+    // --- Speed Test ---
+    pub speedtest_retention_days: Option<u64>,
+    pub speedtest_auto_interval_hours: Option<u64>,
 }
 
 /// Request body for updating settings.
@@ -36,6 +39,9 @@ pub struct UpdateSettingsRequest {
     pub retention_traffic_hours: Option<u64>,
     pub retention_alerts_days: Option<u64>,
     pub retention_agent_reports_days: Option<u64>,
+    // --- Speed Test ---
+    pub speedtest_retention_days: Option<u64>,
+    pub speedtest_auto_interval_hours: Option<u64>,
 }
 
 /// Helper: read a string setting from the settings table.
@@ -90,6 +96,17 @@ pub async fn get_settings(
         .and_then(|v| v.parse().ok())
         .or(Some(state.config.retention.agent_reports_days));
 
+    // Speed Test settings.
+    let speedtest_retention_days = get_setting(&state, "speedtest_retention_days")
+        .await
+        .and_then(|v| v.parse().ok())
+        .or(Some(90));
+
+    let speedtest_auto_interval_hours = get_setting(&state, "speedtest_auto_interval_hours")
+        .await
+        .and_then(|v| v.parse().ok())
+        .or(Some(0));
+
     Ok(Json(SettingsResponse {
         webhook_url,
         vyos_url,
@@ -100,6 +117,8 @@ pub async fn get_settings(
         retention_traffic_hours,
         retention_alerts_days,
         retention_agent_reports_days,
+        speedtest_retention_days,
+        speedtest_auto_interval_hours,
     }))
 }
 
@@ -162,6 +181,23 @@ pub async fn update_settings(
         info!(
             retention_agent_reports_days = days,
             "Agent reports retention updated"
+        );
+    }
+
+    // --- Speed Test settings ---
+    if let Some(days) = body.speedtest_retention_days {
+        upsert_setting(&state, "speedtest_retention_days", &days.to_string()).await?;
+        info!(
+            speedtest_retention_days = days,
+            "Speedtest retention updated"
+        );
+    }
+
+    if let Some(hours) = body.speedtest_auto_interval_hours {
+        upsert_setting(&state, "speedtest_auto_interval_hours", &hours.to_string()).await?;
+        info!(
+            speedtest_auto_interval_hours = hours,
+            "Speedtest auto-run interval updated"
         );
     }
 

@@ -7,6 +7,7 @@ pub mod netflow;
 pub mod oui;
 pub mod retention;
 pub mod scanner;
+pub mod speedtest_scheduler;
 pub mod static_files;
 pub mod vyos;
 pub mod webhook;

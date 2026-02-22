@@ -311,6 +311,24 @@ export interface FirewallGroups {
   port_groups: FirewallPortGroup[];
 }
 
+export interface SpeedTestHistoryEntry {
+  id: number;
+  tested_at: string;
+  download_mbps: number;
+  upload_mbps: number;
+  ping_ms: number;
+  jitter_ms: number;
+  packet_loss: number;
+  isp: string;
+  server_name: string;
+  result_url: string | null;
+}
+
+export interface SpeedTestHistoryResponse {
+  items: SpeedTestHistoryEntry[];
+  total: number;
+}
+
 export interface SettingsData {
   webhook_url: string | null;
   vyos_url: string | null;
@@ -323,6 +341,9 @@ export interface SettingsData {
   retention_traffic_hours: number | null;
   retention_alerts_days: number | null;
   retention_agent_reports_days: number | null;
+  // Speed Test
+  speedtest_retention_days: number | null;
+  speedtest_auto_interval_hours: number | null;
 }
 
 export interface DbSizeData {

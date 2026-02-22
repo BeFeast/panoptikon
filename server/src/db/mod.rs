@@ -37,6 +37,9 @@ const DEVICE_ENRICHMENT_MIGRATION: &str = include_str!("migrations/010_device_en
 /// Migration 011: VyOS config backups table.
 const CONFIG_BACKUPS_MIGRATION: &str = include_str!("migrations/011_config_backups.sql");
 
+/// Migration 012: speedtest history table.
+const SPEEDTEST_HISTORY_MIGRATION: &str = include_str!("migrations/012_speedtest_history.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -268,6 +271,24 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 011_config_backups.sql");
     }
 
+    // Migration 012: speedtest history table.
+    let applied_12: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 12")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_12 {
+        sqlx::raw_sql(SPEEDTEST_HISTORY_MIGRATION)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (12)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 012_speedtest_history.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -313,6 +334,7 @@ mod tests {
             "topology_positions",
             "audit_log",
             "vyos_config_backups",
+            "speedtest_history",
         ];
 
         for table in &expected_tables {

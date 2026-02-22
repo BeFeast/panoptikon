@@ -79,6 +79,7 @@ import {
   fetchRouterFirewall,
   fetchRouterConfigInterfaces,
   runSpeedTest,
+  fetchSpeedTestHistory,
   toggleInterface,
   fetchDhcpStaticMappings,
   createDhcpStaticMapping,
@@ -120,7 +121,7 @@ import {
   fetchSystemInfo,
   fetchSyslog,
 } from "@/lib/api";
-import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, DhcpServerConfig, DhcpSubnetConfig, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride, SystemInfo, SyslogResponse } from "@/lib/types";
+import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, SpeedTestResult, SpeedTestHistoryEntry, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, DhcpServerConfig, DhcpSubnetConfig, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride, SystemInfo, SyslogResponse } from "@/lib/types";
 import QRCode from "qrcode";
 import { Progress } from "@/components/ui/progress";
 import { PageTransition } from "@/components/PageTransition";
@@ -957,6 +958,25 @@ function SpeedTestSection() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [history, setHistory] = useState<SpeedTestHistoryEntry[]>([]);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyLoading, setHistoryLoading] = useState(true);
+
+  const loadHistory = useCallback(async () => {
+    try {
+      const res = await fetchSpeedTestHistory(20, 0);
+      setHistory(res.items);
+      setHistoryTotal(res.total);
+    } catch {
+      // silently ignore — history is supplementary
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
 
   const handleRunTest = async () => {
     setRunning(true);
@@ -980,6 +1000,8 @@ function SpeedTestSection() {
       const res = await runSpeedTest();
       setResult(res);
       setProgress(100);
+      // Refresh history after successful test
+      loadHistory();
     } catch (e) {
       if (e instanceof Error) {
         // Extract error message from API response if possible
@@ -1011,8 +1033,24 @@ function SpeedTestSection() {
     if (mins < 60) return `${mins} minutes ago`;
     const hrs = Math.floor(mins / 60);
     if (hrs === 1) return "1 hour ago";
-    return `${hrs} hours ago`;
+    if (hrs < 24) return `${hrs} hours ago`;
+    const days = Math.floor(hrs / 24);
+    if (days === 1) return "1 day ago";
+    return `${days} days ago`;
   };
+
+  const formatTimestamp = (dateStr: string) => {
+    const d = new Date(dateStr + "Z");
+    return d.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  // Sparkline data: download speeds from history (oldest first for chart)
+  const sparklineData = [...history].reverse().map((h) => h.download_mbps);
 
   return (
     <div className="space-y-4">
@@ -1181,12 +1219,134 @@ function SpeedTestSection() {
         </div>
       )}
 
+      {/* Download speed sparkline chart */}
+      {sparklineData.length >= 2 && (
+        <Card className="border-slate-800 bg-slate-900">
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-400">
+              <Activity className="h-4 w-4" />
+              Download Speed Trend
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-4">
+            <SpeedTestSparkline data={sparklineData} />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* History table */}
+      {!historyLoading && history.length > 0 && (
+        <Card className="border-slate-800 bg-slate-900">
+          <CardHeader className="pb-2 pt-4">
+            <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-400">
+              <Clock className="h-4 w-4" />
+              History
+              <span className="text-xs text-slate-600">
+                ({historyTotal} total)
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-left text-xs text-slate-500">
+                    <th className="px-4 py-2 font-medium">Time</th>
+                    <th className="px-4 py-2 font-medium text-right">
+                      <ArrowDown className="mr-1 inline h-3 w-3 text-emerald-400" />
+                      Download
+                    </th>
+                    <th className="px-4 py-2 font-medium text-right">
+                      <ArrowUp className="mr-1 inline h-3 w-3 text-blue-400" />
+                      Upload
+                    </th>
+                    <th className="px-4 py-2 font-medium text-right">Ping</th>
+                    <th className="hidden px-4 py-2 font-medium text-right sm:table-cell">Server</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((entry) => (
+                    <tr
+                      key={entry.id}
+                      className="border-b border-slate-800/50 last:border-0 hover:bg-slate-800/30"
+                    >
+                      <td className="whitespace-nowrap px-4 py-2 text-xs text-slate-400">
+                        {formatTimestamp(entry.tested_at)}
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums text-emerald-400">
+                        {entry.download_mbps.toFixed(1)} Mbps
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums text-blue-400">
+                        {entry.upload_mbps.toFixed(1)} Mbps
+                      </td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums text-slate-400">
+                        {entry.ping_ms.toFixed(1)} ms
+                      </td>
+                      <td className="hidden max-w-[200px] truncate px-4 py-2 text-right text-xs text-slate-500 sm:table-cell">
+                        {entry.server_name}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Traffic warning */}
       <div className="flex items-start gap-2 rounded-md border border-amber-500/20 bg-amber-500/5 px-4 py-3">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
         <p className="text-xs text-amber-400/80">
           Speed test measures WAN throughput using Ookla Speedtest. Tests are
           rate limited to once per 60 seconds.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** Inline sparkline chart for download speed trend. */
+function SpeedTestSparkline({ data }: { data: number[] }) {
+  if (data.length < 2) return null;
+
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const h = 48;
+  const w = data.length > 1 ? (data.length - 1) * 20 : 100;
+  const range = max - min || 1;
+  const points = data
+    .map((v, i) => {
+      const x = (i / (data.length - 1)) * w;
+      const y = h - ((v - min) / range) * (h - 8) - 4;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <div className="flex items-end gap-4">
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="h-12 w-full"
+        preserveAspectRatio="none"
+      >
+        <polyline
+          points={points}
+          fill="none"
+          stroke="#22c55e"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <div className="shrink-0 text-right text-xs text-slate-500">
+        <p>
+          Max:{" "}
+          <span className="text-emerald-400">{max.toFixed(1)}</span> Mbps
+        </p>
+        <p>
+          Min:{" "}
+          <span className="text-emerald-400">{min.toFixed(1)}</span> Mbps
         </p>
       </div>
     </div>

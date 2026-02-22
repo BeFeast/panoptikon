@@ -32,6 +32,7 @@ import type {
   SearchResponse,
   SettingsData,
   SpeedTestResult,
+  SpeedTestHistoryResponse,
   SystemInfo,
   SyslogResponse,
   TopDevice,
@@ -324,6 +325,15 @@ export function fetchRouterFirewall(): Promise<FirewallConfig> {
 
 export function runSpeedTest(): Promise<SpeedTestResult> {
   return apiPost<SpeedTestResult>("/api/v1/router/speedtest");
+}
+
+export function fetchSpeedTestHistory(
+  limit = 20,
+  offset = 0
+): Promise<SpeedTestHistoryResponse> {
+  return apiGet<SpeedTestHistoryResponse>(
+    `/api/v1/router/speedtest/history?limit=${limit}&offset=${offset}`
+  );
 }
 
 // ─── DNS Forwarding ─────────────────────────────────────
@@ -635,6 +645,8 @@ export function updateSettings(body: {
   retention_traffic_hours?: number;
   retention_alerts_days?: number;
   retention_agent_reports_days?: number;
+  speedtest_retention_days?: number;
+  speedtest_auto_interval_hours?: number;
 }): Promise<SettingsData> {
   return apiPatch<SettingsData>("/api/v1/settings", body);
 }

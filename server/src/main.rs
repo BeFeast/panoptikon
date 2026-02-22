@@ -1,6 +1,6 @@
 use anyhow::Result;
 use clap::Parser;
-use panoptikon_server::{api, config, db, mdns, netflow, retention, scanner};
+use panoptikon_server::{api, config, db, mdns, netflow, retention, scanner, speedtest_scheduler};
 use std::net::SocketAddr;
 use tracing::info;
 
@@ -120,6 +120,9 @@ async fn main() -> Result<()> {
     } else {
         info!("NetFlow collector disabled (set netflow_enabled = true in [scanner])");
     }
+
+    // Start the background speedtest scheduler (reads interval from DB settings).
+    speedtest_scheduler::start_speedtest_scheduler(state.db.clone());
 
     // Build the application router.
     let app = api::router(state);
