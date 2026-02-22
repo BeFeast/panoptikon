@@ -9,6 +9,7 @@ import {
   Lock,
   Pencil,
   Plus,
+  Radio,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -45,11 +46,17 @@ import {
   createNpmRedirectionHost,
   updateNpmRedirectionHost,
   deleteNpmRedirectionHost,
+  fetchNpmStreams,
+  createNpmStream,
+  updateNpmStream,
+  deleteNpmStream,
+  toggleNpmStream,
 } from "@/lib/api";
 import type {
   NpmConnectionStatus,
   NpmProxyHost,
   NpmRedirectionHost,
+  NpmStream,
 } from "@/lib/types";
 
 // ─── Proxy Hosts Table ──────────────────────────────────
@@ -583,6 +590,406 @@ function RedirectionHostsTable({
   );
 }
 
+// ─── Streams Table ──────────────────────────────────────
+
+interface StreamFormData {
+  incoming_port: number;
+  forwarding_host: string;
+  forwarding_port: number;
+  tcp_forwarding: boolean;
+  udp_forwarding: boolean;
+}
+
+const emptyStreamForm: StreamFormData = {
+  incoming_port: 0,
+  forwarding_host: "",
+  forwarding_port: 0,
+  tcp_forwarding: true,
+  udp_forwarding: false,
+};
+
+function StreamsTable({
+  streams,
+  loading,
+  onReload,
+}: {
+  streams: NpmStream[];
+  loading: boolean;
+  onReload: () => void;
+}) {
+  const [showForm, setShowForm] = useState(false);
+  const [editStream, setEditStream] = useState<NpmStream | null>(null);
+  const [form, setForm] = useState<StreamFormData>(emptyStreamForm);
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<NpmStream | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [toggling, setToggling] = useState<number | null>(null);
+
+  const openCreate = () => {
+    setEditStream(null);
+    setForm(emptyStreamForm);
+    setShowForm(true);
+  };
+
+  const openEdit = (s: NpmStream) => {
+    setEditStream(s);
+    setForm({
+      incoming_port: s.incoming_port,
+      forwarding_host: s.forwarding_host,
+      forwarding_port: s.forwarding_port,
+      tcp_forwarding: s.tcp_forwarding,
+      udp_forwarding: s.udp_forwarding,
+    });
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.forwarding_host.trim()) {
+      toast.error("Forwarding host is required");
+      return;
+    }
+    if (form.incoming_port <= 0 || form.incoming_port > 65535) {
+      toast.error("Incoming port must be between 1 and 65535");
+      return;
+    }
+    if (form.forwarding_port <= 0 || form.forwarding_port > 65535) {
+      toast.error("Forwarding port must be between 1 and 65535");
+      return;
+    }
+    if (!form.tcp_forwarding && !form.udp_forwarding) {
+      toast.error("At least one protocol (TCP or UDP) must be enabled");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        incoming_port: form.incoming_port,
+        forwarding_host: form.forwarding_host.trim(),
+        forwarding_port: form.forwarding_port,
+        tcp_forwarding: form.tcp_forwarding,
+        udp_forwarding: form.udp_forwarding,
+      };
+
+      if (editStream) {
+        await updateNpmStream(editStream.id, payload);
+        toast.success("Stream updated");
+      } else {
+        await createNpmStream(payload);
+        toast.success("Stream created");
+      }
+
+      setShowForm(false);
+      setEditStream(null);
+      setForm(emptyStreamForm);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    const { id } = confirmDelete;
+    setConfirmDelete(null);
+    setDeleting(id);
+    try {
+      await deleteNpmStream(id);
+      toast.success("Stream deleted");
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleToggle = async (s: NpmStream) => {
+    setToggling(s.id);
+    try {
+      await toggleNpmStream(s.id, !s.enabled);
+      toast.success(s.enabled ? "Stream disabled" : "Stream enabled");
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Toggle failed");
+    } finally {
+      setToggling(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-2 p-4">
+        {[...Array(3)].map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full bg-slate-800" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex items-center justify-between px-4 py-3">
+        <p className="text-xs text-slate-500">
+          {streams.length} stream{streams.length !== 1 ? "s" : ""}
+        </p>
+        <Button variant="outline" size="sm" onClick={openCreate}>
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          Add Stream
+        </Button>
+      </div>
+
+      {streams.length === 0 ? (
+        <p className="px-4 pb-6 text-center text-sm text-slate-500">
+          No streams found.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-800 text-left text-xs uppercase text-slate-500">
+                <th className="px-4 py-2">Incoming Port</th>
+                <th className="px-4 py-2">Forward To</th>
+                <th className="px-4 py-2">Protocol</th>
+                <th className="px-4 py-2">Enabled</th>
+                <th className="px-4 py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {streams.map((s) => (
+                <tr
+                  key={s.id}
+                  className="border-b border-slate-800/50 hover:bg-slate-800/30"
+                >
+                  <td className="px-4 py-2.5 font-mono text-xs text-white">
+                    :{s.incoming_port}
+                  </td>
+                  <td className="px-4 py-2.5 font-mono text-xs text-slate-300">
+                    {s.forwarding_host}:{s.forwarding_port}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex gap-1">
+                      {s.tcp_forwarding && (
+                        <Badge
+                          variant="outline"
+                          className="border-blue-500/30 text-blue-400"
+                        >
+                          TCP
+                        </Badge>
+                      )}
+                      {s.udp_forwarding && (
+                        <Badge
+                          variant="outline"
+                          className="border-purple-500/30 text-purple-400"
+                        >
+                          UDP
+                        </Badge>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Switch
+                      checked={s.enabled}
+                      disabled={toggling === s.id}
+                      onCheckedChange={() => handleToggle(s)}
+                    />
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-slate-400 hover:text-white"
+                        onClick={() => openEdit(s)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400"
+                        disabled={deleting === s.id}
+                        onClick={() => setConfirmDelete(s)}
+                      >
+                        {deleting === s.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Create / Edit Dialog */}
+      <Dialog
+        open={showForm}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowForm(false);
+            setEditStream(null);
+          }
+        }}
+      >
+        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {editStream ? "Edit Stream" : "New Stream"}
+            </DialogTitle>
+            <DialogDescription>
+              {editStream
+                ? "Update the TCP/UDP stream proxy."
+                : "Create a new TCP/UDP stream proxy."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Incoming Port */}
+            <div className="space-y-1.5">
+              <Label htmlFor="stream-incoming-port">Incoming Port</Label>
+              <Input
+                id="stream-incoming-port"
+                type="number"
+                className="border-slate-800 bg-slate-950 text-white"
+                placeholder="8080"
+                value={form.incoming_port || ""}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    incoming_port: parseInt(e.target.value, 10) || 0,
+                  })
+                }
+              />
+            </div>
+
+            {/* Forwarding Host + Port */}
+            <div className="grid grid-cols-[1fr_120px] gap-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="stream-fwd-host">Forwarding Host</Label>
+                <Input
+                  id="stream-fwd-host"
+                  className="border-slate-800 bg-slate-950 text-white"
+                  placeholder="192.168.1.100"
+                  value={form.forwarding_host}
+                  onChange={(e) =>
+                    setForm({ ...form, forwarding_host: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="stream-fwd-port">Port</Label>
+                <Input
+                  id="stream-fwd-port"
+                  type="number"
+                  className="border-slate-800 bg-slate-950 text-white"
+                  placeholder="8080"
+                  value={form.forwarding_port || ""}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      forwarding_port: parseInt(e.target.value, 10) || 0,
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            {/* Protocol toggles */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="stream-tcp" className="cursor-pointer">
+                  TCP Forwarding
+                </Label>
+                <Switch
+                  id="stream-tcp"
+                  checked={form.tcp_forwarding}
+                  onCheckedChange={(v) =>
+                    setForm({ ...form, tcp_forwarding: v })
+                  }
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="stream-udp" className="cursor-pointer">
+                  UDP Forwarding
+                </Label>
+                <Switch
+                  id="stream-udp"
+                  checked={form.udp_forwarding}
+                  onCheckedChange={(v) =>
+                    setForm({ ...form, udp_forwarding: v })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowForm(false);
+                setEditStream(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              )}
+              {editStream ? "Save Changes" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+      >
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Delete Stream?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              The stream on port{" "}
+              <span className="font-mono text-white">
+                :{confirmDelete?.incoming_port}
+              </span>{" "}
+              forwarding to{" "}
+              <span className="font-mono text-white">
+                {confirmDelete?.forwarding_host}:
+                {confirmDelete?.forwarding_port}
+              </span>{" "}
+              will be permanently removed from Nginx Proxy Manager.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 // ─── Main Page ──────────────────────────────────────────
 
 export default function NpmPage() {
@@ -591,8 +998,10 @@ export default function NpmPage() {
   const [redirectionHosts, setRedirectionHosts] = useState<
     NpmRedirectionHost[]
   >([]);
+  const [streams, setStreams] = useState<NpmStream[]>([]);
   const [loadingProxy, setLoadingProxy] = useState(true);
   const [loadingRedir, setLoadingRedir] = useState(true);
+  const [loadingStreams, setLoadingStreams] = useState(true);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -627,11 +1036,24 @@ export default function NpmPage() {
     }
   }, []);
 
+  const loadStreams = useCallback(async () => {
+    setLoadingStreams(true);
+    try {
+      const data = await fetchNpmStreams();
+      setStreams(data);
+    } catch {
+      setStreams([]);
+    } finally {
+      setLoadingStreams(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadStatus();
     loadProxyHosts();
     loadRedirectionHosts();
-  }, [loadStatus, loadProxyHosts, loadRedirectionHosts]);
+    loadStreams();
+  }, [loadStatus, loadProxyHosts, loadRedirectionHosts, loadStreams]);
 
   const configured = status?.configured ?? false;
   const reachable = status?.reachable ?? false;
@@ -649,7 +1071,7 @@ export default function NpmPage() {
               Nginx Proxy Manager
             </h1>
             <p className="text-sm text-slate-400">
-              Manage proxy hosts and HTTP redirections
+              Manage proxy hosts, redirections, and TCP/UDP streams
             </p>
           </div>
         </div>
@@ -726,6 +1148,18 @@ export default function NpmPage() {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="streams" className="gap-1.5">
+              <Radio className="h-3.5 w-3.5" />
+              Streams
+              {streams.length > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="ml-1 h-5 bg-slate-800 px-1.5 text-[10px]"
+                >
+                  {streams.length}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="redirections">
@@ -756,6 +1190,24 @@ export default function NpmPage() {
               </CardHeader>
               <CardContent className="px-0 pb-2">
                 <ProxyHostsTable hosts={proxyHosts} loading={loadingProxy} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="streams">
+            <Card className="border-slate-800 bg-slate-900/50">
+              <CardHeader className="pb-0">
+                <CardTitle className="flex items-center gap-2 text-lg text-white">
+                  <Radio className="h-4 w-4 text-violet-400" />
+                  TCP/UDP Streams
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-0 pb-2">
+                <StreamsTable
+                  streams={streams}
+                  loading={loadingStreams}
+                  onReload={loadStreams}
+                />
               </CardContent>
             </Card>
           </TabsContent>

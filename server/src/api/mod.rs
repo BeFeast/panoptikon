@@ -337,6 +337,11 @@ pub fn router(state: AppState) -> Router {
         .route("/npm/certificates/custom", post(npm::upload_custom_cert))
         .route("/npm/certificates/:id/renew", post(npm::renew_certificate))
         .route("/npm/certificates/:id", delete(npm::delete_certificate))
+        .route("/npm/streams", get(npm::list_streams))
+        .route("/npm/streams", post(npm::create_stream))
+        .route("/npm/streams/:id", put(npm::update_stream))
+        .route("/npm/streams/:id", delete(npm::delete_stream))
+        .route("/npm/streams/:id/toggle", post(npm::toggle_stream))
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))

@@ -109,6 +109,32 @@ pub struct NpmRedirectionHostPayload {
     pub meta: serde_json::Value,
 }
 
+/// NPM stream (TCP/UDP proxy) returned by the API.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NpmStream {
+    pub id: i64,
+    pub incoming_port: u16,
+    pub forwarding_host: String,
+    pub forwarding_port: u16,
+    #[serde(default)]
+    pub tcp_forwarding: bool,
+    #[serde(default)]
+    pub udp_forwarding: bool,
+    pub enabled: bool,
+    pub meta: Option<serde_json::Value>,
+}
+
+/// Payload for creating / updating a stream.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NpmStreamPayload {
+    pub incoming_port: u16,
+    pub forwarding_host: String,
+    pub forwarding_port: u16,
+    pub tcp_forwarding: bool,
+    pub udp_forwarding: bool,
+    pub meta: serde_json::Value,
+}
+
 /// Connection test result returned by the `/npm/status` endpoint.
 #[derive(Debug, Serialize)]
 pub struct NpmConnectionStatus {
@@ -666,6 +692,151 @@ impl NpmClient {
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
             anyhow::bail!("NPM delete certificate failed (HTTP {status}): {body}");
+        }
+
+        Ok(())
+    }
+
+    // ─── Streams (TCP/UDP proxies) ─────────────────────────
+
+    /// List all streams.
+    pub async fn list_streams(&self) -> Result<Vec<NpmStream>> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/streams", self.base_url);
+
+        let resp = self
+            .http
+            .get(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM list streams request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM list streams failed (HTTP {status}): {body}");
+        }
+
+        let streams: Vec<NpmStream> = resp
+            .json()
+            .await
+            .context("failed to parse NPM streams response")?;
+
+        Ok(streams)
+    }
+
+    /// Create a new stream.
+    pub async fn create_stream(&self, payload: &NpmStreamPayload) -> Result<NpmStream> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/streams", self.base_url);
+
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(&token)
+            .json(payload)
+            .send()
+            .await
+            .context("NPM create stream request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM create stream failed (HTTP {status}): {body}");
+        }
+
+        resp.json()
+            .await
+            .context("failed to parse NPM create stream response")
+    }
+
+    /// Update an existing stream.
+    pub async fn update_stream(&self, id: i64, payload: &NpmStreamPayload) -> Result<NpmStream> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/streams/{id}", self.base_url);
+
+        let resp = self
+            .http
+            .put(&url)
+            .bearer_auth(&token)
+            .json(payload)
+            .send()
+            .await
+            .context("NPM update stream request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM update stream failed (HTTP {status}): {body}");
+        }
+
+        resp.json()
+            .await
+            .context("failed to parse NPM update stream response")
+    }
+
+    /// Delete a stream by ID.
+    pub async fn delete_stream(&self, id: i64) -> Result<()> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/streams/{id}", self.base_url);
+
+        let resp = self
+            .http
+            .delete(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM delete stream request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM delete stream failed (HTTP {status}): {body}");
+        }
+
+        Ok(())
+    }
+
+    /// Enable a stream.
+    pub async fn enable_stream(&self, id: i64) -> Result<()> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/streams/{id}/enable", self.base_url);
+
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM enable stream request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM enable stream failed (HTTP {status}): {body}");
+        }
+
+        Ok(())
+    }
+
+    /// Disable a stream.
+    pub async fn disable_stream(&self, id: i64) -> Result<()> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/streams/{id}/disable", self.base_url);
+
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM disable stream request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM disable stream failed (HTTP {status}): {body}");
         }
 
         Ok(())
