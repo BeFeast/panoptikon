@@ -307,6 +307,8 @@ pub struct RouterStatus {
 
 /// GET /api/v1/vyos/status — check if VyOS is configured and reachable.
 pub async fn status(State(state): State<AppState>) -> Json<RouterStatus> {
+    use crate::vyos::cache::cache_key;
+
     let client = match get_vyos_client_from_db(&state.db, &state.config, &state.vyos_http).await {
         Some(c) => c,
         None => {
@@ -319,6 +321,29 @@ pub async fn status(State(state): State<AppState>) -> Json<RouterStatus> {
             });
         }
     };
+
+    // Check cache first — avoids 3 slow VyOS show commands on every page load.
+    let ver_key = cache_key("show", &["version"]);
+    let up_key = cache_key("show", &["system", "uptime"]);
+    let host_key = cache_key("show", &["host", "name"]);
+
+    if let (Some(ver_cached), Some(up_cached), Some(host_cached)) = (
+        state.vyos_cache.get(&ver_key),
+        state.vyos_cache.get(&up_key),
+        state.vyos_cache.get(&host_key),
+    ) {
+        let version = ver_cached.as_str().map(|s| s.to_string());
+        let uptime = up_cached.as_str().map(|s| s.to_string());
+        let hostname = host_cached.as_str().map(|s| s.to_string());
+        let reachable = version.is_some() || uptime.is_some();
+        return Json(RouterStatus {
+            configured: true,
+            reachable,
+            version,
+            uptime,
+            hostname,
+        });
+    }
 
     // Fetch version, uptime, and hostname in parallel.
     let (ver_res, up_res, host_res) = tokio::join!(
@@ -348,6 +373,23 @@ pub async fn status(State(state): State<AppState>) -> Json<RouterStatus> {
     let hostname = host_res
         .ok()
         .and_then(|v| v.as_str().map(|s| s.trim().to_string()));
+
+    // Cache parsed values for subsequent requests.
+    if let Some(ref v) = version {
+        state
+            .vyos_cache
+            .set(ver_key, serde_json::Value::String(v.clone()));
+    }
+    if let Some(ref u) = uptime {
+        state
+            .vyos_cache
+            .set(up_key, serde_json::Value::String(u.clone()));
+    }
+    if let Some(ref h) = hostname {
+        state
+            .vyos_cache
+            .set(host_key, serde_json::Value::String(h.clone()));
+    }
 
     let reachable = version.is_some() || uptime.is_some();
 
@@ -539,6 +581,274 @@ pub async fn router_summary(
         dhcp_leases: dhcp_leases_parsed,
         firewall: firewall_parsed,
     }))
+}
+
+// ── System Info ─────────────────────────────────────────────────────
+
+/// CPU load averages.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CpuLoad {
+    pub load1: f64,
+    pub load5: f64,
+    pub load15: f64,
+}
+
+/// Memory usage in bytes.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct MemoryUsage {
+    pub total: u64,
+    pub used: u64,
+    pub free: u64,
+    pub percent: f64,
+}
+
+/// Disk usage for a single filesystem.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct DiskUsage {
+    pub filesystem: String,
+    pub size: String,
+    pub used: String,
+    pub available: String,
+    pub percent: f64,
+    pub mount: String,
+}
+
+/// Full system info response.
+#[derive(Debug, Clone, Serialize)]
+pub struct SystemInfo {
+    pub version: Option<String>,
+    pub uptime: Option<String>,
+    pub cpu_load: Option<CpuLoad>,
+    pub memory: Option<MemoryUsage>,
+    pub disk: Vec<DiskUsage>,
+}
+
+/// Syslog response.
+#[derive(Debug, Clone, Serialize)]
+pub struct SyslogResponse {
+    pub lines: Vec<String>,
+}
+
+/// Parse `show system uptime` output.
+///
+/// Example VyOS output:
+/// ```text
+///  14:32:15 up 3 days,  2:17,  1 user,  load average: 0.08, 0.03, 0.05
+/// ```
+fn parse_uptime_and_load(text: &str) -> (Option<String>, Option<CpuLoad>) {
+    let text = text.trim();
+    if text.is_empty() {
+        return (None, None);
+    }
+
+    // Extract load averages from "load average: X, Y, Z"
+    let cpu_load = if let Some(idx) = text.find("load average:") {
+        let after = &text[idx + "load average:".len()..];
+        let parts: Vec<&str> = after.split(',').collect();
+        if parts.len() >= 3 {
+            let load1 = parts[0].trim().parse::<f64>().ok();
+            let load5 = parts[1].trim().parse::<f64>().ok();
+            let load15 = parts[2].trim().parse::<f64>().ok();
+            match (load1, load5, load15) {
+                (Some(l1), Some(l5), Some(l15)) => Some(CpuLoad {
+                    load1: l1,
+                    load5: l5,
+                    load15: l15,
+                }),
+                _ => None,
+            }
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    // Extract uptime from "up X days, Y:Z" (everything between "up " and the next comma before user count)
+    let uptime = if let Some(up_idx) = text.find(" up ") {
+        let after_up = &text[up_idx + 4..];
+        // Find "load average:" to know where uptime description ends
+        let end = after_up.find("load average:").unwrap_or(after_up.len());
+        let uptime_section = &after_up[..end];
+        // Remove trailing user count like ", 1 user,"
+        let cleaned = if let Some(user_idx) = uptime_section.find(" user") {
+            // Find the comma before "N user"
+            let before_user = &uptime_section[..user_idx];
+            if let Some(last_comma) = before_user.rfind(',') {
+                uptime_section[..last_comma].trim()
+            } else {
+                uptime_section.trim()
+            }
+        } else {
+            uptime_section.trim().trim_end_matches(',')
+        };
+        if cleaned.is_empty() {
+            None
+        } else {
+            Some(cleaned.trim_end_matches(',').to_string())
+        }
+    } else {
+        // Fallback: try "Uptime:" prefix format
+        text.lines()
+            .find(|l| l.starts_with("Uptime:"))
+            .map(|l| l.trim_start_matches("Uptime:").trim().to_string())
+    };
+
+    (uptime, cpu_load)
+}
+
+/// Parse `show system memory` output.
+///
+/// Example VyOS output:
+/// ```text
+///               total        used        free      shared  buff/cache   available
+/// Mem:        8028240     1234560     4567890       12340     2225790     6556780
+/// Swap:       2097148           0     2097148
+/// ```
+fn parse_memory_text(text: &str) -> Option<MemoryUsage> {
+    for line in text.lines() {
+        let line = line.trim();
+        if line.starts_with("Mem:") {
+            let parts: Vec<&str> = line.split_whitespace().collect();
+            if parts.len() >= 4 {
+                let total = parts[1].parse::<u64>().ok()?;
+                let used = parts[2].parse::<u64>().ok()?;
+                let free = parts[3].parse::<u64>().ok()?;
+                let percent = if total > 0 {
+                    (used as f64 / total as f64) * 100.0
+                } else {
+                    0.0
+                };
+                return Some(MemoryUsage {
+                    total: total * 1024, // kB to bytes
+                    used: used * 1024,
+                    free: free * 1024,
+                    percent: (percent * 10.0).round() / 10.0,
+                });
+            }
+        }
+    }
+    None
+}
+
+/// Parse `show system storage` output.
+///
+/// Example VyOS output:
+/// ```text
+/// Filesystem      Size  Used Avail Use% Mounted on
+/// /dev/sda1        10G  2.1G  7.4G  22% /
+/// ```
+fn parse_storage_text(text: &str) -> Vec<DiskUsage> {
+    let mut disks = Vec::new();
+    for line in text.lines() {
+        let line = line.trim();
+        // Skip header lines
+        if line.is_empty()
+            || line.starts_with("Filesystem")
+            || line.starts_with("---")
+            || line.starts_with("tmpfs")
+            || line.starts_with("devtmpfs")
+            || line.starts_with("none")
+        {
+            continue;
+        }
+        let parts: Vec<&str> = line.split_whitespace().collect();
+        if parts.len() >= 6 {
+            let percent_str = parts[4].trim_end_matches('%');
+            let percent = percent_str.parse::<f64>().unwrap_or(0.0);
+            disks.push(DiskUsage {
+                filesystem: parts[0].to_string(),
+                size: parts[1].to_string(),
+                used: parts[2].to_string(),
+                available: parts[3].to_string(),
+                percent,
+                mount: parts[5].to_string(),
+            });
+        }
+    }
+    disks
+}
+
+/// GET /api/v1/vyos/system-info — system version, uptime, CPU, memory, disk.
+pub async fn system_info(State(state): State<AppState>) -> Result<Json<SystemInfo>, StatusCode> {
+    let client = get_vyos_client_or_503(&state).await?;
+
+    let (ver_res, uptime_res, mem_res, storage_res) = tokio::join!(
+        client.show(&["version"]),
+        client.show(&["system", "uptime"]),
+        client.show(&["system", "memory"]),
+        client.show(&["system", "storage"]),
+    );
+
+    let version = ver_res.ok().and_then(|v| {
+        v.as_str().map(|s| {
+            s.lines()
+                .find(|l| l.starts_with("Version:"))
+                .map(|l| l.trim_start_matches("Version:").trim().to_string())
+                .unwrap_or_else(|| s.to_string())
+        })
+    });
+
+    let uptime_text = uptime_res
+        .ok()
+        .and_then(|v| v.as_str().map(|s| s.to_string()))
+        .unwrap_or_default();
+    let (uptime, cpu_load) = parse_uptime_and_load(&uptime_text);
+
+    let memory = mem_res
+        .ok()
+        .and_then(|v| v.as_str().map(|s| s.to_string()))
+        .and_then(|text| parse_memory_text(&text));
+
+    let disk = storage_res
+        .ok()
+        .and_then(|v| v.as_str().map(|s| s.to_string()))
+        .map(|text| parse_storage_text(&text))
+        .unwrap_or_default();
+
+    Ok(Json(SystemInfo {
+        version,
+        uptime,
+        cpu_load,
+        memory,
+        disk,
+    }))
+}
+
+/// GET /api/v1/vyos/syslog?lines=50&filter=something — recent syslog entries.
+pub async fn syslog(
+    State(state): State<AppState>,
+    axum::extract::Query(params): axum::extract::Query<SyslogQuery>,
+) -> Result<Json<SyslogResponse>, StatusCode> {
+    let client = get_vyos_client_or_503(&state).await?;
+
+    let line_count = params.lines.unwrap_or(50).min(500);
+    let count_str = line_count.to_string();
+
+    let raw = client
+        .show(&["log", "tail", &count_str])
+        .await
+        .map_err(|e| {
+            tracing::error!("VyOS syslog query failed: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
+
+    let text = raw.as_str().unwrap_or("");
+    let mut lines: Vec<String> = text.lines().map(|l| l.to_string()).collect();
+
+    if let Some(ref filter) = params.filter {
+        let filter_lower = filter.to_lowercase();
+        lines.retain(|l| l.to_lowercase().contains(&filter_lower));
+    }
+
+    Ok(Json(SyslogResponse { lines }))
+}
+
+/// Query parameters for the syslog endpoint.
+#[derive(Debug, Deserialize)]
+pub struct SyslogQuery {
+    pub lines: Option<u32>,
+    pub filter: Option<String>,
 }
 
 /// GET /api/v1/vyos/interfaces — fetch VyOS interface information (parsed).
@@ -7364,5 +7674,77 @@ mod tests {
         assert!(peer.last_handshake.is_none());
         assert!(peer.rx_bytes.is_none());
         assert!(peer.tx_bytes.is_none());
+    }
+
+    // ── System Info parsing tests ───────────────────────────
+
+    #[test]
+    fn test_parse_uptime_and_load() {
+        let text = " 14:32:15 up 3 days,  2:17,  1 user,  load average: 0.08, 0.03, 0.05";
+        let (uptime, cpu) = parse_uptime_and_load(text);
+        assert_eq!(uptime.as_deref(), Some("3 days,  2:17"));
+        let cpu = cpu.unwrap();
+        assert!((cpu.load1 - 0.08).abs() < 0.001);
+        assert!((cpu.load5 - 0.03).abs() < 0.001);
+        assert!((cpu.load15 - 0.05).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_parse_uptime_and_load_short() {
+        let text = " 10:00:00 up  5:30,  2 users,  load average: 1.20, 0.80, 0.50";
+        let (uptime, cpu) = parse_uptime_and_load(text);
+        assert_eq!(uptime.as_deref(), Some("5:30"));
+        let cpu = cpu.unwrap();
+        assert!((cpu.load1 - 1.20).abs() < 0.001);
+        assert!((cpu.load5 - 0.80).abs() < 0.001);
+        assert!((cpu.load15 - 0.50).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_parse_uptime_and_load_empty() {
+        let (uptime, cpu) = parse_uptime_and_load("");
+        assert!(uptime.is_none());
+        assert!(cpu.is_none());
+    }
+
+    #[test]
+    fn test_parse_memory_text() {
+        let text = "              total        used        free      shared  buff/cache   available\n\
+                     Mem:        8028240     1234560     4567890       12340     2225790     6556780\n\
+                     Swap:       2097148           0     2097148\n";
+        let mem = parse_memory_text(text).unwrap();
+        assert_eq!(mem.total, 8028240 * 1024);
+        assert_eq!(mem.used, 1234560 * 1024);
+        assert_eq!(mem.free, 4567890 * 1024);
+        assert!((mem.percent - 15.4).abs() < 0.1);
+    }
+
+    #[test]
+    fn test_parse_memory_text_empty() {
+        assert!(parse_memory_text("").is_none());
+        assert!(parse_memory_text("no Mem: line here").is_none());
+    }
+
+    #[test]
+    fn test_parse_storage_text() {
+        let text = "Filesystem      Size  Used Avail Use% Mounted on\n\
+                     /dev/sda1        10G  2.1G  7.4G  22% /\n\
+                     tmpfs           4.0G     0  4.0G   0% /dev/shm\n";
+        let disks = parse_storage_text(text);
+        assert_eq!(disks.len(), 1); // tmpfs filtered out
+        assert_eq!(disks[0].filesystem, "/dev/sda1");
+        assert_eq!(disks[0].size, "10G");
+        assert_eq!(disks[0].used, "2.1G");
+        assert_eq!(disks[0].available, "7.4G");
+        assert!((disks[0].percent - 22.0).abs() < 0.1);
+        assert_eq!(disks[0].mount, "/");
+    }
+
+    #[test]
+    fn test_parse_storage_text_empty() {
+        assert!(parse_storage_text("").is_empty());
+        assert!(
+            parse_storage_text("Filesystem      Size  Used Avail Use% Mounted on\n").is_empty()
+        );
     }
 }
