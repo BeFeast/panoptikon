@@ -1060,13 +1060,10 @@ pub async fn update_access_list(
             .collect(),
     };
 
-    let al = client
-        .update_access_list(id, &payload)
-        .await
-        .map_err(|e| {
-            error!("NPM update access list {id} failed: {e}");
-            error_response(StatusCode::BAD_GATEWAY, e.to_string())
-        })?;
+    let al = client.update_access_list(id, &payload).await.map_err(|e| {
+        error!("NPM update access list {id} failed: {e}");
+        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+    })?;
 
     let client_count = al.clients.len();
     Ok(Json(AccessListSummary {
