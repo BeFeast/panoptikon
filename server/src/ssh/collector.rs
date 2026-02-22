@@ -163,7 +163,7 @@ fn collect_metrics(sess: &Session) -> Result<SshMetrics> {
 
     // Memory
     if let Ok(out) = exec_command(sess, "free -b | awk '/Mem:/ {print $2, $3}'") {
-        let parts: Vec<&str> = out.trim().split_whitespace().collect();
+        let parts: Vec<&str> = out.split_whitespace().collect();
         if parts.len() >= 2 {
             metrics.mem_total = parts[0].parse().ok();
             metrics.mem_used = parts[1].parse().ok();
@@ -172,7 +172,7 @@ fn collect_metrics(sess: &Session) -> Result<SshMetrics> {
 
     // Disk (root filesystem)
     if let Ok(out) = exec_command(sess, "df -B1 / | tail -1 | awk '{print $2, $3}'") {
-        let parts: Vec<&str> = out.trim().split_whitespace().collect();
+        let parts: Vec<&str> = out.split_whitespace().collect();
         if parts.len() >= 2 {
             metrics.disk_total = parts[0].parse().ok();
             metrics.disk_used = parts[1].parse().ok();
@@ -233,7 +233,10 @@ mod tests {
         let result = parse_cpu_percent(output);
         assert!(result.is_some());
         let pct = result.unwrap();
-        assert!(pct >= 0.0 && pct <= 100.0, "CPU percent {pct} out of range");
+        assert!(
+            (0.0..=100.0).contains(&pct),
+            "CPU percent {pct} out of range"
+        );
     }
 
     #[test]
