@@ -55,6 +55,38 @@ pub struct NpmProxyHost {
     pub meta: Option<serde_json::Value>,
 }
 
+/// NPM redirection host returned by the API.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NpmRedirectionHost {
+    pub id: i64,
+    pub domain_names: Vec<String>,
+    pub forward_http_code: u16,
+    pub forward_scheme: String,
+    pub forward_domain_name: String,
+    pub preserve_path: bool,
+    pub certificate_id: serde_json::Value,
+    pub ssl_forced: bool,
+    pub block_exploits: bool,
+    pub enabled: bool,
+    pub meta: Option<serde_json::Value>,
+}
+
+/// Payload for creating / updating a redirection host.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NpmRedirectionHostPayload {
+    pub domain_names: Vec<String>,
+    pub forward_http_code: u16,
+    pub forward_scheme: String,
+    pub forward_domain_name: String,
+    pub preserve_path: bool,
+    pub certificate_id: serde_json::Value,
+    pub ssl_forced: bool,
+    pub block_exploits: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<bool>,
+    pub meta: serde_json::Value,
+}
+
 /// Connection test result returned by the `/npm/status` endpoint.
 #[derive(Debug, Serialize)]
 pub struct NpmConnectionStatus {
@@ -181,6 +213,118 @@ impl NpmClient {
             .context("failed to parse NPM proxy hosts response")?;
 
         Ok(hosts)
+    }
+
+    /// List all redirection hosts.
+    pub async fn list_redirection_hosts(&self) -> Result<Vec<NpmRedirectionHost>> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/redirection-hosts", self.base_url);
+
+        let resp = self
+            .http
+            .get(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM list redirection hosts request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM list redirection hosts failed (HTTP {status}): {body}");
+        }
+
+        let hosts: Vec<NpmRedirectionHost> = resp
+            .json()
+            .await
+            .context("failed to parse NPM redirection hosts response")?;
+
+        Ok(hosts)
+    }
+
+    /// Create a new redirection host.
+    pub async fn create_redirection_host(
+        &self,
+        payload: &NpmRedirectionHostPayload,
+    ) -> Result<NpmRedirectionHost> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/redirection-hosts", self.base_url);
+
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(&token)
+            .json(payload)
+            .send()
+            .await
+            .context("NPM create redirection host request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM create redirection host failed (HTTP {status}): {body}");
+        }
+
+        let host: NpmRedirectionHost = resp
+            .json()
+            .await
+            .context("failed to parse NPM create redirection host response")?;
+
+        Ok(host)
+    }
+
+    /// Update an existing redirection host.
+    pub async fn update_redirection_host(
+        &self,
+        id: i64,
+        payload: &NpmRedirectionHostPayload,
+    ) -> Result<NpmRedirectionHost> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/redirection-hosts/{id}", self.base_url);
+
+        let resp = self
+            .http
+            .put(&url)
+            .bearer_auth(&token)
+            .json(payload)
+            .send()
+            .await
+            .context("NPM update redirection host request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM update redirection host failed (HTTP {status}): {body}");
+        }
+
+        let host: NpmRedirectionHost = resp
+            .json()
+            .await
+            .context("failed to parse NPM update redirection host response")?;
+
+        Ok(host)
+    }
+
+    /// Delete a redirection host by ID.
+    pub async fn delete_redirection_host(&self, id: i64) -> Result<()> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/redirection-hosts/{id}", self.base_url);
+
+        let resp = self
+            .http
+            .delete(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM delete redirection host request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM delete redirection host failed (HTTP {status}): {body}");
+        }
+
+        Ok(())
     }
 
     /// Test the connection by authenticating and fetching proxy hosts.

@@ -29,6 +29,7 @@ import type {
   NetflowStatus,
   NpmConnectionStatus,
   NpmProxyHost,
+  NpmRedirectionHost,
   PendingChangesResponse,
   RouterStatus,
   RouterSummary,
@@ -832,4 +833,41 @@ export function fetchNpmStatus(): Promise<NpmConnectionStatus> {
 
 export function fetchNpmProxyHosts(): Promise<NpmProxyHost[]> {
   return apiGet<NpmProxyHost[]>("/api/v1/npm/proxy-hosts");
+}
+
+export function fetchNpmRedirectionHosts(): Promise<NpmRedirectionHost[]> {
+  return apiGet<NpmRedirectionHost[]>("/api/v1/npm/redirection-hosts");
+}
+
+export function createNpmRedirectionHost(body: {
+  domain_names: string[];
+  forward_http_code: number;
+  forward_scheme: string;
+  forward_domain_name: string;
+  preserve_path: boolean;
+  ssl_forced: boolean;
+  block_exploits: boolean;
+  enabled?: boolean;
+}): Promise<NpmRedirectionHost> {
+  return apiPost<NpmRedirectionHost>("/api/v1/npm/redirection-hosts", body);
+}
+
+export function updateNpmRedirectionHost(
+  id: number,
+  body: {
+    domain_names: string[];
+    forward_http_code: number;
+    forward_scheme: string;
+    forward_domain_name: string;
+    preserve_path: boolean;
+    ssl_forced: boolean;
+    block_exploits: boolean;
+    enabled?: boolean;
+  }
+): Promise<NpmRedirectionHost> {
+  return apiPut<NpmRedirectionHost>(`/api/v1/npm/redirection-hosts/${id}`, body);
+}
+
+export function deleteNpmRedirectionHost(id: number): Promise<void> {
+  return apiDelete(`/api/v1/npm/redirection-hosts/${id}`);
 }
