@@ -27,13 +27,25 @@
 
 ## 1. Overview & Vision
 
-**Panoptikon** is a self-hosted web application for managing a VyOS router and monitoring all devices on a local network. Think of it as a mashup of **Ubiquiti UniFi's web console** (the dark theme, the topology map, the polished device cards) and **Fing** (network scanning, device discovery, online/offline tracking) — but open-source, opinionated toward VyOS, and extensible via lightweight agents.
+**Panoptikon** is a self-hosted web application for managing a VyOS router, monitoring all devices on a local network, and maintaining a complete IT asset inventory — without requiring an agent on every host.
+
+Think of it as a mashup of **Ubiquiti UniFi's web console** (dark theme, topology map, polished device cards), **Fing** (network scanning, device discovery, online/offline tracking), and **Lansweeper / NetBox** (asset inventory, SSH-based agentless collection, categorization) — but open-source, opinionated toward VyOS, and running as a single binary.
 
 The name references Bentham's panopticon — the all-seeing observation tower — reimagined as a personal tool: *you* are the observer, your home network is the space. The `k` spelling makes it unique and ownable.
 
-**The one-liner:** A beautiful, UniFi-inspired control plane for your VyOS home/lab network.
+**The one-liner:** A beautiful, UniFi-inspired control plane and asset management system for your VyOS home/lab network.
 
-**Vision:** You open a single browser tab and see your entire network: the router's health, every device's status, bandwidth graphs, and alerts — all in a dark, information-dense UI that feels like a professional network operations center, not a hobbyist tool.
+**Vision:** You open a single browser tab and see your entire infrastructure: router health, every device discovered via ARP/DHCP, full hardware inventory collected either via lightweight agents *or* direct SSH — all in a dark, information-dense UI that feels like a professional network operations center, not a hobbyist tool.
+
+### Asset Management Vision
+
+Every host in your network has a record: whether it's a bare-metal server, a Proxmox VM, a TrueNAS box, a Raspberry Pi, or a laptop. Panoptikon collects hardware facts (CPU model, RAM, disk, OS) from three sources — in order of preference:
+
+1. **Panoptikon agent** (installed) — real-time telemetry, CPU/RAM charts, network traffic
+2. **SSH polling** (no agent needed) — periodic SSH in, run standard Linux commands, collect same facts
+3. **Manual entry** — for devices you can't access (IoT, printers, managed switches)
+
+The result: a single inventory view of your entire infrastructure, always up to date, with zero external dependencies.
 
 ---
 
@@ -78,6 +90,8 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 | G2 | Auto-discover and track all devices on the local network |
 | G3 | Offer optional lightweight agents for deep host-level telemetry |
 | G4 | Deliver a polished, UniFi-quality dark UI |
+| G5 | Maintain a complete IT asset inventory — hardware, OS, ownership, location — without external tools |
+| G6 | Support agentless SSH-based monitoring for hosts where installing an agent is not possible or desired |
 | G5 | Keep resource usage minimal — the server should run on a Raspberry Pi 4 |
 | G6 | Be easy to deploy: single binary + SQLite, no external dependencies |
 | G7 | Open-source (MIT or Apache 2.0) with a clean, contributor-friendly codebase |
@@ -196,6 +210,92 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 - REST API for all data (devices, alerts, metrics) — dogfood the same API the UI uses
 - CSV/JSON export of device list, alert history, traffic data
 - Prometheus metrics endpoint (`/metrics`) for integration with existing monitoring
+
+---
+
+### P2 — Asset Management & Agentless SSH Monitoring (v0.4+)
+
+#### F15: Agentless SSH Monitoring
+
+For hosts where you can't or don't want to install an agent, Panoptikon can SSH in directly and collect the same metrics.
+
+**How it works:**
+- Add an SSH target: hostname/IP, port, username, password or SSH key
+- Server polls periodically (configurable interval, default: 60s)
+- Runs a minimal command set via SSH, parses output
+- Stores results in the same `ssh_reports` table, displays in the same UI as agent data
+
+**Commands collected:**
+```bash
+# CPU load (1min avg)
+cat /proc/loadavg | awk '{print $1}'
+
+# Memory (bytes: total, used)
+free -b | awk '/Mem:/ {print $2, $3}'
+
+# Disk (bytes: total, used on /)
+df -B1 / | tail -1 | awk '{print $2, $3}'
+
+# Uptime (seconds)
+cat /proc/uptime | awk '{print $1}'
+
+# Hostname and OS
+hostname && cat /etc/os-release | grep -E '^(NAME|VERSION_ID)='
+```
+
+**Credential storage:** password/key stored encrypted in SQLite (AES-256, key derived from admin password). Alternatively, reference an Infisical secret path (for self-hosters already using Infisical).
+
+**Status:** online if last poll succeeded, offline if SSH connection failed 3× in a row.
+
+**UI:** SSH Hosts page in sidebar. Table shows name, host, CPU%, RAM%, disk%, uptime, OS, last seen. Detail page: same CPU/RAM charts as agent detail. Test connection button.
+
+#### F16: IT Asset Inventory
+
+A structured record for every asset in the infrastructure — servers, VMs, containers, workstations, network devices, storage, IoT.
+
+**Asset record fields:**
+| Field | Source | Notes |
+|-------|--------|-------|
+| Name | Manual / auto from hostname | Human-readable label |
+| Type | Manual / heuristic | server, workstation, vm, container, nas, router, switch, iot, phone, unknown |
+| Location | Manual | Rack, room, cloud region, or "home office" |
+| Owner / managed by | Manual | Who is responsible |
+| Hardware model | Agent / SSH / manual | e.g. "Apple Mac Mini M4", "Supermicro X11SCL" |
+| CPU | Agent / SSH / manual | e.g. "Intel Xeon E-2224G (4 cores @ 3.5 GHz)" |
+| RAM | Agent / SSH | bytes → displayed as GB |
+| Storage | Agent / SSH / manual | Primary disk size + name |
+| OS | Agent / SSH / manual | e.g. "Ubuntu 24.04 LTS" |
+| IP address(es) | Discovered via ARP/DHCP | Can have multiple |
+| MAC address(es) | Discovered | For linking to network-scanned devices |
+| Tags | Manual | Free-form: "production", "backup", "lab", "proxmox-node" |
+| Notes | Manual | Free text |
+| Purchase date | Manual | Optional, for warranty tracking |
+| Serial number | Agent / SSH (`dmidecode`) / manual | |
+| Status | Auto | online / offline / unknown |
+
+**Data sources (priority order):**
+1. Panoptikon agent (if installed) → live telemetry + hardware inventory
+2. SSH polling (if configured) → periodic collection of the same facts
+3. Network scan (ARP/DHCP) → IP, MAC, online status, vendor guess
+4. Manual entry → everything else
+
+**Linking:** An asset can be linked to a discovered network device (by MAC/IP), to a Panoptikon agent (by agent ID), and to an SSH target (by IP). The UI merges these views automatically when the same host appears in multiple sources.
+
+**Asset list view:**
+- Filterable by type, status, tags, OS
+- Columns: name, type, IP, OS, CPU%, RAM%, disk%, online status, last seen
+- Sort by any column
+- Quick search (same as proxy hosts search)
+
+**Asset detail view:**
+- Full record with all fields
+- Live metrics panel if agent or SSH is connected (CPU/RAM sparklines)
+- Network history (when was it first seen, online/offline log)
+- Linked devices / agents / SSH targets
+- Edit inline
+
+**Why this matters:**
+Instead of maintaining a spreadsheet, Netbox instance, or wiki page for your homelab inventory, Panoptikon becomes the single source of truth. It knows what's on the network because it scans. It knows the hardware because the agents or SSH told it. Manual fields fill in the gaps.
 
 ---
 
