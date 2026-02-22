@@ -3670,7 +3670,7 @@ async fn get_vyos_client_from_db(
 }
 
 /// Get VyOS client or return 503 SERVICE_UNAVAILABLE if not configured.
-async fn get_vyos_client_or_503(
+pub(crate) async fn get_vyos_client_or_503(
     state: &AppState,
 ) -> Result<crate::vyos::client::VyosClient, StatusCode> {
     get_vyos_client_from_db(&state.db, &state.config)
