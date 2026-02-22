@@ -41,6 +41,18 @@ export interface Device {
   enrichment_corrected?: boolean | null;
   /** Whether the MAC address is locally administered (randomized). */
   is_randomized_mac?: boolean | null;
+  /** Custom name override (user-defined). */
+  custom_name?: string | null;
+  /** Custom device type override. */
+  custom_type?: string | null;
+  /** Custom OS override. */
+  custom_os?: string | null;
+  /** Custom vendor/manufacturer override. */
+  custom_vendor?: string | null;
+  /** Custom model override. */
+  custom_model?: string | null;
+  /** Icon override (user-picked). */
+  icon_override?: string | null;
 }
 
 // ─── Device Sysinfo (hardware inventory from agent) ───

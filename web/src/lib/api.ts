@@ -252,6 +252,27 @@ export function fetchDeviceSysinfo(id: string): Promise<DeviceSysinfo | null> {
   return apiGet<DeviceSysinfo | null>(`/api/v1/devices/${id}/sysinfo`);
 }
 
+export interface DeviceCustomFields {
+  custom_name?: string;
+  custom_type?: string;
+  custom_os?: string;
+  custom_vendor?: string;
+  custom_model?: string;
+  notes?: string;
+  icon_override?: string;
+}
+
+export function updateDevice(
+  id: string,
+  body: DeviceCustomFields
+): Promise<void> {
+  return apiPatch<void>(`/api/v1/devices/${id}`, body);
+}
+
+export function resetDeviceCustom(id: string): Promise<void> {
+  return apiDelete(`/api/v1/devices/${id}/custom`);
+}
+
 // ─── Agents ─────────────────────────────────────────────
 
 export function fetchAgents(): Promise<Agent[]> {
