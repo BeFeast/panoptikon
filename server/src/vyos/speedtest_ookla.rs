@@ -53,6 +53,12 @@ pub async fn run_speedtest_ookla() -> Result<OoklaSpeedtestResult> {
     let output = tokio::time::timeout(Duration::from_secs(120), async {
         Command::new("/usr/local/bin/speedtest")
             .args(["--accept-license", "--accept-gdpr", "--format=json"])
+            // Ookla CLI requires HOME to be set; Tokio spawn inherits env but
+            // HOME may be unset in systemd service contexts.
+            .env(
+                "HOME",
+                std::env::var("HOME").unwrap_or_else(|_| "/root".to_string()),
+            )
             .output()
             .await
             .context("failed to execute speedtest CLI")
