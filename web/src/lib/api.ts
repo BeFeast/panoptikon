@@ -9,6 +9,7 @@ import type {
   AgentCreateResponse,
   AgentReport,
   Alert,
+  AuditLogListResponse,
   AuthStatus,
   DashboardStats,
   DbSizeData,
@@ -504,6 +505,22 @@ export function fetchDbSize(): Promise<DbSizeData> {
 
 export function triggerVacuum(): Promise<void> {
   return apiPost<void>("/api/v1/settings/vacuum");
+}
+
+// ─── Audit Log ──────────────────────────────────────────
+
+export function fetchAuditLog(
+  page = 1,
+  perPage = 25,
+  action?: string
+): Promise<AuditLogListResponse> {
+  const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
+  if (action) params.set("action", action);
+  return apiGet<AuditLogListResponse>(`/api/v1/audit-log?${params}`);
+}
+
+export function fetchAuditLogActions(): Promise<string[]> {
+  return apiGet<string[]>("/api/v1/audit-log/actions");
 }
 
 // ─── Topology Positions ──────────────────────────────────

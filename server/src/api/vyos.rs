@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::SqlitePool;
 
+use super::audit;
 use super::AppState;
 
 // ── Parsed VyOS route ───────────────────────────────────
@@ -1161,8 +1162,25 @@ pub async fn create_firewall_rule(
         body.action
     );
 
+    let description = format!(
+        "Create firewall rule {} in chain {} (action={})",
+        body.number, path.chain, body.action
+    );
+    let commands = vec![format!(
+        "set firewall {} rule {} ...",
+        path.chain, body.number
+    )];
+
     if let Err(e) = apply_firewall_rule_config(&client, &base, &body).await {
         tracing::error!("VyOS firewall rule create failed: {e}");
+        audit::log_failure(
+            &state.db,
+            "firewall_rule_create",
+            &description,
+            &commands,
+            &e,
+        )
+        .await;
         // Attempt cleanup on failure
         let base_strs: Vec<&str> = base.iter().map(|s| s.as_str()).collect();
         let _ = client.configure_delete(&base_strs).await;
@@ -1174,6 +1192,8 @@ pub async fn create_firewall_rule(
             }),
         ));
     }
+
+    audit::log_success(&state.db, "firewall_rule_create", &description, &commands).await;
 
     Ok(Json(VyosWriteResponse {
         success: true,
@@ -1229,14 +1249,32 @@ pub async fn update_firewall_rule(
         body.action
     );
 
+    let description = format!(
+        "Update firewall rule {} in chain {} (action={})",
+        path.number, path.chain, body.action
+    );
+    let commands = vec![
+        format!("delete firewall {} rule {}", path.chain, path.number),
+        format!("set firewall {} rule {} ...", path.chain, path.number),
+    ];
+
     // Delete the existing rule first
     if let Err(e) = client.configure_delete(&base_strs).await {
         tracing::error!("VyOS firewall rule delete (for update) failed: {e}");
+        let msg = format!("Failed to delete existing rule for update: {e}");
+        audit::log_failure(
+            &state.db,
+            "firewall_rule_update",
+            &description,
+            &commands,
+            &msg,
+        )
+        .await;
         return Err((
             StatusCode::BAD_GATEWAY,
             Json(VyosWriteResponse {
                 success: false,
-                message: format!("Failed to delete existing rule for update: {e}"),
+                message: msg,
             }),
         ));
     }
@@ -1244,6 +1282,14 @@ pub async fn update_firewall_rule(
     // Re-create with the updated values
     if let Err(e) = apply_firewall_rule_config(&client, &base, &body).await {
         tracing::error!("VyOS firewall rule re-create (for update) failed: {e}");
+        audit::log_failure(
+            &state.db,
+            "firewall_rule_update",
+            &description,
+            &commands,
+            &e,
+        )
+        .await;
         return Err((
             StatusCode::BAD_GATEWAY,
             Json(VyosWriteResponse {
@@ -1252,6 +1298,8 @@ pub async fn update_firewall_rule(
             }),
         ));
     }
+
+    audit::log_success(&state.db, "firewall_rule_update", &description, &commands).await;
 
     Ok(Json(VyosWriteResponse {
         success: true,
@@ -1293,18 +1341,39 @@ pub async fn delete_firewall_rule(
         path.chain
     );
 
+    let description = format!(
+        "Delete firewall rule {} from chain {}",
+        path.number, path.chain
+    );
+    let commands = vec![format!(
+        "delete firewall {} rule {}",
+        path.chain, path.number
+    )];
+
     match client.configure_delete(&base_strs).await {
-        Ok(_) => Ok(Json(VyosWriteResponse {
-            success: true,
-            message: format!("Rule {} deleted from {}", path.number, path.chain),
-        })),
+        Ok(_) => {
+            audit::log_success(&state.db, "firewall_rule_delete", &description, &commands).await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Rule {} deleted from {}", path.number, path.chain),
+            }))
+        }
         Err(e) => {
             tracing::error!("VyOS firewall rule delete failed: {e}");
+            let msg = format!("VyOS error: {e}");
+            audit::log_failure(
+                &state.db,
+                "firewall_rule_delete",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
             Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("VyOS error: {e}"),
+                    message: msg,
                 }),
             ))
         }
@@ -1349,6 +1418,21 @@ pub async fn toggle_firewall_rule(
         path.chain
     );
 
+    let description = format!(
+        "{} firewall rule {} in chain {}",
+        if body.disabled { "Disable" } else { "Enable" },
+        path.number,
+        path.chain
+    );
+    let commands = vec![if body.disabled {
+        format!("set firewall {} rule {} disable", path.chain, path.number)
+    } else {
+        format!(
+            "delete firewall {} rule {} disable",
+            path.chain, path.number
+        )
+    }];
+
     let result = if body.disabled {
         client.configure_set(&disable_path).await
     } else {
@@ -1356,17 +1440,29 @@ pub async fn toggle_firewall_rule(
     };
 
     match result {
-        Ok(_) => Ok(Json(VyosWriteResponse {
-            success: true,
-            message: format!("Rule {} {}d in {}", path.number, action, path.chain),
-        })),
+        Ok(_) => {
+            audit::log_success(&state.db, "firewall_rule_toggle", &description, &commands).await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Rule {} {}d in {}", path.number, action, path.chain),
+            }))
+        }
         Err(e) => {
             tracing::error!("VyOS firewall rule toggle failed: {e}");
+            let msg = format!("VyOS error: {e}");
+            audit::log_failure(
+                &state.db,
+                "firewall_rule_toggle",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
             Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("VyOS error: {e}"),
+                    message: msg,
                 }),
             ))
         }
@@ -1461,6 +1557,18 @@ pub async fn interface_toggle(
     let action = if body.disable { "disable" } else { "enable" };
     tracing::info!("VyOS: {action} interface {iface_type} {name}");
 
+    let description = format!(
+        "{} interface {} ({})",
+        if body.disable { "Disable" } else { "Enable" },
+        name,
+        iface_type
+    );
+    let commands = vec![if body.disable {
+        format!("set interfaces {iface_type} {name} disable")
+    } else {
+        format!("delete interfaces {iface_type} {name} disable")
+    }];
+
     let result = if body.disable {
         client
             .configure_set(&["interfaces", iface_type, &name, "disable"])
@@ -1472,17 +1580,22 @@ pub async fn interface_toggle(
     };
 
     match result {
-        Ok(_) => Ok(Json(VyosWriteResponse {
-            success: true,
-            message: format!("Interface {name} {action}d successfully"),
-        })),
+        Ok(_) => {
+            audit::log_success(&state.db, "interface_toggle", &description, &commands).await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Interface {name} {action}d successfully"),
+            }))
+        }
         Err(e) => {
             tracing::error!("VyOS interface {action} failed for {name}: {e}");
+            let msg = format!("VyOS error: {e}");
+            audit::log_failure(&state.db, "interface_toggle", &description, &commands, &msg).await;
             Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("VyOS error: {e}"),
+                    message: msg,
                 }),
             ))
         }
@@ -1668,6 +1781,15 @@ pub async fn create_dhcp_static_mapping(
         body.subnet
     );
 
+    let audit_desc = format!(
+        "Create DHCP static mapping '{}': {} -> {} (network={}, subnet={})",
+        body.name, body.mac, body.ip, body.network, body.subnet
+    );
+    let audit_commands = vec![
+        format!("set service dhcp-server shared-network-name {} subnet {} static-mapping {} mac-address {}", body.network, body.subnet, body.name, body.mac),
+        format!("set service dhcp-server shared-network-name {} subnet {} static-mapping {} ip-address {}", body.network, body.subnet, body.name, body.ip),
+    ];
+
     // Set mac-address
     let mac_result = client
         .configure_set(&[
@@ -1686,11 +1808,20 @@ pub async fn create_dhcp_static_mapping(
 
     if let Err(e) = mac_result {
         tracing::error!("VyOS DHCP static-mapping mac set failed: {e}");
+        let msg = format!("Failed to set MAC address: {e}");
+        audit::log_failure(
+            &state.db,
+            "dhcp_static_mapping_create",
+            &audit_desc,
+            &audit_commands,
+            &msg,
+        )
+        .await;
         return Err((
             StatusCode::BAD_GATEWAY,
             Json(VyosWriteResponse {
                 success: false,
-                message: format!("Failed to set MAC address: {e}"),
+                message: msg,
             }),
         ));
     }
@@ -1713,6 +1844,15 @@ pub async fn create_dhcp_static_mapping(
 
     if let Err(e) = ip_result {
         tracing::error!("VyOS DHCP static-mapping ip set failed: {e}");
+        let msg = format!("Failed to set IP address: {e}");
+        audit::log_failure(
+            &state.db,
+            "dhcp_static_mapping_create",
+            &audit_desc,
+            &audit_commands,
+            &msg,
+        )
+        .await;
         // Try to clean up the mac we just set
         let _ = client
             .configure_delete(&[
@@ -1730,7 +1870,7 @@ pub async fn create_dhcp_static_mapping(
             StatusCode::BAD_GATEWAY,
             Json(VyosWriteResponse {
                 success: false,
-                message: format!("Failed to set IP address: {e}"),
+                message: msg,
             }),
         ));
     }
@@ -1739,6 +1879,14 @@ pub async fn create_dhcp_static_mapping(
         "VyOS: DHCP static mapping '{}' created ({base_path})",
         body.name
     );
+
+    audit::log_success(
+        &state.db,
+        "dhcp_static_mapping_create",
+        &audit_desc,
+        &audit_commands,
+    )
+    .await;
 
     Ok(Json(VyosWriteResponse {
         success: true,
@@ -1779,6 +1927,15 @@ pub async fn delete_dhcp_static_mapping(
         path.subnet
     );
 
+    let description = format!(
+        "Delete DHCP static mapping '{}' (network={}, subnet={})",
+        path.name, path.network, path.subnet
+    );
+    let commands = vec![format!(
+        "delete service dhcp-server shared-network-name {} subnet {} static-mapping {}",
+        path.network, path.subnet, path.name
+    )];
+
     let result = client
         .configure_delete(&[
             "service",
@@ -1793,17 +1950,35 @@ pub async fn delete_dhcp_static_mapping(
         .await;
 
     match result {
-        Ok(_) => Ok(Json(VyosWriteResponse {
-            success: true,
-            message: format!("Static mapping '{}' deleted", path.name),
-        })),
+        Ok(_) => {
+            audit::log_success(
+                &state.db,
+                "dhcp_static_mapping_delete",
+                &description,
+                &commands,
+            )
+            .await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Static mapping '{}' deleted", path.name),
+            }))
+        }
         Err(e) => {
             tracing::error!("VyOS DHCP static-mapping delete failed: {e}");
+            let msg = format!("VyOS error: {e}");
+            audit::log_failure(
+                &state.db,
+                "dhcp_static_mapping_delete",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
             Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("VyOS error: {e}"),
+                    message: msg,
                 }),
             ))
         }
@@ -2107,6 +2282,25 @@ pub async fn create_address_group(
 
     tracing::info!("VyOS: creating address-group '{}'", body.name);
 
+    let audit_desc = format!(
+        "Create address group '{}' with {} addresses",
+        body.name,
+        body.addresses.len()
+    );
+    let mut audit_commands: Vec<String> = Vec::new();
+    if let Some(ref desc) = body.description {
+        audit_commands.push(format!(
+            "set firewall group address-group {} description '{}'",
+            body.name, desc
+        ));
+    }
+    for addr in &body.addresses {
+        audit_commands.push(format!(
+            "set firewall group address-group {} address {}",
+            body.name, addr
+        ));
+    }
+
     // Set description if provided
     if let Some(ref desc) = body.description {
         if let Err(e) = client
@@ -2121,11 +2315,20 @@ pub async fn create_address_group(
             .await
         {
             tracing::error!("VyOS address-group description set failed: {e}");
+            let msg = format!("Failed to set description: {e}");
+            audit::log_failure(
+                &state.db,
+                "address_group_create",
+                &audit_desc,
+                &audit_commands,
+                &msg,
+            )
+            .await;
             return Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("Failed to set description: {e}"),
+                    message: msg,
                 }),
             ));
         }
@@ -2145,15 +2348,32 @@ pub async fn create_address_group(
             .await
         {
             tracing::error!("VyOS address-group address add failed: {e}");
+            let msg = format!("Failed to add address {addr}: {e}");
+            audit::log_failure(
+                &state.db,
+                "address_group_create",
+                &audit_desc,
+                &audit_commands,
+                &msg,
+            )
+            .await;
             return Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("Failed to add address {addr}: {e}"),
+                    message: msg,
                 }),
             ));
         }
     }
+
+    audit::log_success(
+        &state.db,
+        "address_group_create",
+        &audit_desc,
+        &audit_commands,
+    )
+    .await;
 
     Ok(Json(VyosWriteResponse {
         success: true,
@@ -2178,21 +2398,36 @@ pub async fn delete_address_group(
 
     tracing::info!("VyOS: deleting address-group '{name}'");
 
+    let description = format!("Delete address group '{name}'");
+    let commands = vec![format!("delete firewall group address-group {name}")];
+
     match client
         .configure_delete(&["firewall", "group", "address-group", &name])
         .await
     {
-        Ok(_) => Ok(Json(VyosWriteResponse {
-            success: true,
-            message: format!("Address group '{name}' deleted"),
-        })),
+        Ok(_) => {
+            audit::log_success(&state.db, "address_group_delete", &description, &commands).await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Address group '{name}' deleted"),
+            }))
+        }
         Err(e) => {
             tracing::error!("VyOS address-group delete failed: {e}");
+            let msg = format!("VyOS error: {e}");
+            audit::log_failure(
+                &state.db,
+                "address_group_delete",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
             Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("VyOS error: {e}"),
+                    message: msg,
                 }),
             ))
         }
@@ -2230,6 +2465,12 @@ pub async fn add_address_group_member(
         body.value
     );
 
+    let description = format!("Add address '{}' to address group '{name}'", body.value);
+    let commands = vec![format!(
+        "set firewall group address-group {name} address {}",
+        body.value
+    )];
+
     match client
         .configure_set(&[
             "firewall",
@@ -2241,17 +2482,35 @@ pub async fn add_address_group_member(
         ])
         .await
     {
-        Ok(_) => Ok(Json(VyosWriteResponse {
-            success: true,
-            message: format!("Address '{}' added to group '{name}'", body.value),
-        })),
+        Ok(_) => {
+            audit::log_success(
+                &state.db,
+                "address_group_member_add",
+                &description,
+                &commands,
+            )
+            .await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Address '{}' added to group '{name}'", body.value),
+            }))
+        }
         Err(e) => {
             tracing::error!("VyOS address-group member add failed: {e}");
+            let msg = format!("VyOS error: {e}");
+            audit::log_failure(
+                &state.db,
+                "address_group_member_add",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
             Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("VyOS error: {e}"),
+                    message: msg,
                 }),
             ))
         }
@@ -2275,6 +2534,11 @@ pub async fn remove_address_group_member(
 
     tracing::info!("VyOS: removing address '{value}' from address-group '{name}'");
 
+    let description = format!("Remove address '{value}' from address group '{name}'");
+    let commands = vec![format!(
+        "delete firewall group address-group {name} address {value}"
+    )];
+
     match client
         .configure_delete(&[
             "firewall",
@@ -2286,17 +2550,35 @@ pub async fn remove_address_group_member(
         ])
         .await
     {
-        Ok(_) => Ok(Json(VyosWriteResponse {
-            success: true,
-            message: format!("Address '{value}' removed from group '{name}'"),
-        })),
+        Ok(_) => {
+            audit::log_success(
+                &state.db,
+                "address_group_member_remove",
+                &description,
+                &commands,
+            )
+            .await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Address '{value}' removed from group '{name}'"),
+            }))
+        }
         Err(e) => {
             tracing::error!("VyOS address-group member remove failed: {e}");
+            let msg = format!("VyOS error: {e}");
+            audit::log_failure(
+                &state.db,
+                "address_group_member_remove",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
             Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("VyOS error: {e}"),
+                    message: msg,
                 }),
             ))
         }
@@ -2342,6 +2624,25 @@ pub async fn create_network_group(
 
     tracing::info!("VyOS: creating network-group '{}'", body.name);
 
+    let audit_desc = format!(
+        "Create network group '{}' with {} networks",
+        body.name,
+        body.networks.len()
+    );
+    let mut audit_commands: Vec<String> = Vec::new();
+    if let Some(ref desc) = body.description {
+        audit_commands.push(format!(
+            "set firewall group network-group {} description '{}'",
+            body.name, desc
+        ));
+    }
+    for net in &body.networks {
+        audit_commands.push(format!(
+            "set firewall group network-group {} network {}",
+            body.name, net
+        ));
+    }
+
     if let Some(ref desc) = body.description {
         if let Err(e) = client
             .configure_set(&[
@@ -2355,11 +2656,20 @@ pub async fn create_network_group(
             .await
         {
             tracing::error!("VyOS network-group description set failed: {e}");
+            let msg = format!("Failed to set description: {e}");
+            audit::log_failure(
+                &state.db,
+                "network_group_create",
+                &audit_desc,
+                &audit_commands,
+                &msg,
+            )
+            .await;
             return Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("Failed to set description: {e}"),
+                    message: msg,
                 }),
             ));
         }
@@ -2378,15 +2688,32 @@ pub async fn create_network_group(
             .await
         {
             tracing::error!("VyOS network-group network add failed: {e}");
+            let msg = format!("Failed to add network {net}: {e}");
+            audit::log_failure(
+                &state.db,
+                "network_group_create",
+                &audit_desc,
+                &audit_commands,
+                &msg,
+            )
+            .await;
             return Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("Failed to add network {net}: {e}"),
+                    message: msg,
                 }),
             ));
         }
     }
+
+    audit::log_success(
+        &state.db,
+        "network_group_create",
+        &audit_desc,
+        &audit_commands,
+    )
+    .await;
 
     Ok(Json(VyosWriteResponse {
         success: true,
@@ -2411,21 +2738,36 @@ pub async fn delete_network_group(
 
     tracing::info!("VyOS: deleting network-group '{name}'");
 
+    let description = format!("Delete network group '{name}'");
+    let commands = vec![format!("delete firewall group network-group {name}")];
+
     match client
         .configure_delete(&["firewall", "group", "network-group", &name])
         .await
     {
-        Ok(_) => Ok(Json(VyosWriteResponse {
-            success: true,
-            message: format!("Network group '{name}' deleted"),
-        })),
+        Ok(_) => {
+            audit::log_success(&state.db, "network_group_delete", &description, &commands).await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Network group '{name}' deleted"),
+            }))
+        }
         Err(e) => {
             tracing::error!("VyOS network-group delete failed: {e}");
+            let msg = format!("VyOS error: {e}");
+            audit::log_failure(
+                &state.db,
+                "network_group_delete",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
             Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("VyOS error: {e}"),
+                    message: msg,
                 }),
             ))
         }
@@ -2463,6 +2805,12 @@ pub async fn add_network_group_member(
         body.value
     );
 
+    let description = format!("Add network '{}' to network group '{name}'", body.value);
+    let commands = vec![format!(
+        "set firewall group network-group {name} network {}",
+        body.value
+    )];
+
     match client
         .configure_set(&[
             "firewall",
@@ -2474,17 +2822,35 @@ pub async fn add_network_group_member(
         ])
         .await
     {
-        Ok(_) => Ok(Json(VyosWriteResponse {
-            success: true,
-            message: format!("Network '{}' added to group '{name}'", body.value),
-        })),
+        Ok(_) => {
+            audit::log_success(
+                &state.db,
+                "network_group_member_add",
+                &description,
+                &commands,
+            )
+            .await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Network '{}' added to group '{name}'", body.value),
+            }))
+        }
         Err(e) => {
             tracing::error!("VyOS network-group member add failed: {e}");
+            let msg = format!("VyOS error: {e}");
+            audit::log_failure(
+                &state.db,
+                "network_group_member_add",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
             Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("VyOS error: {e}"),
+                    message: msg,
                 }),
             ))
         }
@@ -2508,6 +2874,11 @@ pub async fn remove_network_group_member(
 
     tracing::info!("VyOS: removing network '{value}' from network-group '{name}'");
 
+    let description = format!("Remove network '{value}' from network group '{name}'");
+    let commands = vec![format!(
+        "delete firewall group network-group {name} network {value}"
+    )];
+
     match client
         .configure_delete(&[
             "firewall",
@@ -2519,17 +2890,35 @@ pub async fn remove_network_group_member(
         ])
         .await
     {
-        Ok(_) => Ok(Json(VyosWriteResponse {
-            success: true,
-            message: format!("Network '{value}' removed from group '{name}'"),
-        })),
+        Ok(_) => {
+            audit::log_success(
+                &state.db,
+                "network_group_member_remove",
+                &description,
+                &commands,
+            )
+            .await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Network '{value}' removed from group '{name}'"),
+            }))
+        }
         Err(e) => {
             tracing::error!("VyOS network-group member remove failed: {e}");
+            let msg = format!("VyOS error: {e}");
+            audit::log_failure(
+                &state.db,
+                "network_group_member_remove",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
             Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("VyOS error: {e}"),
+                    message: msg,
                 }),
             ))
         }
@@ -2575,6 +2964,25 @@ pub async fn create_port_group(
 
     tracing::info!("VyOS: creating port-group '{}'", body.name);
 
+    let audit_desc = format!(
+        "Create port group '{}' with {} ports",
+        body.name,
+        body.ports.len()
+    );
+    let mut audit_commands: Vec<String> = Vec::new();
+    if let Some(ref desc) = body.description {
+        audit_commands.push(format!(
+            "set firewall group port-group {} description '{}'",
+            body.name, desc
+        ));
+    }
+    for port in &body.ports {
+        audit_commands.push(format!(
+            "set firewall group port-group {} port {}",
+            body.name, port
+        ));
+    }
+
     if let Some(ref desc) = body.description {
         if let Err(e) = client
             .configure_set(&[
@@ -2588,11 +2996,20 @@ pub async fn create_port_group(
             .await
         {
             tracing::error!("VyOS port-group description set failed: {e}");
+            let msg = format!("Failed to set description: {e}");
+            audit::log_failure(
+                &state.db,
+                "port_group_create",
+                &audit_desc,
+                &audit_commands,
+                &msg,
+            )
+            .await;
             return Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("Failed to set description: {e}"),
+                    message: msg,
                 }),
             ));
         }
@@ -2604,15 +3021,26 @@ pub async fn create_port_group(
             .await
         {
             tracing::error!("VyOS port-group port add failed: {e}");
+            let msg = format!("Failed to add port {port}: {e}");
+            audit::log_failure(
+                &state.db,
+                "port_group_create",
+                &audit_desc,
+                &audit_commands,
+                &msg,
+            )
+            .await;
             return Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("Failed to add port {port}: {e}"),
+                    message: msg,
                 }),
             ));
         }
     }
+
+    audit::log_success(&state.db, "port_group_create", &audit_desc, &audit_commands).await;
 
     Ok(Json(VyosWriteResponse {
         success: true,
@@ -2637,21 +3065,36 @@ pub async fn delete_port_group(
 
     tracing::info!("VyOS: deleting port-group '{name}'");
 
+    let description = format!("Delete port group '{name}'");
+    let commands = vec![format!("delete firewall group port-group {name}")];
+
     match client
         .configure_delete(&["firewall", "group", "port-group", &name])
         .await
     {
-        Ok(_) => Ok(Json(VyosWriteResponse {
-            success: true,
-            message: format!("Port group '{name}' deleted"),
-        })),
+        Ok(_) => {
+            audit::log_success(&state.db, "port_group_delete", &description, &commands).await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Port group '{name}' deleted"),
+            }))
+        }
         Err(e) => {
             tracing::error!("VyOS port-group delete failed: {e}");
+            let msg = format!("VyOS error: {e}");
+            audit::log_failure(
+                &state.db,
+                "port_group_delete",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
             Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("VyOS error: {e}"),
+                    message: msg,
                 }),
             ))
         }
@@ -2686,6 +3129,12 @@ pub async fn add_port_group_member(
 
     tracing::info!("VyOS: adding port '{}' to port-group '{name}'", body.value);
 
+    let description = format!("Add port '{}' to port group '{name}'", body.value);
+    let commands = vec![format!(
+        "set firewall group port-group {name} port {}",
+        body.value
+    )];
+
     match client
         .configure_set(&[
             "firewall",
@@ -2697,17 +3146,29 @@ pub async fn add_port_group_member(
         ])
         .await
     {
-        Ok(_) => Ok(Json(VyosWriteResponse {
-            success: true,
-            message: format!("Port '{}' added to group '{name}'", body.value),
-        })),
+        Ok(_) => {
+            audit::log_success(&state.db, "port_group_member_add", &description, &commands).await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Port '{}' added to group '{name}'", body.value),
+            }))
+        }
         Err(e) => {
             tracing::error!("VyOS port-group member add failed: {e}");
+            let msg = format!("VyOS error: {e}");
+            audit::log_failure(
+                &state.db,
+                "port_group_member_add",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
             Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("VyOS error: {e}"),
+                    message: msg,
                 }),
             ))
         }
@@ -2731,21 +3192,44 @@ pub async fn remove_port_group_member(
 
     tracing::info!("VyOS: removing port '{value}' from port-group '{name}'");
 
+    let description = format!("Remove port '{value}' from port group '{name}'");
+    let commands = vec![format!(
+        "delete firewall group port-group {name} port {value}"
+    )];
+
     match client
         .configure_delete(&["firewall", "group", "port-group", &name, "port", &value])
         .await
     {
-        Ok(_) => Ok(Json(VyosWriteResponse {
-            success: true,
-            message: format!("Port '{value}' removed from group '{name}'"),
-        })),
+        Ok(_) => {
+            audit::log_success(
+                &state.db,
+                "port_group_member_remove",
+                &description,
+                &commands,
+            )
+            .await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Port '{value}' removed from group '{name}'"),
+            }))
+        }
         Err(e) => {
             tracing::error!("VyOS port-group member remove failed: {e}");
+            let msg = format!("VyOS error: {e}");
+            audit::log_failure(
+                &state.db,
+                "port_group_member_remove",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
             Err((
                 StatusCode::BAD_GATEWAY,
                 Json(VyosWriteResponse {
                     success: false,
-                    message: format!("VyOS error: {e}"),
+                    message: msg,
                 }),
             ))
         }

@@ -28,6 +28,9 @@ const ALERT_MANAGEMENT_MIGRATION: &str = include_str!("migrations/007_alert_mana
 /// Migration 008: topology positions — persist node positions after drag.
 const TOPOLOGY_POSITIONS_MIGRATION: &str = include_str!("migrations/008_topology_positions.sql");
 
+/// Migration 009: audit log for VyOS write operations.
+const AUDIT_LOG_MIGRATION: &str = include_str!("migrations/009_audit_log.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -207,6 +210,22 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 008_topology_positions.sql");
     }
 
+    // Migration 009: audit log table.
+    let applied_9: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 9")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_9 {
+        sqlx::raw_sql(AUDIT_LOG_MIGRATION).execute(pool).await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (9)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 009_audit_log.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -250,6 +269,7 @@ mod tests {
             "sessions",
             "device_events",
             "topology_positions",
+            "audit_log",
         ];
 
         for table in &expected_tables {
