@@ -18,7 +18,7 @@ import type {
   DbSizeData,
   Device,
   DhcpStaticMapping,
-  DnsConfig,
+  DnsForwardingConfig,
   FirewallConfig,
   FirewallRuleRequest,
   FirewallGroups,
@@ -301,6 +301,54 @@ export function fetchRouterFirewall(): Promise<FirewallConfig> {
 
 export function runSpeedTest(): Promise<SpeedTestResult> {
   return apiPost<SpeedTestResult>("/api/v1/router/speedtest");
+}
+
+// ─── DNS Forwarding ─────────────────────────────────────
+
+export function fetchDnsForwarding(): Promise<DnsForwardingConfig> {
+  return apiGet<DnsForwardingConfig>("/api/v1/vyos/dns/forwarding");
+}
+
+export function addDnsNameServer(server: string): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>("/api/v1/vyos/dns/forwarding/name-servers", {
+    server,
+  });
+}
+
+export function deleteDnsNameServer(
+  server: string
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/dns/forwarding/name-servers/${encodeURIComponent(server)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function addDnsDomainOverride(body: {
+  domain: string;
+  server: string;
+}): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>(
+    "/api/v1/vyos/dns/forwarding/domain-overrides",
+    body
+  );
+}
+
+export function editDnsDomainOverride(
+  domain: string,
+  body: { domain: string; server: string }
+): Promise<VyosWriteResponse> {
+  return apiPut<VyosWriteResponse>(
+    `/api/v1/vyos/dns/forwarding/domain-overrides/${encodeURIComponent(domain)}`,
+    body
+  );
+}
+
+export function deleteDnsDomainOverride(
+  domain: string
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/dns/forwarding/domain-overrides/${encodeURIComponent(domain)}`
+  ) as unknown as Promise<VyosWriteResponse>;
 }
 
 // ─── Firewall Groups ─────────────────────────────────────
@@ -629,66 +677,6 @@ export function generateWireguardClientConfig(
     `/api/v1/vyos/wireguard/${encodeURIComponent(iface)}/peers/${encodeURIComponent(peer)}/generate-config`,
     body
   );
-}
-
-// ─── DNS Management ──────────────────────────────────────
-
-export function fetchDnsConfig(): Promise<DnsConfig> {
-  return apiGet<DnsConfig>("/api/v1/vyos/dns");
-}
-
-export function addDnsNameserver(ip: string): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>("/api/v1/vyos/dns/nameservers", { ip });
-}
-
-export function deleteDnsNameserver(ip: string): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/dns/nameservers/${encodeURIComponent(ip)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function addDnsDomainForward(
-  domain: string,
-  server: string
-): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>("/api/v1/vyos/dns/domain-forwarding", {
-    domain,
-    server,
-  });
-}
-
-export function deleteDnsDomainForward(
-  domain: string
-): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/dns/domain-forwarding/${encodeURIComponent(domain)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function addDnsHostOverride(
-  hostname: string,
-  ip: string
-): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>("/api/v1/vyos/dns/host-overrides", {
-    hostname,
-    ip,
-  });
-}
-
-export function deleteDnsHostOverride(
-  hostname: string
-): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/dns/host-overrides/${encodeURIComponent(hostname)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function updateDnsSettings(body: {
-  listen_address?: string;
-  cache_size?: number;
-  dnssec?: string;
-}): Promise<VyosWriteResponse> {
-  return apiPut<VyosWriteResponse>("/api/v1/vyos/dns/settings", body);
 }
 
 // ─── Topology Positions ──────────────────────────────────

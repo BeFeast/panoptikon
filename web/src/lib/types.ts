@@ -413,25 +413,19 @@ export interface ClientConfigResponse {
   public_key: string;
 }
 
-// ─── DNS Management ────────────────────────────────────
+// ─── DNS Forwarding ────────────────────────────────────
 
-export interface DnsDomainForward {
+export interface DnsDomainOverride {
   domain: string;
   server: string;
 }
 
-export interface DnsHostOverride {
-  hostname: string;
-  ip: string;
-}
-
-export interface DnsConfig {
-  nameservers: string[];
-  domain_forwarding: DnsDomainForward[];
-  host_overrides: DnsHostOverride[];
-  listen_address: string | null;
+export interface DnsForwardingConfig {
+  name_servers: string[];
+  listen_addresses: string[];
+  domain_overrides: DnsDomainOverride[];
+  allow_from: string[];
   cache_size: number | null;
-  dnssec: string | null;
 }
 
 // ─── Auth ───────────────────────────────────────────────
