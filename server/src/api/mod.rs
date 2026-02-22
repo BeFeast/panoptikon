@@ -315,6 +315,10 @@ pub fn router(state: AppState) -> Router {
         // Nginx Proxy Manager
         .route("/npm/status", get(npm::status))
         .route("/npm/proxy-hosts", get(npm::proxy_hosts))
+        .route("/npm/proxy-hosts", post(npm::create_proxy_host))
+        .route("/npm/proxy-hosts/:id", put(npm::update_proxy_host))
+        .route("/npm/proxy-hosts/:id", delete(npm::delete_proxy_host))
+        .route("/npm/proxy-hosts/:id/toggle", post(npm::toggle_proxy_host))
         .route("/npm/redirection-hosts", get(npm::redirection_hosts))
         .route("/npm/redirection-hosts", post(npm::create_redirection_host))
         .route(

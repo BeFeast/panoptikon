@@ -52,7 +52,29 @@ pub struct NpmProxyHost {
     pub forward_scheme: String,
     pub enabled: bool,
     pub ssl_forced: bool,
+    pub certificate_id: Option<serde_json::Value>,
+    pub hsts_enabled: bool,
+    pub http2_support: bool,
+    pub block_exploits: bool,
+    pub allow_websocket_upgrade: bool,
+    pub advanced_config: Option<String>,
     pub meta: Option<serde_json::Value>,
+}
+
+/// Payload for creating or updating a proxy host.
+#[derive(Debug, Serialize, Clone)]
+pub struct NpmProxyHostPayload {
+    pub domain_names: Vec<String>,
+    pub forward_host: String,
+    pub forward_port: u16,
+    pub forward_scheme: String,
+    pub certificate_id: serde_json::Value,
+    pub ssl_forced: bool,
+    pub hsts_enabled: bool,
+    pub http2_support: bool,
+    pub block_exploits: bool,
+    pub allow_websocket_upgrade: bool,
+    pub advanced_config: String,
 }
 
 /// NPM redirection host returned by the API.
@@ -213,6 +235,126 @@ impl NpmClient {
             .context("failed to parse NPM proxy hosts response")?;
 
         Ok(hosts)
+    }
+
+    /// Create a new proxy host.
+    pub async fn create_proxy_host(&self, payload: &NpmProxyHostPayload) -> Result<NpmProxyHost> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/proxy-hosts", self.base_url);
+
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(&token)
+            .json(payload)
+            .send()
+            .await
+            .context("NPM create proxy host request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM create proxy host failed (HTTP {status}): {body}");
+        }
+
+        resp.json()
+            .await
+            .context("failed to parse NPM create proxy host response")
+    }
+
+    /// Update an existing proxy host.
+    pub async fn update_proxy_host(
+        &self,
+        id: i64,
+        payload: &NpmProxyHostPayload,
+    ) -> Result<NpmProxyHost> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/proxy-hosts/{}", self.base_url, id);
+
+        let resp = self
+            .http
+            .put(&url)
+            .bearer_auth(&token)
+            .json(payload)
+            .send()
+            .await
+            .context("NPM update proxy host request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM update proxy host failed (HTTP {status}): {body}");
+        }
+
+        resp.json()
+            .await
+            .context("failed to parse NPM update proxy host response")
+    }
+
+    /// Delete a proxy host by ID.
+    pub async fn delete_proxy_host(&self, id: i64) -> Result<()> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/proxy-hosts/{}", self.base_url, id);
+
+        let resp = self
+            .http
+            .delete(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM delete proxy host request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM delete proxy host failed (HTTP {status}): {body}");
+        }
+
+        Ok(())
+    }
+
+    /// Enable a proxy host.
+    pub async fn enable_proxy_host(&self, id: i64) -> Result<()> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/proxy-hosts/{}/enable", self.base_url, id);
+
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM enable proxy host request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM enable proxy host failed (HTTP {status}): {body}");
+        }
+
+        Ok(())
+    }
+
+    /// Disable a proxy host.
+    pub async fn disable_proxy_host(&self, id: i64) -> Result<()> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/proxy-hosts/{}/disable", self.base_url, id);
+
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM disable proxy host request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM disable proxy host failed (HTTP {status}): {body}");
+        }
+
+        Ok(())
     }
 
     /// List all redirection hosts.

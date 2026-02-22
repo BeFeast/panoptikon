@@ -29,6 +29,7 @@ import type {
   NetflowStatus,
   NpmConnectionStatus,
   NpmProxyHost,
+  NpmProxyHostRequest,
   NpmRedirectionHost,
   PendingChangesResponse,
   RouterStatus,
@@ -834,6 +835,35 @@ export function fetchNpmStatus(): Promise<NpmConnectionStatus> {
 export function fetchNpmProxyHosts(): Promise<NpmProxyHost[]> {
   return apiGet<NpmProxyHost[]>("/api/v1/npm/proxy-hosts");
 }
+
+<<<<<<< HEAD
+// ─── Proxy Hosts ────────────────────────────────────────
+
+export function createNpmProxyHost(
+  body: NpmProxyHostRequest
+): Promise<NpmProxyHost> {
+  return apiPost<NpmProxyHost>("/api/v1/npm/proxy-hosts", body);
+}
+
+export function updateNpmProxyHost(
+  id: number,
+  body: NpmProxyHostRequest
+): Promise<NpmProxyHost> {
+  return apiPut<NpmProxyHost>(`/api/v1/npm/proxy-hosts/${id}`, body);
+}
+
+export function deleteNpmProxyHost(id: number): Promise<void> {
+  return apiDelete(`/api/v1/npm/proxy-hosts/${id}`);
+}
+
+export function toggleNpmProxyHost(
+  id: number,
+  enabled: boolean
+): Promise<void> {
+  return apiPost<void>(`/api/v1/npm/proxy-hosts/${id}/toggle`, { enabled });
+}
+
+// ─── Redirection Hosts ──────────────────────────────────
 
 export function fetchNpmRedirectionHosts(): Promise<NpmRedirectionHost[]> {
   return apiGet<NpmRedirectionHost[]>("/api/v1/npm/redirection-hosts");

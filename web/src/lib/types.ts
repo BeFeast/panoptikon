@@ -389,6 +389,26 @@ export interface NpmProxyHost {
   forward_scheme: string;
   enabled: boolean;
   ssl_forced: boolean;
+  certificate_id: number | string | null;
+  hsts_enabled: boolean;
+  http2_support: boolean;
+  block_exploits: boolean;
+  allow_websocket_upgrade: boolean;
+  advanced_config: string | null;
+}
+
+export interface NpmProxyHostRequest {
+  domain_names: string[];
+  forward_host: string;
+  forward_port: number;
+  forward_scheme: string;
+  certificate_id: number | string;
+  ssl_forced: boolean;
+  hsts_enabled: boolean;
+  http2_support: boolean;
+  block_exploits: boolean;
+  allow_websocket_upgrade: boolean;
+  advanced_config: string;
 }
 
 export interface NpmRedirectionHost {
