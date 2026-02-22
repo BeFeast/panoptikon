@@ -776,11 +776,7 @@ pub fn parse_firewall_config(value: &Value) -> FirewallConfig {
                     name: chain_name,
                     default_action,
                     rules,
-                    path: vec![
-                        ip_version.clone(),
-                        direction.clone(),
-                        filter_type.clone(),
-                    ],
+                    path: vec![ip_version.clone(), direction.clone(), filter_type.clone()],
                 });
             }
         }
@@ -2900,9 +2896,6 @@ mod tests {
 
         let config = parse_firewall_config(&json);
         assert_eq!(config.chains.len(), 1);
-        assert_eq!(
-            config.chains[0].path,
-            vec!["ipv4", "forward", "filter"]
-        );
+        assert_eq!(config.chains[0].path, vec!["ipv4", "forward", "filter"]);
     }
 }
