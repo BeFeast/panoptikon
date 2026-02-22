@@ -167,9 +167,15 @@ export interface RouterStatus {
 export interface RouterSummary {
   status: RouterStatus;
   interfaces: VyosInterface[];
+  config_interfaces: Record<string, unknown>;
   routes: VyosRoute[];
   dhcp_leases: VyosDhcpLease[];
+  dhcp_static_mappings: DhcpStaticMapping[];
+  dhcp_server_config: DhcpServerConfig;
   firewall: FirewallConfig;
+  firewall_groups: FirewallGroups;
+  dns_forwarding: DnsForwardingConfig;
+  wireguard: WireguardInterface[];
 }
 
 export interface SpeedTestResult {
