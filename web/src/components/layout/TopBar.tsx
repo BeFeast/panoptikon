@@ -429,7 +429,7 @@ export function TopBar() {
             </DropdownMenuItem>
             <DropdownMenuItem
               className="cursor-pointer"
-              onClick={() => router.push("/settings#password")}
+              onClick={() => router.push("/settings/password")}
             >
               <Lock className="mr-2 h-4 w-4" />
               Change password
