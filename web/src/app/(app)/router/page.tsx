@@ -20,6 +20,9 @@ import {
   Wifi,
   Plus,
   Trash2,
+  Pencil,
+  Power,
+  Ban,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -62,8 +65,12 @@ import {
   fetchDhcpStaticMappings,
   createDhcpStaticMapping,
   deleteDhcpStaticMapping,
+  createFirewallRule,
+  updateFirewallRule,
+  deleteFirewallRule,
+  toggleFirewallRule,
 } from "@/lib/api";
-import type { FirewallConfig, FirewallChain, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping } from "@/lib/types";
+import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping } from "@/lib/types";
 import { Progress } from "@/components/ui/progress";
 import { PageTransition } from "@/components/PageTransition";
 
@@ -1402,75 +1409,534 @@ function DefaultActionBadge({ action }: { action: string }) {
   );
 }
 
+// ── Firewall Rule Form Helpers ───────────────────────────
+
+const EMPTY_RULE_FORM: FirewallRuleRequest = {
+  number: 0,
+  action: "drop",
+  protocol: undefined,
+  source_address: undefined,
+  source_port: undefined,
+  destination_address: undefined,
+  destination_port: undefined,
+  description: undefined,
+  state: undefined,
+  disabled: false,
+};
+
+const STATE_OPTIONS = ["new", "established", "related", "invalid"] as const;
+
+/** Build VyOS config preview lines for a rule request. */
+function buildConfigPreview(chainPath: string[], rule: FirewallRuleRequest): string[] {
+  const prefix = `firewall ${chainPath.join(" ")} rule ${rule.number}`;
+  const lines: string[] = [];
+  lines.push(`set ${prefix} action ${rule.action}`);
+  if (rule.protocol) lines.push(`set ${prefix} protocol ${rule.protocol}`);
+  if (rule.source_address) lines.push(`set ${prefix} source address ${rule.source_address}`);
+  if (rule.source_port) lines.push(`set ${prefix} source port ${rule.source_port}`);
+  if (rule.destination_address) lines.push(`set ${prefix} destination address ${rule.destination_address}`);
+  if (rule.destination_port) lines.push(`set ${prefix} destination port ${rule.destination_port}`);
+  if (rule.description) lines.push(`set ${prefix} description "${rule.description}"`);
+  if (rule.state?.length) {
+    for (const s of rule.state) lines.push(`set ${prefix} state ${s} enable`);
+  }
+  if (rule.disabled) lines.push(`set ${prefix} disable`);
+  return lines;
+}
+
+/** Styled native select matching the dark theme. */
+const selectClass = "h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500";
+
+// ── Firewall Rule Dialog (Create / Edit) ─────────────────
+
+function FirewallRuleDialog({
+  chain,
+  editRule,
+  open,
+  onOpenChange,
+  onSaved,
+}: {
+  chain: FirewallChain;
+  editRule: FirewallRule | null;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSaved: () => void;
+}) {
+  const isEdit = editRule !== null;
+  const nextNumber = chain.rules.length > 0
+    ? Math.max(...chain.rules.map((r) => r.number)) + 10
+    : 10;
+
+  const [form, setForm] = useState<FirewallRuleRequest>({ ...EMPTY_RULE_FORM, number: nextNumber });
+  const [saving, setSaving] = useState(false);
+
+  // Reset form when dialog opens
+  useEffect(() => {
+    if (!open) return;
+    if (editRule) {
+      setForm({
+        number: editRule.number,
+        action: editRule.action,
+        protocol: editRule.protocol ?? undefined,
+        source_address: undefined, // can't reverse the formatted display back to raw
+        source_port: undefined,
+        destination_address: undefined,
+        destination_port: undefined,
+        description: editRule.description ?? undefined,
+        state: editRule.state ? editRule.state.split(", ").filter(Boolean) : undefined,
+        disabled: editRule.disabled,
+      });
+    } else {
+      setForm({ ...EMPTY_RULE_FORM, number: nextNumber });
+    }
+  }, [open, editRule, nextNumber]);
+
+  const handleSave = async () => {
+    if (form.number <= 0) {
+      toast.error("Rule number must be positive");
+      return;
+    }
+    setSaving(true);
+    try {
+      // Strip empty optional fields
+      const body: FirewallRuleRequest = {
+        ...form,
+        protocol: form.protocol || undefined,
+        source_address: form.source_address || undefined,
+        source_port: form.source_port || undefined,
+        destination_address: form.destination_address || undefined,
+        destination_port: form.destination_port || undefined,
+        description: form.description || undefined,
+        state: form.state?.length ? form.state : undefined,
+      };
+      const res = isEdit
+        ? await updateFirewallRule(chain, editRule!.number, body)
+        : await createFirewallRule(chain, body);
+      toast.success(res.message);
+      onOpenChange(false);
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleState = (s: string) => {
+    const current = form.state ?? [];
+    const next = current.includes(s) ? current.filter((x) => x !== s) : [...current, s];
+    setForm({ ...form, state: next });
+  };
+
+  const showPorts = form.protocol === "tcp" || form.protocol === "udp" || form.protocol === "tcp_udp";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-slate-800 bg-slate-900 sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-white">
+            {isEdit ? `Edit Rule ${editRule!.number}` : "Add Firewall Rule"}
+          </DialogTitle>
+          <DialogDescription className="text-slate-400">
+            {isEdit ? `Update rule in ${chain.name}.` : `Add a new rule to ${chain.name}.`}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4">
+          {/* Row: Rule number + Action */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-slate-300">Rule Number</Label>
+              <Input
+                type="number"
+                value={form.number}
+                onChange={(e) => setForm({ ...form, number: parseInt(e.target.value) || 0 })}
+                disabled={isEdit}
+                className="border-slate-800 bg-slate-950 font-mono text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-slate-300">Action</Label>
+              <select
+                value={form.action}
+                onChange={(e) => setForm({ ...form, action: e.target.value })}
+                className={selectClass}
+              >
+                <option value="accept">accept</option>
+                <option value="drop">drop</option>
+                <option value="reject">reject</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Protocol */}
+          <div className="space-y-2">
+            <Label className="text-slate-300">Protocol</Label>
+            <select
+              value={form.protocol ?? ""}
+              onChange={(e) => setForm({ ...form, protocol: e.target.value || undefined })}
+              className={selectClass}
+            >
+              <option value="">any</option>
+              <option value="tcp">tcp</option>
+              <option value="udp">udp</option>
+              <option value="tcp_udp">tcp_udp</option>
+              <option value="icmp">icmp</option>
+            </select>
+          </div>
+
+          {/* Source */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-slate-300">Source Address / CIDR</Label>
+              <Input
+                value={form.source_address ?? ""}
+                onChange={(e) => setForm({ ...form, source_address: e.target.value || undefined })}
+                placeholder="e.g. 10.0.0.0/8"
+                className="border-slate-800 bg-slate-950 font-mono text-white"
+              />
+            </div>
+            {showPorts && (
+              <div className="space-y-2">
+                <Label className="text-slate-300">Source Port</Label>
+                <Input
+                  value={form.source_port ?? ""}
+                  onChange={(e) => setForm({ ...form, source_port: e.target.value || undefined })}
+                  placeholder="e.g. 1024-65535"
+                  className="border-slate-800 bg-slate-950 font-mono text-white"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Destination */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-slate-300">Destination Address / CIDR</Label>
+              <Input
+                value={form.destination_address ?? ""}
+                onChange={(e) => setForm({ ...form, destination_address: e.target.value || undefined })}
+                placeholder="e.g. 192.168.1.0/24"
+                className="border-slate-800 bg-slate-950 font-mono text-white"
+              />
+            </div>
+            {showPorts && (
+              <div className="space-y-2">
+                <Label className="text-slate-300">Destination Port</Label>
+                <Input
+                  value={form.destination_port ?? ""}
+                  onChange={(e) => setForm({ ...form, destination_port: e.target.value || undefined })}
+                  placeholder="e.g. 443"
+                  className="border-slate-800 bg-slate-950 font-mono text-white"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Description */}
+          <div className="space-y-2">
+            <Label className="text-slate-300">Description</Label>
+            <Input
+              value={form.description ?? ""}
+              onChange={(e) => setForm({ ...form, description: e.target.value || undefined })}
+              placeholder="Allow HTTPS from LAN"
+              className="border-slate-800 bg-slate-950 text-white"
+            />
+          </div>
+
+          {/* State checkboxes */}
+          <div className="space-y-2">
+            <Label className="text-slate-300">Connection State</Label>
+            <div className="flex flex-wrap gap-3">
+              {STATE_OPTIONS.map((s) => (
+                <label key={s} className="flex items-center gap-1.5 text-sm text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={form.state?.includes(s) ?? false}
+                    onChange={() => toggleState(s)}
+                    className="rounded border-slate-700 bg-slate-950 text-blue-500 focus:ring-blue-500"
+                  />
+                  {s}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Disable toggle */}
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={form.disabled}
+              onCheckedChange={(checked) => setForm({ ...form, disabled: checked })}
+              className="data-[state=checked]:bg-rose-600 data-[state=unchecked]:bg-slate-700"
+            />
+            <Label className="text-slate-300">Disabled (rule exists but is inactive)</Label>
+          </div>
+
+          {/* Config diff preview */}
+          {form.number > 0 && (
+            <div className="rounded-md border border-slate-800 bg-slate-950 p-3">
+              <p className="text-xs font-medium text-slate-500">Config change:</p>
+              <code className="mt-1 block whitespace-pre-wrap text-xs text-blue-400">
+                {buildConfigPreview(chain.path, form).join("\n")}
+              </code>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+            className="border-slate-800 text-slate-300 hover:bg-slate-800"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-blue-600 text-white hover:bg-blue-700"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving…
+              </>
+            ) : isEdit ? (
+              "Update Rule"
+            ) : (
+              "Create Rule"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Firewall Chain Card ─────────────────────────────────
 
-function FirewallChainCard({ chain }: { chain: FirewallChain }) {
+function FirewallChainCard({
+  chain,
+  onReload,
+}: {
+  chain: FirewallChain;
+  onReload: () => void;
+}) {
+  const [showRuleDialog, setShowRuleDialog] = useState(false);
+  const [editRule, setEditRule] = useState<FirewallRule | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<FirewallRule | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+  const [toggling, setToggling] = useState<number | null>(null);
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    const num = confirmDelete.number;
+    setConfirmDelete(null);
+    setDeleting(num);
+    try {
+      const res = await deleteFirewallRule(chain, num);
+      toast.success(res.message);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleToggle = async (rule: FirewallRule) => {
+    setToggling(rule.number);
+    try {
+      const res = await toggleFirewallRule(chain, rule.number, !rule.disabled);
+      toast.success(res.message);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Toggle failed");
+    } finally {
+      setToggling(null);
+    }
+  };
+
+  const openEdit = (rule: FirewallRule) => {
+    setEditRule(rule);
+    setShowRuleDialog(true);
+  };
+
+  const openCreate = () => {
+    setEditRule(null);
+    setShowRuleDialog(true);
+  };
+
   return (
-    <Card className="border-slate-800 bg-slate-900">
-      <CardHeader>
-        <div className="flex flex-wrap items-center gap-3">
-          <CardTitle className="text-base text-white">{chain.name}</CardTitle>
-          <DefaultActionBadge action={chain.default_action} />
-        </div>
-      </CardHeader>
-      <CardContent>
-        {chain.rules.length === 0 ? (
-          <p className="py-2 text-sm text-slate-500">
-            No rules in this chain.
-          </p>
-        ) : (
-          <div className="overflow-x-auto rounded-md border border-slate-800">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-800 bg-slate-950 text-left">
-                  <th className="px-4 py-3 font-medium text-slate-400">#</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">Action</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">Source</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">Destination</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                {chain.rules.map((rule) => (
-                  <tr
-                    key={rule.number}
-                    className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
-                  >
-                    <td className="px-4 py-3">
-                      <span className="font-mono tabular-nums text-slate-300">{rule.number}</span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <FirewallActionBadge action={rule.action} />
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="font-mono tabular-nums text-xs text-slate-300">
-                        {rule.source ?? "any"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="font-mono tabular-nums text-xs text-slate-300">
-                        {rule.destination ?? "any"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-slate-300">
-                        {rule.protocol ?? "any"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="text-slate-400">
-                        {rule.description ?? "—"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+    <>
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <CardTitle className="text-base text-white">{chain.name}</CardTitle>
+              <DefaultActionBadge action={chain.default_action} />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={openCreate}
+              className="border-slate-800 text-slate-300 hover:bg-slate-800"
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add Rule
+            </Button>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardHeader>
+        <CardContent>
+          {chain.rules.length === 0 ? (
+            <p className="py-2 text-sm text-slate-500">
+              No rules in this chain.
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-md border border-slate-800">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                    <th className="px-4 py-3 font-medium text-slate-400">#</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Action</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Source</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Destination</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Description</th>
+                    <th className="px-4 py-3 text-right font-medium text-slate-400">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {chain.rules.map((rule) => (
+                    <tr
+                      key={rule.number}
+                      className={`border-b border-slate-800 last:border-b-0 transition-colors ${
+                        rule.disabled ? "opacity-50" : "hover:bg-slate-800/60"
+                      }`}
+                    >
+                      <td className="px-4 py-3">
+                        <span className="font-mono tabular-nums text-slate-300">{rule.number}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <FirewallActionBadge action={rule.action} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-mono tabular-nums text-xs text-slate-300">
+                          {rule.source ?? "any"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-mono tabular-nums text-xs text-slate-300">
+                          {rule.destination ?? "any"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-slate-300">
+                          {rule.protocol ?? "any"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-slate-400">
+                          {rule.description ?? "—"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          {toggling === rule.number ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleToggle(rule)}
+                              className="h-8 w-8 p-0 text-slate-400 hover:text-yellow-400"
+                              title={rule.disabled ? "Enable rule" : "Disable rule"}
+                            >
+                              {rule.disabled ? <Power className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEdit(rule)}
+                            className="h-8 w-8 p-0 text-slate-400 hover:text-blue-400"
+                            title="Edit rule"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          {deleting === rule.number ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setConfirmDelete(rule)}
+                              className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400"
+                              title="Delete rule"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create / Edit dialog */}
+      <FirewallRuleDialog
+        chain={chain}
+        editRule={editRule}
+        open={showRuleDialog}
+        onOpenChange={setShowRuleDialog}
+        onSaved={onReload}
+      />
+
+      {/* Delete confirmation */}
+      <AlertDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
+      >
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Delete Firewall Rule
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              This will permanently delete rule{" "}
+              <span className="font-mono font-medium text-white">
+                {confirmDelete?.number}
+              </span>{" "}
+              from {chain.name}.
+              {confirmDelete?.description && (
+                <> ({confirmDelete.description})</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-md border border-slate-800 bg-slate-950 p-3">
+            <p className="text-xs font-medium text-slate-500">Config change:</p>
+            <code className="mt-1 block whitespace-pre-wrap text-xs text-rose-400">
+              {confirmDelete &&
+                `delete firewall ${chain.path.join(" ")} rule ${confirmDelete.number}`}
+            </code>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-800 text-slate-300 hover:bg-slate-800">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -1480,10 +1946,12 @@ function FirewallPanel({
   config,
   loading,
   error,
+  onReload,
 }: {
   config: FirewallConfig | null;
   loading: boolean;
   error: string | null;
+  onReload: () => void;
 }) {
   if (loading) {
     return (
@@ -1507,6 +1975,7 @@ function FirewallPanel({
                       <th className="px-4 py-3 font-medium text-slate-400">Destination</th>
                       <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
                       <th className="px-4 py-3 font-medium text-slate-400">Description</th>
+                      <th className="px-4 py-3 font-medium text-slate-400"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1518,6 +1987,7 @@ function FirewallPanel({
                         <td className="px-4 py-3"><Skeleton className="h-3 w-24" /></td>
                         <td className="px-4 py-3"><Skeleton className="h-4 w-12" /></td>
                         <td className="px-4 py-3"><Skeleton className="h-4 w-32" /></td>
+                        <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
                       </tr>
                     ))}
                   </tbody>
@@ -1551,7 +2021,7 @@ function FirewallPanel({
   return (
     <div className="space-y-4">
       {config.chains.map((chain) => (
-        <FirewallChainCard key={chain.name} chain={chain} />
+        <FirewallChainCard key={chain.name} chain={chain} onReload={onReload} />
       ))}
     </div>
   );
@@ -1758,6 +2228,7 @@ function RouterTabs({ status }: { status: RouterStatus }) {
             config={firewall.data}
             loading={firewall.loading}
             error={firewall.error}
+            onReload={firewall.reload}
           />
         </TabsContent>
 
