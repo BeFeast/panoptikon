@@ -25,6 +25,20 @@ export interface Device {
   agent?: AgentSummary | null;
   /** Muted until timestamp (if device is muted). */
   muted_until?: string | null;
+  /** OS family (e.g. "iOS", "Android", "Windows", "Linux", "macOS"). */
+  os_family?: string | null;
+  /** OS version string (if known). */
+  os_version?: string | null;
+  /** Device type (e.g. "phone", "laptop", "router", "printer"). */
+  device_type?: string | null;
+  /** Device model name (e.g. "iPhone SE 2022"). */
+  device_model?: string | null;
+  /** Device brand (e.g. "Apple", "Samsung"). */
+  device_brand?: string | null;
+  /** Which enrichment source provided the identification. */
+  enrichment_source?: string | null;
+  /** Whether user has manually corrected the enrichment. */
+  enrichment_corrected?: boolean | null;
 }
 
 export interface AgentSummary {

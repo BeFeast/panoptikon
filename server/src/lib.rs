@@ -1,6 +1,7 @@
 pub mod api;
 pub mod config;
 pub mod db;
+pub mod enrichment;
 pub mod mdns;
 pub mod netflow;
 pub mod oui;

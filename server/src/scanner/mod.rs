@@ -188,6 +188,10 @@ pub async fn process_scan_results(
     // Pairs of (device_id, ip) collected during upsert for batch DNS resolution.
     let mut dns_targets: Vec<(String, String)> = Vec::new();
 
+    // Enrichment targets: (device_id, ip, mac, hostname, vendor, mdns_services)
+    let mut enrichment_targets: Vec<(String, String, String, Option<String>, Option<String>, Option<String>)> =
+        Vec::new();
+
     // Begin a single transaction for all DB mutations (Phase 1 + Phase 2).
     let mut tx = db.begin().await?;
 
@@ -396,7 +400,36 @@ pub async fn process_scan_results(
             }
         };
 
-        dns_targets.push((device_id, dev.ip.clone()));
+        dns_targets.push((device_id.clone(), dev.ip.clone()));
+
+        // Collect enrichment target: (device_id, ip, mac, hostname, vendor, mdns_services)
+        let hostname: Option<String> =
+            sqlx::query_scalar("SELECT hostname FROM devices WHERE id = ?")
+                .bind(&device_id)
+                .fetch_optional(&mut *tx)
+                .await?
+                .flatten();
+        let vendor: Option<String> =
+            sqlx::query_scalar("SELECT vendor FROM devices WHERE id = ?")
+                .bind(&device_id)
+                .fetch_optional(&mut *tx)
+                .await?
+                .flatten();
+        let mdns_svcs: Option<String> =
+            sqlx::query_scalar("SELECT mdns_services FROM devices WHERE id = ?")
+                .bind(&device_id)
+                .fetch_optional(&mut *tx)
+                .await?
+                .flatten();
+
+        enrichment_targets.push((
+            device_id,
+            dev.ip.clone(),
+            dev.mac.to_lowercase(),
+            hostname,
+            vendor,
+            mdns_svcs,
+        ));
     }
 
     // --- Phase 2: Mark stale devices as offline ---
@@ -543,6 +576,22 @@ pub async fn process_scan_results(
                 }
             }
         } // end if let Some(resolver)
+    }
+
+    // --- Phase 4: Device enrichment (OS, type, model) ---
+    // Runs after DNS so hostnames are available for enrichment heuristics.
+    for (device_id, ip, mac, hostname, vendor, mdns_services) in &enrichment_targets {
+        crate::enrichment::enrich_device(
+            db,
+            device_id,
+            ip,
+            mac,
+            hostname.as_deref(),
+            vendor.as_deref(),
+            mdns_services.as_deref(),
+            None, // TTL not available from ARP scan
+        )
+        .await;
     }
 
     Ok(())

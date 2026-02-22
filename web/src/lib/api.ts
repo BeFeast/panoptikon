@@ -204,6 +204,21 @@ export function fetchPortScan(id: string): Promise<PortScanResult> {
   return apiGet<PortScanResult>(`/api/v1/devices/${id}/scan`);
 }
 
+export interface EnrichmentCorrection {
+  os_family?: string;
+  os_version?: string;
+  device_type?: string;
+  device_model?: string;
+  device_brand?: string;
+}
+
+export function updateDeviceEnrichment(
+  id: string,
+  body: EnrichmentCorrection
+): Promise<void> {
+  return apiPatch<void>(`/api/v1/devices/${id}/enrichment`, body);
+}
+
 // ─── Agents ─────────────────────────────────────────────
 
 export function fetchAgents(): Promise<Agent[]> {
