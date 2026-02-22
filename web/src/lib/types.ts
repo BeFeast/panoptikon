@@ -204,6 +204,34 @@ export interface DhcpStaticMapping {
   ip: string;
 }
 
+// ─── DHCP Server Config ────────────────────────────────
+
+export interface DhcpPoolRange {
+  name: string;
+  start: string;
+  stop: string;
+}
+
+export interface DhcpSubnetConfig {
+  subnet: string;
+  default_router: string | null;
+  name_server: string | null;
+  domain_name: string | null;
+  lease: string | null;
+  ranges: DhcpPoolRange[];
+  static_mapping_count: number;
+  disabled: boolean;
+}
+
+export interface DhcpSharedNetwork {
+  name: string;
+  subnets: DhcpSubnetConfig[];
+}
+
+export interface DhcpServerConfig {
+  shared_networks: DhcpSharedNetwork[];
+}
+
 export interface VyosWriteResponse {
   success: boolean;
   message: string;

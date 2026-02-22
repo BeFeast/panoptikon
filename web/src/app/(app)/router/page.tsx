@@ -75,7 +75,10 @@ import {
   toggleInterface,
   fetchDhcpStaticMappings,
   createDhcpStaticMapping,
+  updateDhcpStaticMapping,
   deleteDhcpStaticMapping,
+  fetchDhcpServerConfig,
+  toggleDhcpSubnet,
   createFirewallRule,
   updateFirewallRule,
   deleteFirewallRule,
@@ -108,7 +111,7 @@ import {
   editDnsDomainOverride,
   deleteDnsDomainOverride,
 } from "@/lib/api";
-import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride } from "@/lib/types";
+import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, DhcpServerConfig, DhcpSubnetConfig, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride } from "@/lib/types";
 import QRCode from "qrcode";
 import { Progress } from "@/components/ui/progress";
 import { PageTransition } from "@/components/PageTransition";
@@ -1774,6 +1777,9 @@ function StaticMappingsTable({
     ip: "",
   });
   const [adding, setAdding] = useState(false);
+  const [editMapping, setEditMapping] = useState<DhcpStaticMapping | null>(null);
+  const [editForm, setEditForm] = useState({ mac: "", ip: "" });
+  const [saving, setSaving] = useState(false);
 
   const handleDelete = async () => {
     if (!confirmDelete) return;
@@ -1807,6 +1813,35 @@ function StaticMappingsTable({
       toast.error(e instanceof Error ? e.message : "Create failed");
     } finally {
       setAdding(false);
+    }
+  };
+
+  const handleEdit = (m: DhcpStaticMapping) => {
+    setEditMapping(m);
+    setEditForm({ mac: m.mac, ip: m.ip });
+  };
+
+  const handleEditSave = async () => {
+    if (!editMapping) return;
+    if (!editForm.mac || !editForm.ip) {
+      toast.error("MAC and IP are required");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await updateDhcpStaticMapping(
+        editMapping.network,
+        editMapping.subnet,
+        editMapping.name,
+        { ...editMapping, mac: editForm.mac, ip: editForm.ip }
+      );
+      toast.success(res.message);
+      setEditMapping(null);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Update failed");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -2008,18 +2043,28 @@ function StaticMappingsTable({
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    {deleting === m.name ? (
-                      <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
-                    ) : (
+                    <div className="flex items-center gap-1 justify-end">
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setConfirmDelete(m)}
-                        className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400"
+                        onClick={() => handleEdit(m)}
+                        className="h-8 w-8 p-0 text-slate-400 hover:text-blue-400"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                    )}
+                      {deleting === m.name ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setConfirmDelete(m)}
+                          className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -2027,6 +2072,71 @@ function StaticMappingsTable({
           </table>
         </div>
       )}
+
+      {/* Edit dialog */}
+      <Dialog open={editMapping !== null} onOpenChange={(open) => { if (!open) setEditMapping(null); }}>
+        <DialogContent className="border-slate-800 bg-slate-900">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              Edit Static Mapping &ldquo;{editMapping?.name}&rdquo;
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Update MAC or IP address for this mapping.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-slate-300">MAC Address</Label>
+              <Input
+                value={editForm.mac}
+                onChange={(e) => setEditForm({ ...editForm, mac: e.target.value })}
+                placeholder="aa:bb:cc:dd:ee:ff"
+                className="border-slate-800 bg-slate-950 font-mono text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-slate-300">IP Address</Label>
+              <Input
+                value={editForm.ip}
+                onChange={(e) => setEditForm({ ...editForm, ip: e.target.value })}
+                placeholder="10.10.0.100"
+                className="border-slate-800 bg-slate-950 font-mono text-white"
+              />
+            </div>
+            {editMapping && editForm.mac && editForm.ip && (
+              <div className="rounded-md border border-slate-800 bg-slate-950 p-3">
+                <p className="text-xs font-medium text-slate-500">Config change:</p>
+                <code className="mt-1 block whitespace-pre-wrap text-xs text-blue-400">
+                  {`set service dhcp-server shared-network-name ${editMapping.network} subnet ${editMapping.subnet} static-mapping ${editMapping.name} mac-address ${editForm.mac}\nset service dhcp-server shared-network-name ${editMapping.network} subnet ${editMapping.subnet} static-mapping ${editMapping.name} ip-address ${editForm.ip}`}
+                </code>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditMapping(null)}
+              className="border-slate-800 text-slate-300 hover:bg-slate-800"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEditSave}
+              disabled={saving}
+              className="bg-blue-600 text-white hover:bg-blue-700"
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving…
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirmation dialog */}
       <AlertDialog
@@ -2067,6 +2177,176 @@ function StaticMappingsTable({
         </AlertDialogContent>
       </AlertDialog>
     </>
+  );
+}
+
+// ── DHCP Pools & Subnets ────────────────────────────────
+
+function DhcpPoolsCard({
+  config,
+  loading,
+  error,
+  onReload,
+}: {
+  config: DhcpServerConfig | null;
+  loading: boolean;
+  error: string | null;
+  onReload: () => void;
+}) {
+  const [toggling, setToggling] = useState<string | null>(null);
+
+  const handleToggle = async (network: string, subnet: DhcpSubnetConfig) => {
+    const key = `${network}/${subnet.subnet}`;
+    setToggling(key);
+    try {
+      const newDisabled = !subnet.disabled;
+      const res = await toggleDhcpSubnet(network, subnet.subnet, newDisabled);
+      toast.success(res.message);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Toggle failed");
+    } finally {
+      setToggling(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-24 w-full" />
+        <Skeleton className="h-24 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{error}</p>
+      </div>
+    );
+  }
+
+  if (!config || config.shared_networks.length === 0) {
+    return (
+      <p className="py-4 text-sm text-slate-500">
+        No DHCP shared networks configured.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {config.shared_networks.map((net) => (
+        <div key={net.name} className="space-y-3">
+          <h4 className="text-sm font-medium text-slate-300">
+            Shared Network: <span className="text-white">{net.name}</span>
+          </h4>
+
+          {net.subnets.map((sub) => {
+            const key = `${net.name}/${sub.subnet}`;
+            const isToggling = toggling === key;
+
+            return (
+              <div
+                key={sub.subnet}
+                className="rounded-md border border-slate-800 bg-slate-950 p-4"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-sm font-medium text-white">
+                      {sub.subnet}
+                    </span>
+                    {sub.disabled ? (
+                      <Badge
+                        variant="outline"
+                        className="border-rose-500/30 bg-rose-500/10 text-rose-400"
+                      >
+                        disabled
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                      >
+                        active
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {isToggling && (
+                      <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                    )}
+                    <Switch
+                      checked={!sub.disabled}
+                      onCheckedChange={() => handleToggle(net.name, sub)}
+                      disabled={isToggling}
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-xs sm:grid-cols-4">
+                  <div>
+                    <span className="text-slate-500">Gateway</span>
+                    <p className="font-mono text-slate-300">
+                      {sub.default_router ?? "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">DNS</span>
+                    <p className="font-mono text-slate-300">
+                      {sub.name_server ?? "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Domain</span>
+                    <p className="text-slate-300">
+                      {sub.domain_name ?? "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Lease</span>
+                    <p className="text-slate-300">
+                      {sub.lease ? `${sub.lease}s` : "—"}
+                    </p>
+                  </div>
+                </div>
+
+                {sub.ranges.length > 0 && (
+                  <div className="mt-3">
+                    <span className="text-xs text-slate-500">Pool Ranges</span>
+                    <div className="mt-1 space-y-1">
+                      {sub.ranges.map((r) => (
+                        <div
+                          key={r.name}
+                          className="flex items-center gap-2 text-xs"
+                        >
+                          <span className="text-slate-500">{r.name}:</span>
+                          <span className="font-mono text-slate-300">
+                            {r.start}
+                          </span>
+                          <span className="text-slate-600">→</span>
+                          <span className="font-mono text-slate-300">
+                            {r.stop}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {sub.static_mapping_count > 0 && (
+                  <p className="mt-2 text-xs text-slate-500">
+                    {sub.static_mapping_count} static mapping{sub.static_mapping_count !== 1 ? "s" : ""}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -4198,6 +4478,11 @@ function RouterTabs({ status }: { status: RouterStatus }) {
     tab === "dhcp"
   );
 
+  const dhcpConfig = useAsyncData<DhcpServerConfig>(
+    useCallback(() => fetchDhcpServerConfig(), []),
+    tab === "dhcp"
+  );
+
   const firewall = useAsyncData<FirewallConfig>(
     useCallback(() => fetchRouterFirewall(), []),
     tab === "firewall"
@@ -4329,7 +4614,23 @@ function RouterTabs({ status }: { status: RouterStatus }) {
           <Card className="border-slate-800 bg-slate-900">
             <CardHeader>
               <CardTitle className="text-base text-white">
-                DHCP Server Leases
+                Pools &amp; Subnets
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DhcpPoolsCard
+                config={dhcpConfig.data ?? null}
+                loading={dhcpConfig.loading}
+                error={dhcpConfig.error}
+                onReload={dhcpConfig.reload}
+              />
+            </CardContent>
+          </Card>
+
+          <Card className="border-slate-800 bg-slate-900">
+            <CardHeader>
+              <CardTitle className="text-base text-white">
+                Active Leases
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -4344,7 +4645,7 @@ function RouterTabs({ status }: { status: RouterStatus }) {
           <Card className="border-slate-800 bg-slate-900">
             <CardHeader>
               <CardTitle className="text-base text-white">
-                DHCP Configuration
+                Static Mappings
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">

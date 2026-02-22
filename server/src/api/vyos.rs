@@ -2232,6 +2232,435 @@ fn is_valid_mac(mac: &str) -> bool {
             .all(|p| p.len() == 2 && p.chars().all(|c| c.is_ascii_hexdigit()))
 }
 
+// ── DHCP Server Config (pools, subnets, service state) ──────────────────────
+
+/// A DHCP pool range (start-stop).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DhcpPoolRange {
+    pub name: String,
+    pub start: String,
+    pub stop: String,
+}
+
+/// A DHCP subnet configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DhcpSubnetConfig {
+    pub subnet: String,
+    pub default_router: Option<String>,
+    pub name_server: Option<String>,
+    pub domain_name: Option<String>,
+    pub lease: Option<String>,
+    pub ranges: Vec<DhcpPoolRange>,
+    pub static_mapping_count: usize,
+    pub disabled: bool,
+}
+
+/// A shared network containing subnets.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DhcpSharedNetwork {
+    pub name: String,
+    pub subnets: Vec<DhcpSubnetConfig>,
+}
+
+/// Full DHCP server configuration response.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DhcpServerConfig {
+    pub shared_networks: Vec<DhcpSharedNetwork>,
+}
+
+/// Parse the full DHCP server config from VyOS JSON.
+fn parse_dhcp_server_config(config: &Value) -> DhcpServerConfig {
+    let mut shared_networks = Vec::new();
+
+    let networks = match config
+        .get("shared-network-name")
+        .and_then(|v| v.as_object())
+    {
+        Some(n) => n,
+        None => return DhcpServerConfig { shared_networks },
+    };
+
+    for (network_name, network_val) in networks {
+        let subnets_obj = match network_val.get("subnet").and_then(|v| v.as_object()) {
+            Some(s) => s,
+            None => continue,
+        };
+
+        let mut subnets = Vec::new();
+
+        for (subnet_cidr, subnet_val) in subnets_obj {
+            let default_router = subnet_val
+                .get("default-router")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let name_server = subnet_val.get("name-server").and_then(|v| {
+                // Can be single string or array; take first
+                v.as_str().map(|s| s.to_string()).or_else(|| {
+                    v.as_array()
+                        .and_then(|a| a.first())
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string())
+                })
+            });
+
+            let domain_name = subnet_val
+                .get("domain-name")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+
+            let lease = subnet_val.get("lease").and_then(|v| {
+                v.as_str().or_else(|| v.as_u64().map(|_| "")).and_then(|s| {
+                    if s.is_empty() {
+                        v.as_u64().map(|n| n.to_string())
+                    } else {
+                        Some(s.to_string())
+                    }
+                })
+            });
+
+            let disabled = subnet_val.get("disable").is_some();
+
+            // Parse pool ranges
+            let mut ranges = Vec::new();
+            if let Some(range_obj) = subnet_val.get("range").and_then(|v| v.as_object()) {
+                for (range_name, range_val) in range_obj {
+                    let start = range_val
+                        .get("start")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let stop = range_val
+                        .get("stop")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    if !start.is_empty() && !stop.is_empty() {
+                        ranges.push(DhcpPoolRange {
+                            name: range_name.clone(),
+                            start,
+                            stop,
+                        });
+                    }
+                }
+            }
+
+            let static_mapping_count = subnet_val
+                .get("static-mapping")
+                .and_then(|v| v.as_object())
+                .map(|m| m.len())
+                .unwrap_or(0);
+
+            subnets.push(DhcpSubnetConfig {
+                subnet: subnet_cidr.clone(),
+                default_router,
+                name_server,
+                domain_name,
+                lease,
+                ranges,
+                static_mapping_count,
+                disabled,
+            });
+        }
+
+        subnets.sort_by(|a, b| a.subnet.cmp(&b.subnet));
+
+        shared_networks.push(DhcpSharedNetwork {
+            name: network_name.clone(),
+            subnets,
+        });
+    }
+
+    shared_networks.sort_by(|a, b| a.name.cmp(&b.name));
+    DhcpServerConfig { shared_networks }
+}
+
+/// GET /api/v1/vyos/dhcp/config — fetch full DHCP server configuration.
+pub async fn dhcp_server_config(
+    State(state): State<AppState>,
+) -> Result<Json<DhcpServerConfig>, StatusCode> {
+    let client = get_vyos_client_or_503(&state).await?;
+
+    let config = match client.retrieve(&["service", "dhcp-server"]).await {
+        Ok(c) => c,
+        Err(e) => {
+            let msg = e.to_string();
+            if msg.contains("empty") || msg.contains("does not exist") {
+                return Ok(Json(DhcpServerConfig {
+                    shared_networks: Vec::new(),
+                }));
+            }
+            tracing::error!("VyOS DHCP server config query failed: {e}");
+            return Err(StatusCode::BAD_GATEWAY);
+        }
+    };
+
+    let parsed = parse_dhcp_server_config(&config);
+    Ok(Json(parsed))
+}
+
+/// Path parameters for subnet toggle.
+#[derive(Debug, Deserialize)]
+pub struct DhcpSubnetPath {
+    pub network: String,
+    pub subnet: String,
+}
+
+/// Request body for toggling DHCP on a subnet.
+#[derive(Debug, Deserialize)]
+pub struct DhcpSubnetToggleRequest {
+    pub disable: bool,
+}
+
+/// POST /api/v1/vyos/dhcp/subnets/:network/:subnet/toggle — enable/disable DHCP for a subnet.
+pub async fn dhcp_subnet_toggle(
+    State(state): State<AppState>,
+    Path(path): Path<DhcpSubnetPath>,
+    Json(body): Json<DhcpSubnetToggleRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    let action = if body.disable { "Disable" } else { "Enable" };
+    let description = format!(
+        "{action} DHCP on subnet {} (network={})",
+        path.subnet, path.network
+    );
+
+    let base = [
+        "service",
+        "dhcp-server",
+        "shared-network-name",
+        &path.network,
+        "subnet",
+        &path.subnet,
+        "disable",
+    ];
+
+    let result = if body.disable {
+        let commands = vec![format!(
+            "set service dhcp-server shared-network-name {} subnet {} disable",
+            path.network, path.subnet
+        )];
+
+        match client.configure_set(&base).await {
+            Ok(_) => {
+                audit::log_success(&state.db, "dhcp_subnet_toggle", &description, &commands).await;
+                Ok(Json(VyosWriteResponse {
+                    success: true,
+                    message: format!("DHCP disabled on subnet {}", path.subnet),
+                }))
+            }
+            Err(e) => {
+                let msg = format!("VyOS error: {e}");
+                audit::log_failure(
+                    &state.db,
+                    "dhcp_subnet_toggle",
+                    &description,
+                    &commands,
+                    &msg,
+                )
+                .await;
+                Err((
+                    StatusCode::BAD_GATEWAY,
+                    Json(VyosWriteResponse {
+                        success: false,
+                        message: msg,
+                    }),
+                ))
+            }
+        }
+    } else {
+        let commands = vec![format!(
+            "delete service dhcp-server shared-network-name {} subnet {} disable",
+            path.network, path.subnet
+        )];
+
+        match client.configure_delete(&base).await {
+            Ok(_) => {
+                audit::log_success(&state.db, "dhcp_subnet_toggle", &description, &commands).await;
+                Ok(Json(VyosWriteResponse {
+                    success: true,
+                    message: format!("DHCP enabled on subnet {}", path.subnet),
+                }))
+            }
+            Err(e) => {
+                // "does not exist" is fine — means it was already enabled
+                let msg = e.to_string();
+                if msg.contains("does not exist") || msg.contains("empty") {
+                    audit::log_success(&state.db, "dhcp_subnet_toggle", &description, &commands)
+                        .await;
+                    return Ok(Json(VyosWriteResponse {
+                        success: true,
+                        message: format!("DHCP already enabled on subnet {}", path.subnet),
+                    }));
+                }
+                let msg = format!("VyOS error: {e}");
+                audit::log_failure(
+                    &state.db,
+                    "dhcp_subnet_toggle",
+                    &description,
+                    &commands,
+                    &msg,
+                )
+                .await;
+                Err((
+                    StatusCode::BAD_GATEWAY,
+                    Json(VyosWriteResponse {
+                        success: false,
+                        message: msg,
+                    }),
+                ))
+            }
+        }
+    };
+
+    result
+}
+
+/// PUT /api/v1/vyos/dhcp/static-mappings/:network/:subnet/:name — update a DHCP static mapping.
+pub async fn update_dhcp_static_mapping(
+    State(state): State<AppState>,
+    Path(path): Path<DhcpStaticMappingPath>,
+    Json(body): Json<CreateDhcpStaticMappingRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    if !is_valid_mac(&body.mac) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid MAC address format. Expected XX:XX:XX:XX:XX:XX".to_string(),
+            }),
+        ));
+    }
+
+    if body.ip.parse::<std::net::Ipv4Addr>().is_err() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid IP address format".to_string(),
+            }),
+        ));
+    }
+
+    let description = format!(
+        "Update DHCP static mapping '{}': {} -> {} (network={}, subnet={})",
+        path.name, body.mac, body.ip, path.network, path.subnet
+    );
+    let commands = vec![
+        format!(
+            "set service dhcp-server shared-network-name {} subnet {} static-mapping {} mac-address {}",
+            path.network, path.subnet, path.name, body.mac
+        ),
+        format!(
+            "set service dhcp-server shared-network-name {} subnet {} static-mapping {} ip-address {}",
+            path.network, path.subnet, path.name, body.ip
+        ),
+    ];
+
+    // Update mac-address
+    if let Err(e) = client
+        .configure_set(&[
+            "service",
+            "dhcp-server",
+            "shared-network-name",
+            &path.network,
+            "subnet",
+            &path.subnet,
+            "static-mapping",
+            &path.name,
+            "mac-address",
+            &body.mac,
+        ])
+        .await
+    {
+        let msg = format!("Failed to update MAC address: {e}");
+        audit::log_failure(
+            &state.db,
+            "dhcp_static_mapping_update",
+            &description,
+            &commands,
+            &msg,
+        )
+        .await;
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: msg,
+            }),
+        ));
+    }
+
+    // Update ip-address
+    if let Err(e) = client
+        .configure_set(&[
+            "service",
+            "dhcp-server",
+            "shared-network-name",
+            &path.network,
+            "subnet",
+            &path.subnet,
+            "static-mapping",
+            &path.name,
+            "ip-address",
+            &body.ip,
+        ])
+        .await
+    {
+        let msg = format!("Failed to update IP address: {e}");
+        audit::log_failure(
+            &state.db,
+            "dhcp_static_mapping_update",
+            &description,
+            &commands,
+            &msg,
+        )
+        .await;
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: msg,
+            }),
+        ));
+    }
+
+    audit::log_success(
+        &state.db,
+        "dhcp_static_mapping_update",
+        &description,
+        &commands,
+    )
+    .await;
+
+    Ok(Json(VyosWriteResponse {
+        success: true,
+        message: format!(
+            "Static mapping '{}' updated: {} -> {}",
+            path.name, body.mac, body.ip
+        ),
+    }))
+}
+
 // ── Static Routes ───────────────────────────────────────────────────────────
 
 /// Request body for creating a static route.
@@ -6027,6 +6456,136 @@ mod tests {
         let guest = mappings.iter().find(|m| m.network == "GUEST").unwrap();
         assert_eq!(guest.name, "printer");
         assert_eq!(guest.ip, "192.168.1.10");
+    }
+
+    // ── DHCP server config parsing ────────────────────────────
+
+    #[test]
+    fn test_parse_dhcp_server_config_basic() {
+        let config: Value = serde_json::from_str(
+            r#"{
+                "shared-network-name": {
+                    "LAN": {
+                        "subnet": {
+                            "10.10.0.0/24": {
+                                "default-router": "10.10.0.1",
+                                "name-server": "10.10.0.1",
+                                "domain-name": "local",
+                                "lease": "86400",
+                                "range": {
+                                    "0": {
+                                        "start": "10.10.0.100",
+                                        "stop": "10.10.0.254"
+                                    }
+                                },
+                                "static-mapping": {
+                                    "host1": {
+                                        "mac-address": "aa:bb:cc:dd:ee:ff",
+                                        "ip-address": "10.10.0.50"
+                                    },
+                                    "host2": {
+                                        "mac-address": "11:22:33:44:55:66",
+                                        "ip-address": "10.10.0.51"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let result = parse_dhcp_server_config(&config);
+        assert_eq!(result.shared_networks.len(), 1);
+
+        let net = &result.shared_networks[0];
+        assert_eq!(net.name, "LAN");
+        assert_eq!(net.subnets.len(), 1);
+
+        let sub = &net.subnets[0];
+        assert_eq!(sub.subnet, "10.10.0.0/24");
+        assert_eq!(sub.default_router.as_deref(), Some("10.10.0.1"));
+        assert_eq!(sub.name_server.as_deref(), Some("10.10.0.1"));
+        assert_eq!(sub.domain_name.as_deref(), Some("local"));
+        assert_eq!(sub.lease.as_deref(), Some("86400"));
+        assert!(!sub.disabled);
+        assert_eq!(sub.static_mapping_count, 2);
+        assert_eq!(sub.ranges.len(), 1);
+        assert_eq!(sub.ranges[0].start, "10.10.0.100");
+        assert_eq!(sub.ranges[0].stop, "10.10.0.254");
+    }
+
+    #[test]
+    fn test_parse_dhcp_server_config_disabled_subnet() {
+        let config: Value = serde_json::from_str(
+            r#"{
+                "shared-network-name": {
+                    "LAN": {
+                        "subnet": {
+                            "10.10.0.0/24": {
+                                "default-router": "10.10.0.1",
+                                "disable": {},
+                                "range": {
+                                    "0": {
+                                        "start": "10.10.0.100",
+                                        "stop": "10.10.0.200"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let result = parse_dhcp_server_config(&config);
+        assert_eq!(result.shared_networks.len(), 1);
+        let sub = &result.shared_networks[0].subnets[0];
+        assert!(sub.disabled);
+    }
+
+    #[test]
+    fn test_parse_dhcp_server_config_empty() {
+        let config: Value = serde_json::json!({});
+        assert!(parse_dhcp_server_config(&config).shared_networks.is_empty());
+
+        let config2: Value = serde_json::json!(null);
+        assert!(parse_dhcp_server_config(&config2)
+            .shared_networks
+            .is_empty());
+    }
+
+    #[test]
+    fn test_parse_dhcp_server_config_multiple_ranges() {
+        let config: Value = serde_json::from_str(
+            r#"{
+                "shared-network-name": {
+                    "LAN": {
+                        "subnet": {
+                            "10.10.0.0/24": {
+                                "range": {
+                                    "pool1": {
+                                        "start": "10.10.0.100",
+                                        "stop": "10.10.0.150"
+                                    },
+                                    "pool2": {
+                                        "start": "10.10.0.200",
+                                        "stop": "10.10.0.254"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let result = parse_dhcp_server_config(&config);
+        let sub = &result.shared_networks[0].subnets[0];
+        assert_eq!(sub.ranges.len(), 2);
     }
 
     // ── Firewall groups parsing ─────────────────────────────
