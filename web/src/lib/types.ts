@@ -53,6 +53,26 @@ export interface Device {
   custom_model?: string | null;
   /** Icon override (user-picked). */
   icon_override?: string | null;
+  /** Whether this device was manually created (not auto-discovered). */
+  is_manual?: boolean | null;
+  /** Physical location. */
+  location?: string | null;
+  /** Asset owner. */
+  owner?: string | null;
+  /** Comma-separated tags. */
+  tags?: string | null;
+  /** Manual CPU spec entry. */
+  cpu_manual?: string | null;
+  /** Manual RAM spec entry. */
+  ram_manual?: string | null;
+  /** Manual disk spec entry. */
+  disk_manual?: string | null;
+  /** Purchase date. */
+  purchase_date?: string | null;
+  /** Warranty expiry date. */
+  warranty_expiry?: string | null;
+  /** Serial number (manual entry). */
+  serial_number?: string | null;
 }
 
 // ─── Device Sysinfo (hardware inventory from agent) ───

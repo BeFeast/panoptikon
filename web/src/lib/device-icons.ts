@@ -6,11 +6,16 @@
 
 import type { LucideIcon } from "lucide-react";
 import {
+  Battery,
+  Box,
   CircuitBoard,
+  Container,
   Gamepad2,
+  HardDrive,
   HelpCircle,
   Laptop,
   Monitor,
+  Network,
   Printer,
   Router,
   Server,
@@ -31,6 +36,13 @@ const ICON_MAP: Record<DeviceType, LucideIcon> = {
   printer: Printer,
   iot: CircuitBoard,
   gaming: Gamepad2,
+  workstation: Monitor,
+  vm: Box,
+  container: Container,
+  nas: HardDrive,
+  switch: Network,
+  ups: Battery,
+  other: HelpCircle,
   unknown: HelpCircle,
 };
 
@@ -45,6 +57,13 @@ const LABEL_MAP: Record<DeviceType, string> = {
   printer: "Printer",
   iot: "IoT",
   gaming: "Gaming",
+  workstation: "Workstation",
+  vm: "VM",
+  container: "Container",
+  nas: "NAS",
+  switch: "Switch",
+  ups: "UPS",
+  other: "Other",
   unknown: "Device",
 };
 

@@ -1,11 +1,16 @@
 "use client";
 
 import {
+  Battery,
+  Box,
   CircuitBoard,
+  Container,
   Gamepad2,
+  HardDrive,
   HelpCircle,
   Laptop,
   Monitor,
+  Network,
   Printer,
   Router,
   Server,
@@ -27,6 +32,13 @@ const ICON_MAP: Record<DeviceType, typeof Router> = {
   printer: Printer,
   iot: CircuitBoard,
   gaming: Gamepad2,
+  workstation: Monitor,
+  vm: Box,
+  container: Container,
+  nas: HardDrive,
+  switch: Network,
+  ups: Battery,
+  other: HelpCircle,
   unknown: HelpCircle,
 };
 
@@ -41,6 +53,13 @@ const COLOR_MAP: Record<DeviceType, string> = {
   printer: "text-amber-400",
   iot: "text-teal-400",
   gaming: "text-rose-400",
+  workstation: "text-indigo-400",
+  vm: "text-cyan-400",
+  container: "text-orange-400",
+  nas: "text-lime-400",
+  switch: "text-blue-300",
+  ups: "text-yellow-400",
+  other: "text-slate-400",
   unknown: "text-slate-400",
 };
 
@@ -75,6 +94,13 @@ export function DeviceTypeLabel({ type }: { type: DeviceType }) {
     printer: "Printer",
     iot: "IoT",
     gaming: "Gaming",
+    workstation: "Workstation",
+    vm: "VM",
+    container: "Container",
+    nas: "NAS",
+    switch: "Switch",
+    ups: "UPS",
+    other: "Other",
     unknown: "Unknown",
   };
   return <span className="text-xs text-slate-500 capitalize">{labels[type]}</span>;

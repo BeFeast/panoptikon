@@ -51,6 +51,9 @@ const DEVICE_CUSTOM_FIELDS_MIGRATION: &str =
 /// Migration 015: SSH agentless monitoring — targets and reports tables.
 const SSH_TARGETS_MIGRATION: &str = include_str!("migrations/015_ssh_targets.sql");
 
+/// Migration 016: manual asset inventory fields for non-discoverable devices.
+const MANUAL_ASSETS_MIGRATION: &str = include_str!("migrations/016_manual_assets.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -376,6 +379,36 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
             .await?;
 
         info!("Applied migration 015_ssh_targets.sql");
+    }
+
+    // Migration 016: manual asset inventory fields.
+    let applied_16: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 16")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_16 {
+        for statement in MANUAL_ASSETS_MIGRATION.split(';') {
+            let code = statement
+                .lines()
+                .skip_while(|l| {
+                    let t = l.trim();
+                    t.is_empty() || t.starts_with("--")
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let stmt = code.trim();
+            if stmt.is_empty() {
+                continue;
+            }
+            sqlx::query(stmt).execute(pool).await?;
+        }
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (16)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 016_manual_assets.sql");
     }
 
     // Purge expired sessions on startup.

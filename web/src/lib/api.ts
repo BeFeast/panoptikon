@@ -286,6 +286,15 @@ export interface DeviceCustomFields {
   custom_model?: string;
   notes?: string;
   icon_override?: string;
+  location?: string;
+  owner?: string;
+  tags?: string;
+  cpu_manual?: string;
+  ram_manual?: string;
+  disk_manual?: string;
+  purchase_date?: string;
+  warranty_expiry?: string;
+  serial_number?: string;
 }
 
 export function updateDevice(
@@ -297,6 +306,31 @@ export function updateDevice(
 
 export function resetDeviceCustom(id: string): Promise<void> {
   return apiDelete(`/api/v1/devices/${id}/custom`);
+}
+
+export interface CreateAssetRequest {
+  is_manual: true;
+  custom_name: string;
+  custom_type?: string;
+  ip?: string;
+  mac?: string;
+  custom_os?: string;
+  custom_vendor?: string;
+  custom_model?: string;
+  notes?: string;
+  location?: string;
+  owner?: string;
+  tags?: string;
+  cpu_manual?: string;
+  ram_manual?: string;
+  disk_manual?: string;
+  purchase_date?: string;
+  warranty_expiry?: string;
+  serial_number?: string;
+}
+
+export function createAsset(body: CreateAssetRequest): Promise<Device> {
+  return apiPost<Device>("/api/v1/devices", body);
 }
 
 // ─── Agents ─────────────────────────────────────────────

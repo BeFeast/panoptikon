@@ -14,6 +14,13 @@ export type DeviceType =
   | "printer"
   | "iot"
   | "gaming"
+  | "workstation"
+  | "vm"
+  | "container"
+  | "nas"
+  | "switch"
+  | "ups"
+  | "other"
   | "unknown";
 
 // Vendor patterns → device type

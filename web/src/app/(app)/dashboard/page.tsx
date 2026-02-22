@@ -658,6 +658,13 @@ function getCategoryLabel(type: DeviceType): string {
     printer: "Printers",
     iot: "IoT",
     gaming: "Gaming",
+    workstation: "Workstations",
+    vm: "VMs",
+    container: "Containers",
+    nas: "NAS",
+    switch: "Switches",
+    ups: "UPS",
+    other: "Other",
     unknown: "Other",
   };
   return labels[type] ?? "Other";
