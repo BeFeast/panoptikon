@@ -54,6 +54,10 @@ import type {
   WireguardInterface,
   WireguardKeyPair,
   ClientConfigResponse,
+  AddServiceRequest,
+  AddServiceResponse,
+  RemoveServiceRequest,
+  RemoveServiceResponse,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -1012,4 +1016,18 @@ export function updateNpmAccessList(
 
 export function deleteNpmAccessList(id: number): Promise<void> {
   return apiDelete(`/api/v1/npm/access-lists/${id}`);
+}
+
+// ─── Services Wizard ─────────────────────────────────────
+
+export function addService(
+  body: AddServiceRequest
+): Promise<AddServiceResponse> {
+  return apiPost<AddServiceResponse>("/api/v1/services/add", body);
+}
+
+export function removeService(
+  body: RemoveServiceRequest
+): Promise<RemoveServiceResponse> {
+  return apiPost<RemoveServiceResponse>("/api/v1/services/remove", body);
 }
