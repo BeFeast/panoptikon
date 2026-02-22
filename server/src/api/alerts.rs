@@ -215,19 +215,6 @@ pub async fn delete_all(State(state): State<AppState>) -> Result<StatusCode, Sta
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// PATCH /api/v1/alerts/read-all — mark all unread alerts as read.
-pub async fn mark_all_read(State(state): State<AppState>) -> Result<StatusCode, StatusCode> {
-    sqlx::query("UPDATE alerts SET is_read = 1 WHERE is_read = 0")
-        .execute(&state.db)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to mark all alerts as read: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
-
-    Ok(StatusCode::NO_CONTENT)
-}
-
 /// Query parameters for muting a device.
 #[derive(Debug, Deserialize)]
 pub struct MuteQuery {
