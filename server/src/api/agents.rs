@@ -982,6 +982,7 @@ pub async fn install_script(
             return (StatusCode::BAD_REQUEST, "Missing ?key= parameter").into_response();
         }
     };
+    let agent_id = params.get("id").cloned().unwrap_or_default();
 
     // Validate the API key exists (future: reject unknown keys)
     let _key_exists: bool =
@@ -1023,6 +1024,7 @@ set -e
 
 SERVER_URL="{server_url}"
 API_KEY="{api_key}"
+AGENT_ID="{agent_id}"
 
 # Detect root vs. unprivileged user and set paths accordingly
 if [ "$(id -u)" = "0" ]; then
@@ -1070,6 +1072,7 @@ mkdir -p "$CONFIG_DIR"
 cat > "$CONFIG_DIR/config.toml" <<TOMLEOF
 server_url = "$SERVER_URL"
 api_key = "$API_KEY"
+agent_id = "$AGENT_ID"
 report_interval_seconds = 30
 TOMLEOF
 
@@ -1152,6 +1155,7 @@ echo "==> Done! Agent is reporting to $SERVER_URL"
         platform = platform,
         server_url = server_url,
         api_key = api_key,
+        agent_id = agent_id,
     );
 
     (

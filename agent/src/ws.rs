@@ -11,10 +11,13 @@ use crate::config::AgentConfig;
 /// Returns Ok(()) if the server closes the connection gracefully.
 /// Returns Err on connection failure or protocol errors.
 pub async fn run_session(config: &AgentConfig, collector: &mut SystemCollector) -> Result<()> {
-    let ws_url = format!(
-        "{}/api/v1/agent/ws",
-        config.server_url.trim_end_matches('/')
-    );
+    // Convert http:// → ws:// and https:// → wss:// for WebSocket connection.
+    let base = config
+        .server_url
+        .trim_end_matches('/')
+        .replacen("https://", "wss://", 1)
+        .replacen("http://", "ws://", 1);
+    let ws_url = format!("{base}/api/v1/agent/ws");
 
     // Build the request with auth header.
     let request = http::Request::builder()
