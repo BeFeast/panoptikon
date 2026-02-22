@@ -30,6 +30,8 @@ import type {
   SearchResponse,
   SettingsData,
   SpeedTestResult,
+  SystemInfo,
+  SyslogResponse,
   TopDevice,
   TrafficHistoryPoint,
   VyosDhcpLease,
@@ -283,6 +285,19 @@ export function fetchRouterStatus(): Promise<RouterStatus> {
 
 export function fetchRouterSummary(): Promise<RouterSummary> {
   return apiGet<RouterSummary>("/api/v1/vyos/router-summary");
+}
+
+export function fetchSystemInfo(): Promise<SystemInfo> {
+  return apiGet<SystemInfo>("/api/v1/vyos/system-info");
+}
+
+export function fetchSyslog(
+  lines = 50,
+  filter?: string
+): Promise<SyslogResponse> {
+  const params = new URLSearchParams({ lines: String(lines) });
+  if (filter) params.set("filter", filter);
+  return apiGet<SyslogResponse>(`/api/v1/vyos/syslog?${params}`);
 }
 
 export function fetchRouterInterfaces(): Promise<VyosInterface[]> {
