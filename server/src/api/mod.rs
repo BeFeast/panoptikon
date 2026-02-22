@@ -152,6 +152,7 @@ pub fn router(state: AppState) -> Router {
             "/vyos/interfaces/:name/toggle",
             post(vyos::interface_toggle),
         )
+        .route("/vyos/dhcp/config", get(vyos::dhcp_server_config))
         .route(
             "/vyos/dhcp/static-mappings",
             get(vyos::dhcp_static_mappings),
@@ -162,7 +163,15 @@ pub fn router(state: AppState) -> Router {
         )
         .route(
             "/vyos/dhcp/static-mappings/:network/:subnet/:name",
+            put(vyos::update_dhcp_static_mapping),
+        )
+        .route(
+            "/vyos/dhcp/static-mappings/:network/:subnet/:name",
             delete(vyos::delete_dhcp_static_mapping),
+        )
+        .route(
+            "/vyos/dhcp/subnets/:network/:subnet/toggle",
+            post(vyos::dhcp_subnet_toggle),
         )
         // Firewall write operations
         .route(
