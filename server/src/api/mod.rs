@@ -242,6 +242,30 @@ pub fn router(state: AppState) -> Router {
             "/vyos/wireguard/:name/peers/:peer/generate-config",
             post(vyos::wireguard_generate_client_config),
         )
+        // DNS management
+        .route("/vyos/dns", get(vyos::dns_config))
+        .route("/vyos/dns/nameservers", post(vyos::add_dns_nameserver))
+        .route(
+            "/vyos/dns/nameservers/:ip",
+            delete(vyos::delete_dns_nameserver),
+        )
+        .route(
+            "/vyos/dns/domain-forwarding",
+            post(vyos::add_dns_domain_forward),
+        )
+        .route(
+            "/vyos/dns/domain-forwarding/:domain",
+            delete(vyos::delete_dns_domain_forward),
+        )
+        .route(
+            "/vyos/dns/host-overrides",
+            post(vyos::add_dns_host_override),
+        )
+        .route(
+            "/vyos/dns/host-overrides/:hostname",
+            delete(vyos::delete_dns_host_override),
+        )
+        .route("/vyos/dns/settings", put(vyos::update_dns_settings))
         // Topology positions
         .route("/topology/positions", get(topology::get_positions))
         .route("/topology/positions", put(topology::save_positions))

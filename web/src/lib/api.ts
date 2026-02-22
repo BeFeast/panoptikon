@@ -18,6 +18,7 @@ import type {
   DbSizeData,
   Device,
   DhcpStaticMapping,
+  DnsConfig,
   FirewallConfig,
   FirewallRuleRequest,
   FirewallGroups,
@@ -628,6 +629,66 @@ export function generateWireguardClientConfig(
     `/api/v1/vyos/wireguard/${encodeURIComponent(iface)}/peers/${encodeURIComponent(peer)}/generate-config`,
     body
   );
+}
+
+// ─── DNS Management ──────────────────────────────────────
+
+export function fetchDnsConfig(): Promise<DnsConfig> {
+  return apiGet<DnsConfig>("/api/v1/vyos/dns");
+}
+
+export function addDnsNameserver(ip: string): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>("/api/v1/vyos/dns/nameservers", { ip });
+}
+
+export function deleteDnsNameserver(ip: string): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/dns/nameservers/${encodeURIComponent(ip)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function addDnsDomainForward(
+  domain: string,
+  server: string
+): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>("/api/v1/vyos/dns/domain-forwarding", {
+    domain,
+    server,
+  });
+}
+
+export function deleteDnsDomainForward(
+  domain: string
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/dns/domain-forwarding/${encodeURIComponent(domain)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function addDnsHostOverride(
+  hostname: string,
+  ip: string
+): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>("/api/v1/vyos/dns/host-overrides", {
+    hostname,
+    ip,
+  });
+}
+
+export function deleteDnsHostOverride(
+  hostname: string
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/dns/host-overrides/${encodeURIComponent(hostname)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function updateDnsSettings(body: {
+  listen_address?: string;
+  cache_size?: number;
+  dnssec?: string;
+}): Promise<VyosWriteResponse> {
+  return apiPut<VyosWriteResponse>("/api/v1/vyos/dns/settings", body);
 }
 
 // ─── Topology Positions ──────────────────────────────────
