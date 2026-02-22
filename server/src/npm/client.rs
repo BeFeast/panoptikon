@@ -117,6 +117,47 @@ pub struct NpmConnectionStatus {
     pub host_count: Option<usize>,
 }
 
+/// NPM SSL certificate as returned by the API.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NpmCertificate {
+    pub id: i64,
+    #[serde(default)]
+    pub provider: String,
+    pub nice_name: String,
+    #[serde(default)]
+    pub domain_names: Vec<String>,
+    pub expires_on: Option<String>,
+    pub created_on: Option<String>,
+    pub modified_on: Option<String>,
+    pub meta: Option<serde_json::Value>,
+}
+
+/// Request body for creating a Let's Encrypt certificate.
+#[derive(Debug, Serialize)]
+pub struct CreateLetsEncryptCertRequest {
+    pub provider: &'static str,
+    pub nice_name: String,
+    pub domain_names: Vec<String>,
+    pub meta: LetsEncryptMeta,
+}
+
+/// Meta fields for Let's Encrypt cert request.
+#[derive(Debug, Serialize)]
+pub struct LetsEncryptMeta {
+    pub letsencrypt_email: String,
+    pub letsencrypt_agree: bool,
+    pub dns_challenge: bool,
+}
+
+/// Request body for uploading a custom certificate.
+#[derive(Debug, Serialize)]
+pub struct CreateCustomCertRequest {
+    pub provider: &'static str,
+    pub nice_name: String,
+    pub certificate: String,
+    pub certificate_key: String,
+}
+
 /// Build the shared `reqwest::Client` for NPM API calls.
 pub fn shared_http_client() -> reqwest::Client {
     reqwest::Client::builder()
@@ -464,6 +505,167 @@ impl NpmClient {
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
             anyhow::bail!("NPM delete redirection host failed (HTTP {status}): {body}");
+        }
+
+        Ok(())
+    }
+
+    /// List all SSL certificates.
+    pub async fn list_certificates(&self) -> Result<Vec<NpmCertificate>> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/certificates", self.base_url);
+
+        let resp = self
+            .http
+            .get(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM list certificates request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM list certificates failed (HTTP {status}): {body}");
+        }
+
+        let certs: Vec<NpmCertificate> = resp
+            .json()
+            .await
+            .context("failed to parse NPM certificates response")?;
+
+        Ok(certs)
+    }
+
+    /// Request a new Let's Encrypt certificate.
+    pub async fn create_letsencrypt_cert(
+        &self,
+        nice_name: &str,
+        domain_names: Vec<String>,
+        email: &str,
+        dns_challenge: bool,
+    ) -> Result<NpmCertificate> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/certificates", self.base_url);
+
+        let body = CreateLetsEncryptCertRequest {
+            provider: "letsencrypt",
+            nice_name: nice_name.to_string(),
+            domain_names,
+            meta: LetsEncryptMeta {
+                letsencrypt_email: email.to_string(),
+                letsencrypt_agree: true,
+                dns_challenge,
+            },
+        };
+
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(&token)
+            .json(&body)
+            .send()
+            .await
+            .context("NPM create Let's Encrypt certificate request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM create Let's Encrypt cert failed (HTTP {status}): {body}");
+        }
+
+        let cert: NpmCertificate = resp
+            .json()
+            .await
+            .context("failed to parse NPM create cert response")?;
+
+        Ok(cert)
+    }
+
+    /// Upload a custom certificate (PEM cert + key).
+    pub async fn upload_custom_cert(
+        &self,
+        nice_name: &str,
+        certificate: &str,
+        certificate_key: &str,
+    ) -> Result<NpmCertificate> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/certificates", self.base_url);
+
+        let body = CreateCustomCertRequest {
+            provider: "other",
+            nice_name: nice_name.to_string(),
+            certificate: certificate.to_string(),
+            certificate_key: certificate_key.to_string(),
+        };
+
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(&token)
+            .json(&body)
+            .send()
+            .await
+            .context("NPM upload custom certificate request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM upload custom cert failed (HTTP {status}): {body}");
+        }
+
+        let cert: NpmCertificate = resp
+            .json()
+            .await
+            .context("failed to parse NPM upload cert response")?;
+
+        Ok(cert)
+    }
+
+    /// Renew a certificate by ID.
+    pub async fn renew_certificate(&self, cert_id: i64) -> Result<NpmCertificate> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/certificates/{}/renew", self.base_url, cert_id);
+
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM renew certificate request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM renew certificate failed (HTTP {status}): {body}");
+        }
+
+        let cert: NpmCertificate = resp
+            .json()
+            .await
+            .context("failed to parse NPM renew cert response")?;
+
+        Ok(cert)
+    }
+
+    /// Delete a certificate by ID.
+    pub async fn delete_certificate(&self, cert_id: i64) -> Result<()> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/certificates/{}", self.base_url, cert_id);
+
+        let resp = self
+            .http
+            .delete(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM delete certificate request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM delete certificate failed (HTTP {status}): {body}");
         }
 
         Ok(())

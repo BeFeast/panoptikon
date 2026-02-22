@@ -15,6 +15,7 @@ import {
   Network,
   Router,
   Settings,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -34,6 +35,7 @@ const navItems = [
   { href: "/topology", label: "Topology", icon: Network },
   { href: "/traffic", label: "Traffic", icon: Activity },
   { href: "/alerts", label: "Alerts", icon: Bell },
+  { href: "/certificates", label: "Certificates", icon: Shield },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

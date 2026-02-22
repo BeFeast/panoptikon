@@ -27,6 +27,7 @@ import type {
   FirewallGroups,
   LoginResponse,
   NetflowStatus,
+  NpmCertificate,
   NpmConnectionStatus,
   NpmProxyHost,
   NpmProxyHostRequest,
@@ -860,6 +861,34 @@ export function toggleNpmProxyHost(
   enabled: boolean
 ): Promise<void> {
   return apiPost<void>(`/api/v1/npm/proxy-hosts/${id}/toggle`, { enabled });
+}
+
+export function fetchNpmCertificates(): Promise<NpmCertificate[]> {
+  return apiGet<NpmCertificate[]>("/api/v1/npm/certificates");
+}
+
+export function createLetsEncryptCert(body: {
+  domain_names: string[];
+  email: string;
+  dns_challenge?: boolean;
+}): Promise<NpmCertificate> {
+  return apiPost<NpmCertificate>("/api/v1/npm/certificates/letsencrypt", body);
+}
+
+export function uploadCustomCert(body: {
+  nice_name: string;
+  certificate: string;
+  certificate_key: string;
+}): Promise<NpmCertificate> {
+  return apiPost<NpmCertificate>("/api/v1/npm/certificates/custom", body);
+}
+
+export function renewNpmCertificate(id: number): Promise<NpmCertificate> {
+  return apiPost<NpmCertificate>(`/api/v1/npm/certificates/${id}/renew`);
+}
+
+export function deleteNpmCertificate(id: number): Promise<void> {
+  return apiDelete(`/api/v1/npm/certificates/${id}`);
 }
 
 // ─── Redirection Hosts ──────────────────────────────────

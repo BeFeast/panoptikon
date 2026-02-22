@@ -8,7 +8,7 @@ use tracing::error;
 
 use super::AppState;
 use crate::npm::client::{
-    NpmClient, NpmConnectionStatus, NpmProxyHostPayload, NpmRedirectionHostPayload,
+    NpmCertificate, NpmClient, NpmConnectionStatus, NpmProxyHostPayload, NpmRedirectionHostPayload,
 };
 
 /// GET /api/v1/npm/status — check NPM connection health.
@@ -424,6 +424,210 @@ pub async fn delete_redirection_host(
     client.delete_redirection_host(id).await.map_err(|e| {
         error!("NPM delete redirection host {id} failed: {e}");
         error_response(StatusCode::BAD_GATEWAY, e.to_string())
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// ─── SSL Certificates ──────────────────────────────────────
+
+/// Response for the certificate list — enriched with computed status.
+#[derive(Debug, Serialize)]
+pub struct CertificateSummary {
+    pub id: i64,
+    pub provider: String,
+    pub nice_name: String,
+    pub domain_names: Vec<String>,
+    pub expires_on: Option<String>,
+    pub created_on: Option<String>,
+    /// "valid", "expiring" (< 30 days), or "expired"
+    pub status: String,
+    /// Days until expiry (negative = already expired).
+    pub days_remaining: Option<i64>,
+}
+
+fn compute_cert_status(cert: &NpmCertificate) -> (String, Option<i64>) {
+    let Some(ref expires_str) = cert.expires_on else {
+        return ("unknown".to_string(), None);
+    };
+    let Ok(expires) = chrono::NaiveDate::parse_from_str(&expires_str[..10], "%Y-%m-%d") else {
+        return ("unknown".to_string(), None);
+    };
+    let today = chrono::Utc::now().date_naive();
+    let days = (expires - today).num_days();
+    let status = if days < 0 {
+        "expired"
+    } else if days < 30 {
+        "expiring"
+    } else {
+        "valid"
+    };
+    (status.to_string(), Some(days))
+}
+
+/// GET /api/v1/npm/certificates — list all SSL certificates.
+pub async fn list_certificates(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<CertificateSummary>>, StatusCode> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let certs = client.list_certificates().await.map_err(|e| {
+        error!("NPM list certificates failed: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let summaries: Vec<CertificateSummary> = certs
+        .into_iter()
+        .map(|c| {
+            let (status, days_remaining) = compute_cert_status(&c);
+            CertificateSummary {
+                id: c.id,
+                provider: c.provider,
+                nice_name: c.nice_name,
+                domain_names: c.domain_names,
+                expires_on: c.expires_on,
+                created_on: c.created_on,
+                status,
+                days_remaining,
+            }
+        })
+        .collect();
+
+    Ok(Json(summaries))
+}
+
+/// Request body for creating a Let's Encrypt certificate.
+#[derive(Debug, Deserialize)]
+pub struct CreateLetsEncryptRequest {
+    pub domain_names: Vec<String>,
+    pub email: String,
+    #[serde(default)]
+    pub dns_challenge: bool,
+}
+
+/// POST /api/v1/npm/certificates/letsencrypt — request a Let's Encrypt cert.
+pub async fn create_letsencrypt(
+    State(state): State<AppState>,
+    Json(body): Json<CreateLetsEncryptRequest>,
+) -> Result<Json<CertificateSummary>, StatusCode> {
+    if body.domain_names.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    let nice_name = body.domain_names.join(", ");
+
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let cert = client
+        .create_letsencrypt_cert(
+            &nice_name,
+            body.domain_names,
+            &body.email,
+            body.dns_challenge,
+        )
+        .await
+        .map_err(|e| {
+            error!("NPM create Let's Encrypt cert failed: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
+
+    let (status, days_remaining) = compute_cert_status(&cert);
+    Ok(Json(CertificateSummary {
+        id: cert.id,
+        provider: cert.provider,
+        nice_name: cert.nice_name,
+        domain_names: cert.domain_names,
+        expires_on: cert.expires_on,
+        created_on: cert.created_on,
+        status,
+        days_remaining,
+    }))
+}
+
+/// Request body for uploading a custom certificate.
+#[derive(Debug, Deserialize)]
+pub struct UploadCustomCertRequest {
+    pub nice_name: String,
+    pub certificate: String,
+    pub certificate_key: String,
+}
+
+/// POST /api/v1/npm/certificates/custom — upload a custom cert.
+pub async fn upload_custom_cert(
+    State(state): State<AppState>,
+    Json(body): Json<UploadCustomCertRequest>,
+) -> Result<Json<CertificateSummary>, StatusCode> {
+    if body.certificate.is_empty() || body.certificate_key.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let cert = client
+        .upload_custom_cert(&body.nice_name, &body.certificate, &body.certificate_key)
+        .await
+        .map_err(|e| {
+            error!("NPM upload custom cert failed: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
+
+    let (status, days_remaining) = compute_cert_status(&cert);
+    Ok(Json(CertificateSummary {
+        id: cert.id,
+        provider: cert.provider,
+        nice_name: cert.nice_name,
+        domain_names: cert.domain_names,
+        expires_on: cert.expires_on,
+        created_on: cert.created_on,
+        status,
+        days_remaining,
+    }))
+}
+
+/// POST /api/v1/npm/certificates/:id/renew — renew a certificate.
+pub async fn renew_certificate(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<Json<CertificateSummary>, StatusCode> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let cert = client.renew_certificate(id).await.map_err(|e| {
+        error!("NPM renew certificate {id} failed: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let (status, days_remaining) = compute_cert_status(&cert);
+    Ok(Json(CertificateSummary {
+        id: cert.id,
+        provider: cert.provider,
+        nice_name: cert.nice_name,
+        domain_names: cert.domain_names,
+        expires_on: cert.expires_on,
+        created_on: cert.created_on,
+        status,
+        days_remaining,
+    }))
+}
+
+/// DELETE /api/v1/npm/certificates/:id — delete a certificate.
+pub async fn delete_certificate(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<StatusCode, StatusCode> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    client.delete_certificate(id).await.map_err(|e| {
+        error!("NPM delete certificate {id} failed: {e}");
+        StatusCode::BAD_GATEWAY
     })?;
 
     Ok(StatusCode::NO_CONTENT)
