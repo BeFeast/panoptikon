@@ -34,6 +34,7 @@ import {
   EyeOff,
   Users,
   Search,
+  GitCompare,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -191,6 +192,15 @@ function StatusHeader({ status }: { status: RouterStatus }) {
             Uptime: {status.uptime}
           </Badge>
         )}
+        <Link href="/settings/config-backup">
+          <Badge
+            variant="outline"
+            className="cursor-pointer border-blue-500/30 bg-blue-500/10 text-blue-400 transition-colors hover:bg-blue-500/20"
+          >
+            <GitCompare className="mr-1 h-3 w-3" />
+            Diff & Rollback
+          </Badge>
+        </Link>
       </div>
     </div>
   );
