@@ -10,6 +10,7 @@ pub mod oui;
 pub mod retention;
 pub mod scanner;
 pub mod speedtest_scheduler;
+pub mod ssh;
 pub mod ssdp;
 pub mod static_files;
 pub mod vyos;

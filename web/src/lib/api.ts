@@ -9,6 +9,10 @@ import type {
   AgentCreateResponse,
   AgentReport,
   Alert,
+  SshTarget,
+  SshTargetRequest,
+  SshReport,
+  SshTestConnectionResponse,
   AuditLogListResponse,
   AuthStatus,
   ConfigActionResponse,
@@ -1037,6 +1041,46 @@ export function updateNpmAccessList(
 
 export function deleteNpmAccessList(id: number): Promise<void> {
   return apiDelete(`/api/v1/npm/access-lists/${id}`);
+}
+
+// ─── SSH Targets (agentless monitoring) ──────────────────
+
+export function fetchSshTargets(): Promise<SshTarget[]> {
+  return apiGet<SshTarget[]>("/api/v1/ssh-targets");
+}
+
+export function fetchSshTarget(id: string): Promise<SshTarget> {
+  return apiGet<SshTarget>(`/api/v1/ssh-targets/${id}`);
+}
+
+export function createSshTarget(body: SshTargetRequest): Promise<SshTarget> {
+  return apiPost<SshTarget>("/api/v1/ssh-targets", body);
+}
+
+export function updateSshTarget(
+  id: string,
+  body: SshTargetRequest
+): Promise<SshTarget> {
+  return apiPut<SshTarget>(`/api/v1/ssh-targets/${id}`, body);
+}
+
+export function deleteSshTarget(id: string): Promise<void> {
+  return apiDelete(`/api/v1/ssh-targets/${id}`);
+}
+
+export function fetchSshTargetReports(
+  id: string,
+  limit = 100
+): Promise<SshReport[]> {
+  return apiGet<SshReport[]>(
+    `/api/v1/ssh-targets/${id}/reports?limit=${limit}`
+  );
+}
+
+export function testSshConnection(
+  id: string
+): Promise<SshTestConnectionResponse> {
+  return apiPost<SshTestConnectionResponse>(`/api/v1/ssh-targets/${id}/test`);
 }
 
 // ─── Services Wizard ─────────────────────────────────────

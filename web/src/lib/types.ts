@@ -761,3 +761,62 @@ export interface RemoveServiceResponse {
   success: boolean;
   steps: StepResult[];
 }
+
+// ─── SSH Targets (agentless monitoring) ─────────────────
+
+export interface SshTarget {
+  id: string;
+  name: string;
+  host: string;
+  port: number;
+  username: string;
+  auth_type: "password" | "key";
+  has_password: boolean;
+  has_private_key: boolean;
+  poll_interval_secs: number;
+  enabled: boolean;
+  created_at: string;
+  // Latest report data:
+  hostname: string | null;
+  os_name: string | null;
+  os_version: string | null;
+  cpu_percent: number | null;
+  mem_total: number | null;
+  mem_used: number | null;
+  disk_total: number | null;
+  disk_used: number | null;
+  uptime_seconds: number | null;
+  last_report_at: string | null;
+  is_online: boolean;
+}
+
+export interface SshTargetRequest {
+  name: string;
+  host: string;
+  port: number;
+  username: string;
+  auth_type: "password" | "key";
+  password?: string;
+  private_key?: string;
+  poll_interval_secs: number;
+  enabled: boolean;
+}
+
+export interface SshReport {
+  id: number;
+  hostname: string | null;
+  os_name: string | null;
+  os_version: string | null;
+  cpu_percent: number | null;
+  mem_total: number | null;
+  mem_used: number | null;
+  disk_total: number | null;
+  disk_used: number | null;
+  uptime_seconds: number | null;
+  reported_at: string;
+}
+
+export interface SshTestConnectionResponse {
+  success: boolean;
+  message: string;
+}

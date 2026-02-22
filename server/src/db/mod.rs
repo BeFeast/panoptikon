@@ -48,6 +48,9 @@ const SPEEDTEST_HISTORY_MIGRATION: &str = include_str!("migrations/013_speedtest
 const DEVICE_CUSTOM_FIELDS_MIGRATION: &str =
     include_str!("migrations/014_device_custom_fields.sql");
 
+/// Migration 015: SSH agentless monitoring — targets and reports tables.
+const SSH_TARGETS_MIGRATION: &str = include_str!("migrations/015_ssh_targets.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -359,6 +362,22 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 014_device_custom_fields.sql");
     }
 
+    // Migration 015: SSH agentless monitoring targets and reports.
+    let applied_15: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 15")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_15 {
+        sqlx::raw_sql(SSH_TARGETS_MIGRATION).execute(pool).await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (15)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 015_ssh_targets.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -406,6 +425,8 @@ mod tests {
             "vyos_config_backups",
             "device_sysinfo",
             "speedtest_history",
+            "ssh_targets",
+            "ssh_reports",
         ];
 
         for table in &expected_tables {

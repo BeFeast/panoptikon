@@ -30,6 +30,7 @@ pub mod search;
 pub mod services;
 pub mod settings;
 pub mod setup;
+pub mod ssh_targets;
 pub mod speedtest;
 pub mod topology;
 pub mod traffic;
@@ -354,6 +355,14 @@ pub fn router(state: AppState) -> Router {
         // Unified Services wizard
         .route("/services/add", post(services::add_service))
         .route("/services/remove", post(services::remove_service))
+        // SSH targets (agentless monitoring)
+        .route("/ssh-targets", get(ssh_targets::list))
+        .route("/ssh-targets", post(ssh_targets::create))
+        .route("/ssh-targets/:id", get(ssh_targets::get_one))
+        .route("/ssh-targets/:id", put(ssh_targets::update))
+        .route("/ssh-targets/:id", delete(ssh_targets::delete))
+        .route("/ssh-targets/:id/reports", get(ssh_targets::list_reports))
+        .route("/ssh-targets/:id/test", post(ssh_targets::test_connection))
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))
