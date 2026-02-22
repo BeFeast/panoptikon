@@ -3773,17 +3773,6 @@ pub struct DnsDomainOverrideRequest {
     pub server: String,
 }
 
-/// Validate a domain name (simple check: non-empty, valid characters).
-fn is_valid_domain(domain: &str) -> bool {
-    !domain.is_empty()
-        && domain.len() <= 253
-        && domain
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '.')
-        && !domain.starts_with('-')
-        && !domain.starts_with('.')
-}
-
 /// POST /api/v1/vyos/dns/forwarding/domain-overrides — add a domain override.
 pub async fn add_dns_domain_override(
     State(state): State<AppState>,
