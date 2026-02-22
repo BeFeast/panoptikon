@@ -23,6 +23,8 @@ import {
   Pencil,
   Power,
   Ban,
+  Layers,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -69,8 +71,21 @@ import {
   updateFirewallRule,
   deleteFirewallRule,
   toggleFirewallRule,
+  fetchFirewallGroups,
+  createAddressGroup,
+  deleteAddressGroup,
+  addAddressGroupMember,
+  removeAddressGroupMember,
+  createNetworkGroup,
+  deleteNetworkGroup,
+  addNetworkGroupMember,
+  removeNetworkGroupMember,
+  createPortGroup,
+  deletePortGroup,
+  addPortGroupMember,
+  removePortGroupMember,
 } from "@/lib/api";
-import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping } from "@/lib/types";
+import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping } from "@/lib/types";
 import { Progress } from "@/components/ui/progress";
 import { PageTransition } from "@/components/PageTransition";
 
@@ -2027,6 +2042,616 @@ function FirewallPanel({
   );
 }
 
+// ── Firewall Groups Panel ───────────────────────────────
+
+function FirewallGroupsPanel({
+  groups,
+  loading,
+  error,
+  onReload,
+}: {
+  groups: FirewallGroups | null;
+  loading: boolean;
+  error: string | null;
+  onReload: () => void;
+}) {
+  // ── Create dialogs ──────────────────
+  const [showCreateAddr, setShowCreateAddr] = useState(false);
+  const [addrForm, setAddrForm] = useState({ name: "", description: "", addresses: "" });
+  const [creatingAddr, setCreatingAddr] = useState(false);
+
+  const [showCreateNet, setShowCreateNet] = useState(false);
+  const [netForm, setNetForm] = useState({ name: "", description: "", networks: "" });
+  const [creatingNet, setCreatingNet] = useState(false);
+
+  const [showCreatePort, setShowCreatePort] = useState(false);
+  const [portForm, setPortForm] = useState({ name: "", description: "", ports: "" });
+  const [creatingPort, setCreatingPort] = useState(false);
+
+  // ── Delete confirmation ─────────────
+  const [confirmDelete, setConfirmDelete] = useState<{
+    type: "address" | "network" | "port";
+    name: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // ── Add member dialogs ──────────────
+  const [addMember, setAddMember] = useState<{
+    type: "address" | "network" | "port";
+    groupName: string;
+  } | null>(null);
+  const [memberValue, setMemberValue] = useState("");
+  const [addingMember, setAddingMember] = useState(false);
+
+  // ── Removing member ─────────────────
+  const [removingMember, setRemovingMember] = useState<string | null>(null);
+
+  async function handleCreateAddr() {
+    setCreatingAddr(true);
+    try {
+      const addresses = addrForm.addresses
+        .split(/[,\s]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      await createAddressGroup({
+        name: addrForm.name,
+        description: addrForm.description || undefined,
+        addresses,
+      });
+      toast.success(`Address group '${addrForm.name}' created`);
+      setShowCreateAddr(false);
+      setAddrForm({ name: "", description: "", addresses: "" });
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create address group");
+    } finally {
+      setCreatingAddr(false);
+    }
+  }
+
+  async function handleCreateNet() {
+    setCreatingNet(true);
+    try {
+      const networks = netForm.networks
+        .split(/[,\s]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      await createNetworkGroup({
+        name: netForm.name,
+        description: netForm.description || undefined,
+        networks,
+      });
+      toast.success(`Network group '${netForm.name}' created`);
+      setShowCreateNet(false);
+      setNetForm({ name: "", description: "", networks: "" });
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create network group");
+    } finally {
+      setCreatingNet(false);
+    }
+  }
+
+  async function handleCreatePort() {
+    setCreatingPort(true);
+    try {
+      const ports = portForm.ports
+        .split(/[,\s]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      await createPortGroup({
+        name: portForm.name,
+        description: portForm.description || undefined,
+        ports,
+      });
+      toast.success(`Port group '${portForm.name}' created`);
+      setShowCreatePort(false);
+      setPortForm({ name: "", description: "", ports: "" });
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create port group");
+    } finally {
+      setCreatingPort(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      if (confirmDelete.type === "address") {
+        await deleteAddressGroup(confirmDelete.name);
+      } else if (confirmDelete.type === "network") {
+        await deleteNetworkGroup(confirmDelete.name);
+      } else {
+        await deletePortGroup(confirmDelete.name);
+      }
+      toast.success(`Group '${confirmDelete.name}' deleted`);
+      setConfirmDelete(null);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete group");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function handleAddMember() {
+    if (!addMember || !memberValue.trim()) return;
+    setAddingMember(true);
+    try {
+      if (addMember.type === "address") {
+        await addAddressGroupMember(addMember.groupName, memberValue.trim());
+      } else if (addMember.type === "network") {
+        await addNetworkGroupMember(addMember.groupName, memberValue.trim());
+      } else {
+        await addPortGroupMember(addMember.groupName, memberValue.trim());
+      }
+      toast.success(`Added '${memberValue.trim()}' to '${addMember.groupName}'`);
+      setAddMember(null);
+      setMemberValue("");
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to add member");
+    } finally {
+      setAddingMember(false);
+    }
+  }
+
+  async function handleRemoveMember(
+    type: "address" | "network" | "port",
+    groupName: string,
+    value: string
+  ) {
+    setRemovingMember(`${groupName}:${value}`);
+    try {
+      if (type === "address") {
+        await removeAddressGroupMember(groupName, value);
+      } else if (type === "network") {
+        await removeNetworkGroupMember(groupName, value);
+      } else {
+        await removePortGroupMember(groupName, value);
+      }
+      toast.success(`Removed '${value}' from '${groupName}'`);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to remove member");
+    } finally {
+      setRemovingMember(null);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <Card key={i} className="border-slate-800 bg-slate-900">
+            <CardHeader>
+              <Skeleton className="h-5 w-40" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-20 w-full" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{error}</p>
+      </div>
+    );
+  }
+
+  const addrGroups = groups?.address_groups ?? [];
+  const netGroups = groups?.network_groups ?? [];
+  const portGroups = groups?.port_groups ?? [];
+
+  function renderGroupCard(
+    type: "address" | "network" | "port",
+    name: string,
+    description: string | null,
+    members: string[],
+    memberLabel: string
+  ) {
+    return (
+      <Card key={name} className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <CardTitle className="text-base text-white">{name}</CardTitle>
+              {description && (
+                <span className="text-xs text-slate-500">{description}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-slate-400 hover:text-white"
+                onClick={() => setAddMember({ type, groupName: name })}
+              >
+                <Plus className="mr-1 h-3 w-3" />
+                Add {memberLabel}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                onClick={() => setConfirmDelete({ type, name })}
+              >
+                <Trash2 className="mr-1 h-3 w-3" />
+                Delete
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {members.length === 0 ? (
+            <p className="py-2 text-sm text-slate-500">No {memberLabel}s in this group.</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {members.map((member) => (
+                <Badge
+                  key={member}
+                  variant="outline"
+                  className="border-slate-700 bg-slate-800 text-slate-300 font-mono text-xs gap-1.5 pr-1"
+                >
+                  {member}
+                  <button
+                    className="ml-0.5 rounded p-0.5 hover:bg-slate-700 disabled:opacity-50"
+                    disabled={removingMember === `${name}:${member}`}
+                    onClick={() => handleRemoveMember(type, name, member)}
+                  >
+                    {removingMember === `${name}:${member}` ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <X className="h-3 w-3" />
+                    )}
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-6">
+        {/* Address Groups */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-slate-400">Address Groups</h3>
+            <Dialog open={showCreateAddr} onOpenChange={setShowCreateAddr}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 border-slate-800 text-xs text-slate-300 hover:bg-slate-800">
+                  <Plus className="mr-1 h-3 w-3" />
+                  New Address Group
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="border-slate-800 bg-slate-900">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Create Address Group</DialogTitle>
+                  <DialogDescription className="text-slate-400">
+                    Create a named group of IP addresses for use in firewall rules.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Group Name</Label>
+                    <Input
+                      value={addrForm.name}
+                      onChange={(e) => setAddrForm({ ...addrForm, name: e.target.value })}
+                      placeholder="BLOCKED_IPS"
+                      className="border-slate-800 bg-slate-950 text-white font-mono"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Description (optional)</Label>
+                    <Input
+                      value={addrForm.description}
+                      onChange={(e) => setAddrForm({ ...addrForm, description: e.target.value })}
+                      placeholder="Blocked IP addresses"
+                      className="border-slate-800 bg-slate-950 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">IP Addresses (comma-separated, optional)</Label>
+                    <Input
+                      value={addrForm.addresses}
+                      onChange={(e) => setAddrForm({ ...addrForm, addresses: e.target.value })}
+                      placeholder="1.2.3.4, 5.6.7.8"
+                      className="border-slate-800 bg-slate-950 text-white font-mono"
+                    />
+                  </div>
+                </div>
+                {addrForm.name && (
+                  <div className="rounded-md border border-slate-800 bg-slate-950 p-3">
+                    <p className="text-xs font-medium text-slate-500">Config change:</p>
+                    <code className="mt-1 block whitespace-pre-wrap text-xs text-blue-400">
+                      {`set firewall group address-group ${addrForm.name}${addrForm.addresses ? ` address ${addrForm.addresses.split(/[,\s]+/).filter(Boolean).join("\nset firewall group address-group " + addrForm.name + " address ")}` : ""}`}
+                    </code>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowCreateAddr(false)} className="border-slate-800 text-slate-300 hover:bg-slate-800">
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateAddr} disabled={creatingAddr || !addrForm.name}>
+                    {creatingAddr && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Create
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+          {addrGroups.length === 0 ? (
+            <Card className="border-slate-800 bg-slate-900">
+              <CardContent className="flex flex-col items-center gap-2 py-8">
+                <p className="text-sm text-slate-500">No address groups configured.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            addrGroups.map((g) => renderGroupCard("address", g.name, g.description, g.members, "address"))
+          )}
+        </div>
+
+        {/* Network Groups */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-slate-400">Network Groups</h3>
+            <Dialog open={showCreateNet} onOpenChange={setShowCreateNet}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 border-slate-800 text-xs text-slate-300 hover:bg-slate-800">
+                  <Plus className="mr-1 h-3 w-3" />
+                  New Network Group
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="border-slate-800 bg-slate-900">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Create Network Group</DialogTitle>
+                  <DialogDescription className="text-slate-400">
+                    Create a named group of CIDR subnets for use in firewall rules.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Group Name</Label>
+                    <Input
+                      value={netForm.name}
+                      onChange={(e) => setNetForm({ ...netForm, name: e.target.value })}
+                      placeholder="TRUSTED_NETS"
+                      className="border-slate-800 bg-slate-950 text-white font-mono"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Description (optional)</Label>
+                    <Input
+                      value={netForm.description}
+                      onChange={(e) => setNetForm({ ...netForm, description: e.target.value })}
+                      placeholder="Trusted internal networks"
+                      className="border-slate-800 bg-slate-950 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Networks (comma-separated CIDR, optional)</Label>
+                    <Input
+                      value={netForm.networks}
+                      onChange={(e) => setNetForm({ ...netForm, networks: e.target.value })}
+                      placeholder="10.0.0.0/8, 172.16.0.0/12"
+                      className="border-slate-800 bg-slate-950 text-white font-mono"
+                    />
+                  </div>
+                </div>
+                {netForm.name && (
+                  <div className="rounded-md border border-slate-800 bg-slate-950 p-3">
+                    <p className="text-xs font-medium text-slate-500">Config change:</p>
+                    <code className="mt-1 block whitespace-pre-wrap text-xs text-blue-400">
+                      {`set firewall group network-group ${netForm.name}${netForm.networks ? ` network ${netForm.networks.split(/[,\s]+/).filter(Boolean).join("\nset firewall group network-group " + netForm.name + " network ")}` : ""}`}
+                    </code>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowCreateNet(false)} className="border-slate-800 text-slate-300 hover:bg-slate-800">
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateNet} disabled={creatingNet || !netForm.name}>
+                    {creatingNet && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Create
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+          {netGroups.length === 0 ? (
+            <Card className="border-slate-800 bg-slate-900">
+              <CardContent className="flex flex-col items-center gap-2 py-8">
+                <p className="text-sm text-slate-500">No network groups configured.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            netGroups.map((g) => renderGroupCard("network", g.name, g.description, g.members, "network"))
+          )}
+        </div>
+
+        {/* Port Groups */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-slate-400">Port Groups</h3>
+            <Dialog open={showCreatePort} onOpenChange={setShowCreatePort}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 border-slate-800 text-xs text-slate-300 hover:bg-slate-800">
+                  <Plus className="mr-1 h-3 w-3" />
+                  New Port Group
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="border-slate-800 bg-slate-900">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Create Port Group</DialogTitle>
+                  <DialogDescription className="text-slate-400">
+                    Create a named group of ports and port ranges for use in firewall rules.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Group Name</Label>
+                    <Input
+                      value={portForm.name}
+                      onChange={(e) => setPortForm({ ...portForm, name: e.target.value })}
+                      placeholder="WEB_PORTS"
+                      className="border-slate-800 bg-slate-950 text-white font-mono"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Description (optional)</Label>
+                    <Input
+                      value={portForm.description}
+                      onChange={(e) => setPortForm({ ...portForm, description: e.target.value })}
+                      placeholder="Web server ports"
+                      className="border-slate-800 bg-slate-950 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-slate-300">Ports (comma-separated, use - for ranges, optional)</Label>
+                    <Input
+                      value={portForm.ports}
+                      onChange={(e) => setPortForm({ ...portForm, ports: e.target.value })}
+                      placeholder="80, 443, 8080-8090"
+                      className="border-slate-800 bg-slate-950 text-white font-mono"
+                    />
+                  </div>
+                </div>
+                {portForm.name && (
+                  <div className="rounded-md border border-slate-800 bg-slate-950 p-3">
+                    <p className="text-xs font-medium text-slate-500">Config change:</p>
+                    <code className="mt-1 block whitespace-pre-wrap text-xs text-blue-400">
+                      {`set firewall group port-group ${portForm.name}${portForm.ports ? ` port ${portForm.ports.split(/[,\s]+/).filter(Boolean).join("\nset firewall group port-group " + portForm.name + " port ")}` : ""}`}
+                    </code>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setShowCreatePort(false)} className="border-slate-800 text-slate-300 hover:bg-slate-800">
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreatePort} disabled={creatingPort || !portForm.name}>
+                    {creatingPort && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Create
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+          {portGroups.length === 0 ? (
+            <Card className="border-slate-800 bg-slate-900">
+              <CardContent className="flex flex-col items-center gap-2 py-8">
+                <p className="text-sm text-slate-500">No port groups configured.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            portGroups.map((g) => renderGroupCard("port", g.name, g.description, g.members, "port"))
+          )}
+        </div>
+      </div>
+
+      {/* Delete group confirmation */}
+      <AlertDialog
+        open={confirmDelete !== null}
+        onOpenChange={(open) => { if (!open) setConfirmDelete(null); }}
+      >
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete Group</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              This will permanently delete the {confirmDelete?.type} group{" "}
+              <span className="font-mono font-medium text-white">{confirmDelete?.name}</span> and all its members.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="rounded-md border border-slate-800 bg-slate-950 p-3">
+            <p className="text-xs font-medium text-slate-500">Config change:</p>
+            <code className="mt-1 block whitespace-pre-wrap text-xs text-rose-400">
+              {confirmDelete && `delete firewall group ${confirmDelete.type === "address" ? "address-group" : confirmDelete.type === "network" ? "network-group" : "port-group"} ${confirmDelete.name}`}
+            </code>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-800 text-slate-300 hover:bg-slate-800">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+            >
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Add member dialog */}
+      <Dialog
+        open={addMember !== null}
+        onOpenChange={(open) => { if (!open) { setAddMember(null); setMemberValue(""); } }}
+      >
+        <DialogContent className="border-slate-800 bg-slate-900">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              Add {addMember?.type === "address" ? "Address" : addMember?.type === "network" ? "Network" : "Port"} to {addMember?.groupName}
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {addMember?.type === "address"
+                ? "Enter an IP address (e.g. 10.0.0.1)."
+                : addMember?.type === "network"
+                ? "Enter a CIDR network (e.g. 10.0.0.0/8)."
+                : "Enter a port or port range (e.g. 80 or 8080-8090)."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label className="text-slate-300">Value</Label>
+            <Input
+              value={memberValue}
+              onChange={(e) => setMemberValue(e.target.value)}
+              placeholder={
+                addMember?.type === "address"
+                  ? "1.2.3.4"
+                  : addMember?.type === "network"
+                  ? "10.0.0.0/8"
+                  : "443"
+              }
+              className="border-slate-800 bg-slate-950 text-white font-mono"
+              onKeyDown={(e) => { if (e.key === "Enter" && memberValue.trim()) handleAddMember(); }}
+            />
+          </div>
+          {memberValue.trim() && addMember && (
+            <div className="rounded-md border border-slate-800 bg-slate-950 p-3">
+              <p className="text-xs font-medium text-slate-500">Config change:</p>
+              <code className="mt-1 block whitespace-pre-wrap text-xs text-blue-400">
+                {`set firewall group ${addMember.type === "address" ? "address-group" : addMember.type === "network" ? "network-group" : "port-group"} ${addMember.groupName} ${addMember.type === "address" ? "address" : addMember.type === "network" ? "network" : "port"} ${memberValue.trim()}`}
+              </code>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setAddMember(null); setMemberValue(""); }} className="border-slate-800 text-slate-300 hover:bg-slate-800">
+              Cancel
+            </Button>
+            <Button onClick={handleAddMember} disabled={addingMember || !memberValue.trim()}>
+              {addingMember && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Add
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 // ── Main Page ───────────────────────────────────────────
 
 export default function RouterPage() {
@@ -2096,6 +2721,11 @@ function RouterTabs({ status }: { status: RouterStatus }) {
 
   const firewall = useAsyncData<FirewallConfig>(
     useCallback(() => fetchRouterFirewall(), []),
+    tab === "firewall"
+  );
+
+  const firewallGroups = useAsyncData<FirewallGroups>(
+    useCallback(() => fetchFirewallGroups(), []),
     tab === "firewall"
   );
 
@@ -2223,13 +2853,26 @@ function RouterTabs({ status }: { status: RouterStatus }) {
           </Card>
         </TabsContent>
 
-        <TabsContent value="firewall">
+        <TabsContent value="firewall" className="space-y-6">
           <FirewallPanel
             config={firewall.data}
             loading={firewall.loading}
             error={firewall.error}
             onReload={firewall.reload}
           />
+
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 pt-2">
+              <Layers className="h-4 w-4 text-slate-500" />
+              <h2 className="text-sm font-semibold text-slate-300">Firewall Groups</h2>
+            </div>
+            <FirewallGroupsPanel
+              groups={firewallGroups.data}
+              loading={firewallGroups.loading}
+              error={firewallGroups.error}
+              onReload={firewallGroups.reload}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="speedtest">

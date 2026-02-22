@@ -237,6 +237,30 @@ export interface FirewallConfig {
   chains: FirewallChain[];
 }
 
+export interface FirewallAddressGroup {
+  name: string;
+  description: string | null;
+  members: string[];
+}
+
+export interface FirewallNetworkGroup {
+  name: string;
+  description: string | null;
+  members: string[];
+}
+
+export interface FirewallPortGroup {
+  name: string;
+  description: string | null;
+  members: string[];
+}
+
+export interface FirewallGroups {
+  address_groups: FirewallAddressGroup[];
+  network_groups: FirewallNetworkGroup[];
+  port_groups: FirewallPortGroup[];
+}
+
 export interface SettingsData {
   webhook_url: string | null;
   vyos_url: string | null;

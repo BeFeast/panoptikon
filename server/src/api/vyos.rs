@@ -1819,6 +1819,939 @@ fn is_valid_mac(mac: &str) -> bool {
             .all(|p| p.len() == 2 && p.chars().all(|c| c.is_ascii_hexdigit()))
 }
 
+// ── Firewall Groups ─────────────────────────────────────────────────────────
+
+/// A firewall address group (a named set of IP addresses).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FirewallAddressGroup {
+    pub name: String,
+    pub description: Option<String>,
+    pub members: Vec<String>,
+}
+
+/// A firewall network group (a named set of CIDR subnets).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FirewallNetworkGroup {
+    pub name: String,
+    pub description: Option<String>,
+    pub members: Vec<String>,
+}
+
+/// A firewall port group (a named set of ports and port ranges).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FirewallPortGroup {
+    pub name: String,
+    pub description: Option<String>,
+    pub members: Vec<String>,
+}
+
+/// All firewall groups.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct FirewallGroups {
+    pub address_groups: Vec<FirewallAddressGroup>,
+    pub network_groups: Vec<FirewallNetworkGroup>,
+    pub port_groups: Vec<FirewallPortGroup>,
+}
+
+/// Parse firewall groups from VyOS config JSON.
+///
+/// Expected structure under `firewall.group`:
+/// ```json
+/// {
+///   "address-group": { "BLOCKED_IPS": { "address": "1.2.3.4", "description": "..." } },
+///   "network-group": { "TRUSTED_NETS": { "network": ["10.0.0.0/8", "172.16.0.0/12"] } },
+///   "port-group": { "WEB_PORTS": { "port": ["80", "443", "8080-8090"] } }
+/// }
+/// ```
+pub fn parse_firewall_groups(value: &Value) -> FirewallGroups {
+    let obj = match value.as_object() {
+        Some(o) => o,
+        None => {
+            return FirewallGroups {
+                address_groups: Vec::new(),
+                network_groups: Vec::new(),
+                port_groups: Vec::new(),
+            }
+        }
+    };
+
+    let address_groups = parse_group_entries(obj.get("address-group"), "address");
+    let network_groups = parse_group_entries(obj.get("network-group"), "network");
+    let port_groups = parse_group_entries(obj.get("port-group"), "port");
+
+    FirewallGroups {
+        address_groups: address_groups
+            .into_iter()
+            .map(|(name, desc, members)| FirewallAddressGroup {
+                name,
+                description: desc,
+                members,
+            })
+            .collect(),
+        network_groups: network_groups
+            .into_iter()
+            .map(|(name, desc, members)| FirewallNetworkGroup {
+                name,
+                description: desc,
+                members,
+            })
+            .collect(),
+        port_groups: port_groups
+            .into_iter()
+            .map(|(name, desc, members)| FirewallPortGroup {
+                name,
+                description: desc,
+                members,
+            })
+            .collect(),
+    }
+}
+
+/// Parse group entries from VyOS group config for a given member key.
+///
+/// Members can be a single string value or an array of strings.
+fn parse_group_entries(
+    group_val: Option<&Value>,
+    member_key: &str,
+) -> Vec<(String, Option<String>, Vec<String>)> {
+    let mut entries = Vec::new();
+
+    let groups = match group_val.and_then(|v| v.as_object()) {
+        Some(g) => g,
+        None => return entries,
+    };
+
+    for (group_name, group_data) in groups {
+        let data_obj = match group_data.as_object() {
+            Some(o) => o,
+            None => continue,
+        };
+
+        let description = data_obj
+            .get("description")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
+
+        let members = match data_obj.get(member_key) {
+            Some(Value::String(s)) => vec![s.clone()],
+            Some(Value::Array(arr)) => arr
+                .iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect(),
+            // VyOS may also return a number for port values
+            Some(Value::Number(n)) => vec![n.to_string()],
+            _ => Vec::new(),
+        };
+
+        entries.push((group_name.clone(), description, members));
+    }
+
+    entries.sort_by(|a, b| a.0.cmp(&b.0));
+    entries
+}
+
+/// GET /api/v1/vyos/firewall/groups — fetch firewall groups from VyOS.
+pub async fn firewall_groups(
+    State(state): State<AppState>,
+) -> Result<Json<FirewallGroups>, StatusCode> {
+    let client = get_vyos_client_or_503(&state).await?;
+
+    match client.retrieve(&["firewall", "group"]).await {
+        Ok(data) => {
+            let groups = parse_firewall_groups(&data);
+            Ok(Json(groups))
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            if msg.contains("empty") || msg.contains("does not exist") {
+                Ok(Json(FirewallGroups {
+                    address_groups: Vec::new(),
+                    network_groups: Vec::new(),
+                    port_groups: Vec::new(),
+                }))
+            } else {
+                tracing::error!("VyOS firewall groups query failed: {e}");
+                Err(StatusCode::BAD_GATEWAY)
+            }
+        }
+    }
+}
+
+/// Request body for creating an address group.
+#[derive(Debug, Deserialize)]
+pub struct CreateAddressGroupRequest {
+    pub name: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub addresses: Vec<String>,
+}
+
+/// Request body for creating a network group.
+#[derive(Debug, Deserialize)]
+pub struct CreateNetworkGroupRequest {
+    pub name: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub networks: Vec<String>,
+}
+
+/// Request body for creating a port group.
+#[derive(Debug, Deserialize)]
+pub struct CreatePortGroupRequest {
+    pub name: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub ports: Vec<String>,
+}
+
+/// Request body for adding a member to a group.
+#[derive(Debug, Deserialize)]
+pub struct AddGroupMemberRequest {
+    pub value: String,
+}
+
+/// Validate a group name (alphanumeric, hyphens, underscores, must not be empty).
+fn validate_group_name(name: &str) -> Result<(), String> {
+    if name.is_empty() {
+        return Err("Group name cannot be empty".to_string());
+    }
+    if !name
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    {
+        return Err(
+            "Group name must contain only alphanumeric characters, hyphens, and underscores"
+                .to_string(),
+        );
+    }
+    Ok(())
+}
+
+/// Validate an IP address (v4 only, no CIDR).
+fn is_valid_ip(ip: &str) -> bool {
+    ip.parse::<std::net::Ipv4Addr>().is_ok()
+}
+
+/// Validate a CIDR network (e.g. "10.0.0.0/8").
+fn is_valid_cidr(cidr: &str) -> bool {
+    let parts: Vec<&str> = cidr.split('/').collect();
+    if parts.len() != 2 {
+        return false;
+    }
+    if parts[0].parse::<std::net::Ipv4Addr>().is_err() {
+        return false;
+    }
+    match parts[1].parse::<u8>() {
+        Ok(prefix) => prefix <= 32,
+        Err(_) => false,
+    }
+}
+
+/// Validate a port or port range (e.g. "80", "8080-8090").
+fn is_valid_port_entry(port: &str) -> bool {
+    if let Some((start, end)) = port.split_once('-') {
+        // Port range
+        match (start.parse::<u16>(), end.parse::<u16>()) {
+            (Ok(s), Ok(e)) => s > 0 && e > 0 && s <= e,
+            _ => false,
+        }
+    } else {
+        // Single port
+        match port.parse::<u16>() {
+            Ok(p) => p > 0,
+            Err(_) => false,
+        }
+    }
+}
+
+/// POST /api/v1/vyos/firewall/groups/address-group — create an address group.
+pub async fn create_address_group(
+    State(state): State<AppState>,
+    Json(body): Json<CreateAddressGroupRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    if let Err(msg) = validate_group_name(&body.name) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: msg,
+            }),
+        ));
+    }
+
+    // Validate all addresses
+    for addr in &body.addresses {
+        if !is_valid_ip(addr) {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("Invalid IP address: {addr}"),
+                }),
+            ));
+        }
+    }
+
+    tracing::info!("VyOS: creating address-group '{}'", body.name);
+
+    // Set description if provided
+    if let Some(ref desc) = body.description {
+        if let Err(e) = client
+            .configure_set(&[
+                "firewall",
+                "group",
+                "address-group",
+                &body.name,
+                "description",
+                desc,
+            ])
+            .await
+        {
+            tracing::error!("VyOS address-group description set failed: {e}");
+            return Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("Failed to set description: {e}"),
+                }),
+            ));
+        }
+    }
+
+    // Add each address
+    for addr in &body.addresses {
+        if let Err(e) = client
+            .configure_set(&[
+                "firewall",
+                "group",
+                "address-group",
+                &body.name,
+                "address",
+                addr,
+            ])
+            .await
+        {
+            tracing::error!("VyOS address-group address add failed: {e}");
+            return Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("Failed to add address {addr}: {e}"),
+                }),
+            ));
+        }
+    }
+
+    Ok(Json(VyosWriteResponse {
+        success: true,
+        message: format!("Address group '{}' created", body.name),
+    }))
+}
+
+/// DELETE /api/v1/vyos/firewall/groups/address-group/:name — delete an address group.
+pub async fn delete_address_group(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    tracing::info!("VyOS: deleting address-group '{name}'");
+
+    match client
+        .configure_delete(&["firewall", "group", "address-group", &name])
+        .await
+    {
+        Ok(_) => Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Address group '{name}' deleted"),
+        })),
+        Err(e) => {
+            tracing::error!("VyOS address-group delete failed: {e}");
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("VyOS error: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
+/// POST /api/v1/vyos/firewall/groups/address-group/:name/members — add a member.
+pub async fn add_address_group_member(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    Json(body): Json<AddGroupMemberRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    if !is_valid_ip(&body.value) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: format!("Invalid IP address: {}", body.value),
+            }),
+        ));
+    }
+
+    tracing::info!(
+        "VyOS: adding address '{}' to address-group '{name}'",
+        body.value
+    );
+
+    match client
+        .configure_set(&[
+            "firewall",
+            "group",
+            "address-group",
+            &name,
+            "address",
+            &body.value,
+        ])
+        .await
+    {
+        Ok(_) => Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Address '{}' added to group '{name}'", body.value),
+        })),
+        Err(e) => {
+            tracing::error!("VyOS address-group member add failed: {e}");
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("VyOS error: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
+/// DELETE /api/v1/vyos/firewall/groups/address-group/:name/members/:value — remove a member.
+pub async fn remove_address_group_member(
+    State(state): State<AppState>,
+    Path((name, value)): Path<(String, String)>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    tracing::info!("VyOS: removing address '{value}' from address-group '{name}'");
+
+    match client
+        .configure_delete(&[
+            "firewall",
+            "group",
+            "address-group",
+            &name,
+            "address",
+            &value,
+        ])
+        .await
+    {
+        Ok(_) => Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Address '{value}' removed from group '{name}'"),
+        })),
+        Err(e) => {
+            tracing::error!("VyOS address-group member remove failed: {e}");
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("VyOS error: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
+/// POST /api/v1/vyos/firewall/groups/network-group — create a network group.
+pub async fn create_network_group(
+    State(state): State<AppState>,
+    Json(body): Json<CreateNetworkGroupRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    if let Err(msg) = validate_group_name(&body.name) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: msg,
+            }),
+        ));
+    }
+
+    for net in &body.networks {
+        if !is_valid_cidr(net) {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("Invalid CIDR network: {net}"),
+                }),
+            ));
+        }
+    }
+
+    tracing::info!("VyOS: creating network-group '{}'", body.name);
+
+    if let Some(ref desc) = body.description {
+        if let Err(e) = client
+            .configure_set(&[
+                "firewall",
+                "group",
+                "network-group",
+                &body.name,
+                "description",
+                desc,
+            ])
+            .await
+        {
+            tracing::error!("VyOS network-group description set failed: {e}");
+            return Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("Failed to set description: {e}"),
+                }),
+            ));
+        }
+    }
+
+    for net in &body.networks {
+        if let Err(e) = client
+            .configure_set(&[
+                "firewall",
+                "group",
+                "network-group",
+                &body.name,
+                "network",
+                net,
+            ])
+            .await
+        {
+            tracing::error!("VyOS network-group network add failed: {e}");
+            return Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("Failed to add network {net}: {e}"),
+                }),
+            ));
+        }
+    }
+
+    Ok(Json(VyosWriteResponse {
+        success: true,
+        message: format!("Network group '{}' created", body.name),
+    }))
+}
+
+/// DELETE /api/v1/vyos/firewall/groups/network-group/:name — delete a network group.
+pub async fn delete_network_group(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    tracing::info!("VyOS: deleting network-group '{name}'");
+
+    match client
+        .configure_delete(&["firewall", "group", "network-group", &name])
+        .await
+    {
+        Ok(_) => Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Network group '{name}' deleted"),
+        })),
+        Err(e) => {
+            tracing::error!("VyOS network-group delete failed: {e}");
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("VyOS error: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
+/// POST /api/v1/vyos/firewall/groups/network-group/:name/members — add a member.
+pub async fn add_network_group_member(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    Json(body): Json<AddGroupMemberRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    if !is_valid_cidr(&body.value) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: format!("Invalid CIDR network: {}", body.value),
+            }),
+        ));
+    }
+
+    tracing::info!(
+        "VyOS: adding network '{}' to network-group '{name}'",
+        body.value
+    );
+
+    match client
+        .configure_set(&[
+            "firewall",
+            "group",
+            "network-group",
+            &name,
+            "network",
+            &body.value,
+        ])
+        .await
+    {
+        Ok(_) => Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Network '{}' added to group '{name}'", body.value),
+        })),
+        Err(e) => {
+            tracing::error!("VyOS network-group member add failed: {e}");
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("VyOS error: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
+/// DELETE /api/v1/vyos/firewall/groups/network-group/:name/members/:value — remove a member.
+pub async fn remove_network_group_member(
+    State(state): State<AppState>,
+    Path((name, value)): Path<(String, String)>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    tracing::info!("VyOS: removing network '{value}' from network-group '{name}'");
+
+    match client
+        .configure_delete(&[
+            "firewall",
+            "group",
+            "network-group",
+            &name,
+            "network",
+            &value,
+        ])
+        .await
+    {
+        Ok(_) => Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Network '{value}' removed from group '{name}'"),
+        })),
+        Err(e) => {
+            tracing::error!("VyOS network-group member remove failed: {e}");
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("VyOS error: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
+/// POST /api/v1/vyos/firewall/groups/port-group — create a port group.
+pub async fn create_port_group(
+    State(state): State<AppState>,
+    Json(body): Json<CreatePortGroupRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    if let Err(msg) = validate_group_name(&body.name) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: msg,
+            }),
+        ));
+    }
+
+    for port in &body.ports {
+        if !is_valid_port_entry(port) {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("Invalid port or port range: {port}"),
+                }),
+            ));
+        }
+    }
+
+    tracing::info!("VyOS: creating port-group '{}'", body.name);
+
+    if let Some(ref desc) = body.description {
+        if let Err(e) = client
+            .configure_set(&[
+                "firewall",
+                "group",
+                "port-group",
+                &body.name,
+                "description",
+                desc,
+            ])
+            .await
+        {
+            tracing::error!("VyOS port-group description set failed: {e}");
+            return Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("Failed to set description: {e}"),
+                }),
+            ));
+        }
+    }
+
+    for port in &body.ports {
+        if let Err(e) = client
+            .configure_set(&["firewall", "group", "port-group", &body.name, "port", port])
+            .await
+        {
+            tracing::error!("VyOS port-group port add failed: {e}");
+            return Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("Failed to add port {port}: {e}"),
+                }),
+            ));
+        }
+    }
+
+    Ok(Json(VyosWriteResponse {
+        success: true,
+        message: format!("Port group '{}' created", body.name),
+    }))
+}
+
+/// DELETE /api/v1/vyos/firewall/groups/port-group/:name — delete a port group.
+pub async fn delete_port_group(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    tracing::info!("VyOS: deleting port-group '{name}'");
+
+    match client
+        .configure_delete(&["firewall", "group", "port-group", &name])
+        .await
+    {
+        Ok(_) => Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Port group '{name}' deleted"),
+        })),
+        Err(e) => {
+            tracing::error!("VyOS port-group delete failed: {e}");
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("VyOS error: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
+/// POST /api/v1/vyos/firewall/groups/port-group/:name/members — add a member.
+pub async fn add_port_group_member(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    Json(body): Json<AddGroupMemberRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    if !is_valid_port_entry(&body.value) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: format!("Invalid port or port range: {}", body.value),
+            }),
+        ));
+    }
+
+    tracing::info!("VyOS: adding port '{}' to port-group '{name}'", body.value);
+
+    match client
+        .configure_set(&[
+            "firewall",
+            "group",
+            "port-group",
+            &name,
+            "port",
+            &body.value,
+        ])
+        .await
+    {
+        Ok(_) => Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Port '{}' added to group '{name}'", body.value),
+        })),
+        Err(e) => {
+            tracing::error!("VyOS port-group member add failed: {e}");
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("VyOS error: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
+/// DELETE /api/v1/vyos/firewall/groups/port-group/:name/members/:value — remove a member.
+pub async fn remove_port_group_member(
+    State(state): State<AppState>,
+    Path((name, value)): Path<(String, String)>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    tracing::info!("VyOS: removing port '{value}' from port-group '{name}'");
+
+    match client
+        .configure_delete(&["firewall", "group", "port-group", &name, "port", &value])
+        .await
+    {
+        Ok(_) => Ok(Json(VyosWriteResponse {
+            success: true,
+            message: format!("Port '{value}' removed from group '{name}'"),
+        })),
+        Err(e) => {
+            tracing::error!("VyOS port-group member remove failed: {e}");
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: format!("VyOS error: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
 // ── Speed Test ──────────────────────────────────────────────────────────────
 
 /// Speed test result returned to the frontend.
@@ -2636,6 +3569,126 @@ mod tests {
         let guest = mappings.iter().find(|m| m.network == "GUEST").unwrap();
         assert_eq!(guest.name, "printer");
         assert_eq!(guest.ip, "192.168.1.10");
+    }
+
+    // ── Firewall groups parsing ─────────────────────────────
+
+    #[test]
+    fn test_parse_firewall_groups_full() {
+        let json: Value = serde_json::from_str(
+            r#"{
+                "address-group": {
+                    "BLOCKED_IPS": {
+                        "address": ["1.2.3.4", "5.6.7.8"],
+                        "description": "Blocked addresses"
+                    },
+                    "SINGLE": {
+                        "address": "10.0.0.1"
+                    }
+                },
+                "network-group": {
+                    "TRUSTED_NETS": {
+                        "network": ["10.0.0.0/8", "172.16.0.0/12"],
+                        "description": "Trusted networks"
+                    }
+                },
+                "port-group": {
+                    "WEB_PORTS": {
+                        "port": ["80", "443", "8080-8090"],
+                        "description": "Web ports"
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let groups = parse_firewall_groups(&json);
+
+        assert_eq!(groups.address_groups.len(), 2);
+        assert_eq!(groups.address_groups[0].name, "BLOCKED_IPS");
+        assert_eq!(
+            groups.address_groups[0].description.as_deref(),
+            Some("Blocked addresses")
+        );
+        assert_eq!(groups.address_groups[0].members, vec!["1.2.3.4", "5.6.7.8"]);
+        assert_eq!(groups.address_groups[1].name, "SINGLE");
+        assert_eq!(groups.address_groups[1].members, vec!["10.0.0.1"]);
+
+        assert_eq!(groups.network_groups.len(), 1);
+        assert_eq!(groups.network_groups[0].name, "TRUSTED_NETS");
+        assert_eq!(
+            groups.network_groups[0].members,
+            vec!["10.0.0.0/8", "172.16.0.0/12"]
+        );
+
+        assert_eq!(groups.port_groups.len(), 1);
+        assert_eq!(groups.port_groups[0].name, "WEB_PORTS");
+        assert_eq!(
+            groups.port_groups[0].members,
+            vec!["80", "443", "8080-8090"]
+        );
+    }
+
+    #[test]
+    fn test_parse_firewall_groups_empty() {
+        let json: Value = serde_json::from_str("{}").unwrap();
+        let groups = parse_firewall_groups(&json);
+        assert!(groups.address_groups.is_empty());
+        assert!(groups.network_groups.is_empty());
+        assert!(groups.port_groups.is_empty());
+
+        let groups2 = parse_firewall_groups(&Value::Null);
+        assert!(groups2.address_groups.is_empty());
+    }
+
+    #[test]
+    fn test_parse_firewall_groups_numeric_port() {
+        let json: Value = serde_json::from_str(
+            r#"{
+                "port-group": {
+                    "SINGLE_PORT": {
+                        "port": 443
+                    }
+                }
+            }"#,
+        )
+        .unwrap();
+
+        let groups = parse_firewall_groups(&json);
+        assert_eq!(groups.port_groups.len(), 1);
+        assert_eq!(groups.port_groups[0].members, vec!["443"]);
+    }
+
+    // ── Validation helpers ────────────────────────────────────
+
+    #[test]
+    fn test_validate_group_name() {
+        assert!(validate_group_name("BLOCKED_IPS").is_ok());
+        assert!(validate_group_name("my-group-1").is_ok());
+        assert!(validate_group_name("").is_err());
+        assert!(validate_group_name("bad name").is_err());
+        assert!(validate_group_name("bad/name").is_err());
+    }
+
+    #[test]
+    fn test_is_valid_cidr() {
+        assert!(is_valid_cidr("10.0.0.0/8"));
+        assert!(is_valid_cidr("192.168.1.0/24"));
+        assert!(is_valid_cidr("0.0.0.0/0"));
+        assert!(!is_valid_cidr("10.0.0.0"));
+        assert!(!is_valid_cidr("10.0.0.0/33"));
+        assert!(!is_valid_cidr("invalid/8"));
+    }
+
+    #[test]
+    fn test_is_valid_port_entry() {
+        assert!(is_valid_port_entry("80"));
+        assert!(is_valid_port_entry("443"));
+        assert!(is_valid_port_entry("8080-8090"));
+        assert!(!is_valid_port_entry("0"));
+        assert!(!is_valid_port_entry("abc"));
+        assert!(!is_valid_port_entry("8090-8080")); // start > end
+        assert!(!is_valid_port_entry(""));
     }
 
     #[tokio::test]

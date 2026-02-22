@@ -16,6 +16,7 @@ import type {
   DhcpStaticMapping,
   FirewallConfig,
   FirewallRuleRequest,
+  FirewallGroups,
   LoginResponse,
   NetflowStatus,
   RouterStatus,
@@ -277,6 +278,111 @@ export function fetchRouterFirewall(): Promise<FirewallConfig> {
 
 export function runSpeedTest(): Promise<SpeedTestResult> {
   return apiPost<SpeedTestResult>("/api/v1/router/speedtest");
+}
+
+// ─── Firewall Groups ─────────────────────────────────────
+
+export function fetchFirewallGroups(): Promise<FirewallGroups> {
+  return apiGet<FirewallGroups>("/api/v1/vyos/firewall/groups");
+}
+
+export function createAddressGroup(body: {
+  name: string;
+  description?: string;
+  addresses?: string[];
+}): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>("/api/v1/vyos/firewall/groups/address-group", body);
+}
+
+export function deleteAddressGroup(name: string): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/firewall/groups/address-group/${encodeURIComponent(name)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function addAddressGroupMember(
+  name: string,
+  value: string
+): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>(
+    `/api/v1/vyos/firewall/groups/address-group/${encodeURIComponent(name)}/members`,
+    { value }
+  );
+}
+
+export function removeAddressGroupMember(
+  name: string,
+  value: string
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/firewall/groups/address-group/${encodeURIComponent(name)}/members/${encodeURIComponent(value)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function createNetworkGroup(body: {
+  name: string;
+  description?: string;
+  networks?: string[];
+}): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>("/api/v1/vyos/firewall/groups/network-group", body);
+}
+
+export function deleteNetworkGroup(name: string): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/firewall/groups/network-group/${encodeURIComponent(name)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function addNetworkGroupMember(
+  name: string,
+  value: string
+): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>(
+    `/api/v1/vyos/firewall/groups/network-group/${encodeURIComponent(name)}/members`,
+    { value }
+  );
+}
+
+export function removeNetworkGroupMember(
+  name: string,
+  value: string
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/firewall/groups/network-group/${encodeURIComponent(name)}/members/${encodeURIComponent(value)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function createPortGroup(body: {
+  name: string;
+  description?: string;
+  ports?: string[];
+}): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>("/api/v1/vyos/firewall/groups/port-group", body);
+}
+
+export function deletePortGroup(name: string): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/firewall/groups/port-group/${encodeURIComponent(name)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function addPortGroupMember(
+  name: string,
+  value: string
+): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>(
+    `/api/v1/vyos/firewall/groups/port-group/${encodeURIComponent(name)}/members`,
+    { value }
+  );
+}
+
+export function removePortGroupMember(
+  name: string,
+  value: string
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/firewall/groups/port-group/${encodeURIComponent(name)}/members/${encodeURIComponent(value)}`
+  ) as unknown as Promise<VyosWriteResponse>;
 }
 
 export function toggleInterface(
