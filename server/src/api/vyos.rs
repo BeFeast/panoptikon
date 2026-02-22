@@ -4401,7 +4401,7 @@ pub async fn speedtest(
 
 // ── WireGuard VPN management ──────────────────────────────────────────────────
 
-/// A WireGuard peer parsed from VyOS config.
+/// A WireGuard peer parsed from VyOS config + runtime stats.
 #[derive(Debug, Clone, Serialize)]
 pub struct WireguardPeer {
     pub name: String,
@@ -4409,6 +4409,12 @@ pub struct WireguardPeer {
     pub allowed_ips: Vec<String>,
     pub endpoint: Option<String>,
     pub persistent_keepalive: Option<u32>,
+    /// Latest handshake as a UNIX timestamp (seconds), from operational data.
+    pub last_handshake: Option<i64>,
+    /// Bytes received from this peer.
+    pub rx_bytes: Option<u64>,
+    /// Bytes transmitted to this peer.
+    pub tx_bytes: Option<u64>,
 }
 
 /// A WireGuard interface parsed from VyOS config + operational status.
@@ -4419,6 +4425,8 @@ pub struct WireguardInterface {
     pub port: Option<u32>,
     pub public_key: Option<String>,
     pub peers: Vec<WireguardPeer>,
+    /// Interface link status: "up" or "down".
+    pub status: Option<String>,
 }
 
 /// Response for keypair generation.
@@ -4488,7 +4496,27 @@ pub async fn wireguard_list(
             StatusCode::BAD_GATEWAY
         })?;
 
-    let interfaces = parse_wireguard_config(&config);
+    let mut interfaces = parse_wireguard_config(&config);
+
+    // Fetch interface link status from `show interfaces`
+    if let Ok(iface_raw) = client.show(&["interfaces"]).await {
+        let iface_text = iface_raw.as_str().unwrap_or("");
+        let iface_list = parse_interfaces_text(iface_text);
+        for wg in &mut interfaces {
+            if let Some(sys_iface) = iface_list.iter().find(|i| i.name == wg.name) {
+                wg.status = Some(sys_iface.link_state.clone());
+            }
+        }
+    }
+
+    // Fetch per-interface runtime stats (handshake, transfer) from `show interfaces wireguard <name>`
+    for wg in &mut interfaces {
+        if let Ok(raw) = client.show(&["interfaces", "wireguard", &wg.name]).await {
+            let text = raw.as_str().unwrap_or("");
+            merge_wireguard_runtime_stats(wg, text);
+        }
+    }
+
     Ok(Json(interfaces))
 }
 
@@ -4573,6 +4601,9 @@ fn parse_wireguard_config(config: &Value) -> Vec<WireguardInterface> {
                     allowed_ips,
                     endpoint,
                     persistent_keepalive,
+                    last_handshake: None,
+                    rx_bytes: None,
+                    tx_bytes: None,
                 });
             }
         }
@@ -4583,10 +4614,169 @@ fn parse_wireguard_config(config: &Value) -> Vec<WireguardInterface> {
             port,
             public_key,
             peers,
+            status: None,
         });
     }
 
     interfaces
+}
+
+/// Merge runtime stats from `show interfaces wireguard <name>` output into a
+/// [`WireguardInterface`]'s peers.
+///
+/// The VyOS `show interfaces wireguard wg0` output looks like:
+/// ```text
+/// interface: wg0
+///   public key: <base64>
+///   private key: (hidden)
+///   listening port: 51820
+///
+///   peer: <base64_public_key>
+///     endpoint: 1.2.3.4:51820
+///     allowed ips: 10.10.20.2/32
+///     latest handshake: 1 minute, 30 seconds ago
+///     transfer: 1.23 MiB received, 4.56 MiB sent
+/// ```
+///
+/// We match peers by public key (or positionally if keys are not available).
+fn merge_wireguard_runtime_stats(iface: &mut WireguardInterface, text: &str) {
+    let mut current_pubkey: Option<String> = None;
+    let mut current_handshake: Option<i64> = None;
+    let mut current_rx: Option<u64> = None;
+    let mut current_tx: Option<u64> = None;
+    let mut current_endpoint: Option<String> = None;
+
+    // Collect runtime peer data keyed by public key
+    let mut runtime_peers: Vec<(
+        String,
+        Option<i64>,
+        Option<u64>,
+        Option<u64>,
+        Option<String>,
+    )> = Vec::new();
+
+    for line in text.lines() {
+        let trimmed = line.trim();
+
+        if let Some(rest) = trimmed.strip_prefix("peer:") {
+            // Flush previous peer
+            if let Some(pk) = current_pubkey.take() {
+                runtime_peers.push((
+                    pk,
+                    current_handshake.take(),
+                    current_rx.take(),
+                    current_tx.take(),
+                    current_endpoint.take(),
+                ));
+            }
+            current_pubkey = Some(rest.trim().to_string());
+            current_handshake = None;
+            current_rx = None;
+            current_tx = None;
+            current_endpoint = None;
+        } else if let Some(rest) = trimmed.strip_prefix("latest handshake:") {
+            current_handshake = Some(parse_handshake_ago(rest.trim()));
+        } else if let Some(rest) = trimmed.strip_prefix("transfer:") {
+            let (rx, tx) = parse_transfer_line(rest.trim());
+            current_rx = rx;
+            current_tx = tx;
+        } else if let Some(rest) = trimmed.strip_prefix("endpoint:") {
+            current_endpoint = Some(rest.trim().to_string());
+        }
+    }
+    // Flush last peer
+    if let Some(pk) = current_pubkey.take() {
+        runtime_peers.push((
+            pk,
+            current_handshake,
+            current_rx,
+            current_tx,
+            current_endpoint,
+        ));
+    }
+
+    // Match runtime data to config peers by public key
+    for peer in &mut iface.peers {
+        if let Some(peer_pk) = &peer.public_key {
+            if let Some(rt) = runtime_peers.iter().find(|(pk, ..)| pk == peer_pk) {
+                peer.last_handshake = rt.1;
+                peer.rx_bytes = rt.2;
+                peer.tx_bytes = rt.3;
+                // Update endpoint from runtime if config doesn't have it
+                if peer.endpoint.is_none() {
+                    peer.endpoint.clone_from(&rt.4);
+                }
+            }
+        }
+    }
+}
+
+/// Parse a WireGuard "latest handshake" relative-time string into a UNIX timestamp.
+///
+/// Examples: "1 minute, 30 seconds ago", "3 hours, 5 minutes, 12 seconds ago"
+fn parse_handshake_ago(text: &str) -> i64 {
+    let text = text.trim().trim_end_matches("ago").trim();
+    let mut total_secs: i64 = 0;
+
+    for part in text.split(',') {
+        let part = part.trim();
+        let tokens: Vec<&str> = part.split_whitespace().collect();
+        if tokens.len() >= 2 {
+            if let Ok(n) = tokens[0].parse::<i64>() {
+                let unit = tokens[1];
+                if unit.starts_with("second") {
+                    total_secs += n;
+                } else if unit.starts_with("minute") {
+                    total_secs += n * 60;
+                } else if unit.starts_with("hour") {
+                    total_secs += n * 3600;
+                } else if unit.starts_with("day") {
+                    total_secs += n * 86400;
+                }
+            }
+        }
+    }
+
+    chrono::Utc::now().timestamp() - total_secs
+}
+
+/// Parse the "transfer:" line into (rx_bytes, tx_bytes).
+///
+/// Example: "1.23 MiB received, 4.56 MiB sent"
+fn parse_transfer_line(text: &str) -> (Option<u64>, Option<u64>) {
+    let mut rx: Option<u64> = None;
+    let mut tx: Option<u64> = None;
+
+    for part in text.split(',') {
+        let part = part.trim();
+        let tokens: Vec<&str> = part.split_whitespace().collect();
+        // Expected: "<number> <unit> received/sent"
+        if tokens.len() >= 3 {
+            if let Ok(val) = tokens[0].parse::<f64>() {
+                let bytes = unit_to_bytes(val, tokens[1]);
+                if tokens[2].starts_with("received") {
+                    rx = Some(bytes);
+                } else if tokens[2].starts_with("sent") {
+                    tx = Some(bytes);
+                }
+            }
+        }
+    }
+
+    (rx, tx)
+}
+
+/// Convert a floating-point value + unit string (B, KiB, MiB, GiB, TiB) to bytes.
+fn unit_to_bytes(val: f64, unit: &str) -> u64 {
+    let multiplier = match unit {
+        "B" => 1.0,
+        "KiB" => 1024.0,
+        "MiB" => 1024.0 * 1024.0,
+        "GiB" => 1024.0 * 1024.0 * 1024.0,
+        "TiB" => 1024.0 * 1024.0 * 1024.0 * 1024.0,
+        _ => 1.0,
+    };
+    (val * multiplier) as u64
 }
 
 /// Validate a WireGuard interface name (wg0, wg1, ...).
@@ -6478,5 +6668,137 @@ mod tests {
             vec!["a", "b"]
         );
         assert!(json_string_or_array(None).is_empty());
+    }
+
+    #[test]
+    fn test_parse_transfer_line() {
+        let (rx, tx) = parse_transfer_line("1.23 MiB received, 4.56 MiB sent");
+        assert_eq!(rx, Some((1.23_f64 * 1024.0 * 1024.0) as u64));
+        assert_eq!(tx, Some((4.56_f64 * 1024.0 * 1024.0) as u64));
+    }
+
+    #[test]
+    fn test_parse_transfer_line_gib() {
+        let (rx, tx) = parse_transfer_line("2.50 GiB received, 1.00 GiB sent");
+        assert_eq!(rx, Some((2.50_f64 * 1024.0 * 1024.0 * 1024.0) as u64));
+        assert_eq!(tx, Some((1.00_f64 * 1024.0 * 1024.0 * 1024.0) as u64));
+    }
+
+    #[test]
+    fn test_parse_transfer_line_bytes() {
+        let (rx, tx) = parse_transfer_line("512 B received, 256 B sent");
+        assert_eq!(rx, Some(512));
+        assert_eq!(tx, Some(256));
+    }
+
+    #[test]
+    fn test_parse_handshake_ago() {
+        let now = chrono::Utc::now().timestamp();
+
+        let ts = parse_handshake_ago("1 minute, 30 seconds ago");
+        assert!((now - ts - 90).abs() <= 1);
+
+        let ts2 = parse_handshake_ago("3 hours, 5 minutes, 12 seconds ago");
+        let expected = 3 * 3600 + 5 * 60 + 12;
+        assert!((now - ts2 - expected).abs() <= 1);
+
+        let ts3 = parse_handshake_ago("45 seconds ago");
+        assert!((now - ts3 - 45).abs() <= 1);
+    }
+
+    #[test]
+    fn test_merge_wireguard_runtime_stats() {
+        let show_output = r#"interface: wg0
+  public key: serverPubKey123=
+  private key: (hidden)
+  listening port: 51820
+
+  peer: peerPubKeyABC=
+    endpoint: 1.2.3.4:51820
+    allowed ips: 10.10.20.2/32
+    latest handshake: 2 minutes, 15 seconds ago
+    transfer: 100.50 MiB received, 50.25 MiB sent
+
+  peer: peerPubKeyDEF=
+    endpoint: 5.6.7.8:51820
+    allowed ips: 10.10.20.3/32
+    transfer: 1.00 GiB received, 512.00 MiB sent
+"#;
+        let mut iface = WireguardInterface {
+            name: "wg0".to_string(),
+            address: Some("10.10.20.1/24".to_string()),
+            port: Some(51820),
+            public_key: Some("serverPubKey123=".to_string()),
+            status: None,
+            peers: vec![
+                WireguardPeer {
+                    name: "CLIENT1".to_string(),
+                    public_key: Some("peerPubKeyABC=".to_string()),
+                    allowed_ips: vec!["10.10.20.2/32".to_string()],
+                    endpoint: None,
+                    persistent_keepalive: Some(25),
+                    last_handshake: None,
+                    rx_bytes: None,
+                    tx_bytes: None,
+                },
+                WireguardPeer {
+                    name: "CLIENT2".to_string(),
+                    public_key: Some("peerPubKeyDEF=".to_string()),
+                    allowed_ips: vec!["10.10.20.3/32".to_string()],
+                    endpoint: None,
+                    persistent_keepalive: None,
+                    last_handshake: None,
+                    rx_bytes: None,
+                    tx_bytes: None,
+                },
+            ],
+        };
+
+        merge_wireguard_runtime_stats(&mut iface, show_output);
+
+        // CLIENT1 should have handshake, transfer, and endpoint filled in
+        let p1 = &iface.peers[0];
+        assert!(p1.last_handshake.is_some());
+        assert_eq!(p1.rx_bytes, Some((100.50_f64 * 1024.0 * 1024.0) as u64));
+        assert_eq!(p1.tx_bytes, Some((50.25_f64 * 1024.0 * 1024.0) as u64));
+        assert_eq!(p1.endpoint.as_deref(), Some("1.2.3.4:51820"));
+
+        // CLIENT2 should have transfer but no handshake
+        let p2 = &iface.peers[1];
+        assert!(p2.last_handshake.is_none());
+        assert_eq!(
+            p2.rx_bytes,
+            Some((1.00_f64 * 1024.0 * 1024.0 * 1024.0) as u64)
+        );
+        assert_eq!(p2.tx_bytes, Some((512.00_f64 * 1024.0 * 1024.0) as u64));
+        assert_eq!(p2.endpoint.as_deref(), Some("5.6.7.8:51820"));
+    }
+
+    #[test]
+    fn test_wireguard_config_includes_new_fields() {
+        let json: Value = serde_json::from_str(
+            r#"{
+            "wg0": {
+                "address": "10.10.20.1/24",
+                "port": "51820",
+                "peer": {
+                    "CLIENT1": {
+                        "public-key": "abc123",
+                        "allowed-ips": "10.10.20.2/32"
+                    }
+                }
+            }
+        }"#,
+        )
+        .unwrap();
+
+        let interfaces = parse_wireguard_config(&json);
+        assert_eq!(interfaces.len(), 1);
+        assert!(interfaces[0].status.is_none());
+        assert_eq!(interfaces[0].peers.len(), 1);
+        let peer = &interfaces[0].peers[0];
+        assert!(peer.last_handshake.is_none());
+        assert!(peer.rx_bytes.is_none());
+        assert!(peer.tx_bytes.is_none());
     }
 }

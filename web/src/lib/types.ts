@@ -400,6 +400,9 @@ export interface WireguardPeer {
   allowed_ips: string[];
   endpoint: string | null;
   persistent_keepalive: number | null;
+  last_handshake: number | null;
+  rx_bytes: number | null;
+  tx_bytes: number | null;
 }
 
 export interface WireguardInterface {
@@ -408,6 +411,7 @@ export interface WireguardInterface {
   port: number | null;
   public_key: string | null;
   peers: WireguardPeer[];
+  status: string | null;
 }
 
 export interface WireguardKeyPair {
