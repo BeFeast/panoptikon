@@ -369,6 +369,21 @@ export interface ConfigDiffResponse {
   backup_created_at: string;
 }
 
+// ─── DNS Forwarding ─────────────────────────────────────
+
+export interface DnsForwardingConfig {
+  name_servers: string[];
+  domain_overrides: DnsDomainOverride[];
+  listen_addresses: string[];
+  allow_from: string[];
+  cache_size: number | null;
+}
+
+export interface DnsDomainOverride {
+  domain: string;
+  server: string;
+}
+
 // ─── WireGuard VPN ──────────────────────────────────────
 
 export interface WireguardPeer {

@@ -33,6 +33,7 @@ import {
   Eye,
   EyeOff,
   Users,
+  Search,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -100,8 +101,14 @@ import {
   addWireguardPeer,
   deleteWireguardPeer,
   generateWireguardClientConfig,
+  fetchDnsForwarding,
+  addDnsNameServer,
+  deleteDnsNameServer,
+  addDnsDomainOverride,
+  editDnsDomainOverride,
+  deleteDnsDomainOverride,
 } from "@/lib/api";
-import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, WireguardInterface, ClientConfigResponse } from "@/lib/types";
+import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride } from "@/lib/types";
 import QRCode from "qrcode";
 import { Progress } from "@/components/ui/progress";
 import { PageTransition } from "@/components/PageTransition";
@@ -219,6 +226,436 @@ function useAsyncData<T>(
   }, [load]);
 
   return { data, loading, error, reload: load };
+}
+
+// ── DNS Forwarding Panel ────────────────────────────────
+
+function DnsForwardingPanel({
+  config,
+  loading,
+  error,
+  onReload,
+}: {
+  config: DnsForwardingConfig | null;
+  loading: boolean;
+  error: string | null;
+  onReload: () => void;
+}) {
+  const [addServerOpen, setAddServerOpen] = useState(false);
+  const [addDomainOpen, setAddDomainOpen] = useState(false);
+  const [editDomain, setEditDomain] = useState<DnsDomainOverride | null>(null);
+  const [confirmDeleteServer, setConfirmDeleteServer] = useState<string | null>(null);
+  const [confirmDeleteDomain, setConfirmDeleteDomain] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Add name server dialog state
+  const [newServer, setNewServer] = useState("");
+  const [savingServer, setSavingServer] = useState(false);
+
+  // Add/edit domain dialog state
+  const [domainName, setDomainName] = useState("");
+  const [domainServer, setDomainServer] = useState("");
+  const [savingDomain, setSavingDomain] = useState(false);
+
+  async function handleAddServer(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingServer(true);
+    try {
+      const res = await addDnsNameServer(newServer.trim());
+      toast.success(res.message);
+      setNewServer("");
+      setAddServerOpen(false);
+      onReload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to add name server");
+    } finally {
+      setSavingServer(false);
+    }
+  }
+
+  async function handleDeleteServer() {
+    if (!confirmDeleteServer) return;
+    setDeleting(true);
+    try {
+      await deleteDnsNameServer(confirmDeleteServer);
+      toast.success(`Name server ${confirmDeleteServer} removed`);
+      setConfirmDeleteServer(null);
+      onReload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete name server");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function handleSaveDomain(e: React.FormEvent) {
+    e.preventDefault();
+    setSavingDomain(true);
+    try {
+      if (editDomain) {
+        const res = await editDnsDomainOverride(editDomain.domain, {
+          domain: editDomain.domain,
+          server: domainServer.trim(),
+        });
+        toast.success(res.message);
+        setEditDomain(null);
+      } else {
+        const res = await addDnsDomainOverride({
+          domain: domainName.trim(),
+          server: domainServer.trim(),
+        });
+        toast.success(res.message);
+        setAddDomainOpen(false);
+      }
+      setDomainName("");
+      setDomainServer("");
+      onReload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save domain override");
+    } finally {
+      setSavingDomain(false);
+    }
+  }
+
+  async function handleDeleteDomain() {
+    if (!confirmDeleteDomain) return;
+    setDeleting(true);
+    try {
+      await deleteDnsDomainOverride(confirmDeleteDomain);
+      toast.success(`Domain override ${confirmDeleteDomain} deleted`);
+      setConfirmDeleteDomain(null);
+      onReload();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete domain override");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-400">
+        <AlertCircle className="h-4 w-4 shrink-0" />
+        {error}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="space-y-4">
+        {/* Name Servers */}
+        <Card className="border-slate-800 bg-slate-900">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base text-white">Name Servers</CardTitle>
+            <Button
+              size="sm"
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              onClick={() => setAddServerOpen(true)}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add Server
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {!config?.name_servers.length ? (
+              <p className="text-sm text-slate-500">No name servers configured.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-md border border-slate-800">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                      <th className="px-4 py-3 font-medium text-slate-400">Server IP</th>
+                      <th className="px-4 py-3 font-medium text-slate-400 w-16" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {config.name_servers.map((srv) => (
+                      <tr key={srv} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/50">
+                        <td className="px-4 py-3">
+                          <span className="font-mono tabular-nums text-white">{srv}</span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400"
+                            onClick={() => setConfirmDeleteServer(srv)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Domain Overrides */}
+        <Card className="border-slate-800 bg-slate-900">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base text-white">Domain Overrides</CardTitle>
+            <Button
+              size="sm"
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              onClick={() => {
+                setDomainName("");
+                setDomainServer("");
+                setEditDomain(null);
+                setAddDomainOpen(true);
+              }}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add Override
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {!config?.domain_overrides.length ? (
+              <p className="text-sm text-slate-500">No domain overrides configured.</p>
+            ) : (
+              <div className="overflow-x-auto rounded-md border border-slate-800">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                      <th className="px-4 py-3 font-medium text-slate-400">Domain</th>
+                      <th className="px-4 py-3 font-medium text-slate-400">DNS Server</th>
+                      <th className="px-4 py-3 font-medium text-slate-400 w-24" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {config.domain_overrides.map((override) => (
+                      <tr key={override.domain} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/50">
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-white">{override.domain}</span>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-mono tabular-nums text-slate-300">{override.server}</span>
+                        </td>
+                        <td className="px-4 py-3 text-right space-x-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-slate-400 hover:text-blue-400"
+                            onClick={() => {
+                              setEditDomain(override);
+                              setDomainName(override.domain);
+                              setDomainServer(override.server);
+                            }}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400"
+                            onClick={() => setConfirmDeleteDomain(override.domain)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Config Info */}
+        {config && (config.listen_addresses.length > 0 || config.allow_from.length > 0 || config.cache_size) && (
+          <Card className="border-slate-800 bg-slate-900">
+            <CardHeader>
+              <CardTitle className="text-base text-white">Configuration</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3 text-sm">
+                {config.listen_addresses.length > 0 && (
+                  <div>
+                    <span className="text-slate-400">Listen Addresses: </span>
+                    <span className="font-mono text-slate-300">
+                      {config.listen_addresses.join(", ")}
+                    </span>
+                  </div>
+                )}
+                {config.allow_from.length > 0 && (
+                  <div>
+                    <span className="text-slate-400">Allow From: </span>
+                    <span className="font-mono text-slate-300">
+                      {config.allow_from.join(", ")}
+                    </span>
+                  </div>
+                )}
+                {config.cache_size != null && (
+                  <div>
+                    <span className="text-slate-400">Cache Size: </span>
+                    <span className="font-mono text-slate-300">
+                      {config.cache_size.toLocaleString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Add Name Server Dialog */}
+      <Dialog open={addServerOpen} onOpenChange={(v) => { if (!v) setNewServer(""); setAddServerOpen(v); }}>
+        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Add Name Server</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Add an upstream DNS name server for forwarding.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleAddServer} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="dns-server-ip" className="text-slate-300">
+                Server IP <span className="text-rose-400">*</span>
+              </Label>
+              <Input
+                id="dns-server-ip"
+                placeholder="1.1.1.1"
+                value={newServer}
+                onChange={(e) => setNewServer(e.target.value)}
+                className="border-slate-700 bg-slate-800 font-mono text-white"
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => setAddServerOpen(false)} className="text-slate-400 hover:text-white">
+                Cancel
+              </Button>
+              <Button type="submit" disabled={savingServer} className="bg-blue-600 text-white hover:bg-blue-700">
+                {savingServer && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Add Server
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add/Edit Domain Override Dialog */}
+      <Dialog
+        open={addDomainOpen || !!editDomain}
+        onOpenChange={(v) => {
+          if (!v) {
+            setAddDomainOpen(false);
+            setEditDomain(null);
+            setDomainName("");
+            setDomainServer("");
+          }
+        }}
+      >
+        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {editDomain ? "Edit Domain Override" : "Add Domain Override"}
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Forward DNS queries for a specific domain to a custom server.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSaveDomain} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="dns-domain" className="text-slate-300">
+                Domain <span className="text-rose-400">*</span>
+              </Label>
+              <Input
+                id="dns-domain"
+                placeholder="example.com"
+                value={domainName}
+                onChange={(e) => setDomainName(e.target.value)}
+                className="border-slate-700 bg-slate-800 font-mono text-white"
+                required
+                disabled={!!editDomain}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dns-domain-server" className="text-slate-300">
+                DNS Server <span className="text-rose-400">*</span>
+              </Label>
+              <Input
+                id="dns-domain-server"
+                placeholder="10.10.0.1"
+                value={domainServer}
+                onChange={(e) => setDomainServer(e.target.value)}
+                className="border-slate-700 bg-slate-800 font-mono text-white"
+                required
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => { setAddDomainOpen(false); setEditDomain(null); }}
+                className="text-slate-400 hover:text-white"
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={savingDomain} className="bg-blue-600 text-white hover:bg-blue-700">
+                {savingDomain && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {editDomain ? "Save Changes" : "Add Override"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Name Server Confirmation */}
+      <AlertDialog open={!!confirmDeleteServer} onOpenChange={(open) => !open && setConfirmDeleteServer(null)}>
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Remove Name Server</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to remove the name server{" "}
+              <span className="font-mono font-medium text-white">{confirmDeleteServer}</span>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 text-white hover:bg-rose-700" onClick={handleDeleteServer} disabled={deleting}>
+              {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Domain Override Confirmation */}
+      <AlertDialog open={!!confirmDeleteDomain} onOpenChange={(open) => !open && setConfirmDeleteDomain(null)}>
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete Domain Override</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to delete the domain override for{" "}
+              <span className="font-mono font-medium text-white">{confirmDeleteDomain}</span>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 text-slate-300 hover:bg-slate-800">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 text-white hover:bg-rose-700" onClick={handleDeleteDomain} disabled={deleting}>
+              {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
 }
 
 // ── Speed Test Section ──────────────────────────────────
@@ -3771,6 +4208,11 @@ function RouterTabs({ status }: { status: RouterStatus }) {
     tab === "firewall"
   );
 
+  const dnsForwarding = useAsyncData<DnsForwardingConfig>(
+    useCallback(() => fetchDnsForwarding(), []),
+    tab === "dns"
+  );
+
   const wireguard = useAsyncData<WireguardInterface[]>(
     useCallback(() => fetchWireguardInterfaces(), []),
     tab === "vpn"
@@ -3807,6 +4249,13 @@ function RouterTabs({ status }: { status: RouterStatus }) {
           >
             <Server className="mr-1.5 h-3.5 w-3.5" />
             DHCP
+          </TabsTrigger>
+          <TabsTrigger
+            value="dns"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+          >
+            <Search className="mr-1.5 h-3.5 w-3.5" />
+            DNS
           </TabsTrigger>
           <TabsTrigger
             value="firewall"
@@ -3907,6 +4356,15 @@ function RouterTabs({ status }: { status: RouterStatus }) {
               />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="dns" className="space-y-4">
+          <DnsForwardingPanel
+            config={dnsForwarding.data ?? null}
+            loading={dnsForwarding.loading}
+            error={dnsForwarding.error}
+            onReload={dnsForwarding.reload}
+          />
         </TabsContent>
 
         <TabsContent value="firewall" className="space-y-6">
