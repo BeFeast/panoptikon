@@ -62,14 +62,16 @@ pub fn start_speedtest_scheduler(pool: SqlitePool) {
 
                     crate::api::speedtest::persist_result(
                         &pool,
-                        download_mbps,
-                        upload_mbps,
-                        ookla.ping.latency,
-                        ookla.ping.jitter,
-                        ookla.packet_loss,
-                        &ookla.isp,
-                        &server,
-                        ookla.result.url.as_deref(),
+                        crate::api::speedtest::SpeedTestPersistParams {
+                            download_mbps,
+                            upload_mbps,
+                            ping_ms: ookla.ping.latency,
+                            jitter_ms: ookla.ping.jitter,
+                            packet_loss: ookla.packet_loss,
+                            isp: &ookla.isp,
+                            server_name: &server,
+                            result_url: ookla.result.url.as_deref(),
+                        },
                     )
                     .await;
 

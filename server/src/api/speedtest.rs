@@ -88,31 +88,33 @@ pub async fn history(
     Ok(Json(SpeedTestHistoryResponse { items, total }))
 }
 
+/// Parameters for persisting a speedtest result.
+pub struct SpeedTestPersistParams<'a> {
+    pub download_mbps: f64,
+    pub upload_mbps: f64,
+    pub ping_ms: f64,
+    pub jitter_ms: f64,
+    pub packet_loss: f64,
+    pub isp: &'a str,
+    pub server_name: &'a str,
+    pub result_url: Option<&'a str>,
+}
+
 /// Persist a speedtest result to the database.
-pub async fn persist_result(
-    pool: &SqlitePool,
-    download_mbps: f64,
-    upload_mbps: f64,
-    ping_ms: f64,
-    jitter_ms: f64,
-    packet_loss: f64,
-    isp: &str,
-    server_name: &str,
-    result_url: Option<&str>,
-) {
+pub async fn persist_result(pool: &SqlitePool, params: SpeedTestPersistParams<'_>) {
     if let Err(e) = sqlx::query(
         r#"INSERT INTO speedtest_history
            (tested_at, download_mbps, upload_mbps, ping_ms, jitter_ms, packet_loss, isp, server_name, result_url)
            VALUES (datetime('now'), ?, ?, ?, ?, ?, ?, ?, ?)"#,
     )
-    .bind(download_mbps)
-    .bind(upload_mbps)
-    .bind(ping_ms)
-    .bind(jitter_ms)
-    .bind(packet_loss)
-    .bind(isp)
-    .bind(server_name)
-    .bind(result_url)
+    .bind(params.download_mbps)
+    .bind(params.upload_mbps)
+    .bind(params.ping_ms)
+    .bind(params.jitter_ms)
+    .bind(params.packet_loss)
+    .bind(params.isp)
+    .bind(params.server_name)
+    .bind(params.result_url)
     .execute(pool)
     .await
     {
@@ -151,18 +153,30 @@ mod tests {
 
         persist_result(
             &pool,
-            100.5,
-            50.2,
-            12.3,
-            1.1,
-            0.0,
-            "TestISP",
-            "Server1",
-            Some("https://example.com"),
+            SpeedTestPersistParams {
+                download_mbps: 100.5,
+                upload_mbps: 50.2,
+                ping_ms: 12.3,
+                jitter_ms: 1.1,
+                packet_loss: 0.0,
+                isp: "TestISP",
+                server_name: "Server1",
+                result_url: Some("https://example.com"),
+            },
         )
         .await;
         persist_result(
-            &pool, 95.0, 48.0, 14.0, 1.5, 0.1, "TestISP", "Server2", None,
+            &pool,
+            SpeedTestPersistParams {
+                download_mbps: 95.0,
+                upload_mbps: 48.0,
+                ping_ms: 14.0,
+                jitter_ms: 1.5,
+                packet_loss: 0.1,
+                isp: "TestISP",
+                server_name: "Server2",
+                result_url: None,
+            },
         )
         .await;
 
@@ -211,7 +225,20 @@ mod tests {
     async fn test_persist_result_url_optional() {
         let pool = setup_test_db().await;
 
-        persist_result(&pool, 100.0, 50.0, 10.0, 1.0, 0.0, "ISP", "Server", None).await;
+        persist_result(
+            &pool,
+            SpeedTestPersistParams {
+                download_mbps: 100.0,
+                upload_mbps: 50.0,
+                ping_ms: 10.0,
+                jitter_ms: 1.0,
+                packet_loss: 0.0,
+                isp: "ISP",
+                server_name: "Server",
+                result_url: None,
+            },
+        )
+        .await;
 
         let url: Option<String> =
             sqlx::query_scalar("SELECT result_url FROM speedtest_history LIMIT 1")
