@@ -318,10 +318,7 @@ pub fn router(state: AppState) -> Router {
         .route("/npm/proxy-hosts", post(npm::create_proxy_host))
         .route("/npm/proxy-hosts/:id", put(npm::update_proxy_host))
         .route("/npm/proxy-hosts/:id", delete(npm::delete_proxy_host))
-        .route(
-            "/npm/proxy-hosts/:id/toggle",
-            post(npm::toggle_proxy_host),
-        )
+        .route("/npm/proxy-hosts/:id/toggle", post(npm::toggle_proxy_host))
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))

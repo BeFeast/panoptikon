@@ -152,9 +152,9 @@ pub async fn create_proxy_host(
     State(state): State<AppState>,
     Json(body): Json<ProxyHostRequest>,
 ) -> Result<Json<ProxyHostSummary>, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state)
-        .await
-        .ok_or_else(|| error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into()))?;
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
 
     let payload: NpmProxyHostPayload = body.into();
     let host = client.create_proxy_host(&payload).await.map_err(|e| {
@@ -185,9 +185,9 @@ pub async fn update_proxy_host(
     Path(id): Path<i64>,
     Json(body): Json<ProxyHostRequest>,
 ) -> Result<Json<ProxyHostSummary>, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state)
-        .await
-        .ok_or_else(|| error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into()))?;
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
 
     let payload: NpmProxyHostPayload = body.into();
     let host = client.update_proxy_host(id, &payload).await.map_err(|e| {
@@ -217,9 +217,9 @@ pub async fn delete_proxy_host(
     State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state)
-        .await
-        .ok_or_else(|| error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into()))?;
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
 
     client.delete_proxy_host(id).await.map_err(|e| {
         error!("NPM delete proxy host {id} failed: {e}");
@@ -241,9 +241,9 @@ pub async fn toggle_proxy_host(
     Path(id): Path<i64>,
     Json(body): Json<ToggleRequest>,
 ) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state)
-        .await
-        .ok_or_else(|| error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into()))?;
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
 
     if body.enabled {
         client.enable_proxy_host(id).await
