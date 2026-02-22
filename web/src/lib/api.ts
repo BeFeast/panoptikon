@@ -418,6 +418,26 @@ export function deleteDhcpStaticMapping(
   ) as unknown as Promise<VyosWriteResponse>;
 }
 
+// ─── Static Routes ──────────────────────────────────────
+
+export function createStaticRoute(body: {
+  destination: string;
+  next_hop?: string;
+  distance?: number;
+  description?: string;
+  blackhole?: boolean;
+}): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>("/api/v1/vyos/routes/static", body);
+}
+
+export function deleteStaticRoute(
+  destination: string
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/routes/static/${encodeURIComponent(destination)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
 // ─── Firewall CRUD ───────────────────────────────────────
 
 /** Chain path is dot-separated: "ipv4.forward.filter" */
