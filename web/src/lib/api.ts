@@ -15,6 +15,7 @@ import type {
   Device,
   DhcpStaticMapping,
   FirewallConfig,
+  FirewallRuleRequest,
   LoginResponse,
   NetflowStatus,
   RouterStatus,
@@ -309,6 +310,54 @@ export function deleteDhcpStaticMapping(
   return apiDelete(
     `/api/v1/vyos/dhcp/static-mappings/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}/${encodeURIComponent(name)}`
   ) as unknown as Promise<VyosWriteResponse>;
+}
+
+// ─── Firewall CRUD ───────────────────────────────────────
+
+/** Chain path is dot-separated: "ipv4.forward.filter" */
+function chainPath(chain: { path: string[] }): string {
+  return chain.path.join(".");
+}
+
+export function createFirewallRule(
+  chain: { path: string[] },
+  body: FirewallRuleRequest
+): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>(
+    `/api/v1/vyos/firewall/${encodeURIComponent(chainPath(chain))}/rules`,
+    body
+  );
+}
+
+export function updateFirewallRule(
+  chain: { path: string[] },
+  number: number,
+  body: FirewallRuleRequest
+): Promise<VyosWriteResponse> {
+  return apiPut<VyosWriteResponse>(
+    `/api/v1/vyos/firewall/${encodeURIComponent(chainPath(chain))}/rules/${number}`,
+    body
+  );
+}
+
+export function deleteFirewallRule(
+  chain: { path: string[] },
+  number: number
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/firewall/${encodeURIComponent(chainPath(chain))}/rules/${number}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function toggleFirewallRule(
+  chain: { path: string[] },
+  number: number,
+  disabled: boolean
+): Promise<VyosWriteResponse> {
+  return apiPatch<VyosWriteResponse>(
+    `/api/v1/vyos/firewall/${encodeURIComponent(chainPath(chain))}/rules/${number}/enabled`,
+    { disabled }
+  );
 }
 
 // ─── NetFlow ────────────────────────────────────────────
