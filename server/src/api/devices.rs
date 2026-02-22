@@ -223,10 +223,7 @@ impl Device {
             custom_vendor: row.try_get("custom_vendor").unwrap_or(None),
             custom_model: row.try_get("custom_model").unwrap_or(None),
             icon_override: row.try_get("icon_override").unwrap_or(None),
-            is_manual: row
-                .try_get::<i32, _>("is_manual")
-                .ok()
-                .map(|v| v != 0),
+            is_manual: row.try_get::<i32, _>("is_manual").ok().map(|v| v != 0),
             location: row.try_get("location").unwrap_or(None),
             owner: row.try_get("owner").unwrap_or(None),
             tags: row.try_get("tags").unwrap_or(None),
