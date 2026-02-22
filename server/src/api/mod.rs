@@ -329,6 +329,14 @@ pub fn router(state: AppState) -> Router {
             "/npm/redirection-hosts/:id",
             delete(npm::delete_redirection_host),
         )
+        .route("/npm/certificates", get(npm::list_certificates))
+        .route(
+            "/npm/certificates/letsencrypt",
+            post(npm::create_letsencrypt),
+        )
+        .route("/npm/certificates/custom", post(npm::upload_custom_cert))
+        .route("/npm/certificates/:id/renew", post(npm::renew_certificate))
+        .route("/npm/certificates/:id", delete(npm::delete_certificate))
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))

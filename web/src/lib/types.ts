@@ -411,6 +411,17 @@ export interface NpmProxyHostRequest {
   advanced_config: string;
 }
 
+export interface NpmCertificate {
+  id: number;
+  provider: string;
+  nice_name: string;
+  domain_names: string[];
+  expires_on: string | null;
+  created_on: string | null;
+  status: "valid" | "expiring" | "expired" | "unknown";
+  days_remaining: number | null;
+}
+
 export interface NpmRedirectionHost {
   id: number;
   domain_names: string[];
