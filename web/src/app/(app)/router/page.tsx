@@ -34,16 +34,13 @@ import {
   EyeOff,
   Users,
   Search,
-<<<<<<< HEAD
   GitCompare,
-=======
   Cpu,
   MemoryStick,
   HardDrive,
   ScrollText,
   RefreshCw,
   Monitor,
->>>>>>> origin/main
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
