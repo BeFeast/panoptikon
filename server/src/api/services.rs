@@ -307,6 +307,7 @@ async fn create_npm_proxy_step(
         forward_port: body.internal_port,
         forward_scheme: body.forward_scheme.clone(),
         certificate_id,
+        access_list_id: serde_json::json!(0),
         ssl_forced,
         hsts_enabled: ssl_forced,
         http2_support: body.http2_support,
