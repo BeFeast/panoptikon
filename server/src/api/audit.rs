@@ -47,16 +47,14 @@ pub async fn list(
     let offset = (page - 1) * per_page;
 
     let (items, total) = if let Some(ref action_filter) = params.action {
-        let total: i64 = sqlx::query_scalar(
-            "SELECT COUNT(*) FROM audit_log WHERE action = ?",
-        )
-        .bind(action_filter)
-        .fetch_one(&state.db)
-        .await
-        .map_err(|e| {
-            tracing::error!("audit_log count query failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
-        })?;
+        let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM audit_log WHERE action = ?")
+            .bind(action_filter)
+            .fetch_one(&state.db)
+            .await
+            .map_err(|e| {
+                tracing::error!("audit_log count query failed: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
 
         let rows = sqlx::query_as::<_, AuditLogRow>(
             "SELECT id, created_at, action, description, vyos_commands, success, error_msg \
@@ -120,18 +118,15 @@ pub async fn list(
 }
 
 /// GET /api/v1/audit-log/actions — list distinct action types for filter dropdown.
-pub async fn actions(
-    State(state): State<AppState>,
-) -> Result<Json<Vec<String>>, StatusCode> {
-    let rows: Vec<(String,)> = sqlx::query_as(
-        "SELECT DISTINCT action FROM audit_log ORDER BY action",
-    )
-    .fetch_all(&state.db)
-    .await
-    .map_err(|e| {
-        tracing::error!("audit_log actions query failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+pub async fn actions(State(state): State<AppState>) -> Result<Json<Vec<String>>, StatusCode> {
+    let rows: Vec<(String,)> =
+        sqlx::query_as("SELECT DISTINCT action FROM audit_log ORDER BY action")
+            .fetch_all(&state.db)
+            .await
+            .map_err(|e| {
+                tracing::error!("audit_log actions query failed: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
 
     Ok(Json(rows.into_iter().map(|(a,)| a).collect()))
 }
@@ -158,8 +153,7 @@ pub async fn log_success(
     description: &str,
     vyos_commands: &[String],
 ) {
-    let commands_json =
-        serde_json::to_string(vyos_commands).unwrap_or_else(|_| "[]".to_string());
+    let commands_json = serde_json::to_string(vyos_commands).unwrap_or_else(|_| "[]".to_string());
 
     if let Err(e) = sqlx::query(
         "INSERT INTO audit_log (action, description, vyos_commands, success) VALUES (?, ?, ?, 1)",
@@ -182,8 +176,7 @@ pub async fn log_failure(
     vyos_commands: &[String],
     error_msg: &str,
 ) {
-    let commands_json =
-        serde_json::to_string(vyos_commands).unwrap_or_else(|_| "[]".to_string());
+    let commands_json = serde_json::to_string(vyos_commands).unwrap_or_else(|_| "[]".to_string());
 
     if let Err(e) = sqlx::query(
         "INSERT INTO audit_log (action, description, vyos_commands, success, error_msg) \
