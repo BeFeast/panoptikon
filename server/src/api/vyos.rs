@@ -765,7 +765,7 @@ fn parse_uptime_and_load(text: &str) -> (Option<String>, Option<CpuLoad>) {
         return (None, None);
     }
 
-    // Extract load averages from "load average: X, Y, Z"
+    // Try standard Linux "load average: X, Y, Z" first
     let cpu_load = if let Some(idx) = text.find("load average:") {
         let after = &text[idx + "load average:".len()..];
         let parts: Vec<&str> = after.split(',').collect();
@@ -783,6 +783,40 @@ fn parse_uptime_and_load(text: &str) -> (Option<String>, Option<CpuLoad>) {
             }
         } else {
             None
+        }
+    } else if text.contains("Load averages:") {
+        // VyOS rolling format:
+        //   Load averages:
+        //   1  minute:   122.0%
+        //   5  minutes:  49.0%
+        //   15 minutes:  19.0%
+        let mut load1 = None;
+        let mut load5 = None;
+        let mut load15 = None;
+        for line in text.lines() {
+            let line = line.trim();
+            if let Some(val) = line.strip_suffix('%') {
+                if let Some(rest) = val.split("minute").last() {
+                    let rest = rest.trim_start_matches('s').trim_start_matches(':').trim();
+                    if let Ok(v) = rest.parse::<f64>() {
+                        if line.starts_with("1 ") || line.starts_with("1\t") {
+                            load1 = Some(v);
+                        } else if line.starts_with("5 ") || line.starts_with("5\t") {
+                            load5 = Some(v);
+                        } else if line.starts_with("15 ") || line.starts_with("15\t") {
+                            load15 = Some(v);
+                        }
+                    }
+                }
+            }
+        }
+        match (load1, load5, load15) {
+            (Some(l1), Some(l5), Some(l15)) => Some(CpuLoad {
+                load1: l1,
+                load5: l5,
+                load15: l15,
+            }),
+            _ => None,
         }
     } else {
         None
@@ -812,10 +846,10 @@ fn parse_uptime_and_load(text: &str) -> (Option<String>, Option<CpuLoad>) {
             Some(cleaned.trim_end_matches(',').to_string())
         }
     } else {
-        // Fallback: try "Uptime:" prefix format
+        // Fallback: try "Uptime:" prefix format (VyOS rolling)
         text.lines()
-            .find(|l| l.starts_with("Uptime:"))
-            .map(|l| l.trim_start_matches("Uptime:").trim().to_string())
+            .find(|l| l.trim().starts_with("Uptime:"))
+            .map(|l| l.trim().trim_start_matches("Uptime:").trim().to_string())
     };
 
     (uptime, cpu_load)
@@ -823,13 +857,11 @@ fn parse_uptime_and_load(text: &str) -> (Option<String>, Option<CpuLoad>) {
 
 /// Parse `show system memory` output.
 ///
-/// Example VyOS output:
-/// ```text
-///               total        used        free      shared  buff/cache   available
-/// Mem:        8028240     1234560     4567890       12340     2225790     6556780
-/// Swap:       2097148           0     2097148
-/// ```
+/// Handles two formats:
+/// 1. Standard Linux (`Mem:` row with kB values)
+/// 2. VyOS rolling (`Total: X MB`, `Free: Y MB`, `Used: Z MB`)
 fn parse_memory_text(text: &str) -> Option<MemoryUsage> {
+    // Try standard Linux "Mem:" format first
     for line in text.lines() {
         let line = line.trim();
         if line.starts_with("Mem:") {
@@ -852,17 +884,86 @@ fn parse_memory_text(text: &str) -> Option<MemoryUsage> {
             }
         }
     }
-    None
+
+    // Try VyOS rolling format:
+    //   Total: 475.34 MB
+    //   Free:  77.93 MB
+    //   Used:  397.41 MB
+    let mut total_bytes: Option<u64> = None;
+    let mut free_bytes: Option<u64> = None;
+    let mut used_bytes: Option<u64> = None;
+    for line in text.lines() {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix("Total:") {
+            total_bytes = parse_size_with_unit(rest.trim());
+        } else if let Some(rest) = line.strip_prefix("Free:") {
+            free_bytes = parse_size_with_unit(rest.trim());
+        } else if let Some(rest) = line.strip_prefix("Used:") {
+            used_bytes = parse_size_with_unit(rest.trim());
+        }
+    }
+    match (total_bytes, used_bytes, free_bytes) {
+        (Some(total), Some(used), Some(free)) => {
+            let percent = if total > 0 {
+                (used as f64 / total as f64) * 100.0
+            } else {
+                0.0
+            };
+            Some(MemoryUsage {
+                total,
+                used,
+                free,
+                percent: (percent * 10.0).round() / 10.0,
+            })
+        }
+        _ => None,
+    }
+}
+
+/// Parse a size string like "475.34 MB" or "3.7G" into bytes.
+fn parse_size_with_unit(s: &str) -> Option<u64> {
+    let s = s.trim();
+    // Try "3.7G" / "767M" style (no space between number and unit)
+    // and "475.34 MB" / "3.7 GB" style (space between number and unit)
+    let (num_str, unit) = if let Some(pos) = s.find(|c: char| c.is_alphabetic()) {
+        let num_part = s[..pos].trim();
+        let unit_part = s[pos..].trim().to_uppercase();
+        (num_part, unit_part)
+    } else {
+        return s.parse::<f64>().ok().map(|v| v as u64);
+    };
+
+    let value = num_str.parse::<f64>().ok()?;
+    let multiplier: f64 = if unit.starts_with('K') {
+        1024.0
+    } else if unit.starts_with('M') {
+        1024.0 * 1024.0
+    } else if unit.starts_with('G') {
+        1024.0 * 1024.0 * 1024.0
+    } else if unit.starts_with('T') {
+        1024.0 * 1024.0 * 1024.0 * 1024.0
+    } else {
+        1.0
+    };
+    Some((value * multiplier) as u64)
 }
 
 /// Parse `show system storage` output.
 ///
-/// Example VyOS output:
-/// ```text
-/// Filesystem      Size  Used Avail Use% Mounted on
-/// /dev/sda1        10G  2.1G  7.4G  22% /
-/// ```
+/// Handles two formats:
+/// 1. Standard `df`-style rows (`/dev/sda1  10G  2.1G  7.4G  22%  /`)
+/// 2. VyOS rolling key-value format (`Filesystem:`, `Size:`, `Used:`, `Available:`)
 fn parse_storage_text(text: &str) -> Vec<DiskUsage> {
+    // Detect VyOS rolling key-value format by looking for "Filesystem:" as a key
+    let has_kv_filesystem = text
+        .lines()
+        .any(|l| l.trim().starts_with("Filesystem:"));
+
+    if has_kv_filesystem {
+        return parse_storage_kv(text);
+    }
+
+    // Standard df-style rows
     let mut disks = Vec::new();
     for line in text.lines() {
         let line = line.trim();
@@ -890,6 +991,78 @@ fn parse_storage_text(text: &str) -> Vec<DiskUsage> {
             });
         }
     }
+    disks
+}
+
+/// Parse VyOS rolling key-value storage format:
+/// ```text
+/// Filesystem: /dev/vda3
+/// Size:       3.7G
+/// Used:       767M (22%)
+/// Available:  2.7G (78%)
+/// ```
+fn parse_storage_kv(text: &str) -> Vec<DiskUsage> {
+    let mut disks = Vec::new();
+    let mut filesystem = None;
+    let mut size = None;
+    let mut used = None;
+    let mut available = None;
+    let mut percent = None;
+
+    for line in text.lines() {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix("Filesystem:") {
+            // If we already have a filesystem, flush the previous entry
+            if let Some(fs) = filesystem.take() {
+                disks.push(DiskUsage {
+                    filesystem: fs,
+                    size: size.take().unwrap_or_default(),
+                    used: used.take().unwrap_or_default(),
+                    available: available.take().unwrap_or_default(),
+                    percent: percent.take().unwrap_or(0.0),
+                    mount: String::from("/"),
+                });
+            }
+            filesystem = Some(rest.trim().to_string());
+        } else if let Some(rest) = line.strip_prefix("Size:") {
+            size = Some(rest.trim().to_string());
+        } else if let Some(rest) = line.strip_prefix("Used:") {
+            let rest = rest.trim();
+            // "767M (22%)" → extract size and percent
+            if let Some(paren_start) = rest.find('(') {
+                used = Some(rest[..paren_start].trim().to_string());
+                let inside = rest[paren_start + 1..].trim_end_matches(')').trim();
+                percent = inside
+                    .trim_end_matches('%')
+                    .parse::<f64>()
+                    .ok()
+                    .or(percent);
+            } else {
+                used = Some(rest.to_string());
+            }
+        } else if let Some(rest) = line.strip_prefix("Available:") {
+            let rest = rest.trim();
+            // "2.7G (78%)" → extract size portion only
+            if let Some(paren_start) = rest.find('(') {
+                available = Some(rest[..paren_start].trim().to_string());
+            } else {
+                available = Some(rest.to_string());
+            }
+        }
+    }
+
+    // Flush last entry
+    if let Some(fs) = filesystem {
+        disks.push(DiskUsage {
+            filesystem: fs,
+            size: size.unwrap_or_default(),
+            used: used.unwrap_or_default(),
+            available: available.unwrap_or_default(),
+            percent: percent.unwrap_or(0.0),
+            mount: String::from("/"),
+        });
+    }
+
     disks
 }
 
@@ -7874,5 +8047,75 @@ mod tests {
         assert!(
             parse_storage_text("Filesystem      Size  Used Avail Use% Mounted on\n").is_empty()
         );
+    }
+
+    // --- VyOS rolling format tests ---
+
+    #[test]
+    fn test_parse_uptime_and_load_vyos_rolling() {
+        let text = "\
+Uptime: 20h 54m
+
+Load averages:
+1  minute:   122.0%
+5  minutes:  49.0%
+15 minutes:  19.0%";
+        let (uptime, cpu) = parse_uptime_and_load(text);
+        assert_eq!(uptime.as_deref(), Some("20h 54m"));
+        let cpu = cpu.unwrap();
+        assert!((cpu.load1 - 122.0).abs() < 0.01);
+        assert!((cpu.load5 - 49.0).abs() < 0.01);
+        assert!((cpu.load15 - 19.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_parse_memory_text_vyos_rolling() {
+        let text = "\
+Total: 475.34 MB
+Free:  77.93 MB
+Used:  397.41 MB";
+        let mem = parse_memory_text(text).unwrap();
+        // 475.34 MB in bytes = 475.34 * 1024 * 1024 = 498,466,201 (approx)
+        assert!((mem.total as f64 - 475.34 * 1024.0 * 1024.0).abs() < 1024.0);
+        assert!((mem.used as f64 - 397.41 * 1024.0 * 1024.0).abs() < 1024.0);
+        assert!((mem.free as f64 - 77.93 * 1024.0 * 1024.0).abs() < 1024.0);
+        // percent = 397.41 / 475.34 * 100 ≈ 83.6
+        assert!((mem.percent - 83.6).abs() < 0.2);
+    }
+
+    #[test]
+    fn test_parse_memory_text_vyos_rolling_gb() {
+        let text = "\
+Total: 3.8 GB
+Free:  1.2 GB
+Used:  2.6 GB";
+        let mem = parse_memory_text(text).unwrap();
+        assert!((mem.total as f64 - 3.8 * 1024.0 * 1024.0 * 1024.0).abs() < 1024.0);
+    }
+
+    #[test]
+    fn test_parse_storage_text_vyos_rolling() {
+        let text = "\
+Filesystem: /dev/vda3
+Size:       3.7G
+Used:       767M (22%)
+Available:  2.7G (78%)";
+        let disks = parse_storage_text(text);
+        assert_eq!(disks.len(), 1);
+        assert_eq!(disks[0].filesystem, "/dev/vda3");
+        assert_eq!(disks[0].size, "3.7G");
+        assert_eq!(disks[0].used, "767M");
+        assert_eq!(disks[0].available, "2.7G");
+        assert!((disks[0].percent - 22.0).abs() < 0.1);
+        assert_eq!(disks[0].mount, "/");
+    }
+
+    #[test]
+    fn test_parse_size_with_unit() {
+        assert_eq!(parse_size_with_unit("475.34 MB"), Some((475.34 * 1024.0 * 1024.0) as u64));
+        assert_eq!(parse_size_with_unit("3.7G"), Some((3.7 * 1024.0 * 1024.0 * 1024.0) as u64));
+        assert_eq!(parse_size_with_unit("767M"), Some((767.0 * 1024.0 * 1024.0) as u64));
+        assert_eq!(parse_size_with_unit("512 KB"), Some((512.0 * 1024.0) as u64));
+        assert!(parse_size_with_unit("").is_none());
     }
 }
