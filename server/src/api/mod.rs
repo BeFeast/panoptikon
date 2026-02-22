@@ -24,6 +24,7 @@ pub mod devices;
 pub mod error;
 pub mod export;
 pub mod metrics;
+pub mod npm;
 pub mod scanner;
 pub mod search;
 pub mod settings;
@@ -46,6 +47,8 @@ pub struct AppState {
     pub vyos_http: reqwest::Client,
     /// TTL cache for VyOS read operations (show / retrieve).
     pub vyos_cache: Arc<crate::vyos::cache::VyosCache>,
+    /// Shared reqwest::Client for Nginx Proxy Manager API.
+    pub npm_http: reqwest::Client,
 }
 
 impl AppState {
@@ -59,6 +62,7 @@ impl AppState {
             last_speedtest: Arc::new(Mutex::new(None)),
             vyos_http: crate::vyos::client::shared_http_client(),
             vyos_cache: Arc::new(crate::vyos::cache::VyosCache::new()),
+            npm_http: crate::npm::client::shared_http_client(),
         }
     }
 }
@@ -306,6 +310,9 @@ pub fn router(state: AppState) -> Router {
         .route("/config-backups/:id", delete(config_backups::delete))
         .route("/config-backups/:id/diff", get(config_backups::diff))
         .route("/config-backups/:id/restore", post(config_backups::restore))
+        // Nginx Proxy Manager
+        .route("/npm/status", get(npm::status))
+        .route("/npm/proxy-hosts", get(npm::proxy_hosts))
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))

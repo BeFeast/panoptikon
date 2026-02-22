@@ -5,6 +5,7 @@ pub mod dhcp;
 pub mod enrichment;
 pub mod mdns;
 pub mod netflow;
+pub mod npm;
 pub mod oui;
 pub mod retention;
 pub mod scanner;

@@ -27,6 +27,8 @@ import type {
   FirewallGroups,
   LoginResponse,
   NetflowStatus,
+  NpmConnectionStatus,
+  NpmProxyHost,
   PendingChangesResponse,
   RouterStatus,
   RouterSummary,
@@ -640,6 +642,9 @@ export function updateSettings(body: {
   retention_traffic_hours?: number;
   retention_alerts_days?: number;
   retention_agent_reports_days?: number;
+  npm_url?: string;
+  npm_email?: string;
+  npm_password?: string;
 }): Promise<SettingsData> {
   return apiPatch<SettingsData>("/api/v1/settings", body);
 }
@@ -805,4 +810,14 @@ export function restoreConfigBackup(
   return apiPost<ConfigActionResponse>(`/api/v1/config-backups/${id}/restore`, {
     snapshot_label: snapshotLabel || null,
   });
+}
+
+// ─── Nginx Proxy Manager ─────────────────────────────────
+
+export function fetchNpmStatus(): Promise<NpmConnectionStatus> {
+  return apiGet<NpmConnectionStatus>("/api/v1/npm/status");
+}
+
+export function fetchNpmProxyHosts(): Promise<NpmProxyHost[]> {
+  return apiGet<NpmProxyHost[]>("/api/v1/npm/proxy-hosts");
 }

@@ -346,6 +346,28 @@ export interface SettingsData {
   retention_traffic_hours: number | null;
   retention_alerts_days: number | null;
   retention_agent_reports_days: number | null;
+  // Nginx Proxy Manager
+  npm_url: string | null;
+  npm_email: string | null;
+  npm_password_set: boolean;
+}
+
+// ─── Nginx Proxy Manager ─────────────────────────────────
+
+export interface NpmConnectionStatus {
+  configured: boolean;
+  reachable: boolean;
+  host_count: number | null;
+}
+
+export interface NpmProxyHost {
+  id: number;
+  domain_names: string[];
+  forward_host: string;
+  forward_port: number;
+  forward_scheme: string;
+  enabled: boolean;
+  ssl_forced: boolean;
 }
 
 export interface DbSizeData {
