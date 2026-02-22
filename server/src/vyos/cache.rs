@@ -70,6 +70,12 @@ impl VyosCache {
     }
 }
 
+impl Default for VyosCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Build a cache key from the VyOS endpoint and path segments.
 pub fn cache_key(endpoint: &str, path: &[&str]) -> String {
     let mut key = String::from(endpoint);
