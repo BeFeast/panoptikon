@@ -8,8 +8,8 @@ use tracing::error;
 
 use super::AppState;
 use crate::npm::client::{
-    NpmCertificate, NpmClient, NpmConnectionStatus, NpmProxyHostPayload,
-    NpmRedirectionHostPayload, NpmStreamPayload,
+    NpmCertificate, NpmClient, NpmConnectionStatus, NpmProxyHostPayload, NpmRedirectionHostPayload,
+    NpmStreamPayload,
 };
 
 /// GET /api/v1/npm/status — check NPM connection health.

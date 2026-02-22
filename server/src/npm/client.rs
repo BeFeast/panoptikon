@@ -752,11 +752,7 @@ impl NpmClient {
     }
 
     /// Update an existing stream.
-    pub async fn update_stream(
-        &self,
-        id: i64,
-        payload: &NpmStreamPayload,
-    ) -> Result<NpmStream> {
+    pub async fn update_stream(&self, id: i64, payload: &NpmStreamPayload) -> Result<NpmStream> {
         let token = self.get_token().await?;
         let url = format!("{}/api/nginx/streams/{id}", self.base_url);
 
