@@ -164,6 +164,56 @@ pub fn router(state: AppState) -> Router {
             "/vyos/firewall/:chain/rules/:number/enabled",
             patch(vyos::toggle_firewall_rule),
         )
+        // Firewall groups
+        .route("/vyos/firewall/groups", get(vyos::firewall_groups))
+        .route(
+            "/vyos/firewall/groups/address-group",
+            post(vyos::create_address_group),
+        )
+        .route(
+            "/vyos/firewall/groups/address-group/:name",
+            delete(vyos::delete_address_group),
+        )
+        .route(
+            "/vyos/firewall/groups/address-group/:name/members",
+            post(vyos::add_address_group_member),
+        )
+        .route(
+            "/vyos/firewall/groups/address-group/:name/members/:value",
+            delete(vyos::remove_address_group_member),
+        )
+        .route(
+            "/vyos/firewall/groups/network-group",
+            post(vyos::create_network_group),
+        )
+        .route(
+            "/vyos/firewall/groups/network-group/:name",
+            delete(vyos::delete_network_group),
+        )
+        .route(
+            "/vyos/firewall/groups/network-group/:name/members",
+            post(vyos::add_network_group_member),
+        )
+        .route(
+            "/vyos/firewall/groups/network-group/:name/members/:value",
+            delete(vyos::remove_network_group_member),
+        )
+        .route(
+            "/vyos/firewall/groups/port-group",
+            post(vyos::create_port_group),
+        )
+        .route(
+            "/vyos/firewall/groups/port-group/:name",
+            delete(vyos::delete_port_group),
+        )
+        .route(
+            "/vyos/firewall/groups/port-group/:name/members",
+            post(vyos::add_port_group_member),
+        )
+        .route(
+            "/vyos/firewall/groups/port-group/:name/members/:value",
+            delete(vyos::remove_port_group_member),
+        )
         // Topology positions
         .route("/topology/positions", get(topology::get_positions))
         .route("/topology/positions", put(topology::save_positions))
