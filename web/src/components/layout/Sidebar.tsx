@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -35,10 +35,40 @@ const navItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+/** NPM connectivity state: null = not configured, true = reachable, false = unreachable. */
+function useNpmStatus(): null | boolean {
+  const [status, setStatus] = useState<null | boolean>(null);
+
+  const poll = useCallback(() => {
+    fetch("/api/v1/npm/status", { credentials: "include" })
+      .then((res) => {
+        if (!res.ok) return null;
+        return res.json();
+      })
+      .then((data) => {
+        if (!data || !data.configured) {
+          setStatus(null);
+        } else {
+          setStatus(data.reachable === true);
+        }
+      })
+      .catch(() => setStatus(null));
+  }, []);
+
+  useEffect(() => {
+    poll();
+    const id = setInterval(poll, 60_000); // refresh every 60s
+    return () => clearInterval(id);
+  }, [poll]);
+
+  return status;
+}
+
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const wsConnected = useWsConnected();
+  const npmStatus = useNpmStatus();
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -129,12 +159,29 @@ export function Sidebar() {
                   <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
                 </TooltipContent>
               </Tooltip>
+              {npmStatus !== null && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      className={cn(
+                        "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
+                        npmStatus
+                          ? "bg-orange-400 ring-2 ring-orange-400/30"
+                          : "bg-rose-500 ring-2 ring-rose-500/30"
+                      )}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="border-slate-800 bg-slate-900">
+                    <p>{npmStatus ? "NPM — connected" : "NPM — unreachable"}</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
               <p className="text-[10px] text-slate-700">Panoptikon {process.env.NEXT_PUBLIC_VERSION || "v0.1.0"}</p>
             </div>
           ) : (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="mt-1 flex justify-center">
+            <div className="mt-1 flex flex-col items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
                   <span
                     className={cn(
                       "inline-block h-1.5 w-1.5 rounded-full",
@@ -143,12 +190,29 @@ export function Sidebar() {
                         : "bg-slate-600"
                     )}
                   />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent side="right" className="border-slate-800 bg-slate-900">
-                <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
-              </TooltipContent>
-            </Tooltip>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="border-slate-800 bg-slate-900">
+                  <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
+                </TooltipContent>
+              </Tooltip>
+              {npmStatus !== null && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span
+                      className={cn(
+                        "inline-block h-1.5 w-1.5 rounded-full",
+                        npmStatus
+                          ? "bg-orange-400 ring-2 ring-orange-400/30"
+                          : "bg-rose-500 ring-2 ring-rose-500/30"
+                      )}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="border-slate-800 bg-slate-900">
+                    <p>{npmStatus ? "NPM — connected" : "NPM — unreachable"}</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </div>
           )}
         </div>
       </aside>

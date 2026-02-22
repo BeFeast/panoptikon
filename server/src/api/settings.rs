@@ -23,6 +23,11 @@ pub struct SettingsResponse {
     // --- Speed Test ---
     pub speedtest_retention_days: Option<u64>,
     pub speedtest_auto_interval_hours: Option<u64>,
+    // --- Nginx Proxy Manager ---
+    pub npm_url: Option<String>,
+    pub npm_email: Option<String>,
+    /// Never return the password to the frontend — just whether one is set.
+    pub npm_password_set: bool,
 }
 
 /// Request body for updating settings.
@@ -42,6 +47,10 @@ pub struct UpdateSettingsRequest {
     // --- Speed Test ---
     pub speedtest_retention_days: Option<u64>,
     pub speedtest_auto_interval_hours: Option<u64>,
+    // --- Nginx Proxy Manager ---
+    pub npm_url: Option<String>,
+    pub npm_email: Option<String>,
+    pub npm_password: Option<String>,
 }
 
 /// Helper: read a string setting from the settings table.
@@ -107,6 +116,11 @@ pub async fn get_settings(
         .and_then(|v| v.parse().ok())
         .or(Some(0));
 
+    // Nginx Proxy Manager settings.
+    let npm_url = get_setting(&state, "npm_url").await;
+    let npm_email = get_setting(&state, "npm_email").await;
+    let npm_password_set = get_setting(&state, "npm_password").await.is_some();
+
     Ok(Json(SettingsResponse {
         webhook_url,
         vyos_url,
@@ -119,6 +133,9 @@ pub async fn get_settings(
         retention_agent_reports_days,
         speedtest_retention_days,
         speedtest_auto_interval_hours,
+        npm_url,
+        npm_email,
+        npm_password_set,
     }))
 }
 
@@ -199,6 +216,22 @@ pub async fn update_settings(
             speedtest_auto_interval_hours = hours,
             "Speedtest auto-run interval updated"
         );
+    }
+
+    // --- Nginx Proxy Manager settings ---
+    if let Some(ref url) = body.npm_url {
+        upsert_setting(&state, "npm_url", url).await?;
+        info!(npm_url = %url, "NPM URL updated");
+    }
+
+    if let Some(ref email) = body.npm_email {
+        upsert_setting(&state, "npm_email", email).await?;
+        info!(npm_email = %email, "NPM email updated");
+    }
+
+    if let Some(ref password) = body.npm_password {
+        upsert_setting(&state, "npm_password", password).await?;
+        info!("NPM password updated");
     }
 
     // Return current state.
