@@ -112,10 +112,45 @@ impl VyosClient {
         self.post_form("/generate", &data).await
     }
 
+    /// POST /configure — commit staged configuration changes.
+    ///
+    /// On VyOS 1.4+ HTTP API, `set`/`delete` operations stage changes in a
+    /// candidate configuration.  This method commits all pending changes to
+    /// the running configuration.
+    pub async fn configure_commit(&self) -> Result<Value> {
+        let data = serde_json::json!({
+            "op": "commit",
+            "path": [],
+        });
+        self.post_form("/configure", &data).await
+    }
+
+    /// POST /configure — discard uncommitted candidate changes.
+    ///
+    /// Reverts the candidate configuration back to the running configuration,
+    /// discarding any staged `set`/`delete` operations that have not yet been
+    /// committed.
+    pub async fn configure_discard(&self) -> Result<Value> {
+        let data = serde_json::json!({
+            "op": "discard",
+            "path": [],
+        });
+        self.post_form("/configure", &data).await
+    }
+
     /// POST /config-file — save the running configuration to disk.
     pub async fn config_save(&self) -> Result<Value> {
         let data = serde_json::json!({
             "op": "save",
+        });
+        self.post_form("/config-file", &data).await
+    }
+
+    /// POST /config-file — load a configuration from a file path on VyOS.
+    pub async fn config_load(&self, path: &str) -> Result<Value> {
+        let data = serde_json::json!({
+            "op": "load",
+            "file": path,
         });
         self.post_form("/config-file", &data).await
     }

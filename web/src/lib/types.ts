@@ -398,11 +398,34 @@ export interface ConfigBackupListResponse {
   total: number;
 }
 
+export interface DiffLine {
+  tag: "add" | "remove" | "context";
+  content: string;
+}
+
 export interface ConfigDiffResponse {
   current: string;
   backup: string;
   backup_label: string | null;
   backup_created_at: string;
+  diff_lines: DiffLine[];
+  additions: number;
+  deletions: number;
+}
+
+export interface PendingChangesResponse {
+  has_changes: boolean;
+  diff_lines: DiffLine[];
+  additions: number;
+  deletions: number;
+  baseline: string;
+  candidate: string;
+}
+
+export interface ConfigActionResponse {
+  success: boolean;
+  message: string;
+  snapshot_id: number | null;
 }
 
 // ─── DNS Forwarding ─────────────────────────────────────

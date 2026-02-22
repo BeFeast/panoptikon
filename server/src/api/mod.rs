@@ -298,9 +298,13 @@ pub fn router(state: AppState) -> Router {
         .route("/config-backups", get(config_backups::list))
         .route("/config-backups", post(config_backups::create))
         .route("/config-backups/current", get(config_backups::show_current))
+        .route("/config-backups/pending", get(config_backups::pending))
+        .route("/config-backups/commit", post(config_backups::commit))
+        .route("/config-backups/discard", post(config_backups::discard))
         .route("/config-backups/:id", get(config_backups::get_one))
         .route("/config-backups/:id", delete(config_backups::delete))
         .route("/config-backups/:id/diff", get(config_backups::diff))
+        .route("/config-backups/:id/restore", post(config_backups::restore))
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))

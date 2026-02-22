@@ -11,6 +11,7 @@ import type {
   Alert,
   AuditLogListResponse,
   AuthStatus,
+  ConfigActionResponse,
   ConfigBackup,
   ConfigBackupListResponse,
   ConfigDiffResponse,
@@ -25,6 +26,7 @@ import type {
   FirewallGroups,
   LoginResponse,
   NetflowStatus,
+  PendingChangesResponse,
   RouterStatus,
   RouterSummary,
   SearchResponse,
@@ -777,4 +779,25 @@ export function fetchCurrentConfig(): Promise<{ config_text: string }> {
 
 export function fetchConfigDiff(id: number): Promise<ConfigDiffResponse> {
   return apiGet<ConfigDiffResponse>(`/api/v1/config-backups/${id}/diff`);
+}
+
+export function fetchPendingChanges(): Promise<PendingChangesResponse> {
+  return apiGet<PendingChangesResponse>("/api/v1/config-backups/pending");
+}
+
+export function commitConfig(): Promise<ConfigActionResponse> {
+  return apiPost<ConfigActionResponse>("/api/v1/config-backups/commit");
+}
+
+export function discardConfig(): Promise<ConfigActionResponse> {
+  return apiPost<ConfigActionResponse>("/api/v1/config-backups/discard");
+}
+
+export function restoreConfigBackup(
+  id: number,
+  snapshotLabel?: string
+): Promise<ConfigActionResponse> {
+  return apiPost<ConfigActionResponse>(`/api/v1/config-backups/${id}/restore`, {
+    snapshot_label: snapshotLabel || null,
+  });
 }
