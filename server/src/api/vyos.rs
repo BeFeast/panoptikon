@@ -955,9 +955,7 @@ fn parse_size_with_unit(s: &str) -> Option<u64> {
 /// 2. VyOS rolling key-value format (`Filesystem:`, `Size:`, `Used:`, `Available:`)
 fn parse_storage_text(text: &str) -> Vec<DiskUsage> {
     // Detect VyOS rolling key-value format by looking for "Filesystem:" as a key
-    let has_kv_filesystem = text
-        .lines()
-        .any(|l| l.trim().starts_with("Filesystem:"));
+    let has_kv_filesystem = text.lines().any(|l| l.trim().starts_with("Filesystem:"));
 
     if has_kv_filesystem {
         return parse_storage_kv(text);
@@ -1032,11 +1030,7 @@ fn parse_storage_kv(text: &str) -> Vec<DiskUsage> {
             if let Some(paren_start) = rest.find('(') {
                 used = Some(rest[..paren_start].trim().to_string());
                 let inside = rest[paren_start + 1..].trim_end_matches(')').trim();
-                percent = inside
-                    .trim_end_matches('%')
-                    .parse::<f64>()
-                    .ok()
-                    .or(percent);
+                percent = inside.trim_end_matches('%').parse::<f64>().ok().or(percent);
             } else {
                 used = Some(rest.to_string());
             }
@@ -8112,10 +8106,22 @@ Available:  2.7G (78%)";
 
     #[test]
     fn test_parse_size_with_unit() {
-        assert_eq!(parse_size_with_unit("475.34 MB"), Some((475.34 * 1024.0 * 1024.0) as u64));
-        assert_eq!(parse_size_with_unit("3.7G"), Some((3.7 * 1024.0 * 1024.0 * 1024.0) as u64));
-        assert_eq!(parse_size_with_unit("767M"), Some((767.0 * 1024.0 * 1024.0) as u64));
-        assert_eq!(parse_size_with_unit("512 KB"), Some((512.0 * 1024.0) as u64));
+        assert_eq!(
+            parse_size_with_unit("475.34 MB"),
+            Some((475.34 * 1024.0 * 1024.0) as u64)
+        );
+        assert_eq!(
+            parse_size_with_unit("3.7G"),
+            Some((3.7 * 1024.0 * 1024.0 * 1024.0) as u64)
+        );
+        assert_eq!(
+            parse_size_with_unit("767M"),
+            Some((767.0 * 1024.0 * 1024.0) as u64)
+        );
+        assert_eq!(
+            parse_size_with_unit("512 KB"),
+            Some((512.0 * 1024.0) as u64)
+        );
         assert!(parse_size_with_unit("").is_none());
     }
 }
