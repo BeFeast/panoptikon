@@ -11,6 +11,7 @@ import {
   Pencil,
   Plus,
   Radio,
+  Shield,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -47,6 +48,10 @@ import {
   createNpmRedirectionHost,
   updateNpmRedirectionHost,
   deleteNpmRedirectionHost,
+  fetchNpmAccessLists,
+  createNpmAccessList,
+  updateNpmAccessList,
+  deleteNpmAccessList,
   fetchNpmStreams,
   createNpmStream,
   updateNpmStream,
@@ -57,6 +62,8 @@ import {
   deleteNpmDeadHost,
 } from "@/lib/api";
 import type {
+  NpmAccessList,
+  NpmAccessListClient,
   NpmConnectionStatus,
   NpmProxyHost,
   NpmRedirectionHost,
@@ -69,10 +76,18 @@ import type {
 function ProxyHostsTable({
   hosts,
   loading,
+  accessLists,
 }: {
   hosts: NpmProxyHost[];
   loading: boolean;
+  accessLists: NpmAccessList[];
 }) {
+  const getAccessListName = (id: number | string | null) => {
+    if (!id || id === 0 || id === "0") return null;
+    const al = accessLists.find((a) => a.id === Number(id));
+    return al?.name ?? null;
+  };
+
   if (loading) {
     return (
       <div className="space-y-2 p-4">
@@ -99,48 +114,65 @@ function ProxyHostsTable({
             <th className="px-4 py-2">Domain(s)</th>
             <th className="px-4 py-2">Forward To</th>
             <th className="px-4 py-2">SSL</th>
+            <th className="px-4 py-2">Access List</th>
             <th className="px-4 py-2">Status</th>
           </tr>
         </thead>
         <tbody>
-          {hosts.map((h) => (
-            <tr
-              key={h.id}
-              className="border-b border-slate-800/50 hover:bg-slate-800/30"
-            >
-              <td className="px-4 py-2.5">
-                <div className="flex flex-wrap gap-1">
-                  {h.domain_names.map((d) => (
-                    <span key={d} className="font-mono text-xs text-white">
-                      {d}
-                    </span>
-                  ))}
-                </div>
-              </td>
-              <td className="px-4 py-2.5 font-mono text-xs text-slate-300">
-                {h.forward_scheme}://{h.forward_host}:{h.forward_port}
-              </td>
-              <td className="px-4 py-2.5">
-                {h.ssl_forced ? (
-                  <Lock className="h-3.5 w-3.5 text-emerald-400" />
-                ) : (
-                  <span className="text-xs text-slate-600">—</span>
-                )}
-              </td>
-              <td className="px-4 py-2.5">
-                <Badge
-                  variant="outline"
-                  className={
-                    h.enabled
-                      ? "border-emerald-500/30 text-emerald-400"
-                      : "border-slate-700 text-slate-500"
-                  }
-                >
-                  {h.enabled ? "Enabled" : "Disabled"}
-                </Badge>
-              </td>
-            </tr>
-          ))}
+          {hosts.map((h) => {
+            const alName = getAccessListName(h.access_list_id);
+            return (
+              <tr
+                key={h.id}
+                className="border-b border-slate-800/50 hover:bg-slate-800/30"
+              >
+                <td className="px-4 py-2.5">
+                  <div className="flex flex-wrap gap-1">
+                    {h.domain_names.map((d) => (
+                      <span key={d} className="font-mono text-xs text-white">
+                        {d}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+                <td className="px-4 py-2.5 font-mono text-xs text-slate-300">
+                  {h.forward_scheme}://{h.forward_host}:{h.forward_port}
+                </td>
+                <td className="px-4 py-2.5">
+                  {h.ssl_forced ? (
+                    <Lock className="h-3.5 w-3.5 text-emerald-400" />
+                  ) : (
+                    <span className="text-xs text-slate-600">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-2.5">
+                  {alName ? (
+                    <Badge
+                      variant="outline"
+                      className="border-amber-500/30 text-amber-400"
+                    >
+                      <Shield className="mr-1 h-3 w-3" />
+                      {alName}
+                    </Badge>
+                  ) : (
+                    <span className="text-xs text-slate-600">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-2.5">
+                  <Badge
+                    variant="outline"
+                    className={
+                      h.enabled
+                        ? "border-emerald-500/30 text-emerald-400"
+                        : "border-slate-700 text-slate-500"
+                    }
+                  >
+                    {h.enabled ? "Enabled" : "Disabled"}
+                  </Badge>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -1261,6 +1293,414 @@ function DeadHostsTable({
   );
 }
 
+// ─── Access Lists Table ──────────────────────────────────
+
+interface AccessListFormData {
+  name: string;
+  satisfy_any: boolean;
+  pass_auth: boolean;
+  clients: NpmAccessListClient[];
+}
+
+const emptyAccessListForm: AccessListFormData = {
+  name: "",
+  satisfy_any: true,
+  pass_auth: false,
+  clients: [{ address: "", directive: "allow" }],
+};
+
+function AccessListsTable({
+  accessLists,
+  loading,
+  onReload,
+}: {
+  accessLists: NpmAccessList[];
+  loading: boolean;
+  onReload: () => void;
+}) {
+  const [showForm, setShowForm] = useState(false);
+  const [editList, setEditList] = useState<NpmAccessList | null>(null);
+  const [form, setForm] = useState<AccessListFormData>(emptyAccessListForm);
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<NpmAccessList | null>(
+    null
+  );
+  const [deleting, setDeleting] = useState<number | null>(null);
+
+  const openCreate = () => {
+    setEditList(null);
+    setForm(emptyAccessListForm);
+    setShowForm(true);
+  };
+
+  const openEdit = (al: NpmAccessList) => {
+    setEditList(al);
+    setForm({
+      name: al.name,
+      satisfy_any: al.satisfy_any,
+      pass_auth: al.pass_auth,
+      clients:
+        al.clients.length > 0
+          ? al.clients.map((c) => ({ address: c.address, directive: c.directive }))
+          : [{ address: "", directive: "allow" }],
+    });
+    setShowForm(true);
+  };
+
+  const addClient = () => {
+    setForm({
+      ...form,
+      clients: [...form.clients, { address: "", directive: "allow" }],
+    });
+  };
+
+  const removeClient = (idx: number) => {
+    setForm({
+      ...form,
+      clients: form.clients.filter((_, i) => i !== idx),
+    });
+  };
+
+  const updateClient = (
+    idx: number,
+    field: keyof NpmAccessListClient,
+    value: string
+  ) => {
+    const updated = form.clients.map((c, i) =>
+      i === idx ? { ...c, [field]: value } : c
+    );
+    setForm({ ...form, clients: updated });
+  };
+
+  const handleSave = async () => {
+    if (!form.name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+
+    const clients = form.clients.filter((c) => c.address.trim() !== "");
+    if (clients.length === 0) {
+      toast.error("At least one IP address/range is required");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        name: form.name.trim(),
+        satisfy_any: form.satisfy_any,
+        pass_auth: form.pass_auth,
+        clients: clients.map((c) => ({
+          address: c.address.trim(),
+          directive: c.directive,
+        })),
+      };
+
+      if (editList) {
+        await updateNpmAccessList(editList.id, payload);
+        toast.success("Access list updated");
+      } else {
+        await createNpmAccessList(payload);
+        toast.success("Access list created");
+      }
+
+      setShowForm(false);
+      setEditList(null);
+      setForm(emptyAccessListForm);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    const { id } = confirmDelete;
+    setConfirmDelete(null);
+    setDeleting(id);
+    try {
+      await deleteNpmAccessList(id);
+      toast.success("Access list deleted");
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-2 p-4">
+        {[...Array(3)].map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full bg-slate-800" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex items-center justify-between px-4 py-3">
+        <p className="text-xs text-slate-500">
+          {accessLists.length} access list{accessLists.length !== 1 ? "s" : ""}
+        </p>
+        <Button variant="outline" size="sm" onClick={openCreate}>
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          Add Access List
+        </Button>
+      </div>
+
+      {accessLists.length === 0 ? (
+        <p className="px-4 pb-6 text-center text-sm text-slate-500">
+          No access lists found.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-800 text-left text-xs uppercase text-slate-500">
+                <th className="px-4 py-2">Name</th>
+                <th className="px-4 py-2">Clients</th>
+                <th className="px-4 py-2">Rules</th>
+                <th className="px-4 py-2">Satisfy</th>
+                <th className="px-4 py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {accessLists.map((al) => (
+                <tr
+                  key={al.id}
+                  className="border-b border-slate-800/50 hover:bg-slate-800/30"
+                >
+                  <td className="px-4 py-2.5 font-medium text-white">
+                    {al.name}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Badge
+                      variant="outline"
+                      className="border-slate-700 text-slate-300"
+                    >
+                      {al.client_count} rule{al.client_count !== 1 ? "s" : ""}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <div className="flex flex-wrap gap-1">
+                      {al.clients.slice(0, 3).map((c, i) => (
+                        <Badge
+                          key={i}
+                          variant="outline"
+                          className={
+                            c.directive === "allow"
+                              ? "border-emerald-500/30 text-emerald-400"
+                              : "border-rose-500/30 text-rose-400"
+                          }
+                        >
+                          {c.directive === "allow" ? "allow" : "deny"}{" "}
+                          {c.address}
+                        </Badge>
+                      ))}
+                      {al.clients.length > 3 && (
+                        <span className="text-xs text-slate-500">
+                          +{al.clients.length - 3} more
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5 text-xs text-slate-400">
+                    {al.satisfy_any ? "Any" : "All"}
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-slate-400 hover:text-white"
+                        onClick={() => openEdit(al)}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400"
+                        disabled={deleting === al.id}
+                        onClick={() => setConfirmDelete(al)}
+                      >
+                        {deleting === al.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Create / Edit Dialog */}
+      <Dialog
+        open={showForm}
+        onOpenChange={(open) => {
+          if (!open) {
+            setShowForm(false);
+            setEditList(null);
+          }
+        }}
+      >
+        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {editList ? "Edit Access List" : "New Access List"}
+            </DialogTitle>
+            <DialogDescription>
+              {editList
+                ? "Update IP-based access rules."
+                : "Create a new IP-based access list for proxy hosts."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Name */}
+            <div className="space-y-1.5">
+              <Label htmlFor="al-name">Name</Label>
+              <Input
+                id="al-name"
+                className="border-slate-800 bg-slate-950 text-white"
+                placeholder="e.g. Office IPs Only"
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+              />
+            </div>
+
+            {/* Satisfy Any */}
+            <div className="flex items-center justify-between">
+              <Label htmlFor="al-satisfy" className="cursor-pointer">
+                Satisfy Any{" "}
+                <span className="text-xs text-slate-500">
+                  (any rule match grants access)
+                </span>
+              </Label>
+              <Switch
+                id="al-satisfy"
+                checked={form.satisfy_any}
+                onCheckedChange={(v) => setForm({ ...form, satisfy_any: v })}
+              />
+            </div>
+
+            {/* Client Rules */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>IP Rules</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={addClient}
+                >
+                  <Plus className="mr-1 h-3 w-3" />
+                  Add Rule
+                </Button>
+              </div>
+              <div className="max-h-48 space-y-2 overflow-y-auto">
+                {form.clients.map((client, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <select
+                      className="h-9 w-24 shrink-0 rounded-md border border-slate-800 bg-slate-950 px-2 text-sm text-white"
+                      value={client.directive}
+                      onChange={(e) =>
+                        updateClient(idx, "directive", e.target.value)
+                      }
+                    >
+                      <option value="allow">Allow</option>
+                      <option value="deny">Deny</option>
+                    </select>
+                    <Input
+                      className="border-slate-800 bg-slate-950 text-white"
+                      placeholder="192.168.1.0/24"
+                      value={client.address}
+                      onChange={(e) =>
+                        updateClient(idx, "address", e.target.value)
+                      }
+                    />
+                    {form.clients.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 shrink-0 p-0 text-slate-400 hover:text-rose-400"
+                        onClick={() => removeClient(idx)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowForm(false);
+                setEditList(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              )}
+              {editList ? "Save Changes" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+      >
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Delete Access List?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              The access list{" "}
+              <span className="font-mono text-white">
+                {confirmDelete?.name}
+              </span>{" "}
+              will be permanently removed from Nginx Proxy Manager. Any proxy
+              hosts using it will lose their access restrictions.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 // ─── Main Page ──────────────────────────────────────────
 
 export default function NpmPage() {
@@ -1271,10 +1711,12 @@ export default function NpmPage() {
   >([]);
   const [streams, setStreams] = useState<NpmStream[]>([]);
   const [deadHosts, setDeadHosts] = useState<NpmDeadHost[]>([]);
+  const [accessLists, setAccessLists] = useState<NpmAccessList[]>([]);
   const [loadingProxy, setLoadingProxy] = useState(true);
   const [loadingRedir, setLoadingRedir] = useState(true);
   const [loadingStreams, setLoadingStreams] = useState(true);
   const [loadingDead, setLoadingDead] = useState(true);
+  const [loadingAccessLists, setLoadingAccessLists] = useState(true);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -1333,13 +1775,26 @@ export default function NpmPage() {
     }
   }, []);
 
+  const loadAccessLists = useCallback(async () => {
+    setLoadingAccessLists(true);
+    try {
+      const data = await fetchNpmAccessLists();
+      setAccessLists(data);
+    } catch {
+      setAccessLists([]);
+    } finally {
+      setLoadingAccessLists(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadStatus();
     loadProxyHosts();
     loadRedirectionHosts();
     loadStreams();
     loadDeadHosts();
-  }, [loadStatus, loadProxyHosts, loadRedirectionHosts, loadStreams, loadDeadHosts]);
+    loadAccessLists();
+  }, [loadStatus, loadProxyHosts, loadRedirectionHosts, loadStreams, loadDeadHosts, loadAccessLists]);
 
   const configured = status?.configured ?? false;
   const reachable = status?.reachable ?? false;
@@ -1458,6 +1913,18 @@ export default function NpmPage() {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="access-lists" className="gap-1.5">
+              <Shield className="h-3.5 w-3.5" />
+              Access Lists
+              {accessLists.length > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="ml-1 h-5 bg-slate-800 px-1.5 text-[10px]"
+                >
+                  {accessLists.length}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="redirections">
@@ -1487,7 +1954,7 @@ export default function NpmPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="px-0 pb-2">
-                <ProxyHostsTable hosts={proxyHosts} loading={loadingProxy} />
+                <ProxyHostsTable hosts={proxyHosts} loading={loadingProxy} accessLists={accessLists} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -1523,6 +1990,24 @@ export default function NpmPage() {
                   hosts={deadHosts}
                   loading={loadingDead}
                   onReload={loadDeadHosts}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="access-lists">
+            <Card className="border-slate-800 bg-slate-900/50">
+              <CardHeader className="pb-0">
+                <CardTitle className="flex items-center gap-2 text-lg text-white">
+                  <Shield className="h-4 w-4 text-amber-400" />
+                  Access Lists
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-0 pb-2">
+                <AccessListsTable
+                  accessLists={accessLists}
+                  loading={loadingAccessLists}
+                  onReload={loadAccessLists}
                 />
               </CardContent>
             </Card>

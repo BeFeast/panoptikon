@@ -390,6 +390,7 @@ export interface NpmProxyHost {
   enabled: boolean;
   ssl_forced: boolean;
   certificate_id: number | string | null;
+  access_list_id: number | string | null;
   hsts_enabled: boolean;
   http2_support: boolean;
   block_exploits: boolean;
@@ -403,6 +404,7 @@ export interface NpmProxyHostRequest {
   forward_port: number;
   forward_scheme: string;
   certificate_id: number | string;
+  access_list_id: number | string;
   ssl_forced: boolean;
   hsts_enabled: boolean;
   http2_support: boolean;
@@ -449,6 +451,29 @@ export interface NpmDeadHost {
   domain_names: string[];
   ssl_forced: boolean;
   enabled: boolean;
+}
+
+export interface NpmAccessListClient {
+  address: string;
+  directive: string;
+}
+
+export interface NpmAccessList {
+  id: number;
+  name: string;
+  satisfy_any: boolean;
+  pass_auth: boolean;
+  clients: NpmAccessListClient[];
+  client_count: number;
+  created_on: string | null;
+  modified_on: string | null;
+}
+
+export interface NpmAccessListRequest {
+  name: string;
+  satisfy_any: boolean;
+  pass_auth: boolean;
+  clients: NpmAccessListClient[];
 }
 
 export interface DbSizeData {

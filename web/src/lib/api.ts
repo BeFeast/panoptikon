@@ -27,6 +27,8 @@ import type {
   FirewallGroups,
   LoginResponse,
   NetflowStatus,
+  NpmAccessList,
+  NpmAccessListRequest,
   NpmCertificate,
   NpmConnectionStatus,
   NpmDeadHost,
@@ -987,4 +989,27 @@ export function createNpmDeadHost(body: {
 
 export function deleteNpmDeadHost(id: number): Promise<void> {
   return apiDelete(`/api/v1/npm/dead-hosts/${id}`);
+}
+
+// ─── Access Lists ────────────────────────────────────────
+
+export function fetchNpmAccessLists(): Promise<NpmAccessList[]> {
+  return apiGet<NpmAccessList[]>("/api/v1/npm/access-lists");
+}
+
+export function createNpmAccessList(
+  body: NpmAccessListRequest
+): Promise<NpmAccessList> {
+  return apiPost<NpmAccessList>("/api/v1/npm/access-lists", body);
+}
+
+export function updateNpmAccessList(
+  id: number,
+  body: NpmAccessListRequest
+): Promise<NpmAccessList> {
+  return apiPut<NpmAccessList>(`/api/v1/npm/access-lists/${id}`, body);
+}
+
+export function deleteNpmAccessList(id: number): Promise<void> {
+  return apiDelete(`/api/v1/npm/access-lists/${id}`);
 }
