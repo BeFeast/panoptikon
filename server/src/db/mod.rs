@@ -44,6 +44,10 @@ const DEVICE_FINGERPRINTING_MIGRATION: &str =
 /// Migration 013: speedtest history table.
 const SPEEDTEST_HISTORY_MIGRATION: &str = include_str!("migrations/013_speedtest_history.sql");
 
+/// Migration 014: manual device editing — custom override fields.
+const DEVICE_CUSTOM_FIELDS_MIGRATION: &str =
+    include_str!("migrations/014_device_custom_fields.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -323,6 +327,36 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
             .await?;
 
         info!("Applied migration 013_speedtest_history.sql");
+    }
+
+    // Migration 014: manual device editing — custom override fields.
+    let applied_14: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 14")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_14 {
+        for statement in DEVICE_CUSTOM_FIELDS_MIGRATION.split(';') {
+            let code = statement
+                .lines()
+                .skip_while(|l| {
+                    let t = l.trim();
+                    t.is_empty() || t.starts_with("--")
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let stmt = code.trim();
+            if stmt.is_empty() {
+                continue;
+            }
+            sqlx::query(stmt).execute(pool).await?;
+        }
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (14)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 014_device_custom_fields.sql");
     }
 
     // Purge expired sessions on startup.

@@ -70,6 +70,24 @@ pub struct Device {
     /// Whether the MAC address is locally administered (randomized)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_randomized_mac: Option<bool>,
+    /// Custom name override (user-defined)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub custom_name: Option<String>,
+    /// Custom device type override
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub custom_type: Option<String>,
+    /// Custom OS override
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub custom_os: Option<String>,
+    /// Custom vendor/manufacturer override
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub custom_vendor: Option<String>,
+    /// Custom model override
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub custom_model: Option<String>,
+    /// Icon override (user-picked)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub icon_override: Option<String>,
 }
 
 /// Request body for creating a device.
@@ -88,6 +106,12 @@ pub struct UpdateDevice {
     pub notes: Option<String>,
     pub is_known: Option<bool>,
     pub is_favorite: Option<bool>,
+    pub custom_name: Option<String>,
+    pub custom_type: Option<String>,
+    pub custom_os: Option<String>,
+    pub custom_vendor: Option<String>,
+    pub custom_model: Option<String>,
+    pub icon_override: Option<String>,
 }
 
 impl Device {
@@ -136,6 +160,12 @@ impl Device {
                 .try_get::<i32, _>("is_randomized_mac")
                 .ok()
                 .map(|v| v != 0),
+            custom_name: row.try_get("custom_name").unwrap_or(None),
+            custom_type: row.try_get("custom_type").unwrap_or(None),
+            custom_os: row.try_get("custom_os").unwrap_or(None),
+            custom_vendor: row.try_get("custom_vendor").unwrap_or(None),
+            custom_model: row.try_get("custom_model").unwrap_or(None),
+            icon_override: row.try_get("icon_override").unwrap_or(None),
         })
     }
 }
@@ -149,6 +179,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Device>>, St
                d.mdns_services, d.muted_until,
                d.os_family, d.os_version, d.device_type, d.device_model,
                d.device_brand, d.enrichment_source, d.enrichment_corrected, d.is_randomized_mac,
+               d.custom_name, d.custom_type, d.custom_os, d.custom_vendor, d.custom_model, d.icon_override,
                a.id AS agent_id,
                a.name AS agent_name,
                r.cpu_percent AS agent_cpu_percent,
@@ -212,6 +243,7 @@ pub async fn get_one(
                d.mdns_services, d.muted_until,
                d.os_family, d.os_version, d.device_type, d.device_model,
                d.device_brand, d.enrichment_source, d.enrichment_corrected, d.is_randomized_mac,
+               d.custom_name, d.custom_type, d.custom_os, d.custom_vendor, d.custom_model, d.icon_override,
                a.id AS agent_id,
                a.name AS agent_name,
                r.cpu_percent AS agent_cpu_percent,
@@ -303,6 +335,12 @@ pub async fn create(
         enrichment_source: None,
         enrichment_corrected: None,
         is_randomized_mac: None,
+        custom_name: None,
+        custom_type: None,
+        custom_os: None,
+        custom_vendor: None,
+        custom_model: None,
+        icon_override: None,
     };
 
     Ok((StatusCode::CREATED, Json(device)))
@@ -323,6 +361,12 @@ pub async fn update(
          notes = COALESCE(?, notes), \
          is_known = COALESCE(?, is_known), \
          is_favorite = COALESCE(?, is_favorite), \
+         custom_name = COALESCE(?, custom_name), \
+         custom_type = COALESCE(?, custom_type), \
+         custom_os = COALESCE(?, custom_os), \
+         custom_vendor = COALESCE(?, custom_vendor), \
+         custom_model = COALESCE(?, custom_model), \
+         icon_override = COALESCE(?, icon_override), \
          updated_at = ? \
          WHERE id = ?",
     )
@@ -331,12 +375,53 @@ pub async fn update(
     .bind(&body.notes)
     .bind(body.is_known.map(|v| v as i32))
     .bind(body.is_favorite.map(|v| v as i32))
+    .bind(&body.custom_name)
+    .bind(&body.custom_type)
+    .bind(&body.custom_os)
+    .bind(&body.custom_vendor)
+    .bind(&body.custom_model)
+    .bind(&body.icon_override)
     .bind(&now)
     .bind(&id)
     .execute(&state.db)
     .await
     .map_err(|e| {
         tracing::error!("Failed to update device {id}: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    if result.rows_affected() == 0 {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// DELETE /api/v1/devices/:id/custom — reset all manual overrides to auto-detected values.
+pub async fn reset_custom(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, StatusCode> {
+    let now = chrono::Utc::now().to_rfc3339();
+
+    let result = sqlx::query(
+        "UPDATE devices SET \
+         custom_name = NULL, \
+         custom_type = NULL, \
+         custom_os = NULL, \
+         custom_vendor = NULL, \
+         custom_model = NULL, \
+         icon_override = NULL, \
+         notes = NULL, \
+         updated_at = ? \
+         WHERE id = ?",
+    )
+    .bind(&now)
+    .bind(&id)
+    .execute(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to reset custom fields for device {id}: {e}");
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
@@ -1045,6 +1130,7 @@ mod tests {
                    d.mdns_services, d.muted_until,
                    d.os_family, d.os_version, d.device_type, d.device_model,
                    d.device_brand, d.enrichment_source, d.enrichment_corrected, d.is_randomized_mac,
+                   d.custom_name, d.custom_type, d.custom_os, d.custom_vendor, d.custom_model, d.icon_override,
                    a.id AS agent_id,
                    a.name AS agent_name,
                    r.cpu_percent AS agent_cpu_percent,

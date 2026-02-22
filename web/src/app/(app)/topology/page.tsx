@@ -141,7 +141,7 @@ function DeviceNode({ data }: NodeProps<DeviceNodeType>) {
     device.hostname,
     device.mdns_services,
   )
-  const displayName = device.name || device.hostname || device.mac
+  const displayName = device.custom_name || device.name || device.hostname || device.mac
   const primaryIp = device.ips?.[0] || '—'
 
   return (

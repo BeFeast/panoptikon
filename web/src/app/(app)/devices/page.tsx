@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Cpu, Download, Loader2, LayoutGrid, List, MemoryStick, Power, Radar, Search, VolumeX, Wifi, WifiOff } from "lucide-react";
+import { ArrowDown, ArrowUp, Cpu, Download, Loader2, LayoutGrid, List, MemoryStick, Pencil, Power, Radar, RotateCcw, Search, VolumeX, Wifi, WifiOff } from "lucide-react";
 import { getDeviceIcon } from "@/lib/device-icons";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,8 +25,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDeviceEnrichment, fetchDeviceSysinfo } from "@/lib/api";
-import type { DeviceEvent, UptimeStats, PortScanResult, EnrichmentCorrection } from "@/lib/api";
+import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDevice, resetDeviceCustom, fetchDeviceSysinfo } from "@/lib/api";
+import type { DeviceEvent, UptimeStats, PortScanResult, DeviceCustomFields } from "@/lib/api";
 import type { Device, DeviceSysinfo } from "@/lib/types";
 import { formatPercent, timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
@@ -111,6 +111,7 @@ export default function DevicesPage() {
       const q = search.toLowerCase();
       list = list.filter(
         (d) =>
+          (d.custom_name ?? "").toLowerCase().includes(q) ||
           (d.name ?? "").toLowerCase().includes(q) ||
           (d.hostname ?? "").toLowerCase().includes(q) ||
           (d.mac ?? "").toLowerCase().includes(q) ||
@@ -398,7 +399,7 @@ export default function DevicesPage() {
           side="right"
           className="w-full border-slate-800 bg-slate-950 sm:max-w-md"
         >
-          {selectedDevice && <DeviceDetail device={selectedDevice} />}
+          {selectedDevice && <DeviceDetail device={selectedDevice} onUpdate={load} />}
         </SheetContent>
       </Sheet>
     </div>
@@ -417,12 +418,13 @@ function DeviceCard({
 }) {
   const ips = device.ips ?? [];
   const primaryIp = ips[0] ?? "—";
-  const displayName = device.name ?? device.hostname ?? "Unknown Device";
-  const { icon: DevIcon } = getDeviceIcon(device.vendor, device.hostname, device.mdns_services, device.device_type);
-  const vendorDisplay = device.vendor
-    ? device.vendor.length > 20
-      ? device.vendor.slice(0, 20) + "…"
-      : device.vendor
+  const displayName = device.custom_name ?? device.name ?? device.hostname ?? "Unknown Device";
+  const effectiveType = device.custom_type ?? device.device_type;
+  const { icon: DevIcon } = getDeviceIcon(device.custom_vendor ?? device.vendor, device.hostname, device.mdns_services, effectiveType);
+  const vendorDisplay = (device.custom_vendor ?? device.vendor)
+    ? (device.custom_vendor ?? device.vendor)!.length > 20
+      ? (device.custom_vendor ?? device.vendor)!.slice(0, 20) + "…"
+      : (device.custom_vendor ?? device.vendor)
     : null;
 
   return (
@@ -474,21 +476,26 @@ function DeviceCard({
         </div>
 
         {/* Enrichment badges: OS + model */}
-        {(device.os_family || device.device_model) && (
-          <div className="mt-2 flex flex-wrap items-center gap-1">
-            {device.os_family && (() => {
-              const os = getOsDisplay(device.os_family);
-              return os ? (
-                <Badge variant="outline" className={`text-[10px] ${os.colorClass}`}>
-                  {os.label}{device.os_version ? ` ${device.os_version}` : ""}
-                </Badge>
-              ) : null;
-            })()}
-            {device.device_model && (
-              <span className="text-[10px] text-slate-500">{device.device_model}</span>
-            )}
-          </div>
-        )}
+        {(() => {
+          const osDisplay = device.custom_os ?? device.os_family;
+          const modelDisplay = device.custom_model ?? device.device_model;
+          if (!osDisplay && !modelDisplay) return null;
+          return (
+            <div className="mt-2 flex flex-wrap items-center gap-1">
+              {osDisplay && (() => {
+                const os = getOsDisplay(osDisplay);
+                return os ? (
+                  <Badge variant="outline" className={`text-[10px] ${os.colorClass}`}>
+                    {os.label}{device.os_version ? ` ${device.os_version}` : ""}
+                  </Badge>
+                ) : null;
+              })()}
+              {modelDisplay && (
+                <span className="text-[10px] text-slate-500">{modelDisplay}</span>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Technical info */}
         <div className="mt-3 space-y-1">
@@ -668,20 +675,22 @@ function DevicesTable({
 
 // ─── Device Detail (Sheet) ──────────────────────────────
 
-function DeviceDetail({ device }: { device: Device }) {
+function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => void }) {
   const ips = device.ips ?? [];
   const primaryIp = ips[0] ?? "—";
-  const displayName = device.name ?? device.hostname ?? "Unknown Device";
+  const displayName = device.custom_name ?? device.name ?? device.hostname ?? "Unknown Device";
   const [waking, setWaking] = useState(false);
+  const effectiveType = device.custom_type ?? device.device_type;
   const { icon: DetailIcon, label: deviceTypeLabel } = getDeviceIcon(
-    device.vendor,
+    device.custom_vendor ?? device.vendor,
     device.hostname,
-    device.mdns_services
+    device.mdns_services,
+    effectiveType
   );
-  const vendorDisplay = device.vendor
-    ? device.vendor.length > 20
-      ? device.vendor.slice(0, 20) + "…"
-      : device.vendor
+  const vendorDisplay = (device.custom_vendor ?? device.vendor)
+    ? (device.custom_vendor ?? device.vendor)!.length > 20
+      ? (device.custom_vendor ?? device.vendor)!.slice(0, 20) + "…"
+      : (device.custom_vendor ?? device.vendor)
     : null;
 
   const handleWake = async () => {
@@ -711,9 +720,12 @@ function DeviceDetail({ device }: { device: Device }) {
               }`}
             />
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <SheetTitle className="text-white">{displayName}</SheetTitle>
+              {device.custom_name && (
+                <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 text-[10px]">custom</Badge>
+              )}
               {device.agent?.is_online && (
                 <span className="shrink-0 rounded border border-blue-500/30 bg-blue-500/20 px-1.5 py-0.5 text-xs text-blue-400">
                   Agent
@@ -763,6 +775,7 @@ function DeviceDetail({ device }: { device: Device }) {
       <Tabs defaultValue="info" className="w-full">
         <TabsList className="mb-4 w-full bg-slate-800">
           <TabsTrigger value="info" className="flex-1">Info</TabsTrigger>
+          <TabsTrigger value="edit" className="flex-1">Edit</TabsTrigger>
           <TabsTrigger value="system" className="flex-1">System</TabsTrigger>
           <TabsTrigger value="ports" className="flex-1">Ports</TabsTrigger>
           <TabsTrigger value="events" className="flex-1">Events</TabsTrigger>
@@ -770,6 +783,10 @@ function DeviceDetail({ device }: { device: Device }) {
 
         <TabsContent value="info">
           <DeviceInfoTab device={device} ips={ips} primaryIp={primaryIp} />
+        </TabsContent>
+
+        <TabsContent value="edit">
+          <DeviceEditForm device={device} onUpdate={onUpdate} />
         </TabsContent>
 
         <TabsContent value="system">
@@ -790,6 +807,14 @@ function DeviceDetail({ device }: { device: Device }) {
 
 // ─── Device Info Tab ────────────────────────────────────
 
+function CustomBadge() {
+  return (
+    <Badge variant="outline" className="ml-1 border-cyan-500/50 text-cyan-400 text-[9px] px-1 py-0">
+      custom
+    </Badge>
+  );
+}
+
 function DeviceInfoTab({
   device,
   ips,
@@ -799,6 +824,11 @@ function DeviceInfoTab({
   ips: string[];
   primaryIp: string;
 }) {
+  const effectiveOs = device.custom_os ?? device.os_family;
+  const effectiveType = device.custom_type ?? device.device_type;
+  const effectiveVendor = device.custom_vendor ?? device.device_brand;
+  const effectiveModel = device.custom_model ?? device.device_model;
+
   return (
     <div className="space-y-4">
       <InfoRow label="IP Address" value={primaryIp} mono />
@@ -821,23 +851,50 @@ function DeviceInfoTab({
       <InfoRow label="Last Seen" value={timeAgo(device.last_seen_at)} />
       <InfoRow label="Status" value={device.is_known ? "Known" : "Unacknowledged"} />
 
-      {/* Device enrichment */}
-      {(device.os_family || device.device_type || device.device_brand || device.device_model) && (
+      {/* Device identity — merged auto-detected + custom */}
+      {(effectiveOs || effectiveType || effectiveVendor || effectiveModel) && (
         <>
           <Separator className="bg-slate-800" />
           <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
             Device Identity
           </p>
-          {device.os_family && (
-            <InfoRow
-              label="OS"
-              value={device.os_version ? `${device.os_family} ${device.os_version}` : device.os_family}
-            />
+          {effectiveOs && (
+            <div className="flex items-baseline justify-between gap-4">
+              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">OS</span>
+              <span className="flex items-center text-sm text-slate-300">
+                {device.os_version ? `${effectiveOs} ${device.os_version}` : effectiveOs}
+                {device.custom_os && <CustomBadge />}
+              </span>
+            </div>
           )}
-          {device.device_type && <InfoRow label="Type" value={device.device_type} />}
-          {device.device_brand && <InfoRow label="Brand" value={device.device_brand} />}
-          {device.device_model && <InfoRow label="Model" value={device.device_model} />}
-          {device.enrichment_source && (
+          {effectiveType && (
+            <div className="flex items-baseline justify-between gap-4">
+              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">Type</span>
+              <span className="flex items-center text-sm text-slate-300">
+                {effectiveType}
+                {device.custom_type && <CustomBadge />}
+              </span>
+            </div>
+          )}
+          {effectiveVendor && (
+            <div className="flex items-baseline justify-between gap-4">
+              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">Brand</span>
+              <span className="flex items-center text-sm text-slate-300">
+                {effectiveVendor}
+                {device.custom_vendor && <CustomBadge />}
+              </span>
+            </div>
+          )}
+          {effectiveModel && (
+            <div className="flex items-baseline justify-between gap-4">
+              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">Model</span>
+              <span className="flex items-center text-sm text-slate-300">
+                {effectiveModel}
+                {device.custom_model && <CustomBadge />}
+              </span>
+            </div>
+          )}
+          {device.enrichment_source && !device.custom_os && !device.custom_type && (
             <p className="text-[10px] text-slate-600">
               Identified via {device.enrichment_source}
               {device.enrichment_corrected ? " (user-corrected)" : ""}
@@ -931,14 +988,6 @@ function DeviceInfoTab({
             </p>
             <p className="mt-1 text-sm text-slate-300">{device.notes}</p>
           </div>
-        </>
-      )}
-
-      {/* Enrichment Feedback */}
-      {(device.os_family || device.device_type || device.device_brand) && (
-        <>
-          <Separator className="bg-slate-800" />
-          <EnrichmentFeedback device={device} />
         </>
       )}
     </div>
@@ -1311,103 +1360,194 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
   );
 }
 
-// ─── Enrichment Feedback ────────────────────────────────
+// ─── Device Edit Form ───────────────────────────────────
 
-function EnrichmentFeedback({ device }: { device: Device }) {
-  const [editing, setEditing] = useState(false);
+const DEVICE_TYPE_OPTIONS = [
+  "", "phone", "laptop", "desktop", "router", "switch", "ap",
+  "smart-tv", "iot", "printer", "nas", "server", "tablet", "gaming", "other",
+];
+
+const OS_OPTIONS = [
+  "", "iOS", "Android", "Windows", "macOS", "Linux", "Other",
+];
+
+function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => void }) {
   const [saving, setSaving] = useState(false);
-  const [osFamily, setOsFamily] = useState(device.os_family ?? "");
-  const [deviceType, setDeviceType] = useState(device.device_type ?? "");
-  const [deviceModel, setDeviceModel] = useState(device.device_model ?? "");
-  const [deviceBrand, setDeviceBrand] = useState(device.device_brand ?? "");
+  const [resetting, setResetting] = useState(false);
+  const [customName, setCustomName] = useState(device.custom_name ?? "");
+  const [customType, setCustomType] = useState(device.custom_type ?? "");
+  const [customOs, setCustomOs] = useState(device.custom_os ?? "");
+  const [customVendor, setCustomVendor] = useState(device.custom_vendor ?? "");
+  const [customModel, setCustomModel] = useState(device.custom_model ?? "");
+  const [notes, setNotes] = useState(device.notes ?? "");
+  const [iconOverride, setIconOverride] = useState(device.icon_override ?? "");
+
+  const hasCustomFields = !!(device.custom_name || device.custom_type || device.custom_os ||
+    device.custom_vendor || device.custom_model || device.notes || device.icon_override);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const body: EnrichmentCorrection = {};
-      if (osFamily) body.os_family = osFamily;
-      if (deviceType) body.device_type = deviceType;
-      if (deviceModel) body.device_model = deviceModel;
-      if (deviceBrand) body.device_brand = deviceBrand;
-      await updateDeviceEnrichment(device.id, body);
-      toast.success("Device identity updated");
-      setEditing(false);
+      const body: DeviceCustomFields = {};
+      if (customName) body.custom_name = customName;
+      if (customType) body.custom_type = customType;
+      if (customOs) body.custom_os = customOs;
+      if (customVendor) body.custom_vendor = customVendor;
+      if (customModel) body.custom_model = customModel;
+      if (notes) body.notes = notes;
+      if (iconOverride) body.icon_override = iconOverride;
+      await updateDevice(device.id, body);
+      toast.success("Device updated");
+      onUpdate();
     } catch {
-      toast.error("Failed to update device identity");
+      toast.error("Failed to update device");
     } finally {
       setSaving(false);
     }
   };
 
-  if (!editing) {
-    return (
-      <Button
-        variant="ghost"
-        size="sm"
-        className="w-full text-xs text-slate-500 hover:text-slate-300"
-        onClick={() => setEditing(true)}
-      >
-        Did we get it right? Click to correct
-      </Button>
-    );
-  }
+  const handleReset = async () => {
+    setResetting(true);
+    try {
+      await resetDeviceCustom(device.id);
+      toast.success("Custom fields reset to auto-detected values");
+      setCustomName("");
+      setCustomType("");
+      setCustomOs("");
+      setCustomVendor("");
+      setCustomModel("");
+      setNotes("");
+      setIconOverride("");
+      onUpdate();
+    } catch {
+      toast.error("Failed to reset custom fields");
+    } finally {
+      setResetting(false);
+    }
+  };
 
   return (
-    <div className="space-y-3">
-      <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-        Correct Device Identity
-      </p>
-      <div className="space-y-2">
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Pencil className="h-4 w-4 text-slate-400" />
+        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+          Edit Device
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <div>
+          <label className="text-[11px] text-slate-500">Custom Name</label>
+          <Input
+            value={customName}
+            onChange={(e) => setCustomName(e.target.value)}
+            placeholder={device.hostname ?? device.name ?? "e.g. Oleg's iPhone"}
+            className="h-8 text-sm"
+          />
+          {device.hostname && (
+            <p className="mt-0.5 text-[10px] text-slate-600">Auto-detected: {device.hostname}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="text-[11px] text-slate-500">Device Type</label>
+          <select
+            value={customType}
+            onChange={(e) => setCustomType(e.target.value)}
+            className="flex h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+          >
+            <option value="">{device.device_type ? `Auto: ${device.device_type}` : "Select type…"}</option>
+            {DEVICE_TYPE_OPTIONS.filter(Boolean).map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+
         <div>
           <label className="text-[11px] text-slate-500">OS</label>
-          <Input
-            value={osFamily}
-            onChange={(e) => setOsFamily(e.target.value)}
-            placeholder="e.g. iOS, Android, Windows"
-            className="h-8 text-sm"
-          />
+          <select
+            value={customOs}
+            onChange={(e) => setCustomOs(e.target.value)}
+            className="flex h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+          >
+            <option value="">{device.os_family ? `Auto: ${device.os_family}` : "Select OS…"}</option>
+            {OS_OPTIONS.filter(Boolean).map((os) => (
+              <option key={os} value={os}>{os}</option>
+            ))}
+          </select>
         </div>
+
         <div>
-          <label className="text-[11px] text-slate-500">Type</label>
+          <label className="text-[11px] text-slate-500">Vendor / Manufacturer</label>
           <Input
-            value={deviceType}
-            onChange={(e) => setDeviceType(e.target.value)}
-            placeholder="e.g. phone, laptop, router"
+            value={customVendor}
+            onChange={(e) => setCustomVendor(e.target.value)}
+            placeholder={device.vendor ?? device.device_brand ?? "e.g. Apple, Samsung"}
             className="h-8 text-sm"
           />
+          {device.vendor && (
+            <p className="mt-0.5 text-[10px] text-slate-600">Auto-detected: {device.vendor}</p>
+          )}
         </div>
-        <div>
-          <label className="text-[11px] text-slate-500">Brand</label>
-          <Input
-            value={deviceBrand}
-            onChange={(e) => setDeviceBrand(e.target.value)}
-            placeholder="e.g. Apple, Samsung"
-            className="h-8 text-sm"
-          />
-        </div>
+
         <div>
           <label className="text-[11px] text-slate-500">Model</label>
           <Input
-            value={deviceModel}
-            onChange={(e) => setDeviceModel(e.target.value)}
-            placeholder="e.g. iPhone SE 2022"
+            value={customModel}
+            onChange={(e) => setCustomModel(e.target.value)}
+            placeholder={device.device_model ?? "e.g. iPhone 15 Pro, QNAP TS-253"}
             className="h-8 text-sm"
+          />
+          {device.device_model && (
+            <p className="mt-0.5 text-[10px] text-slate-600">Auto-detected: {device.device_model}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="text-[11px] text-slate-500">Icon Override</label>
+          <select
+            value={iconOverride}
+            onChange={(e) => setIconOverride(e.target.value)}
+            className="flex h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+          >
+            <option value="">Auto (based on type)</option>
+            {DEVICE_TYPE_OPTIONS.filter(Boolean).map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="text-[11px] text-slate-500">Notes</label>
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Freeform notes about this device…"
+            rows={3}
+            className="flex w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-600"
           />
         </div>
       </div>
+
       <div className="flex gap-2">
-        <Button size="sm" className="flex-1" disabled={saving} onClick={handleSave}>
-          {saving ? "Saving…" : "Save"}
-        </Button>
-        <Button
-          variant="secondary"
-          size="sm"
-          className="flex-1"
-          onClick={() => setEditing(false)}
-        >
-          Cancel
+        <Button size="sm" className="flex-1 gap-1" disabled={saving} onClick={handleSave}>
+          {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Pencil className="h-3 w-3" />}
+          {saving ? "Saving…" : "Save Changes"}
         </Button>
       </div>
+
+      {hasCustomFields && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full gap-1 text-xs text-slate-500 hover:text-rose-400"
+          disabled={resetting}
+          onClick={handleReset}
+        >
+          <RotateCcw className="h-3 w-3" />
+          {resetting ? "Resetting…" : "Reset to Auto-Detected"}
+        </Button>
+      )}
     </div>
   );
 }
