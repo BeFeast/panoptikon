@@ -27,6 +27,7 @@ import type {
   FirewallGroups,
   LoginResponse,
   NetflowStatus,
+  NpmCertificate,
   NpmConnectionStatus,
   NpmProxyHost,
   NpmProxyHostRequest,
