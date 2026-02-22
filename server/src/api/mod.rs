@@ -345,6 +345,10 @@ pub fn router(state: AppState) -> Router {
         .route("/npm/dead-hosts", get(npm::dead_hosts))
         .route("/npm/dead-hosts", post(npm::create_dead_host))
         .route("/npm/dead-hosts/:id", delete(npm::delete_dead_host))
+        .route("/npm/access-lists", get(npm::list_access_lists))
+        .route("/npm/access-lists", post(npm::create_access_list))
+        .route("/npm/access-lists/:id", put(npm::update_access_list))
+        .route("/npm/access-lists/:id", delete(npm::delete_access_list))
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))

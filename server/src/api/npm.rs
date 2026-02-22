@@ -8,8 +8,9 @@ use tracing::error;
 
 use super::AppState;
 use crate::npm::client::{
-    NpmCertificate, NpmClient, NpmConnectionStatus, NpmDeadHostPayload, NpmProxyHostPayload,
-    NpmRedirectionHostPayload, NpmStreamPayload,
+    NpmAccessListClientPayload, NpmAccessListPayload, NpmCertificate, NpmClient,
+    NpmConnectionStatus, NpmDeadHostPayload, NpmProxyHostPayload, NpmRedirectionHostPayload,
+    NpmStreamPayload,
 };
 
 /// GET /api/v1/npm/status — check NPM connection health.
@@ -52,6 +53,7 @@ pub struct ProxyHostSummary {
     pub enabled: bool,
     pub ssl_forced: bool,
     pub certificate_id: Option<serde_json::Value>,
+    pub access_list_id: serde_json::Value,
     pub hsts_enabled: bool,
     pub http2_support: bool,
     pub block_exploits: bool,
@@ -83,6 +85,7 @@ pub async fn proxy_hosts(
             enabled: h.enabled,
             ssl_forced: h.ssl_forced,
             certificate_id: h.certificate_id,
+            access_list_id: h.access_list_id,
             hsts_enabled: h.hsts_enabled,
             http2_support: h.http2_support,
             block_exploits: h.block_exploits,
@@ -106,6 +109,8 @@ pub struct ProxyHostRequest {
     pub forward_scheme: String,
     #[serde(default)]
     pub certificate_id: serde_json::Value,
+    #[serde(default = "default_access_list_id")]
+    pub access_list_id: serde_json::Value,
     #[serde(default)]
     pub ssl_forced: bool,
     #[serde(default)]
@@ -124,6 +129,10 @@ fn default_scheme() -> String {
     "http".to_string()
 }
 
+fn default_access_list_id() -> serde_json::Value {
+    serde_json::Value::Number(0.into())
+}
+
 impl From<ProxyHostRequest> for NpmProxyHostPayload {
     fn from(r: ProxyHostRequest) -> Self {
         Self {
@@ -132,6 +141,7 @@ impl From<ProxyHostRequest> for NpmProxyHostPayload {
             forward_port: r.forward_port,
             forward_scheme: r.forward_scheme,
             certificate_id: r.certificate_id,
+            access_list_id: r.access_list_id,
             ssl_forced: r.ssl_forced,
             hsts_enabled: r.hsts_enabled,
             http2_support: r.http2_support,
@@ -176,6 +186,7 @@ pub async fn create_proxy_host(
         enabled: host.enabled,
         ssl_forced: host.ssl_forced,
         certificate_id: host.certificate_id,
+        access_list_id: host.access_list_id,
         hsts_enabled: host.hsts_enabled,
         http2_support: host.http2_support,
         block_exploits: host.block_exploits,
@@ -209,6 +220,7 @@ pub async fn update_proxy_host(
         enabled: host.enabled,
         ssl_forced: host.ssl_forced,
         certificate_id: host.certificate_id,
+        access_list_id: host.access_list_id,
         hsts_enabled: host.hsts_enabled,
         http2_support: host.http2_support,
         block_exploits: host.block_exploits,
@@ -887,6 +899,203 @@ pub async fn delete_dead_host(
 
     client.delete_dead_host(id).await.map_err(|e| {
         error!("NPM delete dead host {id} failed: {e}");
+        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// ─── Access Lists ───────────────────────────────────────
+
+/// Summary returned by the access lists list endpoint.
+#[derive(Debug, Serialize)]
+pub struct AccessListSummary {
+    pub id: i64,
+    pub name: String,
+    pub satisfy_any: bool,
+    pub pass_auth: bool,
+    pub clients: Vec<AccessListClientSummary>,
+    pub client_count: usize,
+    pub created_on: Option<String>,
+    pub modified_on: Option<String>,
+}
+
+/// Single IP-based client entry in an access list.
+#[derive(Debug, Serialize)]
+pub struct AccessListClientSummary {
+    pub address: String,
+    pub directive: String,
+}
+
+/// GET /api/v1/npm/access-lists — list all access lists.
+pub async fn list_access_lists(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<AccessListSummary>>, StatusCode> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let lists = client.list_access_lists().await.map_err(|e| {
+        error!("NPM list access lists failed: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let summaries: Vec<AccessListSummary> = lists
+        .into_iter()
+        .map(|al| {
+            let client_count = al.clients.len();
+            AccessListSummary {
+                id: al.id,
+                name: al.name,
+                satisfy_any: al.satisfy_any,
+                pass_auth: al.pass_auth,
+                clients: al
+                    .clients
+                    .into_iter()
+                    .map(|c| AccessListClientSummary {
+                        address: c.address,
+                        directive: c.directive,
+                    })
+                    .collect(),
+                client_count,
+                created_on: al.created_on,
+                modified_on: al.modified_on,
+            }
+        })
+        .collect();
+
+    Ok(Json(summaries))
+}
+
+/// Request body for creating / updating an access list.
+#[derive(Debug, Deserialize)]
+pub struct AccessListRequest {
+    pub name: String,
+    #[serde(default)]
+    pub satisfy_any: bool,
+    #[serde(default)]
+    pub pass_auth: bool,
+    #[serde(default)]
+    pub clients: Vec<AccessListClientRequest>,
+}
+
+/// Single client entry in the access list request body.
+#[derive(Debug, Deserialize)]
+pub struct AccessListClientRequest {
+    pub address: String,
+    pub directive: String,
+}
+
+/// POST /api/v1/npm/access-lists — create a new access list.
+pub async fn create_access_list(
+    State(state): State<AppState>,
+    Json(body): Json<AccessListRequest>,
+) -> Result<Json<AccessListSummary>, (StatusCode, Json<ErrorBody>)> {
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
+
+    let payload = NpmAccessListPayload {
+        name: body.name,
+        satisfy_any: body.satisfy_any,
+        pass_auth: body.pass_auth,
+        items: vec![],
+        clients: body
+            .clients
+            .into_iter()
+            .map(|c| NpmAccessListClientPayload {
+                address: c.address,
+                directive: c.directive,
+            })
+            .collect(),
+    };
+
+    let al = client.create_access_list(&payload).await.map_err(|e| {
+        error!("NPM create access list failed: {e}");
+        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+    })?;
+
+    let client_count = al.clients.len();
+    Ok(Json(AccessListSummary {
+        id: al.id,
+        name: al.name,
+        satisfy_any: al.satisfy_any,
+        pass_auth: al.pass_auth,
+        clients: al
+            .clients
+            .into_iter()
+            .map(|c| AccessListClientSummary {
+                address: c.address,
+                directive: c.directive,
+            })
+            .collect(),
+        client_count,
+        created_on: al.created_on,
+        modified_on: al.modified_on,
+    }))
+}
+
+/// PUT /api/v1/npm/access-lists/:id — update an access list.
+pub async fn update_access_list(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+    Json(body): Json<AccessListRequest>,
+) -> Result<Json<AccessListSummary>, (StatusCode, Json<ErrorBody>)> {
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
+
+    let payload = NpmAccessListPayload {
+        name: body.name,
+        satisfy_any: body.satisfy_any,
+        pass_auth: body.pass_auth,
+        items: vec![],
+        clients: body
+            .clients
+            .into_iter()
+            .map(|c| NpmAccessListClientPayload {
+                address: c.address,
+                directive: c.directive,
+            })
+            .collect(),
+    };
+
+    let al = client.update_access_list(id, &payload).await.map_err(|e| {
+        error!("NPM update access list {id} failed: {e}");
+        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+    })?;
+
+    let client_count = al.clients.len();
+    Ok(Json(AccessListSummary {
+        id: al.id,
+        name: al.name,
+        satisfy_any: al.satisfy_any,
+        pass_auth: al.pass_auth,
+        clients: al
+            .clients
+            .into_iter()
+            .map(|c| AccessListClientSummary {
+                address: c.address,
+                directive: c.directive,
+            })
+            .collect(),
+        client_count,
+        created_on: al.created_on,
+        modified_on: al.modified_on,
+    }))
+}
+
+/// DELETE /api/v1/npm/access-lists/:id — delete an access list.
+pub async fn delete_access_list(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
+
+    client.delete_access_list(id).await.map_err(|e| {
+        error!("NPM delete access list {id} failed: {e}");
         error_response(StatusCode::BAD_GATEWAY, e.to_string())
     })?;
 

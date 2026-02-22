@@ -53,6 +53,7 @@ pub struct NpmProxyHost {
     pub enabled: bool,
     pub ssl_forced: bool,
     pub certificate_id: Option<serde_json::Value>,
+    pub access_list_id: serde_json::Value,
     pub hsts_enabled: bool,
     pub http2_support: bool,
     pub block_exploits: bool,
@@ -69,6 +70,7 @@ pub struct NpmProxyHostPayload {
     pub forward_port: u16,
     pub forward_scheme: String,
     pub certificate_id: serde_json::Value,
+    pub access_list_id: serde_json::Value,
     pub ssl_forced: bool,
     pub hsts_enabled: bool,
     pub http2_support: bool,
@@ -153,6 +155,50 @@ pub struct NpmDeadHostPayload {
     pub certificate_id: serde_json::Value,
     pub ssl_forced: bool,
     pub meta: serde_json::Value,
+}
+
+/// NPM access list returned by the API.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NpmAccessList {
+    pub id: i64,
+    pub name: String,
+    #[serde(default)]
+    pub satisfy_any: bool,
+    #[serde(default)]
+    pub pass_auth: bool,
+    #[serde(default)]
+    pub items: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub clients: Vec<NpmAccessListClient>,
+    pub created_on: Option<String>,
+    pub modified_on: Option<String>,
+    pub meta: Option<serde_json::Value>,
+}
+
+/// IP-based client entry in an access list.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NpmAccessListClient {
+    #[serde(default)]
+    pub id: i64,
+    pub address: String,
+    pub directive: String,
+}
+
+/// Payload for creating / updating an access list.
+#[derive(Debug, Serialize, Clone)]
+pub struct NpmAccessListPayload {
+    pub name: String,
+    pub satisfy_any: bool,
+    pub pass_auth: bool,
+    pub items: Vec<serde_json::Value>,
+    pub clients: Vec<NpmAccessListClientPayload>,
+}
+
+/// Client entry payload for access list create/update.
+#[derive(Debug, Serialize, Clone)]
+pub struct NpmAccessListClientPayload {
+    pub address: String,
+    pub directive: String,
 }
 
 /// Connection test result returned by the `/npm/status` endpoint.
@@ -936,6 +982,115 @@ impl NpmClient {
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
             anyhow::bail!("NPM delete dead host failed (HTTP {status}): {body}");
+        }
+
+        Ok(())
+    }
+
+    /// List all access lists.
+    pub async fn list_access_lists(&self) -> Result<Vec<NpmAccessList>> {
+        let token = self.get_token().await?;
+        let url = format!(
+            "{}/api/nginx/access-lists?expand=owner,items,clients",
+            self.base_url
+        );
+
+        let resp = self
+            .http
+            .get(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM list access lists request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM list access lists failed (HTTP {status}): {body}");
+        }
+
+        let lists: Vec<NpmAccessList> = resp
+            .json()
+            .await
+            .context("failed to parse NPM access lists response")?;
+
+        Ok(lists)
+    }
+
+    /// Create a new access list.
+    pub async fn create_access_list(
+        &self,
+        payload: &NpmAccessListPayload,
+    ) -> Result<NpmAccessList> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/access-lists", self.base_url);
+
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(&token)
+            .json(payload)
+            .send()
+            .await
+            .context("NPM create access list request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM create access list failed (HTTP {status}): {body}");
+        }
+
+        resp.json()
+            .await
+            .context("failed to parse NPM create access list response")
+    }
+
+    /// Update an existing access list.
+    pub async fn update_access_list(
+        &self,
+        id: i64,
+        payload: &NpmAccessListPayload,
+    ) -> Result<NpmAccessList> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/access-lists/{id}", self.base_url);
+
+        let resp = self
+            .http
+            .put(&url)
+            .bearer_auth(&token)
+            .json(payload)
+            .send()
+            .await
+            .context("NPM update access list request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM update access list failed (HTTP {status}): {body}");
+        }
+
+        resp.json()
+            .await
+            .context("failed to parse NPM update access list response")
+    }
+
+    /// Delete an access list by ID.
+    pub async fn delete_access_list(&self, id: i64) -> Result<()> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/access-lists/{id}", self.base_url);
+
+        let resp = self
+            .http
+            .delete(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM delete access list request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM delete access list failed (HTTP {status}): {body}");
         }
 
         Ok(())
