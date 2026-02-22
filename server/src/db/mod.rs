@@ -28,8 +28,11 @@ const ALERT_MANAGEMENT_MIGRATION: &str = include_str!("migrations/007_alert_mana
 /// Migration 008: topology positions — persist node positions after drag.
 const TOPOLOGY_POSITIONS_MIGRATION: &str = include_str!("migrations/008_topology_positions.sql");
 
-/// Migration 009: device enrichment — OS fingerprinting, device type, model.
-const DEVICE_ENRICHMENT_MIGRATION: &str = include_str!("migrations/009_device_enrichment.sql");
+/// Migration 009: audit log for VyOS write operations.
+const AUDIT_LOG_MIGRATION: &str = include_str!("migrations/009_audit_log.sql");
+
+/// Migration 010: device enrichment — OS fingerprinting, device type, model.
+const DEVICE_ENRICHMENT_MIGRATION: &str = include_str!("migrations/010_device_enrichment.sql");
 
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
@@ -210,22 +213,38 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 008_topology_positions.sql");
     }
 
-    // Migration 009: device enrichment columns.
+    // Migration 009: audit log table.
     let applied_9: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 9")
         .fetch_optional(pool)
         .await?
         .is_some();
 
     if !applied_9 {
-        sqlx::raw_sql(DEVICE_ENRICHMENT_MIGRATION)
-            .execute(pool)
-            .await?;
+        sqlx::raw_sql(AUDIT_LOG_MIGRATION).execute(pool).await?;
 
         sqlx::query("INSERT INTO _migrations (version) VALUES (9)")
             .execute(pool)
             .await?;
 
-        info!("Applied migration 009_device_enrichment.sql");
+        info!("Applied migration 009_audit_log.sql");
+    }
+
+    // Migration 010: device enrichment columns.
+    let applied_10: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 10")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_10 {
+        sqlx::raw_sql(DEVICE_ENRICHMENT_MIGRATION)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (10)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 010_device_enrichment.sql");
     }
 
     // Purge expired sessions on startup.
@@ -271,6 +290,7 @@ mod tests {
             "sessions",
             "device_events",
             "topology_positions",
+            "audit_log",
         ];
 
         for table in &expected_tables {

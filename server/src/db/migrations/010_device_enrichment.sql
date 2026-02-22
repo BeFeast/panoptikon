@@ -1,4 +1,4 @@
--- Migration 009: device enrichment — OS fingerprinting, device type, model identification
+-- Migration 010: device enrichment — OS fingerprinting, device type, model identification
 -- Adds columns for Fing-style device identification data.
 
 ALTER TABLE devices ADD COLUMN os_family TEXT;

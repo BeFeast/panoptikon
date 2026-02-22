@@ -324,6 +324,25 @@ export interface SearchResponse {
   alerts: SearchAlert[];
 }
 
+// ─── Audit Log ─────────────────────────────────────────
+
+export interface AuditLogEntry {
+  id: number;
+  created_at: string;
+  action: string;
+  description: string;
+  vyos_commands: string;
+  success: boolean;
+  error_msg: string | null;
+}
+
+export interface AuditLogListResponse {
+  items: AuditLogEntry[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
 // ─── Auth ───────────────────────────────────────────────
 
 export interface AuthStatus {

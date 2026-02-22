@@ -9,6 +9,7 @@ import type {
   AgentCreateResponse,
   AgentReport,
   Alert,
+  AuditLogListResponse,
   AuthStatus,
   DashboardStats,
   DbSizeData,
@@ -433,6 +434,26 @@ export function deleteDhcpStaticMapping(
   ) as unknown as Promise<VyosWriteResponse>;
 }
 
+// ─── Static Routes ──────────────────────────────────────
+
+export function createStaticRoute(body: {
+  destination: string;
+  next_hop?: string;
+  distance?: number;
+  description?: string;
+  blackhole?: boolean;
+}): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>("/api/v1/vyos/routes/static", body);
+}
+
+export function deleteStaticRoute(
+  destination: string
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/routes/static/${encodeURIComponent(destination)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
 // ─── Firewall CRUD ───────────────────────────────────────
 
 /** Chain path is dot-separated: "ipv4.forward.filter" */
@@ -519,6 +540,22 @@ export function fetchDbSize(): Promise<DbSizeData> {
 
 export function triggerVacuum(): Promise<void> {
   return apiPost<void>("/api/v1/settings/vacuum");
+}
+
+// ─── Audit Log ──────────────────────────────────────────
+
+export function fetchAuditLog(
+  page = 1,
+  perPage = 25,
+  action?: string
+): Promise<AuditLogListResponse> {
+  const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
+  if (action) params.set("action", action);
+  return apiGet<AuditLogListResponse>(`/api/v1/audit-log?${params}`);
+}
+
+export function fetchAuditLogActions(): Promise<string[]> {
+  return apiGet<string[]>("/api/v1/audit-log/actions");
 }
 
 // ─── Topology Positions ──────────────────────────────────

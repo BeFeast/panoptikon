@@ -15,6 +15,8 @@ import {
   Radar,
   Database,
   Trash2,
+  FileText,
+  ChevronRight,
 } from "lucide-react";
 import {
   Card,
@@ -478,6 +480,24 @@ export default function SettingsPage() {
     <PageTransition>
     <div className="mx-auto max-w-lg space-y-6 py-8">
       <h1 className="text-2xl font-semibold text-white">Settings</h1>
+
+      {/* Audit Log link */}
+      <a href="/settings/audit-log">
+        <Card className="border-slate-800 bg-slate-900 transition-colors hover:border-slate-700">
+          <CardContent className="flex items-center gap-3 py-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/10">
+              <FileText className="h-4 w-4 text-indigo-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-white">Audit Log</p>
+              <p className="text-xs text-slate-500">
+                View all VyOS configuration changes made via Panoptikon.
+              </p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-600" />
+          </CardContent>
+        </Card>
+      </a>
 
       {/* VyOS Router Connection */}
       <Card className="border-slate-800 bg-slate-900">
