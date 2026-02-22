@@ -4639,6 +4639,17 @@ fn parse_wireguard_config(config: &Value) -> Vec<WireguardInterface> {
 /// ```
 ///
 /// We match peers by public key (or positionally if keys are not available).
+///
+/// Type alias for WireGuard runtime peer data tuple:
+/// (public_key, last_handshake_timestamp, rx_bytes, tx_bytes, endpoint)
+type WgRuntimePeerData = (
+    String,
+    Option<i64>,
+    Option<u64>,
+    Option<u64>,
+    Option<String>,
+);
+
 fn merge_wireguard_runtime_stats(iface: &mut WireguardInterface, text: &str) {
     let mut current_pubkey: Option<String> = None;
     let mut current_handshake: Option<i64> = None;
@@ -4647,13 +4658,7 @@ fn merge_wireguard_runtime_stats(iface: &mut WireguardInterface, text: &str) {
     let mut current_endpoint: Option<String> = None;
 
     // Collect runtime peer data keyed by public key
-    let mut runtime_peers: Vec<(
-        String,
-        Option<i64>,
-        Option<u64>,
-        Option<u64>,
-        Option<String>,
-    )> = Vec::new();
+    let mut runtime_peers: Vec<WgRuntimePeerData> = Vec::new();
 
     for line in text.lines() {
         let trimmed = line.trim();
