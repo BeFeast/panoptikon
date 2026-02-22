@@ -148,10 +148,7 @@ pub fn router(state: AppState) -> Router {
             delete(vyos::delete_dhcp_static_mapping),
         )
         // NAT destination (port forwarding)
-        .route(
-            "/router/nat/destination",
-            get(vyos::nat_destination_rules),
-        )
+        .route("/router/nat/destination", get(vyos::nat_destination_rules))
         .route(
             "/router/nat/destination",
             post(vyos::create_nat_destination_rule),

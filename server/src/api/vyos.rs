@@ -1342,17 +1342,13 @@ pub fn parse_nat_destination_rules(config: &Value) -> Vec<NatDestinationRule> {
             .map(|s| s.to_string());
 
         // inbound-interface can be either a string or {"name": "eth0"}
-        let inbound_interface = rule_obj
-            .get("inbound-interface")
-            .and_then(|v| {
-                v.as_str()
+        let inbound_interface = rule_obj.get("inbound-interface").and_then(|v| {
+            v.as_str().map(|s| s.to_string()).or_else(|| {
+                v.get("name")
+                    .and_then(|n| n.as_str())
                     .map(|s| s.to_string())
-                    .or_else(|| {
-                        v.get("name")
-                            .and_then(|n| n.as_str())
-                            .map(|s| s.to_string())
-                    })
-            });
+            })
+        });
 
         let external_port = rule_obj
             .get("destination")
@@ -1544,40 +1540,71 @@ pub async fn create_nat_destination_rule(
         (
             "description",
             vec![
-                "nat", "destination", "rule", &rule_str, "description", &body.description,
+                "nat",
+                "destination",
+                "rule",
+                &rule_str,
+                "description",
+                &body.description,
             ],
         ),
         (
             "inbound-interface",
             vec![
-                "nat", "destination", "rule", &rule_str, "inbound-interface", "name",
+                "nat",
+                "destination",
+                "rule",
+                &rule_str,
+                "inbound-interface",
+                "name",
                 &body.inbound_interface,
             ],
         ),
         (
             "destination port",
             vec![
-                "nat", "destination", "rule", &rule_str, "destination", "port",
+                "nat",
+                "destination",
+                "rule",
+                &rule_str,
+                "destination",
+                "port",
                 &body.external_port,
             ],
         ),
         (
             "protocol",
             vec![
-                "nat", "destination", "rule", &rule_str, "protocol", &protocol,
+                "nat",
+                "destination",
+                "rule",
+                &rule_str,
+                "protocol",
+                &protocol,
             ],
         ),
         (
             "translation address",
             vec![
-                "nat", "destination", "rule", &rule_str, "translation", "address",
+                "nat",
+                "destination",
+                "rule",
+                &rule_str,
+                "translation",
+                "address",
                 &body.internal_ip,
             ],
         ),
         (
             "translation port",
             vec![
-                "nat", "destination", "rule", &rule_str, "translation", "port", internal_port,
+                "nat",
+                "destination",
+                "rule",
+                &rule_str,
+                "translation",
+                "port",
+                internal_port,
             ],
         ),
     ];
