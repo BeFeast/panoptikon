@@ -11,7 +11,7 @@ use crate::config::AppConfig;
 /// DHCP lease entry as returned by the VyOS API proxy.
 #[derive(Debug, serde::Deserialize)]
 struct DhcpLease {
-    ip: String,
+    _ip: String,
     mac: String,
     hostname: Option<String>,
 }
@@ -161,7 +161,7 @@ fn parse_dhcp_leases(text: &str) -> Vec<DhcpLease> {
 
                         if !mac.is_empty() {
                             leases.push(DhcpLease {
-                                ip: ip.clone(),
+                                _ip: ip.clone(),
                                 mac,
                                 hostname,
                             });
@@ -214,7 +214,11 @@ fn parse_dhcp_leases(text: &str) -> Vec<DhcpLease> {
 
             // Basic IP validation
             if ip.parse::<std::net::IpAddr>().is_ok() && mac.contains(':') {
-                leases.push(DhcpLease { ip, mac, hostname });
+                leases.push(DhcpLease {
+                    _ip: ip,
+                    mac,
+                    hostname,
+                });
             }
         }
     }
@@ -269,7 +273,7 @@ mod tests {
             r#"{"data":{"LAN":{"10.10.0.100":{"mac":"aa:bb:cc:dd:ee:01","hostname":"mypc"}}}}"#;
         let leases = parse_dhcp_leases(json);
         assert_eq!(leases.len(), 1);
-        assert_eq!(leases[0].ip, "10.10.0.100");
+        assert_eq!(leases[0]._ip, "10.10.0.100");
         assert_eq!(leases[0].mac, "aa:bb:cc:dd:ee:01");
         assert_eq!(leases[0].hostname.as_deref(), Some("mypc"));
     }
