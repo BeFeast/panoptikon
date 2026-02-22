@@ -144,9 +144,7 @@ pub async fn mark_read(
 }
 
 /// POST /api/v1/alerts/mark-all-read — mark all unread alerts as read.
-pub async fn mark_all_read(
-    State(state): State<AppState>,
-) -> Result<StatusCode, StatusCode> {
+pub async fn mark_all_read(State(state): State<AppState>) -> Result<StatusCode, StatusCode> {
     sqlx::query("UPDATE alerts SET is_read = 1 WHERE is_read = 0")
         .execute(&state.db)
         .await
