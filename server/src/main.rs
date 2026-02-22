@@ -1,7 +1,7 @@
 use anyhow::Result;
 use clap::Parser;
 use panoptikon_server::{
-    api, config, db, dhcp, mdns, netflow, retention, scanner, speedtest_scheduler, ssh, ssdp,
+    api, config, db, dhcp, mdns, netflow, retention, scanner, speedtest_scheduler, ssdp, ssh,
 };
 use std::net::SocketAddr;
 use tracing::info;

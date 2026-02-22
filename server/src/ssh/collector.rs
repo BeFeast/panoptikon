@@ -26,9 +26,7 @@ fn exec_command(sess: &Session, cmd: &str) -> Result<String> {
     let mut channel = sess.channel_session().context("open channel")?;
     channel.exec(cmd).context("exec command")?;
     let mut output = String::new();
-    channel
-        .read_to_string(&mut output)
-        .context("read stdout")?;
+    channel.read_to_string(&mut output).context("read stdout")?;
     channel.wait_close().ok();
     Ok(output)
 }
@@ -230,7 +228,8 @@ mod tests {
 
     #[test]
     fn test_parse_cpu_percent_valid() {
-        let output = "cpu  10000 200 3000 50000 100 0 50 0 0 0\ncpu  11000 250 3100 50500 110 0 60 0 0 0\n";
+        let output =
+            "cpu  10000 200 3000 50000 100 0 50 0 0 0\ncpu  11000 250 3100 50500 110 0 60 0 0 0\n";
         let result = parse_cpu_percent(output);
         assert!(result.is_some());
         let pct = result.unwrap();

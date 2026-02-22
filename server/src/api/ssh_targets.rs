@@ -425,26 +425,19 @@ pub async fn test_connection(
     let private_key: Option<String> = row.try_get("private_key")?;
 
     // Run in blocking task since SSH is synchronous.
-    let result = tokio::task::spawn_blocking(move || {
-        match auth_type.as_str() {
-            "key" => {
-                if let Some(ref key) = private_key {
-                    crate::ssh::collector::test_connection_key(&host, port as u16, &username, key)
-                } else {
-                    Err(anyhow::anyhow!("No private key configured"))
-                }
+    let result = tokio::task::spawn_blocking(move || match auth_type.as_str() {
+        "key" => {
+            if let Some(ref key) = private_key {
+                crate::ssh::collector::test_connection_key(&host, port as u16, &username, key)
+            } else {
+                Err(anyhow::anyhow!("No private key configured"))
             }
-            _ => {
-                if let Some(ref pw) = password {
-                    crate::ssh::collector::test_connection_password(
-                        &host,
-                        port as u16,
-                        &username,
-                        pw,
-                    )
-                } else {
-                    Err(anyhow::anyhow!("No password configured"))
-                }
+        }
+        _ => {
+            if let Some(ref pw) = password {
+                crate::ssh::collector::test_connection_password(&host, port as u16, &username, pw)
+            } else {
+                Err(anyhow::anyhow!("No password configured"))
             }
         }
     })

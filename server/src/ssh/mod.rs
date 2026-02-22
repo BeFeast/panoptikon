@@ -82,14 +82,18 @@ async fn poll_all_targets(db: &SqlitePool, ws_hub: &Arc<WsHub>) {
                     if let Some(ref key) = private_key {
                         collector::collect_key(&host, port as u16, &username, key)
                     } else {
-                        Err(anyhow::anyhow!("No private key configured for target {target_id}"))
+                        Err(anyhow::anyhow!(
+                            "No private key configured for target {target_id}"
+                        ))
                     }
                 }
                 _ => {
                     if let Some(ref pw) = password {
                         collector::collect_password(&host, port as u16, &username, pw)
                     } else {
-                        Err(anyhow::anyhow!("No password configured for target {target_id}"))
+                        Err(anyhow::anyhow!(
+                            "No password configured for target {target_id}"
+                        ))
                     }
                 }
             };
