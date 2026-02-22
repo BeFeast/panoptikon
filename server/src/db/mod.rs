@@ -37,8 +37,12 @@ const DEVICE_ENRICHMENT_MIGRATION: &str = include_str!("migrations/010_device_en
 /// Migration 011: VyOS config backups table.
 const CONFIG_BACKUPS_MIGRATION: &str = include_str!("migrations/011_config_backups.sql");
 
-/// Migration 012: speedtest history table.
-const SPEEDTEST_HISTORY_MIGRATION: &str = include_str!("migrations/012_speedtest_history.sql");
+/// Migration 012: device fingerprinting — sysinfo table + randomized MAC flag.
+const DEVICE_FINGERPRINTING_MIGRATION: &str =
+    include_str!("migrations/012_device_fingerprinting.sql");
+
+/// Migration 013: speedtest history table.
+const SPEEDTEST_HISTORY_MIGRATION: &str = include_str!("migrations/013_speedtest_history.sql");
 
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
@@ -271,22 +275,54 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 011_config_backups.sql");
     }
 
-    // Migration 012: speedtest history table.
+    // Migration 012: device fingerprinting — sysinfo table + randomized MAC flag.
     let applied_12: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 12")
         .fetch_optional(pool)
         .await?
         .is_some();
 
     if !applied_12 {
-        sqlx::raw_sql(SPEEDTEST_HISTORY_MIGRATION)
-            .execute(pool)
-            .await?;
+        // SQLite doesn't support multiple ALTER TABLE in raw_sql, so split on semicolons.
+        for statement in DEVICE_FINGERPRINTING_MIGRATION.split(';') {
+            // Strip leading blank / comment-only lines to find the SQL body.
+            let code = statement
+                .lines()
+                .skip_while(|l| {
+                    let t = l.trim();
+                    t.is_empty() || t.starts_with("--")
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let stmt = code.trim();
+            if stmt.is_empty() {
+                continue;
+            }
+            sqlx::query(stmt).execute(pool).await?;
+        }
 
         sqlx::query("INSERT INTO _migrations (version) VALUES (12)")
             .execute(pool)
             .await?;
 
-        info!("Applied migration 012_speedtest_history.sql");
+        info!("Applied migration 012_device_fingerprinting.sql");
+    }
+
+    // Migration 013: speedtest history table.
+    let applied_13: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 13")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_13 {
+        sqlx::raw_sql(SPEEDTEST_HISTORY_MIGRATION)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (13)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 013_speedtest_history.sql");
     }
 
     // Purge expired sessions on startup.
@@ -334,6 +370,7 @@ mod tests {
             "topology_positions",
             "audit_log",
             "vyos_config_backups",
+            "device_sysinfo",
             "speedtest_history",
         ];
 

@@ -39,6 +39,29 @@ export interface Device {
   enrichment_source?: string | null;
   /** Whether user has manually corrected the enrichment. */
   enrichment_corrected?: boolean | null;
+  /** Whether the MAC address is locally administered (randomized). */
+  is_randomized_mac?: boolean | null;
+}
+
+// ─── Device Sysinfo (hardware inventory from agent) ───
+
+export interface DeviceSysinfo {
+  device_id: string;
+  reported_at: string;
+  os_name: string | null;
+  os_version: string | null;
+  os_build: string | null;
+  hardware_model: string | null;
+  cpu_name: string | null;
+  cpu_cores: number | null;
+  cpu_speed: string | null;
+  ram_total: string | null;
+  gpu_name: string | null;
+  disk_name: string | null;
+  disk_size: string | null;
+  serial_number: string | null;
+  hostname: string | null;
+  uptime_seconds: number | null;
 }
 
 export interface AgentSummary {

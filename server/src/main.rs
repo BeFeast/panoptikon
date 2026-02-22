@@ -1,6 +1,8 @@
 use anyhow::Result;
 use clap::Parser;
-use panoptikon_server::{api, config, db, mdns, netflow, retention, scanner, speedtest_scheduler};
+use panoptikon_server::{
+    api, config, db, dhcp, mdns, netflow, retention, scanner, speedtest_scheduler, ssdp,
+};
 use std::net::SocketAddr;
 use tracing::info;
 
@@ -120,6 +122,12 @@ async fn main() -> Result<()> {
     } else {
         info!("NetFlow collector disabled (set netflow_enabled = true in [scanner])");
     }
+
+    // Start DHCP hostname enrichment (pulls hostnames from VyOS DHCP leases).
+    dhcp::start_dhcp_enrichment_task(state.db.clone(), app_config.clone());
+
+    // Start UPnP/SSDP discovery (device type + manufacturer from multicast).
+    ssdp::start_ssdp_discovery_task(state.db.clone());
 
     // Start the background speedtest scheduler (reads interval from DB settings).
     speedtest_scheduler::start_speedtest_scheduler(state.db.clone());
