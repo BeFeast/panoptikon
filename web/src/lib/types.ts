@@ -413,6 +413,27 @@ export interface ClientConfigResponse {
   public_key: string;
 }
 
+// ─── DNS Management ────────────────────────────────────
+
+export interface DnsDomainForward {
+  domain: string;
+  server: string;
+}
+
+export interface DnsHostOverride {
+  hostname: string;
+  ip: string;
+}
+
+export interface DnsConfig {
+  nameservers: string[];
+  domain_forwarding: DnsDomainForward[];
+  host_overrides: DnsHostOverride[];
+  listen_address: string | null;
+  cache_size: number | null;
+  dnssec: string | null;
+}
+
 // ─── Auth ───────────────────────────────────────────────
 
 export interface AuthStatus {
