@@ -16,7 +16,8 @@ export type WsEventType =
   | "new_device"
   | "agent_online"
   | "agent_offline"
-  | "agent_report";
+  | "agent_report"
+  | "ssh_report";
 
 // ─── Custom DOM event for decoupled pub/sub ─────────────
 

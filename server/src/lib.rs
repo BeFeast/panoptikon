@@ -11,6 +11,7 @@ pub mod retention;
 pub mod scanner;
 pub mod speedtest_scheduler;
 pub mod ssdp;
+pub mod ssh;
 pub mod static_files;
 pub mod vyos;
 pub mod webhook;
