@@ -201,10 +201,10 @@ fn apply_mdns_hints(services: &str, result: &mut EnrichmentResult) {
     }
 
     // AirPlay → Apple TV or speaker
-    if lower.contains("_airplay._tcp") || lower.contains("_raop._tcp") {
-        if result.device_type.is_none() {
-            result.device_type = Some("tv".to_string());
-        }
+    if (lower.contains("_airplay._tcp") || lower.contains("_raop._tcp"))
+        && result.device_type.is_none()
+    {
+        result.device_type = Some("tv".to_string());
     }
 
     // Google Cast → Chromecast / Smart TV
@@ -229,28 +229,25 @@ fn apply_mdns_hints(services: &str, result: &mut EnrichmentResult) {
     }
 
     // Spotify connect → speaker/IoT
-    if lower.contains("_spotify-connect._tcp") {
-        if result.device_type.is_none() {
-            result.device_type = Some("iot".to_string());
-        }
+    if lower.contains("_spotify-connect._tcp") && result.device_type.is_none() {
+        result.device_type = Some("iot".to_string());
     }
 
     // SSH/SMB/NFS → server
-    if lower.contains("_ssh._tcp")
+    if (lower.contains("_ssh._tcp")
         || lower.contains("_smb._tcp")
         || lower.contains("_nfs._tcp")
-        || lower.contains("_sftp-ssh._tcp")
+        || lower.contains("_sftp-ssh._tcp"))
+        && result.device_type.is_none()
     {
-        if result.device_type.is_none() {
-            result.device_type = Some("server".to_string());
-        }
+        result.device_type = Some("server".to_string());
     }
 
     // HomeKit → IoT
-    if lower.contains("_hap._tcp") || lower.contains("_homekit._tcp") {
-        if result.device_type.is_none() {
-            result.device_type = Some("iot".to_string());
-        }
+    if (lower.contains("_hap._tcp") || lower.contains("_homekit._tcp"))
+        && result.device_type.is_none()
+    {
+        result.device_type = Some("iot".to_string());
     }
 
     // Companion link → Apple device (macOS/iOS)
@@ -465,10 +462,8 @@ fn apply_vendor_hints(vendor: &str, result: &mut EnrichmentResult) {
         || lower.contains("xerox")
     {
         // HP could be anything, but other printer brands are strong signals
-        if !lower.contains("hp inc") && !lower.contains("hewlett") {
-            if result.device_type.is_none() {
-                result.device_type = Some("printer".to_string());
-            }
+        if !lower.contains("hp inc") && !lower.contains("hewlett") && result.device_type.is_none() {
+            result.device_type = Some("printer".to_string());
         }
     }
     // NAS / Server brands
@@ -667,6 +662,7 @@ fn apply_apple_model_lookup(hostname: &str, result: &mut EnrichmentResult) {
 /// Enrich a device in the database by gathering all available signals.
 ///
 /// Called during scan processing after a device is upserted.
+#[allow(clippy::too_many_arguments)]
 pub async fn enrich_device(
     db: &SqlitePool,
     device_id: &str,

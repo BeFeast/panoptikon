@@ -13,6 +13,16 @@ use tracing::{debug, error, info, warn};
 
 use crate::api::alerts::{is_device_muted, severity_for_alert_type};
 use crate::config::ScannerConfig;
+
+/// Enrichment target tuple: (device_id, ip, mac, hostname, vendor, mdns_services).
+type EnrichmentTarget = (
+    String,
+    String,
+    String,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+);
 use crate::webhook;
 use crate::ws::hub::WsHub;
 
@@ -189,14 +199,7 @@ pub async fn process_scan_results(
     let mut dns_targets: Vec<(String, String)> = Vec::new();
 
     // Enrichment targets: (device_id, ip, mac, hostname, vendor, mdns_services)
-    let mut enrichment_targets: Vec<(
-        String,
-        String,
-        String,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-    )> = Vec::new();
+    let mut enrichment_targets: Vec<EnrichmentTarget> = Vec::new();
 
     // Begin a single transaction for all DB mutations (Phase 1 + Phase 2).
     let mut tx = db.begin().await?;
