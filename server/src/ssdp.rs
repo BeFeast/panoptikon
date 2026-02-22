@@ -298,10 +298,7 @@ mod tests {
 
         let dev = parse_ssdp_response(response, "10.0.0.1").unwrap();
         assert_eq!(dev.ip, "10.0.0.1");
-        assert_eq!(
-            dev.server.as_deref(),
-            Some("Linux/4.14 UPnP/1.0 Roku/9.4")
-        );
+        assert_eq!(dev.server.as_deref(), Some("Linux/4.14 UPnP/1.0 Roku/9.4"));
         assert_eq!(
             dev.location.as_deref(),
             Some("http://10.0.0.1:49152/rootDesc.xml")
@@ -332,10 +329,7 @@ mod tests {
             infer_brand_from_server("Linux/4.14 UPnP/1.0 Roku/9.4"),
             Some("Roku")
         );
-        assert_eq!(
-            infer_brand_from_server("Samsung Smart TV"),
-            Some("Samsung")
-        );
+        assert_eq!(infer_brand_from_server("Samsung Smart TV"), Some("Samsung"));
         assert_eq!(infer_brand_from_server("Generic UPnP/1.0"), None);
     }
 }

@@ -53,9 +53,7 @@ fn primary_disk() -> (Option<String>, Option<u64>) {
         .iter()
         .filter(|d| {
             let fs = d.file_system().to_string_lossy();
-            !fs.starts_with("tmpfs")
-                && !fs.starts_with("devtmpfs")
-                && !fs.starts_with("squashfs")
+            !fs.starts_with("tmpfs") && !fs.starts_with("devtmpfs") && !fs.starts_with("squashfs")
         })
         .max_by_key(|d| d.total_space())
         .map(|d| {
@@ -159,9 +157,7 @@ fn detect_serial_number() -> Option<String> {
     {
         if let Ok(serial) = std::fs::read_to_string("/sys/class/dmi/id/product_serial") {
             let serial = serial.trim().to_string();
-            if !serial.is_empty()
-                && serial != "To Be Filled By O.E.M."
-                && serial != "Not Specified"
+            if !serial.is_empty() && serial != "To Be Filled By O.E.M." && serial != "Not Specified"
             {
                 return Some(serial);
             }
@@ -177,9 +173,7 @@ fn detect_serial_number() -> Option<String> {
             if let Ok(json) = serde_json::from_slice::<serde_json::Value>(&output.stdout) {
                 if let Some(hw) = json.get("SPHardwareDataType").and_then(|d| d.as_array()) {
                     if let Some(first) = hw.first() {
-                        if let Some(serial) =
-                            first.get("serial_number").and_then(|v| v.as_str())
-                        {
+                        if let Some(serial) = first.get("serial_number").and_then(|v| v.as_str()) {
                             return Some(serial.to_string());
                         }
                     }

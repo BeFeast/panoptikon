@@ -41,7 +41,10 @@ pub async fn enrich_from_dhcp_leases(pool: &SqlitePool, config: &AppConfig) {
         .post(format!("{}/retrieve", vyos_url))
         .multipart(
             reqwest::multipart::Form::new()
-                .text("data", serde_json::json!({"op": "showConfig", "path": []}).to_string())
+                .text(
+                    "data",
+                    serde_json::json!({"op": "showConfig", "path": []}).to_string(),
+                )
                 .text("key", api_key.clone()),
         )
         .send()
@@ -56,7 +59,8 @@ pub async fn enrich_from_dhcp_leases(pool: &SqlitePool, config: &AppConfig) {
             reqwest::multipart::Form::new()
                 .text(
                     "data",
-                    serde_json::json!({"op": "show", "path": ["dhcp", "server", "leases"]}).to_string(),
+                    serde_json::json!({"op": "show", "path": ["dhcp", "server", "leases"]})
+                        .to_string(),
                 )
                 .text("key", api_key),
         )
@@ -75,10 +79,7 @@ pub async fn enrich_from_dhcp_leases(pool: &SqlitePool, config: &AppConfig) {
             }
         },
         Ok(resp) => {
-            debug!(
-                "DHCP enrichment: VyOS returned status {}",
-                resp.status()
-            );
+            debug!("DHCP enrichment: VyOS returned status {}", resp.status());
             return;
         }
         Err(e) => {
@@ -264,7 +265,8 @@ mod tests {
 
     #[test]
     fn test_parse_dhcp_json_format() {
-        let json = r#"{"data":{"LAN":{"10.10.0.100":{"mac":"aa:bb:cc:dd:ee:01","hostname":"mypc"}}}}"#;
+        let json =
+            r#"{"data":{"LAN":{"10.10.0.100":{"mac":"aa:bb:cc:dd:ee:01","hostname":"mypc"}}}}"#;
         let leases = parse_dhcp_leases(json);
         assert_eq!(leases.len(), 1);
         assert_eq!(leases[0].ip, "10.10.0.100");
