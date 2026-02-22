@@ -97,6 +97,16 @@ export interface Agent {
   is_online: boolean;
   last_report_at: string | null;
   created_at: string;
+  // Hardware inventory (from device_sysinfo)
+  hardware_model?: string | null;
+  cpu_name?: string | null;
+  cpu_cores?: number | null;
+  cpu_speed?: string | null;
+  gpu_name?: string | null;
+  disk_name?: string | null;
+  disk_size?: string | null;
+  serial_number?: string | null;
+  uptime_seconds?: number | null;
 }
 
 export interface AgentCreateResponse {

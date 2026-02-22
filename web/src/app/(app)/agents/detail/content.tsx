@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Cpu, HardDrive, Monitor, Timer } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -140,6 +140,9 @@ export default function AgentDetailContent() {
           {agent.os_name && <> · {agent.os_name} {agent.os_version ?? ""}</>}
         </p>
       </div>
+
+      {/* Hardware Info */}
+      <HardwareInfoCard agent={agent} />
 
       {/* Charts */}
       {chartData.length > 0 ? (
@@ -281,6 +284,83 @@ export default function AgentDetailContent() {
             </TableBody>
           </Table>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Hardware Info Card ──────────────────────────────────
+
+function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  parts.push(`${minutes}m`);
+  return parts.join(" ");
+}
+
+function HardwareInfoCard({ agent }: { agent: Agent }) {
+  const hasAny =
+    agent.hardware_model ||
+    agent.cpu_name ||
+    agent.gpu_name ||
+    agent.disk_name ||
+    agent.uptime_seconds != null ||
+    agent.serial_number;
+
+  if (!hasAny) return null;
+
+  const cpuDetail = [
+    agent.cpu_name,
+    agent.cpu_cores != null || agent.cpu_speed
+      ? `(${[agent.cpu_cores != null ? `${agent.cpu_cores} cores` : null, agent.cpu_speed].filter(Boolean).join(" @ ")})`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const diskDetail = [
+    agent.disk_name,
+    agent.disk_size ? `(${agent.disk_size})` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const items: { icon: React.ReactNode; label: string; value: string }[] = [];
+
+  if (agent.hardware_model) {
+    items.push({ icon: <Monitor size={14} />, label: "Model", value: agent.hardware_model });
+  }
+  if (cpuDetail) {
+    items.push({ icon: <Cpu size={14} />, label: "CPU", value: cpuDetail });
+  }
+  if (agent.gpu_name) {
+    items.push({ icon: <Monitor size={14} />, label: "GPU", value: agent.gpu_name });
+  }
+  if (diskDetail) {
+    items.push({ icon: <HardDrive size={14} />, label: "Disk", value: diskDetail });
+  }
+  if (agent.uptime_seconds != null) {
+    items.push({ icon: <Timer size={14} />, label: "Uptime", value: formatUptime(agent.uptime_seconds) });
+  }
+  if (agent.serial_number) {
+    items.push({ icon: <Monitor size={14} />, label: "Serial", value: agent.serial_number });
+  }
+
+  return (
+    <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+      <h2 className="text-sm font-medium text-slate-400 mb-3">Hardware Info</h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
+        {items.map((item) => (
+          <div key={item.label} className="flex items-start gap-2 text-sm">
+            <span className="mt-0.5 text-slate-500">{item.icon}</span>
+            <span className="text-slate-500 shrink-0">{item.label}:</span>
+            <span className="text-white truncate" title={item.value}>{item.value}</span>
+          </div>
+        ))}
       </div>
     </div>
   );
