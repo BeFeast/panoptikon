@@ -25,6 +25,14 @@ import {
   Ban,
   Layers,
   X,
+  Lock,
+  Key,
+  Download,
+  Copy,
+  QrCode,
+  Eye,
+  EyeOff,
+  Users,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -86,8 +94,15 @@ import {
   deletePortGroup,
   addPortGroupMember,
   removePortGroupMember,
+  fetchWireguardInterfaces,
+  createWireguardInterface,
+  deleteWireguardInterface,
+  addWireguardPeer,
+  deleteWireguardPeer,
+  generateWireguardClientConfig,
 } from "@/lib/api";
-import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping } from "@/lib/types";
+import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, WireguardInterface, ClientConfigResponse } from "@/lib/types";
+import QRCode from "qrcode";
 import { Progress } from "@/components/ui/progress";
 import { PageTransition } from "@/components/PageTransition";
 
@@ -2904,6 +2919,781 @@ function FirewallGroupsPanel({
   );
 }
 
+// ── WireGuard VPN Panel ──────────────────────────────────
+
+function WireGuardPanel({
+  interfaces,
+  loading,
+  error,
+  onReload,
+}: {
+  interfaces: WireguardInterface[] | null;
+  loading: boolean;
+  error: string | null;
+  onReload: () => void;
+}) {
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+
+  if (loading) {
+    return (
+      <Card className="border-slate-800 bg-slate-900">
+        <CardContent className="py-8">
+          <div className="flex items-center justify-center gap-2 text-slate-400">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading WireGuard interfaces…
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-slate-800 bg-slate-900">
+        <CardContent className="py-8">
+          <div className="flex flex-col items-center gap-2 text-slate-400">
+            <AlertCircle className="h-5 w-5 text-red-400" />
+            <p className="text-sm">{error}</p>
+            <Button variant="outline" size="sm" onClick={onReload}>
+              Retry
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const wgInterfaces = interfaces ?? [];
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base text-white">
+            WireGuard Interfaces
+          </CardTitle>
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline">
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Create Interface
+              </Button>
+            </DialogTrigger>
+            <CreateWireGuardInterfaceDialog
+              onCreated={() => {
+                setShowCreateDialog(false);
+                onReload();
+              }}
+            />
+          </Dialog>
+        </CardHeader>
+        <CardContent>
+          {wgInterfaces.length === 0 ? (
+            <div className="py-8 text-center text-sm text-slate-500">
+              No WireGuard interfaces configured. Create one to get started.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {wgInterfaces.map((iface) => (
+                <WireGuardInterfaceCard
+                  key={iface.name}
+                  iface={iface}
+                  onReload={onReload}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── Create WireGuard Interface Dialog ────────────────────
+
+function CreateWireGuardInterfaceDialog({
+  onCreated,
+}: {
+  onCreated: () => void;
+}) {
+  const [name, setName] = useState("wg0");
+  const [port, setPort] = useState("51820");
+  const [address, setAddress] = useState("10.10.20.1/24");
+  const [saving, setSaving] = useState(false);
+  const [publicKey, setPublicKey] = useState<string | null>(null);
+
+  const handleCreate = async () => {
+    const portNum = parseInt(port, 10);
+    if (!name || !port || !address || isNaN(portNum)) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    setSaving(true);
+    try {
+      const result = await createWireguardInterface({
+        name,
+        port: portNum,
+        address,
+      });
+      setPublicKey(result.public_key);
+      toast.success(`WireGuard interface ${name} created`);
+      onCreated();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Failed to create interface"
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle className="text-white">
+          Create WireGuard Interface
+        </DialogTitle>
+        <DialogDescription>
+          Configure a new WireGuard VPN interface. A keypair will be generated
+          automatically.
+        </DialogDescription>
+      </DialogHeader>
+
+      {publicKey ? (
+        <div className="space-y-4">
+          <div className="rounded-md bg-emerald-950/50 border border-emerald-800 p-4">
+            <p className="text-sm font-medium text-emerald-400 mb-2">
+              Interface created successfully
+            </p>
+            <div>
+              <Label className="text-xs text-slate-400">
+                Server Public Key (share with peers)
+              </Label>
+              <div className="mt-1 flex items-center gap-2">
+                <code className="flex-1 rounded bg-slate-800 px-2 py-1 text-xs text-white break-all">
+                  {publicKey}
+                </code>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(publicKey);
+                    toast.success("Public key copied");
+                  }}
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div>
+            <Label className="text-slate-300">Interface Name</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="wg0"
+              className="mt-1 border-slate-700 bg-slate-800 text-white"
+            />
+          </div>
+          <div>
+            <Label className="text-slate-300">Listen Port</Label>
+            <Input
+              value={port}
+              onChange={(e) => setPort(e.target.value)}
+              placeholder="51820"
+              type="number"
+              className="mt-1 border-slate-700 bg-slate-800 text-white"
+            />
+          </div>
+          <div>
+            <Label className="text-slate-300">Address (CIDR)</Label>
+            <Input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="10.10.20.1/24"
+              className="mt-1 border-slate-700 bg-slate-800 text-white"
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={handleCreate} disabled={saving}>
+              {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Create Interface
+            </Button>
+          </DialogFooter>
+        </div>
+      )}
+    </DialogContent>
+  );
+}
+
+// ── WireGuard Interface Card ─────────────────────────────
+
+function WireGuardInterfaceCard({
+  iface,
+  onReload,
+}: {
+  iface: WireguardInterface;
+  onReload: () => void;
+}) {
+  const [showAddPeer, setShowAddPeer] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteInterface = async () => {
+    setDeleting(true);
+    try {
+      await deleteWireguardInterface(iface.name);
+      toast.success(`Interface ${iface.name} deleted`);
+      onReload();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Failed to delete interface"
+      );
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  return (
+    <Card className="border-slate-700 bg-slate-800/50">
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <div className="flex items-center gap-3">
+          <div className="rounded-md bg-indigo-950/50 p-2">
+            <Lock className="h-4 w-4 text-indigo-400" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-white">{iface.name}</h3>
+            <div className="flex gap-3 text-xs text-slate-400">
+              {iface.address && <span>{iface.address}</span>}
+              {iface.port && <span>Port {iface.port}</span>}
+              <span>
+                <Users className="mr-0.5 inline h-3 w-3" />
+                {iface.peers.length} peer{iface.peers.length !== 1 ? "s" : ""}
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <Dialog open={showAddPeer} onOpenChange={setShowAddPeer}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Add Peer
+              </Button>
+            </DialogTrigger>
+            <AddPeerDialog
+              interfaceName={iface.name}
+              onAdded={() => {
+                setShowAddPeer(false);
+                onReload();
+              }}
+            />
+          </Dialog>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-red-400 hover:text-red-300"
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </CardHeader>
+
+      {iface.public_key && (
+        <div className="px-6 pb-2">
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-slate-500">Public Key:</span>
+            <code className="rounded bg-slate-900 px-1.5 py-0.5 text-slate-300 break-all">
+              {iface.public_key}
+            </code>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-5 w-5 p-0"
+              onClick={() => {
+                navigator.clipboard.writeText(iface.public_key!);
+                toast.success("Public key copied");
+              }}
+            >
+              <Copy className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {iface.peers.length > 0 && (
+        <CardContent className="pt-2">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-700 text-left text-xs text-slate-400">
+                  <th className="pb-2 pr-4">Peer</th>
+                  <th className="pb-2 pr-4">Public Key</th>
+                  <th className="pb-2 pr-4">Allowed IPs</th>
+                  <th className="pb-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {iface.peers.map((peer) => (
+                  <PeerRow
+                    key={peer.name}
+                    peer={peer}
+                    interfaceName={iface.name}
+                    onReload={onReload}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      )}
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Delete {iface.name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the WireGuard interface and all its peers. This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteInterface}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleting}
+            >
+              {deleting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </Card>
+  );
+}
+
+// ── Peer Row ─────────────────────────────────────────────
+
+function PeerRow({
+  peer,
+  interfaceName,
+  onReload,
+}: {
+  peer: WireguardInterface["peers"][0];
+  interfaceName: string;
+  onReload: () => void;
+}) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await deleteWireguardPeer(interfaceName, peer.name);
+      toast.success(`Peer ${peer.name} deleted`);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete peer");
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const truncatedKey = peer.public_key
+    ? peer.public_key.length > 20
+      ? peer.public_key.slice(0, 10) + "…" + peer.public_key.slice(-6)
+      : peer.public_key
+    : "—";
+
+  return (
+    <>
+      <tr className="border-b border-slate-700/50">
+        <td className="py-2 pr-4 font-medium text-white">{peer.name}</td>
+        <td className="py-2 pr-4">
+          <code className="text-xs text-slate-300">{truncatedKey}</code>
+        </td>
+        <td className="py-2 pr-4 text-slate-300">
+          {peer.allowed_ips.join(", ") || "—"}
+        </td>
+        <td className="py-2 text-right">
+          <div className="flex items-center justify-end gap-1">
+            <Dialog open={showConfigDialog} onOpenChange={setShowConfigDialog}>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" title="Generate client config">
+                  <QrCode className="h-3.5 w-3.5" />
+                </Button>
+              </DialogTrigger>
+              <GenerateClientConfigDialog
+                interfaceName={interfaceName}
+                peerName={peer.name}
+                defaultAddress={peer.allowed_ips[0] || "10.10.20.2/32"}
+                onClose={() => setShowConfigDialog(false)}
+              />
+            </Dialog>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-red-400 hover:text-red-300"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </td>
+      </tr>
+
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Delete peer {peer.name}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the peer from the WireGuard interface.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={deleting}
+            >
+              {deleting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
+// ── Add Peer Dialog ──────────────────────────────────────
+
+function AddPeerDialog({
+  interfaceName,
+  onAdded,
+}: {
+  interfaceName: string;
+  onAdded: () => void;
+}) {
+  const [name, setName] = useState("");
+  const [publicKey, setPublicKey] = useState("");
+  const [allowedIps, setAllowedIps] = useState("");
+  const [keepalive, setKeepalive] = useState("25");
+  const [saving, setSaving] = useState(false);
+
+  const handleAdd = async () => {
+    if (!name || !publicKey || !allowedIps) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    setSaving(true);
+    try {
+      const keepaliveNum = parseInt(keepalive, 10);
+      await addWireguardPeer(interfaceName, {
+        name,
+        public_key: publicKey,
+        allowed_ips: allowedIps,
+        persistent_keepalive: isNaN(keepaliveNum) ? undefined : keepaliveNum,
+      });
+      toast.success(`Peer ${name} added`);
+      onAdded();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to add peer");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+      <DialogHeader>
+        <DialogTitle className="text-white">
+          Add Peer to {interfaceName}
+        </DialogTitle>
+        <DialogDescription>
+          Add a new peer to this WireGuard interface. You can generate a client
+          config after adding the peer.
+        </DialogDescription>
+      </DialogHeader>
+      <div className="space-y-4">
+        <div>
+          <Label className="text-slate-300">Peer Name</Label>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="CLIENT1"
+            className="mt-1 border-slate-700 bg-slate-800 text-white"
+          />
+        </div>
+        <div>
+          <Label className="text-slate-300">Public Key</Label>
+          <Input
+            value={publicKey}
+            onChange={(e) => setPublicKey(e.target.value)}
+            placeholder="Client's WireGuard public key"
+            className="mt-1 border-slate-700 bg-slate-800 text-white font-mono text-xs"
+          />
+        </div>
+        <div>
+          <Label className="text-slate-300">Allowed IPs (CIDR)</Label>
+          <Input
+            value={allowedIps}
+            onChange={(e) => setAllowedIps(e.target.value)}
+            placeholder="10.10.20.2/32"
+            className="mt-1 border-slate-700 bg-slate-800 text-white"
+          />
+        </div>
+        <div>
+          <Label className="text-slate-300">Persistent Keepalive (seconds)</Label>
+          <Input
+            value={keepalive}
+            onChange={(e) => setKeepalive(e.target.value)}
+            placeholder="25"
+            type="number"
+            className="mt-1 border-slate-700 bg-slate-800 text-white"
+          />
+        </div>
+        <DialogFooter>
+          <Button onClick={handleAdd} disabled={saving}>
+            {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+            Add Peer
+          </Button>
+        </DialogFooter>
+      </div>
+    </DialogContent>
+  );
+}
+
+// ── Generate Client Config Dialog ────────────────────────
+
+function GenerateClientConfigDialog({
+  interfaceName,
+  peerName,
+  defaultAddress,
+  onClose,
+}: {
+  interfaceName: string;
+  peerName: string;
+  defaultAddress: string;
+  onClose: () => void;
+}) {
+  const [clientAddress, setClientAddress] = useState(defaultAddress);
+  const [dns, setDns] = useState("1.1.1.1");
+  const [endpoint, setEndpoint] = useState("");
+  const [allowedIps, setAllowedIps] = useState("0.0.0.0/0, ::/0");
+  const [generating, setGenerating] = useState(false);
+  const [configResult, setConfigResult] = useState<ClientConfigResponse | null>(
+    null
+  );
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [showPrivateKey, setShowPrivateKey] = useState(false);
+
+  const handleGenerate = async () => {
+    if (!clientAddress) {
+      toast.error("Client address is required");
+      return;
+    }
+    setGenerating(true);
+    try {
+      const result = await generateWireguardClientConfig(
+        interfaceName,
+        peerName,
+        {
+          client_address: clientAddress,
+          dns: dns || undefined,
+          endpoint: endpoint || undefined,
+          allowed_ips: allowedIps || undefined,
+        }
+      );
+      setConfigResult(result);
+
+      // Generate QR code client-side
+      try {
+        const url = await QRCode.toDataURL(result.config, {
+          width: 280,
+          margin: 2,
+          color: { dark: "#000000", light: "#ffffff" },
+        });
+        setQrDataUrl(url);
+      } catch {
+        // QR generation is optional - don't block if it fails
+      }
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Failed to generate config"
+      );
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleDownload = () => {
+    if (!configResult) return;
+    const blob = new Blob([configResult.config], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${peerName}.conf`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyConfig = () => {
+    if (!configResult) return;
+    navigator.clipboard.writeText(configResult.config);
+    toast.success("Config copied to clipboard");
+  };
+
+  return (
+    <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+      <DialogHeader>
+        <DialogTitle className="text-white">
+          Generate Client Config — {peerName}
+        </DialogTitle>
+        <DialogDescription>
+          {configResult
+            ? "Save this configuration now — the private key is shown only once."
+            : "Generate a new client keypair and configuration file for this peer."}
+        </DialogDescription>
+      </DialogHeader>
+
+      {configResult ? (
+        <div className="space-y-4">
+          <div className="rounded-md bg-amber-950/30 border border-amber-800/50 px-3 py-2">
+            <p className="text-xs text-amber-400 flex items-center gap-1.5">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              Save this config now — the private key will not be shown again.
+            </p>
+          </div>
+
+          <div className="flex gap-4">
+            <div className="flex-1 space-y-3">
+              <div>
+                <Label className="text-xs text-slate-400">Config File</Label>
+                <pre className="mt-1 max-h-48 overflow-auto rounded bg-slate-950 p-3 text-xs text-green-400 font-mono whitespace-pre-wrap">
+                  {configResult.config}
+                </pre>
+              </div>
+
+              <div>
+                <Label className="text-xs text-slate-400">Client Private Key</Label>
+                <div className="mt-1 flex items-center gap-2">
+                  <code className="flex-1 rounded bg-slate-800 px-2 py-1 text-xs text-white break-all font-mono">
+                    {showPrivateKey
+                      ? configResult.private_key
+                      : "••••••••••••••••••••••"}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={() => setShowPrivateKey(!showPrivateKey)}
+                  >
+                    {showPrivateKey ? (
+                      <EyeOff className="h-3 w-3" />
+                    ) : (
+                      <Eye className="h-3 w-3" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {qrDataUrl && (
+              <div className="flex flex-col items-center gap-2">
+                <Label className="text-xs text-slate-400">QR Code</Label>
+                <div className="rounded bg-white p-1">
+                  <img src={qrDataUrl} alt="QR Code" width={140} height={140} />
+                </div>
+                <p className="text-[10px] text-slate-500 text-center">
+                  Scan with WireGuard app
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={handleCopyConfig}>
+              <Copy className="mr-1.5 h-3.5 w-3.5" />
+              Copy Config
+            </Button>
+            <Button onClick={handleDownload}>
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              Download .conf
+            </Button>
+          </DialogFooter>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div>
+            <Label className="text-slate-300">Client Address (CIDR)</Label>
+            <Input
+              value={clientAddress}
+              onChange={(e) => setClientAddress(e.target.value)}
+              placeholder="10.10.20.2/32"
+              className="mt-1 border-slate-700 bg-slate-800 text-white"
+            />
+          </div>
+          <div>
+            <Label className="text-slate-300">DNS Server</Label>
+            <Input
+              value={dns}
+              onChange={(e) => setDns(e.target.value)}
+              placeholder="1.1.1.1"
+              className="mt-1 border-slate-700 bg-slate-800 text-white"
+            />
+          </div>
+          <div>
+            <Label className="text-slate-300">Endpoint (router_ip:port)</Label>
+            <Input
+              value={endpoint}
+              onChange={(e) => setEndpoint(e.target.value)}
+              placeholder="Auto-detect from router config"
+              className="mt-1 border-slate-700 bg-slate-800 text-white"
+            />
+          </div>
+          <div>
+            <Label className="text-slate-300">Allowed IPs</Label>
+            <Input
+              value={allowedIps}
+              onChange={(e) => setAllowedIps(e.target.value)}
+              placeholder="0.0.0.0/0, ::/0"
+              className="mt-1 border-slate-700 bg-slate-800 text-white"
+            />
+          </div>
+          <DialogFooter>
+            <Button onClick={handleGenerate} disabled={generating}>
+              {generating && (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              )}
+              <Key className="mr-1.5 h-3.5 w-3.5" />
+              Generate Config
+            </Button>
+          </DialogFooter>
+        </div>
+      )}
+    </DialogContent>
+  );
+}
+
 // ── Main Page ───────────────────────────────────────────
 
 export default function RouterPage() {
@@ -2981,6 +3771,11 @@ function RouterTabs({ status }: { status: RouterStatus }) {
     tab === "firewall"
   );
 
+  const wireguard = useAsyncData<WireguardInterface[]>(
+    useCallback(() => fetchWireguardInterfaces(), []),
+    tab === "vpn"
+  );
+
   const reloadInterfaces = useCallback(() => {
     interfaces.reload();
     configIfaces.reload();
@@ -3019,6 +3814,13 @@ function RouterTabs({ status }: { status: RouterStatus }) {
           >
             <Shield className="mr-1.5 h-3.5 w-3.5" />
             Firewall
+          </TabsTrigger>
+          <TabsTrigger
+            value="vpn"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+          >
+            <Lock className="mr-1.5 h-3.5 w-3.5" />
+            VPN
           </TabsTrigger>
           <TabsTrigger
             value="speedtest"
@@ -3127,6 +3929,15 @@ function RouterTabs({ status }: { status: RouterStatus }) {
               onReload={firewallGroups.reload}
             />
           </div>
+        </TabsContent>
+
+        <TabsContent value="vpn">
+          <WireGuardPanel
+            interfaces={Array.isArray(wireguard.data) ? wireguard.data : null}
+            loading={wireguard.loading}
+            error={wireguard.error}
+            onReload={wireguard.reload}
+          />
         </TabsContent>
 
         <TabsContent value="speedtest">

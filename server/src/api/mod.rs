@@ -221,6 +221,29 @@ pub fn router(state: AppState) -> Router {
             "/vyos/firewall/groups/port-group/:name/members/:value",
             delete(vyos::remove_port_group_member),
         )
+        // WireGuard VPN
+        .route("/vyos/wireguard", get(vyos::wireguard_list))
+        .route("/vyos/wireguard", post(vyos::wireguard_create))
+        .route(
+            "/vyos/wireguard/:name",
+            delete(vyos::wireguard_delete),
+        )
+        .route(
+            "/vyos/wireguard/:name/peers",
+            post(vyos::wireguard_add_peer),
+        )
+        .route(
+            "/vyos/wireguard/:name/peers/:peer",
+            delete(vyos::wireguard_delete_peer),
+        )
+        .route(
+            "/vyos/wireguard/generate-keypair",
+            post(vyos::wireguard_generate_keypair),
+        )
+        .route(
+            "/vyos/wireguard/:name/peers/:peer/generate-config",
+            post(vyos::wireguard_generate_client_config),
+        )
         // Topology positions
         .route("/topology/positions", get(topology::get_positions))
         .route("/topology/positions", put(topology::save_positions))

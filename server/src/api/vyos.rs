@@ -3623,6 +3623,954 @@ pub async fn speedtest(
     Ok(Json(result))
 }
 
+// ── WireGuard VPN management ──────────────────────────────────────────────────
+
+/// A WireGuard peer parsed from VyOS config.
+#[derive(Debug, Clone, Serialize)]
+pub struct WireguardPeer {
+    pub name: String,
+    pub public_key: Option<String>,
+    pub allowed_ips: Vec<String>,
+    pub endpoint: Option<String>,
+    pub persistent_keepalive: Option<u32>,
+}
+
+/// A WireGuard interface parsed from VyOS config + operational status.
+#[derive(Debug, Clone, Serialize)]
+pub struct WireguardInterface {
+    pub name: String,
+    pub address: Option<String>,
+    pub port: Option<u32>,
+    pub public_key: Option<String>,
+    pub peers: Vec<WireguardPeer>,
+}
+
+/// Response for keypair generation.
+#[derive(Debug, Serialize)]
+pub struct WireguardKeyPair {
+    pub private_key: String,
+    pub public_key: String,
+}
+
+/// Request body for creating a WireGuard interface.
+#[derive(Debug, Deserialize)]
+pub struct CreateWireguardInterfaceRequest {
+    /// Interface name, e.g. "wg0"
+    pub name: String,
+    /// Listen port, e.g. 51820
+    pub port: u16,
+    /// Subnet address in CIDR notation, e.g. "10.10.20.1/24"
+    pub address: String,
+}
+
+/// Request body for adding a peer to a WireGuard interface.
+#[derive(Debug, Deserialize)]
+pub struct AddWireguardPeerRequest {
+    /// Peer name (used in VyOS config), e.g. "CLIENT1"
+    pub name: String,
+    /// Peer's public key (base64)
+    pub public_key: String,
+    /// Allowed IPs for this peer, e.g. "10.10.20.2/32"
+    pub allowed_ips: String,
+    /// Persistent keepalive interval in seconds (optional)
+    pub persistent_keepalive: Option<u32>,
+}
+
+/// Request body for generating a client config.
+#[derive(Debug, Deserialize)]
+pub struct GenerateClientConfigRequest {
+    /// Client's allowed IP address in CIDR, e.g. "10.10.20.2/32"
+    pub client_address: String,
+    /// DNS server for the client, e.g. "10.10.0.1"
+    pub dns: Option<String>,
+    /// Endpoint (router WAN IP:port). If not provided, uses router's
+    /// configured public address + port.
+    pub endpoint: Option<String>,
+    /// Allowed IPs for the client-side config (default "0.0.0.0/0, ::/0")
+    pub allowed_ips: Option<String>,
+}
+
+/// Response for client config generation.
+#[derive(Debug, Serialize)]
+pub struct ClientConfigResponse {
+    pub config: String,
+    pub private_key: String,
+    pub public_key: String,
+}
+
+/// GET /api/v1/vyos/wireguard — list all WireGuard interfaces with peers.
+pub async fn wireguard_list(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<WireguardInterface>>, StatusCode> {
+    let client = get_vyos_client_or_503(&state).await?;
+
+    let config = client
+        .retrieve(&["interfaces", "wireguard"])
+        .await
+        .map_err(|e| {
+            tracing::error!("VyOS wireguard config query failed: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
+
+    let interfaces = parse_wireguard_config(&config);
+    Ok(Json(interfaces))
+}
+
+/// Parse VyOS wireguard configuration JSON into a list of interfaces.
+fn parse_wireguard_config(config: &Value) -> Vec<WireguardInterface> {
+    let mut interfaces = Vec::new();
+
+    let obj = match config.as_object() {
+        Some(o) => o,
+        None => return interfaces,
+    };
+
+    for (iface_name, iface_val) in obj {
+        let iface_obj = match iface_val.as_object() {
+            Some(o) => o,
+            None => continue,
+        };
+
+        let address = iface_obj
+            .get("address")
+            .and_then(|v| {
+                if let Some(s) = v.as_str() {
+                    Some(s.to_string())
+                } else if let Some(arr) = v.as_array() {
+                    arr.first().and_then(|a| a.as_str().map(|s| s.to_string()))
+                } else {
+                    None
+                }
+            });
+
+        let port = iface_obj
+            .get("port")
+            .and_then(|v| {
+                v.as_u64().map(|n| n as u32).or_else(|| {
+                    v.as_str().and_then(|s| s.parse().ok())
+                })
+            });
+
+        // Get public key from private-key config or from operational data
+        // VyOS stores private-key in config; public key is derived
+        let public_key = iface_obj
+            .get("public-key")
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+
+        // Parse peers
+        let mut peers = Vec::new();
+        if let Some(peer_map) = iface_obj.get("peer").and_then(|v| v.as_object()) {
+            for (peer_name, peer_val) in peer_map {
+                let peer_obj = match peer_val.as_object() {
+                    Some(o) => o,
+                    None => continue,
+                };
+
+                let pk = peer_obj
+                    .get("public-key")
+                    .and_then(|v| v.as_str().map(|s| s.to_string()));
+
+                let allowed_ips = peer_obj
+                    .get("allowed-ips")
+                    .map(|v| {
+                        if let Some(s) = v.as_str() {
+                            vec![s.to_string()]
+                        } else if let Some(arr) = v.as_array() {
+                            arr.iter()
+                                .filter_map(|a| a.as_str().map(|s| s.to_string()))
+                                .collect()
+                        } else {
+                            Vec::new()
+                        }
+                    })
+                    .unwrap_or_default();
+
+                let endpoint = peer_obj
+                    .get("endpoint")
+                    .and_then(|v| v.as_str().map(|s| s.to_string()));
+
+                let persistent_keepalive = peer_obj
+                    .get("persistent-keepalive")
+                    .and_then(|v| {
+                        v.as_u64().map(|n| n as u32).or_else(|| {
+                            v.as_str().and_then(|s| s.parse().ok())
+                        })
+                    });
+
+                peers.push(WireguardPeer {
+                    name: peer_name.clone(),
+                    public_key: pk,
+                    allowed_ips,
+                    endpoint,
+                    persistent_keepalive,
+                });
+            }
+        }
+
+        interfaces.push(WireguardInterface {
+            name: iface_name.clone(),
+            address,
+            port,
+            public_key,
+            peers,
+        });
+    }
+
+    interfaces
+}
+
+/// Validate a WireGuard interface name (wg0, wg1, ...).
+fn is_valid_wg_name(name: &str) -> bool {
+    if !name.starts_with("wg") {
+        return false;
+    }
+    let suffix = &name[2..];
+    !suffix.is_empty() && suffix.chars().all(|c| c.is_ascii_digit())
+}
+
+/// Validate a peer name (alphanumeric, hyphens, underscores).
+fn is_valid_peer_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 64
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+}
+
+/// POST /api/v1/vyos/wireguard — create a WireGuard interface.
+///
+/// Generates a keypair via VyOS, sets address, port, and private key.
+pub async fn wireguard_create(
+    State(state): State<AppState>,
+    Json(body): Json<CreateWireguardInterfaceRequest>,
+) -> Result<Json<WireguardKeyPair>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    // Validate interface name
+    if !is_valid_wg_name(&body.name) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid interface name. Use wg0, wg1, etc.".to_string(),
+            }),
+        ));
+    }
+
+    // Validate address CIDR
+    if !is_valid_cidr(&body.address) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid address. Expected CIDR format like 10.10.20.1/24".to_string(),
+            }),
+        ));
+    }
+
+    // Validate port
+    if body.port == 0 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Port must be greater than 0".to_string(),
+            }),
+        ));
+    }
+
+    let description = format!(
+        "Create WireGuard interface {} ({}:{}) ",
+        body.name, body.address, body.port
+    );
+
+    // Generate WireGuard keypair via VyOS
+    let keypair_result = client
+        .generate(&["wireguard", "key-pair"])
+        .await;
+
+    let keypair_text = match keypair_result {
+        Ok(val) => val.as_str().unwrap_or("").to_string(),
+        Err(e) => {
+            // Fallback: try the pki path (VyOS 1.4+)
+            match client.generate(&["pki", "wireguard", "key-pair"]).await {
+                Ok(val) => val.as_str().unwrap_or("").to_string(),
+                Err(e2) => {
+                    let msg = format!("Failed to generate keypair: {e} / {e2}");
+                    tracing::error!("{msg}");
+                    audit::log_failure(
+                        &state.db,
+                        "wireguard_interface_create",
+                        &description,
+                        &[],
+                        &msg,
+                    )
+                    .await;
+                    return Err((
+                        StatusCode::BAD_GATEWAY,
+                        Json(VyosWriteResponse {
+                            success: false,
+                            message: msg,
+                        }),
+                    ));
+                }
+            }
+        }
+    };
+
+    // Parse the keypair output: "Private key: <key>\nPublic key: <key>"
+    let (private_key, public_key) = parse_wireguard_keypair(&keypair_text).map_err(|e| {
+        let msg = format!("Failed to parse keypair output: {e}");
+        tracing::error!("{msg}");
+        (
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: msg,
+            }),
+        )
+    })?;
+
+    let port_str = body.port.to_string();
+    let commands = vec![
+        format!(
+            "set interfaces wireguard {} address {}",
+            body.name, body.address
+        ),
+        format!("set interfaces wireguard {} port {}", body.name, body.port),
+        format!("set interfaces wireguard {} private-key ***", body.name),
+    ];
+
+    // Set address
+    if let Err(e) = client
+        .configure_set(&["interfaces", "wireguard", &body.name, "address", &body.address])
+        .await
+    {
+        let msg = format!("Failed to set WG address: {e}");
+        audit::log_failure(
+            &state.db,
+            "wireguard_interface_create",
+            &description,
+            &commands,
+            &msg,
+        )
+        .await;
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: msg,
+            }),
+        ));
+    }
+
+    // Set port
+    if let Err(e) = client
+        .configure_set(&["interfaces", "wireguard", &body.name, "port", &port_str])
+        .await
+    {
+        let msg = format!("Failed to set WG port: {e}");
+        audit::log_failure(
+            &state.db,
+            "wireguard_interface_create",
+            &description,
+            &commands,
+            &msg,
+        )
+        .await;
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: msg,
+            }),
+        ));
+    }
+
+    // Set private key (goes directly to VyOS config, never stored in Panoptikon)
+    if let Err(e) = client
+        .configure_set(&[
+            "interfaces",
+            "wireguard",
+            &body.name,
+            "private-key",
+            &private_key,
+        ])
+        .await
+    {
+        let msg = format!("Failed to set WG private key: {e}");
+        audit::log_failure(
+            &state.db,
+            "wireguard_interface_create",
+            &description,
+            &commands,
+            &msg,
+        )
+        .await;
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: msg,
+            }),
+        ));
+    }
+
+    audit::log_success(
+        &state.db,
+        "wireguard_interface_create",
+        &description,
+        &commands,
+    )
+    .await;
+
+    Ok(Json(WireguardKeyPair {
+        private_key: "***".to_string(), // Never return the server private key
+        public_key,
+    }))
+}
+
+/// Parse "Private key: <key>\nPublic key: <key>" output from VyOS.
+fn parse_wireguard_keypair(text: &str) -> Result<(String, String), String> {
+    let mut private_key = None;
+    let mut public_key = None;
+
+    for line in text.lines() {
+        let line = line.trim();
+        if let Some(key) = line
+            .strip_prefix("Private key:")
+            .or_else(|| line.strip_prefix("private-key:"))
+            .or_else(|| line.strip_prefix("PrivateKey:"))
+        {
+            private_key = Some(key.trim().to_string());
+        } else if let Some(key) = line
+            .strip_prefix("Public key:")
+            .or_else(|| line.strip_prefix("public-key:"))
+            .or_else(|| line.strip_prefix("PublicKey:"))
+        {
+            public_key = Some(key.trim().to_string());
+        }
+    }
+
+    match (private_key, public_key) {
+        (Some(priv_k), Some(pub_k)) if !priv_k.is_empty() && !pub_k.is_empty() => {
+            Ok((priv_k, pub_k))
+        }
+        _ => Err(format!(
+            "Could not parse private/public keys from output: {:?}",
+            text
+        )),
+    }
+}
+
+/// DELETE /api/v1/vyos/wireguard/:name — delete a WireGuard interface.
+pub async fn wireguard_delete(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    if !is_valid_wg_name(&name) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid interface name".to_string(),
+            }),
+        ));
+    }
+
+    let description = format!("Delete WireGuard interface {}", name);
+    let commands = vec![format!("delete interfaces wireguard {}", name)];
+
+    tracing::info!("VyOS: deleting WireGuard interface {}", name);
+
+    match client
+        .configure_delete(&["interfaces", "wireguard", &name])
+        .await
+    {
+        Ok(_) => {
+            audit::log_success(
+                &state.db,
+                "wireguard_interface_delete",
+                &description,
+                &commands,
+            )
+            .await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("WireGuard interface {} deleted", name),
+            }))
+        }
+        Err(e) => {
+            let msg = format!("Failed to delete WireGuard interface: {e}");
+            audit::log_failure(
+                &state.db,
+                "wireguard_interface_delete",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: msg,
+                }),
+            ))
+        }
+    }
+}
+
+/// Path parameters for peer endpoints.
+#[derive(Debug, Deserialize)]
+pub struct WireguardPeerPath {
+    pub name: String,
+    pub peer: String,
+}
+
+/// POST /api/v1/vyos/wireguard/:name/peers — add a peer to a WireGuard interface.
+pub async fn wireguard_add_peer(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    Json(body): Json<AddWireguardPeerRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    if !is_valid_wg_name(&name) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid interface name".to_string(),
+            }),
+        ));
+    }
+
+    if !is_valid_peer_name(&body.name) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid peer name. Use alphanumeric characters, hyphens, and underscores."
+                    .to_string(),
+            }),
+        ));
+    }
+
+    if body.public_key.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Public key is required".to_string(),
+            }),
+        ));
+    }
+
+    // Validate allowed_ips as CIDR
+    if !is_valid_cidr(&body.allowed_ips) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid allowed IPs. Expected CIDR format like 10.10.20.2/32".to_string(),
+            }),
+        ));
+    }
+
+    let description = format!(
+        "Add peer {} to WireGuard interface {} (allowed-ips: {})",
+        body.name, name, body.allowed_ips
+    );
+    let commands = vec![
+        format!(
+            "set interfaces wireguard {} peer {} public-key {}",
+            name, body.name, body.public_key
+        ),
+        format!(
+            "set interfaces wireguard {} peer {} allowed-ips {}",
+            name, body.name, body.allowed_ips
+        ),
+    ];
+
+    tracing::info!(
+        "VyOS: adding peer {} to WireGuard interface {}",
+        body.name,
+        name
+    );
+
+    // Set public key
+    if let Err(e) = client
+        .configure_set(&[
+            "interfaces",
+            "wireguard",
+            &name,
+            "peer",
+            &body.name,
+            "public-key",
+            &body.public_key,
+        ])
+        .await
+    {
+        let msg = format!("Failed to set peer public key: {e}");
+        audit::log_failure(
+            &state.db,
+            "wireguard_peer_add",
+            &description,
+            &commands,
+            &msg,
+        )
+        .await;
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: msg,
+            }),
+        ));
+    }
+
+    // Set allowed-ips
+    if let Err(e) = client
+        .configure_set(&[
+            "interfaces",
+            "wireguard",
+            &name,
+            "peer",
+            &body.name,
+            "allowed-ips",
+            &body.allowed_ips,
+        ])
+        .await
+    {
+        let msg = format!("Failed to set peer allowed-ips: {e}");
+        audit::log_failure(
+            &state.db,
+            "wireguard_peer_add",
+            &description,
+            &commands,
+            &msg,
+        )
+        .await;
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: msg,
+            }),
+        ));
+    }
+
+    // Set persistent-keepalive if provided
+    if let Some(keepalive) = body.persistent_keepalive {
+        let keepalive_str = keepalive.to_string();
+        let _ = client
+            .configure_set(&[
+                "interfaces",
+                "wireguard",
+                &name,
+                "peer",
+                &body.name,
+                "persistent-keepalive",
+                &keepalive_str,
+            ])
+            .await;
+    }
+
+    audit::log_success(&state.db, "wireguard_peer_add", &description, &commands).await;
+
+    Ok(Json(VyosWriteResponse {
+        success: true,
+        message: format!("Peer {} added to {}", body.name, name),
+    }))
+}
+
+/// DELETE /api/v1/vyos/wireguard/:name/peers/:peer — delete a peer from a WireGuard interface.
+pub async fn wireguard_delete_peer(
+    State(state): State<AppState>,
+    Path(params): Path<WireguardPeerPath>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    let description = format!(
+        "Delete peer {} from WireGuard interface {}",
+        params.peer, params.name
+    );
+    let commands = vec![format!(
+        "delete interfaces wireguard {} peer {}",
+        params.name, params.peer
+    )];
+
+    tracing::info!(
+        "VyOS: deleting peer {} from WireGuard interface {}",
+        params.peer,
+        params.name
+    );
+
+    match client
+        .configure_delete(&[
+            "interfaces",
+            "wireguard",
+            &params.name,
+            "peer",
+            &params.peer,
+        ])
+        .await
+    {
+        Ok(_) => {
+            audit::log_success(
+                &state.db,
+                "wireguard_peer_delete",
+                &description,
+                &commands,
+            )
+            .await;
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Peer {} deleted from {}", params.peer, params.name),
+            }))
+        }
+        Err(e) => {
+            let msg = format!("Failed to delete peer: {e}");
+            audit::log_failure(
+                &state.db,
+                "wireguard_peer_delete",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: msg,
+                }),
+            ))
+        }
+    }
+}
+
+/// POST /api/v1/vyos/wireguard/generate-keypair — generate a WireGuard keypair.
+pub async fn wireguard_generate_keypair(
+    State(state): State<AppState>,
+) -> Result<Json<WireguardKeyPair>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    // Try both VyOS 1.3 and 1.4+ paths
+    let keypair_text = match client.generate(&["wireguard", "key-pair"]).await {
+        Ok(val) => val.as_str().unwrap_or("").to_string(),
+        Err(_) => match client.generate(&["pki", "wireguard", "key-pair"]).await {
+            Ok(val) => val.as_str().unwrap_or("").to_string(),
+            Err(e) => {
+                return Err((
+                    StatusCode::BAD_GATEWAY,
+                    Json(VyosWriteResponse {
+                        success: false,
+                        message: format!("Failed to generate keypair: {e}"),
+                    }),
+                ));
+            }
+        },
+    };
+
+    let (private_key, public_key) = parse_wireguard_keypair(&keypair_text).map_err(|e| {
+        (
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: e,
+            }),
+        )
+    })?;
+
+    Ok(Json(WireguardKeyPair {
+        private_key,
+        public_key,
+    }))
+}
+
+/// POST /api/v1/vyos/wireguard/:name/peers/:peer/generate-config — generate client config.
+///
+/// Generates a new client keypair, sets the client's public key in the peer config,
+/// and returns the complete client configuration file content.
+pub async fn wireguard_generate_client_config(
+    State(state): State<AppState>,
+    Path(params): Path<WireguardPeerPath>,
+    Json(body): Json<GenerateClientConfigRequest>,
+) -> Result<Json<ClientConfigResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    // 1. Generate client keypair
+    let keypair_text = match client.generate(&["wireguard", "key-pair"]).await {
+        Ok(val) => val.as_str().unwrap_or("").to_string(),
+        Err(_) => match client.generate(&["pki", "wireguard", "key-pair"]).await {
+            Ok(val) => val.as_str().unwrap_or("").to_string(),
+            Err(e) => {
+                return Err((
+                    StatusCode::BAD_GATEWAY,
+                    Json(VyosWriteResponse {
+                        success: false,
+                        message: format!("Failed to generate client keypair: {e}"),
+                    }),
+                ));
+            }
+        },
+    };
+
+    let (client_private, client_public) =
+        parse_wireguard_keypair(&keypair_text).map_err(|e| {
+            (
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: e,
+                }),
+            )
+        })?;
+
+    // 2. Set client public key in peer config
+    let description = format!(
+        "Generate client config for peer {} on {}",
+        params.peer, params.name
+    );
+    let commands = vec![format!(
+        "set interfaces wireguard {} peer {} public-key {}",
+        params.name, params.peer, client_public
+    )];
+
+    if let Err(e) = client
+        .configure_set(&[
+            "interfaces",
+            "wireguard",
+            &params.name,
+            "peer",
+            &params.peer,
+            "public-key",
+            &client_public,
+        ])
+        .await
+    {
+        let msg = format!("Failed to set client public key in peer config: {e}");
+        audit::log_failure(
+            &state.db,
+            "wireguard_client_config_generate",
+            &description,
+            &commands,
+            &msg,
+        )
+        .await;
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: msg,
+            }),
+        ));
+    }
+
+    // 3. Get the router's public key + port from config
+    let wg_config = client
+        .retrieve(&["interfaces", "wireguard", &params.name])
+        .await
+        .unwrap_or(Value::Null);
+
+    let router_public_key = wg_config
+        .as_object()
+        .and_then(|o| o.get("public-key"))
+        .and_then(|v| v.as_str())
+        .unwrap_or("ROUTER_PUBLIC_KEY_NOT_FOUND")
+        .to_string();
+
+    let router_port = wg_config
+        .as_object()
+        .and_then(|o| o.get("port"))
+        .and_then(|v| {
+            v.as_u64()
+                .map(|n| n.to_string())
+                .or_else(|| v.as_str().map(|s| s.to_string()))
+        })
+        .unwrap_or_else(|| "51820".to_string());
+
+    // 4. Build the client config
+    let endpoint = body.endpoint.unwrap_or_else(|| {
+        format!("YOUR_SERVER_IP:{}", router_port)
+    });
+    let dns = body.dns.unwrap_or_else(|| "1.1.1.1".to_string());
+    let allowed_ips = body
+        .allowed_ips
+        .unwrap_or_else(|| "0.0.0.0/0, ::/0".to_string());
+
+    let config = format!(
+        "[Interface]\nPrivateKey = {}\nAddress = {}\nDNS = {}\n\n[Peer]\nPublicKey = {}\nAllowedIPs = {}\nEndpoint = {}\nPersistentKeepalive = 25\n",
+        client_private, body.client_address, dns, router_public_key, allowed_ips, endpoint
+    );
+
+    audit::log_success(
+        &state.db,
+        "wireguard_client_config_generate",
+        &description,
+        &commands,
+    )
+    .await;
+
+    Ok(Json(ClientConfigResponse {
+        config,
+        private_key: client_private,
+        public_key: client_public,
+    }))
+}
+
 // ── Helpers ─────────────────────────────────────────────────────────
 
 /// Read VyOS URL and API key from the settings table, falling back to config file values.

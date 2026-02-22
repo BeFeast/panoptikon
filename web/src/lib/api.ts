@@ -30,6 +30,9 @@ import type {
   VyosInterface,
   VyosRoute,
   VyosWriteResponse,
+  WireguardInterface,
+  WireguardKeyPair,
+  ClientConfigResponse,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -556,6 +559,72 @@ export function fetchAuditLog(
 
 export function fetchAuditLogActions(): Promise<string[]> {
   return apiGet<string[]>("/api/v1/audit-log/actions");
+}
+
+// ─── WireGuard VPN ───────────────────────────────────────
+
+export function fetchWireguardInterfaces(): Promise<WireguardInterface[]> {
+  return apiGet<WireguardInterface[]>("/api/v1/vyos/wireguard");
+}
+
+export function createWireguardInterface(body: {
+  name: string;
+  port: number;
+  address: string;
+}): Promise<WireguardKeyPair> {
+  return apiPost<WireguardKeyPair>("/api/v1/vyos/wireguard", body);
+}
+
+export function deleteWireguardInterface(
+  name: string
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/wireguard/${encodeURIComponent(name)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function addWireguardPeer(
+  iface: string,
+  body: {
+    name: string;
+    public_key: string;
+    allowed_ips: string;
+    persistent_keepalive?: number;
+  }
+): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>(
+    `/api/v1/vyos/wireguard/${encodeURIComponent(iface)}/peers`,
+    body
+  );
+}
+
+export function deleteWireguardPeer(
+  iface: string,
+  peer: string
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/wireguard/${encodeURIComponent(iface)}/peers/${encodeURIComponent(peer)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function generateWireguardKeypair(): Promise<WireguardKeyPair> {
+  return apiPost<WireguardKeyPair>("/api/v1/vyos/wireguard/generate-keypair");
+}
+
+export function generateWireguardClientConfig(
+  iface: string,
+  peer: string,
+  body: {
+    client_address: string;
+    dns?: string;
+    endpoint?: string;
+    allowed_ips?: string;
+  }
+): Promise<ClientConfigResponse> {
+  return apiPost<ClientConfigResponse>(
+    `/api/v1/vyos/wireguard/${encodeURIComponent(iface)}/peers/${encodeURIComponent(peer)}/generate-config`,
+    body
+  );
 }
 
 // ─── Topology Positions ──────────────────────────────────
