@@ -8,7 +8,8 @@ use tracing::error;
 
 use super::AppState;
 use crate::npm::client::{
-    NpmCertificate, NpmClient, NpmConnectionStatus, NpmProxyHostPayload, NpmRedirectionHostPayload,
+    NpmCertificate, NpmClient, NpmConnectionStatus, NpmProxyHostPayload,
+    NpmRedirectionHostPayload, NpmStreamPayload,
 };
 
 /// GET /api/v1/npm/status — check NPM connection health.
@@ -628,6 +629,174 @@ pub async fn delete_certificate(
     client.delete_certificate(id).await.map_err(|e| {
         error!("NPM delete certificate {id} failed: {e}");
         StatusCode::BAD_GATEWAY
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// ─── Streams (TCP/UDP proxies) ──────────────────────────
+
+/// Summary returned by the streams list endpoint.
+#[derive(Debug, Serialize)]
+pub struct StreamSummary {
+    pub id: i64,
+    pub incoming_port: u16,
+    pub forwarding_host: String,
+    pub forwarding_port: u16,
+    pub tcp_forwarding: bool,
+    pub udp_forwarding: bool,
+    pub enabled: bool,
+}
+
+/// GET /api/v1/npm/streams — list all streams from NPM.
+pub async fn list_streams(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<StreamSummary>>, StatusCode> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let streams = client.list_streams().await.map_err(|e| {
+        error!("NPM list streams failed: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let summaries: Vec<StreamSummary> = streams
+        .into_iter()
+        .map(|s| StreamSummary {
+            id: s.id,
+            incoming_port: s.incoming_port,
+            forwarding_host: s.forwarding_host,
+            forwarding_port: s.forwarding_port,
+            tcp_forwarding: s.tcp_forwarding,
+            udp_forwarding: s.udp_forwarding,
+            enabled: s.enabled,
+        })
+        .collect();
+
+    Ok(Json(summaries))
+}
+
+/// Request body for creating / updating a stream.
+#[derive(Debug, Deserialize)]
+pub struct StreamRequest {
+    pub incoming_port: u16,
+    pub forwarding_host: String,
+    pub forwarding_port: u16,
+    #[serde(default = "default_true")]
+    pub tcp_forwarding: bool,
+    #[serde(default)]
+    pub udp_forwarding: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+/// POST /api/v1/npm/streams — create a new stream.
+pub async fn create_stream(
+    State(state): State<AppState>,
+    Json(body): Json<StreamRequest>,
+) -> Result<Json<StreamSummary>, (StatusCode, Json<ErrorBody>)> {
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
+
+    let payload = NpmStreamPayload {
+        incoming_port: body.incoming_port,
+        forwarding_host: body.forwarding_host,
+        forwarding_port: body.forwarding_port,
+        tcp_forwarding: body.tcp_forwarding,
+        udp_forwarding: body.udp_forwarding,
+        meta: serde_json::json!({}),
+    };
+
+    let stream = client.create_stream(&payload).await.map_err(|e| {
+        error!("NPM create stream failed: {e}");
+        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+    })?;
+
+    Ok(Json(StreamSummary {
+        id: stream.id,
+        incoming_port: stream.incoming_port,
+        forwarding_host: stream.forwarding_host,
+        forwarding_port: stream.forwarding_port,
+        tcp_forwarding: stream.tcp_forwarding,
+        udp_forwarding: stream.udp_forwarding,
+        enabled: stream.enabled,
+    }))
+}
+
+/// PUT /api/v1/npm/streams/:id — update a stream.
+pub async fn update_stream(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+    Json(body): Json<StreamRequest>,
+) -> Result<Json<StreamSummary>, (StatusCode, Json<ErrorBody>)> {
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
+
+    let payload = NpmStreamPayload {
+        incoming_port: body.incoming_port,
+        forwarding_host: body.forwarding_host,
+        forwarding_port: body.forwarding_port,
+        tcp_forwarding: body.tcp_forwarding,
+        udp_forwarding: body.udp_forwarding,
+        meta: serde_json::json!({}),
+    };
+
+    let stream = client.update_stream(id, &payload).await.map_err(|e| {
+        error!("NPM update stream {id} failed: {e}");
+        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+    })?;
+
+    Ok(Json(StreamSummary {
+        id: stream.id,
+        incoming_port: stream.incoming_port,
+        forwarding_host: stream.forwarding_host,
+        forwarding_port: stream.forwarding_port,
+        tcp_forwarding: stream.tcp_forwarding,
+        udp_forwarding: stream.udp_forwarding,
+        enabled: stream.enabled,
+    }))
+}
+
+/// DELETE /api/v1/npm/streams/:id — delete a stream.
+pub async fn delete_stream(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
+
+    client.delete_stream(id).await.map_err(|e| {
+        error!("NPM delete stream {id} failed: {e}");
+        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// POST /api/v1/npm/streams/:id/toggle — enable or disable a stream.
+pub async fn toggle_stream(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+    Json(body): Json<ToggleRequest>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
+
+    if body.enabled {
+        client.enable_stream(id).await
+    } else {
+        client.disable_stream(id).await
+    }
+    .map_err(|e| {
+        error!("NPM toggle stream {id} failed: {e}");
+        error_response(StatusCode::BAD_GATEWAY, e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)

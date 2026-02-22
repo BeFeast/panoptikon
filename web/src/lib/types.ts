@@ -434,6 +434,16 @@ export interface NpmRedirectionHost {
   enabled: boolean;
 }
 
+export interface NpmStream {
+  id: number;
+  incoming_port: number;
+  forwarding_host: string;
+  forwarding_port: number;
+  tcp_forwarding: boolean;
+  udp_forwarding: boolean;
+  enabled: boolean;
+}
+
 export interface DbSizeData {
   size_bytes: number;
 }

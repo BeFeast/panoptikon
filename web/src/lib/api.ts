@@ -32,6 +32,7 @@ import type {
   NpmProxyHost,
   NpmProxyHostRequest,
   NpmRedirectionHost,
+  NpmStream,
   PendingChangesResponse,
   RouterStatus,
   RouterSummary,
@@ -928,4 +929,44 @@ export function updateNpmRedirectionHost(
 
 export function deleteNpmRedirectionHost(id: number): Promise<void> {
   return apiDelete(`/api/v1/npm/redirection-hosts/${id}`);
+}
+
+// ─── Streams (TCP/UDP proxies) ──────────────────────────
+
+export function fetchNpmStreams(): Promise<NpmStream[]> {
+  return apiGet<NpmStream[]>("/api/v1/npm/streams");
+}
+
+export function createNpmStream(body: {
+  incoming_port: number;
+  forwarding_host: string;
+  forwarding_port: number;
+  tcp_forwarding: boolean;
+  udp_forwarding: boolean;
+}): Promise<NpmStream> {
+  return apiPost<NpmStream>("/api/v1/npm/streams", body);
+}
+
+export function updateNpmStream(
+  id: number,
+  body: {
+    incoming_port: number;
+    forwarding_host: string;
+    forwarding_port: number;
+    tcp_forwarding: boolean;
+    udp_forwarding: boolean;
+  }
+): Promise<NpmStream> {
+  return apiPut<NpmStream>(`/api/v1/npm/streams/${id}`, body);
+}
+
+export function deleteNpmStream(id: number): Promise<void> {
+  return apiDelete(`/api/v1/npm/streams/${id}`);
+}
+
+export function toggleNpmStream(
+  id: number,
+  enabled: boolean
+): Promise<void> {
+  return apiPost<void>(`/api/v1/npm/streams/${id}/toggle`, { enabled });
 }
