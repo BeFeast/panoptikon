@@ -307,6 +307,8 @@ pub struct RouterStatus {
 
 /// GET /api/v1/vyos/status — check if VyOS is configured and reachable.
 pub async fn status(State(state): State<AppState>) -> Json<RouterStatus> {
+    use crate::vyos::cache::cache_key;
+
     let client = match get_vyos_client_from_db(&state.db, &state.config, &state.vyos_http).await {
         Some(c) => c,
         None => {
@@ -319,6 +321,29 @@ pub async fn status(State(state): State<AppState>) -> Json<RouterStatus> {
             });
         }
     };
+
+    // Check cache first — avoids 3 slow VyOS show commands on every page load.
+    let ver_key = cache_key("show", &["version"]);
+    let up_key = cache_key("show", &["system", "uptime"]);
+    let host_key = cache_key("show", &["host", "name"]);
+
+    if let (Some(ver_cached), Some(up_cached), Some(host_cached)) = (
+        state.vyos_cache.get(&ver_key),
+        state.vyos_cache.get(&up_key),
+        state.vyos_cache.get(&host_key),
+    ) {
+        let version = ver_cached.as_str().map(|s| s.to_string());
+        let uptime = up_cached.as_str().map(|s| s.to_string());
+        let hostname = host_cached.as_str().map(|s| s.to_string());
+        let reachable = version.is_some() || uptime.is_some();
+        return Json(RouterStatus {
+            configured: true,
+            reachable,
+            version,
+            uptime,
+            hostname,
+        });
+    }
 
     // Fetch version, uptime, and hostname in parallel.
     let (ver_res, up_res, host_res) = tokio::join!(
@@ -348,6 +373,23 @@ pub async fn status(State(state): State<AppState>) -> Json<RouterStatus> {
     let hostname = host_res
         .ok()
         .and_then(|v| v.as_str().map(|s| s.trim().to_string()));
+
+    // Cache parsed values for subsequent requests.
+    if let Some(ref v) = version {
+        state
+            .vyos_cache
+            .set(ver_key, serde_json::Value::String(v.clone()));
+    }
+    if let Some(ref u) = uptime {
+        state
+            .vyos_cache
+            .set(up_key, serde_json::Value::String(u.clone()));
+    }
+    if let Some(ref h) = hostname {
+        state
+            .vyos_cache
+            .set(host_key, serde_json::Value::String(h.clone()));
+    }
 
     let reachable = version.is_some() || uptime.is_some();
 
