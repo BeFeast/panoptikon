@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ArrowRightLeft,
   ExternalLink,
+  FileX2,
   Globe,
   Loader2,
   Lock,
@@ -51,12 +52,16 @@ import {
   updateNpmStream,
   deleteNpmStream,
   toggleNpmStream,
+  fetchNpmDeadHosts,
+  createNpmDeadHost,
+  deleteNpmDeadHost,
 } from "@/lib/api";
 import type {
   NpmConnectionStatus,
   NpmProxyHost,
   NpmRedirectionHost,
   NpmStream,
+  NpmDeadHost,
 } from "@/lib/types";
 
 // ─── Proxy Hosts Table ──────────────────────────────────
@@ -990,6 +995,272 @@ function StreamsTable({
   );
 }
 
+// ─── Dead Hosts Table ────────────────────────────────────
+
+interface DeadHostFormData {
+  domain_names: string;
+  ssl_forced: boolean;
+}
+
+const emptyDeadForm: DeadHostFormData = {
+  domain_names: "",
+  ssl_forced: false,
+};
+
+function DeadHostsTable({
+  hosts,
+  loading,
+  onReload,
+}: {
+  hosts: NpmDeadHost[];
+  loading: boolean;
+  onReload: () => void;
+}) {
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState<DeadHostFormData>(emptyDeadForm);
+  const [saving, setSaving] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<NpmDeadHost | null>(null);
+  const [deleting, setDeleting] = useState<number | null>(null);
+
+  const openCreate = () => {
+    setForm(emptyDeadForm);
+    setShowForm(true);
+  };
+
+  const handleSave = async () => {
+    const domainNames = form.domain_names
+      .split(",")
+      .map((d) => d.trim())
+      .filter(Boolean);
+    if (domainNames.length === 0) {
+      toast.error("At least one domain name is required");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await createNpmDeadHost({
+        domain_names: domainNames,
+        ssl_forced: form.ssl_forced,
+      });
+      toast.success("Dead host created");
+      setShowForm(false);
+      setForm(emptyDeadForm);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Create failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    const { id } = confirmDelete;
+    setConfirmDelete(null);
+    setDeleting(id);
+    try {
+      await deleteNpmDeadHost(id);
+      toast.success("Dead host deleted");
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-2 p-4">
+        {[...Array(3)].map((_, i) => (
+          <Skeleton key={i} className="h-10 w-full bg-slate-800" />
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="flex items-center justify-between px-4 py-3">
+        <p className="text-xs text-slate-500">
+          {hosts.length} dead host{hosts.length !== 1 ? "s" : ""}
+        </p>
+        <Button variant="outline" size="sm" onClick={openCreate}>
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          Add Dead Host
+        </Button>
+      </div>
+
+      {hosts.length === 0 ? (
+        <p className="px-4 pb-6 text-center text-sm text-slate-500">
+          No dead hosts found.
+        </p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-800 text-left text-xs uppercase text-slate-500">
+                <th className="px-4 py-2">Domain(s)</th>
+                <th className="px-4 py-2">SSL</th>
+                <th className="px-4 py-2">Status</th>
+                <th className="px-4 py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {hosts.map((h) => (
+                <tr
+                  key={h.id}
+                  className="border-b border-slate-800/50 hover:bg-slate-800/30"
+                >
+                  <td className="px-4 py-2.5">
+                    <div className="flex flex-wrap gap-1">
+                      {h.domain_names.map((d) => (
+                        <span
+                          key={d}
+                          className="font-mono text-xs text-white"
+                        >
+                          {d}
+                        </span>
+                      ))}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {h.ssl_forced ? (
+                      <Lock className="h-3.5 w-3.5 text-emerald-400" />
+                    ) : (
+                      <span className="text-xs text-slate-600">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <Badge
+                      variant="outline"
+                      className={
+                        h.enabled
+                          ? "border-emerald-500/30 text-emerald-400"
+                          : "border-slate-700 text-slate-500"
+                      }
+                    >
+                      {h.enabled ? "Enabled" : "Disabled"}
+                    </Badge>
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400"
+                      disabled={deleting === h.id}
+                      onClick={() => setConfirmDelete(h)}
+                    >
+                      {deleting === h.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Create Dialog */}
+      <Dialog
+        open={showForm}
+        onOpenChange={(open) => {
+          if (!open) setShowForm(false);
+        }}
+      >
+        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white">New Dead Host</DialogTitle>
+            <DialogDescription>
+              Create a 404 catch-all page for one or more domains.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="dead-domains">
+                Domain(s){" "}
+                <span className="text-xs text-slate-500">
+                  (comma-separated)
+                </span>
+              </Label>
+              <Input
+                id="dead-domains"
+                className="border-slate-800 bg-slate-950 text-white"
+                placeholder="expired.example.com, old.example.com"
+                value={form.domain_names}
+                onChange={(e) =>
+                  setForm({ ...form, domain_names: e.target.value })
+                }
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <Label htmlFor="dead-ssl" className="cursor-pointer">
+                Force SSL
+              </Label>
+              <Switch
+                id="dead-ssl"
+                checked={form.ssl_forced}
+                onCheckedChange={(v) => setForm({ ...form, ssl_forced: v })}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowForm(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              )}
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+      >
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Delete Dead Host?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              The dead host for{" "}
+              <span className="font-mono text-white">
+                {confirmDelete?.domain_names.join(", ")}
+              </span>{" "}
+              will be permanently removed from Nginx Proxy Manager.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 // ─── Main Page ──────────────────────────────────────────
 
 export default function NpmPage() {
@@ -999,9 +1270,11 @@ export default function NpmPage() {
     NpmRedirectionHost[]
   >([]);
   const [streams, setStreams] = useState<NpmStream[]>([]);
+  const [deadHosts, setDeadHosts] = useState<NpmDeadHost[]>([]);
   const [loadingProxy, setLoadingProxy] = useState(true);
   const [loadingRedir, setLoadingRedir] = useState(true);
   const [loadingStreams, setLoadingStreams] = useState(true);
+  const [loadingDead, setLoadingDead] = useState(true);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -1048,12 +1321,25 @@ export default function NpmPage() {
     }
   }, []);
 
+  const loadDeadHosts = useCallback(async () => {
+    setLoadingDead(true);
+    try {
+      const data = await fetchNpmDeadHosts();
+      setDeadHosts(data);
+    } catch {
+      setDeadHosts([]);
+    } finally {
+      setLoadingDead(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadStatus();
     loadProxyHosts();
     loadRedirectionHosts();
     loadStreams();
-  }, [loadStatus, loadProxyHosts, loadRedirectionHosts, loadStreams]);
+    loadDeadHosts();
+  }, [loadStatus, loadProxyHosts, loadRedirectionHosts, loadStreams, loadDeadHosts]);
 
   const configured = status?.configured ?? false;
   const reachable = status?.reachable ?? false;
@@ -1071,7 +1357,7 @@ export default function NpmPage() {
               Nginx Proxy Manager
             </h1>
             <p className="text-sm text-slate-400">
-              Manage proxy hosts, redirections, and TCP/UDP streams
+              Manage proxy hosts, redirections, streams, and dead hosts
             </p>
           </div>
         </div>
@@ -1160,6 +1446,18 @@ export default function NpmPage() {
                 </Badge>
               )}
             </TabsTrigger>
+            <TabsTrigger value="dead-hosts" className="gap-1.5">
+              <FileX2 className="h-3.5 w-3.5" />
+              404 Hosts
+              {deadHosts.length > 0 && (
+                <Badge
+                  variant="secondary"
+                  className="ml-1 h-5 bg-slate-800 px-1.5 text-[10px]"
+                >
+                  {deadHosts.length}
+                </Badge>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="redirections">
@@ -1207,6 +1505,24 @@ export default function NpmPage() {
                   streams={streams}
                   loading={loadingStreams}
                   onReload={loadStreams}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="dead-hosts">
+            <Card className="border-slate-800 bg-slate-900/50">
+              <CardHeader className="pb-0">
+                <CardTitle className="flex items-center gap-2 text-lg text-white">
+                  <FileX2 className="h-4 w-4 text-rose-400" />
+                  Dead Hosts (404 Pages)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-0 pb-2">
+                <DeadHostsTable
+                  hosts={deadHosts}
+                  loading={loadingDead}
+                  onReload={loadDeadHosts}
                 />
               </CardContent>
             </Card>

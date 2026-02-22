@@ -8,8 +8,8 @@ use tracing::error;
 
 use super::AppState;
 use crate::npm::client::{
-    NpmCertificate, NpmClient, NpmConnectionStatus, NpmProxyHostPayload, NpmRedirectionHostPayload,
-    NpmStreamPayload,
+    NpmCertificate, NpmClient, NpmConnectionStatus, NpmDeadHostPayload, NpmProxyHostPayload,
+    NpmRedirectionHostPayload, NpmStreamPayload,
 };
 
 /// GET /api/v1/npm/status — check NPM connection health.
@@ -796,6 +796,97 @@ pub async fn toggle_stream(
     }
     .map_err(|e| {
         error!("NPM toggle stream {id} failed: {e}");
+        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// ─── Dead Hosts ─────────────────────────────────────────
+
+/// Summary returned by the dead hosts list endpoint.
+#[derive(Debug, Serialize)]
+pub struct DeadHostSummary {
+    pub id: i64,
+    pub domain_names: Vec<String>,
+    pub ssl_forced: bool,
+    pub enabled: bool,
+}
+
+/// GET /api/v1/npm/dead-hosts — list all dead hosts from NPM.
+pub async fn dead_hosts(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<DeadHostSummary>>, StatusCode> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let hosts = client.list_dead_hosts().await.map_err(|e| {
+        error!("NPM list dead hosts failed: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let summaries: Vec<DeadHostSummary> = hosts
+        .into_iter()
+        .map(|h| DeadHostSummary {
+            id: h.id,
+            domain_names: h.domain_names,
+            ssl_forced: h.ssl_forced,
+            enabled: h.enabled,
+        })
+        .collect();
+
+    Ok(Json(summaries))
+}
+
+/// Request body for creating a dead host.
+#[derive(Debug, Deserialize)]
+pub struct DeadHostRequest {
+    pub domain_names: Vec<String>,
+    #[serde(default)]
+    pub ssl_forced: bool,
+}
+
+/// POST /api/v1/npm/dead-hosts — create a new dead host.
+pub async fn create_dead_host(
+    State(state): State<AppState>,
+    Json(body): Json<DeadHostRequest>,
+) -> Result<Json<DeadHostSummary>, (StatusCode, Json<ErrorBody>)> {
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
+
+    let payload = NpmDeadHostPayload {
+        domain_names: body.domain_names,
+        certificate_id: serde_json::Value::Number(0.into()),
+        ssl_forced: body.ssl_forced,
+        meta: serde_json::json!({}),
+    };
+
+    let host = client.create_dead_host(&payload).await.map_err(|e| {
+        error!("NPM create dead host failed: {e}");
+        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+    })?;
+
+    Ok(Json(DeadHostSummary {
+        id: host.id,
+        domain_names: host.domain_names,
+        ssl_forced: host.ssl_forced,
+        enabled: host.enabled,
+    }))
+}
+
+/// DELETE /api/v1/npm/dead-hosts/:id — delete a dead host.
+pub async fn delete_dead_host(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
+    let client = get_npm_client(&state).await.ok_or_else(|| {
+        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
+    })?;
+
+    client.delete_dead_host(id).await.map_err(|e| {
+        error!("NPM delete dead host {id} failed: {e}");
         error_response(StatusCode::BAD_GATEWAY, e.to_string())
     })?;
 

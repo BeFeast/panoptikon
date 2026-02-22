@@ -135,6 +135,26 @@ pub struct NpmStreamPayload {
     pub meta: serde_json::Value,
 }
 
+/// NPM dead host returned by the API.
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct NpmDeadHost {
+    pub id: i64,
+    pub domain_names: Vec<String>,
+    pub certificate_id: serde_json::Value,
+    pub ssl_forced: bool,
+    pub enabled: bool,
+    pub meta: Option<serde_json::Value>,
+}
+
+/// Payload for creating a dead host.
+#[derive(Debug, Serialize, Clone)]
+pub struct NpmDeadHostPayload {
+    pub domain_names: Vec<String>,
+    pub certificate_id: serde_json::Value,
+    pub ssl_forced: bool,
+    pub meta: serde_json::Value,
+}
+
 /// Connection test result returned by the `/npm/status` endpoint.
 #[derive(Debug, Serialize)]
 pub struct NpmConnectionStatus {
@@ -837,6 +857,85 @@ impl NpmClient {
         if !status.is_success() {
             let body = resp.text().await.unwrap_or_default();
             anyhow::bail!("NPM disable stream failed (HTTP {status}): {body}");
+        }
+
+        Ok(())
+    }
+
+    // ─── Dead Hosts ─────────────────────────────────────────
+
+    /// List all dead hosts.
+    pub async fn list_dead_hosts(&self) -> Result<Vec<NpmDeadHost>> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/dead-hosts", self.base_url);
+
+        let resp = self
+            .http
+            .get(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM list dead hosts request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM list dead hosts failed (HTTP {status}): {body}");
+        }
+
+        let hosts: Vec<NpmDeadHost> = resp
+            .json()
+            .await
+            .context("failed to parse NPM dead hosts response")?;
+
+        Ok(hosts)
+    }
+
+    /// Create a new dead host.
+    pub async fn create_dead_host(&self, payload: &NpmDeadHostPayload) -> Result<NpmDeadHost> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/dead-hosts", self.base_url);
+
+        let resp = self
+            .http
+            .post(&url)
+            .bearer_auth(&token)
+            .json(payload)
+            .send()
+            .await
+            .context("NPM create dead host request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM create dead host failed (HTTP {status}): {body}");
+        }
+
+        let host: NpmDeadHost = resp
+            .json()
+            .await
+            .context("failed to parse NPM create dead host response")?;
+
+        Ok(host)
+    }
+
+    /// Delete a dead host by ID.
+    pub async fn delete_dead_host(&self, id: i64) -> Result<()> {
+        let token = self.get_token().await?;
+        let url = format!("{}/api/nginx/dead-hosts/{id}", self.base_url);
+
+        let resp = self
+            .http
+            .delete(&url)
+            .bearer_auth(&token)
+            .send()
+            .await
+            .context("NPM delete dead host request failed")?;
+
+        let status = resp.status();
+        if !status.is_success() {
+            let body = resp.text().await.unwrap_or_default();
+            anyhow::bail!("NPM delete dead host failed (HTTP {status}): {body}");
         }
 
         Ok(())
