@@ -137,6 +137,8 @@ pub fn router(state: AppState) -> Router {
         // VyOS router proxy
         .route("/vyos/router-summary", get(vyos::router_summary))
         .route("/vyos/status", get(vyos::status))
+        .route("/vyos/system-info", get(vyos::system_info))
+        .route("/vyos/syslog", get(vyos::syslog))
         .route("/vyos/interfaces", get(vyos::interfaces))
         .route("/vyos/config-interfaces", get(vyos::config_interfaces))
         .route("/vyos/routes", get(vyos::routes))

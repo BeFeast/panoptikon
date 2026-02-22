@@ -468,6 +468,42 @@ export interface DnsForwardingConfig {
   cache_size: number | null;
 }
 
+// ─── System Info ───────────────────────────────────────
+
+export interface CpuLoad {
+  load1: number;
+  load5: number;
+  load15: number;
+}
+
+export interface MemoryUsage {
+  total: number;
+  used: number;
+  free: number;
+  percent: number;
+}
+
+export interface DiskUsage {
+  filesystem: string;
+  size: string;
+  used: string;
+  available: string;
+  percent: number;
+  mount: string;
+}
+
+export interface SystemInfo {
+  version: string | null;
+  uptime: string | null;
+  cpu_load: CpuLoad | null;
+  memory: MemoryUsage | null;
+  disk: DiskUsage[];
+}
+
+export interface SyslogResponse {
+  lines: string[];
+}
+
 // ─── Auth ───────────────────────────────────────────────
 
 export interface AuthStatus {

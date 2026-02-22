@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Router,
   Network,
@@ -34,6 +34,12 @@ import {
   EyeOff,
   Users,
   Search,
+  Cpu,
+  MemoryStick,
+  HardDrive,
+  ScrollText,
+  RefreshCw,
+  Monitor,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -110,8 +116,10 @@ import {
   addDnsDomainOverride,
   editDnsDomainOverride,
   deleteDnsDomainOverride,
+  fetchSystemInfo,
+  fetchSyslog,
 } from "@/lib/api";
-import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, DhcpServerConfig, DhcpSubnetConfig, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride } from "@/lib/types";
+import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, SpeedTestResult, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, DhcpServerConfig, DhcpSubnetConfig, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride, SystemInfo, SyslogResponse } from "@/lib/types";
 import QRCode from "qrcode";
 import { Progress } from "@/components/ui/progress";
 import { PageTransition } from "@/components/PageTransition";
@@ -192,6 +200,277 @@ function StatusHeader({ status }: { status: RouterStatus }) {
           </Badge>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── System Info Panel ───────────────────────────────────
+
+function SystemInfoPanel({
+  onTabActive,
+}: {
+  onTabActive: boolean;
+}) {
+  const [info, setInfo] = useState<SystemInfo | null>(null);
+  const [syslog, setSyslog] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [syslogLoading, setSyslogLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [logFilter, setLogFilter] = useState("");
+  const [debouncedFilter, setDebouncedFilter] = useState("");
+  const logContainerRef = useRef<HTMLDivElement>(null);
+
+  // Debounce the filter input
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedFilter(logFilter), 300);
+    return () => clearTimeout(timer);
+  }, [logFilter]);
+
+  // Fetch system info
+  const loadInfo = useCallback(async () => {
+    if (!onTabActive) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchSystemInfo();
+      setInfo(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load system info");
+    } finally {
+      setLoading(false);
+    }
+  }, [onTabActive]);
+
+  // Fetch syslog
+  const loadSyslog = useCallback(async () => {
+    if (!onTabActive) return;
+    setSyslogLoading(true);
+    try {
+      const data = await fetchSyslog(50, debouncedFilter || undefined);
+      setSyslog(data.lines);
+    } catch {
+      // Syslog errors are non-critical; keep existing lines
+    } finally {
+      setSyslogLoading(false);
+    }
+  }, [onTabActive, debouncedFilter]);
+
+  // Initial load + 30s auto-refresh
+  useEffect(() => {
+    loadInfo();
+    const interval = setInterval(loadInfo, 30_000);
+    return () => clearInterval(interval);
+  }, [loadInfo]);
+
+  useEffect(() => {
+    loadSyslog();
+    const interval = setInterval(loadSyslog, 30_000);
+    return () => clearInterval(interval);
+  }, [loadSyslog]);
+
+  if (loading && !info) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-32 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (error && !info) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-400">
+        <AlertCircle className="h-4 w-4 shrink-0" />
+        {error}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Top cards: Version, Uptime, CPU, Memory */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* Version */}
+        <Card className="border-slate-800 bg-slate-900">
+          <CardContent className="flex items-center gap-3 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+              <Monitor className="h-4.5 w-4.5 text-blue-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500">Version</p>
+              <p className="truncate text-sm font-medium text-white">
+                {info?.version ?? "—"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Uptime */}
+        <Card className="border-slate-800 bg-slate-900">
+          <CardContent className="flex items-center gap-3 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10">
+              <Clock className="h-4.5 w-4.5 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500">Uptime</p>
+              <p className="truncate text-sm font-medium text-white">
+                {info?.uptime ?? "—"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* CPU Load */}
+        <Card className="border-slate-800 bg-slate-900">
+          <CardContent className="flex items-center gap-3 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+              <Cpu className="h-4.5 w-4.5 text-amber-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500">CPU Load</p>
+              {info?.cpu_load ? (
+                <p className="text-sm font-medium text-white">
+                  {info.cpu_load.load1.toFixed(2)}{" "}
+                  <span className="text-xs text-slate-500">
+                    / {info.cpu_load.load5.toFixed(2)} / {info.cpu_load.load15.toFixed(2)}
+                  </span>
+                </p>
+              ) : (
+                <p className="text-sm font-medium text-white">—</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Memory */}
+        <Card className="border-slate-800 bg-slate-900">
+          <CardContent className="flex items-center gap-3 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10">
+              <MemoryStick className="h-4.5 w-4.5 text-purple-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500">Memory</p>
+              {info?.memory ? (
+                <p className="text-sm font-medium text-white">
+                  {info.memory.percent}%{" "}
+                  <span className="text-xs text-slate-500">
+                    ({formatBytes(info.memory.used)} / {formatBytes(info.memory.total)})
+                  </span>
+                </p>
+              ) : (
+                <p className="text-sm font-medium text-white">—</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Memory + CPU progress bars */}
+      {(info?.memory || info?.cpu_load) && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {info?.memory && (
+            <Card className="border-slate-800 bg-slate-900">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm text-white">
+                  <MemoryStick className="h-4 w-4 text-purple-400" />
+                  Memory Usage
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Progress
+                  value={info.memory.percent}
+                  className="h-2"
+                />
+                <div className="mt-2 flex justify-between text-xs text-slate-500">
+                  <span>Used: {formatBytes(info.memory.used)}</span>
+                  <span>Free: {formatBytes(info.memory.free)}</span>
+                  <span>Total: {formatBytes(info.memory.total)}</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {info?.disk && info.disk.length > 0 && (
+            <Card className="border-slate-800 bg-slate-900">
+              <CardHeader className="pb-2">
+                <CardTitle className="flex items-center gap-2 text-sm text-white">
+                  <HardDrive className="h-4 w-4 text-cyan-400" />
+                  Disk Usage
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {info.disk.map((d) => (
+                  <div key={d.mount}>
+                    <div className="mb-1 flex items-center justify-between text-xs text-slate-400">
+                      <span className="font-mono">{d.mount}</span>
+                      <span>{d.used} / {d.size} ({d.percent}%)</span>
+                    </div>
+                    <Progress
+                      value={d.percent}
+                      className="h-2"
+                    />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Syslog viewer */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0 pb-2">
+          <CardTitle className="flex items-center gap-2 text-sm text-white">
+            <ScrollText className="h-4 w-4 text-slate-400" />
+            System Log
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
+              <Input
+                value={logFilter}
+                onChange={(e) => setLogFilter(e.target.value)}
+                placeholder="Filter logs..."
+                className="h-8 w-48 border-slate-800 bg-slate-950 pl-8 text-xs text-slate-300 placeholder:text-slate-600"
+              />
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={loadSyslog}
+              disabled={syslogLoading}
+              className="h-8 text-slate-400 hover:text-white"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${syslogLoading ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div
+            ref={logContainerRef}
+            className="max-h-96 overflow-auto rounded-md border border-slate-800 bg-slate-950 p-3 font-mono text-xs leading-5 text-slate-400"
+          >
+            {syslog.length === 0 ? (
+              <p className="text-center text-slate-600">
+                {syslogLoading ? "Loading..." : "No log entries"}
+              </p>
+            ) : (
+              syslog.map((line, i) => (
+                <div
+                  key={i}
+                  className="hover:bg-slate-900/50 hover:text-slate-300"
+                >
+                  {line}
+                </div>
+              ))
+            )}
+          </div>
+          <p className="mt-2 text-right text-xs text-slate-600">
+            {syslog.length} line{syslog.length !== 1 ? "s" : ""} · auto-refreshes every 30s
+          </p>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -4507,7 +4786,7 @@ export default function RouterPage() {
 // ── Tabs component (only rendered when configured) ──────
 
 function RouterTabs({ status }: { status: RouterStatus }) {
-  const [tab, setTab] = useState("interfaces");
+  const [tab, setTab] = useState("system");
 
   const interfaces = useAsyncData<VyosInterface[]>(
     useCallback(() => fetchRouterInterfaces(), []),
@@ -4571,6 +4850,13 @@ function RouterTabs({ status }: { status: RouterStatus }) {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="border-slate-800 bg-slate-950">
           <TabsTrigger
+            value="system"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+          >
+            <Activity className="mr-1.5 h-3.5 w-3.5" />
+            System
+          </TabsTrigger>
+          <TabsTrigger
             value="interfaces"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
@@ -4620,6 +4906,10 @@ function RouterTabs({ status }: { status: RouterStatus }) {
             Speed Test
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="system">
+          <SystemInfoPanel onTabActive={tab === "system"} />
+        </TabsContent>
 
         <TabsContent value="interfaces" className="space-y-4">
           <Card className="border-slate-800 bg-slate-900">
