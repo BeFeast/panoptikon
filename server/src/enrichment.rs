@@ -103,7 +103,10 @@ pub async fn persist_enrichment(
             .unwrap_or(false);
 
     if corrected {
-        debug!(device_id, "Skipping enrichment — user has corrected this device");
+        debug!(
+            device_id,
+            "Skipping enrichment — user has corrected this device"
+        );
         return Ok(());
     }
 
@@ -489,9 +492,7 @@ fn apply_vendor_hints(vendor: &str, result: &mut EnrichmentResult) {
         result.device_type = Some("tv".to_string());
     }
     // Gaming
-    else if lower.contains("nintendo")
-        || lower.contains("valve")
-    {
+    else if lower.contains("nintendo") || lower.contains("valve") {
         result.device_type = Some("gaming".to_string());
     }
 }
@@ -1031,12 +1032,11 @@ mod tests {
         persist_enrichment(&pool, &id, &result).await.unwrap();
 
         // Should still be Windows (user correction preserved)
-        let os: Option<String> =
-            sqlx::query_scalar("SELECT os_family FROM devices WHERE id = ?")
-                .bind(&id)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let os: Option<String> = sqlx::query_scalar("SELECT os_family FROM devices WHERE id = ?")
+            .bind(&id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         assert_eq!(os.as_deref(), Some("Windows"));
     }
 }

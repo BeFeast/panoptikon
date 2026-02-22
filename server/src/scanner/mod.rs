@@ -189,8 +189,14 @@ pub async fn process_scan_results(
     let mut dns_targets: Vec<(String, String)> = Vec::new();
 
     // Enrichment targets: (device_id, ip, mac, hostname, vendor, mdns_services)
-    let mut enrichment_targets: Vec<(String, String, String, Option<String>, Option<String>, Option<String>)> =
-        Vec::new();
+    let mut enrichment_targets: Vec<(
+        String,
+        String,
+        String,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+    )> = Vec::new();
 
     // Begin a single transaction for all DB mutations (Phase 1 + Phase 2).
     let mut tx = db.begin().await?;
@@ -409,12 +415,11 @@ pub async fn process_scan_results(
                 .fetch_optional(&mut *tx)
                 .await?
                 .flatten();
-        let vendor: Option<String> =
-            sqlx::query_scalar("SELECT vendor FROM devices WHERE id = ?")
-                .bind(&device_id)
-                .fetch_optional(&mut *tx)
-                .await?
-                .flatten();
+        let vendor: Option<String> = sqlx::query_scalar("SELECT vendor FROM devices WHERE id = ?")
+            .bind(&device_id)
+            .fetch_optional(&mut *tx)
+            .await?
+            .flatten();
         let mdns_svcs: Option<String> =
             sqlx::query_scalar("SELECT mdns_services FROM devices WHERE id = ?")
                 .bind(&device_id)
