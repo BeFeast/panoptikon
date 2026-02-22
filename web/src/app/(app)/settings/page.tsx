@@ -898,7 +898,7 @@ export default function SettingsPage() {
       </Card>
 
       {/* Change Password */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card id="password" className="border-slate-800 bg-slate-900">
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">

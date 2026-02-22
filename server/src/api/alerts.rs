@@ -143,6 +143,19 @@ pub async fn mark_read(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// POST /api/v1/alerts/mark-all-read — mark all unread alerts as read.
+pub async fn mark_all_read(State(state): State<AppState>) -> Result<StatusCode, StatusCode> {
+    sqlx::query("UPDATE alerts SET is_read = 1 WHERE is_read = 0")
+        .execute(&state.db)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to mark all alerts as read: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// POST /api/v1/alerts/:id/acknowledge — acknowledge an alert with an optional note.
 pub async fn acknowledge(
     State(state): State<AppState>,

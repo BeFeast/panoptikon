@@ -2,8 +2,19 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { searchAll } from "@/lib/api";
-import type { SearchResponse, SearchDevice, SearchAgent, SearchAlert } from "@/lib/types";
+import { Bell, Settings, Lock, LogOut } from "lucide-react";
+import { searchAll, fetchRecentAlerts, fetchDashboardStats, markAllAlertsRead, logout } from "@/lib/api";
+import { useWsEvent } from "@/lib/ws";
+import { timeAgo } from "@/lib/format";
+import type { SearchResponse, SearchDevice, SearchAgent, SearchAlert, Alert } from "@/lib/types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function TopBar() {
   const router = useRouter();
@@ -13,6 +24,71 @@ export function TopBar() {
   const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // ── Notification bell state ──
+  const [bellOpen, setBellOpen] = useState(false);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const bellRef = useRef<HTMLDivElement>(null);
+
+  // Fetch unread count + recent alerts
+  const refreshAlerts = useCallback(async () => {
+    try {
+      const [statsData, alertsData] = await Promise.all([
+        fetchDashboardStats(),
+        fetchRecentAlerts(5),
+      ]);
+      setUnreadCount(statsData.alerts_unread);
+      setAlerts(alertsData);
+    } catch {
+      // Silently fail — topbar should not break the app
+    }
+  }, []);
+
+  // Initial load + periodic refresh
+  useEffect(() => {
+    refreshAlerts();
+    const interval = setInterval(refreshAlerts, 30_000);
+    return () => clearInterval(interval);
+  }, [refreshAlerts]);
+
+  // Refresh on WebSocket device/agent events (often accompany alerts)
+  useWsEvent(
+    ["device_online", "device_offline", "new_device", "agent_offline"],
+    refreshAlerts,
+  );
+
+  // Click outside to close bell dropdown
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (bellRef.current && !bellRef.current.contains(e.target as Node)) {
+        setBellOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  async function handleMarkAllRead() {
+    try {
+      await markAllAlertsRead();
+      setUnreadCount(0);
+      setAlerts((prev) => prev.map((a) => ({ ...a, is_read: true })));
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleLogout() {
+    try {
+      await logout();
+    } catch {
+      // Even if the API call fails, redirect to login
+    }
+    window.location.href = "/login";
+  }
+
+  // ── Search logic (unchanged) ──
 
   // Build a flat list of navigable items for keyboard navigation
   const flatItems = useCallback((): Array<{ type: string; id: string; label: string }> => {
@@ -53,7 +129,7 @@ export function TopBar() {
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Click outside to close
+  // Click outside to close search
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -253,16 +329,121 @@ export function TopBar() {
       </div>
 
       {/* Right side: alerts bell + user avatar */}
-      <div className="flex items-center gap-4">
-        {/* Alerts bell */}
-        <button className="relative text-slate-400 hover:text-white transition-colors">
-          <span className="text-xl">🔔</span>
-        </button>
+      <div className="flex items-center gap-2">
+        {/* ── Notification Bell ── */}
+        <div className="relative" ref={bellRef}>
+          <button
+            onClick={() => setBellOpen((v) => !v)}
+            className="relative flex h-9 w-9 items-center justify-center rounded-md text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            aria-label="Notifications"
+          >
+            <Bell className="h-5 w-5" />
+            {unreadCount > 0 && (
+              <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">
+                {unreadCount > 99 ? "99+" : unreadCount}
+              </span>
+            )}
+          </button>
 
-        {/* User avatar */}
-        <button className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-medium text-white">
-          A
-        </button>
+          {bellOpen && (
+            <div className="absolute right-0 top-full z-50 mt-1 w-80 rounded-md border border-slate-800 bg-slate-950 shadow-xl">
+              <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2.5">
+                <span className="text-sm font-semibold text-white">Notifications</span>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={handleMarkAllRead}
+                    className="text-xs text-accent hover:text-accent/80 transition-colors"
+                  >
+                    Mark all read
+                  </button>
+                )}
+              </div>
+
+              <div className="max-h-72 overflow-y-auto">
+                {alerts.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-sm text-slate-500">
+                    No recent alerts
+                  </div>
+                ) : (
+                  alerts.map((alert) => (
+                    <button
+                      key={alert.id}
+                      className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-slate-800/60 border-b border-slate-800/50 last:border-b-0 ${
+                        !alert.is_read ? "bg-slate-900/50" : ""
+                      }`}
+                      onClick={() => {
+                        setBellOpen(false);
+                        router.push("/alerts");
+                      }}
+                    >
+                      <div className="flex items-center gap-2">
+                        {!alert.is_read && (
+                          <span className="h-2 w-2 rounded-full bg-accent shrink-0" />
+                        )}
+                        <SeverityBadge severity={alert.severity} />
+                        <span className="text-xs text-slate-500 ml-auto">
+                          {timeAgo(alert.created_at)}
+                        </span>
+                      </div>
+                      <span className="text-sm text-slate-300 truncate">
+                        {alert.message}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+
+              <div className="border-t border-slate-800">
+                <button
+                  onClick={() => {
+                    setBellOpen(false);
+                    router.push("/alerts");
+                  }}
+                  className="flex w-full items-center justify-center px-4 py-2.5 text-sm text-accent hover:bg-slate-800/60 transition-colors"
+                >
+                  View all alerts
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── User Avatar Menu ── */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-medium text-white hover:bg-accent/80 transition-colors">
+              A
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel className="text-xs text-slate-400 font-normal">
+              Admin
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={() => router.push("/settings")}
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onClick={() => router.push("/settings#password")}
+            >
+              <Lock className="mr-2 h-4 w-4" />
+              Change password
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="cursor-pointer text-rose-400 focus:text-rose-400"
+              onClick={handleLogout}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );
