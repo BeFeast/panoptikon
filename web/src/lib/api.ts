@@ -11,6 +11,9 @@ import type {
   Alert,
   AuditLogListResponse,
   AuthStatus,
+  ConfigBackup,
+  ConfigBackupListResponse,
+  ConfigDiffResponse,
   DashboardStats,
   DbSizeData,
   Device,
@@ -577,4 +580,35 @@ export function saveTopologyPositions(positions: NodePosition[]): Promise<void> 
 
 export function deleteTopologyPositions(): Promise<void> {
   return apiDelete("/api/v1/topology/positions");
+}
+
+// ─── Config Backups ─────────────────────────────────────
+
+export function fetchConfigBackups(
+  page = 1,
+  perPage = 25
+): Promise<ConfigBackupListResponse> {
+  return apiGet<ConfigBackupListResponse>(
+    `/api/v1/config-backups?page=${page}&per_page=${perPage}`
+  );
+}
+
+export function fetchConfigBackup(id: number): Promise<ConfigBackup> {
+  return apiGet<ConfigBackup>(`/api/v1/config-backups/${id}`);
+}
+
+export function createConfigBackup(label?: string): Promise<ConfigBackup> {
+  return apiPost<ConfigBackup>("/api/v1/config-backups", { label: label || null });
+}
+
+export function deleteConfigBackup(id: number): Promise<void> {
+  return apiDelete(`/api/v1/config-backups/${id}`);
+}
+
+export function fetchCurrentConfig(): Promise<{ config_text: string }> {
+  return apiGet<{ config_text: string }>("/api/v1/config-backups/current");
+}
+
+export function fetchConfigDiff(id: number): Promise<ConfigDiffResponse> {
+  return apiGet<ConfigDiffResponse>(`/api/v1/config-backups/${id}/diff`);
 }

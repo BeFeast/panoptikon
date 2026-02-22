@@ -499,6 +499,24 @@ export default function SettingsPage() {
         </Card>
       </a>
 
+      {/* Config Backup link */}
+      <a href="/settings/config-backup">
+        <Card className="border-slate-800 bg-slate-900 transition-colors hover:border-slate-700">
+          <CardContent className="flex items-center gap-3 py-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10">
+              <Database className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-white">Config Backup</p>
+              <p className="text-xs text-slate-500">
+                Download, snapshot, and restore VyOS router configurations.
+              </p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-600" />
+          </CardContent>
+        </Card>
+      </a>
+
       {/* VyOS Router Connection */}
       <Card className="border-slate-800 bg-slate-900">
         <CardHeader>

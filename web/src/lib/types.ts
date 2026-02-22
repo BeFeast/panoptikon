@@ -343,6 +343,32 @@ export interface AuditLogListResponse {
   per_page: number;
 }
 
+// ─── Config Backups ─────────────────────────────────────
+
+export interface ConfigBackupSummary {
+  id: number;
+  created_at: string;
+  label: string | null;
+  size_bytes: number;
+  created_by: string;
+}
+
+export interface ConfigBackup extends ConfigBackupSummary {
+  config_text: string;
+}
+
+export interface ConfigBackupListResponse {
+  items: ConfigBackupSummary[];
+  total: number;
+}
+
+export interface ConfigDiffResponse {
+  current: string;
+  backup: string;
+  backup_label: string | null;
+  backup_created_at: string;
+}
+
 // ─── Auth ───────────────────────────────────────────────
 
 export interface AuthStatus {

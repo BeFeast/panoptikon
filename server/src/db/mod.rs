@@ -34,6 +34,9 @@ const AUDIT_LOG_MIGRATION: &str = include_str!("migrations/009_audit_log.sql");
 /// Migration 010: device enrichment — OS fingerprinting, device type, model.
 const DEVICE_ENRICHMENT_MIGRATION: &str = include_str!("migrations/010_device_enrichment.sql");
 
+/// Migration 011: VyOS config backups table.
+const CONFIG_BACKUPS_MIGRATION: &str = include_str!("migrations/011_config_backups.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -247,6 +250,24 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 010_device_enrichment.sql");
     }
 
+    // Migration 011: VyOS config backups table.
+    let applied_11: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 11")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_11 {
+        sqlx::raw_sql(CONFIG_BACKUPS_MIGRATION)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (11)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 011_config_backups.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -291,6 +312,7 @@ mod tests {
             "device_events",
             "topology_positions",
             "audit_log",
+            "vyos_config_backups",
         ];
 
         for table in &expected_tables {
