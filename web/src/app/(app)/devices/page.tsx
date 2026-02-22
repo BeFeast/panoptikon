@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Cpu, Download, Loader2, LayoutGrid, List, MemoryStick, Pencil, Power, Radar, RotateCcw, Search, VolumeX, Wifi, WifiOff } from "lucide-react";
+import { ArrowDown, ArrowUp, Battery, Box, CircuitBoard, Container, Cpu, Download, Gamepad2, HardDrive, HelpCircle, Laptop, Loader2, LayoutGrid, List, MemoryStick, Monitor, Network, Pencil, Plus, Power, Printer, Radar, RotateCcw, Router, Search, Server, Smartphone, Tablet, Tv, VolumeX, Wifi, WifiOff } from "lucide-react";
 import { getDeviceIcon } from "@/lib/device-icons";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,13 +25,22 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDevice, resetDeviceCustom, fetchDeviceSysinfo } from "@/lib/api";
-import type { DeviceEvent, UptimeStats, PortScanResult, DeviceCustomFields } from "@/lib/api";
+import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDevice, resetDeviceCustom, fetchDeviceSysinfo, createAsset } from "@/lib/api";
+import type { DeviceEvent, UptimeStats, PortScanResult, DeviceCustomFields, CreateAssetRequest } from "@/lib/api";
 import type { Device, DeviceSysinfo } from "@/lib/types";
 import { formatPercent, timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
 import { getOsDisplay } from "@/lib/os-icons";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { PageTransition } from "@/components/PageTransition";
 import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
 import { MotionCard } from "@/components/MotionCard";
@@ -67,6 +76,7 @@ export default function DevicesPage() {
   });
   const [sortField, setSortField] = useState<SortField>("last_seen_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+  const [addAssetOpen, setAddAssetOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -198,33 +208,42 @@ export default function DevicesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold text-white">Devices</h1>
-        <Button
-          disabled={scanningNetwork}
-          onClick={async () => {
-            setScanningNetwork(true);
-            try {
-              await fetch("/api/v1/scanner/trigger", { method: "POST", credentials: "include" });
-              toast.success("Network scan complete");
-              await load();
-            } catch {
-              toast.error("Network scan failed");
-            } finally {
-              setTimeout(() => setScanningNetwork(false), 5000);
-            }
-          }}
-        >
-          {scanningNetwork ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Scanning…
-            </>
-          ) : (
-            <>
-              <Radar className="mr-2 h-4 w-4" />
-              Scan Now
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => setAddAssetOpen(true)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Add Asset
+          </Button>
+          <Button
+            disabled={scanningNetwork}
+            onClick={async () => {
+              setScanningNetwork(true);
+              try {
+                await fetch("/api/v1/scanner/trigger", { method: "POST", credentials: "include" });
+                toast.success("Network scan complete");
+                await load();
+              } catch {
+                toast.error("Network scan failed");
+              } finally {
+                setTimeout(() => setScanningNetwork(false), 5000);
+              }
+            }}
+          >
+            {scanningNetwork ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Scanning…
+              </>
+            ) : (
+              <>
+                <Radar className="mr-2 h-4 w-4" />
+                Scan Now
+              </>
+            )}
+          </Button>
+        </div>
       </div>
 
       {/* Filter bar */}
@@ -387,6 +406,13 @@ export default function DevicesPage() {
           onSelect={setSelectedDevice}
         />
       )}
+
+      {/* Add Asset dialog */}
+      <AddAssetDialog
+        open={addAssetOpen}
+        onOpenChange={setAddAssetOpen}
+        onCreated={load}
+      />
 
       {/* Slide-in detail panel */}
       <Sheet
@@ -978,6 +1004,38 @@ function DeviceInfoTab({
         </>
       )}
 
+      {/* Asset Inventory */}
+      {(device.location || device.owner || device.tags || device.cpu_manual ||
+        device.ram_manual || device.disk_manual || device.serial_number ||
+        device.purchase_date || device.warranty_expiry) && (
+        <>
+          <Separator className="bg-slate-800" />
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+            Asset Inventory
+          </p>
+          {device.location && <InfoRow label="Location" value={device.location} />}
+          {device.owner && <InfoRow label="Owner" value={device.owner} />}
+          {device.tags && (
+            <div className="flex items-baseline justify-between gap-4">
+              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">Tags</span>
+              <div className="flex flex-wrap justify-end gap-1">
+                {device.tags.split(",").map((tag) => (
+                  <Badge key={tag.trim()} variant="outline" className="border-slate-600 text-slate-400 text-[10px]">
+                    {tag.trim()}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+          {device.cpu_manual && <InfoRow label="CPU" value={device.cpu_manual} />}
+          {device.ram_manual && <InfoRow label="RAM" value={device.ram_manual} />}
+          {device.disk_manual && <InfoRow label="Disk" value={device.disk_manual} />}
+          {device.serial_number && <InfoRow label="Serial" value={device.serial_number} />}
+          {device.purchase_date && <InfoRow label="Purchased" value={device.purchase_date} />}
+          {device.warranty_expiry && <InfoRow label="Warranty" value={device.warranty_expiry} />}
+        </>
+      )}
+
       {/* Notes */}
       {device.notes && (
         <>
@@ -1363,8 +1421,8 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
 // ─── Device Edit Form ───────────────────────────────────
 
 const DEVICE_TYPE_OPTIONS = [
-  "", "phone", "laptop", "desktop", "router", "switch", "ap",
-  "smart-tv", "iot", "printer", "nas", "server", "tablet", "gaming", "other",
+  "", "server", "workstation", "desktop", "laptop", "vm", "container", "nas",
+  "router", "switch", "phone", "tablet", "printer", "iot", "ups", "tv", "gaming", "other",
 ];
 
 const OS_OPTIONS = [
@@ -1381,9 +1439,20 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
   const [customModel, setCustomModel] = useState(device.custom_model ?? "");
   const [notes, setNotes] = useState(device.notes ?? "");
   const [iconOverride, setIconOverride] = useState(device.icon_override ?? "");
+  const [location, setLocation] = useState(device.location ?? "");
+  const [owner, setOwner] = useState(device.owner ?? "");
+  const [editTags, setEditTags] = useState(device.tags ?? "");
+  const [cpuManual, setCpuManual] = useState(device.cpu_manual ?? "");
+  const [ramManual, setRamManual] = useState(device.ram_manual ?? "");
+  const [diskManual, setDiskManual] = useState(device.disk_manual ?? "");
+  const [purchaseDate, setPurchaseDate] = useState(device.purchase_date ?? "");
+  const [serialNumber, setSerialNumber] = useState(device.serial_number ?? "");
+  const [warrantyExpiry, setWarrantyExpiry] = useState(device.warranty_expiry ?? "");
 
   const hasCustomFields = !!(device.custom_name || device.custom_type || device.custom_os ||
-    device.custom_vendor || device.custom_model || device.notes || device.icon_override);
+    device.custom_vendor || device.custom_model || device.notes || device.icon_override ||
+    device.location || device.owner || device.tags || device.cpu_manual || device.ram_manual ||
+    device.disk_manual || device.purchase_date || device.serial_number || device.warranty_expiry);
 
   const handleSave = async () => {
     setSaving(true);
@@ -1396,6 +1465,15 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
       if (customModel) body.custom_model = customModel;
       if (notes) body.notes = notes;
       if (iconOverride) body.icon_override = iconOverride;
+      if (location) body.location = location;
+      if (owner) body.owner = owner;
+      if (editTags) body.tags = editTags;
+      if (cpuManual) body.cpu_manual = cpuManual;
+      if (ramManual) body.ram_manual = ramManual;
+      if (diskManual) body.disk_manual = diskManual;
+      if (purchaseDate) body.purchase_date = purchaseDate;
+      if (serialNumber) body.serial_number = serialNumber;
+      if (warrantyExpiry) body.warranty_expiry = warrantyExpiry;
       await updateDevice(device.id, body);
       toast.success("Device updated");
       onUpdate();
@@ -1411,13 +1489,10 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
     try {
       await resetDeviceCustom(device.id);
       toast.success("Custom fields reset to auto-detected values");
-      setCustomName("");
-      setCustomType("");
-      setCustomOs("");
-      setCustomVendor("");
-      setCustomModel("");
-      setNotes("");
-      setIconOverride("");
+      setCustomName(""); setCustomType(""); setCustomOs(""); setCustomVendor("");
+      setCustomModel(""); setNotes(""); setIconOverride(""); setLocation("");
+      setOwner(""); setEditTags(""); setCpuManual(""); setRamManual("");
+      setDiskManual(""); setPurchaseDate(""); setSerialNumber(""); setWarrantyExpiry("");
       onUpdate();
     } catch {
       toast.error("Failed to reset custom fields");
@@ -1517,6 +1592,55 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
           </select>
         </div>
 
+        <Separator className="bg-slate-800" />
+        <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">Asset Inventory</p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-[10px] text-slate-500">Location</label>
+            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Server Room" className="h-8 text-sm" />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate-500">Owner</label>
+            <Input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="e.g. IT Dept" className="h-8 text-sm" />
+          </div>
+        </div>
+
+        <div>
+          <label className="text-[10px] text-slate-500">Tags (comma-separated)</label>
+          <Input value={editTags} onChange={(e) => setEditTags(e.target.value)} placeholder="e.g. production, critical" className="h-8 text-sm" />
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="text-[10px] text-slate-500">CPU</label>
+            <Input value={cpuManual} onChange={(e) => setCpuManual(e.target.value)} placeholder="e.g. i5-12400" className="h-8 text-sm" />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate-500">RAM</label>
+            <Input value={ramManual} onChange={(e) => setRamManual(e.target.value)} placeholder="e.g. 16 GB" className="h-8 text-sm" />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate-500">Disk</label>
+            <Input value={diskManual} onChange={(e) => setDiskManual(e.target.value)} placeholder="e.g. 512 GB" className="h-8 text-sm" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="text-[10px] text-slate-500">Purchase Date</label>
+            <Input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className="h-8 text-sm" />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate-500">Serial #</label>
+            <Input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="SN123" className="h-8 text-sm" />
+          </div>
+          <div>
+            <label className="text-[10px] text-slate-500">Warranty</label>
+            <Input type="date" value={warrantyExpiry} onChange={(e) => setWarrantyExpiry(e.target.value)} className="h-8 text-sm" />
+          </div>
+        </div>
+
         <div>
           <label className="text-[11px] text-slate-500">Notes</label>
           <textarea
@@ -1549,6 +1673,367 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
         </Button>
       )}
     </div>
+  );
+}
+
+// ─── Asset Type Options with Icons ──────────────────────
+
+const ASSET_TYPE_OPTIONS: { value: string; label: string; icon: React.ElementType }[] = [
+  { value: "server", label: "Server", icon: Server },
+  { value: "workstation", label: "Workstation", icon: Monitor },
+  { value: "vm", label: "VM", icon: Box },
+  { value: "container", label: "Container", icon: Container },
+  { value: "nas", label: "NAS", icon: HardDrive },
+  { value: "router", label: "Router", icon: Router },
+  { value: "switch", label: "Switch", icon: Network },
+  { value: "iot", label: "IoT", icon: CircuitBoard },
+  { value: "phone", label: "Phone", icon: Smartphone },
+  { value: "printer", label: "Printer", icon: Printer },
+  { value: "ups", label: "UPS", icon: Battery },
+  { value: "desktop", label: "Desktop", icon: Monitor },
+  { value: "laptop", label: "Laptop", icon: Laptop },
+  { value: "tablet", label: "Tablet", icon: Tablet },
+  { value: "tv", label: "TV", icon: Tv },
+  { value: "gaming", label: "Gaming", icon: Gamepad2 },
+  { value: "other", label: "Other", icon: HelpCircle },
+];
+
+// ─── Add Asset Dialog ───────────────────────────────────
+
+function AddAssetDialog({
+  open,
+  onOpenChange,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onCreated: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState("");
+  const [assetType, setAssetType] = useState("");
+  const [ip, setIp] = useState("");
+  const [mac, setMac] = useState("");
+  const [location, setLocation] = useState("");
+  const [model, setModel] = useState("");
+  const [vendor, setVendor] = useState("");
+  const [cpuManual, setCpuManual] = useState("");
+  const [ramManual, setRamManual] = useState("");
+  const [diskManual, setDiskManual] = useState("");
+  const [os, setOs] = useState("");
+  const [osVersion, setOsVersion] = useState("");
+  const [owner, setOwner] = useState("");
+  const [tags, setTags] = useState("");
+  const [notes, setNotes] = useState("");
+  const [purchaseDate, setPurchaseDate] = useState("");
+  const [serialNumber, setSerialNumber] = useState("");
+  const [warrantyExpiry, setWarrantyExpiry] = useState("");
+
+  const resetForm = () => {
+    setName(""); setAssetType(""); setIp(""); setMac(""); setLocation("");
+    setModel(""); setVendor(""); setCpuManual(""); setRamManual(""); setDiskManual("");
+    setOs(""); setOsVersion(""); setOwner(""); setTags(""); setNotes("");
+    setPurchaseDate(""); setSerialNumber(""); setWarrantyExpiry("");
+  };
+
+  const handleSubmit = async () => {
+    if (!name.trim()) {
+      toast.error("Name is required");
+      return;
+    }
+    setSaving(true);
+    try {
+      const body: CreateAssetRequest = {
+        is_manual: true,
+        custom_name: name.trim(),
+      };
+      if (assetType) body.custom_type = assetType;
+      if (ip.trim()) body.ip = ip.trim();
+      if (mac.trim()) body.mac = mac.trim();
+      if (location.trim()) body.location = location.trim();
+      if (model.trim()) body.custom_model = model.trim();
+      if (vendor.trim()) body.custom_vendor = vendor.trim();
+      if (cpuManual.trim()) body.cpu_manual = cpuManual.trim();
+      if (ramManual.trim()) body.ram_manual = ramManual.trim();
+      if (diskManual.trim()) body.disk_manual = diskManual.trim();
+      if (os.trim()) body.custom_os = os.trim();
+      if (owner.trim()) body.owner = owner.trim();
+      if (tags.trim()) body.tags = tags.trim();
+      if (notes.trim()) body.notes = notes.trim();
+      if (purchaseDate) body.purchase_date = purchaseDate;
+      if (serialNumber.trim()) body.serial_number = serialNumber.trim();
+      if (warrantyExpiry) body.warranty_expiry = warrantyExpiry;
+
+      await createAsset(body);
+      toast.success("Asset created");
+      resetForm();
+      onOpenChange(false);
+      onCreated();
+    } catch {
+      toast.error("Failed to create asset");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-slate-800 bg-slate-950 sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-white">Add Asset</DialogTitle>
+          <DialogDescription>
+            Manually register a device that can&apos;t be auto-discovered (switches, printers, IoT, UPS, etc.)
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6">
+          {/* Name (required) */}
+          <div>
+            <label className="text-[11px] font-medium text-slate-400">
+              Name <span className="text-rose-400">*</span>
+            </label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Office Switch, Main Printer"
+              className="h-9 text-sm"
+              autoFocus
+            />
+          </div>
+
+          {/* Type selector with icons */}
+          <div>
+            <label className="text-[11px] font-medium text-slate-400">Type</label>
+            <div className="mt-1.5 grid grid-cols-4 gap-1.5 sm:grid-cols-6">
+              {ASSET_TYPE_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                const isSelected = assetType === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setAssetType(isSelected ? "" : opt.value)}
+                    className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2.5 text-[11px] transition-colors ${
+                      isSelected
+                        ? "border-blue-500 bg-blue-500/10 text-blue-400"
+                        : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-300"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4" />
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Network info */}
+          <div>
+            <p className="text-[11px] font-medium text-slate-400">Network</p>
+            <div className="mt-1.5 grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] text-slate-500">IP Address</label>
+                <Input
+                  value={ip}
+                  onChange={(e) => setIp(e.target.value)}
+                  placeholder="e.g. 10.10.0.1"
+                  className="h-8 text-sm font-mono"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500">MAC Address</label>
+                <Input
+                  value={mac}
+                  onChange={(e) => setMac(e.target.value)}
+                  placeholder="e.g. AA:BB:CC:DD:EE:FF"
+                  className="h-8 text-sm font-mono"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Hardware */}
+          <div>
+            <p className="text-[11px] font-medium text-slate-400">Hardware</p>
+            <div className="mt-1.5 grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] text-slate-500">Vendor / Manufacturer</label>
+                <Input
+                  value={vendor}
+                  onChange={(e) => setVendor(e.target.value)}
+                  placeholder="e.g. Cisco, HP, APC"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500">Model</label>
+                <Input
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="e.g. SG350-28, LaserJet Pro"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500">CPU</label>
+                <Input
+                  value={cpuManual}
+                  onChange={(e) => setCpuManual(e.target.value)}
+                  placeholder="e.g. Intel i5-12400"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500">RAM</label>
+                <Input
+                  value={ramManual}
+                  onChange={(e) => setRamManual(e.target.value)}
+                  placeholder="e.g. 16 GB DDR4"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] text-slate-500">Disk</label>
+                <Input
+                  value={diskManual}
+                  onChange={(e) => setDiskManual(e.target.value)}
+                  placeholder="e.g. 512 GB NVMe SSD"
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Software */}
+          <div>
+            <p className="text-[11px] font-medium text-slate-400">Software</p>
+            <div className="mt-1.5 grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] text-slate-500">OS</label>
+                <select
+                  value={os}
+                  onChange={(e) => setOs(e.target.value)}
+                  className="flex h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+                >
+                  <option value="">Select OS…</option>
+                  {OS_OPTIONS.filter(Boolean).map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500">OS Version</label>
+                <Input
+                  value={osVersion}
+                  onChange={(e) => setOsVersion(e.target.value)}
+                  placeholder="e.g. 22.04, 15.2"
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Location & ownership */}
+          <div>
+            <p className="text-[11px] font-medium text-slate-400">Location &amp; Ownership</p>
+            <div className="mt-1.5 grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-[10px] text-slate-500">Location</label>
+                <Input
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="e.g. Server Room, Office 2F"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500">Owner</label>
+                <Input
+                  value={owner}
+                  onChange={(e) => setOwner(e.target.value)}
+                  placeholder="e.g. IT Department"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="text-[10px] text-slate-500">Tags (comma-separated)</label>
+                <Input
+                  value={tags}
+                  onChange={(e) => setTags(e.target.value)}
+                  placeholder="e.g. production, critical, floor-2"
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Asset management */}
+          <div>
+            <p className="text-[11px] font-medium text-slate-400">Asset Management</p>
+            <div className="mt-1.5 grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-[10px] text-slate-500">Purchase Date</label>
+                <Input
+                  type="date"
+                  value={purchaseDate}
+                  onChange={(e) => setPurchaseDate(e.target.value)}
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500">Serial Number</label>
+                <Input
+                  value={serialNumber}
+                  onChange={(e) => setSerialNumber(e.target.value)}
+                  placeholder="e.g. SN123456"
+                  className="h-8 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] text-slate-500">Warranty Expiry</label>
+                <Input
+                  type="date"
+                  value={warrantyExpiry}
+                  onChange={(e) => setWarrantyExpiry(e.target.value)}
+                  className="h-8 text-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="text-[11px] font-medium text-slate-400">Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Additional notes about this asset…"
+              rows={2}
+              className="mt-1.5 flex w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-600"
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="mt-2">
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button disabled={saving || !name.trim()} onClick={handleSubmit}>
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating…
+              </>
+            ) : (
+              <>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Asset
+              </>
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

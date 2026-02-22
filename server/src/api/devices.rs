@@ -88,14 +88,62 @@ pub struct Device {
     /// Icon override (user-picked)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub icon_override: Option<String>,
+    /// Whether this device was manually created (not auto-discovered)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_manual: Option<bool>,
+    /// Physical location
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<String>,
+    /// Asset owner
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub owner: Option<String>,
+    /// Comma-separated tags
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tags: Option<String>,
+    /// Manual CPU spec entry
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cpu_manual: Option<String>,
+    /// Manual RAM spec entry
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ram_manual: Option<String>,
+    /// Manual disk spec entry
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disk_manual: Option<String>,
+    /// Purchase date
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub purchase_date: Option<String>,
+    /// Warranty expiry date
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub warranty_expiry: Option<String>,
+    /// Serial number (manual entry)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub serial_number: Option<String>,
 }
 
 /// Request body for creating a device.
 #[derive(Debug, Deserialize)]
 pub struct CreateDevice {
-    pub mac: String,
+    pub mac: Option<String>,
     pub name: Option<String>,
     pub hostname: Option<String>,
+    /// Manual asset fields
+    pub is_manual: Option<bool>,
+    pub ip: Option<String>,
+    pub custom_name: Option<String>,
+    pub custom_type: Option<String>,
+    pub custom_os: Option<String>,
+    pub custom_vendor: Option<String>,
+    pub custom_model: Option<String>,
+    pub notes: Option<String>,
+    pub location: Option<String>,
+    pub owner: Option<String>,
+    pub tags: Option<String>,
+    pub cpu_manual: Option<String>,
+    pub ram_manual: Option<String>,
+    pub disk_manual: Option<String>,
+    pub purchase_date: Option<String>,
+    pub warranty_expiry: Option<String>,
+    pub serial_number: Option<String>,
 }
 
 /// Request body for updating a device.
@@ -112,6 +160,15 @@ pub struct UpdateDevice {
     pub custom_vendor: Option<String>,
     pub custom_model: Option<String>,
     pub icon_override: Option<String>,
+    pub location: Option<String>,
+    pub owner: Option<String>,
+    pub tags: Option<String>,
+    pub cpu_manual: Option<String>,
+    pub ram_manual: Option<String>,
+    pub disk_manual: Option<String>,
+    pub purchase_date: Option<String>,
+    pub warranty_expiry: Option<String>,
+    pub serial_number: Option<String>,
 }
 
 impl Device {
@@ -166,6 +223,19 @@ impl Device {
             custom_vendor: row.try_get("custom_vendor").unwrap_or(None),
             custom_model: row.try_get("custom_model").unwrap_or(None),
             icon_override: row.try_get("icon_override").unwrap_or(None),
+            is_manual: row
+                .try_get::<i32, _>("is_manual")
+                .ok()
+                .map(|v| v != 0),
+            location: row.try_get("location").unwrap_or(None),
+            owner: row.try_get("owner").unwrap_or(None),
+            tags: row.try_get("tags").unwrap_or(None),
+            cpu_manual: row.try_get("cpu_manual").unwrap_or(None),
+            ram_manual: row.try_get("ram_manual").unwrap_or(None),
+            disk_manual: row.try_get("disk_manual").unwrap_or(None),
+            purchase_date: row.try_get("purchase_date").unwrap_or(None),
+            warranty_expiry: row.try_get("warranty_expiry").unwrap_or(None),
+            serial_number: row.try_get("serial_number").unwrap_or(None),
         })
     }
 }
@@ -180,6 +250,8 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Device>>, St
                d.os_family, d.os_version, d.device_type, d.device_model,
                d.device_brand, d.enrichment_source, d.enrichment_corrected, d.is_randomized_mac,
                d.custom_name, d.custom_type, d.custom_os, d.custom_vendor, d.custom_model, d.icon_override,
+               d.is_manual, d.location, d.owner, d.tags, d.cpu_manual, d.ram_manual, d.disk_manual,
+               d.purchase_date, d.warranty_expiry, d.serial_number,
                a.id AS agent_id,
                a.name AS agent_name,
                r.cpu_percent AS agent_cpu_percent,
@@ -244,6 +316,8 @@ pub async fn get_one(
                d.os_family, d.os_version, d.device_type, d.device_model,
                d.device_brand, d.enrichment_source, d.enrichment_corrected, d.is_randomized_mac,
                d.custom_name, d.custom_type, d.custom_os, d.custom_vendor, d.custom_model, d.icon_override,
+               d.is_manual, d.location, d.owner, d.tags, d.cpu_manual, d.ram_manual, d.disk_manual,
+               d.purchase_date, d.warranty_expiry, d.serial_number,
                a.id AS agent_id,
                a.name AS agent_name,
                r.cpu_percent AS agent_cpu_percent,
@@ -285,6 +359,19 @@ pub async fn get_one(
     Ok(Json(device))
 }
 
+/// Generate a locally-administered MAC address for manual devices without a real MAC.
+/// Uses UUID v4 bytes to create a unique MAC with the locally-administered bit set.
+fn generate_manual_mac() -> String {
+    let uuid_bytes = uuid::Uuid::new_v4();
+    let bytes = uuid_bytes.as_bytes();
+    // Set locally administered bit (bit 1 of first octet) and clear multicast bit (bit 0)
+    let first = (bytes[0] | 0x02) & 0xFE;
+    format!(
+        "{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}",
+        first, bytes[1], bytes[2], bytes[3], bytes[4], bytes[5]
+    )
+}
+
 /// POST /api/v1/devices — create a new device.
 pub async fn create(
     State(state): State<AppState>,
@@ -292,17 +379,46 @@ pub async fn create(
 ) -> Result<(StatusCode, Json<Device>), StatusCode> {
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
+    let is_manual = body.is_manual.unwrap_or(false);
+
+    // For manual devices, MAC is optional — generate a unique locally-administered one if missing
+    let mac = match &body.mac {
+        Some(m) if !m.is_empty() => m.clone(),
+        _ => generate_manual_mac(),
+    };
+
+    let name = body.custom_name.clone().or(body.name.clone());
 
     sqlx::query(
-        "INSERT INTO devices (id, mac, name, hostname, first_seen_at, last_seen_at) \
-         VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO devices (id, mac, name, hostname, first_seen_at, last_seen_at, \
+         is_manual, is_known, custom_name, custom_type, custom_os, custom_vendor, custom_model, \
+         notes, location, owner, tags, cpu_manual, ram_manual, disk_manual, \
+         purchase_date, warranty_expiry, serial_number) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
-    .bind(&body.mac)
-    .bind(&body.name)
+    .bind(&mac)
+    .bind(&name)
     .bind(&body.hostname)
     .bind(&now)
     .bind(&now)
+    .bind(is_manual as i32)
+    .bind(if is_manual { 1 } else { 0 }) // manual devices are auto-known
+    .bind(&body.custom_name)
+    .bind(&body.custom_type)
+    .bind(&body.custom_os)
+    .bind(&body.custom_vendor)
+    .bind(&body.custom_model)
+    .bind(&body.notes)
+    .bind(&body.location)
+    .bind(&body.owner)
+    .bind(&body.tags)
+    .bind(&body.cpu_manual)
+    .bind(&body.ram_manual)
+    .bind(&body.disk_manual)
+    .bind(&body.purchase_date)
+    .bind(&body.warranty_expiry)
+    .bind(&body.serial_number)
     .execute(&state.db)
     .await
     .map_err(|e| {
@@ -310,20 +426,42 @@ pub async fn create(
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
+    // If an IP was provided, insert it into device_ips for display
+    let mut ips = vec![];
+    if let Some(ref ip) = body.ip {
+        if !ip.is_empty() {
+            sqlx::query(
+                "INSERT OR IGNORE INTO device_ips (device_id, ip, first_seen_at, last_seen_at, is_current) \
+                 VALUES (?, ?, ?, ?, 1)",
+            )
+            .bind(&id)
+            .bind(ip)
+            .bind(&now)
+            .bind(&now)
+            .execute(&state.db)
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to insert device IP: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+            ips.push(ip.clone());
+        }
+    }
+
     let device = Device {
         id,
-        mac: body.mac,
-        name: body.name,
+        mac: mac.clone(),
+        name,
         hostname: body.hostname,
         vendor: None,
         icon: "device".to_string(),
-        notes: None,
-        is_known: false,
+        notes: body.notes,
+        is_known: is_manual,
         is_favorite: false,
         first_seen_at: now.clone(),
         last_seen_at: now,
         is_online: false,
-        ips: vec![],
+        ips,
         mdns_services: None,
         agent: None,
         muted_until: None,
@@ -335,12 +473,22 @@ pub async fn create(
         enrichment_source: None,
         enrichment_corrected: None,
         is_randomized_mac: None,
-        custom_name: None,
-        custom_type: None,
-        custom_os: None,
-        custom_vendor: None,
-        custom_model: None,
+        custom_name: body.custom_name,
+        custom_type: body.custom_type,
+        custom_os: body.custom_os,
+        custom_vendor: body.custom_vendor,
+        custom_model: body.custom_model,
         icon_override: None,
+        is_manual: Some(is_manual),
+        location: body.location,
+        owner: body.owner,
+        tags: body.tags,
+        cpu_manual: body.cpu_manual,
+        ram_manual: body.ram_manual,
+        disk_manual: body.disk_manual,
+        purchase_date: body.purchase_date,
+        warranty_expiry: body.warranty_expiry,
+        serial_number: body.serial_number,
     };
 
     Ok((StatusCode::CREATED, Json(device)))
@@ -367,6 +515,15 @@ pub async fn update(
          custom_vendor = COALESCE(?, custom_vendor), \
          custom_model = COALESCE(?, custom_model), \
          icon_override = COALESCE(?, icon_override), \
+         location = COALESCE(?, location), \
+         owner = COALESCE(?, owner), \
+         tags = COALESCE(?, tags), \
+         cpu_manual = COALESCE(?, cpu_manual), \
+         ram_manual = COALESCE(?, ram_manual), \
+         disk_manual = COALESCE(?, disk_manual), \
+         purchase_date = COALESCE(?, purchase_date), \
+         warranty_expiry = COALESCE(?, warranty_expiry), \
+         serial_number = COALESCE(?, serial_number), \
          updated_at = ? \
          WHERE id = ?",
     )
@@ -381,6 +538,15 @@ pub async fn update(
     .bind(&body.custom_vendor)
     .bind(&body.custom_model)
     .bind(&body.icon_override)
+    .bind(&body.location)
+    .bind(&body.owner)
+    .bind(&body.tags)
+    .bind(&body.cpu_manual)
+    .bind(&body.ram_manual)
+    .bind(&body.disk_manual)
+    .bind(&body.purchase_date)
+    .bind(&body.warranty_expiry)
+    .bind(&body.serial_number)
     .bind(&now)
     .bind(&id)
     .execute(&state.db)
@@ -413,6 +579,15 @@ pub async fn reset_custom(
          custom_model = NULL, \
          icon_override = NULL, \
          notes = NULL, \
+         location = NULL, \
+         owner = NULL, \
+         tags = NULL, \
+         cpu_manual = NULL, \
+         ram_manual = NULL, \
+         disk_manual = NULL, \
+         purchase_date = NULL, \
+         warranty_expiry = NULL, \
+         serial_number = NULL, \
          updated_at = ? \
          WHERE id = ?",
     )
@@ -1131,6 +1306,8 @@ mod tests {
                    d.os_family, d.os_version, d.device_type, d.device_model,
                    d.device_brand, d.enrichment_source, d.enrichment_corrected, d.is_randomized_mac,
                    d.custom_name, d.custom_type, d.custom_os, d.custom_vendor, d.custom_model, d.icon_override,
+               d.is_manual, d.location, d.owner, d.tags, d.cpu_manual, d.ram_manual, d.disk_manual,
+               d.purchase_date, d.warranty_expiry, d.serial_number,
                    a.id AS agent_id,
                    a.name AS agent_name,
                    r.cpu_percent AS agent_cpu_percent,
