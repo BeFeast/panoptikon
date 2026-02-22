@@ -27,6 +27,7 @@ pub mod metrics;
 pub mod npm;
 pub mod scanner;
 pub mod search;
+pub mod services;
 pub mod settings;
 pub mod setup;
 pub mod speedtest;
@@ -349,6 +350,9 @@ pub fn router(state: AppState) -> Router {
         .route("/npm/access-lists", post(npm::create_access_list))
         .route("/npm/access-lists/:id", put(npm::update_access_list))
         .route("/npm/access-lists/:id", delete(npm::delete_access_list))
+        // Unified Services wizard
+        .route("/services/add", post(services::add_service))
+        .route("/services/remove", post(services::remove_service))
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))

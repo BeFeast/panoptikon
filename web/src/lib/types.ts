@@ -688,3 +688,58 @@ export interface AuthStatus {
 export interface LoginResponse {
   message: string;
 }
+
+// ─── Services Wizard ───────────────────────────────────
+
+export interface AddServiceRequest {
+  name: string;
+  description?: string;
+  internal_ip: string;
+  internal_port: number;
+  forward_scheme?: string;
+  domain_names?: string[];
+  ssl_mode?: string;
+  letsencrypt_email?: string;
+  ssl_forced?: boolean;
+  http2_support?: boolean;
+  block_exploits?: boolean;
+  allow_websocket_upgrade?: boolean;
+  create_firewall_rule?: boolean;
+  firewall_chain?: string;
+  firewall_rule_number?: number;
+  firewall_protocol?: string;
+  firewall_source_address?: string;
+  create_dnat_rule?: boolean;
+  dnat_rule_number?: number;
+  dnat_external_port?: number;
+  dnat_inbound_interface?: string;
+  dnat_protocol?: string;
+}
+
+export interface StepResult {
+  step: string;
+  success: boolean;
+  message: string;
+  resource_id: string | null;
+}
+
+export interface AddServiceResponse {
+  success: boolean;
+  steps: StepResult[];
+}
+
+export interface RemoveResource {
+  resource_type: string;
+  resource_id: string;
+  chain?: string;
+}
+
+export interface RemoveServiceRequest {
+  name: string;
+  resources: RemoveResource[];
+}
+
+export interface RemoveServiceResponse {
+  success: boolean;
+  steps: StepResult[];
+}
