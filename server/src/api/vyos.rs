@@ -1903,7 +1903,10 @@ pub async fn create_static_route(
 
     if is_blackhole {
         // Blackhole route: set protocols static route <dest> blackhole
-        tracing::info!("VyOS: creating blackhole static route for {}", body.destination);
+        tracing::info!(
+            "VyOS: creating blackhole static route for {}",
+            body.destination
+        );
 
         let result = client
             .configure_set(&[
