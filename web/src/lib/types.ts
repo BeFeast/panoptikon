@@ -444,6 +444,13 @@ export interface NpmStream {
   enabled: boolean;
 }
 
+export interface NpmDeadHost {
+  id: number;
+  domain_names: string[];
+  ssl_forced: boolean;
+  enabled: boolean;
+}
+
 export interface DbSizeData {
   size_bytes: number;
 }

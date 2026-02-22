@@ -29,6 +29,7 @@ import type {
   NetflowStatus,
   NpmCertificate,
   NpmConnectionStatus,
+  NpmDeadHost,
   NpmProxyHost,
   NpmProxyHostRequest,
   NpmRedirectionHost,
@@ -969,4 +970,21 @@ export function toggleNpmStream(
   enabled: boolean
 ): Promise<void> {
   return apiPost<void>(`/api/v1/npm/streams/${id}/toggle`, { enabled });
+}
+
+// ─── Dead Hosts ─────────────────────────────────────────
+
+export function fetchNpmDeadHosts(): Promise<NpmDeadHost[]> {
+  return apiGet<NpmDeadHost[]>("/api/v1/npm/dead-hosts");
+}
+
+export function createNpmDeadHost(body: {
+  domain_names: string[];
+  ssl_forced: boolean;
+}): Promise<NpmDeadHost> {
+  return apiPost<NpmDeadHost>("/api/v1/npm/dead-hosts", body);
+}
+
+export function deleteNpmDeadHost(id: number): Promise<void> {
+  return apiDelete(`/api/v1/npm/dead-hosts/${id}`);
 }

@@ -342,6 +342,9 @@ pub fn router(state: AppState) -> Router {
         .route("/npm/streams/:id", put(npm::update_stream))
         .route("/npm/streams/:id", delete(npm::delete_stream))
         .route("/npm/streams/:id/toggle", post(npm::toggle_stream))
+        .route("/npm/dead-hosts", get(npm::dead_hosts))
+        .route("/npm/dead-hosts", post(npm::create_dead_host))
+        .route("/npm/dead-hosts/:id", delete(npm::delete_dead_host))
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))
