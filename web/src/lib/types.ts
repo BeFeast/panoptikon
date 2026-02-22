@@ -369,6 +369,35 @@ export interface ConfigDiffResponse {
   backup_created_at: string;
 }
 
+// ─── WireGuard VPN ──────────────────────────────────────
+
+export interface WireguardPeer {
+  name: string;
+  public_key: string | null;
+  allowed_ips: string[];
+  endpoint: string | null;
+  persistent_keepalive: number | null;
+}
+
+export interface WireguardInterface {
+  name: string;
+  address: string | null;
+  port: number | null;
+  public_key: string | null;
+  peers: WireguardPeer[];
+}
+
+export interface WireguardKeyPair {
+  private_key: string;
+  public_key: string;
+}
+
+export interface ClientConfigResponse {
+  config: string;
+  private_key: string;
+  public_key: string;
+}
+
 // ─── Auth ───────────────────────────────────────────────
 
 export interface AuthStatus {

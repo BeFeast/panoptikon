@@ -84,6 +84,25 @@ impl VyosClient {
         self.post_form("/configure", &data).await
     }
 
+    /// POST /generate — run a generate command (e.g. WireGuard keypair).
+    ///
+    /// Example: `generate(&["wireguard", "key-pair"])` generates a new WireGuard key pair.
+    pub async fn generate(&self, path: &[&str]) -> Result<Value> {
+        let data = serde_json::json!({
+            "op": "generate",
+            "path": path,
+        });
+        self.post_form("/generate", &data).await
+    }
+
+    /// POST /config-file — save the running configuration to disk.
+    pub async fn config_save(&self) -> Result<Value> {
+        let data = serde_json::json!({
+            "op": "save",
+        });
+        self.post_form("/config-file", &data).await
+    }
+
     /// Run an nmap scan against a target IP via VyOS.
     ///
     /// Uses the VyOS `/show` endpoint with `path: ["nmap", "-sV", "<ip>"]`.
