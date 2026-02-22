@@ -41,6 +41,9 @@ const CONFIG_BACKUPS_MIGRATION: &str = include_str!("migrations/011_config_backu
 const DEVICE_FINGERPRINTING_MIGRATION: &str =
     include_str!("migrations/012_device_fingerprinting.sql");
 
+/// Migration 013: speedtest history table.
+const SPEEDTEST_HISTORY_MIGRATION: &str = include_str!("migrations/013_speedtest_history.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -304,6 +307,24 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 012_device_fingerprinting.sql");
     }
 
+    // Migration 013: speedtest history table.
+    let applied_13: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 13")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_13 {
+        sqlx::raw_sql(SPEEDTEST_HISTORY_MIGRATION)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (13)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 013_speedtest_history.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -350,6 +371,7 @@ mod tests {
             "audit_log",
             "vyos_config_backups",
             "device_sysinfo",
+            "speedtest_history",
         ];
 
         for table in &expected_tables {

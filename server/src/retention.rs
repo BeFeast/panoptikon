@@ -5,14 +5,32 @@ use tracing::{error, info};
 use crate::config::RetentionConfig;
 
 /// Run one cycle of retention cleanup: delete old rows from traffic_samples,
-/// agent_reports, device_events, and acknowledged alerts.
+/// agent_reports, device_events, acknowledged alerts, and speedtest history.
 /// Returns the counts of deleted rows.
-pub async fn run_cleanup(pool: &SqlitePool, config: &RetentionConfig) -> (u64, u64, u64, u64) {
+pub async fn run_cleanup(pool: &SqlitePool, config: &RetentionConfig) -> (u64, u64, u64, u64, u64) {
     let traffic = delete_old_traffic_samples(pool, config.traffic_samples_hours).await;
     let reports = delete_old_agent_reports(pool, config.agent_reports_days).await;
     let events = delete_old_device_events(pool, config.device_events_days).await;
     let alerts = delete_old_alerts(pool, config.alerts_days).await;
-    (traffic, reports, events, alerts)
+
+    // Speedtest retention: read from settings DB (runtime-configurable), default 90 days.
+    let speedtest_days = get_speedtest_retention_days(pool).await;
+    let speedtests = crate::api::speedtest::delete_old_speedtests(pool, speedtest_days).await;
+
+    (traffic, reports, events, alerts, speedtests)
+}
+
+/// Read the speedtest retention setting from the DB, falling back to 90 days.
+async fn get_speedtest_retention_days(pool: &SqlitePool) -> u64 {
+    match sqlx::query_scalar::<_, String>(
+        "SELECT value FROM settings WHERE key = 'speedtest_retention_days'",
+    )
+    .fetch_optional(pool)
+    .await
+    {
+        Ok(Some(v)) => v.parse().unwrap_or(90),
+        _ => 90,
+    }
 }
 
 async fn delete_old_traffic_samples(pool: &SqlitePool, hours: u64) -> u64 {
@@ -148,13 +166,14 @@ pub fn start_retention_task(pool: SqlitePool, config: RetentionConfig) {
         loop {
             interval.tick().await;
             info!("retention: starting hourly cleanup");
-            let (traffic, reports, events, alerts) = run_cleanup(&pool, &config).await;
-            if traffic + reports + events + alerts > 0 {
+            let (traffic, reports, events, alerts, speedtests) = run_cleanup(&pool, &config).await;
+            if traffic + reports + events + alerts + speedtests > 0 {
                 info!(
                     traffic_samples = traffic,
                     agent_reports = reports,
                     device_events = events,
                     alerts = alerts,
+                    speedtests = speedtests,
                     "retention: cleanup completed"
                 );
             }
@@ -199,7 +218,7 @@ mod tests {
         .unwrap();
 
         let config = default_config();
-        let (traffic, _, _, _) = run_cleanup(&pool, &config).await;
+        let (traffic, _, _, _, _) = run_cleanup(&pool, &config).await;
         assert_eq!(traffic, 1, "Should delete 1 old traffic sample");
 
         let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM traffic_samples")
@@ -231,7 +250,7 @@ mod tests {
         .unwrap();
 
         let config = default_config();
-        let (traffic, _, _, _) = run_cleanup(&pool, &config).await;
+        let (traffic, _, _, _, _) = run_cleanup(&pool, &config).await;
         assert_eq!(traffic, 0, "Should not delete recent traffic sample");
 
         let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM traffic_samples")
@@ -264,7 +283,7 @@ mod tests {
         .unwrap();
 
         let config = default_config();
-        let (_, reports, _, _) = run_cleanup(&pool, &config).await;
+        let (_, reports, _, _, _) = run_cleanup(&pool, &config).await;
         assert_eq!(reports, 1, "Should delete 1 old agent report");
 
         let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM agent_reports")
@@ -296,7 +315,7 @@ mod tests {
         .unwrap();
 
         let config = default_config();
-        let (_, reports, _, _) = run_cleanup(&pool, &config).await;
+        let (_, reports, _, _, _) = run_cleanup(&pool, &config).await;
         assert_eq!(reports, 0, "Should not delete recent agent report");
     }
 
@@ -322,7 +341,7 @@ mod tests {
         .unwrap();
 
         let config = default_config();
-        let (_, _, events, _) = run_cleanup(&pool, &config).await;
+        let (_, _, events, _, _) = run_cleanup(&pool, &config).await;
         assert_eq!(events, 1, "Should delete 1 old device event");
     }
 
@@ -340,7 +359,7 @@ mod tests {
         .unwrap();
 
         let config = default_config();
-        let (_, _, _, alerts) = run_cleanup(&pool, &config).await;
+        let (_, _, _, alerts, _) = run_cleanup(&pool, &config).await;
         assert_eq!(alerts, 1, "Should delete 1 old acknowledged alert");
     }
 
@@ -358,7 +377,7 @@ mod tests {
         .unwrap();
 
         let config = default_config();
-        let (_, _, _, alerts) = run_cleanup(&pool, &config).await;
+        let (_, _, _, alerts, _) = run_cleanup(&pool, &config).await;
         assert_eq!(alerts, 0, "Should NOT delete unacknowledged alert");
 
         let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM alerts")

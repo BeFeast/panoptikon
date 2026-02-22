@@ -5128,6 +5128,22 @@ pub async fn speedtest(
         *last = Some(result.clone());
     }
 
+    // Persist to database for history tracking
+    super::speedtest::persist_result(
+        &state.db,
+        super::speedtest::SpeedTestPersistParams {
+            download_mbps: result.download_mbps,
+            upload_mbps: result.upload_mbps,
+            ping_ms: result.ping_ms,
+            jitter_ms: result.jitter_ms,
+            packet_loss: result.packet_loss,
+            isp: &result.isp,
+            server_name: &result.server,
+            result_url: result.result_url.as_deref(),
+        },
+    )
+    .await;
+
     tracing::info!(
         "WAN speed test complete via {server}: download={:.2} Mbps, upload={:.2} Mbps, ping={:.1} ms",
         result.download_mbps,
