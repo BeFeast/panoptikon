@@ -130,6 +130,14 @@ export function acknowledgeAlert(id: string, note?: string): Promise<void> {
   return apiPost<void>(`/api/v1/alerts/${id}/acknowledge`, { note });
 }
 
+export function deleteAlert(id: string): Promise<void> {
+  return apiDelete(`/api/v1/alerts/${id}`);
+}
+
+export function deleteAllAlerts(): Promise<void> {
+  return apiDelete("/api/v1/alerts");
+}
+
 export function markAllAlertsRead(): Promise<void> {
   return apiPost<void>("/api/v1/alerts/mark-all-read");
 }

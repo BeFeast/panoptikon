@@ -181,6 +181,40 @@ pub async fn acknowledge(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// DELETE /api/v1/alerts/:id — delete a single alert.
+pub async fn delete_one(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, StatusCode> {
+    let result = sqlx::query("DELETE FROM alerts WHERE id = ?")
+        .bind(&id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to delete alert {id}: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    if result.rows_affected() == 0 {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// DELETE /api/v1/alerts — delete all alerts.
+pub async fn delete_all(State(state): State<AppState>) -> Result<StatusCode, StatusCode> {
+    sqlx::query("DELETE FROM alerts")
+        .execute(&state.db)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to delete all alerts: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// Query parameters for muting a device.
 #[derive(Debug, Deserialize)]
 pub struct MuteQuery {
@@ -408,6 +442,78 @@ mod tests {
             .unwrap();
 
         assert_eq!(severity, "WARNING", "Default severity should be 'WARNING'");
+    }
+
+    #[tokio::test]
+    async fn test_delete_single_alert() {
+        let pool = test_db().await;
+        let device_id = insert_test_device(&pool, "AA:BB:CC:DD:EE:10").await;
+        let alert_id = insert_test_alert(&pool, &device_id, "device_offline", "WARNING").await;
+
+        // Delete the alert
+        let result = sqlx::query("DELETE FROM alerts WHERE id = ?")
+            .bind(&alert_id)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(result.rows_affected(), 1, "Should delete exactly one alert");
+
+        // Verify it's gone
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM alerts WHERE id = ?")
+            .bind(&alert_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 0, "Alert should no longer exist");
+    }
+
+    #[tokio::test]
+    async fn test_delete_all_alerts() {
+        let pool = test_db().await;
+        let device_id = insert_test_device(&pool, "AA:BB:CC:DD:EE:11").await;
+        insert_test_alert(&pool, &device_id, "device_offline", "WARNING").await;
+        insert_test_alert(&pool, &device_id, "new_device", "INFO").await;
+        insert_test_alert(&pool, &device_id, "device_online", "INFO").await;
+
+        // Delete all
+        sqlx::query("DELETE FROM alerts")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM alerts")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(count, 0, "All alerts should be deleted");
+    }
+
+    #[tokio::test]
+    async fn test_mark_all_read() {
+        let pool = test_db().await;
+        let device_id = insert_test_device(&pool, "AA:BB:CC:DD:EE:12").await;
+        insert_test_alert(&pool, &device_id, "device_offline", "WARNING").await;
+        insert_test_alert(&pool, &device_id, "new_device", "INFO").await;
+
+        // Verify both are unread
+        let unread: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM alerts WHERE is_read = 0")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(unread, 2, "Both alerts should start as unread");
+
+        // Mark all as read
+        sqlx::query("UPDATE alerts SET is_read = 1 WHERE is_read = 0")
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let unread_after: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM alerts WHERE is_read = 0")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(unread_after, 0, "No unread alerts should remain");
     }
 
     #[tokio::test]

@@ -11,8 +11,10 @@ import {
   Clock,
   MonitorSmartphone,
   Shield,
+  Trash2,
   VolumeX,
   Wifi,
+  X,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,6 +34,9 @@ import {
   markAlertRead,
   acknowledgeAlert,
   muteDevice,
+  deleteAlert,
+  deleteAllAlerts,
+  markAllAlertsRead,
 } from "@/lib/api";
 import type { Alert } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
@@ -106,6 +111,7 @@ export default function AlertsPage() {
   const [ackAlertId, setAckAlertId] = useState<string | null>(null);
   const [ackNote, setAckNote] = useState("");
   const [muteDropdownId, setMuteDropdownId] = useState<string | null>(null);
+  const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -162,6 +168,36 @@ export default function AlertsPage() {
     }
   }
 
+  async function handleDeleteOne(id: string) {
+    try {
+      await deleteAlert(id);
+      setAlerts((prev) => (prev ?? []).filter((a) => a.id !== id));
+    } catch {
+      // silently ignore
+    }
+  }
+
+  async function handleDeleteAll() {
+    try {
+      await deleteAllAlerts();
+      setAlerts([]);
+      setClearAllDialogOpen(false);
+    } catch {
+      // silently ignore
+    }
+  }
+
+  async function handleMarkAllRead() {
+    try {
+      await markAllAlertsRead();
+      setAlerts((prev) =>
+        (prev ?? []).map((a) => ({ ...a, is_read: true }))
+      );
+    } catch {
+      // silently ignore
+    }
+  }
+
   async function handleMute(deviceId: string, hours: number) {
     try {
       await muteDevice(deviceId, hours);
@@ -202,6 +238,30 @@ export default function AlertsPage() {
             </Badge>
           )}
         </div>
+        {alerts && alerts.length > 0 && (
+          <div className="flex items-center gap-2">
+            {(alerts ?? []).some((a) => !a.is_read) && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-gray-700 text-slate-400 hover:text-gray-200 gap-1.5"
+                onClick={handleMarkAllRead}
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+                Mark all read
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-gray-700 text-slate-400 hover:text-rose-400 gap-1.5"
+              onClick={() => setClearAllDialogOpen(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Clear all
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Filter tabs */}
@@ -389,6 +449,20 @@ export default function AlertsPage() {
                       )}
                     </div>
                   )}
+
+                  {/* Delete */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-slate-500 hover:text-rose-400"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteOne(alert.id);
+                    }}
+                    title="Delete alert"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -423,6 +497,33 @@ export default function AlertsPage() {
               Cancel
             </Button>
             <Button onClick={handleAcknowledge}>Acknowledge</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clear All Confirmation Dialog */}
+      <Dialog open={clearAllDialogOpen} onOpenChange={setClearAllDialogOpen}>
+        <DialogContent className="bg-slate-900 border-slate-800">
+          <DialogHeader>
+            <DialogTitle>Delete All Alerts</DialogTitle>
+            <DialogDescription>
+              Delete all {alerts?.length ?? 0} alerts? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setClearAllDialogOpen(false)}
+              className="border-gray-700"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAll}
+            >
+              Delete all
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
