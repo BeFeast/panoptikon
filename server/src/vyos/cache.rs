@@ -12,10 +12,11 @@ use std::time::{Duration, Instant};
 /// Default time-to-live for cached VyOS responses.
 const DEFAULT_TTL: Duration = Duration::from_secs(30);
 
-/// A cache entry: the JSON value and the instant it was stored.
+/// A cache entry: the JSON value, the instant it was stored, and its TTL.
 struct Entry {
     value: Value,
     inserted: Instant,
+    ttl: Duration,
 }
 
 /// Thread-safe TTL cache backed by [`DashMap`].
@@ -36,7 +37,7 @@ impl VyosCache {
     /// Look up a cached value. Returns `None` if missing or expired.
     pub fn get(&self, key: &str) -> Option<Value> {
         let entry = self.map.get(key)?;
-        if entry.inserted.elapsed() < self.ttl {
+        if entry.inserted.elapsed() < entry.ttl {
             Some(entry.value.clone())
         } else {
             drop(entry); // release read lock before removing
@@ -45,13 +46,26 @@ impl VyosCache {
         }
     }
 
-    /// Insert or update a cache entry.
+    /// Insert or update a cache entry with the default TTL.
     pub fn set(&self, key: String, value: Value) {
         self.map.insert(
             key,
             Entry {
                 value,
                 inserted: Instant::now(),
+                ttl: self.ttl,
+            },
+        );
+    }
+
+    /// Insert or update a cache entry with a custom TTL.
+    pub fn set_with_ttl(&self, key: String, value: Value, ttl: Duration) {
+        self.map.insert(
+            key,
+            Entry {
+                value,
+                inserted: Instant::now(),
+                ttl,
             },
         );
     }

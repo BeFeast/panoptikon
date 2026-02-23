@@ -466,12 +466,18 @@ pub async fn router_summary(
     };
 
     // Check cache for each sub-query; fetch from VyOS only on cache miss.
+    let ver_key = cache_key("show", &["version"]);
+    let up_key = cache_key("show", &["system", "uptime"]);
+    let host_key = cache_key("show", &["host", "name"]);
     let iface_key = cache_key("show", &["interfaces"]);
     let route_key = cache_key("show", &["ip", "route"]);
     let dhcp_key = cache_key("show", &["dhcp", "server", "leases"]);
     let fw_key = cache_key("retrieve", &["firewall"]);
     let config_iface_key = cache_key("retrieve", &["interfaces"]);
 
+    let cached_ver = state.vyos_cache.get(&ver_key);
+    let cached_up = state.vyos_cache.get(&up_key);
+    let cached_host = state.vyos_cache.get(&host_key);
     let cached_iface = state.vyos_cache.get(&iface_key);
     let cached_routes = state.vyos_cache.get(&route_key);
     let cached_dhcp = state.vyos_cache.get(&dhcp_key);
@@ -493,9 +499,27 @@ pub async fn router_summary(
         dns_fwd_res,
         wg_config_res,
     ) = tokio::join!(
-        client.show(&["version"]),
-        client.show(&["system", "uptime"]),
-        client.show(&["host", "name"]),
+        async {
+            if cached_ver.is_some() {
+                Ok(Value::Null)
+            } else {
+                client.show(&["version"]).await
+            }
+        },
+        async {
+            if cached_up.is_some() {
+                Ok(Value::Null)
+            } else {
+                client.show(&["system", "uptime"]).await
+            }
+        },
+        async {
+            if cached_host.is_some() {
+                Ok(Value::Null)
+            } else {
+                client.show(&["host", "name"]).await
+            }
+        },
         async {
             if cached_iface.is_some() {
                 Ok(Value::Null)
@@ -537,26 +561,57 @@ pub async fn router_summary(
         client.retrieve(&["interfaces", "wireguard"]),
     );
 
-    // --- Status ---
-    let version = ver_res.ok().and_then(|v| {
-        v.as_str().map(|s| {
-            s.lines()
-                .find(|l| l.starts_with("Version:"))
-                .map(|l| l.trim_start_matches("Version:").trim().to_string())
-                .unwrap_or_else(|| s.to_string())
-        })
-    });
-    let uptime = up_res.ok().and_then(|v| {
-        v.as_str().map(|s| {
-            s.lines()
-                .find(|l| l.starts_with("Uptime:"))
-                .map(|l| l.trim_start_matches("Uptime:").trim().to_string())
-                .unwrap_or_else(|| s.to_string())
-        })
-    });
-    let hostname = host_res
-        .ok()
-        .and_then(|v| v.as_str().map(|s| s.trim().to_string()));
+    // --- Status (version & hostname: 5 min TTL; uptime: default 30s TTL) ---
+    use std::time::Duration;
+    let long_ttl = Duration::from_secs(300);
+
+    let version = if let Some(cached) = cached_ver {
+        cached.as_str().map(|s| s.to_string())
+    } else {
+        let parsed = ver_res.ok().and_then(|v| {
+            v.as_str().map(|s| {
+                s.lines()
+                    .find(|l| l.starts_with("Version:"))
+                    .map(|l| l.trim_start_matches("Version:").trim().to_string())
+                    .unwrap_or_else(|| s.to_string())
+            })
+        });
+        if let Some(ref val) = parsed {
+            state
+                .vyos_cache
+                .set_with_ttl(ver_key, Value::String(val.clone()), long_ttl);
+        }
+        parsed
+    };
+    let uptime = if let Some(cached) = cached_up {
+        cached.as_str().map(|s| s.to_string())
+    } else {
+        let parsed = up_res.ok().and_then(|v| {
+            v.as_str().map(|s| {
+                s.lines()
+                    .find(|l| l.starts_with("Uptime:"))
+                    .map(|l| l.trim_start_matches("Uptime:").trim().to_string())
+                    .unwrap_or_else(|| s.to_string())
+            })
+        });
+        if let Some(ref val) = parsed {
+            state.vyos_cache.set(up_key, Value::String(val.clone()));
+        }
+        parsed
+    };
+    let hostname = if let Some(cached) = cached_host {
+        cached.as_str().map(|s| s.to_string())
+    } else {
+        let parsed = host_res
+            .ok()
+            .and_then(|v| v.as_str().map(|s| s.trim().to_string()));
+        if let Some(ref val) = parsed {
+            state
+                .vyos_cache
+                .set_with_ttl(host_key, Value::String(val.clone()), long_ttl);
+        }
+        parsed
+    };
     let reachable = version.is_some() || uptime.is_some();
 
     // --- Interfaces ---
