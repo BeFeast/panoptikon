@@ -1268,6 +1268,159 @@ function DeviceSystemTab({ deviceId }: { deviceId: string }) {
   );
 }
 
+// ─── Device State Timeline ──────────────────────────────
+
+interface TimelineSegment {
+  start: number;
+  end: number;
+  online: boolean;
+}
+
+function DeviceStateTimeline({ events }: { events: DeviceEvent[] }) {
+  const rows = useMemo(() => {
+    const now = new Date();
+
+    // Build 7 calendar days (oldest first, today last)
+    const dayBounds: { start: Date; end: Date }[] = [];
+    for (let d = 6; d >= 0; d--) {
+      const s = new Date(now);
+      s.setDate(s.getDate() - d);
+      s.setHours(0, 0, 0, 0);
+      const e = new Date(s);
+      e.setDate(e.getDate() + 1);
+      dayBounds.push({ start: s, end: d === 0 ? now : e });
+    }
+
+    const windowStart = dayBounds[0].start;
+
+    // Sort events chronologically
+    const sorted = [...events].sort(
+      (a, b) =>
+        new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime(),
+    );
+
+    // Determine initial state at window start
+    let initialOnline = false;
+    for (const ev of sorted) {
+      if (new Date(ev.occurred_at).getTime() <= windowStart.getTime()) {
+        initialOnline = ev.event_type === "online";
+      }
+    }
+
+    // Filter to events within window
+    const windowEvents = sorted.filter((ev) => {
+      const t = new Date(ev.occurred_at);
+      return t > windowStart && t <= now;
+    });
+
+    // Build full-window segments
+    const segments: TimelineSegment[] = [];
+    let state = initialOnline;
+    let segStart = windowStart.getTime();
+
+    for (const ev of windowEvents) {
+      const t = new Date(ev.occurred_at).getTime();
+      if (t > segStart) {
+        segments.push({ start: segStart, end: t, online: state });
+      }
+      state = ev.event_type === "online";
+      segStart = t;
+    }
+    if (segStart < now.getTime()) {
+      segments.push({ start: segStart, end: now.getTime(), online: state });
+    }
+
+    // Clip segments to each day
+    return dayBounds.map(({ start, end }) => {
+      const ds = start.getTime();
+      const de = end.getTime();
+      const dur = de - ds;
+
+      const daySegs = segments
+        .map((seg) => {
+          const os = Math.max(seg.start, ds);
+          const oe = Math.min(seg.end, de);
+          if (os >= oe) return null;
+          return {
+            online: seg.online,
+            pct: ((oe - os) / dur) * 100,
+            from: new Date(os).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            to: new Date(oe).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+          };
+        })
+        .filter(Boolean) as {
+        online: boolean;
+        pct: number;
+        from: string;
+        to: string;
+      }[];
+
+      const isToday = now.toDateString() === start.toDateString();
+      const label = isToday
+        ? "Today"
+        : start.toLocaleDateString([], {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+          });
+
+      return { label, segments: daySegs, isToday };
+    });
+  }, [events]);
+
+  if (events.length === 0) return null;
+
+  return (
+    <div className="rounded-md border border-slate-800 bg-slate-800/50 p-4 space-y-3">
+      <div className="text-sm font-medium text-slate-300">
+        7-Day Availability
+      </div>
+      <div className="space-y-1.5">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-center gap-3">
+            <span
+              className={`w-24 text-xs truncate ${row.isToday ? "text-slate-200 font-medium" : "text-slate-500"}`}
+            >
+              {row.label}
+            </span>
+            <div className="flex-1 flex h-4 rounded-sm overflow-hidden bg-slate-700/50">
+              {row.segments.map((seg, i) => (
+                <div
+                  key={i}
+                  className={
+                    seg.online ? "bg-emerald-500/70" : "bg-slate-600"
+                  }
+                  style={{
+                    width: `${seg.pct}%`,
+                    minWidth: seg.pct > 0 ? "1px" : 0,
+                  }}
+                  title={`${seg.online ? "Online" : "Offline"}: ${seg.from} – ${seg.to}`}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-4 pt-1 text-xs text-slate-500">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500/70" />
+          Online
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-slate-600" />
+          Offline
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // ─── Device Events Tab ──────────────────────────────────
 
 function DeviceEventsTab({ deviceId }: { deviceId: string }) {
@@ -1280,7 +1433,7 @@ function DeviceEventsTab({ deviceId }: { deviceId: string }) {
     async function load() {
       try {
         const [evts, upt] = await Promise.all([
-          fetchDeviceEvents(deviceId, 50),
+          fetchDeviceEvents(deviceId, 200),
           fetchDeviceUptime(deviceId, 7),
         ]);
         if (!cancelled) {
@@ -1322,6 +1475,9 @@ function DeviceEventsTab({ deviceId }: { deviceId: string }) {
           </div>
         </div>
       )}
+
+      {/* Visual timeline */}
+      <DeviceStateTimeline events={events} />
 
       {events.length === 0 ? (
         <p className="py-6 text-center text-sm text-slate-500">
