@@ -287,6 +287,9 @@ pub async fn update_settings(
 }
 
 /// POST /api/v1/settings/test-webhook — send a test webhook.
+///
+/// Uses the same format auto-detection as real alerts, so the test message
+/// will appear correctly in Discord, ntfy.sh, Telegram, or generic endpoints.
 pub async fn test_webhook(
     State(state): State<AppState>,
 ) -> Result<StatusCode, (StatusCode, String)> {
@@ -295,16 +298,12 @@ pub async fn test_webhook(
         "No webhook URL configured".to_string(),
     ))?;
 
-    let payload = serde_json::json!({
-        "type": "test",
-        "data": {
-            "message": "Panoptikon webhook test",
-        },
-        "timestamp": chrono::Utc::now().to_rfc3339(),
+    let data = serde_json::json!({
+        "message": "Panoptikon webhook test — if you see this, webhooks are working!",
     });
 
     // For test, we actually await the result so we can report success/failure.
-    webhook::send_webhook(&url, payload).await;
+    webhook::send_alert_webhook(&url, "test", &data).await;
 
     Ok(StatusCode::NO_CONTENT)
 }
