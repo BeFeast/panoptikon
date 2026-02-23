@@ -137,7 +137,7 @@ async fn main() -> Result<()> {
     // Start the SSH agentless monitoring poller.
     ssh::start_ssh_poller(state.db.clone(), state.ws_hub.clone());
 
-    // Start the MikroTik interface traffic poller (1-min samples).
+    // Start the MikroTik interface traffic poller (polls every 60s when enabled).
     mikrotik_traffic::start_mikrotik_traffic_poller(state.db.clone(), state.mikrotik_http.clone());
 
     // Build the application router.

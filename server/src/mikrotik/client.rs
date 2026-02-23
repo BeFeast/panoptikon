@@ -219,6 +219,44 @@ impl MikrotikClient {
         Ok(())
     }
 
+    /// POST a MikroTik REST command with a JSON body, returning parsed JSON.
+    async fn post(&self, path: &str, body: &Value) -> Result<Value> {
+        let url = format!("{}/rest{}", self.base_url, path);
+
+        let start = Instant::now();
+        let resp = self
+            .http
+            .post(&url)
+            .basic_auth(&self.username, Some(&self.password))
+            .json(body)
+            .send()
+            .await
+            .context("MikroTik API POST request failed")?;
+
+        let status = resp.status();
+        let resp_body = resp
+            .text()
+            .await
+            .context("failed to read MikroTik API POST response body")?;
+
+        let elapsed = start.elapsed();
+        tracing::debug!(
+            path,
+            http_status = %status,
+            elapsed_ms = elapsed.as_millis() as u64,
+            "MikroTik API POST response"
+        );
+
+        if !status.is_success() {
+            anyhow::bail!("MikroTik API POST returned HTTP {status}: {resp_body}");
+        }
+
+        let parsed: Value = serde_json::from_str(&resp_body)
+            .context("failed to parse MikroTik API POST response JSON")?;
+
+        Ok(parsed)
+    }
+
     /// Fetch system resource info (CPU, RAM, uptime, version).
     pub async fn system_resource(&self) -> Result<SystemResource> {
         let val = self.get("/system/resource").await?;
@@ -302,6 +340,21 @@ impl MikrotikClient {
         let val = self.get("/interface/wireguard").await?;
         let res: Vec<WgInterface> =
             serde_json::from_value(val).context("failed to parse WireGuard interfaces")?;
+        Ok(res)
+    }
+
+    /// Monitor traffic on a specific interface (returns instantaneous bps).
+    ///
+    /// Uses `POST /rest/interface/monitor-traffic` with `once` to get a single
+    /// snapshot of rx/tx bits-per-second.
+    pub async fn monitor_traffic(&self, interface: &str) -> Result<Vec<MonitorTrafficResult>> {
+        let body = serde_json::json!({
+            "interface": interface,
+            "once": ""
+        });
+        let val = self.post("/interface/monitor-traffic", &body).await?;
+        let res: Vec<MonitorTrafficResult> =
+            serde_json::from_value(val).context("failed to parse monitor-traffic result")?;
         Ok(res)
     }
 
