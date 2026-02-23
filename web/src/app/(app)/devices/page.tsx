@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowDown, ArrowUp, Battery, Box, ChevronDown, CircuitBoard, Container, Cpu, Download, ExternalLink, Gamepad2, HardDrive, HelpCircle, Laptop, Loader2, LayoutGrid, List, MemoryStick, Monitor, Network, Pencil, Plus, Power, Printer, Radar, RotateCcw, Router, Search, Server, Smartphone, Tablet, Tv, VolumeX, Wifi, WifiOff } from "lucide-react";
 import { getDeviceIcon } from "@/lib/device-icons";
@@ -90,10 +90,29 @@ export default function DevicesPage() {
     return () => clearInterval(interval);
   }, [load]);
 
+  // Keep a ref to current devices so WS handler can look up names without stale closure
+  const devicesRef = useRef(devices);
+  devicesRef.current = devices;
+
   // Refetch immediately when a device or agent state change arrives via WebSocket
   useWsEvent(
     ["device_online", "device_offline", "new_device", "agent_online", "agent_offline"],
-    load
+    (msg) => {
+      if (["device_online", "device_offline", "new_device"].includes(msg.event)) {
+        const d = msg.data as { device_id?: string; mac?: string; ip?: string };
+        const dev = devicesRef.current?.find((x) => x.id === d.device_id);
+        const label = dev?.name || dev?.hostname || d.mac || "Unknown device";
+
+        if (msg.event === "device_online") {
+          toast.success(`${label} came online`, { description: d.ip });
+        } else if (msg.event === "device_offline") {
+          toast.error(`${label} went offline`);
+        } else if (msg.event === "new_device") {
+          toast.info(`New device discovered: ${d.mac}`, { description: d.ip });
+        }
+      }
+      load();
+    }
   );
 
   const filtered = useMemo(() => {

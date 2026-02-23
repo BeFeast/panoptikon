@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -27,6 +27,7 @@ import type { Alert, DashboardStats, TrafficHistoryPoint, Device } from "@/lib/t
 import { formatBps, timeAgo } from "@/lib/format";
 import { PageTransition } from "@/components/PageTransition";
 import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
+import { toast } from "sonner";
 import { useWsEvent } from "@/lib/ws";
 import { getDeviceIcon } from "@/lib/device-icons";
 import type { DeviceType } from "@/lib/device-type";
@@ -297,9 +298,28 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, [loadAll]);
 
+  // Keep a ref to current devices so WS handler can look up names without stale closure
+  const devicesRef = useRef(devices);
+  devicesRef.current = devices;
+
   useWsEvent(
     ["device_online", "device_offline", "new_device", "agent_online", "agent_offline"],
-    loadAll
+    (msg) => {
+      if (["device_online", "device_offline", "new_device"].includes(msg.event)) {
+        const d = msg.data as { device_id?: string; mac?: string; ip?: string };
+        const dev = devicesRef.current?.find((x) => x.id === d.device_id);
+        const label = dev?.name || dev?.hostname || d.mac || "Unknown device";
+
+        if (msg.event === "device_online") {
+          toast.success(`${label} came online`, { description: d.ip });
+        } else if (msg.event === "device_offline") {
+          toast.error(`${label} went offline`);
+        } else if (msg.event === "new_device") {
+          toast.info(`New device discovered: ${d.mac}`, { description: d.ip });
+        }
+      }
+      loadAll();
+    }
   );
 
   // ── Compute device type breakdown ──────────────────────
