@@ -216,6 +216,15 @@ pub struct WgInterface {
     pub running: Option<String>,
 }
 
+/// MikroTik interface monitor-traffic result (`/rest/interface/monitor-traffic`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MonitorTrafficResult {
+    #[serde(rename = "rx-bits-per-second")]
+    pub rx_bits_per_second: Option<String>,
+    #[serde(rename = "tx-bits-per-second")]
+    pub tx_bits_per_second: Option<String>,
+}
+
 /// MikroTik WireGuard peer (`/rest/interface/wireguard/peers`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WgPeer {
