@@ -9,11 +9,11 @@ test.describe('Assets page', () => {
   test('assets page loads without error', async ({ page }) => {
     // Should NOT show an error state (e.g. 500 from backend)
     await page.waitForTimeout(2000);
-    const errorText = page.locator('text=Failed to load');
+    const errorText = page.getByText('Failed to load');
     await expect(errorText).not.toBeVisible();
 
     // Should show the page heading
-    await expect(page.locator('h1:has-text("Assets")')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: 'Assets', level: 1 })).toBeVisible({ timeout: 15000 });
     await page.screenshot({ path: 'tests/screenshots/assets-page.png', fullPage: true });
   });
 
@@ -31,17 +31,17 @@ test.describe('Assets page', () => {
   });
 
   test('Add Asset button is visible', async ({ page }) => {
-    await expect(page.locator('button:has-text("Add Asset")')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: 'Add Asset', exact: true }).first()).toBeVisible({ timeout: 15000 });
   });
 
   test('Add Asset dialog opens', async ({ page }) => {
-    await page.click('button:has-text("Add Asset")');
+    await page.getByRole('button', { name: 'Add Asset', exact: true }).first().click();
 
     await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 3000 });
     // Use role locator to avoid strict mode violation (multiple "Add Asset" elements)
-    await expect(page.getByRole('heading', { name: 'Add Asset' })).toBeVisible();
-    await expect(page.locator('[role="dialog"] label:has-text("Name")')).toBeVisible();
-    await expect(page.locator('[role="dialog"] label:has-text("Type")')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Add Asset', exact: true })).toBeVisible();
+    await expect(page.locator('[role="dialog"]').getByText('Name', { exact: true }).first()).toBeVisible();
+    await expect(page.locator('[role="dialog"]').getByText('Type', { exact: true }).first()).toBeVisible();
 
     await page.screenshot({ path: 'tests/screenshots/assets-dialog-open.png' });
   });
@@ -50,31 +50,31 @@ test.describe('Assets page', () => {
     const assetName = `e2e-asset-${Date.now()}`;
 
     // Open Add Asset dialog
-    await page.click('button:has-text("Add Asset")');
+    await page.getByRole('button', { name: 'Add Asset', exact: true }).first().click();
     await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 3000 });
 
     // Fill the name field
     const nameInput = page.locator('input[placeholder="e.g. web-server-01"]');
     await nameInput.fill(assetName);
 
-    // Submit
-    await page.locator('[role="dialog"] button:has-text("Add Asset")').click();
+    // Submit - use the button inside the dialog
+    await page.locator('[role="dialog"]').getByRole('button', { name: 'Add Asset', exact: true }).click();
 
     // Dialog should close and asset should appear in list
     await expect(page.locator('[role="dialog"]')).not.toBeVisible({ timeout: 10000 });
-    await expect(page.locator(`text=${assetName}`)).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(assetName)).toBeVisible({ timeout: 10000 });
     await page.screenshot({ path: 'tests/screenshots/assets-after-create.png', fullPage: true });
 
     // Delete the asset — click the delete button in the row
-    const row = page.locator('tr', { has: page.locator(`text=${assetName}`) });
+    const row = page.locator('tr', { has: page.getByText(assetName) });
     await row.locator('button[title="Delete"]').click();
 
     // Confirm deletion in the alert dialog
-    await expect(page.locator('text=Delete asset?')).toBeVisible({ timeout: 3000 });
-    await page.locator('button:has-text("Delete")').last().click();
+    await expect(page.getByText('Delete asset?')).toBeVisible({ timeout: 3000 });
+    await page.getByRole('button', { name: 'Delete', exact: true }).last().click();
 
     // Asset should be removed from the list
-    await expect(page.locator(`text=${assetName}`)).not.toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(assetName)).not.toBeVisible({ timeout: 10000 });
     await page.screenshot({ path: 'tests/screenshots/assets-after-delete.png', fullPage: true });
   });
 

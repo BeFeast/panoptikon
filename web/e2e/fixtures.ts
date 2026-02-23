@@ -11,9 +11,9 @@ export async function setupIfNeeded(page: Page): Promise<boolean> {
   
   // Wait for either the Sign In button (login page ready) or Complete Setup button (setup page ready)
   // or dashboard content. This handles client-side redirects after auth status check.
-  const signInButton = page.locator('button:has-text("Sign In")');
-  const setupButton = page.locator('button:has-text("Complete Setup")');
-  const dashboardHeading = page.locator('h1:has-text("Dashboard")');
+  const signInButton = page.getByRole('button', { name: 'Sign In' });
+  const setupButton = page.getByRole('button', { name: 'Complete Setup' });
+  const dashboardHeading = page.getByRole('heading', { name: 'Dashboard', level: 1 });
   
   // Wait for one of these to appear (whichever page we end up on)
   await Promise.race([
@@ -58,7 +58,7 @@ export async function login(page: Page) {
   
   // On login page - form is already visible (setupIfNeeded waited for Sign In button)
   await page.locator("#password").fill(PASSWORD);
-  await page.locator('button:has-text("Sign In")').click();
+  await page.getByRole('button', { name: 'Sign In' }).click();
   
   await page.waitForURL(/\/(dashboard|agents|devices)/, { timeout: 15000 });
 }
