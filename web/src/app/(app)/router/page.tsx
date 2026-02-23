@@ -4986,11 +4986,11 @@ export default function RouterPage() {
   const [loading, setLoading] = useState(true);
   const [mikrotikEnabled, setMikrotikEnabled] = useState(false);
   const [vyosConfigured, setVyosConfigured] = useState(false);
-  const [routerType, setRouterType] = useState<"vyos" | "mikrotik">("vyos");
+  const [routerType, setRouterType] = useState<"vyos" | "mikrotik">("mikrotik");
 
+  // Load settings to determine which routers are configured
   useEffect(() => {
-    const loadAll = async () => {
-      // Load settings to check which routers are configured
+    const loadSettings = async () => {
       let mtEnabled = false;
       let vyosConf = false;
       try {
@@ -5003,12 +5003,24 @@ export default function RouterPage() {
       setMikrotikEnabled(mtEnabled);
       setVyosConfigured(vyosConf);
 
-      // Auto-select the right tab
-      if (mtEnabled && !vyosConf) {
+      // Default to mikrotik if enabled, fallback to vyos only if mikrotik not available
+      if (mtEnabled) {
         setRouterType("mikrotik");
+      } else if (vyosConf) {
+        setRouterType("vyos");
       }
 
-      // Load VyOS summary
+      setLoading(false);
+    };
+    loadSettings();
+  }, []);
+
+  // Lazy-load VyOS summary only when VyOS tab is selected
+  useEffect(() => {
+    if (routerType !== "vyos") return;
+    if (summary) return; // already loaded
+
+    const loadVyosSummary = async () => {
       try {
         const s = await fetchRouterSummary();
         setSummary(s);
@@ -5027,10 +5039,9 @@ export default function RouterPage() {
           wireguard: [],
         });
       }
-      setLoading(false);
     };
-    loadAll();
-  }, []);
+    loadVyosSummary();
+  }, [routerType, summary]);
 
   if (loading) {
     return (
@@ -5042,7 +5053,7 @@ export default function RouterPage() {
   }
 
   const bothConfigured = vyosConfigured && mikrotikEnabled;
-  const neitherConfigured = !summary?.status.configured && !mikrotikEnabled;
+  const neitherConfigured = !vyosConfigured && !mikrotikEnabled;
 
   if (neitherConfigured) {
     return <PageTransition><NotConfigured /></PageTransition>;
@@ -5054,19 +5065,6 @@ export default function RouterPage() {
         {/* Router type selector — only shown if both are configured */}
         {bothConfigured && (
           <div className="flex gap-2">
-            <Button
-              variant={routerType === "vyos" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setRouterType("vyos")}
-              className={
-                routerType === "vyos"
-                  ? "bg-blue-600 text-white hover:bg-blue-500"
-                  : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
-              }
-            >
-              <Router className="mr-1.5 h-3.5 w-3.5" />
-              VyOS
-            </Button>
             <Button
               variant={routerType === "mikrotik" ? "default" : "outline"}
               size="sm"
@@ -5080,15 +5078,33 @@ export default function RouterPage() {
               <Router className="mr-1.5 h-3.5 w-3.5" />
               MikroTik
             </Button>
+            <Button
+              variant={routerType === "vyos" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setRouterType("vyos")}
+              className={
+                routerType === "vyos"
+                  ? "bg-blue-600 text-white hover:bg-blue-500"
+                  : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
+              }
+            >
+              <Router className="mr-1.5 h-3.5 w-3.5" />
+              VyOS (Optional)
+            </Button>
           </div>
         )}
 
-        {routerType === "vyos" && summary?.status.configured ? (
+        {routerType === "mikrotik" && mikrotikEnabled ? (
+          <MikrotikRouter />
+        ) : routerType === "vyos" && !summary ? (
+          <div className="space-y-6">
+            <Skeleton className="h-10 w-64" />
+            <Skeleton className="h-96 w-full" />
+          </div>
+        ) : routerType === "vyos" && summary?.status.configured ? (
           <Suspense fallback={null}>
             <RouterTabs summary={summary} />
           </Suspense>
-        ) : routerType === "mikrotik" && mikrotikEnabled ? (
-          <MikrotikRouter />
         ) : routerType === "vyos" ? (
           <NotConfigured />
         ) : null}
