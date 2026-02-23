@@ -24,6 +24,7 @@ pub mod devices;
 pub mod error;
 pub mod export;
 pub mod metrics;
+pub mod mikrotik;
 pub mod npm;
 pub mod scanner;
 pub mod search;
@@ -52,6 +53,10 @@ pub struct AppState {
     pub vyos_cache: Arc<crate::vyos::cache::VyosCache>,
     /// Shared reqwest::Client for Nginx Proxy Manager API.
     pub npm_http: reqwest::Client,
+    /// Shared reqwest::Client for MikroTik REST API.
+    pub mikrotik_http: reqwest::Client,
+    /// TTL cache for MikroTik read operations.
+    pub mikrotik_cache: Arc<crate::mikrotik::client::MikrotikCache>,
 }
 
 impl AppState {
@@ -66,6 +71,8 @@ impl AppState {
             vyos_http: crate::vyos::client::shared_http_client(),
             vyos_cache: Arc::new(crate::vyos::cache::VyosCache::new()),
             npm_http: crate::npm::client::shared_http_client(),
+            mikrotik_http: crate::mikrotik::client::shared_http_client(),
+            mikrotik_cache: Arc::new(crate::mikrotik::client::MikrotikCache::new()),
         }
     }
 }
@@ -363,6 +370,14 @@ pub fn router(state: AppState) -> Router {
         .route("/ssh-targets/:id", delete(ssh_targets::delete))
         .route("/ssh-targets/:id/reports", get(ssh_targets::list_reports))
         .route("/ssh-targets/:id/test", post(ssh_targets::test_connection))
+        // MikroTik router proxy
+        .route("/mikrotik/status", get(mikrotik::status))
+        .route("/mikrotik/interfaces", get(mikrotik::interfaces))
+        .route("/mikrotik/routes", get(mikrotik::routes))
+        .route("/mikrotik/dhcp-leases", get(mikrotik::dhcp_leases))
+        .route("/mikrotik/firewall", get(mikrotik::firewall))
+        .route("/mikrotik/dns", get(mikrotik::dns))
+        .route("/mikrotik/wireguard", get(mikrotik::wireguard))
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))
@@ -396,18 +411,23 @@ pub fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
-/// Middleware that clears the VyOS response cache after any successful
-/// mutating request (POST / PUT / PATCH / DELETE) to a `/vyos/` path.
+/// Middleware that clears the VyOS / MikroTik response cache after any
+/// successful mutating request (POST / PUT / PATCH / DELETE).
 async fn vyos_cache_invalidation(
     State(state): State<AppState>,
     request: axum::extract::Request,
     next: Next,
 ) -> Response {
-    let is_write =
-        !matches!(*request.method(), Method::GET) && request.uri().path().contains("/vyos/");
+    let path = request.uri().path().to_string();
+    let is_mutating = !matches!(*request.method(), Method::GET);
     let response = next.run(request).await;
-    if is_write && response.status().is_success() {
-        state.vyos_cache.clear();
+    if is_mutating && response.status().is_success() {
+        if path.contains("/vyos/") {
+            state.vyos_cache.clear();
+        }
+        if path.contains("/mikrotik/") {
+            state.mikrotik_cache.clear();
+        }
     }
     response
 }

@@ -120,8 +120,11 @@ import {
   deleteDnsDomainOverride,
   fetchSystemInfo,
   fetchSyslog,
+  fetchMikrotikStatus,
+  fetchSettings,
 } from "@/lib/api";
-import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, RouterSummary, SpeedTestResult, SpeedTestHistoryEntry, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, DhcpServerConfig, DhcpSubnetConfig, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride, SystemInfo, SyslogResponse } from "@/lib/types";
+import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, RouterSummary, SpeedTestResult, SpeedTestHistoryEntry, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, DhcpServerConfig, DhcpSubnetConfig, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride, SystemInfo, SyslogResponse, MikrotikStatus, SettingsData } from "@/lib/types";
+import MikrotikRouter from "@/components/MikrotikRouter";
 import QRCode from "qrcode";
 import { Progress } from "@/components/ui/progress";
 import { PageTransition } from "@/components/PageTransition";
@@ -4916,11 +4919,35 @@ function GenerateClientConfigDialog({
 export default function RouterPage() {
   const [summary, setSummary] = useState<RouterSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mikrotikEnabled, setMikrotikEnabled] = useState(false);
+  const [vyosConfigured, setVyosConfigured] = useState(false);
+  const [routerType, setRouterType] = useState<"vyos" | "mikrotik">("vyos");
 
   useEffect(() => {
-    fetchRouterSummary()
-      .then(setSummary)
-      .catch(() =>
+    const loadAll = async () => {
+      // Load settings to check which routers are configured
+      let mtEnabled = false;
+      let vyosConf = false;
+      try {
+        const settings = await fetchSettings();
+        mtEnabled = settings.mikrotik_enabled;
+        vyosConf = !!settings.vyos_url && settings.vyos_api_key_set;
+      } catch {
+        // ignore
+      }
+      setMikrotikEnabled(mtEnabled);
+      setVyosConfigured(vyosConf);
+
+      // Auto-select the right tab
+      if (mtEnabled && !vyosConf) {
+        setRouterType("mikrotik");
+      }
+
+      // Load VyOS summary
+      try {
+        const s = await fetchRouterSummary();
+        setSummary(s);
+      } catch {
         setSummary({
           status: { configured: false, reachable: false, version: null, uptime: null, hostname: null },
           interfaces: [],
@@ -4933,9 +4960,11 @@ export default function RouterPage() {
           firewall_groups: { address_groups: [], network_groups: [], port_groups: [] },
           dns_forwarding: { name_servers: [], domain_overrides: [], listen_addresses: [], allow_from: [], cache_size: null },
           wireguard: [],
-        })
-      )
-      .finally(() => setLoading(false));
+        });
+      }
+      setLoading(false);
+    };
+    loadAll();
   }, []);
 
   if (loading) {
@@ -4947,11 +4976,58 @@ export default function RouterPage() {
     );
   }
 
-  if (!summary?.status.configured) {
+  const bothConfigured = vyosConfigured && mikrotikEnabled;
+  const neitherConfigured = !summary?.status.configured && !mikrotikEnabled;
+
+  if (neitherConfigured) {
     return <PageTransition><NotConfigured /></PageTransition>;
   }
 
-  return <PageTransition><RouterTabs summary={summary} /></PageTransition>;
+  return (
+    <PageTransition>
+      <div className="space-y-6">
+        {/* Router type selector — only shown if both are configured */}
+        {bothConfigured && (
+          <div className="flex gap-2">
+            <Button
+              variant={routerType === "vyos" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setRouterType("vyos")}
+              className={
+                routerType === "vyos"
+                  ? "bg-blue-600 text-white hover:bg-blue-500"
+                  : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
+              }
+            >
+              <Router className="mr-1.5 h-3.5 w-3.5" />
+              VyOS
+            </Button>
+            <Button
+              variant={routerType === "mikrotik" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setRouterType("mikrotik")}
+              className={
+                routerType === "mikrotik"
+                  ? "bg-pink-600 text-white hover:bg-pink-500"
+                  : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
+              }
+            >
+              <Router className="mr-1.5 h-3.5 w-3.5" />
+              MikroTik
+            </Button>
+          </div>
+        )}
+
+        {routerType === "vyos" && summary?.status.configured ? (
+          <RouterTabs summary={summary} />
+        ) : routerType === "mikrotik" && mikrotikEnabled ? (
+          <MikrotikRouter />
+        ) : routerType === "vyos" ? (
+          <NotConfigured />
+        ) : null}
+      </div>
+    </PageTransition>
+  );
 }
 
 // ── Tabs component (only rendered when configured) ──────

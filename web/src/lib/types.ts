@@ -419,6 +419,11 @@ export interface SettingsData {
   npm_url: string | null;
   npm_email: string | null;
   npm_password_set: boolean;
+  // MikroTik
+  mikrotik_url: string | null;
+  mikrotik_user: string | null;
+  mikrotik_password_set: boolean;
+  mikrotik_enabled: boolean;
 }
 
 // ─── Nginx Proxy Manager ─────────────────────────────────
@@ -849,4 +854,119 @@ export interface SshReport {
 export interface SshTestConnectionResponse {
   success: boolean;
   message: string;
+}
+
+// ─── MikroTik ──────────────────────────────────────────
+
+export interface MikrotikStatus {
+  configured: boolean;
+  reachable: boolean;
+  version: string | null;
+  uptime: string | null;
+  cpu_load: string | null;
+  total_memory: string | null;
+  free_memory: string | null;
+  board_name: string | null;
+  architecture: string | null;
+  platform: string | null;
+}
+
+export interface MikrotikInterface {
+  name: string;
+  iface_type: string | null;
+  mac: string | null;
+  ip_address: string | null;
+  mtu: string | null;
+  disabled: boolean;
+  running: boolean;
+  comment: string | null;
+  tx_bytes: string | null;
+  rx_bytes: string | null;
+}
+
+export interface MikrotikRoute {
+  dst_address: string;
+  gateway: string | null;
+  distance: string | null;
+  routing_table: string | null;
+  active: boolean;
+  dynamic: boolean;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface MikrotikDhcpLease {
+  address: string;
+  mac_address: string | null;
+  host_name: string | null;
+  status: string | null;
+  expires_after: string | null;
+  server: string | null;
+  dynamic: boolean;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface MikrotikFirewallRule {
+  chain: string | null;
+  action: string | null;
+  protocol: string | null;
+  src_address: string | null;
+  dst_address: string | null;
+  dst_port: string | null;
+  comment: string | null;
+  disabled: boolean;
+  bytes: string | null;
+  packets: string | null;
+}
+
+export interface MikrotikNatRule {
+  chain: string | null;
+  action: string | null;
+  protocol: string | null;
+  src_address: string | null;
+  dst_address: string | null;
+  dst_port: string | null;
+  to_addresses: string | null;
+  to_ports: string | null;
+  out_interface: string | null;
+  comment: string | null;
+  disabled: boolean;
+}
+
+export interface MikrotikFirewall {
+  filter_rules: MikrotikFirewallRule[];
+  nat_rules: MikrotikNatRule[];
+}
+
+export interface MikrotikDns {
+  servers: string[];
+  allow_remote_requests: boolean;
+  cache_size: string | null;
+  cache_used: string | null;
+}
+
+export interface MikrotikWgPeer {
+  public_key: string | null;
+  endpoint: string | null;
+  allowed_address: string | null;
+  rx: string | null;
+  tx: string | null;
+  last_handshake: string | null;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface MikrotikWgInterface {
+  name: string;
+  listen_port: string | null;
+  public_key: string | null;
+  mtu: string | null;
+  disabled: boolean;
+  running: boolean;
+  peers: MikrotikWgPeer[];
+}
+
+export interface MikrotikWireguard {
+  interfaces: MikrotikWgInterface[];
 }
