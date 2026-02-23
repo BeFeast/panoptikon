@@ -163,6 +163,36 @@ function NotConfigured() {
   );
 }
 
+function VyosNotConfigured() {
+  return (
+    <div className="flex min-h-[40vh] items-center justify-center">
+      <Card className="w-full max-w-md border-slate-800 bg-slate-900">
+        <CardContent className="flex flex-col items-center gap-4 py-12">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-800">
+            <Router className="h-8 w-8 text-slate-500" />
+          </div>
+          <h1 className="text-xl font-semibold text-white">
+            VyOS Not Configured
+          </h1>
+          <p className="text-center text-sm text-slate-500">
+            VyOS is optional. To enable it, add the VyOS URL and API key in
+            Settings.
+          </p>
+          <Link href="/settings/vyos">
+            <Button
+              variant="outline"
+              className="border-slate-800 text-slate-300 hover:bg-slate-800"
+            >
+              <Settings className="mr-2 h-4 w-4" />
+              Configure VyOS
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ── Status Header ───────────────────────────────────────
 
 function StatusHeader({ status }: { status: RouterStatus }) {
@@ -5043,16 +5073,15 @@ export default function RouterPage() {
     loadVyosSummary();
   }, [routerType, summary]);
 
-  const bothConfigured = settingsLoaded && vyosConfigured && mikrotikEnabled;
   const neitherConfigured = settingsLoaded && !vyosConfigured && !mikrotikEnabled;
 
   return (
     <PageTransition>
       <div className="space-y-6">
-        {/* Router type selector — skeleton while settings load, buttons if both configured */}
+        {/* Router type selector — skeleton while settings load, tabs when MikroTik is enabled */}
         {!settingsLoaded ? (
           <Skeleton className="h-9 w-48" />
-        ) : bothConfigured ? (
+        ) : mikrotikEnabled ? (
           <div className="flex gap-2">
             <Button
               variant={routerType === "mikrotik" ? "default" : "outline"}
@@ -5093,6 +5122,8 @@ export default function RouterPage() {
           <NotConfigured />
         ) : routerType === "mikrotik" && mikrotikEnabled ? (
           <MikrotikRouter />
+        ) : routerType === "vyos" && !vyosConfigured ? (
+          <VyosNotConfigured />
         ) : routerType === "vyos" && !summary ? (
           <div className="space-y-6">
             <Skeleton className="h-10 w-64" />
@@ -5103,7 +5134,7 @@ export default function RouterPage() {
             <RouterTabs summary={summary} />
           </Suspense>
         ) : routerType === "vyos" ? (
-          <NotConfigured />
+          <VyosNotConfigured />
         ) : null}
       </div>
     </PageTransition>
