@@ -15,6 +15,7 @@ use tokio::sync::Mutex;
 use tower_http::cors::CorsLayer;
 
 pub mod agents;
+pub mod alert_rules;
 pub mod alerts;
 pub mod assets;
 pub mod audit;
@@ -149,6 +150,11 @@ pub fn router(state: AppState) -> Router {
         .route("/alerts/:id/acknowledge", post(alerts::acknowledge))
         // Device mute
         .route("/devices/:id/mute", post(alerts::mute_device))
+        // Alert rules
+        .route("/alert-rules", get(alert_rules::list))
+        .route("/alert-rules", post(alert_rules::create))
+        .route("/alert-rules/:id", put(alert_rules::update))
+        .route("/alert-rules/:id", delete(alert_rules::delete))
         // Settings
         .route("/settings", get(settings::get_settings))
         .route("/settings", patch(settings::update_settings))
