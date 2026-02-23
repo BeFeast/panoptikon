@@ -12,9 +12,6 @@ import {
 import {
   AreaChart,
   Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
@@ -434,54 +431,62 @@ export default function DashboardPage() {
           )}
         </div></StaggerItem>
 
-        {/* ── WAN Traffic Chart (wide) ─────────────────── */}
+        {/* ── WAN Traffic Card with Sparkline ─────────── */}
         <StaggerItem className="lg:col-span-3"><Card className="border-slate-800 bg-slate-900">
           <CardHeader className="pb-2">
-            <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 text-blue-400" />
-              <CardTitle className="text-sm font-medium text-slate-400">
-                WAN Traffic — Last 60 min
-              </CardTitle>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-blue-400" />
+                <CardTitle className="text-sm font-medium text-slate-400">
+                  WAN Traffic
+                </CardTitle>
+              </div>
+              <Link
+                href="/traffic"
+                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Details <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
           </CardHeader>
           <CardContent>
+            {/* Current aggregate speeds */}
+            <div className="mb-3 flex items-baseline gap-6">
+              <div>
+                <span className="text-xs text-emerald-400">↓ Download</span>
+                <p className="text-xl font-bold tabular-nums text-white">
+                  {statsError ? "—" : stats ? formatBps(stats.wan_rx_bps) : "—"}
+                </p>
+              </div>
+              <div>
+                <span className="text-xs text-blue-400">↑ Upload</span>
+                <p className="text-xl font-bold tabular-nums text-white">
+                  {statsError ? "—" : stats ? formatBps(stats.wan_tx_bps) : "—"}
+                </p>
+              </div>
+              <span className="ml-auto text-xs text-slate-600">Last 60 samples</span>
+            </div>
+            {/* Sparkline */}
             {trafficError ? (
-              <div className="flex h-[200px] items-center justify-center">
+              <div className="flex h-[120px] items-center justify-center">
                 <SectionError message="Failed to load traffic data" />
               </div>
             ) : trafficHistory === null ? (
-              <div className="h-[200px] space-y-3 pt-4">
-                <Skeleton className="h-[160px] w-full" />
-                <Skeleton className="mx-auto h-3 w-48" />
-              </div>
+              <Skeleton className="h-[120px] w-full" />
             ) : trafficHistory.length > 0 ? (
-              <div className="h-[200px]">
+              <div className="h-[120px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={trafficHistory}>
+                  <AreaChart data={trafficHistory} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
                     <defs>
-                      <linearGradient id="dashRx" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient id="sparkRx" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
                         <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                       </linearGradient>
-                      <linearGradient id="dashTx" x1="0" y1="0" x2="0" y2="1">
+                      <linearGradient id="sparkTx" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
                         <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                       </linearGradient>
                     </defs>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                    <XAxis
-                      dataKey="minute"
-                      tickFormatter={formatTime}
-                      tick={{ fill: "#6b7280", fontSize: 11 }}
-                      stroke="#1e293b"
-                      interval="preserveStartEnd"
-                    />
-                    <YAxis
-                      tickFormatter={(v: number) => formatBps(v)}
-                      tick={{ fill: "#6b7280", fontSize: 11 }}
-                      stroke="#1e293b"
-                      width={70}
-                    />
                     <Tooltip
                       contentStyle={{
                         backgroundColor: "#0f172a",
@@ -493,15 +498,15 @@ export default function DashboardPage() {
                       labelFormatter={formatTime}
                       formatter={(value: number, name: string) => [
                         formatBps(value),
-                        name === "rx_bps" ? "↓ Inbound" : "↑ Outbound",
+                        name === "rx_bps" ? "↓ Download" : "↑ Upload",
                       ]}
                     />
                     <Area
                       type="monotone"
                       dataKey="rx_bps"
                       stroke="#10b981"
-                      strokeWidth={2}
-                      fill="url(#dashRx)"
+                      strokeWidth={1.5}
+                      fill="url(#sparkRx)"
                       dot={false}
                       name="rx_bps"
                     />
@@ -509,8 +514,8 @@ export default function DashboardPage() {
                       type="monotone"
                       dataKey="tx_bps"
                       stroke="#3b82f6"
-                      strokeWidth={2}
-                      fill="url(#dashTx)"
+                      strokeWidth={1.5}
+                      fill="url(#sparkTx)"
                       dot={false}
                       name="tx_bps"
                     />
@@ -518,7 +523,7 @@ export default function DashboardPage() {
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="flex h-[200px] items-center justify-center">
+              <div className="flex h-[120px] items-center justify-center">
                 <p className="text-sm text-slate-600">No traffic data yet</p>
               </div>
             )}
