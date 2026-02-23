@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   Activity,
   Bell,
+  Box,
   ChevronLeft,
   ChevronRight,
   Cpu,
@@ -32,6 +33,7 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/devices", label: "Devices", icon: MonitorSmartphone },
   { href: "/agents", label: "Agents", icon: Cpu },
+  { href: "/assets", label: "Assets", icon: Box },
   { href: "/ssh-hosts", label: "SSH Hosts", icon: Server },
   { href: "/router", label: "Router", icon: Router },
   { href: "/npm", label: "NPM", icon: Globe },

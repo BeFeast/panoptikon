@@ -69,6 +69,8 @@ import type {
   MikrotikFirewall,
   MikrotikDns,
   MikrotikWireguard,
+  Asset,
+  AssetRequest,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -1194,4 +1196,37 @@ export function fetchMikrotikDns(): Promise<MikrotikDns> {
 
 export function fetchMikrotikWireguard(): Promise<MikrotikWireguard> {
   return apiGet<MikrotikWireguard>("/api/v1/mikrotik/wireguard");
+}
+
+// ─── Assets (IT inventory) ───────────────────────────────
+
+export function fetchAssets(params?: {
+  type?: string;
+  tag?: string;
+}): Promise<Asset[]> {
+  const qs = new URLSearchParams();
+  if (params?.type) qs.set("type", params.type);
+  if (params?.tag) qs.set("tag", params.tag);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return apiGet<Asset[]>(`/api/v1/assets${suffix}`);
+}
+
+export function fetchAsset(id: string): Promise<Asset> {
+  return apiGet<Asset>(`/api/v1/assets/${id}`);
+}
+
+export function createAssetInventory(body: AssetRequest): Promise<Asset> {
+  return apiPost<Asset>("/api/v1/assets", body);
+}
+
+export function updateAssetInventory(
+  id: string,
+  body: AssetRequest
+): Promise<Asset> {
+  return apiPut<Asset>(`/api/v1/assets/${id}`, body);
+}
+
+export function deleteAssetInventory(id: string): Promise<void> {
+  return apiDelete(`/api/v1/assets/${id}`);
+}
 }

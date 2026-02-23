@@ -54,6 +54,9 @@ const SSH_TARGETS_MIGRATION: &str = include_str!("migrations/015_ssh_targets.sql
 /// Migration 016: manual asset inventory fields for non-discoverable devices.
 const MANUAL_ASSETS_MIGRATION: &str = include_str!("migrations/016_manual_assets.sql");
 
+/// Migration 017: IT asset inventory table.
+const ASSETS_MIGRATION: &str = include_str!("migrations/017_assets.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -411,6 +414,22 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 016_manual_assets.sql");
     }
 
+    // Migration 017: IT asset inventory table.
+    let applied_17: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 17")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_17 {
+        sqlx::raw_sql(ASSETS_MIGRATION).execute(pool).await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (17)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 017_assets.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -460,6 +479,7 @@ mod tests {
             "speedtest_history",
             "ssh_targets",
             "ssh_reports",
+            "assets",
         ];
 
         for table in &expected_tables {
