@@ -7,13 +7,16 @@ import {
   Bell,
   Cpu,
   LayoutDashboard,
+  Monitor,
   MonitorSmartphone,
+  Package,
   Router,
   Search,
   Settings,
+  Terminal,
 } from 'lucide-react'
 import { searchAll } from '@/lib/api'
-import type { SearchDevice } from '@/lib/types'
+import type { SearchDevice, SearchAgent, SearchSshTarget, SearchAsset } from '@/lib/types'
 import type { LucideIcon } from 'lucide-react'
 
 interface PaletteItem {
@@ -42,6 +45,9 @@ export function CommandPalette() {
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
   const [deviceItems, setDeviceItems] = useState<PaletteItem[]>([])
+  const [agentItems, setAgentItems] = useState<PaletteItem[]>([])
+  const [sshItems, setSshItems] = useState<PaletteItem[]>([])
+  const [assetItems, setAssetItems] = useState<PaletteItem[]>([])
 
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -52,7 +58,7 @@ export function CommandPalette() {
     : PAGES
 
   // Flatten all items for keyboard navigation
-  const allItems: PaletteItem[] = [...filteredPages, ...deviceItems]
+  const allItems: PaletteItem[] = [...filteredPages, ...deviceItems, ...agentItems, ...sshItems, ...assetItems]
 
   // ── Global Cmd+K / Ctrl+K listener ──
   useEffect(() => {
@@ -72,6 +78,9 @@ export function CommandPalette() {
       setQuery('')
       setActiveIndex(0)
       setDeviceItems([])
+      setAgentItems([])
+      setSshItems([])
+      setAssetItems([])
       // Small delay to ensure DOM is ready
       requestAnimationFrame(() => {
         inputRef.current?.focus()
@@ -79,27 +88,59 @@ export function CommandPalette() {
     }
   }, [open])
 
-  // ── Debounced device search ──
+  // ── Debounced search across all entity types ──
   useEffect(() => {
     if (!open || query.length < 2) {
       setDeviceItems([])
+      setAgentItems([])
+      setSshItems([])
+      setAssetItems([])
       return
     }
 
     const timer = setTimeout(async () => {
       try {
         const data = await searchAll(query)
-        const devices: PaletteItem[] = data.devices.map((d: SearchDevice) => ({
+        setDeviceItems(data.devices.map((d: SearchDevice) => ({
           id: `device-${d.id}`,
-          label: d.ip_address || d.mac_address,
+          label: d.name || d.ip_address || d.mac_address,
           sublabel: d.hostname || d.vendor || undefined,
           href: `/devices?highlight=${d.id}`,
+          icon: Monitor,
           section: 'devices' as const,
           isOnline: d.is_online,
-        }))
-        setDeviceItems(devices)
+        })))
+        setAgentItems(data.agents.map((a: SearchAgent) => ({
+          id: `agent-${a.id}`,
+          label: a.name || a.id,
+          sublabel: a.hostname || undefined,
+          href: '/agents',
+          icon: Cpu,
+          section: 'devices' as const,
+          isOnline: a.is_online,
+        })))
+        setSshItems(data.ssh_targets.map((st: SearchSshTarget) => ({
+          id: `ssh-${st.id}`,
+          label: st.name,
+          sublabel: `${st.username}@${st.host}`,
+          href: '/ssh-hosts',
+          icon: Terminal,
+          section: 'devices' as const,
+          isOnline: st.is_online,
+        })))
+        setAssetItems(data.assets.map((asset: SearchAsset) => ({
+          id: `asset-${asset.id}`,
+          label: asset.name,
+          sublabel: asset.location || asset.asset_type || undefined,
+          href: '/assets',
+          icon: Package,
+          section: 'devices' as const,
+        })))
       } catch {
         setDeviceItems([])
+        setAgentItems([])
+        setSshItems([])
+        setAssetItems([])
       }
     }, 200)
 
@@ -109,7 +150,7 @@ export function CommandPalette() {
   // ── Reset active index when items change ──
   useEffect(() => {
     setActiveIndex(0)
-  }, [query, deviceItems.length])
+  }, [query, deviceItems.length, agentItems.length, sshItems.length, assetItems.length])
 
   // ── Scroll active item into view ──
   useEffect(() => {
@@ -160,6 +201,9 @@ export function CommandPalette() {
   // Build sections for rendering
   const pagesSection = filteredPages
   const devicesSection = deviceItems
+  const agentsSection = agentItems
+  const sshSection = sshItems
+  const assetsSection = assetItems
 
   let runningIdx = 0
 
@@ -181,7 +225,7 @@ export function CommandPalette() {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search devices, pages..."
+            placeholder="Search devices, agents, SSH hosts, assets..."
             className="flex-1 bg-transparent text-lg text-white placeholder-slate-500 outline-none"
           />
           <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-[11px] font-medium text-slate-400">
@@ -228,6 +272,7 @@ export function CommandPalette() {
               </div>
               {devicesSection.map((item) => {
                 const idx = runningIdx++
+                const Icon = item.icon
                 return (
                   <button
                     key={item.id}
@@ -240,6 +285,7 @@ export function CommandPalette() {
                     onClick={() => handleSelect(item)}
                     onMouseEnter={() => setActiveIndex(idx)}
                   >
+                    {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" />}
                     <span
                       className={`inline-block h-2 w-2 shrink-0 rounded-full ${
                         item.isOnline
@@ -250,6 +296,116 @@ export function CommandPalette() {
                     <span className="font-mono tabular-nums">{item.label}</span>
                     {item.sublabel && (
                       <span className="text-slate-500">({item.sublabel})</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Agents section */}
+          {agentsSection.length > 0 && (
+            <div className="mt-2">
+              <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Agents
+              </div>
+              {agentsSection.map((item) => {
+                const idx = runningIdx++
+                const Icon = item.icon
+                return (
+                  <button
+                    key={item.id}
+                    data-active={activeIndex === idx}
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                      activeIndex === idx
+                        ? 'bg-slate-800 text-white'
+                        : 'text-slate-300 hover:bg-slate-800/50'
+                    }`}
+                    onClick={() => handleSelect(item)}
+                    onMouseEnter={() => setActiveIndex(idx)}
+                  >
+                    {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" />}
+                    <span
+                      className={`inline-block h-2 w-2 shrink-0 rounded-full ${
+                        item.isOnline
+                          ? 'bg-emerald-400 ring-2 ring-emerald-400/30'
+                          : 'bg-slate-500'
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                    {item.sublabel && (
+                      <span className="text-slate-500">({item.sublabel})</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* SSH Hosts section */}
+          {sshSection.length > 0 && (
+            <div className="mt-2">
+              <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                SSH Hosts
+              </div>
+              {sshSection.map((item) => {
+                const idx = runningIdx++
+                const Icon = item.icon
+                return (
+                  <button
+                    key={item.id}
+                    data-active={activeIndex === idx}
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                      activeIndex === idx
+                        ? 'bg-slate-800 text-white'
+                        : 'text-slate-300 hover:bg-slate-800/50'
+                    }`}
+                    onClick={() => handleSelect(item)}
+                    onMouseEnter={() => setActiveIndex(idx)}
+                  >
+                    {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" />}
+                    <span
+                      className={`inline-block h-2 w-2 shrink-0 rounded-full ${
+                        item.isOnline
+                          ? 'bg-emerald-400 ring-2 ring-emerald-400/30'
+                          : 'bg-slate-500'
+                      }`}
+                    />
+                    <span>{item.label}</span>
+                    {item.sublabel && (
+                      <span className="text-slate-500 font-mono text-xs">{item.sublabel}</span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Assets section */}
+          {assetsSection.length > 0 && (
+            <div className="mt-2">
+              <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Assets
+              </div>
+              {assetsSection.map((item) => {
+                const idx = runningIdx++
+                const Icon = item.icon
+                return (
+                  <button
+                    key={item.id}
+                    data-active={activeIndex === idx}
+                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
+                      activeIndex === idx
+                        ? 'bg-slate-800 text-white'
+                        : 'text-slate-300 hover:bg-slate-800/50'
+                    }`}
+                    onClick={() => handleSelect(item)}
+                    onMouseEnter={() => setActiveIndex(idx)}
+                  >
+                    {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" />}
+                    <span>{item.label}</span>
+                    {item.sublabel && (
+                      <span className="text-slate-500 text-xs">({item.sublabel})</span>
                     )}
                   </button>
                 )
