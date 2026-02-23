@@ -1,7 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow,
   Controls,
@@ -18,8 +17,26 @@ import {
   type NodeProps,
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
-import dagre from '@dagrejs/dagre'
-import { Network, Loader2, RefreshCw, RotateCcw } from 'lucide-react'
+import {
+  forceSimulation,
+  forceLink,
+  forceManyBody,
+  forceCenter,
+  forceCollide,
+  forceX,
+  forceY,
+  type SimulationNodeDatum,
+  type SimulationLinkDatum,
+} from 'd3-force'
+import {
+  Network,
+  Loader2,
+  RefreshCw,
+  RotateCcw,
+  ExternalLink,
+  Copy,
+  Check,
+} from 'lucide-react'
 import {
   fetchDevices,
   fetchTopDevices,
@@ -32,6 +49,17 @@ import {
 import type { Device, TopDevice, VyosInterface } from '@/lib/types'
 import { getDeviceIcon } from '@/lib/device-icons'
 import { PageTransition } from '@/components/PageTransition'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { useWsEvent } from '@/lib/ws'
+import Link from 'next/link'
 
 // ─── Types ──────────────────────────────────────────────
 
@@ -44,60 +72,169 @@ type RouterNodeData = {
 type DeviceNodeData = {
   device: Device
   trafficBps: number
+  subnet: string
+}
+
+type SubnetGroupData = {
+  label: string
+  subnet: string
+  deviceCount: number
+  onlineCount: number
+  width: number
+  height: number
 }
 
 type RouterNodeType = Node<RouterNodeData, 'routerNode'>
 type DeviceNodeType = Node<DeviceNodeData, 'deviceNode'>
-type TopologyNode = RouterNodeType | DeviceNodeType
+type SubnetGroupType = Node<SubnetGroupData, 'subnetGroup'>
+type TopologyNode = RouterNodeType | DeviceNodeType | SubnetGroupType
 
-// ─── Dagre Layout ───────────────────────────────────────
+// ─── Helpers ────────────────────────────────────────────
+
+/** Extract /24 subnet from an IP address (e.g. "192.168.1.42" → "192.168.1.0/24") */
+function getSubnet(ip: string): string {
+  const parts = ip.split('.')
+  if (parts.length !== 4) return 'unknown'
+  return `${parts[0]}.${parts[1]}.${parts[2]}.0/24`
+}
+
+/** Map of subnet → color for visual grouping */
+const SUBNET_COLORS: Record<string, { bg: string; border: string; text: string }> = {}
+const COLOR_PALETTE = [
+  { bg: 'rgba(59, 130, 246, 0.06)', border: 'rgba(59, 130, 246, 0.2)', text: '#60a5fa' },
+  { bg: 'rgba(16, 185, 129, 0.06)', border: 'rgba(16, 185, 129, 0.2)', text: '#34d399' },
+  { bg: 'rgba(168, 85, 247, 0.06)', border: 'rgba(168, 85, 247, 0.2)', text: '#c084fc' },
+  { bg: 'rgba(245, 158, 11, 0.06)', border: 'rgba(245, 158, 11, 0.2)', text: '#fbbf24' },
+  { bg: 'rgba(236, 72, 153, 0.06)', border: 'rgba(236, 72, 153, 0.2)', text: '#f472b6' },
+  { bg: 'rgba(20, 184, 166, 0.06)', border: 'rgba(20, 184, 166, 0.2)', text: '#2dd4bf' },
+]
+let colorIndex = 0
+
+function getSubnetColor(subnet: string) {
+  if (!SUBNET_COLORS[subnet]) {
+    SUBNET_COLORS[subnet] = COLOR_PALETTE[colorIndex % COLOR_PALETTE.length]
+    colorIndex++
+  }
+  return SUBNET_COLORS[subnet]
+}
+
+function timeAgo(dateStr: string): string {
+  const date = new Date(dateStr)
+  const now = new Date()
+  const seconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+  if (seconds < 60) return 'just now'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  return `${days}d ago`
+}
+
+// ─── d3-force Layout ────────────────────────────────────
+
+interface ForceNode extends SimulationNodeDatum {
+  id: string
+  isRouter?: boolean
+  subnet?: string
+  fx?: number | null
+  fy?: number | null
+}
+
+interface ForceLink extends SimulationLinkDatum<ForceNode> {
+  source: string | ForceNode
+  target: string | ForceNode
+}
 
 const ROUTER_WIDTH = 200
 const ROUTER_HEIGHT = 80
 const DEVICE_WIDTH = 180
 const DEVICE_HEIGHT = 68
 
-function getLayoutedElements(
-  nodes: TopologyNode[],
-  edges: Edge[],
+function computeForceLayout(
+  nodeIds: { id: string; isRouter?: boolean; subnet?: string }[],
+  links: { source: string; target: string }[],
   pinnedPositions?: Map<string, { x: number; y: number }>,
-): { nodes: TopologyNode[]; edges: Edge[] } {
-  const g = new dagre.graphlib.Graph()
-  g.setDefaultEdgeLabel(() => ({}))
-  g.setGraph({ rankdir: 'TB', nodesep: 60, ranksep: 100 })
+): Map<string, { x: number; y: number }> {
+  const positions = new Map<string, { x: number; y: number }>()
 
-  nodes.forEach((n) => {
-    if (pinnedPositions?.has(n.id)) return
-    const isRouter = n.type === 'routerNode'
-    g.setNode(n.id, {
-      width: isRouter ? ROUTER_WIDTH : DEVICE_WIDTH,
-      height: isRouter ? ROUTER_HEIGHT : DEVICE_HEIGHT,
-    })
+  // Collect unique subnets (excluding router) for subnet clustering
+  const subnets = new Map<string, string[]>()
+  nodeIds.forEach((n) => {
+    if (!n.isRouter && n.subnet) {
+      const existing = subnets.get(n.subnet) || []
+      existing.push(n.id)
+      subnets.set(n.subnet, existing)
+    }
   })
-  edges.forEach((e) => {
-    if (pinnedPositions?.has(e.source) || pinnedPositions?.has(e.target)) return
-    g.setEdge(e.source, e.target)
-  })
-  dagre.layout(g)
 
-  return {
-    nodes: nodes.map((n) => {
-      // Use saved position if this node was pinned
-      const pinned = pinnedPositions?.get(n.id)
-      if (pinned) {
-        return { ...n, position: { x: pinned.x, y: pinned.y } }
-      }
-      const pos = g.node(n.id)
-      const isRouter = n.type === 'routerNode'
-      const w = isRouter ? ROUTER_WIDTH : DEVICE_WIDTH
-      const h = isRouter ? ROUTER_HEIGHT : DEVICE_HEIGHT
-      return {
-        ...n,
-        position: { x: pos.x - w / 2, y: pos.y - h / 2 },
-      }
-    }),
-    edges,
+  // Create angle-based subnet centers for forceX/forceY targeting
+  const subnetAngle = new Map<string, number>()
+  const subnetKeys = Array.from(subnets.keys()).sort()
+  subnetKeys.forEach((s, i) => {
+    subnetAngle.set(s, (2 * Math.PI * i) / Math.max(subnetKeys.length, 1))
+  })
+
+  const forceNodes: ForceNode[] = nodeIds.map((n) => {
+    const pinned = pinnedPositions?.get(n.id)
+    return {
+      id: n.id,
+      isRouter: n.isRouter,
+      subnet: n.subnet,
+      x: pinned?.x ?? (n.isRouter ? 0 : undefined),
+      y: pinned?.y ?? (n.isRouter ? 0 : undefined),
+      fx: pinned ? pinned.x : n.isRouter ? 0 : null,
+      fy: pinned ? pinned.y : n.isRouter ? 0 : null,
+    }
+  })
+
+  const forceLinks: ForceLink[] = links.map((l) => ({
+    source: l.source,
+    target: l.target,
+  }))
+
+  const clusterRadius = 250
+  const simulation = forceSimulation<ForceNode>(forceNodes)
+    .force(
+      'link',
+      forceLink<ForceNode, ForceLink>(forceLinks)
+        .id((d) => d.id)
+        .distance(150)
+        .strength(0.3),
+    )
+    .force('charge', forceManyBody<ForceNode>().strength(-300))
+    .force('center', forceCenter(0, 0).strength(0.05))
+    .force('collide', forceCollide<ForceNode>(60))
+    // Pull devices toward their subnet cluster center
+    .force(
+      'x',
+      forceX<ForceNode>((d) => {
+        if (d.isRouter) return 0
+        const angle = subnetAngle.get(d.subnet ?? '') ?? 0
+        return Math.cos(angle) * clusterRadius
+      }).strength(0.15),
+    )
+    .force(
+      'y',
+      forceY<ForceNode>((d) => {
+        if (d.isRouter) return 0
+        const angle = subnetAngle.get(d.subnet ?? '') ?? 0
+        return Math.sin(angle) * clusterRadius
+      }).strength(0.15),
+    )
+    .stop()
+
+  // Run simulation synchronously
+  const iterations = 300
+  for (let i = 0; i < iterations; i++) {
+    simulation.tick()
   }
+
+  forceNodes.forEach((n) => {
+    positions.set(n.id, { x: n.x ?? 0, y: n.y ?? 0 })
+  })
+
+  return positions
 }
 
 // ─── Custom Nodes ───────────────────────────────────────
@@ -109,11 +246,14 @@ function RouterNode({ data }: NodeProps<RouterNodeType>) {
       style={{ width: ROUTER_WIDTH, height: ROUTER_HEIGHT }}
     >
       <Handle type="source" position={Position.Bottom} className="!bg-blue-500" />
+      <Handle type="source" position={Position.Left} id="left" className="!bg-blue-500" />
+      <Handle type="source" position={Position.Right} id="right" className="!bg-blue-500" />
+      <Handle type="source" position={Position.Top} id="top" className="!bg-blue-500" />
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/20">
         <Network className="h-5 w-5 text-blue-400" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-white">VyOS Router</p>
+        <p className="truncate text-sm font-semibold text-white">Router</p>
         {data.wanIp && (
           <p className="truncate text-xs text-slate-400">{data.wanIp}</p>
         )}
@@ -137,19 +277,29 @@ function RouterNode({ data }: NodeProps<RouterNodeType>) {
 function DeviceNode({ data }: NodeProps<DeviceNodeType>) {
   const { device } = data
   const { icon: Icon } = getDeviceIcon(
-    device.vendor,
+    device.custom_vendor ?? device.vendor,
     device.hostname,
     device.mdns_services,
+    device.custom_type ?? device.device_type,
   )
-  const displayName = device.custom_name || device.name || device.hostname || device.mac
+  const displayName =
+    device.custom_name || device.name || device.hostname || device.mac
   const primaryIp = device.ips?.[0] || '—'
+  const subnetColor = getSubnetColor(data.subnet)
 
   return (
     <div
-      className="flex items-center gap-2.5 rounded-lg border border-slate-700/60 bg-slate-800/90 px-3 py-2.5 shadow-md transition-shadow hover:shadow-lg hover:shadow-slate-700/20"
-      style={{ width: DEVICE_WIDTH, height: DEVICE_HEIGHT }}
+      className="flex items-center gap-2.5 rounded-lg border bg-slate-800/90 px-3 py-2.5 shadow-md transition-shadow hover:shadow-lg hover:shadow-slate-700/20"
+      style={{
+        width: DEVICE_WIDTH,
+        height: DEVICE_HEIGHT,
+        borderColor: subnetColor.border,
+      }}
     >
       <Handle type="target" position={Position.Top} className="!bg-slate-500" />
+      <Handle type="target" position={Position.Left} id="left" className="!bg-slate-500" />
+      <Handle type="target" position={Position.Right} id="right" className="!bg-slate-500" />
+      <Handle type="target" position={Position.Bottom} id="bottom" className="!bg-slate-500" />
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-700/60">
         <Icon className="h-4 w-4 text-slate-300" />
       </div>
@@ -168,9 +318,34 @@ function DeviceNode({ data }: NodeProps<DeviceNodeType>) {
   )
 }
 
+function SubnetGroupNode({ data }: NodeProps<SubnetGroupType>) {
+  const color = getSubnetColor(data.subnet)
+  return (
+    <div
+      className="rounded-2xl"
+      style={{
+        width: data.width,
+        height: data.height,
+        backgroundColor: color.bg,
+        border: `1px dashed ${color.border}`,
+      }}
+    >
+      <div className="flex items-center gap-2 px-4 pt-3">
+        <span className="text-xs font-medium" style={{ color: color.text }}>
+          {data.label}
+        </span>
+        <span className="text-[10px] text-slate-500">
+          {data.onlineCount}/{data.deviceCount} online
+        </span>
+      </div>
+    </div>
+  )
+}
+
 const nodeTypes: NodeTypes = {
   routerNode: RouterNode,
   deviceNode: DeviceNode,
+  subnetGroup: SubnetGroupNode,
 }
 
 // ─── Edge style helpers ─────────────────────────────────
@@ -182,15 +357,246 @@ function getEdgeStrokeWidth(bps: number): number {
   return 1
 }
 
+// ─── Device Detail Panel ────────────────────────────────
+
+function DeviceDetailPanel({ device }: { device: Device }) {
+  const [copied, setCopied] = useState<string | null>(null)
+  const ips = device.ips ?? []
+  const primaryIp = ips[0] ?? '—'
+  const displayName =
+    device.custom_name ?? device.name ?? device.hostname ?? 'Unknown Device'
+  const effectiveType = device.custom_type ?? device.device_type
+  const { icon: DetailIcon, label: deviceTypeLabel } = getDeviceIcon(
+    device.custom_vendor ?? device.vendor,
+    device.hostname,
+    device.mdns_services,
+    effectiveType,
+  )
+  const vendorDisplay =
+    device.custom_vendor ?? device.vendor
+      ? ((device.custom_vendor ?? device.vendor) || '').length > 25
+        ? ((device.custom_vendor ?? device.vendor) || '').slice(0, 25) + '…'
+        : device.custom_vendor ?? device.vendor
+      : null
+
+  const handleCopy = (text: string, label: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(label)
+      setTimeout(() => setCopied(null), 1500)
+    })
+  }
+
+  return (
+    <>
+      <SheetHeader>
+        <div className="flex items-center gap-3">
+          <div
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-800 ${
+              device.is_online ? 'ring-1 ring-emerald-500/20' : ''
+            }`}
+          >
+            <DetailIcon
+              className={`h-5 w-5 ${
+                device.is_online ? 'text-emerald-400' : 'text-slate-500'
+              }`}
+            />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <SheetTitle className="text-white">{displayName}</SheetTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              {vendorDisplay && (
+                <span className="text-xs text-slate-400">{vendorDisplay}</span>
+              )}
+              <span className="text-xs text-slate-500">{deviceTypeLabel}</span>
+            </div>
+          </div>
+        </div>
+        <SheetDescription>
+          {device.is_online ? (
+            <span className="text-emerald-400">Online</span>
+          ) : (
+            <span className="text-slate-500">
+              Offline — last seen {timeAgo(device.last_seen_at)}
+            </span>
+          )}
+        </SheetDescription>
+      </SheetHeader>
+
+      <div className="mt-3">
+        <Link href={`/devices?selected=${device.id}`}>
+          <button className="flex w-full items-center justify-center gap-2 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-slate-700 hover:text-white">
+            <ExternalLink className="h-4 w-4" />
+            Full Device Details
+          </button>
+        </Link>
+      </div>
+
+      <Separator className="my-4 bg-slate-800" />
+
+      <div className="space-y-3">
+        <InfoRow
+          label="IP Address"
+          value={primaryIp}
+          mono
+          onCopy={() => handleCopy(primaryIp, 'ip')}
+          copied={copied === 'ip'}
+        />
+        {ips.length > 1 && (
+          <div className="pl-0">
+            {ips.slice(1).map((ip) => (
+              <span
+                key={ip}
+                className="mr-1.5 inline-block rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[11px] text-slate-400"
+              >
+                {ip}
+              </span>
+            ))}
+          </div>
+        )}
+        <InfoRow
+          label="MAC Address"
+          value={device.mac}
+          mono
+          onCopy={() => handleCopy(device.mac, 'mac')}
+          copied={copied === 'mac'}
+        />
+        {device.hostname && (
+          <InfoRow label="Hostname" value={device.hostname} />
+        )}
+        {device.vendor && <InfoRow label="Vendor" value={device.vendor} />}
+        <InfoRow label="First Seen" value={timeAgo(device.first_seen_at)} />
+        <InfoRow label="Last Seen" value={timeAgo(device.last_seen_at)} />
+
+        {(device.os_family || effectiveType || device.device_model) && (
+          <>
+            <Separator className="bg-slate-800" />
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+              Device Identity
+            </p>
+            {device.os_family && (
+              <InfoRow
+                label="OS"
+                value={
+                  device.os_version
+                    ? `${device.os_family} ${device.os_version}`
+                    : device.os_family
+                }
+              />
+            )}
+            {effectiveType && (
+              <InfoRow label="Type" value={effectiveType} />
+            )}
+            {device.device_brand && (
+              <InfoRow label="Brand" value={device.device_brand} />
+            )}
+            {device.device_model && (
+              <InfoRow label="Model" value={device.device_model} />
+            )}
+          </>
+        )}
+
+        {device.mdns_services && (
+          <>
+            <Separator className="bg-slate-800" />
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+              mDNS Services
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {device.mdns_services.split(',').map((svc) => (
+                <Badge
+                  key={svc.trim()}
+                  variant="outline"
+                  className="border-slate-700 text-slate-400 text-[10px]"
+                >
+                  {svc.trim()}
+                </Badge>
+              ))}
+            </div>
+          </>
+        )}
+
+        {(device.location || device.owner || device.tags) && (
+          <>
+            <Separator className="bg-slate-800" />
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+              Asset Info
+            </p>
+            {device.location && (
+              <InfoRow label="Location" value={device.location} />
+            )}
+            {device.owner && <InfoRow label="Owner" value={device.owner} />}
+            {device.tags && (
+              <div className="flex flex-wrap gap-1.5">
+                {device.tags.split(',').map((tag) => (
+                  <Badge
+                    key={tag.trim()}
+                    variant="outline"
+                    className="border-slate-700 text-slate-400 text-[10px]"
+                  >
+                    {tag.trim()}
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </>
+  )
+}
+
+function InfoRow({
+  label,
+  value,
+  mono,
+  onCopy,
+  copied,
+}: {
+  label: string
+  value: string
+  mono?: boolean
+  onCopy?: () => void
+  copied?: boolean
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
+        {label}
+      </span>
+      <span
+        className={`flex items-center gap-1 text-sm text-slate-300 ${
+          mono ? 'font-mono tabular-nums' : ''
+        }`}
+      >
+        {value}
+        {onCopy && (
+          <button
+            onClick={onCopy}
+            className="ml-1 text-slate-600 transition-colors hover:text-slate-400"
+          >
+            {copied ? (
+              <Check className="h-3 w-3 text-emerald-400" />
+            ) : (
+              <Copy className="h-3 w-3" />
+            )}
+          </button>
+        )}
+      </span>
+    </div>
+  )
+}
+
 // ─── Main Page ──────────────────────────────────────────
 
 export default function TopologyPage() {
-  const router = useRouter()
   const [nodes, setNodes, onNodesChange] = useNodesState<TopologyNode>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
+  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null)
 
   // Track pinned positions locally so refreshes preserve them
   const pinnedRef = useRef<Map<string, { x: number; y: number }>>(new Map())
@@ -198,23 +604,32 @@ export default function TopologyPage() {
   const buildGraph = useCallback(
     async (isInitial: boolean) => {
       try {
-        const fetches: [Promise<Device[]>, Promise<TopDevice[]>, Promise<VyosInterface[]>, Promise<NodePosition[]>?] = [
+        const fetches: [
+          Promise<Device[]>,
+          Promise<TopDevice[]>,
+          Promise<VyosInterface[]>,
+          Promise<NodePosition[]>?,
+        ] = [
           fetchDevices(),
           fetchTopDevices(100),
           fetchRouterInterfaces().catch(() => [] as VyosInterface[]),
         ]
 
-        // Fetch saved positions on initial load
         if (isInitial) {
-          fetches.push(fetchTopologyPositions().catch(() => [] as NodePosition[]))
+          fetches.push(
+            fetchTopologyPositions().catch(() => [] as NodePosition[]),
+          )
         }
 
-        const [devices, topDevices, interfaces, savedPositions] = await Promise.all(fetches)
+        const [devices, topDevices, interfaces, savedPositions] =
+          await Promise.all(fetches)
 
         // Populate pinned map from server on initial load
         if (isInitial && savedPositions) {
           pinnedRef.current = new Map(
-            savedPositions.filter((p) => p.pinned).map((p) => [p.node_id, { x: p.x, y: p.y }]),
+            savedPositions
+              .filter((p) => p.pinned)
+              .map((p) => [p.node_id, { x: p.x, y: p.y }]),
           )
         }
 
@@ -227,37 +642,146 @@ export default function TopologyPage() {
         )
         const wanIp = wanIf?.ip_address ?? null
 
-        // Build traffic map from top devices
+        // Build traffic map
         const trafficMap = new Map<string, number>()
         topDevices.forEach((td: TopDevice) => {
           trafficMap.set(td.id, (td.rx_bps || 0) + (td.tx_bps || 0))
         })
 
-        // Build nodes
+        // Derive subnet for each device
+        const deviceSubnets = new Map<string, string>()
+        devices.forEach((d) => {
+          const ip = d.ips?.[0]
+          deviceSubnets.set(d.id, ip ? getSubnet(ip) : 'unknown')
+        })
+
+        // Collect subnet groups
+        const subnetDevices = new Map<string, Device[]>()
+        devices.forEach((d) => {
+          const subnet = deviceSubnets.get(d.id) || 'unknown'
+          const existing = subnetDevices.get(subnet) || []
+          existing.push(d)
+          subnetDevices.set(subnet, existing)
+        })
+
+        // Build force layout node descriptors
+        const layoutNodes = [
+          { id: 'router', isRouter: true, subnet: undefined },
+          ...devices.map((d) => ({
+            id: d.id,
+            isRouter: false,
+            subnet: deviceSubnets.get(d.id),
+          })),
+        ]
+
+        const layoutLinks = devices.map((d) => ({
+          source: 'router',
+          target: d.id,
+        }))
+
+        // Compute positions using d3-force (on initial load)
+        // On refresh, reuse existing positions
+        let positionMap: Map<string, { x: number; y: number }>
+
+        if (isInitial) {
+          positionMap = computeForceLayout(
+            layoutNodes,
+            layoutLinks,
+            pinnedRef.current,
+          )
+        } else {
+          // Build position map from current node positions
+          positionMap = new Map()
+        }
+
+        // Build device nodes
+        const deviceNodes: TopologyNode[] = devices.map((device) => {
+          const subnet = deviceSubnets.get(device.id) || 'unknown'
+          const pos = positionMap.get(device.id)
+          return {
+            id: device.id,
+            type: 'deviceNode' as const,
+            position: pos
+              ? { x: pos.x - DEVICE_WIDTH / 2, y: pos.y - DEVICE_HEIGHT / 2 }
+              : { x: 0, y: 0 },
+            data: {
+              device,
+              trafficBps: trafficMap.get(device.id) || 0,
+              subnet,
+            },
+            draggable: true,
+            zIndex: 10,
+          }
+        })
+
+        // Build router node
+        const routerPos = positionMap.get('router')
         const routerNode: TopologyNode = {
           id: 'router',
           type: 'routerNode',
-          position: { x: 0, y: 0 },
+          position: routerPos
+            ? {
+                x: routerPos.x - ROUTER_WIDTH / 2,
+                y: routerPos.y - ROUTER_HEIGHT / 2,
+              }
+            : { x: -ROUTER_WIDTH / 2, y: -ROUTER_HEIGHT / 2 },
           data: {
-            label: 'VyOS Router',
+            label: 'Router',
             wanIp,
             isOnline: true,
           },
           draggable: true,
+          zIndex: 10,
         }
 
-        const deviceNodes: TopologyNode[] = devices.map((device) => ({
-          id: device.id,
-          type: 'deviceNode' as const,
-          position: { x: 0, y: 0 },
-          data: {
-            device,
-            trafficBps: trafficMap.get(device.id) || 0,
-          },
-          draggable: true,
-        }))
+        // Build subnet group background nodes
+        const subnetGroupNodes: TopologyNode[] = []
+        if (isInitial) {
+          subnetDevices.forEach((devs, subnet) => {
+            if (subnet === 'unknown' || devs.length === 0) return
 
-        const allNodes: TopologyNode[] = [routerNode, ...deviceNodes]
+            // Calculate bounding box from device positions
+            let minX = Infinity,
+              minY = Infinity,
+              maxX = -Infinity,
+              maxY = -Infinity
+            devs.forEach((d) => {
+              const pos = positionMap.get(d.id)
+              if (pos) {
+                minX = Math.min(minX, pos.x)
+                minY = Math.min(minY, pos.y)
+                maxX = Math.max(maxX, pos.x)
+                maxY = Math.max(maxY, pos.y)
+              }
+            })
+
+            if (!isFinite(minX)) return
+
+            const padding = 60
+            const width = maxX - minX + DEVICE_WIDTH + padding * 2
+            const height = maxY - minY + DEVICE_HEIGHT + padding * 2
+
+            subnetGroupNodes.push({
+              id: `subnet-${subnet}`,
+              type: 'subnetGroup',
+              position: {
+                x: minX - DEVICE_WIDTH / 2 - padding,
+                y: minY - DEVICE_HEIGHT / 2 - padding - 10,
+              },
+              data: {
+                label: subnet,
+                subnet,
+                deviceCount: devs.length,
+                onlineCount: devs.filter((d) => d.is_online).length,
+                width: Math.max(width, 200),
+                height: Math.max(height, 120),
+              },
+              draggable: false,
+              selectable: false,
+              zIndex: 0,
+            })
+          })
+        }
 
         // Build edges
         const allEdges: Edge[] = devices.map((device) => {
@@ -271,24 +795,54 @@ export default function TopologyPage() {
             style: {
               stroke: device.is_online ? '#3b82f6' : '#334155',
               strokeWidth: getEdgeStrokeWidth(totalBps),
-              opacity: device.is_online ? 0.7 : 0.25,
+              opacity: device.is_online ? 0.5 : 0.15,
             },
+            zIndex: 5,
           }
         })
 
-        // Apply dagre layout only on initial load; pinned nodes keep saved positions
         if (isInitial) {
-          const layouted = getLayoutedElements(allNodes, allEdges, pinnedRef.current)
-          setNodes(layouted.nodes)
-          setEdges(layouted.edges)
+          setNodes([...subnetGroupNodes, routerNode, ...deviceNodes])
+          setEdges(allEdges)
         } else {
           // On refresh, update data without changing positions
           setNodes((prev) => {
             const posMap = new Map(prev.map((n) => [n.id, n.position]))
-            return allNodes.map((n) => ({
-              ...n,
-              position: posMap.get(n.id) ?? n.position,
-            }))
+            const updated: TopologyNode[] = []
+
+            // Keep existing subnet groups with updated counts
+            subnetDevices.forEach((devs, subnet) => {
+              if (subnet === 'unknown' || devs.length === 0) return
+              const existingPos = posMap.get(`subnet-${subnet}`)
+              const existing = prev.find((n) => n.id === `subnet-${subnet}`)
+              if (existing && existing.type === 'subnetGroup') {
+                updated.push({
+                  ...existing,
+                  position: existingPos ?? existing.position,
+                  data: {
+                    ...(existing.data as SubnetGroupData),
+                    deviceCount: devs.length,
+                    onlineCount: devs.filter((d) => d.is_online).length,
+                  },
+                } as SubnetGroupType)
+              }
+            })
+
+            // Update router
+            updated.push({
+              ...routerNode,
+              position: posMap.get('router') ?? routerNode.position,
+            })
+
+            // Update device nodes
+            deviceNodes.forEach((n) => {
+              updated.push({
+                ...n,
+                position: posMap.get(n.id) ?? n.position,
+              })
+            })
+
+            return updated
           })
           setEdges(allEdges)
         }
@@ -296,7 +850,9 @@ export default function TopologyPage() {
         setLastRefresh(new Date())
         setError(null)
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load topology')
+        setError(
+          err instanceof Error ? err.message : 'Failed to load topology',
+        )
       } finally {
         setLoading(false)
       }
@@ -315,9 +871,15 @@ export default function TopologyPage() {
     return () => clearInterval(interval)
   }, [buildGraph])
 
+  // Real-time updates via WebSocket
+  useWsEvent(['device_online', 'device_offline', 'new_device'], () =>
+    buildGraph(false),
+  )
+
   // Persist position when a node is dragged
   const onNodeDragStop = useCallback(
     (_event: React.MouseEvent, node: TopologyNode) => {
+      if (node.type === 'subnetGroup') return
       const pos = { x: node.position.x, y: node.position.y }
       pinnedRef.current.set(node.id, pos)
       saveTopologyPositions([
@@ -327,24 +889,43 @@ export default function TopologyPage() {
     [],
   )
 
-  // Reset layout — clear all saved positions and re-run dagre
+  // Reset layout — clear all saved positions and re-run force simulation
   const resetLayout = useCallback(async () => {
+    // Reset subnet color assignments
+    Object.keys(SUBNET_COLORS).forEach((k) => delete SUBNET_COLORS[k])
+    colorIndex = 0
     pinnedRef.current.clear()
     await deleteTopologyPositions().catch(() => {})
     setLoading(true)
     buildGraph(true)
   }, [buildGraph])
 
-  // Click handler — navigate to devices page with device selected
+  // Click handler — show device detail panel
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: TopologyNode) => {
       if (node.type === 'deviceNode') {
-        const device = (node.data as DeviceNodeData).device
-        router.push(`/devices?selected=${device.id}`)
+        const data = node.data as DeviceNodeData
+        setSelectedDevice(data.device)
       }
     },
-    [router],
+    [],
   )
+
+  // Count stats for header
+  const stats = useMemo(() => {
+    const deviceNodes = nodes.filter((n) => n.type === 'deviceNode')
+    const online = deviceNodes.filter(
+      (n) => (n.data as DeviceNodeData).device.is_online,
+    ).length
+    const subnets = new Set(
+      deviceNodes.map((n) => (n.data as DeviceNodeData).subnet),
+    )
+    return {
+      total: deviceNodes.length,
+      online,
+      subnets: subnets.size,
+    }
+  }, [nodes])
 
   if (loading) {
     return (
@@ -352,7 +933,7 @@ export default function TopologyPage() {
         <div className="flex h-[calc(100vh-64px)] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            <p className="text-sm text-slate-400">Loading topology…</p>
+            <p className="text-sm text-slate-400">Building topology…</p>
           </div>
         </div>
       </PageTransition>
@@ -393,7 +974,7 @@ export default function TopologyPage() {
           nodeTypes={nodeTypes}
           fitView
           fitViewOptions={{ padding: 0.15 }}
-          minZoom={0.3}
+          minZoom={0.1}
           maxZoom={2}
           proOptions={{ hideAttribution: true }}
           className="bg-slate-950"
@@ -405,16 +986,27 @@ export default function TopologyPage() {
           <MiniMap
             nodeColor={(n) => {
               if (n.type === 'routerNode') return '#3b82f6'
+              if (n.type === 'subnetGroup') return 'transparent'
               const data = n.data as DeviceNodeData
               return data.device?.is_online ? '#34d399' : '#475569'
             }}
             className="!border-slate-700 !bg-slate-900/90"
             maskColor="rgba(15, 23, 42, 0.7)"
           />
-          <Background variant={BackgroundVariant.Dots} color="#334155" gap={24} size={1} />
+          <Background
+            variant={BackgroundVariant.Dots}
+            color="#334155"
+            gap={24}
+            size={1}
+          />
 
           {/* Floating toolbar */}
-          <div className="absolute right-4 top-4 z-10 flex items-center gap-2 rounded-lg border border-slate-700/50 bg-slate-900/80 px-3 py-1.5 backdrop-blur-sm">
+          <div className="absolute right-4 top-4 z-10 flex items-center gap-3 rounded-lg border border-slate-700/50 bg-slate-900/80 px-4 py-2 backdrop-blur-sm">
+            <span className="text-[11px] text-slate-400">
+              {stats.total} devices · {stats.online} online · {stats.subnets}{' '}
+              subnet{stats.subnets !== 1 ? 's' : ''}
+            </span>
+            <div className="h-3 w-px bg-slate-700" />
             <button
               onClick={resetLayout}
               className="text-slate-400 transition-colors hover:text-white"
@@ -422,7 +1014,6 @@ export default function TopologyPage() {
             >
               <RotateCcw className="h-3.5 w-3.5" />
             </button>
-            <div className="h-3 w-px bg-slate-700" />
             <button
               onClick={() => buildGraph(false)}
               className="text-slate-400 transition-colors hover:text-white"
@@ -438,6 +1029,21 @@ export default function TopologyPage() {
           </div>
         </ReactFlow>
       </div>
+
+      {/* Device detail slide-in panel */}
+      <Sheet
+        open={selectedDevice !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelectedDevice(null)
+        }}
+      >
+        <SheetContent
+          side="right"
+          className="w-full overflow-y-auto border-slate-800 bg-slate-950 sm:max-w-md"
+        >
+          {selectedDevice && <DeviceDetailPanel device={selectedDevice} />}
+        </SheetContent>
+      </Sheet>
     </PageTransition>
   )
 }
