@@ -72,6 +72,9 @@ import type {
   MikrotikWireguard,
   Asset,
   AssetRequest,
+  AlertRule,
+  CreateAlertRuleRequest,
+  UpdateAlertRuleRequest,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -1245,4 +1248,27 @@ export function updateAssetInventory(
 
 export function deleteAssetInventory(id: string): Promise<void> {
   return apiDelete(`/api/v1/assets/${id}`);
+}
+
+// ─── Alert Rules ─────────────────────────────────────────
+
+export function fetchAlertRules(): Promise<AlertRule[]> {
+  return apiGet<AlertRule[]>("/api/v1/alert-rules");
+}
+
+export function createAlertRule(
+  body: CreateAlertRuleRequest
+): Promise<AlertRule> {
+  return apiPost<AlertRule>("/api/v1/alert-rules", body);
+}
+
+export function updateAlertRule(
+  id: string,
+  body: UpdateAlertRuleRequest
+): Promise<AlertRule> {
+  return apiPut<AlertRule>(`/api/v1/alert-rules/${id}`, body);
+}
+
+export function deleteAlertRule(id: string): Promise<void> {
+  return apiDelete(`/api/v1/alert-rules/${id}`);
 }

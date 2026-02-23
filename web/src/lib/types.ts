@@ -1059,3 +1059,31 @@ export interface MikrotikWgInterface {
 export interface MikrotikWireguard {
   interfaces: MikrotikWgInterface[];
 }
+
+// ─── Alert Rules ─────────────────────────────────────────
+
+export interface AlertRule {
+  id: string;
+  rule_type: "device_offline" | "bandwidth_threshold" | "new_device";
+  enabled: boolean;
+  threshold_value: number | null;
+  notify_telegram: boolean;
+  notify_in_app: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateAlertRuleRequest {
+  rule_type: "device_offline" | "bandwidth_threshold" | "new_device";
+  enabled?: boolean;
+  threshold_value?: number | null;
+  notify_telegram?: boolean;
+  notify_in_app?: boolean;
+}
+
+export interface UpdateAlertRuleRequest {
+  enabled?: boolean;
+  threshold_value?: number | null;
+  notify_telegram?: boolean;
+  notify_in_app?: boolean;
+}

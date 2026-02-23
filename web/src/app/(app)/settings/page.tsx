@@ -10,6 +10,7 @@ import {
   FileText,
   Lock,
   ChevronRight,
+  ShieldAlert,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageTransition } from "@/components/PageTransition";
@@ -58,6 +59,13 @@ const settingsGroups: SettingsGroup[] = [
         iconBg: "bg-purple-500/10",
         title: "Webhook Notifications",
         description: "POST alerts to Discord, Slack, ntfy.sh, or any URL.",
+      },
+      {
+        href: "/settings/alert-rules",
+        icon: <ShieldAlert className="h-4 w-4 text-amber-400" />,
+        iconBg: "bg-amber-500/10",
+        title: "Alert Rules",
+        description: "Configure rules for device offline, bandwidth, and new devices.",
       },
     ],
   },
