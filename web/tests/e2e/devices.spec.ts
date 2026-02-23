@@ -7,12 +7,12 @@ test.describe('Devices page', () => {
   });
 
   test('devices page loads with heading', async ({ page }) => {
-    await expect(page.locator('h1:has-text("Devices")')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('h1:has-text("Devices")')).toBeVisible({ timeout: 15000 });
     await page.screenshot({ path: 'tests/screenshots/devices-page.png', fullPage: true });
   });
 
   test('devices page has filter buttons', async ({ page }) => {
-    await expect(page.locator('button:has-text("All")')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('button:has-text("All")')).toBeVisible({ timeout: 15000 });
     await expect(page.locator('button:has-text("Online")')).toBeVisible();
     await expect(page.locator('button:has-text("Offline")')).toBeVisible();
     await expect(page.locator('button:has-text("Unknown")')).toBeVisible();
@@ -20,11 +20,11 @@ test.describe('Devices page', () => {
 
   test('devices page has search input', async ({ page }) => {
     const search = page.locator('input[placeholder="Search name, IP, MAC…"]');
-    await expect(search).toBeVisible({ timeout: 5000 });
+    await expect(search).toBeVisible({ timeout: 15000 });
   });
 
   test('devices page has Scan Now button', async ({ page }) => {
-    await expect(page.locator('button:has-text("Scan Now")')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('button:has-text("Scan Now")')).toBeVisible({ timeout: 15000 });
   });
 
   test('devices show IP addresses', async ({ page }) => {

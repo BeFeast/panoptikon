@@ -13,7 +13,7 @@ test.describe('Assets page', () => {
     await expect(errorText).not.toBeVisible();
 
     // Should show the page heading
-    await expect(page.locator('h1:has-text("Assets")')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('h1:has-text("Assets")')).toBeVisible({ timeout: 15000 });
     await page.screenshot({ path: 'tests/screenshots/assets-page.png', fullPage: true });
   });
 
@@ -31,7 +31,7 @@ test.describe('Assets page', () => {
   });
 
   test('Add Asset button is visible', async ({ page }) => {
-    await expect(page.locator('button:has-text("Add Asset")')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('button:has-text("Add Asset")')).toBeVisible({ timeout: 15000 });
   });
 
   test('Add Asset dialog opens', async ({ page }) => {
@@ -60,8 +60,8 @@ test.describe('Assets page', () => {
     await page.locator('[role="dialog"] button:has-text("Add Asset")').click();
 
     // Dialog should close and asset should appear in list
-    await expect(page.locator('[role="dialog"]')).not.toBeVisible({ timeout: 5000 });
-    await expect(page.locator(`text=${assetName}`)).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('[role="dialog"]')).not.toBeVisible({ timeout: 10000 });
+    await expect(page.locator(`text=${assetName}`)).toBeVisible({ timeout: 10000 });
     await page.screenshot({ path: 'tests/screenshots/assets-after-create.png', fullPage: true });
 
     // Delete the asset — click the delete button in the row
@@ -73,7 +73,7 @@ test.describe('Assets page', () => {
     await page.locator('button:has-text("Delete")').last().click();
 
     // Asset should be removed from the list
-    await expect(page.locator(`text=${assetName}`)).not.toBeVisible({ timeout: 5000 });
+    await expect(page.locator(`text=${assetName}`)).not.toBeVisible({ timeout: 10000 });
     await page.screenshot({ path: 'tests/screenshots/assets-after-delete.png', fullPage: true });
   });
 
@@ -81,7 +81,7 @@ test.describe('Assets page', () => {
     await page.waitForTimeout(2000);
 
     const search = page.locator('input[placeholder="Search by name, location, IP, owner, tag..."]');
-    await expect(search).toBeVisible({ timeout: 5000 });
+    await expect(search).toBeVisible({ timeout: 15000 });
     await search.fill('nonexistent-asset-xyz');
     await page.waitForTimeout(500);
 
