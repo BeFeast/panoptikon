@@ -455,6 +455,8 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> St
 mod tests {
     use crate::db;
 
+    use super::{asset_from_row, GET_ONE_QUERY, LIST_QUERY};
+
     #[tokio::test]
     async fn test_asset_crud() {
         let pool = db::init(":memory:").await.expect("DB init failed");
@@ -501,5 +503,185 @@ mod tests {
             .await
             .expect("Query failed");
         assert_eq!(remaining, 0);
+    }
+
+    /// Insert fixture data for devices, device_ips, agents, agent_reports,
+    /// ssh_targets, ssh_reports, and assets — then return the asset id.
+    async fn insert_fixtures(pool: &sqlx::SqlitePool) -> String {
+        let device_id = "dev-001";
+        let agent_id = "agent-001";
+        let ssh_target_id = "ssh-001";
+        let asset_id = uuid::Uuid::new_v4().to_string();
+
+        // Device
+        sqlx::query(
+            "INSERT INTO devices (id, mac, name, hostname, first_seen_at, last_seen_at, is_online) \
+             VALUES ('dev-001', 'AA:BB:CC:DD:EE:FF', 'switch-core', 'switch-core.local', \
+                     '2024-01-01 00:00:00', '2024-06-15 12:00:00', 1)",
+        )
+        .execute(pool)
+        .await
+        .expect("Insert device failed");
+
+        // Device IP
+        sqlx::query(
+            "INSERT INTO device_ips (device_id, ip, subnet, seen_at) \
+             VALUES ('dev-001', '10.0.0.1', '10.0.0.0/24', '2024-06-15 12:00:00')",
+        )
+        .execute(pool)
+        .await
+        .expect("Insert device_ip failed");
+
+        // Agent
+        sqlx::query(
+            "INSERT INTO agents (id, api_key_hash, name) \
+             VALUES ('agent-001', 'hash123', 'monitoring-agent')",
+        )
+        .execute(pool)
+        .await
+        .expect("Insert agent failed");
+
+        // Agent report
+        sqlx::query(
+            "INSERT INTO agent_reports (agent_id, reported_at, os_name, os_version) \
+             VALUES ('agent-001', '2024-06-15 12:00:00', 'Ubuntu', '22.04')",
+        )
+        .execute(pool)
+        .await
+        .expect("Insert agent_report failed");
+
+        // SSH target
+        sqlx::query(
+            "INSERT INTO ssh_targets (id, name, host, port, username, auth_type, poll_interval_secs) \
+             VALUES ('ssh-001', 'bastion', '10.0.0.99', 22, 'admin', 'key', 120)",
+        )
+        .execute(pool)
+        .await
+        .expect("Insert ssh_target failed");
+
+        // SSH report
+        sqlx::query(
+            "INSERT INTO ssh_reports (target_id, os_name, os_version, reported_at) \
+             VALUES ('ssh-001', 'Debian', '12', '2024-06-15 12:00:00')",
+        )
+        .execute(pool)
+        .await
+        .expect("Insert ssh_report failed");
+
+        // Asset linked to device, agent, and ssh target
+        sqlx::query(
+            "INSERT INTO assets (id, name, asset_type, location, owner, tags, device_id, agent_id, ssh_target_id) \
+             VALUES (?, 'web-server-01', 'server', 'DC-1', 'ops-team', '[\"production\"]', ?, ?, ?)",
+        )
+        .bind(&asset_id)
+        .bind(device_id)
+        .bind(agent_id)
+        .bind(ssh_target_id)
+        .execute(pool)
+        .await
+        .expect("Insert asset failed");
+
+        asset_id
+    }
+
+    #[tokio::test]
+    async fn test_list_query() {
+        let pool = db::init(":memory:").await.expect("DB init failed");
+        let asset_id = insert_fixtures(&pool).await;
+
+        // Also insert a standalone asset (no linked device/agent/ssh)
+        sqlx::query(
+            "INSERT INTO assets (id, name, asset_type) VALUES ('standalone', 'printer-01', 'printer')",
+        )
+        .execute(&pool)
+        .await
+        .expect("Insert standalone asset failed");
+
+        // Execute LIST_QUERY — this is the actual query used by the API handler
+        let rows = sqlx::query(LIST_QUERY)
+            .fetch_all(&pool)
+            .await
+            .expect("LIST_QUERY failed");
+
+        assert_eq!(rows.len(), 2, "Expected 2 assets from LIST_QUERY");
+
+        // Parse every row through asset_from_row to catch column-name mismatches
+        let assets: Vec<super::Asset> = rows
+            .into_iter()
+            .map(|r| asset_from_row(r).expect("asset_from_row failed"))
+            .collect();
+
+        // Results are ordered by created_at DESC, so standalone comes first
+        let standalone = assets.iter().find(|a| a.id == "standalone").unwrap();
+        assert_eq!(standalone.name, "printer-01");
+        assert_eq!(standalone.asset_type, "printer");
+        assert!(standalone.ip.is_none());
+        assert!(standalone.agent_name.is_none());
+        assert!(standalone.ssh_name.is_none());
+
+        let linked = assets.iter().find(|a| a.id == asset_id).unwrap();
+        assert_eq!(linked.name, "web-server-01");
+        assert_eq!(linked.asset_type, "server");
+        assert_eq!(linked.location.as_deref(), Some("DC-1"));
+        assert_eq!(linked.owner.as_deref(), Some("ops-team"));
+        // Device data
+        assert_eq!(linked.ip.as_deref(), Some("10.0.0.1"));
+        assert_eq!(linked.mac.as_deref(), Some("AA:BB:CC:DD:EE:FF"));
+        assert_eq!(linked.device_online, Some(true));
+        // Agent data
+        assert_eq!(linked.agent_name.as_deref(), Some("monitoring-agent"));
+        assert_eq!(linked.agent_os.as_deref(), Some("Ubuntu 22.04"));
+        // SSH data
+        assert_eq!(linked.ssh_name.as_deref(), Some("bastion"));
+        assert_eq!(linked.ssh_os.as_deref(), Some("Debian 12"));
+    }
+
+    #[tokio::test]
+    async fn test_get_one_query() {
+        let pool = db::init(":memory:").await.expect("DB init failed");
+        let asset_id = insert_fixtures(&pool).await;
+
+        // Execute GET_ONE_QUERY — the actual query used by the get_one handler
+        let row = sqlx::query(GET_ONE_QUERY)
+            .bind(&asset_id)
+            .fetch_one(&pool)
+            .await
+            .expect("GET_ONE_QUERY failed");
+
+        let asset = asset_from_row(row).expect("asset_from_row failed");
+
+        assert_eq!(asset.id, asset_id);
+        assert_eq!(asset.name, "web-server-01");
+        assert_eq!(asset.asset_type, "server");
+        assert_eq!(asset.location.as_deref(), Some("DC-1"));
+        assert_eq!(asset.owner.as_deref(), Some("ops-team"));
+        assert_eq!(asset.tags.as_deref(), Some("[\"production\"]"));
+        // Device data
+        assert_eq!(asset.ip.as_deref(), Some("10.0.0.1"));
+        assert_eq!(asset.mac.as_deref(), Some("AA:BB:CC:DD:EE:FF"));
+        assert_eq!(asset.device_online, Some(true));
+        assert_eq!(
+            asset.device_last_seen.as_deref(),
+            Some("2024-06-15 12:00:00")
+        );
+        // Agent data
+        assert_eq!(asset.agent_name.as_deref(), Some("monitoring-agent"));
+        assert_eq!(asset.agent_os.as_deref(), Some("Ubuntu 22.04"));
+        // SSH data
+        assert_eq!(asset.ssh_name.as_deref(), Some("bastion"));
+        assert_eq!(asset.ssh_os.as_deref(), Some("Debian 12"));
+    }
+
+    #[tokio::test]
+    async fn test_get_one_query_not_found() {
+        let pool = db::init(":memory:").await.expect("DB init failed");
+
+        let row = sqlx::query(GET_ONE_QUERY)
+            .bind("nonexistent-id")
+            .fetch_optional(&pool)
+            .await
+            .expect("GET_ONE_QUERY failed");
+
+        assert!(row.is_none(), "Expected no row for nonexistent asset");
     }
 }
