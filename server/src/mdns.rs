@@ -3,12 +3,19 @@
 //! Runs as a background tokio task alongside the ARP scanner.
 //! Listens for mDNS service announcements on the local network and enriches
 //! the devices table with discovered hostnames and service types.
+//!
+//! Discovered hostnames are stripped of the `.local` suffix so they match
+//! the short names returned by DHCP leases, keeping the display consistent.
+
+use std::sync::Arc;
 
 use mdns_sd::{ServiceDaemon, ServiceEvent};
+use serde_json::json;
 use sqlx::SqlitePool;
 use tracing::{debug, info, warn};
 
 use crate::config::AppConfig;
+use crate::ws::hub::WsHub;
 
 /// Meta-query service type that discovers all available service types on the network.
 const META_SERVICE: &str = "_services._dns-sd._udp.local.";
@@ -18,7 +25,8 @@ const META_SERVICE: &str = "_services._dns-sd._udp.local.";
 /// Browses for all mDNS services, and for each resolved service:
 /// - Updates the device hostname (if not already set) by matching on IP
 /// - Stores discovered service types in the `mdns_services` column
-pub async fn start_mdns_discovery(pool: SqlitePool, _config: AppConfig) {
+/// - Broadcasts hostname/service updates to connected UI clients via WebSocket
+pub async fn start_mdns_discovery(pool: SqlitePool, _config: AppConfig, ws_hub: Arc<WsHub>) {
     info!("Starting mDNS/Bonjour passive discovery");
 
     let daemon = match ServiceDaemon::new() {
@@ -57,7 +65,7 @@ pub async fn start_mdns_discovery(pool: SqlitePool, _config: AppConfig) {
                     }
                 }
                 ServiceEvent::ServiceResolved(info) => {
-                    let hostname = info.get_hostname().trim_end_matches('.').to_string();
+                    let hostname = strip_mdns_hostname(info.get_hostname());
                     let service_type = info.ty_domain.clone();
                     let addresses = info.get_addresses();
 
@@ -67,10 +75,22 @@ pub async fn start_mdns_discovery(pool: SqlitePool, _config: AppConfig) {
 
                     for addr in addresses {
                         let ip_str = addr.to_ip_addr().to_string();
-                        if let Err(e) =
-                            upsert_mdns_info(&pool, &ip_str, &hostname, &service_type).await
-                        {
-                            warn!("Failed to upsert mDNS info for {ip_str}: {e}");
+                        match upsert_mdns_info(&pool, &ip_str, &hostname, &service_type).await {
+                            Ok(true) => {
+                                // Something changed — broadcast to UI clients
+                                ws_hub.broadcast(
+                                    "device_updated",
+                                    json!({
+                                        "ip": &ip_str,
+                                        "hostname": &hostname,
+                                        "source": "mdns",
+                                    }),
+                                );
+                            }
+                            Ok(false) => {} // no change
+                            Err(e) => {
+                                warn!("Failed to upsert mDNS info for {ip_str}: {e}");
+                            }
                         }
                     }
                 }
@@ -96,6 +116,17 @@ pub async fn start_mdns_discovery(pool: SqlitePool, _config: AppConfig) {
     }
 }
 
+/// Strip the trailing dot and `.local` suffix from an mDNS hostname.
+///
+/// mDNS hostnames arrive as FQDNs like `myprinter.local.`. We store just
+/// the short name (`myprinter`) so it is consistent with DHCP lease names
+/// and easier to display in the UI.
+fn strip_mdns_hostname(raw: &str) -> String {
+    raw.trim_end_matches('.')
+        .trim_end_matches(".local")
+        .to_string()
+}
+
 /// Extract a browseable service type from a meta-query response name.
 ///
 /// The meta-query returns names like `_http._tcp.local.` — we need the
@@ -119,12 +150,15 @@ fn extract_service_type(full_name: &str) -> String {
 ///
 /// - Sets hostname only if the device currently has no hostname (doesn't overwrite).
 /// - Appends the service type to mdns_services if not already present.
+///
+/// Returns `Ok(true)` when anything was changed, `Ok(false)` when the DB
+/// was left untouched (e.g. hostname already set, service already recorded).
 pub async fn upsert_mdns_info(
     pool: &SqlitePool,
     ip: &str,
     hostname: &str,
     service_type: &str,
-) -> Result<(), sqlx::Error> {
+) -> Result<bool, sqlx::Error> {
     // Find the device by IP address (via device_ips table)
     let device: Option<(String, Option<String>, Option<String>)> = sqlx::query_as(
         r#"SELECT d.id, d.hostname, d.mdns_services
@@ -141,18 +175,24 @@ pub async fn upsert_mdns_info(
         Some(d) => d,
         None => {
             debug!("mDNS: no device found for IP {ip}, skipping");
-            return Ok(());
+            return Ok(false);
         }
     };
 
+    let mut changed = false;
+
     // Update hostname if device doesn't have one yet
     if current_hostname.is_none() && !hostname.is_empty() {
-        sqlx::query(r#"UPDATE devices SET hostname = ? WHERE id = ? AND hostname IS NULL"#)
-            .bind(hostname)
-            .bind(&device_id)
-            .execute(pool)
-            .await?;
-        info!("mDNS: set hostname '{hostname}' for device {device_id} (IP: {ip})");
+        let result =
+            sqlx::query(r#"UPDATE devices SET hostname = ? WHERE id = ? AND hostname IS NULL"#)
+                .bind(hostname)
+                .bind(&device_id)
+                .execute(pool)
+                .await?;
+        if result.rows_affected() > 0 {
+            info!("mDNS: set hostname '{hostname}' for device {device_id} (IP: {ip})");
+            changed = true;
+        }
     }
 
     // Clean up service type for storage: remove ".local." suffix and trailing dot
@@ -162,7 +202,7 @@ pub async fn upsert_mdns_info(
         .to_string();
 
     if clean_service.is_empty() {
-        return Ok(());
+        return Ok(changed);
     }
 
     // Append service type to mdns_services if not already present
@@ -170,7 +210,7 @@ pub async fn upsert_mdns_info(
         Some(ref existing) if !existing.is_empty() => {
             let services: Vec<&str> = existing.split(',').map(|s| s.trim()).collect();
             if services.iter().any(|s| *s == clean_service) {
-                return Ok(()); // Already present
+                return Ok(changed); // Already present
             }
             format!("{existing},{clean_service}")
         }
@@ -185,7 +225,7 @@ pub async fn upsert_mdns_info(
 
     debug!("mDNS: updated services for device {device_id}: {new_services}");
 
-    Ok(())
+    Ok(true)
 }
 
 #[cfg(test)]
@@ -261,9 +301,10 @@ mod tests {
             insert_device_with_ip(&pool, "AA:BB:CC:DD:EE:01", "192.168.1.10", None).await;
 
         // Device has no hostname — mDNS should set it
-        upsert_mdns_info(&pool, "192.168.1.10", "myprinter", "_ipp._tcp.local.")
+        let changed = upsert_mdns_info(&pool, "192.168.1.10", "myprinter", "_ipp._tcp.local.")
             .await
             .unwrap();
+        assert!(changed, "upsert should report a change");
 
         let hostname = get_hostname(&pool, &device_id).await;
         assert_eq!(
@@ -304,9 +345,11 @@ mod tests {
             insert_device_with_ip(&pool, "AA:BB:CC:DD:EE:03", "192.168.1.30", None).await;
 
         // First service
-        upsert_mdns_info(&pool, "192.168.1.30", "smart-tv", "_airplay._tcp.local.")
-            .await
-            .unwrap();
+        let changed =
+            upsert_mdns_info(&pool, "192.168.1.30", "smart-tv", "_airplay._tcp.local.")
+                .await
+                .unwrap();
+        assert!(changed, "first service upsert should report a change");
 
         let services = get_mdns_services(&pool, &device_id).await;
         assert_eq!(
@@ -316,9 +359,10 @@ mod tests {
         );
 
         // Second service — should be appended
-        upsert_mdns_info(&pool, "192.168.1.30", "smart-tv", "_smb._tcp.local.")
+        let changed = upsert_mdns_info(&pool, "192.168.1.30", "smart-tv", "_smb._tcp.local.")
             .await
             .unwrap();
+        assert!(changed, "second service upsert should report a change");
 
         let services = get_mdns_services(&pool, &device_id).await;
         assert_eq!(
@@ -328,9 +372,11 @@ mod tests {
         );
 
         // Duplicate service — should NOT be added again
-        upsert_mdns_info(&pool, "192.168.1.30", "smart-tv", "_airplay._tcp.local.")
-            .await
-            .unwrap();
+        let changed =
+            upsert_mdns_info(&pool, "192.168.1.30", "smart-tv", "_airplay._tcp.local.")
+                .await
+                .unwrap();
+        assert!(!changed, "duplicate service should not report a change");
 
         let services = get_mdns_services(&pool, &device_id).await;
         assert_eq!(
@@ -344,10 +390,11 @@ mod tests {
     async fn test_mdns_unknown_ip_ignored() {
         let pool = test_db().await;
 
-        // No device exists for this IP — should not error
-        let result =
+        // No device exists for this IP — should not error and report no change
+        let changed =
             upsert_mdns_info(&pool, "10.0.0.99", "unknown-host", "_http._tcp.local.").await;
-        assert!(result.is_ok(), "Unknown IP should be silently ignored");
+        assert!(changed.is_ok(), "Unknown IP should be silently ignored");
+        assert!(!changed.unwrap(), "Unknown IP should report no change");
     }
 
     #[test]
@@ -361,5 +408,21 @@ mod tests {
             "_airplay._tcp.local."
         );
         assert_eq!(extract_service_type(""), "");
+    }
+
+    #[test]
+    fn test_strip_mdns_hostname() {
+        // Standard mDNS FQDN: "hostname.local."
+        assert_eq!(strip_mdns_hostname("myprinter.local."), "myprinter");
+        // Without trailing dot
+        assert_eq!(strip_mdns_hostname("myprinter.local"), "myprinter");
+        // Already short name (no .local suffix)
+        assert_eq!(strip_mdns_hostname("myprinter"), "myprinter");
+        // Subdomain under .local
+        assert_eq!(strip_mdns_hostname("a.b.local."), "a.b");
+        // Empty string
+        assert_eq!(strip_mdns_hostname(""), "");
+        // Just ".local."
+        assert_eq!(strip_mdns_hostname(".local."), "");
     }
 }

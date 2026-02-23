@@ -107,8 +107,9 @@ async fn main() -> Result<()> {
         info!("mDNS/Bonjour passive discovery enabled");
         let mdns_pool = state.db.clone();
         let mdns_config = app_config.clone();
+        let mdns_hub = state.ws_hub.clone();
         tokio::spawn(async move {
-            mdns::start_mdns_discovery(mdns_pool, mdns_config).await;
+            mdns::start_mdns_discovery(mdns_pool, mdns_config, mdns_hub).await;
         });
     } else {
         info!("mDNS discovery disabled (set mdns_enabled = true in [scanner])");
