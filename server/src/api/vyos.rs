@@ -6776,7 +6776,7 @@ async fn get_vyos_settings(
     (url, key)
 }
 
-async fn get_vyos_client_from_db(
+pub(crate) async fn get_vyos_client_from_db(
     db: &SqlitePool,
     config: &crate::config::AppConfig,
     http: &reqwest::Client,

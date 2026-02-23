@@ -77,6 +77,8 @@ import type {
   AlertRule,
   CreateAlertRuleRequest,
   UpdateAlertRuleRequest,
+  TopologyGraph,
+  NodePosition,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -880,13 +882,12 @@ export function generateWireguardClientConfig(
   );
 }
 
-// ─── Topology Positions ──────────────────────────────────
+// ─── Topology ───────────────────────────────────────────
 
-export interface NodePosition {
-  node_id: string;
-  x: number;
-  y: number;
-  pinned: boolean;
+export type { NodePosition };
+
+export function fetchTopologyGraph(): Promise<TopologyGraph> {
+  return apiGet<TopologyGraph>("/api/v1/topology/graph");
 }
 
 export function fetchTopologyPositions(): Promise<NodePosition[]> {

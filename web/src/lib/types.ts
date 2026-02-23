@@ -182,6 +182,72 @@ export interface TopDevice {
   tx_bps: number;
 }
 
+// ─── Topology Graph ─────────────────────────────────────
+
+/** A device node in the topology graph (lighter than full Device). */
+export interface TopologyDevice {
+  id: string;
+  mac: string;
+  name: string | null;
+  hostname: string | null;
+  vendor: string | null;
+  is_online: boolean;
+  ips: string[];
+  custom_name: string | null;
+  custom_type: string | null;
+  custom_vendor: string | null;
+  device_type: string | null;
+  device_model: string | null;
+  device_brand: string | null;
+  mdns_services: string | null;
+  icon: string;
+  first_seen_at: string;
+  last_seen_at: string;
+  os_family: string | null;
+  os_version: string | null;
+  location: string | null;
+  owner: string | null;
+  tags: string | null;
+  rx_bps: number;
+  tx_bps: number;
+  /** DHCP lease status (e.g. "bound", "active") */
+  dhcp_lease_status?: string | null;
+  /** DHCP server / pool that issued the lease */
+  dhcp_server?: string | null;
+  /** DHCP lease expiry / remaining time */
+  dhcp_expires?: string | null;
+  /** DHCP hostname (reported by the client) */
+  dhcp_hostname?: string | null;
+  /** Bridge port the device was last seen on */
+  bridge_port?: string | null;
+  /** Bridge name (from MikroTik bridge host table) */
+  bridge_name?: string | null;
+}
+
+/** Router hub node in the topology graph. */
+export interface TopologyRouter {
+  router_type: string; // "vyos" | "mikrotik" | "unknown"
+  is_online: boolean;
+  wan_ip: string | null;
+  hostname: string | null;
+  version: string | null;
+}
+
+/** Saved node position for the topology layout. */
+export interface NodePosition {
+  node_id: string;
+  x: number;
+  y: number;
+  pinned: boolean;
+}
+
+/** Complete topology graph response from /api/v1/topology/graph. */
+export interface TopologyGraph {
+  devices: TopologyDevice[];
+  router: TopologyRouter;
+  positions: NodePosition[];
+}
+
 // ─── Traffic ────────────────────────────────────────────
 
 export interface TrafficHistoryPoint {

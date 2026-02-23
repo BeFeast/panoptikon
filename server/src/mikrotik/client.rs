@@ -289,6 +289,14 @@ impl MikrotikClient {
         Ok(res)
     }
 
+    /// Fetch bridge host table (MAC forwarding database).
+    pub async fn bridge_hosts(&self) -> Result<Vec<BridgeHost>> {
+        let val = self.get("/interface/bridge/host").await?;
+        let res: Vec<BridgeHost> =
+            serde_json::from_value(val).context("failed to parse bridge hosts")?;
+        Ok(res)
+    }
+
     /// Fetch WireGuard interfaces.
     pub async fn wireguard_interfaces(&self) -> Result<Vec<WgInterface>> {
         let val = self.get("/interface/wireguard").await?;

@@ -312,7 +312,8 @@ pub fn router(state: AppState) -> Router {
             "/vyos/wireguard/:name/peers/:peer/generate-config",
             post(vyos::wireguard_generate_client_config),
         )
-        // Topology positions
+        // Topology
+        .route("/topology/graph", get(topology::graph))
         .route("/topology/positions", get(topology::get_positions))
         .route("/topology/positions", put(topology::save_positions))
         .route("/topology/positions", delete(topology::delete_positions))
