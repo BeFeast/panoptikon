@@ -20,13 +20,24 @@ import {
   Plus,
   Pencil,
   Trash2,
+  BarChart3,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -59,7 +70,9 @@ import {
   createMikrotikVlan,
   updateMikrotikVlan,
   deleteMikrotikVlan,
+  fetchTrafficHistory,
 } from "@/lib/api";
+import { formatBps } from "@/lib/format";
 import type {
   MikrotikStatus,
   MikrotikInterface,
@@ -70,6 +83,7 @@ import type {
   MikrotikFirewall,
   MikrotikDns,
   MikrotikWireguard,
+  TrafficHistoryPoint,
 } from "@/lib/types";
 
 function formatBytes(bytes: string | null): string {
@@ -1392,6 +1406,168 @@ function WireGuardPanel({
   );
 }
 
+// ── Traffic Tab ───────────────────────────────────────────
+
+type TimeRange = "1h" | "24h" | "7d";
+
+const RANGE_LABELS: Record<TimeRange, string> = {
+  "1h": "1 Hour",
+  "24h": "24 Hours",
+  "7d": "7 Days",
+};
+
+const RANGE_MINUTES: Record<TimeRange, number> = {
+  "1h": 60,
+  "24h": 1440,
+  "7d": 10080,
+};
+
+function formatTrafficTime(iso: string, range: TimeRange): string {
+  try {
+    const d = new Date(iso);
+    if (range === "7d") {
+      return d.toLocaleDateString([], { weekday: "short", hour: "2-digit", minute: "2-digit" });
+    }
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  } catch {
+    return iso;
+  }
+}
+
+function TrafficTab() {
+  const [data, setData] = useState<TrafficHistoryPoint[]>([]);
+  const [range, setRange] = useState<TimeRange>("1h");
+  const [loading, setLoading] = useState(true);
+
+  const load = useCallback(async () => {
+    try {
+      const points = await fetchTrafficHistory(RANGE_MINUTES[range]);
+      setData(points);
+    } catch {
+      // Keep stale data on error
+    } finally {
+      setLoading(false);
+    }
+  }, [range]);
+
+  useEffect(() => {
+    setLoading(true);
+    load();
+    const intervalMs = range === "1h" ? 30_000 : 60_000;
+    const interval = setInterval(load, intervalMs);
+    return () => clearInterval(interval);
+  }, [load, range]);
+
+  return (
+    <Card className="border-slate-800 bg-slate-900">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base text-white">
+            Bandwidth History
+          </CardTitle>
+          <div className="flex gap-1">
+            {(Object.keys(RANGE_LABELS) as TimeRange[]).map((r) => (
+              <Button
+                key={r}
+                variant={range === r ? "secondary" : "ghost"}
+                size="sm"
+                className={`h-7 px-2.5 text-xs ${
+                  range === r
+                    ? "bg-slate-700 text-white"
+                    : "text-slate-500 hover:text-slate-300"
+                }`}
+                onClick={() => setRange(r)}
+              >
+                {r}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading && data.length === 0 ? (
+          <Skeleton className="h-[300px] w-full rounded-xl" />
+        ) : data.length > 0 ? (
+          <div style={{ height: 300 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data}>
+                <defs>
+                  <linearGradient id="mtColorRx" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="mtColorTx" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <XAxis
+                  dataKey="minute"
+                  tickFormatter={(v: string) => formatTrafficTime(v, range)}
+                  tick={{ fill: "#6b7280", fontSize: 11 }}
+                  stroke="#1e293b"
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tickFormatter={(v: number) => formatBps(v)}
+                  tick={{ fill: "#6b7280", fontSize: 11 }}
+                  stroke="#1e293b"
+                  width={70}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#0f172a",
+                    border: "1px solid #1e293b",
+                    borderRadius: "6px",
+                    color: "#fff",
+                    fontSize: "12px",
+                  }}
+                  labelFormatter={(v: string) => formatTrafficTime(v, range)}
+                  formatter={(value: number, name: string) => [
+                    formatBps(value),
+                    name === "rx_bps" ? "Inbound" : "Outbound",
+                  ]}
+                />
+                <Legend
+                  formatter={(value: string) =>
+                    value === "rx_bps" ? "Inbound" : "Outbound"
+                  }
+                  wrapperStyle={{ fontSize: "12px", color: "#9ca3af" }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="rx_bps"
+                  stroke="#3b82f6"
+                  fillOpacity={1}
+                  fill="url(#mtColorRx)"
+                  strokeWidth={2}
+                  isAnimationActive={false}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="tx_bps"
+                  stroke="#22c55e"
+                  fillOpacity={1}
+                  fill="url(#mtColorTx)"
+                  strokeWidth={2}
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        ) : (
+          <div className="flex h-[300px] items-center justify-center">
+            <p className="text-sm text-slate-500">
+              No traffic data yet. The poller collects samples every 60 seconds.
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Main component ────────────────────────────────────────
 
 export default function MikrotikRouter() {
@@ -1511,6 +1687,13 @@ export default function MikrotikRouter() {
             <Lock className="mr-1.5 h-3.5 w-3.5" />
             VPN
           </TabsTrigger>
+          <TabsTrigger
+            value="traffic"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+          >
+            <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
+            Traffic
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="system">
@@ -1626,6 +1809,10 @@ export default function MikrotikRouter() {
               />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="traffic">
+          <TrafficTab />
         </TabsContent>
       </Tabs>
     </div>
