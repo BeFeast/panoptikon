@@ -73,6 +73,8 @@ export interface Device {
   warranty_expiry?: string | null;
   /** Serial number (manual entry). */
   serial_number?: string | null;
+  /** 24-hour online/offline timeline (one boolean per hour, oldest first). */
+  status_timeline?: boolean[] | null;
 }
 
 // ─── Device Sysinfo (hardware inventory from agent) ───
