@@ -1337,3 +1337,11 @@ export function toggleCaddyProxyHost(
 export function syncCaddyConfig(): Promise<void> {
   return apiPost<void>("/api/v1/caddy/sync");
 }
+
+export function testCaddyConnection(): Promise<
+  import("./types").CaddyTestConnectionResponse
+> {
+  return apiPost<import("./types").CaddyTestConnectionResponse>(
+    "/api/v1/caddy/test-connection"
+  );
+}

@@ -48,6 +48,13 @@ pub struct CaddyStatus {
     pub reachable: bool,
 }
 
+/// Response for the "Test Connection" button.
+#[derive(Debug, Serialize)]
+pub struct TestConnectionResponse {
+    pub success: bool,
+    pub message: String,
+}
+
 // ─── Helpers ────────────────────────────────────────────────
 
 /// Read a setting from the database.
@@ -333,6 +340,39 @@ pub async fn toggle(
 pub async fn sync(State(state): State<AppState>) -> StatusCode {
     sync_to_caddy(&state).await;
     StatusCode::NO_CONTENT
+}
+
+/// POST /api/v1/caddy/test-connection — ping Caddy Admin API and return detailed result.
+pub async fn test_connection(State(state): State<AppState>) -> Json<TestConnectionResponse> {
+    let admin_url = caddy_admin_url(&state).await;
+    let url = format!("{admin_url}/config/");
+
+    match state.caddy_http.get(&url).send().await {
+        Ok(resp) if resp.status().is_success() => {
+            let body = resp.text().await.unwrap_or_default();
+            let version_hint = if body.contains("apps") {
+                " (config loaded)"
+            } else {
+                ""
+            };
+            Json(TestConnectionResponse {
+                success: true,
+                message: format!("Connected to Caddy Admin API at {admin_url}{version_hint}"),
+            })
+        }
+        Ok(resp) => {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
+            Json(TestConnectionResponse {
+                success: false,
+                message: format!("Caddy responded with HTTP {status}: {body}"),
+            })
+        }
+        Err(e) => Json(TestConnectionResponse {
+            success: false,
+            message: format!("Failed to reach Caddy at {admin_url}: {e}"),
+        }),
+    }
 }
 
 #[derive(Debug, Deserialize)]
