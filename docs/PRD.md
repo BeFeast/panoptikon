@@ -20,8 +20,9 @@
 7. [Agent Design](#7-agent-design)
 8. [UI/UX Guidelines](#8-uiux-guidelines)
 9. [Data Model](#9-data-model)
-10. [Milestones / MVP Scope](#10-milestones--mvp-scope)
-11. [Open Questions](#11-open-questions)
+10. [Test Environment](#10-test-environment)
+11. [Milestones / MVP Scope](#11-milestones--mvp-scope)
+12. [Open Questions](#12-open-questions)
 
 ---
 
@@ -877,7 +878,53 @@ This keeps the SQLite database small and fast. Target: <100 MB for a network wit
 
 ---
 
-## 10. Milestones / MVP Scope
+## 10. Test Environment
+
+A dedicated test environment validates MikroTik integration features before release. The environment runs on Proxmox (Forge/DevBox) using lightweight LXC containers with a MikroTik CHR instance as the gateway.
+
+### Topology
+
+```
+Proxmox Host
+├── MikroTik CHR (10.10.0.125) ← gateway/router under test
+├── pan-test-web  (CT 200, 10.10.0.200, 256MB) — web server, HTTP traffic
+├── pan-test-db   (CT 201, 10.10.0.201, 256MB) — database workload sim
+├── pan-test-iot  (CT 202, 10.10.0.202, 128MB) — minimal DHCP client
+└── Panoptikon    (10.10.0.14:8080) — monitors all of the above
+```
+
+All test containers use `10.10.0.125` as their default gateway, placing them behind the MikroTik CHR for realistic routing, DHCP, and firewall testing.
+
+### Automated Setup
+
+```bash
+# Create test containers (run on Proxmox host)
+sudo bash scripts/setup-test-env.sh create
+
+# Check status
+sudo bash scripts/setup-test-env.sh status
+
+# Tear down
+sudo bash scripts/setup-test-env.sh destroy
+```
+
+The script (`scripts/setup-test-env.sh`) handles container creation, template download, package installation, and cleanup.
+
+### What It Validates
+
+| Feature              | How It's Tested                                                    |
+|----------------------|--------------------------------------------------------------------|
+| DHCP lease tracking  | Containers request leases from MikroTik; Panoptikon discovers them |
+| Traffic monitoring   | Containers generate HTTP/DNS traffic; per-device bandwidth charts  |
+| Firewall rules       | Add/remove MikroTik filter rules; verify visibility in Panoptikon  |
+| VLAN integration     | Assign VLAN tags on MikroTik; verify topology grouping             |
+| Device discovery     | ARP scanner + mDNS detect all containers on the subnet             |
+
+Full validation procedures with step-by-step commands are documented in [`docs/test-environment.md`](./test-environment.md).
+
+---
+
+## 11. Milestones / MVP Scope
 
 ### Milestone 0: Project Scaffolding ✅
 
@@ -941,7 +988,7 @@ This keeps the SQLite database small and fast. Target: <100 MB for a network wit
 
 ---
 
-## 11. Open Questions
+## 12. Open Questions
 
 ### Architecture & Design — Resolved
 
