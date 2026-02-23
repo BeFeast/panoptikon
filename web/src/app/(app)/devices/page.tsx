@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowDown, ArrowUp, Battery, Box, CircuitBoard, Container, Cpu, Download, Gamepad2, HardDrive, HelpCircle, Laptop, Loader2, LayoutGrid, List, MemoryStick, Monitor, Network, Pencil, Plus, Power, Printer, Radar, RotateCcw, Router, Search, Server, Smartphone, Tablet, Tv, VolumeX, Wifi, WifiOff } from "lucide-react";
+import Link from "next/link";
+import { ArrowDown, ArrowUp, Battery, Box, CircuitBoard, Container, Cpu, Download, ExternalLink, Gamepad2, HardDrive, HelpCircle, Laptop, Loader2, LayoutGrid, List, MemoryStick, Monitor, Network, Pencil, Plus, Power, Printer, Radar, RotateCcw, Router, Search, Server, Smartphone, Tablet, Tv, VolumeX, Wifi, WifiOff } from "lucide-react";
 import { getDeviceIcon } from "@/lib/device-icons";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -795,6 +796,16 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
           </p>
         </div>
       )}
+
+      {/* Asset Detail link */}
+      <div className="mt-3">
+        <Link href={`/assets?id=${device.id}`}>
+          <Button variant="outline" size="sm" className="w-full gap-2 border-slate-700 text-slate-300 hover:text-white">
+            <ExternalLink className="h-4 w-4" />
+            Open Asset Detail
+          </Button>
+        </Link>
+      </div>
 
       <Separator className="my-4 bg-slate-800" />
 
