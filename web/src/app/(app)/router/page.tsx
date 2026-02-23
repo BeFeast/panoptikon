@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import {
   Router,
   Network,
@@ -43,6 +43,7 @@ import {
   Monitor,
 } from "lucide-react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -5083,7 +5084,9 @@ export default function RouterPage() {
         )}
 
         {routerType === "vyos" && summary?.status.configured ? (
-          <RouterTabs summary={summary} />
+          <Suspense fallback={null}>
+            <RouterTabs summary={summary} />
+          </Suspense>
         ) : routerType === "mikrotik" && mikrotikEnabled ? (
           <MikrotikRouter />
         ) : routerType === "vyos" ? (
@@ -5096,8 +5099,37 @@ export default function RouterPage() {
 
 // ── Tabs component (only rendered when configured) ──────
 
+const VALID_TABS = new Set([
+  "system",
+  "interfaces",
+  "routes",
+  "dhcp",
+  "dns",
+  "firewall",
+  "vpn",
+  "speedtest",
+]);
+const DEFAULT_TAB = "interfaces";
+
 function RouterTabs({ summary }: { summary: RouterSummary }) {
-  const [tab, setTab] = useState("system");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const rawTab = searchParams.get("tab");
+  const tab = rawTab && VALID_TABS.has(rawTab) ? rawTab : DEFAULT_TAB;
+
+  const setTab = useCallback(
+    (value: string) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (value === DEFAULT_TAB) {
+        params.delete("tab");
+      } else {
+        params.set("tab", value);
+      }
+      const qs = params.toString();
+      router.replace(`/router${qs ? `?${qs}` : ""}`, { scroll: false });
+    },
+    [searchParams, router]
+  );
   const { status } = summary;
 
   const interfaces = useSummaryData(
