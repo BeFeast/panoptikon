@@ -186,7 +186,7 @@ export function Sidebar() {
                   </TooltipContent>
                 </Tooltip>
               )}
-              <p className="text-[10px] text-slate-700">Panoptikon {process.env.NEXT_PUBLIC_VERSION || "v0.1.0"}</p>
+              <p className="text-[10px] text-slate-700">Panoptikon {process.env.NEXT_PUBLIC_VERSION || "v0.5.0"}</p>
             </div>
           ) : (
             <div className="mt-1 flex flex-col items-center gap-1">
