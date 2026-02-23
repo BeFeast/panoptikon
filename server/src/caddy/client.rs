@@ -89,7 +89,7 @@ pub async fn sync_to_caddy(
     let config = build_caddy_config(admin_url, hosts);
 
     let resp = http
-        .post(&format!("{}/load", admin_url))
+        .post(format!("{}/load", admin_url))
         .header("Content-Type", "application/json")
         .json(&config)
         .send()
@@ -111,7 +111,7 @@ pub async fn sync_to_caddy(
 
 /// Check if Caddy Admin API is reachable.
 pub async fn check_status(http: &reqwest::Client, admin_url: &str) -> CaddyStatus {
-    let resp = http.get(&format!("{}/config/", admin_url)).send().await;
+    let resp = http.get(format!("{}/config/", admin_url)).send().await;
 
     match resp {
         Ok(r) if r.status().is_success() => CaddyStatus {
