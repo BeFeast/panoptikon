@@ -32,18 +32,11 @@ const settingsGroups: SettingsGroup[] = [
     label: "Integrations",
     items: [
       {
-        href: "/settings/vyos",
+        href: "/settings/router",
         icon: <Router className="h-4 w-4 text-blue-400" />,
         iconBg: "bg-blue-500/10",
-        title: "VyOS Router",
-        description: "Connect to your VyOS router via its HTTP API.",
-      },
-      {
-        href: "/settings/mikrotik",
-        icon: <Router className="h-4 w-4 text-pink-400" />,
-        iconBg: "bg-pink-500/10",
-        title: "MikroTik Router",
-        description: "Connect to your MikroTik router via its REST API.",
+        title: "Router",
+        description: "Configure VyOS or MikroTik router integration.",
       },
       {
         href: "/settings/npm",
