@@ -797,6 +797,65 @@ export interface RemoveServiceResponse {
   steps: StepResult[];
 }
 
+// ─── Assets (IT inventory) ───────────────────────────────
+
+export type AssetType =
+  | "server"
+  | "workstation"
+  | "vm"
+  | "container"
+  | "nas"
+  | "router"
+  | "switch"
+  | "iot"
+  | "phone"
+  | "printer"
+  | "unknown";
+
+export interface Asset {
+  id: string;
+  name: string;
+  asset_type: AssetType;
+  location: string | null;
+  owner: string | null;
+  tags: string | null;
+  notes: string | null;
+  purchase_date: string | null;
+  serial_number: string | null;
+  device_id: string | null;
+  agent_id: string | null;
+  ssh_target_id: string | null;
+  created_at: string;
+  updated_at: string;
+  // Linked device data
+  ip: string | null;
+  mac: string | null;
+  device_online: boolean | null;
+  device_last_seen: string | null;
+  // Linked agent data
+  agent_name: string | null;
+  agent_os: string | null;
+  agent_online: boolean | null;
+  // Linked SSH target data
+  ssh_name: string | null;
+  ssh_os: string | null;
+  ssh_online: boolean | null;
+}
+
+export interface AssetRequest {
+  name?: string;
+  asset_type?: AssetType;
+  location?: string;
+  owner?: string;
+  tags?: string;
+  notes?: string;
+  purchase_date?: string;
+  serial_number?: string;
+  device_id?: string;
+  agent_id?: string;
+  ssh_target_id?: string;
+}
+
 // ─── SSH Targets (agentless monitoring) ─────────────────
 
 export interface SshTarget {

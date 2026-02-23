@@ -16,6 +16,7 @@ use tower_http::cors::CorsLayer;
 
 pub mod agents;
 pub mod alerts;
+pub mod assets;
 pub mod audit;
 pub mod auth;
 pub mod config_backups;
@@ -378,6 +379,12 @@ pub fn router(state: AppState) -> Router {
         .route("/mikrotik/firewall", get(mikrotik::firewall))
         .route("/mikrotik/dns", get(mikrotik::dns))
         .route("/mikrotik/wireguard", get(mikrotik::wireguard))
+        // Assets (IT inventory)
+        .route("/assets", get(assets::list))
+        .route("/assets", post(assets::create))
+        .route("/assets/:id", get(assets::get_one))
+        .route("/assets/:id", put(assets::update))
+        .route("/assets/:id", delete(assets::delete))
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))
