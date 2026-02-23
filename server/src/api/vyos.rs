@@ -7252,6 +7252,30 @@ mod tests {
     }
 
     #[test]
+    fn test_interface_type_openvpn() {
+        assert_eq!(interface_type("vtun0"), Some("openvpn"));
+        assert_eq!(interface_type("vtun1"), Some("openvpn"));
+    }
+
+    #[test]
+    fn test_interface_type_tunnel() {
+        assert_eq!(interface_type("tun0"), Some("tunnel"));
+        assert_eq!(interface_type("tun1"), Some("tunnel"));
+    }
+
+    #[test]
+    fn test_interface_type_vti() {
+        assert_eq!(interface_type("vti0"), Some("vti"));
+        assert_eq!(interface_type("vti1"), Some("vti"));
+    }
+
+    #[test]
+    fn test_interface_type_pppoe() {
+        assert_eq!(interface_type("pppoe0"), Some("pppoe"));
+        assert_eq!(interface_type("pppoe1"), Some("pppoe"));
+    }
+
+    #[test]
     fn test_interface_type_unknown() {
         assert_eq!(interface_type("unknown0"), None);
         assert_eq!(interface_type("xyz"), None);
