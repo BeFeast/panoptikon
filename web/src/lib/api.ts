@@ -1229,4 +1229,3 @@ export function updateAssetInventory(
 export function deleteAssetInventory(id: string): Promise<void> {
   return apiDelete(`/api/v1/assets/${id}`);
 }
-}
