@@ -51,6 +51,11 @@ pub async fn handler(State(state): State<AppState>) -> Result<Response, StatusCo
     );
 
     // ── Agents ─────────────────────────────────────────────────────────
+    let agents_total: i64 = sqlx::query_scalar(r#"SELECT COUNT(*) FROM agents"#)
+        .fetch_one(&state.db)
+        .await
+        .unwrap_or(0);
+
     let agents_online: i64 = sqlx::query_scalar(
         r#"SELECT COUNT(*) FROM agents WHERE last_report_at > datetime('now', '-120 seconds')"#,
     )
@@ -58,6 +63,12 @@ pub async fn handler(State(state): State<AppState>) -> Result<Response, StatusCo
     .await
     .unwrap_or(0);
 
+    write_gauge(
+        &mut out,
+        "panoptikon_agents_total",
+        "Total number of registered agents",
+        agents_total,
+    );
     write_gauge(
         &mut out,
         "panoptikon_agents_online_total",
@@ -201,6 +212,7 @@ mod tests {
         assert!(body.contains("panoptikon_devices_online_total"));
         assert!(body.contains("panoptikon_devices_offline_total"));
         assert!(body.contains("panoptikon_devices_total"));
+        assert!(body.contains("panoptikon_agents_total"));
         assert!(body.contains("panoptikon_agents_online_total"));
         assert!(body.contains("panoptikon_alerts_total"));
         assert!(body.contains("panoptikon_netflow_flows_received_total"));
@@ -208,6 +220,7 @@ mod tests {
         // HELP/TYPE for each gauge.
         assert!(body.contains("# TYPE panoptikon_devices_online_total gauge"));
         assert!(body.contains("# TYPE panoptikon_devices_total gauge"));
+        assert!(body.contains("# TYPE panoptikon_agents_total gauge"));
         assert!(body.contains("# TYPE panoptikon_agents_online_total gauge"));
         assert!(body.contains("# TYPE panoptikon_alerts_total gauge"));
         assert!(body.contains("# TYPE panoptikon_netflow_flows_received_total counter"));
@@ -279,6 +292,43 @@ mod tests {
         assert!(
             body.contains("panoptikon_devices_total 2"),
             "Expected total=2, got:\n{body}"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_metrics_agents_count() {
+        let state = test_state().await;
+
+        // Insert 2 agents — one recently reporting, one stale.
+        let id1 = uuid::Uuid::new_v4().to_string();
+        sqlx::query(
+            r#"INSERT INTO agents (id, api_key_hash, name, platform, is_online, last_report_at, created_at)
+               VALUES (?, '$2b$12$dummy_hash_value_placeholder', 'agent-1', 'linux', 1, datetime('now'), datetime('now'))"#,
+        )
+        .bind(&id1)
+        .execute(&state.db)
+        .await
+        .unwrap();
+
+        let id2 = uuid::Uuid::new_v4().to_string();
+        sqlx::query(
+            r#"INSERT INTO agents (id, api_key_hash, name, platform, is_online, last_report_at, created_at)
+               VALUES (?, '$2b$12$dummy_hash_value_placeholder', 'agent-2', 'linux', 0, datetime('now', '-1 hour'), datetime('now'))"#,
+        )
+        .bind(&id2)
+        .execute(&state.db)
+        .await
+        .unwrap();
+
+        let body = get_metrics_body(&state).await;
+
+        assert!(
+            body.contains("panoptikon_agents_total 2"),
+            "Expected agents_total=2, got:\n{body}"
+        );
+        assert!(
+            body.contains("panoptikon_agents_online_total 1"),
+            "Expected agents_online=1, got:\n{body}"
         );
     }
 }
