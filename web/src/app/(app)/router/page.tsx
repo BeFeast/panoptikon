@@ -1493,6 +1493,20 @@ function InterfacesTable({
     return false;
   };
 
+  // Derive VyOS interface type prefix from the interface name (mirrors backend logic)
+  const interfaceType = (name: string): string => {
+    if (name.startsWith("eth")) return "ethernet";
+    if (name.startsWith("bond")) return "bonding";
+    if (name.startsWith("br")) return "bridge";
+    if (name.startsWith("wg")) return "wireguard";
+    if (name === "lo" || name.startsWith("lo")) return "loopback";
+    if (name.startsWith("vtun")) return "openvpn";
+    if (name.startsWith("tun")) return "tunnel";
+    if (name.startsWith("vti")) return "vti";
+    if (name.startsWith("pppoe")) return "pppoe";
+    return "ethernet";
+  };
+
   // Loopback interfaces shouldn't be toggled
   const canToggle = (name: string) => name !== "lo";
 
@@ -1607,9 +1621,11 @@ function InterfacesTable({
           <div className="rounded-md border border-slate-800 bg-slate-950 p-3">
             <p className="text-xs font-medium text-slate-500">Config change:</p>
             <code className="mt-1 block text-xs text-blue-400">
-              {confirmToggle?.disable
-                ? `set interfaces ethernet ${confirmToggle?.iface.name} disable`
-                : `delete interfaces ethernet ${confirmToggle?.iface.name} disable`}
+              {confirmToggle
+                ? confirmToggle.disable
+                  ? `set interfaces ${interfaceType(confirmToggle.iface.name)} ${confirmToggle.iface.name} disable`
+                  : `delete interfaces ${interfaceType(confirmToggle.iface.name)} ${confirmToggle.iface.name} disable`
+                : null}
             </code>
           </div>
           <AlertDialogFooter>
