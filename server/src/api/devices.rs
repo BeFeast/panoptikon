@@ -118,6 +118,10 @@ pub struct Device {
     /// Serial number (manual entry)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub serial_number: Option<String>,
+    /// 24-hour online/offline status timeline (one boolean per hour, oldest first).
+    /// Only populated on the list endpoint.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_timeline: Option<Vec<bool>>,
 }
 
 /// Request body for creating a device.
@@ -233,6 +237,7 @@ impl Device {
             purchase_date: row.try_get("purchase_date").unwrap_or(None),
             warranty_expiry: row.try_get("warranty_expiry").unwrap_or(None),
             serial_number: row.try_get("serial_number").unwrap_or(None),
+            status_timeline: None,
         })
     }
 }
@@ -294,6 +299,92 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Device>>, St
             if let Some(dev) = devices.iter_mut().find(|d| d.id == device_id) {
                 dev.ips.push(ip);
             }
+        }
+    }
+
+    // Compute 24-hour status timeline (24 hourly buckets) for all devices.
+    if !devices.is_empty() {
+        let now = chrono::Utc::now();
+        let cutoff = now - chrono::Duration::hours(24);
+        let cutoff_str = cutoff.to_rfc3339();
+
+        // Fetch all events in the 24h window
+        let event_rows = sqlx::query(
+            r#"SELECT device_id, event_type, occurred_at
+               FROM device_events
+               WHERE occurred_at >= ?
+               ORDER BY device_id, occurred_at ASC"#,
+        )
+        .bind(&cutoff_str)
+        .fetch_all(&state.db)
+        .await
+        .unwrap_or_default();
+
+        // Fetch the last event before the 24h window for each device (initial state)
+        let prior_rows = sqlx::query(
+            r#"SELECT e.device_id, e.event_type
+               FROM device_events e
+               INNER JOIN (
+                   SELECT device_id, MAX(occurred_at) AS max_at
+                   FROM device_events
+                   WHERE occurred_at < ?
+                   GROUP BY device_id
+               ) latest ON e.device_id = latest.device_id AND e.occurred_at = latest.max_at"#,
+        )
+        .bind(&cutoff_str)
+        .fetch_all(&state.db)
+        .await
+        .unwrap_or_default();
+
+        // Build maps
+        let mut prior_state: std::collections::HashMap<String, bool> =
+            std::collections::HashMap::new();
+        for row in &prior_rows {
+            let did: String = row.try_get("device_id").unwrap_or_default();
+            let etype: String = row.try_get("event_type").unwrap_or_default();
+            prior_state.insert(did, etype == "online");
+        }
+
+        let mut events_by_device: std::collections::HashMap<
+            String,
+            Vec<(chrono::DateTime<chrono::Utc>, bool)>,
+        > = std::collections::HashMap::new();
+        for row in &event_rows {
+            let did: String = row.try_get("device_id").unwrap_or_default();
+            let etype: String = row.try_get("event_type").unwrap_or_default();
+            let occurred_str: String = row.try_get("occurred_at").unwrap_or_default();
+            let occurred = chrono::DateTime::parse_from_rfc3339(&occurred_str)
+                .map(|dt| dt.with_timezone(&chrono::Utc))
+                .or_else(|_| {
+                    chrono::NaiveDateTime::parse_from_str(&occurred_str, "%Y-%m-%d %H:%M:%S")
+                        .map(|ndt| ndt.and_utc())
+                })
+                .unwrap_or(now);
+            events_by_device
+                .entry(did)
+                .or_default()
+                .push((occurred, etype == "online"));
+        }
+
+        // Compute 24 hourly buckets per device
+        for dev in devices.iter_mut() {
+            let mut current = *prior_state.get(&dev.id).unwrap_or(&false);
+            let events = events_by_device.get(&dev.id);
+            let mut timeline = Vec::with_capacity(24);
+            let mut event_idx = 0usize;
+
+            for hour in 0..24 {
+                let bucket_start = cutoff + chrono::Duration::hours(hour);
+                // Advance through events up to bucket_start
+                if let Some(evts) = events {
+                    while event_idx < evts.len() && evts[event_idx].0 <= bucket_start {
+                        current = evts[event_idx].1;
+                        event_idx += 1;
+                    }
+                }
+                timeline.push(current);
+            }
+            dev.status_timeline = Some(timeline);
         }
     }
 
@@ -486,6 +577,7 @@ pub async fn create(
         purchase_date: body.purchase_date,
         warranty_expiry: body.warranty_expiry,
         serial_number: body.serial_number,
+        status_timeline: None,
     };
 
     Ok((StatusCode::CREATED, Json(device)))

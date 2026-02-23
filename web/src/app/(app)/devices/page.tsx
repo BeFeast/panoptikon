@@ -52,6 +52,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
 import { MotionCard } from "@/components/MotionCard";
 import { DeviceTrafficChart } from "@/components/DeviceTrafficChart";
+import { StatusSparkline } from "@/components/StatusSparkline";
 
 import { downloadExport } from "@/lib/export";
 
@@ -578,6 +579,13 @@ function DeviceCard({
           <p className="font-mono tabular-nums text-xs text-slate-600">{device.mac}</p>
         </div>
 
+        {/* 24-hour status sparkline */}
+        {device.status_timeline && device.status_timeline.length > 0 && (
+          <div className="mt-2">
+            <StatusSparkline timeline={device.status_timeline} width={160} height={12} />
+          </div>
+        )}
+
         {/* mDNS service badges */}
         {device.mdns_services && (
           <div className="mt-2 flex flex-wrap gap-1">
@@ -692,6 +700,7 @@ function DevicesTable({
             <TableHead className="text-slate-400">MAC</TableHead>
             <TableHead className="text-slate-400">Vendor</TableHead>
             <TableHead className="text-slate-400">Agent</TableHead>
+            <TableHead className="text-slate-400">24h Status</TableHead>
             <TableHead
               className="cursor-pointer select-none text-slate-400 hover:text-white"
               onClick={() => onSort("last_seen_at")}
@@ -766,6 +775,13 @@ function DevicesTable({
                   {device.agent && device.agent.cpu_percent != null && device.agent.memory_percent != null
                     ? `${formatPercent(device.agent.cpu_percent)} / ${formatPercent(device.agent.memory_percent)}`
                     : "—"}
+                </TableCell>
+                <TableCell>
+                  {device.status_timeline && device.status_timeline.length > 0 ? (
+                    <StatusSparkline timeline={device.status_timeline} width={72} height={10} />
+                  ) : (
+                    <span className="text-xs text-slate-600">—</span>
+                  )}
                 </TableCell>
                 <TableCell className="text-xs text-slate-500">
                   {timeAgo(device.last_seen_at)}
