@@ -178,7 +178,7 @@ function VyosNotConfigured() {
             VyOS is optional. To enable it, add the VyOS URL and API key in
             Settings.
           </p>
-          <Link href="/settings/vyos">
+          <Link href="/settings/router">
             <Button
               variant="outline"
               className="border-slate-800 text-slate-300 hover:bg-slate-800"
