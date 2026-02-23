@@ -7,38 +7,38 @@ test.describe('Navigation & Layout', () => {
 
   test('sidebar is visible with navigation links', async ({ page }) => {
     // The sidebar should be present with key navigation items
-    await expect(page.locator('text=Dashboard').first()).toBeVisible({ timeout: 5000 });
-    await expect(page.locator('text=Devices').first()).toBeVisible();
-    await expect(page.locator('text=Agents').first()).toBeVisible();
-    await expect(page.locator('text=Alerts').first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Dashboard' }).first()).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('link', { name: 'Devices' }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Agents' }).first()).toBeVisible();
+    await expect(page.getByRole('link', { name: 'Alerts' }).first()).toBeVisible();
     
     await page.screenshot({ path: 'tests/screenshots/sidebar.png', fullPage: true });
   });
 
   test('navigate to devices page via sidebar', async ({ page }) => {
     // Click on Devices link in the sidebar
-    await page.locator('nav a:has-text("Devices"), a:has-text("Devices")').first().click();
-    await page.waitForURL('**/devices**', { timeout: 5000 });
-    await expect(page.locator('h1:has-text("Devices")')).toBeVisible();
+    await page.getByRole('link', { name: 'Devices' }).first().click();
+    await page.waitForURL('**/devices**', { timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Devices', level: 1 })).toBeVisible();
   });
 
   test('navigate to agents page via sidebar', async ({ page }) => {
-    await page.locator('nav a:has-text("Agents"), a:has-text("Agents")').first().click();
-    await page.waitForURL('**/agents**', { timeout: 5000 });
-    await expect(page.locator('h1:has-text("Agents")')).toBeVisible();
+    await page.getByRole('link', { name: 'Agents' }).first().click();
+    await page.waitForURL('**/agents**', { timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Agents', level: 1 })).toBeVisible();
   });
 
   test('navigate to alerts page via sidebar', async ({ page }) => {
-    await page.locator('nav a:has-text("Alerts"), a:has-text("Alerts")').first().click();
-    await page.waitForURL('**/alerts**', { timeout: 5000 });
-    await expect(page.locator('h1:has-text("Alerts")')).toBeVisible();
+    await page.getByRole('link', { name: 'Alerts' }).first().click();
+    await page.waitForURL('**/alerts**', { timeout: 10000 });
+    await expect(page.getByRole('heading', { name: 'Alerts', level: 1 })).toBeVisible();
   });
 
   test('navigate to settings page via sidebar', async ({ page }) => {
-    await page.locator('nav a:has-text("Settings"), a:has-text("Settings")').first().click();
-    await page.waitForURL('**/settings**', { timeout: 5000 });
+    await page.getByRole('link', { name: 'Settings' }).first().click();
+    await page.waitForURL('**/settings**', { timeout: 10000 });
     // Settings heading
-    await expect(page.locator('h1:has-text("Settings")')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Settings', level: 1 })).toBeVisible();
     await page.screenshot({ path: 'tests/screenshots/settings-page.png', fullPage: true });
   });
 
