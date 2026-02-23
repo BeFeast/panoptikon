@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "v*"
+      - "v*.*.*"
 
 permissions:
   contents: write
@@ -12,66 +12,116 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build-agent:
-    name: Build Agent (${{ matrix.platform }})
+  frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: web
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        working-directory: web
+        run: bun run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend
+          path: web/out/
+
+  build-linux:
+    name: Linux (${{ matrix.arch }})
+    needs: frontend
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         include:
           - target: x86_64-unknown-linux-musl
-            platform: linux-amd64
-            os: ubuntu-latest
-            use_cross: true
+            arch: amd64
           - target: aarch64-unknown-linux-musl
-            platform: linux-arm64
-            os: ubuntu-latest
-            use_cross: true
-          - target: x86_64-pc-windows-gnu
-            platform: windows-amd64
-            os: ubuntu-latest
-            use_cross: true
-          - target: aarch64-apple-darwin
-            platform: darwin-arm64
-            os: macos-latest
-            use_cross: false
-    runs-on: ${{ matrix.os }}
+            arch: arm64
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: ${{ matrix.target }}
+      - uses: dtolnay/rust-toolchain@stable
 
-      - name: Install cross (Linux/Windows cross-compile)
-        if: matrix.use_cross
-        run: cargo install cross --git https://github.com/cross-rs/cross
+      - name: Install cross
+        uses: taiki-e/install-action@cross
+
+      - name: Download frontend assets
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend
+          path: web/out/
+
+      - name: Build server
+        run: cross build --release --locked --target ${{ matrix.target }} -p panoptikon-server
 
       - name: Build agent
-        run: |
-          if [ "${{ matrix.use_cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }} -p panoptikon-agent
-          else
-            cargo build --release --target ${{ matrix.target }} -p panoptikon-agent
-          fi
+        run: cross build --release --locked --target ${{ matrix.target }} -p panoptikon-agent
 
-      - name: Prepare artifact
+      - name: Rename binaries
         run: |
-          mkdir -p dist
-          if [[ "${{ matrix.platform }}" == windows-* ]]; then
-            cp target/${{ matrix.target }}/release/panoptikon-agent.exe dist/panoptikon-agent-${{ matrix.platform }}.exe
-          else
-            cp target/${{ matrix.target }}/release/panoptikon-agent dist/panoptikon-agent-${{ matrix.platform }}
-          fi
+          cp target/${{ matrix.target }}/release/panoptikon-server panoptikon-server-linux-${{ matrix.arch }}
+          cp target/${{ matrix.target }}/release/panoptikon-agent panoptikon-agent-linux-${{ matrix.arch }}
 
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: panoptikon-agent-${{ matrix.platform }}
-          path: dist/panoptikon-agent-*
+          name: binaries-linux-${{ matrix.arch }}
+          path: panoptikon-*-linux-${{ matrix.arch }}
+
+  build-macos:
+    name: macOS (${{ matrix.arch }})
+    needs: frontend
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-apple-darwin
+            arch: amd64
+            runner: macos-13
+          - target: aarch64-apple-darwin
+            arch: arm64
+            runner: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Set OpenSSL environment
+        run: echo "OPENSSL_DIR=$(brew --prefix openssl@3)" >> "$GITHUB_ENV"
+
+      - name: Download frontend assets
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend
+          path: web/out/
+
+      - name: Build server
+        run: cargo build --release --locked --target ${{ matrix.target }} -p panoptikon-server
+
+      - name: Build agent
+        run: cargo build --release --locked --target ${{ matrix.target }} -p panoptikon-agent
+
+      - name: Rename binaries
+        run: |
+          cp target/${{ matrix.target }}/release/panoptikon-server panoptikon-server-darwin-${{ matrix.arch }}
+          cp target/${{ matrix.target }}/release/panoptikon-agent panoptikon-agent-darwin-${{ matrix.arch }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries-darwin-${{ matrix.arch }}
+          path: panoptikon-*-darwin-${{ matrix.arch }}
 
   release:
-    name: Create Release
-    needs: build-agent
+    name: Create GitHub Release
+    needs: [build-linux, build-macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -79,16 +129,33 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
+          pattern: binaries-*
           path: artifacts
+          merge-multiple: true
 
-      - name: Prepare release assets
-        run: |
-          mkdir -p release
-          find artifacts -type f -name 'panoptikon-agent-*' -exec cp {} release/ \;
-          ls -la release/
+      - name: Generate SHA256 checksums
+        working-directory: artifacts
+        run: sha256sum panoptikon-* > SHA256SUMS.txt
 
-      - name: Create GitHub Release
+      - name: Copy install script
+        run: cp scripts/install.sh artifacts/install.sh
+
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          files: release/*
           generate_release_notes: true
+          body: |
+            ## Quick Install
+
+            ```sh
+            curl -fsSL https://github.com/BeFeast/panoptikon/releases/latest/download/install.sh | sh
+            ```
+
+            Install the agent instead:
+
+            ```sh
+            curl -fsSL https://github.com/BeFeast/panoptikon/releases/latest/download/install.sh | sh -s -- panoptikon-agent
+            ```
+
+            See `SHA256SUMS.txt` for binary checksums.
+          files: artifacts/*
