@@ -415,6 +415,8 @@ pub fn router(state: AppState) -> Router {
         // Assets (IT inventory)
         .route("/assets", get(assets::list))
         .route("/assets", post(assets::create))
+        .route("/assets/import", post(assets::import))
+        .route("/assets/auto-link", post(assets::auto_link))
         .route("/assets/:id", get(assets::get_one))
         .route("/assets/:id", put(assets::update))
         .route("/assets/:id", delete(assets::delete))

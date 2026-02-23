@@ -67,6 +67,9 @@ const ALERT_RULES_MIGRATION: &str = include_str!("migrations/019_alert_rules.sql
 /// Migration 020: Caddy reverse proxy host definitions.
 const CADDY_PROXY_HOSTS_MIGRATION: &str = include_str!("migrations/020_caddy_proxy_hosts.sql");
 
+/// Migration 021: Asset status column for inventory management.
+const ASSET_STATUS_MIGRATION: &str = include_str!("migrations/021_asset_status.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -490,6 +493,36 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
             .await?;
 
         info!("Applied migration 020_caddy_proxy_hosts.sql");
+    }
+
+    // Migration 021: asset status column.
+    let applied_21: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 21")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_21 {
+        for statement in ASSET_STATUS_MIGRATION.split(';') {
+            let code = statement
+                .lines()
+                .skip_while(|l| {
+                    let t = l.trim();
+                    t.is_empty() || t.starts_with("--")
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let stmt = code.trim();
+            if stmt.is_empty() {
+                continue;
+            }
+            sqlx::query(stmt).execute(pool).await?;
+        }
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (21)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 021_asset_status.sql");
     }
 
     // Purge expired sessions on startup.

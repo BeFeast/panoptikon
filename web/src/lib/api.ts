@@ -77,6 +77,9 @@ import type {
   MikrotikWireguard,
   Asset,
   AssetRequest,
+  AssetImportRow,
+  AssetImportResponse,
+  AssetAutoLinkResponse,
   AlertRule,
   CreateAlertRuleRequest,
   UpdateAlertRuleRequest,
@@ -1248,10 +1251,14 @@ export function fetchMikrotikWireguard(): Promise<MikrotikWireguard> {
 export function fetchAssets(params?: {
   type?: string;
   tag?: string;
+  status?: string;
+  location?: string;
 }): Promise<Asset[]> {
   const qs = new URLSearchParams();
   if (params?.type) qs.set("type", params.type);
   if (params?.tag) qs.set("tag", params.tag);
+  if (params?.status) qs.set("status", params.status);
+  if (params?.location) qs.set("location", params.location);
   const suffix = qs.toString() ? `?${qs}` : "";
   return apiGet<Asset[]>(`/api/v1/assets${suffix}`);
 }
@@ -1273,6 +1280,16 @@ export function updateAssetInventory(
 
 export function deleteAssetInventory(id: string): Promise<void> {
   return apiDelete(`/api/v1/assets/${id}`);
+}
+
+export function importAssets(
+  rows: AssetImportRow[]
+): Promise<AssetImportResponse> {
+  return apiPost<AssetImportResponse>("/api/v1/assets/import", { rows });
+}
+
+export function autoLinkAssets(): Promise<AssetAutoLinkResponse> {
+  return apiPost<AssetAutoLinkResponse>("/api/v1/assets/auto-link");
 }
 
 // ─── Alert Rules ─────────────────────────────────────────

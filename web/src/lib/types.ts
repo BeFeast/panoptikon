@@ -908,10 +908,18 @@ export type AssetType =
   | "printer"
   | "unknown";
 
+export type AssetStatus =
+  | "active"
+  | "inactive"
+  | "maintenance"
+  | "retired"
+  | "disposed";
+
 export interface Asset {
   id: string;
   name: string;
   asset_type: AssetType;
+  status: AssetStatus;
   location: string | null;
   owner: string | null;
   tags: string | null;
@@ -941,6 +949,7 @@ export interface Asset {
 export interface AssetRequest {
   name?: string;
   asset_type?: AssetType;
+  status?: AssetStatus;
   location?: string;
   owner?: string;
   tags?: string;
@@ -950,6 +959,29 @@ export interface AssetRequest {
   device_id?: string;
   agent_id?: string;
   ssh_target_id?: string;
+}
+
+export interface AssetImportRow {
+  name: string;
+  asset_type?: string;
+  status?: string;
+  location?: string;
+  owner?: string;
+  tags?: string;
+  notes?: string;
+  purchase_date?: string;
+  serial_number?: string;
+}
+
+export interface AssetImportResponse {
+  imported: number;
+  skipped: number;
+  errors: string[];
+}
+
+export interface AssetAutoLinkResponse {
+  linked: number;
+  details: string[];
 }
 
 // ─── SSH Targets (agentless monitoring) ─────────────────

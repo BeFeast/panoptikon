@@ -63,6 +63,7 @@ struct ExportAsset {
     id: String,
     name: String,
     asset_type: String,
+    status: String,
     location: String,
     owner: String,
     tags: String,
@@ -185,7 +186,7 @@ fn format_alerts_csv(items: &[ExportAlert]) -> String {
 
 fn format_assets_csv(items: &[ExportAsset]) -> String {
     let mut out = String::from(
-        "id,name,asset_type,location,owner,tags,serial_number,purchase_date,notes,device_id,agent_id,ssh_target_id,created_at,updated_at\n",
+        "id,name,asset_type,status,location,owner,tags,serial_number,purchase_date,notes,device_id,agent_id,ssh_target_id,created_at,updated_at\n",
     );
 
     for a in items {
@@ -194,6 +195,8 @@ fn format_assets_csv(items: &[ExportAsset]) -> String {
         out.push_str(&csv_escape(&a.name));
         out.push(',');
         out.push_str(&csv_escape(&a.asset_type));
+        out.push(',');
+        out.push_str(&csv_escape(&a.status));
         out.push(',');
         out.push_str(&csv_escape(&a.location));
         out.push(',');
@@ -449,6 +452,7 @@ pub async fn assets_export(
             id,
             name,
             asset_type,
+            COALESCE(status, 'active') AS status,
             COALESCE(location, '') AS location,
             COALESCE(owner, '') AS owner,
             COALESCE(tags, '') AS tags,
@@ -477,6 +481,7 @@ pub async fn assets_export(
             id: r.try_get("id").unwrap_or_default(),
             name: r.try_get("name").unwrap_or_default(),
             asset_type: r.try_get("asset_type").unwrap_or_default(),
+            status: r.try_get("status").unwrap_or_default(),
             location: r.try_get("location").unwrap_or_default(),
             owner: r.try_get("owner").unwrap_or_default(),
             tags: r.try_get("tags").unwrap_or_default(),
@@ -678,6 +683,7 @@ mod tests {
             id: "asset-1".to_string(),
             name: "web-server-01".to_string(),
             asset_type: "server".to_string(),
+            status: "active".to_string(),
             location: "DC-1 Rack A".to_string(),
             owner: "ops-team".to_string(),
             tags: "[\"production\"]".to_string(),
@@ -695,7 +701,7 @@ mod tests {
         let mut lines = csv.lines();
         assert_eq!(
             lines.next().unwrap_or(""),
-            "id,name,asset_type,location,owner,tags,serial_number,purchase_date,notes,device_id,agent_id,ssh_target_id,created_at,updated_at"
+            "id,name,asset_type,status,location,owner,tags,serial_number,purchase_date,notes,device_id,agent_id,ssh_target_id,created_at,updated_at"
         );
         let row = lines.next().unwrap_or("");
         assert!(row.contains("asset-1"));
@@ -710,6 +716,7 @@ mod tests {
             id: "asset-1".to_string(),
             name: "web-server-01".to_string(),
             asset_type: "server".to_string(),
+            status: "active".to_string(),
             location: "DC-1".to_string(),
             owner: "ops".to_string(),
             tags: "".to_string(),

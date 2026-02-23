@@ -5,7 +5,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use super::{AppError, AppState};
 
@@ -26,12 +26,16 @@ const VALID_ASSET_TYPES: &[&str] = &[
     "unknown",
 ];
 
+/// Valid asset status values.
+const VALID_STATUSES: &[&str] = &["active", "inactive", "maintenance", "retired", "disposed"];
+
 /// An asset as returned by the API.
 #[derive(Debug, Serialize)]
 pub struct Asset {
     pub id: String,
     pub name: String,
     pub asset_type: String,
+    pub status: String,
     pub location: Option<String>,
     pub owner: Option<String>,
     pub tags: Option<String>,
@@ -63,6 +67,7 @@ pub struct Asset {
 pub struct AssetRequest {
     pub name: Option<String>,
     pub asset_type: Option<String>,
+    pub status: Option<String>,
     pub location: Option<String>,
     pub owner: Option<String>,
     pub tags: Option<String>,
@@ -80,6 +85,43 @@ pub struct ListQuery {
     #[serde(rename = "type")]
     pub asset_type: Option<String>,
     pub tag: Option<String>,
+    pub status: Option<String>,
+    pub location: Option<String>,
+}
+
+/// A single row in a CSV import.
+#[derive(Debug, Deserialize)]
+pub struct CsvImportRow {
+    pub name: String,
+    pub asset_type: Option<String>,
+    pub status: Option<String>,
+    pub location: Option<String>,
+    pub owner: Option<String>,
+    pub tags: Option<String>,
+    pub notes: Option<String>,
+    pub purchase_date: Option<String>,
+    pub serial_number: Option<String>,
+}
+
+/// Request body for bulk CSV import.
+#[derive(Debug, Deserialize)]
+pub struct ImportRequest {
+    pub rows: Vec<CsvImportRow>,
+}
+
+/// Response for bulk import.
+#[derive(Debug, Serialize)]
+pub struct ImportResponse {
+    pub imported: usize,
+    pub skipped: usize,
+    pub errors: Vec<String>,
+}
+
+/// Response for auto-link operation.
+#[derive(Debug, Serialize)]
+pub struct AutoLinkResponse {
+    pub linked: usize,
+    pub details: Vec<String>,
 }
 
 // ─── Helpers ─────────────────────────────────────────────
@@ -133,6 +175,9 @@ fn asset_from_row(row: sqlx::sqlite::SqliteRow) -> Result<Asset, sqlx::Error> {
         id: row.try_get("id")?,
         name: row.try_get("name")?,
         asset_type: row.try_get("asset_type")?,
+        status: row
+            .try_get("status")
+            .unwrap_or_else(|_| "active".to_string()),
         location: row.try_get("location").ok().flatten(),
         owner: row.try_get("owner").ok().flatten(),
         tags: row.try_get("tags").ok().flatten(),
@@ -165,7 +210,7 @@ fn asset_from_row(row: sqlx::sqlite::SqliteRow) -> Result<Asset, sqlx::Error> {
 }
 
 const LIST_QUERY: &str = "\
-    SELECT a.id, a.name, a.asset_type, a.location, a.owner, a.tags, a.notes, \
+    SELECT a.id, a.name, a.asset_type, a.status, a.location, a.owner, a.tags, a.notes, \
            a.purchase_date, a.serial_number, a.device_id, a.agent_id, a.ssh_target_id, \
            a.created_at, a.updated_at, \
            d.is_online AS device_online, d.last_seen_at AS device_last_seen, \
@@ -186,7 +231,7 @@ const LIST_QUERY: &str = "\
     ORDER BY a.created_at DESC";
 
 const GET_ONE_QUERY: &str = "\
-    SELECT a.id, a.name, a.asset_type, a.location, a.owner, a.tags, a.notes, \
+    SELECT a.id, a.name, a.asset_type, a.status, a.location, a.owner, a.tags, a.notes, \
            a.purchase_date, a.serial_number, a.device_id, a.agent_id, a.ssh_target_id, \
            a.created_at, a.updated_at, \
            d.is_online AS device_online, d.last_seen_at AS device_last_seen, \
@@ -217,8 +262,13 @@ pub async fn list(
     let mut sql = String::from(LIST_QUERY);
     let mut binds: Vec<String> = Vec::new();
 
+    let has_filters = params.asset_type.is_some()
+        || params.tag.is_some()
+        || params.status.is_some()
+        || params.location.is_some();
+
     // Replace ORDER BY with WHERE clauses if we have filters.
-    if params.asset_type.is_some() || params.tag.is_some() {
+    if has_filters {
         // We need to inject WHERE conditions before the ORDER BY.
         // The LIST_QUERY already has ORDER BY at the end, so we insert before it.
         sql = sql.replace("ORDER BY a.created_at DESC", "");
@@ -233,6 +283,14 @@ pub async fn list(
             // Search for tag in JSON array-like text field.
             conditions.push("a.tags LIKE ?".to_string());
             binds.push(format!("%{tag}%"));
+        }
+        if let Some(ref s) = params.status {
+            conditions.push("a.status = ?".to_string());
+            binds.push(s.clone());
+        }
+        if let Some(ref loc) = params.location {
+            conditions.push("a.location = ?".to_string());
+            binds.push(loc.clone());
         }
 
         if !conditions.is_empty() {
@@ -300,15 +358,24 @@ pub async fn create(
         )));
     }
 
+    let status = body.status.as_deref().unwrap_or("active");
+    if !VALID_STATUSES.contains(&status) {
+        return Err(AppError::Validation(format!(
+            "invalid status '{status}'. Valid statuses: {}",
+            VALID_STATUSES.join(", ")
+        )));
+    }
+
     let id = uuid::Uuid::new_v4().to_string();
 
     sqlx::query(
-        "INSERT INTO assets (id, name, asset_type, location, owner, tags, notes, purchase_date, serial_number, device_id, agent_id, ssh_target_id) \
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO assets (id, name, asset_type, status, location, owner, tags, notes, purchase_date, serial_number, device_id, agent_id, ssh_target_id) \
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(name)
     .bind(asset_type)
+    .bind(status)
     .bind(body.location.as_deref().map(|s| s.trim()))
     .bind(body.owner.as_deref().map(|s| s.trim()))
     .bind(body.tags.as_deref())
@@ -359,6 +426,15 @@ pub async fn update(
         }
     }
 
+    if let Some(ref s) = body.status {
+        if !VALID_STATUSES.contains(&s.as_str()) {
+            return Err(AppError::Validation(format!(
+                "invalid status '{s}'. Valid statuses: {}",
+                VALID_STATUSES.join(", ")
+            )));
+        }
+    }
+
     // Build SET clauses dynamically — only update fields that are provided.
     let mut sets: Vec<String> = Vec::new();
     let mut binds: Vec<Option<String>> = Vec::new();
@@ -369,6 +445,10 @@ pub async fn update(
     }
     if let Some(ref v) = body.asset_type {
         sets.push("asset_type = ?".to_string());
+        binds.push(Some(v.clone()));
+    }
+    if let Some(ref v) = body.status {
+        sets.push("status = ?".to_string());
         binds.push(Some(v.clone()));
     }
     if body.location.is_some() {
@@ -451,6 +531,132 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> St
     }
 }
 
+/// POST /api/v1/assets/import — bulk import assets from parsed CSV rows.
+pub async fn import(
+    State(state): State<AppState>,
+    Json(body): Json<ImportRequest>,
+) -> Result<Json<ImportResponse>, AppError> {
+    let mut imported = 0usize;
+    let mut skipped = 0usize;
+    let mut errors = Vec::new();
+
+    for (i, row) in body.rows.iter().enumerate() {
+        let line = i + 1;
+        let name = row.name.trim();
+        if name.is_empty() {
+            errors.push(format!("Row {line}: name is empty, skipped"));
+            skipped += 1;
+            continue;
+        }
+
+        let asset_type = row.asset_type.as_deref().unwrap_or("unknown");
+        if !VALID_ASSET_TYPES.contains(&asset_type) {
+            errors.push(format!(
+                "Row {line}: invalid asset_type '{asset_type}', using 'unknown'"
+            ));
+        }
+        let asset_type = if VALID_ASSET_TYPES.contains(&asset_type) {
+            asset_type
+        } else {
+            "unknown"
+        };
+
+        let status = row.status.as_deref().unwrap_or("active");
+        let status = if VALID_STATUSES.contains(&status) {
+            status
+        } else {
+            warn!("Row {line}: invalid status '{status}', using 'active'");
+            "active"
+        };
+
+        let id = uuid::Uuid::new_v4().to_string();
+
+        match sqlx::query(
+            "INSERT INTO assets (id, name, asset_type, status, location, owner, tags, notes, purchase_date, serial_number) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(name)
+        .bind(asset_type)
+        .bind(status)
+        .bind(row.location.as_deref().map(|s| s.trim()))
+        .bind(row.owner.as_deref().map(|s| s.trim()))
+        .bind(row.tags.as_deref())
+        .bind(row.notes.as_deref())
+        .bind(row.purchase_date.as_deref())
+        .bind(row.serial_number.as_deref().map(|s| s.trim()))
+        .execute(&state.db)
+        .await
+        {
+            Ok(_) => imported += 1,
+            Err(e) => {
+                errors.push(format!("Row {line}: database error — {e}"));
+                skipped += 1;
+            }
+        }
+    }
+
+    info!(imported, skipped, "Bulk asset import completed");
+
+    Ok(Json(ImportResponse {
+        imported,
+        skipped,
+        errors,
+    }))
+}
+
+/// POST /api/v1/assets/auto-link — automatically link unlinked assets to
+/// discovered network devices by matching name or hostname.
+pub async fn auto_link(State(state): State<AppState>) -> Result<Json<AutoLinkResponse>, AppError> {
+    // Find assets that have no device_id linked.
+    let unlinked_rows = sqlx::query("SELECT id, name FROM assets WHERE device_id IS NULL")
+        .fetch_all(&state.db)
+        .await?;
+
+    let mut linked = 0usize;
+    let mut details = Vec::new();
+
+    for row in &unlinked_rows {
+        let asset_id: String = row.try_get("id").unwrap_or_default();
+        let asset_name: String = row.try_get("name").unwrap_or_default();
+        let name_lower = asset_name.to_lowercase();
+
+        // Try to match by device name or hostname (case-insensitive).
+        let device_row = sqlx::query(
+            "SELECT id, COALESCE(name, hostname) AS display_name FROM devices \
+             WHERE LOWER(COALESCE(name, '')) = ? OR LOWER(COALESCE(hostname, '')) = ? \
+             LIMIT 1",
+        )
+        .bind(&name_lower)
+        .bind(&name_lower)
+        .fetch_optional(&state.db)
+        .await?;
+
+        if let Some(dev) = device_row {
+            let device_id: String = dev.try_get("id").unwrap_or_default();
+            let display_name: String = dev.try_get("display_name").unwrap_or_default();
+
+            sqlx::query(
+                "UPDATE assets SET device_id = ?, updated_at = datetime('now') WHERE id = ?",
+            )
+            .bind(&device_id)
+            .bind(&asset_id)
+            .execute(&state.db)
+            .await?;
+
+            details.push(format!(
+                "Linked asset '{}' to device '{}'",
+                asset_name, display_name
+            ));
+            linked += 1;
+        }
+    }
+
+    info!(linked, "Auto-link assets to devices completed");
+
+    Ok(Json(AutoLinkResponse { linked, details }))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::db;
@@ -476,6 +682,14 @@ mod tests {
             .await
             .expect("Query failed");
         assert_eq!(count, 1);
+
+        // Verify default status
+        let status: String = sqlx::query_scalar("SELECT status FROM assets WHERE id = ?")
+            .bind(&id)
+            .fetch_one(&pool)
+            .await
+            .expect("Query failed");
+        assert_eq!(status, "active");
 
         // Update
         sqlx::query("UPDATE assets SET name = 'web-server-02' WHERE id = ?")
@@ -615,6 +829,7 @@ mod tests {
         let standalone = assets.iter().find(|a| a.id == "standalone").unwrap();
         assert_eq!(standalone.name, "printer-01");
         assert_eq!(standalone.asset_type, "printer");
+        assert_eq!(standalone.status, "active");
         assert!(standalone.ip.is_none());
         assert!(standalone.agent_name.is_none());
         assert!(standalone.ssh_name.is_none());
@@ -622,6 +837,7 @@ mod tests {
         let linked = assets.iter().find(|a| a.id == asset_id).unwrap();
         assert_eq!(linked.name, "web-server-01");
         assert_eq!(linked.asset_type, "server");
+        assert_eq!(linked.status, "active");
         assert_eq!(linked.location.as_deref(), Some("DC-1"));
         assert_eq!(linked.owner.as_deref(), Some("ops-team"));
         // Device data
@@ -653,6 +869,7 @@ mod tests {
         assert_eq!(asset.id, asset_id);
         assert_eq!(asset.name, "web-server-01");
         assert_eq!(asset.asset_type, "server");
+        assert_eq!(asset.status, "active");
         assert_eq!(asset.location.as_deref(), Some("DC-1"));
         assert_eq!(asset.owner.as_deref(), Some("ops-team"));
         assert_eq!(asset.tags.as_deref(), Some("[\"production\"]"));
