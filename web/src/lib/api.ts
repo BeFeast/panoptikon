@@ -15,6 +15,9 @@ import type {
   SshTestConnectionResponse,
   AuditLogListResponse,
   AuthStatus,
+  CaddyProxyHost,
+  CaddyProxyHostRequest,
+  CaddyStatus,
   ConfigActionResponse,
   ConfigBackup,
   ConfigBackupListResponse,
@@ -1293,4 +1296,44 @@ export function updateAlertRule(
 
 export function deleteAlertRule(id: string): Promise<void> {
   return apiDelete(`/api/v1/alert-rules/${id}`);
+}
+
+// ─── Caddy Reverse Proxy ─────────────────────────────────
+
+export function fetchCaddyStatus(): Promise<CaddyStatus> {
+  return apiGet<CaddyStatus>("/api/v1/caddy/status");
+}
+
+export function fetchCaddyProxyHosts(): Promise<CaddyProxyHost[]> {
+  return apiGet<CaddyProxyHost[]>("/api/v1/caddy/proxy-hosts");
+}
+
+export function createCaddyProxyHost(
+  body: CaddyProxyHostRequest
+): Promise<CaddyProxyHost> {
+  return apiPost<CaddyProxyHost>("/api/v1/caddy/proxy-hosts", body);
+}
+
+export function updateCaddyProxyHost(
+  id: string,
+  body: CaddyProxyHostRequest
+): Promise<CaddyProxyHost> {
+  return apiPut<CaddyProxyHost>(`/api/v1/caddy/proxy-hosts/${id}`, body);
+}
+
+export function deleteCaddyProxyHost(id: string): Promise<void> {
+  return apiDelete(`/api/v1/caddy/proxy-hosts/${id}`);
+}
+
+export function toggleCaddyProxyHost(
+  id: string,
+  enabled: boolean
+): Promise<CaddyProxyHost> {
+  return apiPost<CaddyProxyHost>(`/api/v1/caddy/proxy-hosts/${id}/toggle`, {
+    enabled,
+  });
+}
+
+export function syncCaddyConfig(): Promise<void> {
+  return apiPost<void>("/api/v1/caddy/sync");
 }

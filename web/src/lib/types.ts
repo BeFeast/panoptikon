@@ -1168,3 +1168,30 @@ export interface UpdateAlertRuleRequest {
   notify_telegram?: boolean;
   notify_in_app?: boolean;
 }
+
+// ─── Caddy Reverse Proxy ─────────────────────────────────
+
+export interface CaddyProxyHost {
+  id: string;
+  domain: string;
+  forward_host: string;
+  forward_port: number;
+  forward_scheme: string;
+  enabled: boolean;
+  tls_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CaddyProxyHostRequest {
+  domain: string;
+  forward_host: string;
+  forward_port: number;
+  forward_scheme: string;
+  tls_enabled: boolean;
+}
+
+export interface CaddyStatus {
+  configured: boolean;
+  reachable: boolean;
+}

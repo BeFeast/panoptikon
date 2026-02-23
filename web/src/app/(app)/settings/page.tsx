@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   Router,
   Globe,
+  Shield,
   Radar,
   Bell,
   Database,
@@ -52,6 +53,13 @@ const settingsGroups: SettingsGroup[] = [
         iconBg: "bg-orange-500/10",
         title: "Nginx Proxy Manager",
         description: "Manage reverse proxy hosts via NPM.",
+      },
+      {
+        href: "/settings/caddy",
+        icon: <Shield className="h-4 w-4 text-emerald-400" />,
+        iconBg: "bg-emerald-500/10",
+        title: "Caddy Reverse Proxy",
+        description: "Manage reverse proxy hosts via Caddy.",
       },
       {
         href: "/settings/webhook",
