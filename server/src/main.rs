@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 use panoptikon_server::{
     api, config, db, dhcp, mdns, netflow, retention, scanner, speedtest_scheduler, ssdp, ssh,
+    traffic_rollup,
 };
 use std::net::SocketAddr;
 use tracing::info;
@@ -132,6 +133,9 @@ async fn main() -> Result<()> {
 
     // Start the background speedtest scheduler (reads interval from DB settings).
     speedtest_scheduler::start_speedtest_scheduler(state.db.clone());
+
+    // Start traffic rollup background task (samples → hourly → daily).
+    traffic_rollup::start_traffic_rollup_task(state.db.clone());
 
     // Start the SSH agentless monitoring poller.
     ssh::start_ssh_poller(state.db.clone(), state.ws_hub.clone());

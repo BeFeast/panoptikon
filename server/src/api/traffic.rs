@@ -1,9 +1,11 @@
 use crate::api::AppState;
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
+    http::StatusCode,
     Json,
 };
 use serde::{Deserialize, Serialize};
+use tracing::error;
 
 #[derive(Serialize)]
 pub struct TrafficHistoryPoint {
@@ -51,6 +53,159 @@ pub async fn history(
             })
             .collect(),
     )
+}
+
+// ─── Per-device traffic history ──────────────────────────
+
+#[derive(Serialize)]
+pub struct DeviceTrafficPoint {
+    pub time: String,
+    pub rx_bps: i64,
+    pub tx_bps: i64,
+    pub max_rx_bps: Option<i64>,
+    pub max_tx_bps: Option<i64>,
+}
+
+#[derive(Deserialize)]
+pub struct DeviceTrafficQuery {
+    /// Time range: "1h", "24h", "7d", "30d"
+    pub range: Option<String>,
+}
+
+/// GET /api/v1/devices/:id/traffic?range=1h
+///
+/// Returns per-device traffic history for the given time range.
+/// - 1h: raw samples (per-minute), from traffic_samples
+/// - 24h: hourly aggregates, from traffic_hourly
+/// - 7d: hourly aggregates, from traffic_hourly
+/// - 30d: daily aggregates, from traffic_daily
+pub async fn device_traffic(
+    State(state): State<AppState>,
+    Path(device_id): Path<String>,
+    Query(q): Query<DeviceTrafficQuery>,
+) -> Result<Json<Vec<DeviceTrafficPoint>>, StatusCode> {
+    let range = q.range.as_deref().unwrap_or("1h");
+
+    let points = match range {
+        "1h" => query_samples_minutes(&state, &device_id, 60).await,
+        "24h" => query_hourly(&state, &device_id, 24).await,
+        "7d" => query_hourly(&state, &device_id, 168).await,
+        "30d" => query_daily(&state, &device_id, 30).await,
+        _ => query_samples_minutes(&state, &device_id, 60).await,
+    };
+
+    match points {
+        Ok(p) => Ok(Json(p)),
+        Err(e) => {
+            error!("device_traffic query failed: {e}");
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+async fn query_samples_minutes(
+    state: &AppState,
+    device_id: &str,
+    minutes: i64,
+) -> Result<Vec<DeviceTrafficPoint>, sqlx::Error> {
+    let rows: Vec<(String, i64, i64)> = sqlx::query_as(
+        r#"SELECT
+             strftime('%Y-%m-%dT%H:%M:00', sampled_at) AS minute,
+             COALESCE(SUM(rx_bps), 0),
+             COALESCE(SUM(tx_bps), 0)
+           FROM traffic_samples
+           WHERE device_id = ?
+             AND sampled_at >= datetime('now', '-' || CAST(? AS TEXT) || ' minutes')
+           GROUP BY minute
+           ORDER BY minute ASC"#,
+    )
+    .bind(device_id)
+    .bind(minutes)
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|(time, rx_bps, tx_bps)| DeviceTrafficPoint {
+            time,
+            rx_bps,
+            tx_bps,
+            max_rx_bps: None,
+            max_tx_bps: None,
+        })
+        .collect())
+}
+
+async fn query_hourly(
+    state: &AppState,
+    device_id: &str,
+    hours: i64,
+) -> Result<Vec<DeviceTrafficPoint>, sqlx::Error> {
+    let rows: Vec<(String, i64, i64, i64, i64)> = sqlx::query_as(
+        r#"SELECT
+             hour,
+             COALESCE(avg_rx_bps, 0),
+             COALESCE(avg_tx_bps, 0),
+             COALESCE(max_rx_bps, 0),
+             COALESCE(max_tx_bps, 0)
+           FROM traffic_hourly
+           WHERE device_id = ?
+             AND hour >= datetime('now', '-' || CAST(? AS TEXT) || ' hours')
+           ORDER BY hour ASC"#,
+    )
+    .bind(device_id)
+    .bind(hours)
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(
+            |(time, rx_bps, tx_bps, max_rx, max_tx)| DeviceTrafficPoint {
+                time,
+                rx_bps,
+                tx_bps,
+                max_rx_bps: Some(max_rx),
+                max_tx_bps: Some(max_tx),
+            },
+        )
+        .collect())
+}
+
+async fn query_daily(
+    state: &AppState,
+    device_id: &str,
+    days: i64,
+) -> Result<Vec<DeviceTrafficPoint>, sqlx::Error> {
+    let rows: Vec<(String, i64, i64, i64, i64)> = sqlx::query_as(
+        r#"SELECT
+             day,
+             COALESCE(avg_rx_bps, 0),
+             COALESCE(avg_tx_bps, 0),
+             COALESCE(max_rx_bps, 0),
+             COALESCE(max_tx_bps, 0)
+           FROM traffic_daily
+           WHERE device_id = ?
+             AND day >= date('now', '-' || CAST(? AS TEXT) || ' days')
+           ORDER BY day ASC"#,
+    )
+    .bind(device_id)
+    .bind(days)
+    .fetch_all(&state.db)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(
+            |(time, rx_bps, tx_bps, max_rx, max_tx)| DeviceTrafficPoint {
+                time,
+                rx_bps,
+                tx_bps,
+                max_rx_bps: Some(max_rx),
+                max_tx_bps: Some(max_tx),
+            },
+        )
+        .collect())
 }
 
 #[cfg(test)]

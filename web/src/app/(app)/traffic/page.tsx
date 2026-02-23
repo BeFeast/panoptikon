@@ -11,7 +11,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { Activity, ChevronDown, Download, Radio } from "lucide-react";
+import { Activity, ChevronDown, Download, Radio, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +34,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { downloadExport } from "@/lib/export";
+import { DeviceTrafficChart } from "@/components/DeviceTrafficChart";
 
 /** Format an ISO minute string to HH:mm for the X axis. */
 function formatTime(iso: string): string {
@@ -50,6 +51,7 @@ export default function TrafficPage() {
   const [topDevices, setTopDevices] = useState<TopDevice[]>([]);
   const [netflow, setNetflow] = useState<NetflowStatus | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedDevice, setSelectedDevice] = useState<TopDevice | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -229,11 +231,32 @@ export default function TrafficPage() {
         )}
       </div>
 
+      {/* Per-device Historical Bandwidth */}
+      {selectedDevice && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-medium text-slate-400">
+              {selectedDevice.name ?? selectedDevice.hostname ?? selectedDevice.ip} — Historical Bandwidth
+            </h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-slate-500 hover:text-white"
+              onClick={() => setSelectedDevice(null)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <DeviceTrafficChart deviceId={selectedDevice.id} height={220} />
+        </div>
+      )}
+
       {/* Top Devices by Bandwidth */}
       <div className="rounded-lg border border-slate-800 bg-slate-900">
         <div className="border-b border-slate-800 px-4 py-3">
           <h2 className="text-sm font-medium text-slate-400">
             Top Devices by Bandwidth
+            <span className="ml-2 text-xs text-slate-600">Click a row to view history</span>
           </h2>
         </div>
         {loading && topDevices.length === 0 ? (
@@ -275,7 +298,19 @@ export default function TrafficPage() {
             </TableHeader>
             <TableBody>
               {topDevices.map((d) => (
-                <TableRow key={d.id} className="border-slate-800">
+                <TableRow
+                  key={d.id}
+                  className={`border-slate-800 cursor-pointer ${
+                    selectedDevice?.id === d.id
+                      ? "bg-slate-800/50"
+                      : "hover:bg-slate-800/30"
+                  }`}
+                  onClick={() =>
+                    setSelectedDevice(
+                      selectedDevice?.id === d.id ? null : d
+                    )
+                  }
+                >
                   <TableCell className="text-white">
                     {d.name ?? d.hostname ?? d.id.slice(0, 8)}
                   </TableCell>

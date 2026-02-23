@@ -14,6 +14,7 @@ pub mod speedtest_scheduler;
 pub mod ssdp;
 pub mod ssh;
 pub mod static_files;
+pub mod traffic_rollup;
 pub mod vyos;
 pub mod webhook;
 pub mod ws;

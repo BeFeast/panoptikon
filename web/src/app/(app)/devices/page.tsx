@@ -51,6 +51,7 @@ import {
 import { PageTransition } from "@/components/PageTransition";
 import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
 import { MotionCard } from "@/components/MotionCard";
+import { DeviceTrafficChart } from "@/components/DeviceTrafficChart";
 
 import { downloadExport } from "@/lib/export";
 
@@ -909,6 +910,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
           <TabsTrigger value="system" className="flex-1">System</TabsTrigger>
           <TabsTrigger value="ports" className="flex-1">Ports</TabsTrigger>
           <TabsTrigger value="events" className="flex-1">Events</TabsTrigger>
+          <TabsTrigger value="traffic" className="flex-1">Traffic</TabsTrigger>
         </TabsList>
 
         <TabsContent value="info">
@@ -929,6 +931,10 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
 
         <TabsContent value="events">
           <DeviceEventsTab deviceId={device.id} />
+        </TabsContent>
+
+        <TabsContent value="traffic">
+          <DeviceTrafficChart deviceId={device.id} />
         </TabsContent>
       </Tabs>
     </>
