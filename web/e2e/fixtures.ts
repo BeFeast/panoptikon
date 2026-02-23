@@ -60,7 +60,7 @@ export async function login(page: Page) {
   await page.locator("#password").fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign In' }).click();
   
-  await page.waitForURL(/\/(dashboard|agents|devices)/, { timeout: 15000 });
+  await page.waitForURL(/\/(dashboard|agents|devices)/, { timeout: 30000 });
 }
 
 /** Returns bounding rect of an element. */

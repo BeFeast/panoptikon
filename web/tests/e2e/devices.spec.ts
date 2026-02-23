@@ -12,10 +12,12 @@ test.describe('Devices page', () => {
   });
 
   test('devices page has filter buttons', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'All', exact: true })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('button', { name: 'Online' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Offline' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Unknown' })).toBeVisible();
+    // Button accessible names include counts once devices load (e.g. "All 42"),
+    // so use regex to match the label prefix.
+    await expect(page.getByRole('button', { name: /^All\b/ })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: /^Online\b/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Offline\b/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Unknown\b/ })).toBeVisible();
   });
 
   test('devices page has search input', async ({ page }) => {
@@ -44,16 +46,16 @@ test.describe('Devices page', () => {
   });
 
   test('filter buttons work', async ({ page }) => {
-    // Wait for devices to load
+    // Wait for devices to load (buttons include counts like "All 42")
     await page.waitForTimeout(2000);
     
-    // Click Online filter
-    await page.getByRole('button', { name: 'Online' }).click();
+    // Click Online filter — use regex since accessible name includes count
+    await page.getByRole('button', { name: /^Online\b/ }).click();
     await page.waitForTimeout(500);
     await page.screenshot({ path: 'tests/screenshots/devices-online-filter.png', fullPage: true });
     
     // Click All filter to go back
-    await page.getByRole('button', { name: 'All', exact: true }).click();
+    await page.getByRole('button', { name: /^All\b/ }).click();
     await page.waitForTimeout(500);
     await page.screenshot({ path: 'tests/screenshots/devices-all-filter.png', fullPage: true });
   });
