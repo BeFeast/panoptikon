@@ -2208,11 +2208,13 @@ function StaticMappingsTable({
   loading,
   error,
   onReload,
+  dhcpConfig,
 }: {
   mappings: DhcpStaticMapping[] | null;
   loading: boolean;
   error: string | null;
   onReload: () => void;
+  dhcpConfig: DhcpServerConfig | null;
 }) {
   const [confirmDelete, setConfirmDelete] = useState<DhcpStaticMapping | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -2293,16 +2295,30 @@ function StaticMappingsTable({
     }
   };
 
-  // Pre-fill subnet from existing mappings
+  // Build available networks/subnets from DHCP server config
+  const availableNetworks = dhcpConfig?.shared_networks ?? [];
+  const selectedNetworkObj = availableNetworks.find((n) => n.name === addForm.network);
+  const availableSubnets = selectedNetworkObj?.subnets ?? [];
+
+  // Pre-fill network/subnet from config or existing mappings
   useEffect(() => {
-    if (mappings && mappings.length > 0 && !addForm.subnet) {
+    if (addForm.subnet) return;
+    if (availableNetworks.length > 0) {
+      const firstNet = availableNetworks[0];
+      const firstSub = firstNet.subnets[0]?.subnet ?? "";
+      setAddForm((prev) => ({
+        ...prev,
+        network: prev.network && availableNetworks.some((n) => n.name === prev.network) ? prev.network : firstNet.name,
+        subnet: firstSub,
+      }));
+    } else if (mappings && mappings.length > 0) {
       setAddForm((prev) => ({
         ...prev,
         network: mappings[0].network,
         subnet: mappings[0].subnet,
       }));
     }
-  }, [mappings, addForm.subnet]);
+  }, [mappings, addForm.subnet, availableNetworks]);
 
   return (
     <>
@@ -2330,21 +2346,52 @@ function StaticMappingsTable({
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-slate-300">Network Name</Label>
-                  <Input
-                    value={addForm.network}
-                    onChange={(e) => setAddForm({ ...addForm, network: e.target.value })}
-                    placeholder="LAN"
-                    className="border-slate-800 bg-slate-950 text-white"
-                  />
+                  {availableNetworks.length > 0 ? (
+                    <select
+                      value={addForm.network}
+                      onChange={(e) => {
+                        const net = availableNetworks.find((n) => n.name === e.target.value);
+                        setAddForm({
+                          ...addForm,
+                          network: e.target.value,
+                          subnet: net?.subnets[0]?.subnet ?? "",
+                        });
+                      }}
+                      className={selectClass}
+                    >
+                      {availableNetworks.map((n) => (
+                        <option key={n.name} value={n.name}>{n.name}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      value={addForm.network}
+                      onChange={(e) => setAddForm({ ...addForm, network: e.target.value })}
+                      placeholder="LAN"
+                      className="border-slate-800 bg-slate-950 text-white"
+                    />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-slate-300">Subnet</Label>
-                  <Input
-                    value={addForm.subnet}
-                    onChange={(e) => setAddForm({ ...addForm, subnet: e.target.value })}
-                    placeholder="10.10.0.0/24"
-                    className="border-slate-800 bg-slate-950 text-white"
-                  />
+                  {availableSubnets.length > 0 ? (
+                    <select
+                      value={addForm.subnet}
+                      onChange={(e) => setAddForm({ ...addForm, subnet: e.target.value })}
+                      className={selectClass}
+                    >
+                      {availableSubnets.map((s) => (
+                        <option key={s.subnet} value={s.subnet}>{s.subnet}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <Input
+                      value={addForm.subnet}
+                      onChange={(e) => setAddForm({ ...addForm, subnet: e.target.value })}
+                      placeholder="10.10.0.0/24"
+                      className="border-slate-800 bg-slate-950 text-white"
+                    />
+                  )}
                 </div>
               </div>
               <div className="space-y-2">
@@ -5249,6 +5296,7 @@ function RouterTabs({ summary }: { summary: RouterSummary }) {
                 loading={staticMappings.loading}
                 error={staticMappings.error}
                 onReload={staticMappings.reload}
+                dhcpConfig={dhcpConfig.data ?? null}
               />
             </CardContent>
           </Card>
