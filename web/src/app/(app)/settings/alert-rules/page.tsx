@@ -125,7 +125,7 @@ export default function AlertRulesPage() {
     setSavingId(null);
   }
 
-  const existingTypes = new Set(rules.map((r) => r.rule_type));
+  const existingTypes = new Set<string>(rules.map((r) => r.rule_type));
   const availableTypes = Object.keys(RULE_TYPE_LABELS).filter(
     (t) => !existingTypes.has(t)
   );
