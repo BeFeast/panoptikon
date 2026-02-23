@@ -57,6 +57,10 @@ const MANUAL_ASSETS_MIGRATION: &str = include_str!("migrations/016_manual_assets
 /// Migration 017: IT asset inventory table.
 const ASSETS_MIGRATION: &str = include_str!("migrations/017_assets.sql");
 
+/// Migration 018: unique indexes on traffic_hourly and traffic_daily for rollup upserts.
+const TRAFFIC_ROLLUP_INDEXES_MIGRATION: &str =
+    include_str!("migrations/018_traffic_rollup_indexes.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -430,6 +434,24 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 017_assets.sql");
     }
 
+    // Migration 018: unique indexes on traffic_hourly and traffic_daily for rollup upserts.
+    let applied_18: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 18")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_18 {
+        sqlx::raw_sql(TRAFFIC_ROLLUP_INDEXES_MIGRATION)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (18)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 018_traffic_rollup_indexes.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -469,6 +491,8 @@ mod tests {
             "agents",
             "agent_reports",
             "traffic_samples",
+            "traffic_hourly",
+            "traffic_daily",
             "alerts",
             "sessions",
             "device_events",
