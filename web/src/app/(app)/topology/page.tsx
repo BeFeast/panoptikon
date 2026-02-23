@@ -38,15 +38,11 @@ import {
   Check,
 } from 'lucide-react'
 import {
-  fetchDevices,
-  fetchTopDevices,
-  fetchRouterInterfaces,
-  fetchTopologyPositions,
+  fetchTopologyGraph,
   saveTopologyPositions,
   deleteTopologyPositions,
-  type NodePosition,
 } from '@/lib/api'
-import type { Device, TopDevice, VyosInterface } from '@/lib/types'
+import type { TopologyDevice, TopologyRouter } from '@/lib/types'
 import { getDeviceIcon } from '@/lib/device-icons'
 import { PageTransition } from '@/components/PageTransition'
 import {
@@ -65,12 +61,13 @@ import Link from 'next/link'
 
 type RouterNodeData = {
   label: string
+  routerType: string
   wanIp: string | null
   isOnline: boolean
 }
 
 type DeviceNodeData = {
-  device: Device
+  device: TopologyDevice
   trafficBps: number
   subnet: string
 }
@@ -240,6 +237,13 @@ function computeForceLayout(
 // ─── Custom Nodes ───────────────────────────────────────
 
 function RouterNode({ data }: NodeProps<RouterNodeType>) {
+  const routerLabel =
+    data.routerType === 'mikrotik'
+      ? 'MikroTik'
+      : data.routerType === 'vyos'
+        ? 'VyOS'
+        : 'Router'
+
   return (
     <div
       className="flex items-center gap-3 rounded-xl border border-blue-500/30 bg-gradient-to-br from-slate-800 to-slate-900 px-5 py-4 shadow-lg shadow-blue-500/10"
@@ -253,7 +257,7 @@ function RouterNode({ data }: NodeProps<RouterNodeType>) {
         <Network className="h-5 w-5 text-blue-400" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-white">Router</p>
+        <p className="truncate text-sm font-semibold text-white">{routerLabel}</p>
         {data.wanIp && (
           <p className="truncate text-xs text-slate-400">{data.wanIp}</p>
         )}
@@ -286,6 +290,7 @@ function DeviceNode({ data }: NodeProps<DeviceNodeType>) {
     device.custom_name || device.name || device.hostname || device.mac
   const primaryIp = device.ips?.[0] || '—'
   const subnetColor = getSubnetColor(data.subnet)
+  const hasDhcp = !!device.dhcp_lease_status
 
   return (
     <div
@@ -305,7 +310,12 @@ function DeviceNode({ data }: NodeProps<DeviceNodeType>) {
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-medium text-white">{displayName}</p>
-        <p className="truncate text-[10px] text-slate-400">{primaryIp}</p>
+        <div className="flex items-center gap-1">
+          <p className="truncate text-[10px] text-slate-400">{primaryIp}</p>
+          {hasDhcp && (
+            <span className="inline-block h-1 w-1 rounded-full bg-blue-400" title="DHCP lease" />
+          )}
+        </div>
       </div>
       <span
         className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${
@@ -359,7 +369,7 @@ function getEdgeStrokeWidth(bps: number): number {
 
 // ─── Device Detail Panel ────────────────────────────────
 
-function DeviceDetailPanel({ device }: { device: Device }) {
+function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
   const [copied, setCopied] = useState<string | null>(null)
   const ips = device.ips ?? []
   const primaryIp = ips[0] ?? '—'
@@ -497,6 +507,33 @@ function DeviceDetailPanel({ device }: { device: Device }) {
           </>
         )}
 
+        {(device.dhcp_lease_status || device.bridge_port) && (
+          <>
+            <Separator className="bg-slate-800" />
+            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+              Network
+            </p>
+            {device.dhcp_lease_status && (
+              <InfoRow label="DHCP Status" value={device.dhcp_lease_status} />
+            )}
+            {device.dhcp_hostname && (
+              <InfoRow label="DHCP Hostname" value={device.dhcp_hostname} />
+            )}
+            {device.dhcp_server && (
+              <InfoRow label="DHCP Server" value={device.dhcp_server} />
+            )}
+            {device.dhcp_expires && (
+              <InfoRow label="Lease Expires" value={device.dhcp_expires} />
+            )}
+            {device.bridge_port && (
+              <InfoRow label="Bridge Port" value={device.bridge_port} />
+            )}
+            {device.bridge_name && (
+              <InfoRow label="Bridge" value={device.bridge_name} />
+            )}
+          </>
+        )}
+
         {device.mdns_services && (
           <>
             <Separator className="bg-slate-800" />
@@ -596,57 +633,30 @@ export default function TopologyPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
-  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null)
+  const [selectedDevice, setSelectedDevice] = useState<TopologyDevice | null>(null)
 
   // Track pinned positions locally so refreshes preserve them
   const pinnedRef = useRef<Map<string, { x: number; y: number }>>(new Map())
+  // Store the latest router info for display
+  const routerInfoRef = useRef<TopologyRouter | null>(null)
 
   const buildGraph = useCallback(
     async (isInitial: boolean) => {
       try {
-        const fetches: [
-          Promise<Device[]>,
-          Promise<TopDevice[]>,
-          Promise<VyosInterface[]>,
-          Promise<NodePosition[]>?,
-        ] = [
-          fetchDevices(),
-          fetchTopDevices(100),
-          fetchRouterInterfaces().catch(() => [] as VyosInterface[]),
-        ]
+        const graph = await fetchTopologyGraph()
+        const { devices, router, positions } = graph
 
-        if (isInitial) {
-          fetches.push(
-            fetchTopologyPositions().catch(() => [] as NodePosition[]),
-          )
-        }
-
-        const [devices, topDevices, interfaces, savedPositions] =
-          await Promise.all(fetches)
+        // Store router info
+        routerInfoRef.current = router
 
         // Populate pinned map from server on initial load
-        if (isInitial && savedPositions) {
+        if (isInitial) {
           pinnedRef.current = new Map(
-            savedPositions
+            positions
               .filter((p) => p.pinned)
               .map((p) => [p.node_id, { x: p.x, y: p.y }]),
           )
         }
-
-        // Find WAN IP from router interfaces
-        const wanIf = interfaces.find(
-          (i) =>
-            i.name === 'eth0' ||
-            i.description?.toLowerCase().includes('wan') ||
-            i.name?.startsWith('pppoe'),
-        )
-        const wanIp = wanIf?.ip_address ?? null
-
-        // Build traffic map
-        const trafficMap = new Map<string, number>()
-        topDevices.forEach((td: TopDevice) => {
-          trafficMap.set(td.id, (td.rx_bps || 0) + (td.tx_bps || 0))
-        })
 
         // Derive subnet for each device
         const deviceSubnets = new Map<string, string>()
@@ -656,7 +666,7 @@ export default function TopologyPage() {
         })
 
         // Collect subnet groups
-        const subnetDevices = new Map<string, Device[]>()
+        const subnetDevices = new Map<string, TopologyDevice[]>()
         devices.forEach((d) => {
           const subnet = deviceSubnets.get(d.id) || 'unknown'
           const existing = subnetDevices.get(subnet) || []
@@ -697,6 +707,7 @@ export default function TopologyPage() {
         // Build device nodes
         const deviceNodes: TopologyNode[] = devices.map((device) => {
           const subnet = deviceSubnets.get(device.id) || 'unknown'
+          const totalBps = (device.rx_bps || 0) + (device.tx_bps || 0)
           const pos = positionMap.get(device.id)
           return {
             id: device.id,
@@ -706,7 +717,7 @@ export default function TopologyPage() {
               : { x: 0, y: 0 },
             data: {
               device,
-              trafficBps: trafficMap.get(device.id) || 0,
+              trafficBps: totalBps,
               subnet,
             },
             draggable: true,
@@ -726,9 +737,10 @@ export default function TopologyPage() {
               }
             : { x: -ROUTER_WIDTH / 2, y: -ROUTER_HEIGHT / 2 },
           data: {
-            label: 'Router',
-            wanIp,
-            isOnline: true,
+            label: router.hostname || 'Router',
+            routerType: router.router_type,
+            wanIp: router.wan_ip,
+            isOnline: router.is_online,
           },
           draggable: true,
           zIndex: 10,
@@ -785,7 +797,7 @@ export default function TopologyPage() {
 
         // Build edges
         const allEdges: Edge[] = devices.map((device) => {
-          const totalBps = trafficMap.get(device.id) || 0
+          const totalBps = (device.rx_bps || 0) + (device.tx_bps || 0)
           return {
             id: `router-${device.id}`,
             source: 'router',

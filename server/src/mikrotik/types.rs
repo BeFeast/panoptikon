@@ -185,6 +185,20 @@ pub struct DnsSettings {
     pub cache_used: Option<String>,
 }
 
+/// MikroTik bridge host entry (`/rest/interface/bridge/host`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BridgeHost {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    #[serde(rename = "mac-address")]
+    pub mac_address: Option<String>,
+    pub interface: Option<String>,
+    pub bridge: Option<String>,
+    pub on_interface: Option<String>,
+    pub dynamic: Option<String>,
+    pub disabled: Option<String>,
+}
+
 /// MikroTik WireGuard interface (`/rest/interface/wireguard`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WgInterface {
