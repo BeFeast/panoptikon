@@ -188,6 +188,14 @@ export interface TrafficHistoryPoint {
   tx_bps: number;
 }
 
+export interface DeviceTrafficPoint {
+  time: string;
+  rx_bps: number;
+  tx_bps: number;
+  max_rx_bps: number | null;
+  max_tx_bps: number | null;
+}
+
 // ─── NetFlow ────────────────────────────────────────────
 
 export interface NetflowStatus {

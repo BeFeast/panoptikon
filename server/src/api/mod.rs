@@ -317,6 +317,7 @@ pub fn router(state: AppState) -> Router {
         .route("/router/speedtest/history", get(speedtest::history))
         // Traffic
         .route("/traffic/history", get(traffic::history))
+        .route("/devices/:id/traffic", get(traffic::device_traffic))
         // Config backups
         .route("/config-backups", get(config_backups::list))
         .route("/config-backups", post(config_backups::create))

@@ -23,6 +23,7 @@ import type {
   DbSizeData,
   Device,
   DeviceSysinfo,
+  DeviceTrafficPoint,
   DhcpServerConfig,
   DhcpStaticMapping,
   DnsForwardingConfig,
@@ -372,6 +373,16 @@ export function fetchTrafficHistory(minutes = 60): Promise<TrafficHistoryPoint[]
   return apiGet<TrafficHistoryPoint[]>(`/api/v1/traffic/history?minutes=${minutes}`, {
     timeoutMs: DASHBOARD_TIMEOUT_MS,
   });
+}
+
+export function fetchDeviceTraffic(
+  deviceId: string,
+  range: "1h" | "24h" | "7d" | "30d" = "1h"
+): Promise<DeviceTrafficPoint[]> {
+  return apiGet<DeviceTrafficPoint[]>(
+    `/api/v1/devices/${deviceId}/traffic?range=${range}`,
+    { timeoutMs: DASHBOARD_TIMEOUT_MS }
+  );
 }
 
 // ─── Auth ───────────────────────────────────────────────
