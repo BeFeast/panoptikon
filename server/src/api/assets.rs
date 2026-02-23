@@ -170,7 +170,7 @@ const LIST_QUERY: &str = "\
            a.created_at, a.updated_at, \
            d.is_online AS device_online, d.last_seen_at AS device_last_seen, \
            d.mac AS device_mac, \
-           (SELECT di.ip FROM device_ips di WHERE di.device_id = d.id ORDER BY di.last_seen DESC LIMIT 1) AS device_ip, \
+           (SELECT di.ip FROM device_ips di WHERE di.device_id = d.id ORDER BY di.seen_at DESC LIMIT 1) AS device_ip, \
            ag.name AS agent_name, ar.os_name AS agent_os_name, ar.os_version AS agent_os_version, \
            ar.reported_at AS agent_last_report, \
            st.name AS ssh_name, sr.os_name AS ssh_os_name, sr.os_version AS ssh_os_version, \
@@ -191,7 +191,7 @@ const GET_ONE_QUERY: &str = "\
            a.created_at, a.updated_at, \
            d.is_online AS device_online, d.last_seen_at AS device_last_seen, \
            d.mac AS device_mac, \
-           (SELECT di.ip FROM device_ips di WHERE di.device_id = d.id ORDER BY di.last_seen DESC LIMIT 1) AS device_ip, \
+           (SELECT di.ip FROM device_ips di WHERE di.device_id = d.id ORDER BY di.seen_at DESC LIMIT 1) AS device_ip, \
            ag.name AS agent_name, ar.os_name AS agent_os_name, ar.os_version AS agent_os_version, \
            ar.reported_at AS agent_last_report, \
            st.name AS ssh_name, sr.os_name AS ssh_os_name, sr.os_version AS ssh_os_version, \
