@@ -64,6 +64,9 @@ const TRAFFIC_ROLLUP_INDEXES_MIGRATION: &str =
 /// Migration 019: alert rules table for configurable alert conditions.
 const ALERT_RULES_MIGRATION: &str = include_str!("migrations/019_alert_rules.sql");
 
+/// Migration 020: Caddy reverse proxy host definitions.
+const CADDY_PROXY_HOSTS_MIGRATION: &str = include_str!("migrations/020_caddy_proxy_hosts.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -471,6 +474,24 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 019_alert_rules.sql");
     }
 
+    // Migration 020: Caddy reverse proxy hosts table.
+    let applied_20: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 20")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_20 {
+        sqlx::raw_sql(CADDY_PROXY_HOSTS_MIGRATION)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (20)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 020_caddy_proxy_hosts.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -524,6 +545,7 @@ mod tests {
             "ssh_reports",
             "assets",
             "alert_rules",
+            "caddy_proxy_hosts",
         ];
 
         for table in &expected_tables {
