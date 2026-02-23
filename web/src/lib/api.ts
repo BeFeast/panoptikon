@@ -55,6 +55,9 @@ import type {
   SyslogResponse,
   TopDevice,
   TrafficHistoryPoint,
+  UnboundDnsRecord,
+  UnboundDnsRecordRequest,
+  UnboundTestConnectionResponse,
   VyosDhcpLease,
   VyosInterface,
   VyosRoute,
@@ -794,6 +797,7 @@ export function updateSettings(body: {
   mikrotik_user?: string;
   mikrotik_password?: string;
   mikrotik_enabled?: boolean;
+  unbound_control_path?: string;
 }): Promise<SettingsData> {
   return apiPatch<SettingsData>("/api/v1/settings", body);
 }
@@ -1360,5 +1364,44 @@ export function testCaddyConnection(): Promise<
 > {
   return apiPost<import("./types").CaddyTestConnectionResponse>(
     "/api/v1/caddy/test-connection"
+  );
+}
+
+// ─── Unbound DNS ─────────────────────────────────────────
+
+export function fetchUnboundDnsRecords(): Promise<UnboundDnsRecord[]> {
+  return apiGet<UnboundDnsRecord[]>("/api/v1/unbound/dns-records");
+}
+
+export function createUnboundDnsRecord(
+  body: UnboundDnsRecordRequest
+): Promise<UnboundDnsRecord> {
+  return apiPost<UnboundDnsRecord>("/api/v1/unbound/dns-records", body);
+}
+
+export function updateUnboundDnsRecord(
+  id: string,
+  body: UnboundDnsRecordRequest
+): Promise<UnboundDnsRecord> {
+  return apiPut<UnboundDnsRecord>(`/api/v1/unbound/dns-records/${id}`, body);
+}
+
+export function deleteUnboundDnsRecord(id: string): Promise<void> {
+  return apiDelete(`/api/v1/unbound/dns-records/${id}`);
+}
+
+export function toggleUnboundDnsRecord(
+  id: string,
+  enabled: boolean
+): Promise<UnboundDnsRecord> {
+  return apiPost<UnboundDnsRecord>(
+    `/api/v1/unbound/dns-records/${id}/toggle`,
+    { enabled }
+  );
+}
+
+export function testUnboundConnection(): Promise<UnboundTestConnectionResponse> {
+  return apiPost<UnboundTestConnectionResponse>(
+    "/api/v1/unbound/test-connection"
   );
 }

@@ -38,6 +38,7 @@ pub mod speedtest;
 pub mod ssh_targets;
 pub mod topology;
 pub mod traffic;
+pub mod unbound;
 pub mod vyos;
 
 pub use error::AppError;
@@ -389,6 +390,13 @@ pub fn router(state: AppState) -> Router {
         .route("/caddy/proxy-hosts/:id/toggle", post(caddy::toggle))
         .route("/caddy/sync", post(caddy::sync))
         .route("/caddy/test-connection", post(caddy::test_connection))
+        // Unbound DNS
+        .route("/unbound/dns-records", get(unbound::list))
+        .route("/unbound/dns-records", post(unbound::create))
+        .route("/unbound/dns-records/:id", put(unbound::update))
+        .route("/unbound/dns-records/:id", delete(unbound::delete))
+        .route("/unbound/dns-records/:id/toggle", post(unbound::toggle))
+        .route("/unbound/test-connection", post(unbound::test_connection))
         // Unified Services wizard
         .route("/services/add", post(services::add_service))
         .route("/services/remove", post(services::remove_service))
