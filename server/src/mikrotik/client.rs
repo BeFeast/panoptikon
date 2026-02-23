@@ -168,8 +168,7 @@ impl MikrotikClient {
     /// Fetch the IP routing table.
     pub async fn ip_routes(&self) -> Result<Vec<IpRoute>> {
         let val = self.get("/ip/route").await?;
-        let res: Vec<IpRoute> =
-            serde_json::from_value(val).context("failed to parse IP routes")?;
+        let res: Vec<IpRoute> = serde_json::from_value(val).context("failed to parse IP routes")?;
         Ok(res)
     }
 

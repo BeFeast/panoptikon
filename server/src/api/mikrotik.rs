@@ -437,9 +437,7 @@ pub async fn firewall(
 }
 
 /// GET /api/v1/mikrotik/dns
-pub async fn dns(
-    State(state): State<AppState>,
-) -> Result<Json<MikrotikDnsResponse>, StatusCode> {
+pub async fn dns(State(state): State<AppState>) -> Result<Json<MikrotikDnsResponse>, StatusCode> {
     let client = mikrotik_client(&state)
         .await
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;

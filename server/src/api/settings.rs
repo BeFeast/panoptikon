@@ -275,13 +275,11 @@ pub async fn update_settings(
     }
 
     if let Some(enabled) = body.mikrotik_enabled {
-        upsert_setting(
-            &state,
-            "mikrotik_enabled",
-            if enabled { "1" } else { "0" },
-        )
-        .await?;
-        info!(mikrotik_enabled = enabled, "MikroTik enabled toggle updated");
+        upsert_setting(&state, "mikrotik_enabled", if enabled { "1" } else { "0" }).await?;
+        info!(
+            mikrotik_enabled = enabled,
+            "MikroTik enabled toggle updated"
+        );
     }
 
     // Return current state.
