@@ -128,6 +128,7 @@ import MikrotikRouter from "@/components/MikrotikRouter";
 import QRCode from "qrcode";
 import { Progress } from "@/components/ui/progress";
 import { PageTransition } from "@/components/PageTransition";
+import { copyToClipboard } from "@/lib/utils";
 
 // ── Not Configured state ────────────────────────────────
 
@@ -4261,9 +4262,9 @@ function CreateWireGuardInterfaceDialog({
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    navigator.clipboard.writeText(publicKey);
-                    toast.success("Public key copied");
+                  onClick={async () => {
+                    const ok = await copyToClipboard(publicKey);
+                    toast[ok ? "success" : "error"](ok ? "Public key copied" : "Copy failed");
                   }}
                 >
                   <Copy className="h-3.5 w-3.5" />
@@ -4414,9 +4415,9 @@ function WireGuardInterfaceCard({
               variant="ghost"
               size="sm"
               className="h-5 w-5 p-0"
-              onClick={() => {
-                navigator.clipboard.writeText(iface.public_key!);
-                toast.success("Public key copied");
+              onClick={async () => {
+                const ok = await copyToClipboard(iface.public_key!);
+                toast[ok ? "success" : "error"](ok ? "Public key copied" : "Copy failed");
               }}
             >
               <Copy className="h-3 w-3" />
@@ -4776,10 +4777,10 @@ function GenerateClientConfigDialog({
     URL.revokeObjectURL(url);
   };
 
-  const handleCopyConfig = () => {
+  const handleCopyConfig = async () => {
     if (!configResult) return;
-    navigator.clipboard.writeText(configResult.config);
-    toast.success("Config copied to clipboard");
+    const ok = await copyToClipboard(configResult.config);
+    toast[ok ? "success" : "error"](ok ? "Config copied to clipboard" : "Copy failed");
   };
 
   return (

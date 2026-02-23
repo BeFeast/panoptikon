@@ -41,6 +41,7 @@ import type { Agent, AgentCreateResponse, AgentReport } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
 import { PageTransition } from "@/components/PageTransition";
+import { copyToClipboard } from "@/lib/utils";
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[] | null>(null);
@@ -491,33 +492,12 @@ function CopyBlock({ text }: { text: string }) {
   const preRef = useRef<HTMLPreElement>(null);
 
   const handleCopy = async () => {
-    // Modern clipboard API (HTTPS / localhost)
-    if (navigator.clipboard && window.isSecureContext) {
-      try {
-        await navigator.clipboard.writeText(text);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-        return;
-      } catch {}
+    const ok = await copyToClipboard(text);
+    if (ok) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      return;
     }
-
-    // HTTP fallback: execCommand
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.cssText =
-        "position:fixed;top:50%;left:50%;width:2em;height:2em;padding:0;border:none;outline:none;background:transparent;opacity:0;";
-      document.body.appendChild(ta);
-      ta.focus();
-      ta.setSelectionRange(0, text.length);
-      const ok = document.execCommand("copy");
-      document.body.removeChild(ta);
-      if (ok) {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-        return;
-      }
-    } catch {}
 
     // Last resort: select text so user can Ctrl+C manually
     if (preRef.current) {
