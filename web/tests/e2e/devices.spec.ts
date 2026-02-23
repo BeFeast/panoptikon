@@ -48,12 +48,16 @@ test.describe('Devices page', () => {
     await page.waitForTimeout(2000);
     
     // Click Online filter
-    await page.getByRole('button', { name: 'Online' }).click();
+    const onlineButton = page.getByRole('button', { name: 'Online' });
+    await onlineButton.waitFor({ state: 'visible', timeout: 5000 });
+    await onlineButton.click();
     await page.waitForTimeout(500);
     await page.screenshot({ path: 'tests/screenshots/devices-online-filter.png', fullPage: true });
     
     // Click All filter to go back
-    await page.getByRole('button', { name: 'All', exact: true }).click();
+    const allButton = page.getByRole('button', { name: 'All', exact: true });
+    await allButton.waitFor({ state: 'visible', timeout: 10000 });
+    await allButton.click();
     await page.waitForTimeout(500);
     await page.screenshot({ path: 'tests/screenshots/devices-all-filter.png', fullPage: true });
   });
