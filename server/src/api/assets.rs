@@ -221,10 +221,7 @@ pub async fn list(
     if params.asset_type.is_some() || params.tag.is_some() {
         // We need to inject WHERE conditions before the ORDER BY.
         // The LIST_QUERY already has ORDER BY at the end, so we insert before it.
-        sql = sql.replace(
-            "ORDER BY a.created_at DESC",
-            "",
-        );
+        sql = sql.replace("ORDER BY a.created_at DESC", "");
 
         let mut conditions = Vec::new();
 
@@ -290,11 +287,7 @@ pub async fn create(
     State(state): State<AppState>,
     Json(body): Json<AssetRequest>,
 ) -> Result<(StatusCode, Json<Asset>), AppError> {
-    let name = body
-        .name
-        .as_deref()
-        .map(|s| s.trim())
-        .unwrap_or("");
+    let name = body.name.as_deref().map(|s| s.trim()).unwrap_or("");
     if name.is_empty() {
         return Err(AppError::Validation("name is required".to_string()));
     }
@@ -489,12 +482,11 @@ mod tests {
             .await
             .expect("Update failed");
 
-        let name: String =
-            sqlx::query_scalar("SELECT name FROM assets WHERE id = ?")
-                .bind(&id)
-                .fetch_one(&pool)
-                .await
-                .expect("Query failed");
+        let name: String = sqlx::query_scalar("SELECT name FROM assets WHERE id = ?")
+            .bind(&id)
+            .fetch_one(&pool)
+            .await
+            .expect("Query failed");
         assert_eq!(name, "web-server-02");
 
         // Delete
