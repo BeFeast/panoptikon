@@ -674,6 +674,7 @@ export default function DashboardPage() {
 function getCategoryLabel(type: DeviceType): string {
   const labels: Record<DeviceType, string> = {
     router: "Routers",
+    access_point: "Access Points",
     laptop: "Laptops",
     desktop: "Desktops",
     phone: "Phones",
