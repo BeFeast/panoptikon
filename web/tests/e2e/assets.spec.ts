@@ -38,9 +38,10 @@ test.describe('Assets page', () => {
     await page.click('button:has-text("Add Asset")');
 
     await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 3000 });
-    await expect(page.locator('text=Add Asset')).toBeVisible();
-    await expect(page.locator('text=Name')).toBeVisible();
-    await expect(page.locator('text=Type')).toBeVisible();
+    // Use role locator to avoid strict mode violation (multiple "Add Asset" elements)
+    await expect(page.getByRole('heading', { name: 'Add Asset' })).toBeVisible();
+    await expect(page.locator('[role="dialog"] label:has-text("Name")')).toBeVisible();
+    await expect(page.locator('[role="dialog"] label:has-text("Type")')).toBeVisible();
 
     await page.screenshot({ path: 'tests/screenshots/assets-dialog-open.png' });
   });

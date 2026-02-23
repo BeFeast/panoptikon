@@ -19,7 +19,7 @@ test.describe('Devices page', () => {
   });
 
   test('devices page has search input', async ({ page }) => {
-    const search = page.locator('input[placeholder="Search name, IP, MAC…"]');
+    const search = page.locator('input[placeholder="Search name, IP, MAC, vendor…"]');
     await expect(search).toBeVisible({ timeout: 15000 });
   });
 
@@ -61,7 +61,8 @@ test.describe('Devices page', () => {
   test('search filters devices', async ({ page }) => {
     await page.waitForTimeout(2000);
     
-    const search = page.locator('input[placeholder="Search name, IP, MAC…"]');
+    const search = page.locator('input[placeholder="Search name, IP, MAC, vendor…"]');
+    await expect(search).toBeVisible({ timeout: 15000 });
     await search.fill('192.168');
     await page.waitForTimeout(500);
     
