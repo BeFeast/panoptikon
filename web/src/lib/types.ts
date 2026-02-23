@@ -1059,3 +1059,28 @@ export interface MikrotikWgInterface {
 export interface MikrotikWireguard {
   interfaces: MikrotikWgInterface[];
 }
+
+// ─── Caddy Reverse Proxy ────────────────────────────────
+
+export interface CaddyStatus {
+  configured: boolean;
+  reachable: boolean;
+  host_count: number | null;
+}
+
+export interface CaddyProxyHost {
+  id: string;
+  domain: string;
+  upstream: string;
+  enabled: boolean;
+  ssl_mode: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CaddyProxyHostRequest {
+  domain: string;
+  upstream: string;
+  enabled: boolean;
+  ssl_mode: string;
+}

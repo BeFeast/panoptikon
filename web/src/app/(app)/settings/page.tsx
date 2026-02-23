@@ -53,6 +53,13 @@ const settingsGroups: SettingsGroup[] = [
         description: "Manage reverse proxy hosts via NPM.",
       },
       {
+        href: "/settings/proxy",
+        icon: <Globe className="h-4 w-4 text-green-400" />,
+        iconBg: "bg-green-500/10",
+        title: "Caddy Proxy",
+        description: "Manage reverse proxy hosts via Caddy.",
+      },
+      {
         href: "/settings/webhook",
         icon: <Bell className="h-4 w-4 text-purple-400" />,
         iconBg: "bg-purple-500/10",
