@@ -45,13 +45,21 @@ test.describe('Navigation & Layout', () => {
   test('unauthenticated access redirects to login', async ({ page }) => {
     // Clear cookies and try to access dashboard
     await page.context().clearCookies();
-    await page.goto('/dashboard/');
     
-    // The page loads but data fetches will fail with 401
-    // The API client redirects to /login on 401
-    await page.waitForTimeout(3000);
+    // Navigate to dashboard - may cause ERR_ABORTED if redirect happens mid-navigation
+    // This is expected behavior when the app redirects unauthenticated users
+    try {
+      await page.goto('/dashboard/', { waitUntil: 'domcontentloaded' });
+    } catch (error) {
+      // ERR_ABORTED is expected when the page redirects before load completes
+      // Continue to verify we end up on login page
+    }
     
-    // Should end up on login page
+    // Wait for redirect to complete - should land on login page
+    await page.waitForURL(/\/login/, { timeout: 10000 });
+    
+    // Verify we're on the login page
+    await expect(page.getByText('Sign in to your network dashboard')).toBeVisible({ timeout: 10000 });
     await page.screenshot({ path: 'tests/screenshots/unauth-redirect.png', fullPage: true });
   });
 });
