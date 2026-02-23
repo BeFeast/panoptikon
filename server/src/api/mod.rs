@@ -145,6 +145,7 @@ pub fn router(state: AppState) -> Router {
         .route("/alerts/read-all", patch(alerts::mark_all_read))
         .route("/alerts/:id", delete(alerts::delete_one))
         .route("/alerts/:id/read", post(alerts::mark_read))
+        .route("/alerts/:id/unread", post(alerts::mark_unread))
         .route("/alerts/:id/acknowledge", post(alerts::acknowledge))
         // Device mute
         .route("/devices/:id/mute", post(alerts::mute_device))

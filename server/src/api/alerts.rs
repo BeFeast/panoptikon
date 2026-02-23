@@ -36,6 +36,9 @@ pub struct ListAlertsQuery {
     pub status: Option<String>,
     /// Filter by severity: INFO, WARNING, CRITICAL.
     pub severity: Option<String>,
+    /// Filter by alert type: new_device, device_online, device_offline, agent_offline, high_bandwidth.
+    #[serde(rename = "type")]
+    pub alert_type: Option<String>,
 }
 
 /// Request body for acknowledging an alert.
@@ -94,6 +97,17 @@ pub async fn list(
         }
     }
 
+    // Alert type filter
+    if let Some(ref alert_type) = params.alert_type {
+        let t = alert_type.to_lowercase();
+        if matches!(
+            t.as_str(),
+            "new_device" | "device_online" | "device_offline" | "agent_offline" | "high_bandwidth"
+        ) {
+            conditions.push(format!("type = '{t}'"));
+        }
+    }
+
     let where_clause = if conditions.is_empty() {
         String::new()
     } else {
@@ -133,6 +147,27 @@ pub async fn mark_read(
         .await
         .map_err(|e| {
             tracing::error!("Failed to mark alert {id} as read: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+    if result.rows_affected() == 0 {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// POST /api/v1/alerts/:id/unread — mark an alert as unread.
+pub async fn mark_unread(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, StatusCode> {
+    let result = sqlx::query("UPDATE alerts SET is_read = 0 WHERE id = ?")
+        .bind(&id)
+        .execute(&state.db)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to mark alert {id} as unread: {e}");
             StatusCode::INTERNAL_SERVER_ERROR
         })?;
 
@@ -514,6 +549,72 @@ mod tests {
             .await
             .unwrap();
         assert_eq!(unread_after, 0, "No unread alerts should remain");
+    }
+
+    #[tokio::test]
+    async fn test_mark_unread() {
+        let pool = test_db().await;
+        let device_id = insert_test_device(&pool, "AA:BB:CC:DD:EE:13").await;
+        let alert_id = insert_test_alert(&pool, &device_id, "device_offline", "WARNING").await;
+
+        // Mark the alert as read first
+        sqlx::query("UPDATE alerts SET is_read = 1 WHERE id = ?")
+            .bind(&alert_id)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        // Verify it's read
+        let is_read: i32 = sqlx::query_scalar("SELECT is_read FROM alerts WHERE id = ?")
+            .bind(&alert_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(is_read, 1, "Alert should be marked as read");
+
+        // Mark as unread
+        sqlx::query("UPDATE alerts SET is_read = 0 WHERE id = ?")
+            .bind(&alert_id)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        // Verify it's unread
+        let is_read: i32 = sqlx::query_scalar("SELECT is_read FROM alerts WHERE id = ?")
+            .bind(&alert_id)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(is_read, 0, "Alert should be marked as unread");
+    }
+
+    #[tokio::test]
+    async fn test_filter_by_alert_type() {
+        let pool = test_db().await;
+        let device_id = insert_test_device(&pool, "AA:BB:CC:DD:EE:14").await;
+        insert_test_alert(&pool, &device_id, "device_offline", "WARNING").await;
+        insert_test_alert(&pool, &device_id, "new_device", "INFO").await;
+        insert_test_alert(&pool, &device_id, "device_online", "INFO").await;
+
+        // Query only device_offline alerts
+        let rows = sqlx::query("SELECT id FROM alerts WHERE type = ? AND device_id = ?")
+            .bind("device_offline")
+            .bind(&device_id)
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(rows.len(), 1, "Only one device_offline alert should match");
+
+        // Query new_device alerts
+        let rows = sqlx::query("SELECT id FROM alerts WHERE type = ? AND device_id = ?")
+            .bind("new_device")
+            .bind(&device_id)
+            .fetch_all(&pool)
+            .await
+            .unwrap();
+
+        assert_eq!(rows.len(), 1, "Only one new_device alert should match");
     }
 
     #[tokio::test]

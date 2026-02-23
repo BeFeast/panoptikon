@@ -180,16 +180,22 @@ export function fetchTopDevices(limit = 5): Promise<TopDevice[]> {
 export function fetchAlerts(
   limit = 50,
   status?: "active" | "acknowledged" | "all",
-  severity?: "INFO" | "WARNING" | "CRITICAL"
+  severity?: "INFO" | "WARNING" | "CRITICAL",
+  alertType?: Alert["type"]
 ): Promise<Alert[]> {
   const params = new URLSearchParams({ limit: String(limit) });
   if (status) params.set("status", status);
   if (severity) params.set("severity", severity);
+  if (alertType) params.set("type", alertType);
   return apiGet<Alert[]>(`/api/v1/alerts?${params}`);
 }
 
 export function markAlertRead(id: string): Promise<void> {
   return apiPost<void>(`/api/v1/alerts/${id}/read`);
+}
+
+export function markAlertUnread(id: string): Promise<void> {
+  return apiPost<void>(`/api/v1/alerts/${id}/unread`);
 }
 
 export function acknowledgeAlert(id: string, note?: string): Promise<void> {
