@@ -111,12 +111,24 @@ jobs:
 
       - name: Start server
         run: |
-          ./target/release/panoptikon &
-          # Wait for server to be ready
+          ./target/release/panoptikon-server &
+          SERVER_PID=$!
+          echo "Server PID: $SERVER_PID"
+          echo "Waiting for server to be ready..."
           for i in $(seq 1 30); do
-            curl -sf http://localhost:8080/login > /dev/null 2>&1 && break
+            if curl -sf http://localhost:8080/login > /dev/null 2>&1; then
+              echo "Server is up after ${i}s!"
+              exit 0
+            fi
+            # Check if server process is still running
+            if ! kill -0 $SERVER_PID 2>/dev/null; then
+              echo "Server process died unexpectedly"
+              exit 1
+            fi
             sleep 1
           done
+          echo "Server failed to respond within 30 seconds"
+          exit 1
 
       - name: Install Playwright browsers
         working-directory: web
