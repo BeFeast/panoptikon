@@ -4,6 +4,7 @@ pub mod db;
 pub mod dhcp;
 pub mod enrichment;
 pub mod mdns;
+pub mod mikrotik;
 pub mod netflow;
 pub mod npm;
 pub mod oui;

@@ -62,6 +62,13 @@ import type {
   AddServiceResponse,
   RemoveServiceRequest,
   RemoveServiceResponse,
+  MikrotikStatus,
+  MikrotikInterface,
+  MikrotikRoute,
+  MikrotikDhcpLease,
+  MikrotikFirewall,
+  MikrotikDns,
+  MikrotikWireguard,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -751,6 +758,10 @@ export function updateSettings(body: {
   npm_url?: string;
   npm_email?: string;
   npm_password?: string;
+  mikrotik_url?: string;
+  mikrotik_user?: string;
+  mikrotik_password?: string;
+  mikrotik_enabled?: boolean;
 }): Promise<SettingsData> {
   return apiPatch<SettingsData>("/api/v1/settings", body);
 }
@@ -1153,4 +1164,34 @@ export function removeService(
   body: RemoveServiceRequest
 ): Promise<RemoveServiceResponse> {
   return apiPost<RemoveServiceResponse>("/api/v1/services/remove", body);
+}
+
+// ─── MikroTik ────────────────────────────────────────────
+
+export function fetchMikrotikStatus(): Promise<MikrotikStatus> {
+  return apiGet<MikrotikStatus>("/api/v1/mikrotik/status");
+}
+
+export function fetchMikrotikInterfaces(): Promise<MikrotikInterface[]> {
+  return apiGet<MikrotikInterface[]>("/api/v1/mikrotik/interfaces");
+}
+
+export function fetchMikrotikRoutes(): Promise<MikrotikRoute[]> {
+  return apiGet<MikrotikRoute[]>("/api/v1/mikrotik/routes");
+}
+
+export function fetchMikrotikDhcpLeases(): Promise<MikrotikDhcpLease[]> {
+  return apiGet<MikrotikDhcpLease[]>("/api/v1/mikrotik/dhcp-leases");
+}
+
+export function fetchMikrotikFirewall(): Promise<MikrotikFirewall> {
+  return apiGet<MikrotikFirewall>("/api/v1/mikrotik/firewall");
+}
+
+export function fetchMikrotikDns(): Promise<MikrotikDns> {
+  return apiGet<MikrotikDns>("/api/v1/mikrotik/dns");
+}
+
+export function fetchMikrotikWireguard(): Promise<MikrotikWireguard> {
+  return apiGet<MikrotikWireguard>("/api/v1/mikrotik/wireguard");
 }

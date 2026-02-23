@@ -28,6 +28,12 @@ pub struct SettingsResponse {
     pub npm_email: Option<String>,
     /// Never return the password to the frontend — just whether one is set.
     pub npm_password_set: bool,
+    // --- MikroTik ---
+    pub mikrotik_url: Option<String>,
+    pub mikrotik_user: Option<String>,
+    /// Never return the password to the frontend — just whether one is set.
+    pub mikrotik_password_set: bool,
+    pub mikrotik_enabled: bool,
 }
 
 /// Request body for updating settings.
@@ -51,6 +57,11 @@ pub struct UpdateSettingsRequest {
     pub npm_url: Option<String>,
     pub npm_email: Option<String>,
     pub npm_password: Option<String>,
+    // --- MikroTik ---
+    pub mikrotik_url: Option<String>,
+    pub mikrotik_user: Option<String>,
+    pub mikrotik_password: Option<String>,
+    pub mikrotik_enabled: Option<bool>,
 }
 
 /// Helper: read a string setting from the settings table.
@@ -121,6 +132,15 @@ pub async fn get_settings(
     let npm_email = get_setting(&state, "npm_email").await;
     let npm_password_set = get_setting(&state, "npm_password").await.is_some();
 
+    // MikroTik settings.
+    let mikrotik_url = get_setting(&state, "mikrotik_url").await;
+    let mikrotik_user = get_setting(&state, "mikrotik_user").await;
+    let mikrotik_password_set = get_setting(&state, "mikrotik_password").await.is_some();
+    let mikrotik_enabled = get_setting(&state, "mikrotik_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+
     Ok(Json(SettingsResponse {
         webhook_url,
         vyos_url,
@@ -136,6 +156,10 @@ pub async fn get_settings(
         npm_url,
         npm_email,
         npm_password_set,
+        mikrotik_url,
+        mikrotik_user,
+        mikrotik_password_set,
+        mikrotik_enabled,
     }))
 }
 
@@ -232,6 +256,30 @@ pub async fn update_settings(
     if let Some(ref password) = body.npm_password {
         upsert_setting(&state, "npm_password", password).await?;
         info!("NPM password updated");
+    }
+
+    // --- MikroTik settings ---
+    if let Some(ref url) = body.mikrotik_url {
+        upsert_setting(&state, "mikrotik_url", url).await?;
+        info!(mikrotik_url = %url, "MikroTik URL updated");
+    }
+
+    if let Some(ref user) = body.mikrotik_user {
+        upsert_setting(&state, "mikrotik_user", user).await?;
+        info!(mikrotik_user = %user, "MikroTik user updated");
+    }
+
+    if let Some(ref password) = body.mikrotik_password {
+        upsert_setting(&state, "mikrotik_password", password).await?;
+        info!("MikroTik password updated");
+    }
+
+    if let Some(enabled) = body.mikrotik_enabled {
+        upsert_setting(&state, "mikrotik_enabled", if enabled { "1" } else { "0" }).await?;
+        info!(
+            mikrotik_enabled = enabled,
+            "MikroTik enabled toggle updated"
+        );
     }
 
     // Return current state.
