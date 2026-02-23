@@ -7,18 +7,20 @@ import {
   Globe,
   Shield,
   Server,
-  Loader2,
   AlertCircle,
   Activity,
   Lock,
   Search,
-  RefreshCw,
+  Cpu,
+  Clock,
+  MemoryStick,
+  Monitor,
+  HardDrive,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
 import {
   fetchMikrotikStatus,
   fetchMikrotikInterfaces,
@@ -39,7 +41,7 @@ import type {
 } from "@/lib/types";
 
 function formatBytes(bytes: string | null): string {
-  if (!bytes) return "-";
+  if (!bytes) return "\u2014";
   const n = parseInt(bytes, 10);
   if (isNaN(n)) return bytes;
   if (n < 1024) return `${n} B`;
@@ -49,107 +51,10 @@ function formatBytes(bytes: string | null): string {
 }
 
 function formatMemory(bytes: string | null): string {
-  if (!bytes) return "-";
+  if (!bytes) return "\u2014";
   const n = parseInt(bytes, 10);
   if (isNaN(n)) return bytes;
   return `${(n / 1024 / 1024).toFixed(0)} MB`;
-}
-
-// ── Status Header ─────────────────────────────────────────
-
-function StatusHeader({ status }: { status: MikrotikStatus }) {
-  return (
-    <div className="flex flex-wrap items-center gap-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pink-500/10">
-          <Router className="h-5 w-5 text-pink-400" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-semibold text-white">MikroTik Router</h1>
-          <p className="text-xs text-slate-500">
-            {status.board_name ?? "RouterOS"}{" "}
-            {status.version && (
-              <span className="text-slate-600">· RouterOS {status.version}</span>
-            )}
-          </p>
-        </div>
-      </div>
-      <div className="flex items-center gap-2">
-        {status.reachable ? (
-          <Badge
-            variant="outline"
-            className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-          >
-            Connected
-          </Badge>
-        ) : (
-          <Badge
-            variant="outline"
-            className="border-rose-500/30 bg-rose-500/10 text-rose-400"
-          >
-            Unreachable
-          </Badge>
-        )}
-        {status.uptime && (
-          <Badge
-            variant="outline"
-            className="border-slate-800 text-slate-400"
-          >
-            Uptime: {status.uptime}
-          </Badge>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── System Tab ────────────────────────────────────────────
-
-function SystemTab({ status }: { status: MikrotikStatus }) {
-  return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      <Card className="border-slate-800 bg-slate-900">
-        <CardContent className="space-y-2 py-4">
-          <p className="text-xs font-medium uppercase text-slate-500">Version</p>
-          <p className="text-lg text-white">{status.version ?? "-"}</p>
-        </CardContent>
-      </Card>
-      <Card className="border-slate-800 bg-slate-900">
-        <CardContent className="space-y-2 py-4">
-          <p className="text-xs font-medium uppercase text-slate-500">CPU Load</p>
-          <p className="text-lg text-white">{status.cpu_load ? `${status.cpu_load}%` : "-"}</p>
-        </CardContent>
-      </Card>
-      <Card className="border-slate-800 bg-slate-900">
-        <CardContent className="space-y-2 py-4">
-          <p className="text-xs font-medium uppercase text-slate-500">Memory</p>
-          <p className="text-lg text-white">
-            {status.free_memory && status.total_memory
-              ? `${formatMemory(String(parseInt(status.total_memory) - parseInt(status.free_memory)))} / ${formatMemory(status.total_memory)}`
-              : "-"}
-          </p>
-        </CardContent>
-      </Card>
-      <Card className="border-slate-800 bg-slate-900">
-        <CardContent className="space-y-2 py-4">
-          <p className="text-xs font-medium uppercase text-slate-500">Uptime</p>
-          <p className="text-lg text-white">{status.uptime ?? "-"}</p>
-        </CardContent>
-      </Card>
-      <Card className="border-slate-800 bg-slate-900">
-        <CardContent className="space-y-2 py-4">
-          <p className="text-xs font-medium uppercase text-slate-500">Platform</p>
-          <p className="text-lg text-white">{status.platform ?? "-"} {status.architecture ? `(${status.architecture})` : ""}</p>
-        </CardContent>
-      </Card>
-      <Card className="border-slate-800 bg-slate-900">
-        <CardContent className="space-y-2 py-4">
-          <p className="text-xs font-medium uppercase text-slate-500">Board</p>
-          <p className="text-lg text-white">{status.board_name ?? "-"}</p>
-        </CardContent>
-      </Card>
-    </div>
-  );
 }
 
 // ── Generic data loader hook ──────────────────────────────
@@ -179,65 +84,917 @@ function useData<T>(fetcher: () => Promise<T>) {
   return { data, loading, error, reload: load };
 }
 
-// ── Table wrapper ─────────────────────────────────────────
+// ── Status Header ─────────────────────────────────────────
 
-function DataTable<T>({
+function StatusHeader({ status }: { status: MikrotikStatus }) {
+  return (
+    <div className="flex flex-wrap items-center gap-4">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pink-500/10">
+          <Router className="h-5 w-5 text-pink-400" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-semibold text-white">MikroTik Router</h1>
+          <p className="text-xs text-slate-500">
+            {status.board_name ?? "RouterOS"}{" "}
+            {status.version && (
+              <span className="text-slate-600">&middot; RouterOS {status.version}</span>
+            )}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {status.reachable ? (
+          <Badge
+            variant="outline"
+            className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+          >
+            &#9679; Connected
+          </Badge>
+        ) : (
+          <Badge
+            variant="outline"
+            className="border-rose-500/30 bg-rose-500/10 text-rose-400"
+          >
+            &#9679; Unreachable
+          </Badge>
+        )}
+        {status.uptime && (
+          <Badge variant="outline" className="border-slate-800 text-slate-400">
+            Uptime: {status.uptime}
+          </Badge>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── System Tab ────────────────────────────────────────────
+
+function SystemTab({ status }: { status: MikrotikStatus }) {
+  const memUsed =
+    status.free_memory && status.total_memory
+      ? String(parseInt(status.total_memory) - parseInt(status.free_memory))
+      : null;
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-slate-800 bg-slate-900">
+          <CardContent className="flex items-center gap-3 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pink-500/10">
+              <Monitor className="h-4.5 w-4.5 text-pink-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500">Version</p>
+              <p className="truncate text-sm font-medium text-white">
+                {status.version ?? "\u2014"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-800 bg-slate-900">
+          <CardContent className="flex items-center gap-3 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10">
+              <Clock className="h-4.5 w-4.5 text-emerald-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500">Uptime</p>
+              <p className="truncate text-sm font-medium text-white">
+                {status.uptime ?? "\u2014"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-800 bg-slate-900">
+          <CardContent className="flex items-center gap-3 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+              <Cpu className="h-4.5 w-4.5 text-amber-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500">CPU Load</p>
+              <p className="text-sm font-medium text-white">
+                {status.cpu_load ? `${status.cpu_load}%` : "\u2014"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-800 bg-slate-900">
+          <CardContent className="flex items-center gap-3 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10">
+              <MemoryStick className="h-4.5 w-4.5 text-purple-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500">Memory</p>
+              <p className="text-sm font-medium text-white">
+                {memUsed
+                  ? `${formatMemory(memUsed)} / ${formatMemory(status.total_memory)}`
+                  : "\u2014"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="border-slate-800 bg-slate-900">
+          <CardContent className="flex items-center gap-3 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10">
+              <HardDrive className="h-4.5 w-4.5 text-cyan-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500">Platform</p>
+              <p className="truncate text-sm font-medium text-white">
+                {status.platform ?? "\u2014"}{" "}
+                {status.architecture ? `(${status.architecture})` : ""}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-slate-800 bg-slate-900">
+          <CardContent className="flex items-center gap-3 py-4">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+              <Server className="h-4.5 w-4.5 text-blue-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs text-slate-500">Board</p>
+              <p className="truncate text-sm font-medium text-white">
+                {status.board_name ?? "\u2014"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── Interfaces Table ──────────────────────────────────────
+
+function InterfacesTable({
   data,
   loading,
   error,
-  onReload,
-  columns,
-  renderRow,
 }: {
-  data: T[] | null;
+  data: MikrotikInterface[] | null;
   loading: boolean;
   error: string | null;
-  onReload: () => void;
-  columns: string[];
-  renderRow: (item: T, i: number) => React.ReactNode;
 }) {
+  const headerCols = (
+    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+      <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Type</th>
+      <th className="px-4 py-3 font-medium text-slate-400">IP Address</th>
+      <th className="px-4 py-3 font-medium text-slate-400">MAC</th>
+      <th className="px-4 py-3 font-medium text-slate-400">MTU</th>
+      <th className="px-4 py-3 font-medium text-slate-400">TX</th>
+      <th className="px-4 py-3 font-medium text-slate-400">RX</th>
+    </tr>
+  );
+
   if (loading) {
     return (
-      <div className="space-y-2">
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-full" />
-        <Skeleton className="h-8 w-full" />
+      <div className="overflow-x-auto rounded-md border border-slate-800">
+        <table className="w-full text-sm">
+          <thead>{headerCols}</thead>
+          <tbody>
+            {Array.from({ length: 4 }).map((_, i) => (
+              <tr key={i} className="border-b border-slate-800 last:border-b-0">
+                <td className="px-4 py-3"><div className="flex items-center gap-2"><Skeleton className="h-2.5 w-2.5 rounded-full" /><Skeleton className="h-5 w-10 rounded-full" /></div></td>
+                <td className="px-4 py-3"><Skeleton className="h-5 w-16" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-28" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-3 w-32" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-12" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-3 w-16" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-3 w-16" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 text-sm text-rose-400">
-        <AlertCircle className="h-4 w-4" />
-        {error}
-        <Button variant="ghost" size="sm" onClick={onReload}>
-          <RefreshCw className="h-3.5 w-3.5" />
-        </Button>
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{error}</p>
       </div>
     );
   }
 
   if (!data || data.length === 0) {
-    return <p className="text-sm text-slate-500">No data available.</p>;
+    return <p className="py-4 text-sm text-slate-500">No interfaces found.</p>;
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto rounded-md border border-slate-800">
       <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-slate-800 text-left text-xs text-slate-500">
-            {columns.map((col) => (
-              <th key={col} className="px-3 py-2 font-medium">
-                {col}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-800/50">
-          {data.map(renderRow)}
+        <thead>{headerCols}</thead>
+        <tbody>
+          {data.map((iface) => (
+            <tr
+              key={iface.name}
+              className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+            >
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-block h-2 w-2 rounded-full ${
+                      iface.running
+                        ? "bg-emerald-400"
+                        : iface.disabled
+                          ? "bg-slate-600"
+                          : "bg-amber-400"
+                    }`}
+                  />
+                  <Badge
+                    variant="outline"
+                    className={
+                      iface.running
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+                        : "border-slate-700 text-slate-500 text-xs"
+                    }
+                  >
+                    {iface.running ? "up" : iface.disabled ? "disabled" : "down"}
+                  </Badge>
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono tabular-nums font-medium text-white">
+                  {iface.name}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="text-slate-400">{iface.iface_type ?? "\u2014"}</span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono tabular-nums text-slate-300">
+                  {iface.ip_address ?? "\u2014"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono tabular-nums text-xs text-slate-400">
+                  {iface.mac ?? "\u2014"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="text-slate-300">{iface.mtu ?? "\u2014"}</span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono tabular-nums text-xs text-slate-400">
+                  {formatBytes(iface.tx_bytes)}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono tabular-nums text-xs text-slate-400">
+                  {formatBytes(iface.rx_bytes)}
+                </span>
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ── Routes Table ──────────────────────────────────────────
+
+function RoutesTable({
+  data,
+  loading,
+  error,
+}: {
+  data: MikrotikRoute[] | null;
+  loading: boolean;
+  error: string | null;
+}) {
+  const headerCols = (
+    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+      <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Destination</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Gateway</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Distance</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Table</th>
+    </tr>
+  );
+
+  if (loading) {
+    return (
+      <div className="overflow-x-auto rounded-md border border-slate-800">
+        <table className="w-full text-sm">
+          <thead>{headerCols}</thead>
+          <tbody>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <tr key={i} className="border-b border-slate-800 last:border-b-0">
+                <td className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-5 w-28" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-3 w-10" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{error}</p>
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return <p className="py-4 text-sm text-slate-500">No routes found.</p>;
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-slate-800">
+      <table className="w-full text-sm">
+        <thead>{headerCols}</thead>
+        <tbody>
+          {data.map((route, idx) => (
+            <tr
+              key={`${route.dst_address}-${idx}`}
+              className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+            >
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-1.5">
+                  {route.active ? (
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+                    >
+                      active
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="border-slate-700 text-slate-500 text-xs"
+                    >
+                      {route.disabled ? "disabled" : "inactive"}
+                    </Badge>
+                  )}
+                  {route.dynamic && (
+                    <Badge
+                      variant="outline"
+                      className="border-blue-500/30 text-blue-400 text-xs"
+                    >
+                      dynamic
+                    </Badge>
+                  )}
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono tabular-nums font-medium text-white">
+                  {route.dst_address}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono tabular-nums text-slate-300">
+                  {route.gateway ?? "\u2014"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono tabular-nums text-xs text-slate-400">
+                  {route.distance ?? "\u2014"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="text-slate-400">
+                  {route.routing_table ?? "main"}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── DHCP Leases Table ─────────────────────────────────────
+
+function DhcpLeasesTable({
+  data,
+  loading,
+  error,
+}: {
+  data: MikrotikDhcpLease[] | null;
+  loading: boolean;
+  error: string | null;
+}) {
+  const headerCols = (
+    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+      <th className="px-4 py-3 font-medium text-slate-400">IP Address</th>
+      <th className="px-4 py-3 font-medium text-slate-400">MAC Address</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Hostname</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Server</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Expires</th>
+      <th className="px-4 py-3 font-medium text-slate-400">State</th>
+    </tr>
+  );
+
+  if (loading) {
+    return (
+      <div className="overflow-x-auto rounded-md border border-slate-800">
+        <table className="w-full text-sm">
+          <thead>{headerCols}</thead>
+          <tbody>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <tr key={i} className="border-b border-slate-800 last:border-b-0">
+                <td className="px-4 py-3"><Skeleton className="h-5 w-24" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-3 w-32" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-3 w-28" /></td>
+                <td className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{error}</p>
+      </div>
+    );
+  }
+
+  if (!data || data.length === 0) {
+    return (
+      <p className="py-4 text-sm text-slate-500">
+        No DHCP leases found. DHCP server may not be configured.
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-slate-800">
+      <table className="w-full text-sm">
+        <thead>{headerCols}</thead>
+        <tbody>
+          {data.map((lease, idx) => (
+            <tr
+              key={`${lease.address}-${idx}`}
+              className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+            >
+              <td className="px-4 py-3">
+                <span className="font-mono tabular-nums font-medium text-white">
+                  {lease.address}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono tabular-nums text-xs text-slate-400">
+                  {lease.mac_address ?? "\u2014"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="text-slate-300">
+                  {lease.host_name ?? "\u2014"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="text-slate-300">
+                  {lease.server ?? "\u2014"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <span className="font-mono tabular-nums text-xs text-slate-400">
+                  {lease.expires_after ?? "\u2014"}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <Badge
+                  variant="outline"
+                  className={
+                    lease.status === "bound"
+                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+                      : "border-slate-700 text-slate-500 text-xs"
+                  }
+                >
+                  {lease.status ?? "\u2014"}
+                </Badge>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Firewall Tables ───────────────────────────────────────
+
+function FirewallPanel({
+  data,
+  loading,
+  error,
+}: {
+  data: MikrotikFirewall | null;
+  loading: boolean;
+  error: string | null;
+}) {
+  const filterHeaderCols = (
+    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+      <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Action</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Src</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Port</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+    </tr>
+  );
+
+  const natHeaderCols = (
+    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+      <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Action</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Port</th>
+      <th className="px-4 py-3 font-medium text-slate-400">To</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
+    </tr>
+  );
+
+  if (loading) {
+    return (
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <CardTitle className="text-base text-white">Filter Rules</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto rounded-md border border-slate-800">
+            <table className="w-full text-sm">
+              <thead>{filterHeaderCols}</thead>
+              <tbody>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <tr key={i} className="border-b border-slate-800 last:border-b-0">
+                    <td className="px-4 py-3"><Skeleton className="h-4 w-14" /></td>
+                    <td className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></td>
+                    <td className="px-4 py-3"><Skeleton className="h-4 w-10" /></td>
+                    <td className="px-4 py-3"><Skeleton className="h-3 w-20" /></td>
+                    <td className="px-4 py-3"><Skeleton className="h-3 w-20" /></td>
+                    <td className="px-4 py-3"><Skeleton className="h-4 w-10" /></td>
+                    <td className="px-4 py-3"><Skeleton className="h-3 w-24" /></td>
+                    <td className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-slate-800 bg-slate-900">
+        <CardContent className="py-4">
+          <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+            <p className="text-xs text-rose-400">{error}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <CardTitle className="text-base text-white">Filter Rules</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!data?.filter_rules.length ? (
+            <p className="py-4 text-sm text-slate-500">No filter rules configured.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-md border border-slate-800">
+              <table className="w-full text-sm">
+                <thead>{filterHeaderCols}</thead>
+                <tbody>
+                  {data.filter_rules.map((rule, i) => (
+                    <tr
+                      key={i}
+                      className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                    >
+                      <td className="px-4 py-3 text-slate-300">{rule.chain ?? "\u2014"}</td>
+                      <td className="px-4 py-3">
+                        <Badge
+                          variant="outline"
+                          className={
+                            rule.action === "accept"
+                              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+                              : rule.action === "drop"
+                                ? "border-rose-500/30 bg-rose-500/10 text-rose-400 text-xs"
+                                : "border-slate-700 text-slate-400 text-xs"
+                          }
+                        >
+                          {rule.action ?? "\u2014"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">{rule.protocol ?? "any"}</td>
+                      <td className="px-4 py-3">
+                        <span className="font-mono tabular-nums text-xs text-slate-400">
+                          {rule.src_address ?? "any"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="font-mono tabular-nums text-xs text-slate-400">
+                          {rule.dst_address ?? "any"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">{rule.dst_port ?? "\u2014"}</td>
+                      <td className="px-4 py-3">
+                        <span className="text-slate-500">{rule.comment ?? ""}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge
+                          variant="outline"
+                          className={
+                            rule.disabled
+                              ? "border-slate-700 text-slate-500 text-xs"
+                              : "border-emerald-500/30 text-emerald-400 text-xs"
+                          }
+                        >
+                          {rule.disabled ? "disabled" : "enabled"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <CardTitle className="text-base text-white">NAT Rules</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!data?.nat_rules.length ? (
+            <p className="py-4 text-sm text-slate-500">No NAT rules configured.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-md border border-slate-800">
+              <table className="w-full text-sm">
+                <thead>{natHeaderCols}</thead>
+                <tbody>
+                  {data.nat_rules.map((rule, i) => (
+                    <tr
+                      key={i}
+                      className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                    >
+                      <td className="px-4 py-3 text-slate-300">{rule.chain ?? "\u2014"}</td>
+                      <td className="px-4 py-3 text-slate-300">{rule.action ?? "\u2014"}</td>
+                      <td className="px-4 py-3 text-slate-300">{rule.protocol ?? "any"}</td>
+                      <td className="px-4 py-3">
+                        <span className="font-mono tabular-nums text-xs text-slate-400">
+                          {rule.dst_address ?? "any"}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-slate-300">{rule.dst_port ?? "\u2014"}</td>
+                      <td className="px-4 py-3">
+                        <span className="font-mono tabular-nums text-slate-300">
+                          {rule.to_addresses ?? "\u2014"}
+                          {rule.to_ports ? `:${rule.to_ports}` : ""}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-slate-500">{rule.comment ?? ""}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── DNS Panel ─────────────────────────────────────────────
+
+function DnsPanel({
+  data,
+  loading,
+  error,
+}: {
+  data: MikrotikDns | null;
+  loading: boolean;
+  error: string | null;
+}) {
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{error}</p>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <p className="mb-2 text-xs font-medium uppercase text-slate-500">
+          Upstream Servers
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {data.servers.length > 0 ? (
+            data.servers.map((s) => (
+              <Badge
+                key={s}
+                variant="outline"
+                className="border-slate-700 font-mono text-xs text-slate-300"
+              >
+                {s}
+              </Badge>
+            ))
+          ) : (
+            <p className="text-sm text-slate-500">No DNS servers configured.</p>
+          )}
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card className="border-slate-800 bg-slate-950">
+          <CardContent className="py-3">
+            <p className="text-xs text-slate-500">Allow Remote Requests</p>
+            <p className="text-sm font-medium text-white">
+              {data.allow_remote_requests ? "Yes" : "No"}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-slate-800 bg-slate-950">
+          <CardContent className="py-3">
+            <p className="text-xs text-slate-500">Cache Size</p>
+            <p className="text-sm font-medium text-white">
+              {data.cache_size ?? "\u2014"}
+            </p>
+          </CardContent>
+        </Card>
+        <Card className="border-slate-800 bg-slate-950">
+          <CardContent className="py-3">
+            <p className="text-xs text-slate-500">Cache Used</p>
+            <p className="text-sm font-medium text-white">
+              {data.cache_used ?? "\u2014"}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ── WireGuard Panel ───────────────────────────────────────
+
+function WireGuardPanel({
+  data,
+  loading,
+  error,
+}: {
+  data: MikrotikWireguard | null;
+  loading: boolean;
+  error: string | null;
+}) {
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-32 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{error}</p>
+      </div>
+    );
+  }
+
+  if (!data?.interfaces.length) {
+    return (
+      <p className="py-4 text-sm text-slate-500">
+        No WireGuard interfaces configured.
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {data.interfaces.map((iface) => (
+        <div
+          key={iface.name}
+          className="rounded-lg border border-slate-800 bg-slate-950 p-4"
+        >
+          <div className="mb-3 flex items-center gap-3">
+            <span className="font-mono text-sm font-medium text-white">
+              {iface.name}
+            </span>
+            <Badge
+              variant="outline"
+              className={
+                iface.running
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+                  : "border-slate-700 text-slate-500 text-xs"
+              }
+            >
+              {iface.running ? "running" : iface.disabled ? "disabled" : "down"}
+            </Badge>
+            {iface.listen_port && (
+              <span className="text-xs text-slate-500">
+                port {iface.listen_port}
+              </span>
+            )}
+          </div>
+          {iface.peers.length > 0 && (
+            <div className="overflow-x-auto rounded-md border border-slate-800">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-900 text-left">
+                    <th className="px-3 py-2 font-medium text-slate-400">
+                      Public Key
+                    </th>
+                    <th className="px-3 py-2 font-medium text-slate-400">
+                      Endpoint
+                    </th>
+                    <th className="px-3 py-2 font-medium text-slate-400">
+                      Allowed IPs
+                    </th>
+                    <th className="px-3 py-2 font-medium text-slate-400">RX</th>
+                    <th className="px-3 py-2 font-medium text-slate-400">TX</th>
+                    <th className="px-3 py-2 font-medium text-slate-400">
+                      Last Handshake
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {iface.peers.map((peer, i) => (
+                    <tr
+                      key={i}
+                      className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors text-slate-300"
+                    >
+                      <td className="px-3 py-2 font-mono">
+                        {peer.public_key
+                          ? `${peer.public_key.slice(0, 12)}...`
+                          : "\u2014"}
+                      </td>
+                      <td className="px-3 py-2 font-mono">
+                        {peer.endpoint ?? "\u2014"}
+                      </td>
+                      <td className="px-3 py-2 font-mono">
+                        {peer.allowed_address ?? "\u2014"}
+                      </td>
+                      <td className="px-3 py-2">{formatBytes(peer.rx)}</td>
+                      <td className="px-3 py-2">{formatBytes(peer.tx)}</td>
+                      <td className="px-3 py-2">
+                        {peer.last_handshake ?? "\u2014"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
@@ -269,24 +1026,12 @@ export default function MikrotikRouter() {
       .finally(() => setLoading(false));
   }, []);
 
-  const ifaces = useData(
-    useCallback(() => fetchMikrotikInterfaces(), [])
-  );
-  const routes = useData(
-    useCallback(() => fetchMikrotikRoutes(), [])
-  );
-  const dhcp = useData(
-    useCallback(() => fetchMikrotikDhcpLeases(), [])
-  );
-  const fw = useData(
-    useCallback(() => fetchMikrotikFirewall(), [])
-  );
-  const dns = useData(
-    useCallback(() => fetchMikrotikDns(), [])
-  );
-  const wg = useData(
-    useCallback(() => fetchMikrotikWireguard(), [])
-  );
+  const ifaces = useData(useCallback(() => fetchMikrotikInterfaces(), []));
+  const routes = useData(useCallback(() => fetchMikrotikRoutes(), []));
+  const dhcp = useData(useCallback(() => fetchMikrotikDhcpLeases(), []));
+  const fw = useData(useCallback(() => fetchMikrotikFirewall(), []));
+  const dns = useData(useCallback(() => fetchMikrotikDns(), []));
+  const wg = useData(useCallback(() => fetchMikrotikWireguard(), []));
 
   if (loading) {
     return (
@@ -363,7 +1108,7 @@ export default function MikrotikRouter() {
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
             <Lock className="mr-1.5 h-3.5 w-3.5" />
-            WireGuard
+            VPN
           </TabsTrigger>
         </TabsList>
 
@@ -379,32 +1124,10 @@ export default function MikrotikRouter() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <DataTable<MikrotikInterface>
+              <InterfacesTable
                 data={ifaces.data}
                 loading={ifaces.loading}
                 error={ifaces.error}
-                onReload={ifaces.reload}
-                columns={["Name", "Type", "IP Address", "MAC", "MTU", "Status", "TX", "RX"]}
-                renderRow={(iface, i) => (
-                  <tr key={i} className="text-slate-300">
-                    <td className="px-3 py-2 font-mono text-xs">{iface.name}</td>
-                    <td className="px-3 py-2 text-xs text-slate-500">{iface.iface_type ?? "-"}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{iface.ip_address ?? "-"}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{iface.mac ?? "-"}</td>
-                    <td className="px-3 py-2 text-xs">{iface.mtu ?? "-"}</td>
-                    <td className="px-3 py-2">
-                      {iface.running ? (
-                        <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs">up</Badge>
-                      ) : (
-                        <Badge variant="outline" className="border-slate-700 text-slate-500 text-xs">
-                          {iface.disabled ? "disabled" : "down"}
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-slate-500">{formatBytes(iface.tx_bytes)}</td>
-                    <td className="px-3 py-2 text-xs text-slate-500">{formatBytes(iface.rx_bytes)}</td>
-                  </tr>
-                )}
               />
             </CardContent>
           </Card>
@@ -418,32 +1141,10 @@ export default function MikrotikRouter() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <DataTable<MikrotikRoute>
+              <RoutesTable
                 data={routes.data}
                 loading={routes.loading}
                 error={routes.error}
-                onReload={routes.reload}
-                columns={["Destination", "Gateway", "Distance", "Table", "Status"]}
-                renderRow={(route, i) => (
-                  <tr key={i} className="text-slate-300">
-                    <td className="px-3 py-2 font-mono text-xs">{route.dst_address}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{route.gateway ?? "-"}</td>
-                    <td className="px-3 py-2 text-xs">{route.distance ?? "-"}</td>
-                    <td className="px-3 py-2 text-xs text-slate-500">{route.routing_table ?? "main"}</td>
-                    <td className="px-3 py-2">
-                      {route.active ? (
-                        <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs">active</Badge>
-                      ) : (
-                        <Badge variant="outline" className="border-slate-700 text-slate-500 text-xs">
-                          {route.disabled ? "disabled" : "inactive"}
-                        </Badge>
-                      )}
-                      {route.dynamic && (
-                        <Badge variant="outline" className="ml-1 border-blue-500/30 text-blue-400 text-xs">dynamic</Badge>
-                      )}
-                    </td>
-                  </tr>
-                )}
               />
             </CardContent>
           </Card>
@@ -457,33 +1158,10 @@ export default function MikrotikRouter() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <DataTable<MikrotikDhcpLease>
+              <DhcpLeasesTable
                 data={dhcp.data}
                 loading={dhcp.loading}
                 error={dhcp.error}
-                onReload={dhcp.reload}
-                columns={["IP Address", "MAC", "Hostname", "Status", "Expires", "Server"]}
-                renderRow={(lease, i) => (
-                  <tr key={i} className="text-slate-300">
-                    <td className="px-3 py-2 font-mono text-xs">{lease.address}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{lease.mac_address ?? "-"}</td>
-                    <td className="px-3 py-2 text-xs">{lease.host_name ?? "-"}</td>
-                    <td className="px-3 py-2">
-                      <Badge
-                        variant="outline"
-                        className={
-                          lease.status === "bound"
-                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
-                            : "border-slate-700 text-slate-500 text-xs"
-                        }
-                      >
-                        {lease.status ?? "-"}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-2 text-xs text-slate-500">{lease.expires_after ?? "-"}</td>
-                    <td className="px-3 py-2 text-xs text-slate-500">{lease.server ?? "-"}</td>
-                  </tr>
-                )}
               />
             </CardContent>
           </Card>
@@ -497,128 +1175,21 @@ export default function MikrotikRouter() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {dns.loading ? (
-                <Skeleton className="h-20 w-full" />
-              ) : dns.error ? (
-                <div className="flex items-center gap-2 text-sm text-rose-400">
-                  <AlertCircle className="h-4 w-4" />
-                  {dns.error}
-                </div>
-              ) : dns.data ? (
-                <div className="space-y-4">
-                  <div>
-                    <p className="mb-1 text-xs font-medium uppercase text-slate-500">Servers</p>
-                    <div className="flex flex-wrap gap-2">
-                      {dns.data.servers.length > 0 ? (
-                        dns.data.servers.map((s) => (
-                          <Badge key={s} variant="outline" className="border-slate-700 font-mono text-xs text-slate-300">
-                            {s}
-                          </Badge>
-                        ))
-                      ) : (
-                        <p className="text-sm text-slate-500">No DNS servers configured.</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div>
-                      <p className="text-xs text-slate-500">Allow Remote Requests</p>
-                      <p className="text-white">{dns.data.allow_remote_requests ? "Yes" : "No"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500">Cache Size</p>
-                      <p className="text-white">{dns.data.cache_size ?? "-"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-slate-500">Cache Used</p>
-                      <p className="text-white">{dns.data.cache_used ?? "-"}</p>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
+              <DnsPanel
+                data={dns.data}
+                loading={dns.loading}
+                error={dns.error}
+              />
             </CardContent>
           </Card>
         </TabsContent>
 
         <TabsContent value="firewall" className="space-y-4">
-          <Card className="border-slate-800 bg-slate-900">
-            <CardHeader>
-              <CardTitle className="text-base text-white">
-                Filter Rules
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DataTable
-                data={fw.data?.filter_rules ?? null}
-                loading={fw.loading}
-                error={fw.error}
-                onReload={fw.reload}
-                columns={["Chain", "Action", "Protocol", "Src", "Dst", "Port", "Comment", "Status"]}
-                renderRow={(rule, i) => (
-                  <tr key={i} className="text-slate-300">
-                    <td className="px-3 py-2 text-xs">{rule.chain ?? "-"}</td>
-                    <td className="px-3 py-2">
-                      <Badge
-                        variant="outline"
-                        className={
-                          rule.action === "accept"
-                            ? "border-emerald-500/30 text-emerald-400 text-xs"
-                            : rule.action === "drop"
-                              ? "border-rose-500/30 text-rose-400 text-xs"
-                              : "border-slate-700 text-slate-400 text-xs"
-                        }
-                      >
-                        {rule.action ?? "-"}
-                      </Badge>
-                    </td>
-                    <td className="px-3 py-2 text-xs">{rule.protocol ?? "any"}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{rule.src_address ?? "any"}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{rule.dst_address ?? "any"}</td>
-                    <td className="px-3 py-2 text-xs">{rule.dst_port ?? "-"}</td>
-                    <td className="px-3 py-2 text-xs text-slate-500">{rule.comment ?? ""}</td>
-                    <td className="px-3 py-2">
-                      <Badge
-                        variant="outline"
-                        className={rule.disabled ? "border-slate-700 text-slate-500 text-xs" : "border-emerald-500/30 text-emerald-400 text-xs"}
-                      >
-                        {rule.disabled ? "disabled" : "enabled"}
-                      </Badge>
-                    </td>
-                  </tr>
-                )}
-              />
-            </CardContent>
-          </Card>
-
-          <Card className="border-slate-800 bg-slate-900">
-            <CardHeader>
-              <CardTitle className="text-base text-white">
-                NAT Rules
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DataTable
-                data={fw.data?.nat_rules ?? null}
-                loading={fw.loading}
-                error={fw.error}
-                onReload={fw.reload}
-                columns={["Chain", "Action", "Protocol", "Dst", "Port", "To", "Comment"]}
-                renderRow={(rule, i) => (
-                  <tr key={i} className="text-slate-300">
-                    <td className="px-3 py-2 text-xs">{rule.chain ?? "-"}</td>
-                    <td className="px-3 py-2 text-xs">{rule.action ?? "-"}</td>
-                    <td className="px-3 py-2 text-xs">{rule.protocol ?? "any"}</td>
-                    <td className="px-3 py-2 font-mono text-xs">{rule.dst_address ?? "any"}</td>
-                    <td className="px-3 py-2 text-xs">{rule.dst_port ?? "-"}</td>
-                    <td className="px-3 py-2 font-mono text-xs">
-                      {rule.to_addresses ?? "-"}{rule.to_ports ? `:${rule.to_ports}` : ""}
-                    </td>
-                    <td className="px-3 py-2 text-xs text-slate-500">{rule.comment ?? ""}</td>
-                  </tr>
-                )}
-              />
-            </CardContent>
-          </Card>
+          <FirewallPanel
+            data={fw.data}
+            loading={fw.loading}
+            error={fw.error}
+          />
         </TabsContent>
 
         <TabsContent value="vpn">
@@ -629,61 +1200,11 @@ export default function MikrotikRouter() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {wg.loading ? (
-                <Skeleton className="h-20 w-full" />
-              ) : wg.error ? (
-                <div className="flex items-center gap-2 text-sm text-rose-400">
-                  <AlertCircle className="h-4 w-4" />
-                  {wg.error}
-                </div>
-              ) : !wg.data?.interfaces.length ? (
-                <p className="text-sm text-slate-500">No WireGuard interfaces configured.</p>
-              ) : (
-                <div className="space-y-4">
-                  {wg.data.interfaces.map((iface) => (
-                    <div key={iface.name} className="rounded-lg border border-slate-800 p-4">
-                      <div className="mb-3 flex items-center gap-3">
-                        <span className="font-mono text-sm text-white">{iface.name}</span>
-                        <Badge
-                          variant="outline"
-                          className={iface.running ? "border-emerald-500/30 text-emerald-400 text-xs" : "border-slate-700 text-slate-500 text-xs"}
-                        >
-                          {iface.running ? "running" : iface.disabled ? "disabled" : "down"}
-                        </Badge>
-                        {iface.listen_port && (
-                          <span className="text-xs text-slate-500">port {iface.listen_port}</span>
-                        )}
-                      </div>
-                      {iface.peers.length > 0 && (
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="border-b border-slate-800 text-left text-slate-500">
-                              <th className="px-2 py-1">Public Key</th>
-                              <th className="px-2 py-1">Endpoint</th>
-                              <th className="px-2 py-1">Allowed IPs</th>
-                              <th className="px-2 py-1">RX</th>
-                              <th className="px-2 py-1">TX</th>
-                              <th className="px-2 py-1">Last Handshake</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-800/50">
-                            {iface.peers.map((peer, i) => (
-                              <tr key={i} className="text-slate-300">
-                                <td className="px-2 py-1 font-mono">{peer.public_key ? `${peer.public_key.slice(0, 12)}...` : "-"}</td>
-                                <td className="px-2 py-1 font-mono">{peer.endpoint ?? "-"}</td>
-                                <td className="px-2 py-1 font-mono">{peer.allowed_address ?? "-"}</td>
-                                <td className="px-2 py-1">{formatBytes(peer.rx)}</td>
-                                <td className="px-2 py-1">{formatBytes(peer.tx)}</td>
-                                <td className="px-2 py-1">{peer.last_handshake ?? "-"}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <WireGuardPanel
+                data={wg.data}
+                loading={wg.loading}
+                error={wg.error}
+              />
             </CardContent>
           </Card>
         </TabsContent>
