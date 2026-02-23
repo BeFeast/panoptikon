@@ -75,6 +75,16 @@ async fn caddy_admin_url(state: &AppState) -> String {
         .unwrap_or_else(|| "http://localhost:2019".to_string())
 }
 
+/// Sync proxy hosts to Caddy on server startup (fire-and-forget).
+pub fn start_caddy_sync_task(state: AppState) {
+    tokio::spawn(async move {
+        // Small delay to let Caddy finish starting if launched alongside Panoptikon.
+        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        info!("Running initial Caddy config sync");
+        sync_to_caddy(&state).await;
+    });
+}
+
 /// Build Caddy JSON config from all enabled proxy hosts and PATCH it to the admin API.
 async fn sync_to_caddy(state: &AppState) {
     let hosts: Vec<(String, String, i64, String, i64)> = match sqlx::query_as(
