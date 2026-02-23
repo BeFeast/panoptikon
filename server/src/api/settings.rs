@@ -36,6 +36,8 @@ pub struct SettingsResponse {
     pub mikrotik_enabled: bool,
     // --- Unbound DNS ---
     pub unbound_control_path: Option<String>,
+    // --- Caddy Reverse Proxy ---
+    pub caddy_admin_url: Option<String>,
 }
 
 /// Request body for updating settings.
@@ -66,6 +68,8 @@ pub struct UpdateSettingsRequest {
     pub mikrotik_enabled: Option<bool>,
     // --- Unbound DNS ---
     pub unbound_control_path: Option<String>,
+    // --- Caddy Reverse Proxy ---
+    pub caddy_admin_url: Option<String>,
 }
 
 /// Helper: read a string setting from the settings table.
@@ -148,6 +152,9 @@ pub async fn get_settings(
     // Unbound DNS settings.
     let unbound_control_path = get_setting(&state, "unbound_control_path").await;
 
+    // Caddy settings.
+    let caddy_admin_url = get_setting(&state, "caddy_admin_url").await;
+
     Ok(Json(SettingsResponse {
         webhook_url,
         vyos_url,
@@ -168,6 +175,7 @@ pub async fn get_settings(
         mikrotik_password_set,
         mikrotik_enabled,
         unbound_control_path,
+        caddy_admin_url,
     }))
 }
 
@@ -294,6 +302,12 @@ pub async fn update_settings(
     if let Some(ref path) = body.unbound_control_path {
         upsert_setting(&state, "unbound_control_path", path).await?;
         info!(unbound_control_path = %path, "Unbound control path updated");
+    }
+
+    // --- Caddy Reverse Proxy settings ---
+    if let Some(ref url) = body.caddy_admin_url {
+        upsert_setting(&state, "caddy_admin_url", url).await?;
+        info!(caddy_admin_url = %url, "Caddy admin URL updated");
     }
 
     // Return current state.

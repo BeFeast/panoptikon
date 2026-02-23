@@ -61,6 +61,8 @@ import {
   toggleCaddyProxyHost,
   syncCaddyConfig,
   testCaddyConnection,
+  fetchSettings,
+  updateSettings,
 } from "@/lib/api";
 import type { CaddyProxyHost, CaddyStatus } from "@/lib/types";
 import { toast } from "sonner";
@@ -77,15 +79,22 @@ export default function CaddySettingsPage() {
   );
   const [syncing, setSyncing] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [adminUrl, setAdminUrl] = useState("http://localhost:2019");
+  const [savedAdminUrl, setSavedAdminUrl] = useState("http://localhost:2019");
+  const [savingUrl, setSavingUrl] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const [statusData, hostsData] = await Promise.all([
+      const [statusData, hostsData, settingsData] = await Promise.all([
         fetchCaddyStatus(),
         fetchCaddyProxyHosts(),
+        fetchSettings(),
       ]);
       setCaddyStatus(statusData);
       setHosts(hostsData);
+      const url = settingsData.caddy_admin_url || "http://localhost:2019";
+      setAdminUrl(url);
+      setSavedAdminUrl(url);
     } catch {
       toast.error("Failed to load proxy hosts");
     }
@@ -168,6 +177,19 @@ export default function CaddySettingsPage() {
     }
   }
 
+  async function handleSaveUrl() {
+    setSavingUrl(true);
+    try {
+      await updateSettings({ caddy_admin_url: adminUrl.trim() });
+      setSavedAdminUrl(adminUrl.trim());
+      toast.success("Caddy admin URL saved");
+    } catch {
+      toast.error("Failed to save admin URL");
+    } finally {
+      setSavingUrl(false);
+    }
+  }
+
   function handleSaved() {
     setShowAdd(false);
     setEditHost(null);
@@ -246,6 +268,45 @@ export default function CaddySettingsPage() {
             </Button>
           </div>
         </div>
+
+        {/* Admin URL Configuration */}
+        <Card className="border-slate-800 bg-slate-900">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-white">
+              Caddy Admin API
+            </CardTitle>
+            <CardDescription className="text-xs text-slate-500">
+              URL of the Caddy admin endpoint used to push proxy config.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-end gap-2">
+              <div className="flex-1 space-y-1.5">
+                <Label htmlFor="admin-url" className="text-xs text-slate-400">
+                  Admin URL
+                </Label>
+                <Input
+                  id="admin-url"
+                  value={adminUrl}
+                  onChange={(e) => setAdminUrl(e.target.value)}
+                  className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                  placeholder="http://localhost:2019"
+                />
+              </div>
+              <Button
+                size="sm"
+                onClick={handleSaveUrl}
+                disabled={savingUrl || adminUrl.trim() === savedAdminUrl}
+                className="bg-blue-600 text-white hover:bg-blue-500"
+              >
+                {savingUrl && (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                )}
+                Save
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Search */}
         <div className="relative">
