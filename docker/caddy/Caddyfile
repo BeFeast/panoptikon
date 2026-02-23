@@ -1,0 +1,14 @@
+# Panoptikon — Caddy reverse proxy configuration
+#
+# Replace :443 with your domain (e.g. panoptikon.example.com) to enable
+# automatic HTTPS via Let's Encrypt. Using :443 serves with a self-signed
+# certificate for local / LAN deployments.
+
+:443 {
+	reverse_proxy panoptikon:8080
+}
+
+# Redirect HTTP → HTTPS
+:80 {
+	redir https://{host}{uri} permanent
+}

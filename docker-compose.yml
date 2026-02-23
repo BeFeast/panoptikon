@@ -1,19 +1,66 @@
-version: "3.9"
-
 services:
+  # ── Panoptikon — network monitoring dashboard ──────────────────────────────
   panoptikon:
-    build: .
-    image: panoptikon:latest
+    image: befeast/panoptikon:latest
     container_name: panoptikon
     restart: unless-stopped
-    network_mode: host          # needed for ARP scanning + NetFlow UDP
+    networks:
+      - panoptikon-net
+    ports:
+      - "8080:8080"
     volumes:
       - panoptikon-data:/data
     environment:
       - PANOPTIKON_URL=http://localhost:8080
     cap_add:
-      - NET_RAW                 # required for nmap raw socket scanning
-      - NET_ADMIN
+      - NET_RAW              # required for nmap raw socket scanning
+      - NET_ADMIN            # required for ARP table access
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/auth/status"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+  # ── Caddy — reverse proxy with automatic HTTPS ─────────────────────────────
+  caddy:
+    image: caddy:latest
+    container_name: caddy
+    restart: unless-stopped
+    networks:
+      - panoptikon-net
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data       # TLS certificates
+      - caddy-config:/config   # Caddy runtime config
+    depends_on:
+      panoptikon:
+        condition: service_healthy
+
+  # ── Unbound — local DNS resolver ───────────────────────────────────────────
+  unbound:
+    image: mvance/unbound:latest
+    container_name: unbound
+    restart: unless-stopped
+    networks:
+      - panoptikon-net
+    expose:
+      - "53/tcp"
+      - "53/udp"
+      - "5335/tcp"
+      - "5335/udp"
+    volumes:
+      - ./docker/unbound/unbound.conf:/opt/unbound/etc/unbound/unbound.conf:ro
+
+networks:
+  panoptikon-net:
+    name: panoptikon-net
+    driver: bridge
 
 volumes:
   panoptikon-data:
+  caddy-data:
+  caddy-config:
