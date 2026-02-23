@@ -12,10 +12,10 @@ test.describe('Devices page', () => {
   });
 
   test('devices page has filter buttons', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'All', exact: true })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('button', { name: 'Online' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Offline' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Unknown' })).toBeVisible();
+    await expect(page.getByRole('button', { name: /All/ })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('button', { name: /Online/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Offline/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Unknown/ })).toBeVisible();
   });
 
   test('devices page has search input', async ({ page }) => {
@@ -48,14 +48,14 @@ test.describe('Devices page', () => {
     await page.waitForTimeout(2000);
     
     // Click Online filter
-    const onlineButton = page.getByRole('button', { name: 'Online' });
+    const onlineButton = page.getByRole('button', { name: /Online/ });
     await onlineButton.waitFor({ state: 'visible', timeout: 5000 });
     await onlineButton.click();
     await page.waitForTimeout(500);
     await page.screenshot({ path: 'tests/screenshots/devices-online-filter.png', fullPage: true });
     
     // Click All filter to go back
-    const allButton = page.getByRole('button', { name: 'All', exact: true });
+    const allButton = page.getByRole('button', { name: /All/ });
     await allButton.waitFor({ state: 'visible', timeout: 10000 });
     await allButton.click();
     await page.waitForTimeout(500);

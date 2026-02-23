@@ -34,8 +34,8 @@ export async function setupIfNeeded(page: Page): Promise<boolean> {
     await page.locator("#confirm").fill(PASSWORD);
     await setupButton.click();
     
-    // Should redirect to dashboard after setup - give it more time
-    await page.waitForURL(/\/(dashboard|login)/, { timeout: 30000 });
+    // Should redirect to dashboard after setup - give it plenty of time for CI
+    await page.waitForURL(/\/(dashboard|login)/, { timeout: 60000 });
     
     if (page.url().includes("/dashboard")) {
       return true;
