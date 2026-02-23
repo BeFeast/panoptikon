@@ -779,21 +779,6 @@ export interface ClientConfigResponse {
   public_key: string;
 }
 
-// ─── DNS Forwarding ────────────────────────────────────
-
-export interface DnsDomainOverride {
-  domain: string;
-  server: string;
-}
-
-export interface DnsForwardingConfig {
-  name_servers: string[];
-  listen_addresses: string[];
-  domain_overrides: DnsDomainOverride[];
-  allow_from: string[];
-  cache_size: number | null;
-}
-
 // ─── System Info ───────────────────────────────────────
 
 export interface CpuLoad {
