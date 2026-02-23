@@ -1,8 +1,33 @@
+# Build artifacts
 target/
-node_modules/
+web/.next/
+web/out/
+web/node_modules/
+
+# Version control
 .git/
+.gitignore
+
+# Database files
 *.db
 *.db-wal
 *.db-shm
-web/.next/
-web/node_modules/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Documentation
+docs/
+*.md
+LICENSE
+
+# Local config
+panoptikon.toml
