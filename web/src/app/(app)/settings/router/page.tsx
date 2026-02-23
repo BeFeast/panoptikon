@@ -481,15 +481,8 @@ export default function RouterSettingsPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="vyos">
+            <Tabs defaultValue="mikrotik">
               <TabsList className="mb-4 w-full border-slate-800 bg-slate-950">
-                <TabsTrigger
-                  value="vyos"
-                  className="flex-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
-                >
-                  <Router className="mr-1.5 h-3.5 w-3.5" />
-                  VyOS
-                </TabsTrigger>
                 <TabsTrigger
                   value="mikrotik"
                   className="flex-1 data-[state=active]:bg-pink-600 data-[state=active]:text-white"
@@ -497,12 +490,19 @@ export default function RouterSettingsPage() {
                   <Router className="mr-1.5 h-3.5 w-3.5" />
                   MikroTik
                 </TabsTrigger>
+                <TabsTrigger
+                  value="vyos"
+                  className="flex-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                >
+                  <Router className="mr-1.5 h-3.5 w-3.5" />
+                  VyOS (Optional)
+                </TabsTrigger>
               </TabsList>
-              <TabsContent value="vyos">
-                <VyosPanel />
-              </TabsContent>
               <TabsContent value="mikrotik">
                 <MikrotikPanel />
+              </TabsContent>
+              <TabsContent value="vyos">
+                <VyosPanel />
               </TabsContent>
             </Tabs>
           </CardContent>

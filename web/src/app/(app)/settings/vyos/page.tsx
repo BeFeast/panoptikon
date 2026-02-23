@@ -126,7 +126,12 @@ export default function VyosSettingsPage() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <h1 className="text-2xl font-semibold text-white">VyOS Router</h1>
+          <h1 className="text-2xl font-semibold text-white">
+            VyOS Router
+            <span className="ml-2 rounded-full bg-slate-700 px-2 py-0.5 text-xs text-slate-400">
+              Optional
+            </span>
+          </h1>
         </div>
 
         <Card className="border-slate-800 bg-slate-900">
