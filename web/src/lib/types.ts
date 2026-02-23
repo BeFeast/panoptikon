@@ -500,6 +500,8 @@ export interface SettingsData {
   mikrotik_user: string | null;
   mikrotik_password_set: boolean;
   mikrotik_enabled: boolean;
+  // Unbound DNS
+  unbound_control_path: string | null;
 }
 
 // ─── Nginx Proxy Manager ─────────────────────────────────
@@ -1229,6 +1231,27 @@ export interface CaddyStatus {
 }
 
 export interface CaddyTestConnectionResponse {
+  success: boolean;
+  message: string;
+}
+
+// ─── Unbound DNS ─────────────────────────────────────────
+
+export interface UnboundDnsRecord {
+  id: string;
+  hostname: string;
+  ip_address: string;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UnboundDnsRecordRequest {
+  hostname: string;
+  ip_address: string;
+}
+
+export interface UnboundTestConnectionResponse {
   success: boolean;
   message: string;
 }

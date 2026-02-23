@@ -70,6 +70,9 @@ const CADDY_PROXY_HOSTS_MIGRATION: &str = include_str!("migrations/020_caddy_pro
 /// Migration 021: Asset status column for inventory management.
 const ASSET_STATUS_MIGRATION: &str = include_str!("migrations/021_asset_status.sql");
 
+/// Migration 022: Unbound local DNS A records.
+const UNBOUND_DNS_RECORDS_MIGRATION: &str = include_str!("migrations/022_unbound_dns_records.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -525,6 +528,24 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 021_asset_status.sql");
     }
 
+    // Migration 022: Unbound local DNS records.
+    let applied_22: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 22")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_22 {
+        sqlx::raw_sql(UNBOUND_DNS_RECORDS_MIGRATION)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (22)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 022_unbound_dns_records.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -579,6 +600,7 @@ mod tests {
             "assets",
             "alert_rules",
             "caddy_proxy_hosts",
+            "unbound_dns_records",
         ];
 
         for table in &expected_tables {
