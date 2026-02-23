@@ -380,6 +380,10 @@ pub fn router(state: AppState) -> Router {
         // MikroTik router proxy
         .route("/mikrotik/status", get(mikrotik::status))
         .route("/mikrotik/interfaces", get(mikrotik::interfaces))
+        .route("/mikrotik/vlans", get(mikrotik::vlans))
+        .route("/mikrotik/vlans", post(mikrotik::create_vlan))
+        .route("/mikrotik/vlans/:id", put(mikrotik::update_vlan))
+        .route("/mikrotik/vlans/:id", delete(mikrotik::delete_vlan))
         .route("/mikrotik/routes", get(mikrotik::routes))
         .route("/mikrotik/dhcp-leases", get(mikrotik::dhcp_leases))
         .route("/mikrotik/firewall", get(mikrotik::firewall))

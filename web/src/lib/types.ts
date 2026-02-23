@@ -973,6 +973,21 @@ export interface MikrotikInterface {
   rx_bytes: string | null;
 }
 
+export interface MikrotikVlan {
+  id: string | null;
+  vlan_id: string | null;
+  name: string | null;
+  interface: string | null;
+  mtu: string | null;
+}
+
+export interface MikrotikVlanRequest {
+  vlan_id: number;
+  name: string;
+  interface: string;
+  mtu: number | null;
+}
+
 export interface MikrotikRoute {
   dst_address: string;
   gateway: string | null;
