@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { ArrowDown, ArrowUp, Battery, Box, ChevronDown, CircuitBoard, Container, Cpu, Download, ExternalLink, Gamepad2, HardDrive, HelpCircle, Laptop, Loader2, LayoutGrid, List, MemoryStick, Monitor, Network, Pencil, Plus, Power, Printer, Radar, RotateCcw, Router, Search, Server, Smartphone, Tablet, Tv, VolumeX, Wifi, WifiOff } from "lucide-react";
 import { getDeviceIcon } from "@/lib/device-icons";
 import { toast } from "sonner";
@@ -712,7 +713,7 @@ function DevicesTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {devices.map((device) => {
+          {devices.map((device, index) => {
             const primaryIp = (device.ips ?? [])[0] ?? "—";
             const { icon: RowIcon } = getDeviceIcon(device.vendor, device.hostname, device.mdns_services, device.device_type);
             const vendorDisplay = device.vendor
@@ -723,9 +724,16 @@ function DevicesTable({
             const canWake = !device.is_online && device.mac && !device.is_randomized_mac;
 
             return (
-              <TableRow
+              <motion.tr
                 key={device.id}
-                className="cursor-pointer border-slate-800 transition-colors hover:bg-slate-800/60"
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{
+                  duration: 0.18,
+                  ease: "easeOut",
+                  delay: Math.min(index * 0.01, 0.12),
+                }}
+                className="cursor-pointer border-b border-slate-800 transition-colors hover:bg-slate-800/60 data-[state=selected]:bg-muted"
                 onClick={() => onSelect(device)}
               >
                 <TableCell>
@@ -801,7 +809,7 @@ function DevicesTable({
                     </Button>
                   )}
                 </TableCell>
-              </TableRow>
+              </motion.tr>
             );
           })}
         </TableBody>
