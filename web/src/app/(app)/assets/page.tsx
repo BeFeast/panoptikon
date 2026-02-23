@@ -1,16 +1,18 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   Box,
   ChevronDown,
   Download,
+  Link2,
   Pencil,
   Plus,
   Search,
   Trash2,
+  Upload,
   X,
   Server,
   Monitor,
@@ -22,6 +24,7 @@ import {
   Cpu,
   Wifi,
   CircleHelp,
+  FileText,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -61,12 +64,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  autoLinkAssets,
   createAssetInventory,
   deleteAssetInventory,
   fetchAssets,
+  importAssets,
   updateAssetInventory,
 } from "@/lib/api";
-import type { Asset, AssetRequest, AssetType } from "@/lib/types";
+import type { Asset, AssetRequest, AssetType, AssetStatus, AssetImportRow } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
 import { downloadExport } from "@/lib/export";
 import { PageTransition } from "@/components/PageTransition";
@@ -91,8 +96,33 @@ const ASSET_TYPES: { value: AssetType; label: string; icon: typeof Server }[] = 
   { value: "unknown", label: "Unknown", icon: CircleHelp },
 ];
 
+const ASSET_STATUSES: { value: AssetStatus; label: string }[] = [
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
+  { value: "maintenance", label: "Maintenance" },
+  { value: "retired", label: "Retired" },
+  { value: "disposed", label: "Disposed" },
+];
+
 function getAssetTypeConfig(type: AssetType) {
   return ASSET_TYPES.find((t) => t.value === type) ?? ASSET_TYPES[ASSET_TYPES.length - 1];
+}
+
+function getStatusColor(status: AssetStatus): string {
+  switch (status) {
+    case "active":
+      return "border-emerald-500/50 text-emerald-400";
+    case "inactive":
+      return "border-slate-500/50 text-slate-400";
+    case "maintenance":
+      return "border-amber-500/50 text-amber-400";
+    case "retired":
+      return "border-orange-500/50 text-orange-400";
+    case "disposed":
+      return "border-rose-500/50 text-rose-400";
+    default:
+      return "border-slate-500/50 text-slate-400";
+  }
 }
 
 // ─── Router — detail vs list ────────────────────────────
@@ -116,6 +146,74 @@ export default function AssetsPage() {
   );
 }
 
+// ─── CSV parsing helper ─────────────────────────────────
+
+function parseCSV(text: string): AssetImportRow[] {
+  const lines = text.split("\n").filter((l) => l.trim());
+  if (lines.length < 2) return [];
+
+  const headerLine = lines[0];
+  const headers = headerLine.split(",").map((h) => h.trim().toLowerCase().replace(/['"]/g, ""));
+
+  const nameIdx = headers.indexOf("name");
+  if (nameIdx === -1) return [];
+
+  const rows: AssetImportRow[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = parseCSVLine(lines[i]);
+    const name = cols[nameIdx]?.trim() ?? "";
+    if (!name) continue;
+
+    rows.push({
+      name,
+      asset_type: cols[headers.indexOf("asset_type")] || cols[headers.indexOf("type")] || undefined,
+      status: cols[headers.indexOf("status")] || undefined,
+      location: cols[headers.indexOf("location")] || undefined,
+      owner: cols[headers.indexOf("owner")] || undefined,
+      tags: cols[headers.indexOf("tags")] || undefined,
+      notes: cols[headers.indexOf("notes")] || undefined,
+      purchase_date: cols[headers.indexOf("purchase_date")] || undefined,
+      serial_number: cols[headers.indexOf("serial_number")] || undefined,
+    });
+  }
+
+  return rows;
+}
+
+/** Parse a single CSV line, handling quoted fields. */
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (inQuotes) {
+      if (char === '"') {
+        if (line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        current += char;
+      }
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ",") {
+        result.push(current.trim());
+        current = "";
+      } else {
+        current += char;
+      }
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
 // ─── Main list page ─────────────────────────────────────
 
 function AssetsListPage() {
@@ -125,10 +223,13 @@ function AssetsListPage() {
   const [deleting, setDeleting] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [editAsset, setEditAsset] = useState<Asset | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
 
   // Filters
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
+  const [locationFilter, setLocationFilter] = useState<string>("");
 
   const load = useCallback(async () => {
     try {
@@ -153,6 +254,14 @@ function AssetsListPage() {
       result = result.filter((a) => a.asset_type === typeFilter);
     }
 
+    if (statusFilter) {
+      result = result.filter((a) => a.status === statusFilter);
+    }
+
+    if (locationFilter) {
+      result = result.filter((a) => a.location === locationFilter);
+    }
+
     if (search) {
       const q = search.toLowerCase();
       result = result.filter(
@@ -167,7 +276,7 @@ function AssetsListPage() {
     }
 
     return result;
-  }, [assets, search, typeFilter]);
+  }, [assets, search, typeFilter, statusFilter, locationFilter]);
 
   const handleDelete = async () => {
     if (!pendingDelete) return;
@@ -184,12 +293,85 @@ function AssetsListPage() {
     }
   };
 
-  // Collect unique types present in data for the filter dropdown
+  const handleAutoLink = async () => {
+    try {
+      const result = await autoLinkAssets();
+      if (result.linked > 0) {
+        toast.success(`Linked ${result.linked} asset(s) to network devices`);
+        load();
+      } else {
+        toast.info("No unlinked assets could be matched to devices");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Auto-link failed");
+    }
+  };
+
+  const handlePdfExport = () => {
+    if (!filtered || filtered.length === 0) {
+      toast.error("No assets to export");
+      return;
+    }
+
+    const html = `<!DOCTYPE html>
+<html><head><title>Panoptikon Asset Inventory</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 20px; color: #1e293b; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  .meta { color: #64748b; font-size: 12px; margin-bottom: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  th, td { border: 1px solid #e2e8f0; padding: 6px 8px; text-align: left; }
+  th { background: #f1f5f9; font-weight: 600; }
+  tr:nth-child(even) { background: #f8fafc; }
+  .badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 500; }
+  .active { background: #d1fae5; color: #065f46; }
+  .inactive { background: #e2e8f0; color: #475569; }
+  .maintenance { background: #fef3c7; color: #92400e; }
+  .retired { background: #fed7aa; color: #9a3412; }
+  .disposed { background: #fecaca; color: #991b1b; }
+  @media print { body { margin: 0; } }
+</style></head><body>
+<h1>Panoptikon Asset Inventory</h1>
+<div class="meta">Exported on ${new Date().toLocaleDateString()} &mdash; ${filtered.length} assets</div>
+<table>
+<thead><tr><th>Name</th><th>Type</th><th>Status</th><th>Location</th><th>Owner</th><th>IP</th><th>Serial</th><th>Updated</th></tr></thead>
+<tbody>
+${filtered
+  .map(
+    (a) =>
+      `<tr><td>${esc(a.name)}</td><td>${esc(getAssetTypeConfig(a.asset_type).label)}</td><td><span class="badge ${a.status}">${esc(a.status)}</span></td><td>${esc(a.location ?? "")}</td><td>${esc(a.owner ?? "")}</td><td>${esc(a.ip ?? "")}</td><td>${esc(a.serial_number ?? "")}</td><td>${esc(a.updated_at)}</td></tr>`,
+  )
+  .join("\n")}
+</tbody></table></body></html>`;
+
+    const w = window.open("", "_blank");
+    if (w) {
+      w.document.write(html);
+      w.document.close();
+      w.print();
+    }
+  };
+
+  // Collect unique types/statuses/locations for filter dropdowns
   const availableTypes = useMemo(() => {
     if (!assets) return [];
     const types = new Set(assets.map((a) => a.asset_type));
     return ASSET_TYPES.filter((t) => types.has(t.value));
   }, [assets]);
+
+  const availableStatuses = useMemo(() => {
+    if (!assets) return [];
+    const statuses = new Set(assets.map((a) => a.status));
+    return ASSET_STATUSES.filter((s) => statuses.has(s.value));
+  }, [assets]);
+
+  const availableLocations = useMemo(() => {
+    if (!assets) return [];
+    const locs = new Set(assets.map((a) => a.location).filter(Boolean) as string[]);
+    return Array.from(locs).sort();
+  }, [assets]);
+
+  const hasFilters = search || typeFilter || statusFilter || locationFilter;
 
   if (error) {
     return (
@@ -206,6 +388,24 @@ function AssetsListPage() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-white">Assets</h1>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-gray-700 text-slate-400 hover:text-gray-200 gap-1.5"
+              onClick={handleAutoLink}
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              Auto-link
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-gray-700 text-slate-400 hover:text-gray-200 gap-1.5"
+              onClick={() => setImportOpen(true)}
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Import CSV
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -239,6 +439,10 @@ function AssetsListPage() {
                 >
                   Export JSON
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={handlePdfExport}>
+                  <FileText className="mr-2 h-3.5 w-3.5" />
+                  Print / Save as PDF
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <AssetFormDialog
@@ -253,8 +457,8 @@ function AssetsListPage() {
         </div>
 
         {/* Filter bar */}
-        <div className="flex items-center gap-3">
-          <div className="relative max-w-sm flex-1">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative max-w-sm flex-1 min-w-[200px]">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
             <Input
               placeholder="Search by name, location, IP, owner, tag..."
@@ -285,7 +489,33 @@ function AssetsListPage() {
             ))}
           </select>
 
-          {(search || typeFilter) && filtered && (
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="flex h-10 rounded-md border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="">All statuses</option>
+            {availableStatuses.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
+            className="flex h-10 rounded-md border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="">All locations</option>
+            {availableLocations.map((l) => (
+              <option key={l} value={l}>
+                {l}
+              </option>
+            ))}
+          </select>
+
+          {hasFilters && filtered && (
             <span className="text-xs text-slate-500">
               Showing {filtered.length} of {assets?.length ?? 0} assets
             </span>
@@ -300,11 +530,12 @@ function AssetsListPage() {
                 <TableRow className="border-slate-800 hover:bg-transparent">
                   <TableHead className="text-slate-500">Name</TableHead>
                   <TableHead className="text-slate-500">Type</TableHead>
-                  <TableHead className="text-slate-500">Location</TableHead>
-                  <TableHead className="text-slate-500">IP</TableHead>
-                  <TableHead className="text-slate-500">OS</TableHead>
                   <TableHead className="text-slate-500">Status</TableHead>
+                  <TableHead className="text-slate-500">Location</TableHead>
+                  <TableHead className="text-slate-500">Owner</TableHead>
+                  <TableHead className="text-slate-500">IP</TableHead>
                   <TableHead className="text-slate-500">Last Seen</TableHead>
+                  <TableHead className="text-slate-500">Updated</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -313,10 +544,11 @@ function AssetsListPage() {
                   <TableRow key={i} className="border-slate-800">
                     <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                    <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-16" /></TableCell>
                   </TableRow>
@@ -327,10 +559,10 @@ function AssetsListPage() {
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Box className="mb-4 h-12 w-12 text-slate-600" />
               <p className="text-lg font-medium text-slate-400">
-                {search || typeFilter ? "No assets match your filters" : "No assets yet"}
+                {hasFilters ? "No assets match your filters" : "No assets yet"}
               </p>
               <p className="mt-1 text-sm text-slate-600">
-                {search || typeFilter
+                {hasFilters
                   ? "Try adjusting your search or filter criteria."
                   : "Add an asset to start tracking your IT inventory."}
               </p>
@@ -341,11 +573,12 @@ function AssetsListPage() {
                 <TableRow className="border-slate-800 hover:bg-transparent">
                   <TableHead className="text-slate-500">Name</TableHead>
                   <TableHead className="text-slate-500">Type</TableHead>
-                  <TableHead className="text-slate-500">Location</TableHead>
-                  <TableHead className="text-slate-500">IP</TableHead>
-                  <TableHead className="text-slate-500">OS</TableHead>
                   <TableHead className="text-slate-500">Status</TableHead>
+                  <TableHead className="text-slate-500">Location</TableHead>
+                  <TableHead className="text-slate-500">Owner</TableHead>
+                  <TableHead className="text-slate-500">IP</TableHead>
                   <TableHead className="text-slate-500">Last Seen</TableHead>
+                  <TableHead className="text-slate-500">Updated</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -354,13 +587,7 @@ function AssetsListPage() {
                   const typeConfig = getAssetTypeConfig(asset.asset_type);
                   const TypeIcon = typeConfig.icon;
 
-                  // Derive OS from linked agent or SSH target
-                  const os = asset.agent_os ?? asset.ssh_os ?? null;
-
-                  // Derive online status from linked sources
-                  const online = asset.device_online ?? asset.agent_online ?? asset.ssh_online ?? null;
-
-                  // Derive last seen
+                  // Derive last seen from linked device
                   const lastSeen = asset.device_last_seen;
 
                   return (
@@ -384,24 +611,28 @@ function AssetsListPage() {
                           <span className="text-sm">{typeConfig.label}</span>
                         </div>
                       </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={getStatusColor(asset.status)}
+                        >
+                          {asset.status}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="text-slate-400">
-                        {asset.location ?? "—"}
+                        {asset.location ?? "\u2014"}
+                      </TableCell>
+                      <TableCell className="text-slate-400">
+                        {asset.owner ?? "\u2014"}
                       </TableCell>
                       <TableCell className="font-mono tabular-nums text-slate-400">
-                        {asset.ip ?? "—"}
+                        {asset.ip ?? "\u2014"}
                       </TableCell>
                       <TableCell className="text-slate-400">
-                        {os ?? "—"}
+                        {lastSeen ? timeAgo(lastSeen) : "\u2014"}
                       </TableCell>
-                      <TableCell>
-                        {online !== null ? (
-                          <StatusBadge online={online} />
-                        ) : (
-                          <span className="text-xs text-slate-600">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-slate-400">
-                        {lastSeen ? timeAgo(lastSeen) : "—"}
+                      <TableCell className="text-slate-400 text-xs">
+                        {timeAgo(asset.updated_at)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
@@ -443,6 +674,16 @@ function AssetsListPage() {
             }}
           />
         )}
+
+        {/* Import CSV dialog */}
+        <ImportCSVDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          onImported={() => {
+            setImportOpen(false);
+            load();
+          }}
+        />
 
         {/* Delete confirmation */}
         <AlertDialog
@@ -491,6 +732,16 @@ function AssetsListPage() {
   );
 }
 
+// ─── HTML escape helper ─────────────────────────────────
+
+function esc(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
 // ─── Status Badge ───────────────────────────────────────
 
 function StatusBadge({ online }: { online: boolean }) {
@@ -515,6 +766,110 @@ function StatusBadge({ online }: { online: boolean }) {
   );
 }
 
+// ─── Import CSV Dialog ──────────────────────────────────
+
+function ImportCSVDialog({
+  open,
+  onOpenChange,
+  onImported,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onImported: () => void;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [rows, setRows] = useState<AssetImportRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      setRows([]);
+      setResult(null);
+    }
+  }, [open]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      const parsed = parseCSV(text);
+      setRows(parsed);
+      if (parsed.length === 0) {
+        setResult("No valid rows found. CSV must have a 'name' column header.");
+      } else {
+        setResult(null);
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImport = async () => {
+    if (rows.length === 0) return;
+    setLoading(true);
+    setResult(null);
+    try {
+      const res = await importAssets(rows);
+      setResult(
+        `Imported ${res.imported} asset(s), skipped ${res.skipped}.` +
+          (res.errors.length > 0 ? ` Errors: ${res.errors.join("; ")}` : ""),
+      );
+      if (res.imported > 0) {
+        toast.success(`${res.imported} asset(s) imported`);
+        onImported();
+      }
+    } catch (err) {
+      setResult(err instanceof Error ? err.message : "Import failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="w-full max-w-[520px] border-slate-800 bg-slate-950">
+        <DialogHeader>
+          <DialogTitle className="text-white">Import Assets from CSV</DialogTitle>
+          <DialogDescription>
+            Upload a CSV file with columns: name, asset_type, status, location, owner, tags,
+            serial_number, purchase_date, notes. Only &quot;name&quot; is required.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-2">
+          <Input
+            ref={fileRef}
+            type="file"
+            accept=".csv,text/csv"
+            onChange={handleFileChange}
+            className="border-slate-700 bg-slate-800/50 file:text-slate-400"
+          />
+
+          {rows.length > 0 && (
+            <p className="text-sm text-slate-400">
+              {rows.length} row(s) parsed and ready to import.
+            </p>
+          )}
+
+          {result && (
+            <p className="text-sm text-slate-300 whitespace-pre-wrap">{result}</p>
+          )}
+
+          <Button
+            onClick={handleImport}
+            disabled={loading || rows.length === 0}
+            className="w-full"
+          >
+            {loading ? "Importing..." : `Import ${rows.length} Asset(s)`}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ─── Add / Edit Form Dialog ─────────────────────────────
 
 function AssetFormDialog({
@@ -534,6 +889,9 @@ function AssetFormDialog({
   const [assetType, setAssetType] = useState<AssetType>(
     existing?.asset_type ?? "unknown",
   );
+  const [status, setStatus] = useState<AssetStatus>(
+    existing?.status ?? "active",
+  );
   const [location, setLocation] = useState(existing?.location ?? "");
   const [owner, setOwner] = useState(existing?.owner ?? "");
   const [tags, setTags] = useState(existing?.tags ?? "");
@@ -552,6 +910,7 @@ function AssetFormDialog({
     if (open) {
       setName(existing?.name ?? "");
       setAssetType(existing?.asset_type ?? "unknown");
+      setStatus(existing?.status ?? "active");
       setLocation(existing?.location ?? "");
       setOwner(existing?.owner ?? "");
       setTags(existing?.tags ?? "");
@@ -571,6 +930,7 @@ function AssetFormDialog({
     const body: AssetRequest = {
       name: name.trim(),
       asset_type: assetType,
+      status,
       location: location || undefined,
       owner: owner || undefined,
       tags: tags || undefined,
@@ -637,8 +997,22 @@ function AssetFormDialog({
           </div>
         </div>
 
-        {/* Location + Owner */}
+        {/* Status + Location */}
         <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as AssetStatus)}
+              className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {ASSET_STATUSES.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
           <div className="space-y-2">
             <Label>Location</Label>
             <Input
@@ -647,6 +1021,10 @@ function AssetFormDialog({
               onChange={(e) => setLocation(e.target.value)}
             />
           </div>
+        </div>
+
+        {/* Owner + Tags */}
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Owner</Label>
             <Input
@@ -655,21 +1033,19 @@ function AssetFormDialog({
               onChange={(e) => setOwner(e.target.value)}
             />
           </div>
-        </div>
-
-        {/* Tags */}
-        <div className="space-y-2">
-          <Label>
-            Tags
-            <span className="ml-2 text-xs text-slate-500">
-              JSON array, e.g. ["production", "web"]
-            </span>
-          </Label>
-          <Input
-            placeholder='["production", "critical"]'
-            value={tags}
-            onChange={(e) => setTags(e.target.value)}
-          />
+          <div className="space-y-2">
+            <Label>
+              Tags
+              <span className="ml-2 text-xs text-slate-500">
+                JSON array, e.g. [&quot;production&quot;, &quot;web&quot;]
+              </span>
+            </Label>
+            <Input
+              placeholder='["production", "critical"]'
+              value={tags}
+              onChange={(e) => setTags(e.target.value)}
+            />
+          </div>
         </div>
 
         {/* Serial + Purchase Date */}
