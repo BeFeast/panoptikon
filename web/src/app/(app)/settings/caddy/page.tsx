@@ -12,6 +12,7 @@ import {
   CheckCircle,
   AlertCircle,
   Search,
+  Zap,
 } from "lucide-react";
 import {
   Card,
@@ -59,6 +60,7 @@ import {
   deleteCaddyProxyHost,
   toggleCaddyProxyHost,
   syncCaddyConfig,
+  testCaddyConnection,
 } from "@/lib/api";
 import type { CaddyProxyHost, CaddyStatus } from "@/lib/types";
 import { toast } from "sonner";
@@ -74,6 +76,7 @@ export default function CaddySettingsPage() {
     null
   );
   const [syncing, setSyncing] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -146,6 +149,25 @@ export default function CaddySettingsPage() {
     }
   }
 
+  async function handleTestConnection() {
+    setTesting(true);
+    try {
+      const result = await testCaddyConnection();
+      if (result.success) {
+        toast.success(result.message);
+      } else {
+        toast.error(result.message);
+      }
+      // Refresh status after test.
+      const statusData = await fetchCaddyStatus();
+      setCaddyStatus(statusData);
+    } catch {
+      toast.error("Failed to test connection");
+    } finally {
+      setTesting(false);
+    }
+  }
+
   function handleSaved() {
     setShowAdd(false);
     setEditHost(null);
@@ -186,6 +208,20 @@ export default function CaddySettingsPage() {
                 {caddyStatus.reachable ? "Connected" : "Unreachable"}
               </Badge>
             )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTestConnection}
+              disabled={testing}
+              className="border-slate-800 text-slate-300 hover:bg-slate-800"
+            >
+              {testing ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Zap className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              Test Connection
+            </Button>
             <Button
               variant="outline"
               size="sm"

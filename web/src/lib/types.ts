@@ -1195,3 +1195,8 @@ export interface CaddyStatus {
   configured: boolean;
   reachable: boolean;
 }
+
+export interface CaddyTestConnectionResponse {
+  success: boolean;
+  message: string;
+}

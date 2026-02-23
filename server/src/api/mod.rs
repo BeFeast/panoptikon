@@ -388,6 +388,7 @@ pub fn router(state: AppState) -> Router {
         .route("/caddy/proxy-hosts/:id", delete(caddy::delete))
         .route("/caddy/proxy-hosts/:id/toggle", post(caddy::toggle))
         .route("/caddy/sync", post(caddy::sync))
+        .route("/caddy/test-connection", post(caddy::test_connection))
         // Unified Services wizard
         .route("/services/add", post(services::add_service))
         .route("/services/remove", post(services::remove_service))

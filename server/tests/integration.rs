@@ -406,7 +406,301 @@ async fn test_auth_status_after_setup() {
     );
 }
 
-// ── Test 12: ConnectInfo regression test ─────────────────────────────
+// ── Test 12: Caddy proxy host CRUD ───────────────────────────────────
+
+#[tokio::test]
+async fn test_caddy_proxy_host_crud() {
+    let (client, base_url) = setup_fresh("caddy_test_password").await;
+
+    // 1. List — should be empty initially.
+    let resp = client
+        .get(format!("{base_url}/api/v1/caddy/proxy-hosts"))
+        .send()
+        .await
+        .expect("list request failed");
+    assert_eq!(resp.status(), StatusCode::OK);
+    let hosts: Vec<Value> = resp.json().await.expect("json parse failed");
+    assert!(hosts.is_empty(), "should start with no proxy hosts");
+
+    // 2. Create a proxy host.
+    let resp = client
+        .post(format!("{base_url}/api/v1/caddy/proxy-hosts"))
+        .json(&serde_json::json!({
+            "domain": "app.example.com",
+            "forward_host": "10.0.0.5",
+            "forward_port": 8080,
+            "forward_scheme": "http",
+            "tls_enabled": false
+        }))
+        .send()
+        .await
+        .expect("create request failed");
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let created: Value = resp.json().await.expect("json parse failed");
+    assert_eq!(created["domain"], "app.example.com");
+    assert_eq!(created["forward_host"], "10.0.0.5");
+    assert_eq!(created["forward_port"], 8080);
+    assert_eq!(created["forward_scheme"], "http");
+    assert_eq!(created["enabled"], true);
+    assert_eq!(created["tls_enabled"], false);
+    let host_id = created["id"].as_str().expect("id should be a string");
+
+    // 3. List — should now contain one host.
+    let resp = client
+        .get(format!("{base_url}/api/v1/caddy/proxy-hosts"))
+        .send()
+        .await
+        .expect("list request failed");
+    assert_eq!(resp.status(), StatusCode::OK);
+    let hosts: Vec<Value> = resp.json().await.expect("json parse failed");
+    assert_eq!(hosts.len(), 1);
+    assert_eq!(hosts[0]["domain"], "app.example.com");
+
+    // 4. Update the proxy host.
+    let resp = client
+        .put(format!("{base_url}/api/v1/caddy/proxy-hosts/{host_id}"))
+        .json(&serde_json::json!({
+            "domain": "api.example.com",
+            "forward_host": "10.0.0.10",
+            "forward_port": 9090,
+            "forward_scheme": "https",
+            "tls_enabled": true
+        }))
+        .send()
+        .await
+        .expect("update request failed");
+    assert_eq!(resp.status(), StatusCode::OK);
+    let updated: Value = resp.json().await.expect("json parse failed");
+    assert_eq!(updated["domain"], "api.example.com");
+    assert_eq!(updated["forward_host"], "10.0.0.10");
+    assert_eq!(updated["forward_port"], 9090);
+    assert_eq!(updated["forward_scheme"], "https");
+    assert_eq!(updated["tls_enabled"], true);
+
+    // 5. Verify update persisted via list.
+    let resp = client
+        .get(format!("{base_url}/api/v1/caddy/proxy-hosts"))
+        .send()
+        .await
+        .expect("list request failed");
+    let hosts: Vec<Value> = resp.json().await.expect("json parse failed");
+    assert_eq!(hosts.len(), 1);
+    assert_eq!(hosts[0]["domain"], "api.example.com");
+
+    // 6. Delete the proxy host.
+    let resp = client
+        .delete(format!("{base_url}/api/v1/caddy/proxy-hosts/{host_id}"))
+        .send()
+        .await
+        .expect("delete request failed");
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+
+    // 7. Verify deletion via list.
+    let resp = client
+        .get(format!("{base_url}/api/v1/caddy/proxy-hosts"))
+        .send()
+        .await
+        .expect("list request failed");
+    let hosts: Vec<Value> = resp.json().await.expect("json parse failed");
+    assert!(hosts.is_empty(), "should be empty after delete");
+}
+
+// ── Test 13: Caddy proxy host toggle ─────────────────────────────────
+
+#[tokio::test]
+async fn test_caddy_proxy_host_toggle() {
+    let (client, base_url) = setup_fresh("caddy_toggle_pw").await;
+
+    // Create a host (enabled by default).
+    let resp = client
+        .post(format!("{base_url}/api/v1/caddy/proxy-hosts"))
+        .json(&serde_json::json!({
+            "domain": "toggle.example.com",
+            "forward_host": "10.0.0.1",
+            "forward_port": 80,
+            "forward_scheme": "http"
+        }))
+        .send()
+        .await
+        .expect("create failed");
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let created: Value = resp.json().await.expect("json parse failed");
+    let host_id = created["id"].as_str().unwrap();
+    assert_eq!(created["enabled"], true);
+
+    // Disable the host.
+    let resp = client
+        .post(format!(
+            "{base_url}/api/v1/caddy/proxy-hosts/{host_id}/toggle"
+        ))
+        .json(&serde_json::json!({"enabled": false}))
+        .send()
+        .await
+        .expect("toggle failed");
+    assert_eq!(resp.status(), StatusCode::OK);
+    let toggled: Value = resp.json().await.expect("json parse failed");
+    assert_eq!(toggled["enabled"], false);
+
+    // Re-enable the host.
+    let resp = client
+        .post(format!(
+            "{base_url}/api/v1/caddy/proxy-hosts/{host_id}/toggle"
+        ))
+        .json(&serde_json::json!({"enabled": true}))
+        .send()
+        .await
+        .expect("toggle failed");
+    assert_eq!(resp.status(), StatusCode::OK);
+    let toggled: Value = resp.json().await.expect("json parse failed");
+    assert_eq!(toggled["enabled"], true);
+}
+
+// ── Test 14: Caddy status and test-connection ────────────────────────
+
+#[tokio::test]
+async fn test_caddy_status_and_test_connection() {
+    let (client, base_url) = setup_fresh("caddy_status_pw").await;
+
+    // Status endpoint should work (Caddy won't be reachable in test env).
+    let resp = client
+        .get(format!("{base_url}/api/v1/caddy/status"))
+        .send()
+        .await
+        .expect("status request failed");
+    assert_eq!(resp.status(), StatusCode::OK);
+    let status: Value = resp.json().await.expect("json parse failed");
+    assert_eq!(status["configured"], true);
+    // reachable may be true or false depending on whether Caddy is running.
+
+    // Test connection endpoint should return structured response.
+    let resp = client
+        .post(format!("{base_url}/api/v1/caddy/test-connection"))
+        .send()
+        .await
+        .expect("test-connection request failed");
+    assert_eq!(resp.status(), StatusCode::OK);
+    let result: Value = resp.json().await.expect("json parse failed");
+    assert!(
+        result["success"].is_boolean(),
+        "success should be a boolean"
+    );
+    assert!(result["message"].is_string(), "message should be a string");
+}
+
+// ── Test 15: Caddy sync endpoint ─────────────────────────────────────
+
+#[tokio::test]
+async fn test_caddy_sync_endpoint() {
+    let (client, base_url) = setup_fresh("caddy_sync_pw").await;
+
+    // Create a host first so there's something to sync.
+    let resp = client
+        .post(format!("{base_url}/api/v1/caddy/proxy-hosts"))
+        .json(&serde_json::json!({
+            "domain": "sync.example.com",
+            "forward_host": "10.0.0.1",
+            "forward_port": 80,
+            "forward_scheme": "http"
+        }))
+        .send()
+        .await
+        .expect("create failed");
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    // Force sync — should return 204 regardless of Caddy availability.
+    let resp = client
+        .post(format!("{base_url}/api/v1/caddy/sync"))
+        .send()
+        .await
+        .expect("sync request failed");
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+}
+
+// ── Test 16: Caddy delete/update non-existent host returns 404 ───────
+
+#[tokio::test]
+async fn test_caddy_not_found() {
+    let (client, base_url) = setup_fresh("caddy_404_pw").await;
+
+    let fake_id = "00000000-0000-0000-0000-000000000000";
+
+    // Update non-existent host.
+    let resp = client
+        .put(format!("{base_url}/api/v1/caddy/proxy-hosts/{fake_id}"))
+        .json(&serde_json::json!({
+            "domain": "nope.example.com",
+            "forward_host": "10.0.0.1",
+            "forward_port": 80,
+            "forward_scheme": "http"
+        }))
+        .send()
+        .await
+        .expect("update request failed");
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+
+    // Delete non-existent host.
+    let resp = client
+        .delete(format!("{base_url}/api/v1/caddy/proxy-hosts/{fake_id}"))
+        .send()
+        .await
+        .expect("delete request failed");
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+
+    // Toggle non-existent host.
+    let resp = client
+        .post(format!(
+            "{base_url}/api/v1/caddy/proxy-hosts/{fake_id}/toggle"
+        ))
+        .json(&serde_json::json!({"enabled": false}))
+        .send()
+        .await
+        .expect("toggle request failed");
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+}
+
+// ── Test 17: Caddy requires authentication ───────────────────────────
+
+#[tokio::test]
+async fn test_caddy_requires_auth() {
+    let (base_url, _pool) = spawn_test_server().await;
+    let client = http_client();
+
+    // All Caddy endpoints should require auth.
+    let resp = client
+        .get(format!("{base_url}/api/v1/caddy/proxy-hosts"))
+        .send()
+        .await
+        .expect("list request failed");
+    assert_eq!(
+        resp.status(),
+        StatusCode::UNAUTHORIZED,
+        "caddy proxy-hosts should require auth"
+    );
+
+    let resp = client
+        .get(format!("{base_url}/api/v1/caddy/status"))
+        .send()
+        .await
+        .expect("status request failed");
+    assert_eq!(
+        resp.status(),
+        StatusCode::UNAUTHORIZED,
+        "caddy status should require auth"
+    );
+
+    let resp = client
+        .post(format!("{base_url}/api/v1/caddy/test-connection"))
+        .send()
+        .await
+        .expect("test-connection request failed");
+    assert_eq!(
+        resp.status(),
+        StatusCode::UNAUTHORIZED,
+        "caddy test-connection should require auth"
+    );
+}
+
+// ── Test 18: ConnectInfo regression test ─────────────────────────────
 
 #[tokio::test]
 async fn test_connect_info_configured() {
