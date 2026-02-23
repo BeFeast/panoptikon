@@ -34,6 +34,7 @@ import {
 import {
   fetchAlerts,
   markAlertRead,
+  markAlertUnread,
   acknowledgeAlert,
   muteDevice,
   deleteAlert,
@@ -112,11 +113,22 @@ function severityBadge(severity: Alert["severity"]) {
 }
 
 type StatusFilter = "all" | "active" | "acknowledged";
+type TypeFilter = "all" | Alert["type"];
+
+const ALERT_TYPES: { value: TypeFilter; label: string }[] = [
+  { value: "all", label: "All Types" },
+  { value: "new_device", label: "New Device" },
+  { value: "device_online", label: "Online" },
+  { value: "device_offline", label: "Offline" },
+  { value: "agent_offline", label: "Agent Offline" },
+  { value: "high_bandwidth", label: "High Bandwidth" },
+];
 
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [ackDialogOpen, setAckDialogOpen] = useState(false);
   const [ackAlertId, setAckAlertId] = useState<string | null>(null);
   const [ackNote, setAckNote] = useState("");
@@ -126,12 +138,13 @@ export default function AlertsPage() {
   const load = useCallback(async () => {
     try {
       const status = statusFilter === "all" ? undefined : statusFilter;
-      const data = await fetchAlerts(100, status);
+      const alertType = typeFilter === "all" ? undefined : typeFilter;
+      const data = await fetchAlerts(100, status, undefined, alertType);
       setAlerts(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load alerts");
     }
-  }, [statusFilter]);
+  }, [statusFilter, typeFilter]);
 
   useEffect(() => {
     load();
@@ -144,6 +157,17 @@ export default function AlertsPage() {
       await markAlertRead(id);
       setAlerts((prev) =>
         (prev ?? []).map((a) => (a.id === id ? { ...a, is_read: true } : a))
+      );
+    } catch {
+      // silently ignore
+    }
+  }
+
+  async function handleMarkUnread(id: string) {
+    try {
+      await markAlertUnread(id);
+      setAlerts((prev) =>
+        (prev ?? []).map((a) => (a.id === id ? { ...a, is_read: false } : a))
       );
     } catch {
       // silently ignore
@@ -203,8 +227,9 @@ export default function AlertsPage() {
       setAlerts((prev) =>
         (prev ?? []).map((a) => ({ ...a, is_read: true }))
       );
+      toast.success("All alerts marked as read");
     } catch {
-      // silently ignore
+      toast.error("Failed to mark all as read");
     }
   }
 
@@ -212,8 +237,13 @@ export default function AlertsPage() {
     try {
       await muteDevice(deviceId, hours);
       setMuteDropdownId(null);
+      if (hours > 0) {
+        toast.success(`Device muted for ${hours}h`);
+      } else {
+        toast.success("Device unmuted");
+      }
     } catch {
-      // silently ignore
+      toast.error("Failed to mute device");
     }
   }
 
@@ -310,22 +340,46 @@ export default function AlertsPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-2">
-        {(["all", "active", "acknowledged"] as StatusFilter[]).map((f) => (
-          <Button
-            key={f}
-            variant={statusFilter === f ? "default" : "outline"}
-            size="sm"
-            onClick={() => setStatusFilter(f)}
-            className={
-              statusFilter === f
-                ? ""
-                : "border-gray-700 text-slate-400 hover:text-gray-200"
-            }
-          >
-            {f === "all" ? "All" : f === "active" ? "Active" : "Acknowledged"}
-          </Button>
-        ))}
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          {(["all", "active", "acknowledged"] as StatusFilter[]).map((f) => (
+            <Button
+              key={f}
+              variant={statusFilter === f ? "default" : "outline"}
+              size="sm"
+              onClick={() => setStatusFilter(f)}
+              className={
+                statusFilter === f
+                  ? ""
+                  : "border-gray-700 text-slate-400 hover:text-gray-200"
+              }
+            >
+              {f === "all" ? "All" : f === "active" ? "Active" : "Acknowledged"}
+            </Button>
+          ))}
+        </div>
+
+        {/* Type filter */}
+        <div className="flex gap-2 flex-wrap">
+          {ALERT_TYPES.map((t) => (
+            <Button
+              key={t.value}
+              variant={typeFilter === t.value ? "default" : "outline"}
+              size="sm"
+              onClick={() => setTypeFilter(t.value)}
+              className={
+                typeFilter === t.value
+                  ? ""
+                  : "border-gray-700 text-slate-400 hover:text-gray-200"
+              }
+            >
+              {t.value !== "all" && (
+                <span className="mr-1.5">{alertIcon(t.value as Alert["type"])}</span>
+              )}
+              {t.label}
+            </Button>
+          ))}
+        </div>
       </div>
 
       {/* Alert list */}
@@ -420,19 +474,35 @@ export default function AlertsPage() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0">
-                  {/* Mark read */}
-                  {!alert.is_read && !alert.acknowledged_at && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-slate-500 hover:text-gray-200"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMarkRead(alert.id);
-                      }}
-                    >
-                      <Check className="h-3.5 w-3.5" />
-                    </Button>
+                  {/* Mark read / unread toggle */}
+                  {!alert.acknowledged_at && (
+                    alert.is_read ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-slate-500 hover:text-blue-400"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkUnread(alert.id);
+                        }}
+                        title="Mark unread"
+                      >
+                        <Bell className="h-3.5 w-3.5" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-slate-500 hover:text-gray-200"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMarkRead(alert.id);
+                        }}
+                        title="Mark read"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </Button>
+                    )
                   )}
 
                   {/* Acknowledge */}
