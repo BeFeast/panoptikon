@@ -2,10 +2,10 @@
 
 ## Product Requirements Document
 
-**Version:** 0.1.0-draft  
-**Author:** Oleg Kossoy (concept) / AI-assisted (document)  
-**Date:** 2026-02-19  
-**Status:** Draft  
+**Version:** 0.5.0
+**Author:** Oleg Kossoy (concept) / AI-assisted (document)
+**Date:** 2026-02-23
+**Status:** Active
 
 ---
 
@@ -27,15 +27,15 @@
 
 ## 1. Overview & Vision
 
-**Panoptikon** is a self-hosted web application for managing a VyOS router, monitoring all devices on a local network, and maintaining a complete IT asset inventory — without requiring an agent on every host.
+**Panoptikon** is a self-hosted web application for managing routers (MikroTik primary, VyOS optional), monitoring all devices on a local network, and maintaining a complete IT asset inventory — without requiring an agent on every host.
 
-Think of it as a mashup of **Ubiquiti UniFi's web console** (dark theme, topology map, polished device cards), **Fing** (network scanning, device discovery, online/offline tracking), and **Lansweeper / NetBox** (asset inventory, SSH-based agentless collection, categorization) — but open-source, opinionated toward VyOS, and running as a single binary.
+Think of it as a mashup of **Ubiquiti UniFi's web console** (dark theme, topology map, polished device cards), **Fing** (network scanning, device discovery, online/offline tracking), and **Lansweeper / NetBox** (asset inventory, SSH-based agentless collection, categorization) — but open-source, with multi-router support (MikroTik + VyOS), and running as a single binary.
 
 The name references Bentham's panopticon — the all-seeing observation tower — reimagined as a personal tool: *you* are the observer, your home network is the space. The `k` spelling makes it unique and ownable.
 
-**The one-liner:** A beautiful, UniFi-inspired control plane and asset management system for your VyOS home/lab network.
+**The one-liner:** A beautiful, UniFi-inspired control plane and asset management system for your MikroTik/VyOS home/lab network.
 
-**Vision:** You open a single browser tab and see your entire infrastructure: router health, every device discovered via ARP/DHCP, full hardware inventory collected either via lightweight agents *or* direct SSH — all in a dark, information-dense UI that feels like a professional network operations center, not a hobbyist tool.
+**Vision:** You open a single browser tab and see your entire infrastructure: router health, every device discovered via ARP/DHCP/mDNS/SSDP, full hardware inventory collected either via lightweight agents *or* direct SSH — all in a dark, information-dense UI that feels like a professional network operations center, not a hobbyist tool.
 
 ### Asset Management Vision
 
@@ -51,8 +51,9 @@ The result: a single inventory view of your entire infrastructure, always up to 
 
 ## 2. Problem Statement
 
-Running a VyOS router in a home lab or small office gives you powerful networking capabilities, but the management experience is CLI-only. Meanwhile:
+Running a home lab or small office network with a dedicated router gives you powerful networking capabilities, but the management experience is fragmented. Meanwhile:
 
+- **MikroTik RouterOS** has WinBox and WebFig, but no unified view combining router management with network-wide device awareness and monitoring.
 - **VyOS has no built-in web GUI** for day-to-day monitoring. You SSH in, run `show interfaces`, and parse text output.
 - **Network monitoring** requires separate tools: Fing (proprietary, SaaS-leaning), nmap (CLI), Zabbix/LibreNMS (massive overkill for a home network).
 - **Device awareness** is fragmented. You don't know what's on your network without actively scanning. New devices appear silently. Devices go offline without notification.
@@ -66,7 +67,7 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 
 **Primary persona:** A technical user (developer, sysadmin, homelab enthusiast) who:
 
-- Runs VyOS as their primary router (bare metal, VM, or container)
+- Runs MikroTik (RouterOS 7+) or VyOS as their primary router (bare metal, VM, or container)
 - Has 10–100 devices on the network (servers, workstations, IoT, phones)
 - Wants visibility into their network without deploying a full monitoring stack
 - Values self-hosting, open source, and low resource usage
@@ -76,7 +77,7 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 
 - Enterprise networks (hundreds of switches, SNMP polling at scale)
 - Non-technical users who need a plug-and-play router GUI
-- Multi-site / multi-router deployments (initially)
+- Multi-site deployments (initially)
 
 ---
 
@@ -84,25 +85,26 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 
 ### Goals
 
-| # | Goal |
-|---|------|
-| G1 | Provide a single-pane-of-glass view for a VyOS-based network |
-| G2 | Auto-discover and track all devices on the local network |
-| G3 | Offer optional lightweight agents for deep host-level telemetry |
-| G4 | Deliver a polished, UniFi-quality dark UI |
-| G5 | Maintain a complete IT asset inventory — hardware, OS, ownership, location — without external tools |
-| G6 | Support agentless SSH-based monitoring for hosts where installing an agent is not possible or desired |
-| G5 | Keep resource usage minimal — the server should run on a Raspberry Pi 4 |
-| G6 | Be easy to deploy: single binary + SQLite, no external dependencies |
-| G7 | Open-source (MIT or Apache 2.0) with a clean, contributor-friendly codebase |
+| # | Goal | Status |
+|---|------|--------|
+| G1 | Provide a single-pane-of-glass view for a MikroTik or VyOS-based network | ✅ Done |
+| G2 | Auto-discover and track all devices on the local network | ✅ Done |
+| G3 | Offer optional lightweight agents for deep host-level telemetry | ✅ Done |
+| G4 | Deliver a polished, UniFi-quality dark UI | ✅ Done |
+| G5 | Maintain a complete IT asset inventory — hardware, OS, ownership, location — without external tools | ✅ Done |
+| G6 | Support agentless SSH-based monitoring for hosts where installing an agent is not possible or desired | ✅ Done |
+| G7 | Keep resource usage minimal — the server should run on a Raspberry Pi 4 | ✅ Done |
+| G8 | Be easy to deploy: single binary + SQLite, no external dependencies | ✅ Done |
+| G9 | Open-source (MIT or Apache 2.0) with a clean, contributor-friendly codebase | ✅ Done |
+| G10 | Support multiple router backends (MikroTik primary, VyOS optional) | ✅ Done |
 
 ### Non-Goals
 
 | # | Non-Goal | Rationale |
 |---|----------|-----------|
-| NG1 | Support for non-VyOS routers (pfSense, OPNsense, MikroTik) | Focus first. Abstract later if there's demand. |
-| NG2 | Full configuration management for VyOS | Read-first. We show config, not replace the CLI for complex changes. |
-| NG3 | SNMP-based monitoring | Too complex, too legacy. Agents + ARP scanning cover our use cases. |
+| NG1 | ~~Support for non-VyOS routers~~ | **Resolved:** MikroTik is now the primary router. Multi-router architecture supports both MikroTik and VyOS. |
+| NG2 | Full configuration management for routers | Read-first approach for MikroTik. VyOS has extended write support (firewall rules, DNS, DHCP, WireGuard). |
+| NG3 | SNMP-based monitoring | Too complex, too legacy. Agents + ARP scanning + router REST APIs cover our use cases. |
 | NG4 | Multi-user / RBAC | Self-hosted, single-user. One admin password is enough. |
 | NG5 | Cloud/SaaS features | No phone-home, no accounts, no telemetry. Fully local. |
 | NG6 | Windows agents in MVP | Linux and macOS first. Windows later if demanded. |
@@ -111,117 +113,135 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 
 ## 5. Core Features
 
-### P0 — Must Have (MVP)
+### P0 — Must Have (MVP) — ✅ Complete
 
-#### F1: Dashboard
+#### F1: Dashboard ✅
 - Router status card: uptime, CPU, memory, interface summary
 - Active devices count (online now / total known)
-- Aggregate bandwidth (WAN in/out, current + sparkline)
-- Recent alerts feed (last 20)
+- Top devices by traffic
+- Recent alerts feed
 
-#### F2: Device Discovery & Management
-- **ARP scan** on configurable subnets (default: all VyOS LAN interfaces)
-- Scan runs on a schedule (default: every 60s) and on-demand
+#### F2: Device Discovery & Management ✅
+- **ARP scan** on configurable subnets (active + passive)
+- **mDNS/Bonjour** passive discovery
+- **SSDP (UPnP)** device discovery
+- Scan runs on a schedule (configurable) and on-demand
 - MAC → vendor lookup via local OUI database (IEEE MA-L, embedded at build time)
 - Device list with: IP, MAC, hostname (via DHCP lease or mDNS), vendor, first seen, last seen, online/offline status
 - Manual device tagging: custom name, icon, notes, "known" vs "unknown" flag
 - Online/offline history per device (state change log)
+- **Device fingerprinting:** multi-layer enrichment engine detecting OS family, device type, brand, and model via DHCP, hostname patterns, mDNS services, TTL analysis, and OUI lookup
 
-#### F3: VyOS Integration (Read-Only)
-- Connect to VyOS HTTP API (`https://<router>/retrieve`, `/configure`, `/show`)
-- Display: interfaces (name, IP, status, TX/RX counters), routing table, DHCP leases
-- Firewall rules viewer (zone-based, parsed into a readable table)
-- Connection test + health indicator in UI
+#### F3: Router Integration ✅
+- **MikroTik (Primary):** Connect to RouterOS 7+ REST API. Display: system status (uptime, CPU, memory, board info), interfaces (IPs, MACs, TX/RX, enable/disable), routes (view + create/delete static routes), DHCP leases, firewall rules, DNS configuration, WireGuard VPN. TTL-based caching for read operations. Settings page with connection test and enable/disable toggle.
+- **VyOS (Optional):** Connect to VyOS HTTP API. Display: system status, syslog, interfaces, routes, DHCP leases + static mappings, firewall rules (full CRUD + groups), DNS forwarding, WireGuard VPN peers. Configuration backup/restore with diff viewing. Settings page with connection test.
+- Connection test + health indicator in UI for both routers
 
-#### F4: Authentication
+#### F4: Authentication ✅
 - Single-user authentication: username + password (bcrypt-hashed, stored in SQLite)
 - Session-based auth with HTTP-only secure cookie
 - Initial setup wizard: set password on first launch
 - API key for agent authentication (generated in UI, revocable)
+- Login rate limiting
 
-#### F5: Alerts (Basic)
+#### F5: Alerts (Basic) ✅
 - New unknown device detected on network
-- Known device went offline (after configurable grace period, default: 5 min)
+- Known device went offline (after configurable grace period)
 - Known device came back online
-- Alert delivery: in-app feed only (MVP)
-- Alert storage in SQLite with read/unread status
+- Alert delivery: in-app feed with read/unread status, acknowledge, severity filtering
+- Alert storage in SQLite
 
-### P1 — Should Have (v0.2)
+### P1 — Should Have — ✅ Complete
 
-#### F6: Agent System
+#### F6: Agent System ✅
 - Lightweight Rust agent binary (~2–5 MB static binary)
+- WebSocket-based persistent connection for instant offline detection
 - Reports: CPU usage, memory usage, disk usage, network interfaces + traffic counters, OS info, uptime
 - Pre-built binaries for: `x86_64-linux-musl`, `aarch64-linux-musl`, `x86_64-apple-darwin`, `aarch64-apple-darwin`
 - Agent management UI: list agents, status, last report time, install instructions (copy-paste curl one-liner)
+- Binary installer download from UI
 - See [Section 7: Agent Design](#7-agent-design) for protocol details
 
-#### F7: Traffic Monitoring
-- Per-device bandwidth tracking (via VyOS interface counters + agent reports)
+#### F7: Traffic Monitoring ✅
+- Per-device bandwidth tracking (via router interface counters + agent reports + NetFlow)
 - Historical graphs: 1h / 24h / 7d / 30d views
 - Charts library: Recharts (React-native, composable, good dark theme support)
-- Data aggregation: raw samples → 1-min averages → 1-hour averages → 1-day averages (automatic rollup)
+- Data aggregation: raw samples → 1-min averages → 1-hour averages (automatic rollup)
+- NetFlow v5 UDP collector for traffic analysis
 
-#### F8: Topology View
+#### F8: Topology View ✅
 - Interactive network map: router at center, devices as nodes
 - Auto-layout based on subnet membership (router → subnet group → devices)
 - Device nodes show: icon (by type), name, IP, online/offline indicator
-- Click device → slide-in detail panel
-- Rendering: SVG with `d3-force` layout (not Canvas — better accessibility, easier interaction)
-- Manual position pinning (drag a device, it stays there)
+- Manual position pinning (drag a device, it stays there) with persistence
 
-#### F9: Alerts (Extended)
-- Webhook delivery (POST JSON to configurable URL → integrates with Telegram bots, Discord webhooks, ntfy, etc.)
-- Alert rules: high bandwidth threshold, agent CPU/memory threshold
-- Alert muting (per device or globally, with time window)
+#### F9: Alerts (Extended) ✅
+- Webhook delivery with auto-detection for Discord, ntfy.sh, Telegram, and generic JSON endpoints
+- Alert rules: high bandwidth threshold
+- Alert management: acknowledge, read/unread, severity filtering
 
-### P2 — Nice to Have (v0.3+)
+### P2 — Nice to Have
 
-#### F10: VyOS Configuration (Write)
-- Edit firewall rules via GUI (create/modify/delete)
-- Interface enable/disable toggle
-- DHCP static mapping management
-- DNS forwarding configuration
-- **Requires careful UX**: confirmation dialogs, diff preview before apply, rollback support
+#### F10: Router Configuration (Write) — Partial ✅
+- ✅ **VyOS:** Edit firewall rules via GUI (create/modify/delete), firewall groups (address, network, port), interface management, DHCP static mapping management, DNS forwarding configuration, WireGuard VPN peer management
+- ✅ **MikroTik:** Interface enable/disable toggle, static route create/delete, DNS configuration, WireGuard configuration
+- ✅ **Config backup/restore** with unified diff viewing and audit trail (VyOS)
+- [ ] Rollback support
 
-#### F11: Wake-on-LAN
+#### F11: Wake-on-LAN ✅
 - Send WoL magic packet to known devices (by MAC address)
 - Button on device card
 
 #### F12: Port Scanning
-- On-demand port scan of selected device (via nmap or custom Rust scanner)
-- Known-ports display on device card
-- Service identification (common ports → service name mapping)
+- [ ] On-demand port scan of selected device
+- [ ] Known-ports display on device card
+- [ ] Service identification
 
-#### F13: Network Speed Test
+#### F13: Network Speed Test ✅
+- ✅ Internet speed — Ookla speedtest CLI integration with automatic scheduling and history
+- [ ] LAN throughput — iperf3 between server and agents
+- [ ] SMB/NFS throughput testing
+- [ ] UDP jitter / packet loss
 
-**P0 (MVP):**
-- 🌐 **Internet speed** — Ookla speedtest CLI (`speedtest --format=json`). Run from the server. Shows download, upload, latency, jitter to nearest Ookla server.
-- 🔁 **LAN throughput** — iperf3 between server and a target agent (server initiates, agent runs iperf3 server mode on demand via WebSocket command). Shows raw TCP throughput between any two points on the network.
+#### F14: Export & API ✅
+- ✅ REST API for all data (devices, alerts, metrics) — dogfood the same API the UI uses
+- ✅ CSV/JSON export of device list, alert history, traffic data, assets
+- ✅ Prometheus metrics endpoint (`/metrics`) for integration with existing monitoring
 
-**P1:**
-- 📁 **SMB/NFS throughput** — mount a share, `dd` write/read test, report MB/s. Targets: TrueNAS shares. Useful for diagnosing NAS performance vs. network speed.
-- 🌍 **HTTP throughput** — curl download from a local endpoint (e.g., nginx on the server serving a test file) or an external CDN. Complements iperf3 (iperf3 = raw TCP; HTTP = application-layer reality check).
+#### F15: Nginx Proxy Manager (NPM) Integration ✅
+- Proxy host management (create, update, delete, toggle)
+- Redirection host configuration
+- SSL certificate management (Let's Encrypt + custom)
+- Stream (TCP/UDP) proxy configuration
+- Dead hosts (status monitoring)
+- Access lists (IP-based access control)
+- Dedicated settings page with connection test
 
-**P2:**
-- UDP jitter / packet loss — iperf3 UDP mode between agents
-- Mesh latency heatmap — agents ping each other, results displayed as a matrix (useful for detecting asymmetric paths)
+#### F16: Services Wizard ✅
+- Unified orchestration for deploying services: NPM proxy host + VyOS firewall rules + DNAT rules
+- Single API call with per-step status reporting
 
-#### F14: Export & API
-- REST API for all data (devices, alerts, metrics) — dogfood the same API the UI uses
-- CSV/JSON export of device list, alert history, traffic data
-- Prometheus metrics endpoint (`/metrics`) for integration with existing monitoring
+#### F17: Global Search ✅
+- Search across devices, agents, alerts, SSH hosts, and assets
+- Unified results with type indicators
+
+#### F18: Audit Log ✅
+- Full router operation audit trail (VyOS)
+- Action, command, and result tracking
+- Settings page for viewing audit history
 
 ---
 
-### P2 — Asset Management & Agentless SSH Monitoring (v0.4+)
+### P2 — Asset Management & Agentless SSH Monitoring — ✅ Complete
 
-#### F15: Agentless SSH Monitoring
+#### F19: Agentless SSH Monitoring ✅
 
 For hosts where you can't or don't want to install an agent, Panoptikon can SSH in directly and collect the same metrics.
 
 **How it works:**
 - Add an SSH target: hostname/IP, port, username, password or SSH key
 - Server polls periodically (configurable interval, default: 60s)
+- SSH connection pooling for efficient resource usage
 - Runs a minimal command set via SSH, parses output
 - Stores results in the same `ssh_reports` table, displays in the same UI as agent data
 
@@ -243,13 +263,11 @@ cat /proc/uptime | awk '{print $1}'
 hostname && cat /etc/os-release | grep -E '^(NAME|VERSION_ID)='
 ```
 
-**Credential storage:** password/key stored encrypted in SQLite (AES-256, key derived from admin password). Alternatively, reference an Infisical secret path (for self-hosters already using Infisical).
-
-**Status:** online if last poll succeeded, offline if SSH connection failed 3× in a row.
+**Status:** online if last poll succeeded, offline if SSH connection failed 3x in a row.
 
 **UI:** SSH Hosts page in sidebar. Table shows name, host, CPU%, RAM%, disk%, uptime, OS, last seen. Detail page: same CPU/RAM charts as agent detail. Test connection button.
 
-#### F16: IT Asset Inventory
+#### F20: IT Asset Inventory ✅
 
 A structured record for every asset in the infrastructure — servers, VMs, containers, workstations, network devices, storage, IoT.
 
@@ -281,22 +299,6 @@ A structured record for every asset in the infrastructure — servers, VMs, cont
 
 **Linking:** An asset can be linked to a discovered network device (by MAC/IP), to a Panoptikon agent (by agent ID), and to an SSH target (by IP). The UI merges these views automatically when the same host appears in multiple sources.
 
-**Asset list view:**
-- Filterable by type, status, tags, OS
-- Columns: name, type, IP, OS, CPU%, RAM%, disk%, online status, last seen
-- Sort by any column
-- Quick search (same as proxy hosts search)
-
-**Asset detail view:**
-- Full record with all fields
-- Live metrics panel if agent or SSH is connected (CPU/RAM sparklines)
-- Network history (when was it first seen, online/offline log)
-- Linked devices / agents / SSH targets
-- Edit inline
-
-**Why this matters:**
-Instead of maintaining a spreadsheet, Netbox instance, or wiki page for your homelab inventory, Panoptikon becomes the single source of truth. It knows what's on the network because it scans. It knows the hardware because the agents or SSH told it. Manual fields fill in the gaps.
-
 ---
 
 ## 6. Architecture & Tech Stack
@@ -304,36 +306,48 @@ Instead of maintaining a spreadsheet, Netbox instance, or wiki page for your hom
 ### System Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    Browser (User)                   │
-│              Next.js SPA (shadcn/ui, dark)          │
-└────────────┬────────────────────┬───────────────────┘
-             │ REST (CRUD)        │ WebSocket (live updates)
-             ▼                    ▼
-┌─────────────────────────────────────────────────────┐
-│                Rust API Server (axum)               │
-│                                                     │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌─────────┐ │
-│  │ REST API │ │ WS Hub   │ │ Scanner  │ │ VyOS    │ │
-│  │(devices, │ │ (push    │ │ (ARP,    │ │ Client  │ │
-│  │ alerts,  │ │  updates │ │  periodic│ │ (HTTP   │ │
-│  │ agents)  │ │  to UI)  │ │  sweep)  │ │  API)   │ │
-│  └──────────┘ └──────────┘ └──────────┘ └─────────┘ │
-│                     │                               │
-│            ┌────────┴────────┐                      │
-│            │   SQLite (sqlx) │                      │
-│            └─────────────────┘                      │
-└─────────────────────┬───────────────────────────────┘
-                      │ WebSocket (persistent, bidirectional)
-          ┌───────────┼───────────┐
-          ▼           ▼           ▼
-     ┌─────────┐ ┌─────────┐ ┌─────────┐
-     │ Agent   │ │ Agent   │ │ Agent   │
-     │ (Linux) │ │ (macOS) │ │ (RPi)   │
-     └─────────┘ └─────────┘ └─────────┘
-     ↑ reports every 30s, instant offline detection,
-       server can push commands (speedtest, scan, etc.)
+┌─────────────────────────────────────────────────────────────┐
+│                      Browser (User)                         │
+│                Next.js SPA (shadcn/ui, dark)                │
+└──────────┬──────────────────────┬───────────────────────────┘
+           │ REST (CRUD)          │ WebSocket (live updates)
+           ▼                      ▼
+┌─────────────────────────────────────────────────────────────┐
+│                  Rust API Server (axum)                      │
+│                                                              │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────────┐ │
+│  │ REST API │ │ WS Hub   │ │ Scanner  │ │ Router Clients │ │
+│  │(devices, │ │ (push    │ │ (ARP,    │ │ ┌────────────┐ │ │
+│  │ alerts,  │ │  updates │ │ mDNS,    │ │ │ MikroTik   │ │ │
+│  │ agents,  │ │  to UI)  │ │ SSDP,    │ │ │ (REST API) │ │ │
+│  │ assets,  │ │          │ │ NetFlow) │ │ ├────────────┤ │ │
+│  │ ssh,     │ │          │ │          │ │ │ VyOS       │ │ │
+│  │ npm)     │ │          │ │          │ │ │ (HTTP API) │ │ │
+│  └──────────┘ └──────────┘ └──────────┘ │ └────────────┘ │ │
+│                     │                    └────────────────┘ │
+│            ┌────────┴────────┐                              │
+│            │   SQLite (sqlx) │                              │
+│            └─────────────────┘                              │
+└───────────────────┬──────────────────┬──────────────────────┘
+                    │ WebSocket        │ SSH polling
+        ┌───────────┼───────────┐      │
+        ▼           ▼           ▼      ▼
+   ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌──────────┐
+   │ Agent   │ │ Agent   │ │ Agent   │ │ SSH      │
+   │ (Linux) │ │ (macOS) │ │ (RPi)   │ │ Targets  │
+   └─────────┘ └─────────┘ └─────────┘ └──────────┘
 ```
+
+### Router Integration Architecture
+
+Panoptikon supports a **multi-router architecture** with MikroTik as the primary/default router and VyOS as an optional secondary integration:
+
+| Router | API | Status | Default |
+|--------|-----|--------|---------|
+| **MikroTik** | RouterOS 7+ REST API | ✅ Primary | Default tab in Router page |
+| **VyOS** | VyOS HTTP API (1.3+) | ✅ Optional | Lazy-loaded, hidden unless enabled |
+
+Both integrations use TTL-based caching for read operations and cache invalidation middleware on mutations. Each router has its own settings page and can be independently enabled/disabled.
 
 ### Tech Stack Justification
 
@@ -355,25 +369,26 @@ The server ships as a **single binary** with the Next.js frontend **statically e
 
 ```bash
 # Install and run:
-curl -L https://github.com/oleg/netgui/releases/latest/download/netgui-linux-amd64 -o netgui
-chmod +x netgui
-./netgui --listen 0.0.0.0:8080
-# → SQLite database created at ./netgui.db
+curl -L https://github.com/BeFeast/panoptikon/releases/latest/download/panoptikon-linux-amd64 -o panoptikon
+chmod +x panoptikon
+./panoptikon --listen 0.0.0.0:8080
+# → SQLite database created at ./panoptikon.db
 # → Open http://localhost:8080
 ```
 
-No Docker required (though a Dockerfile will be provided). No Node.js runtime needed at deploy time. One binary, one database file.
+No Docker required (though a Dockerfile is provided). No Node.js runtime needed at deploy time. One binary, one database file.
 
-### Reference Deployment: Proxmox + VyOS
+### Reference Deployment: Proxmox + MikroTik
 
-**VyOS** runs as a **dedicated VM** on Proxmox (not the same container as NetGUI):
-- VyOS VM: 2 vCPUs, 512 MB RAM, 2 NICs (WAN passthrough / VLAN + LAN bridge `vmbr0`)
-- VyOS HTTP API enabled and reachable from LAN
+**MikroTik** runs as the primary router (hardware device, CHR VM, or container):
+- RouterOS 7+ with REST API enabled
+- API accessible from LAN
+- Enable REST API: `/ip/service set api-ssl address=10.10.0.0/24`
 
-**NetGUI** runs as an **unprivileged LXC** on the same Proxmox host:
+**Panoptikon** runs as an **unprivileged LXC** on a Proxmox host:
 - OS: Debian 12 (minimal)
 - Resources: 1 vCPU, 256 MB RAM, 2 GB disk (mostly SQLite)
-- Network: bridged to `vmbr0` (LAN) — **required** for ARP scanning to reach all devices
+- Network: bridged to LAN — **required** for ARP scanning to reach all devices
 - Required capabilities: `CAP_NET_RAW` (ARP raw sockets via pnet), `CAP_NET_ADMIN` (interface operations)
 
 ```ini
@@ -382,20 +397,22 @@ net0: name=eth0,bridge=vmbr0,ip=10.10.0.X/24,gw=10.10.0.1
 lxc.cap.keep: net_admin net_raw
 ```
 
-**Why not the same VM as VyOS?**  
-VyOS is a locked-down OS — packages installed outside the VyOS config system are wiped on upgrades. Mixing router OS with application code is a security and maintenance antipattern. Separate LXC = clean boundary: if NetGUI has a vulnerability, the router is not compromised.
+**Optional VyOS** — if running VyOS alongside MikroTik (e.g. as a dedicated firewall VM):
+- VyOS VM: 2 vCPUs, 512 MB RAM, 2 NICs
+- VyOS HTTP API enabled and reachable from LAN
+- Enable in Panoptikon Settings → VyOS Router
 
-**Why LXC and not a full VM?**  
-NetGUI is a single Rust binary + SQLite. A full VM (with its own kernel) wastes resources. LXC with `net_raw`/`net_admin` capabilities gives everything needed: raw ARP sockets work, interface stats work, no privilege issues.
+**Why LXC and not a full VM?**
+Panoptikon is a single Rust binary + SQLite. A full VM (with its own kernel) wastes resources. LXC with `net_raw`/`net_admin` capabilities gives everything needed: raw ARP sockets work, interface stats work, no privilege issues.
 
 ### Build Pipeline
 
 ```
-Frontend (Next.js):  npm run build → static export → /out/
+Frontend (Next.js):  bun run build → static export → /out/
                                                       ↓
 Backend (Rust):      cargo build --release ← rust-embed includes /out/
                                                       ↓
-                              Single binary: netgui (~15-25 MB)
+                              Single binary: panoptikon (~15-25 MB)
 ```
 
 ---
@@ -432,7 +449,7 @@ Backend (Rust):      cargo build --release ← rust-embed includes /out/
 
 ### Agent Authentication
 
-- On first install, the agent receives an **API key** (generated in the NetGUI web UI under Agent Management).
+- On first install, the agent receives an **API key** (generated in the Panoptikon web UI under Agent Management).
 - The API key is passed as `Authorization: Bearer <key>` header on every request.
 - API keys are stored bcrypt-hashed in the server's SQLite database.
 - Each API key is associated with an agent ID (UUID, generated server-side).
@@ -502,7 +519,7 @@ Content-Type: application/json
 ### Agent Binary Design
 
 ```
-netgui-agent
+panoptikon-agent
 ├── config.toml          # Server URL, API key, agent ID, report interval
 ├── collectors/
 │   ├── cpu.rs           # /proc/stat (Linux), sysctl (macOS)
@@ -513,11 +530,11 @@ netgui-agent
 └── main.rs              # Loop: collect → serialize → POST → sleep
 ```
 
-**Config file** (`/etc/netgui-agent/config.toml`):
+**Config file** (`/etc/panoptikon-agent/config.toml`):
 
 ```toml
 server_url = "http://10.10.0.25:8080"
-api_key = "ngui_a1b2c3d4e5f6..."
+api_key = "pan_a1b2c3d4e5f6..."
 agent_id = "550e8400-e29b-41d4-a716-446655440000"
 report_interval_seconds = 30
 ```
@@ -532,18 +549,18 @@ The UI generates a one-liner for each platform:
 
 ```bash
 # Linux (x86_64)
-curl -fsSL http://10.10.0.25:8080/api/v1/agent/install/linux-amd64?key=ngui_a1b2... | sh
+curl -fsSL http://10.10.0.25:8080/api/v1/agent/install/linux-amd64?key=pan_a1b2... | sh
 
 # Linux (aarch64 / Raspberry Pi)
-curl -fsSL http://10.10.0.25:8080/api/v1/agent/install/linux-arm64?key=ngui_a1b2... | sh
+curl -fsSL http://10.10.0.25:8080/api/v1/agent/install/linux-arm64?key=pan_a1b2... | sh
 
 # macOS (Apple Silicon)
-curl -fsSL http://10.10.0.25:8080/api/v1/agent/install/darwin-arm64?key=ngui_a1b2... | sh
+curl -fsSL http://10.10.0.25:8080/api/v1/agent/install/darwin-arm64?key=pan_a1b2... | sh
 ```
 
 The install script:
-1. Downloads the binary to `/usr/local/bin/netgui-agent`
-2. Writes config to `/etc/netgui-agent/config.toml`
+1. Downloads the binary to `/usr/local/bin/panoptikon-agent`
+2. Writes config to `/etc/panoptikon-agent/config.toml`
 3. Creates a systemd service (Linux) or launchd plist (macOS)
 4. Starts the service
 
@@ -561,7 +578,7 @@ The UI should feel like a network operations center — dark, information-dense,
 
 | Aspect | Specification |
 |--------|---------------|
-| **Theme** | Dark only (no light mode in MVP — focus and polish one thing) |
+| **Theme** | Dark only (no light mode — focus and polish one thing) |
 | **Background** | Near-black (`#0a0a0f` or similar), not pure black |
 | **Cards** | Slightly elevated surfaces (`#16161f`), subtle border (`#2a2a3a`), rounded corners (8px) |
 | **Accent color** | Electric blue (`#3b82f6`) for primary actions, active states, links |
@@ -573,25 +590,31 @@ The UI should feel like a network operations center — dark, information-dense,
 ### Layout
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│  ┌─────┐                                    🔔  👤     │
-│  │ N G │  NetGUI              Search...                 │
-│  └─────┘                                                │
-├─────────┬───────────────────────────────────────────────┤
-│         │                                               │
-│  📊 Dashboard                                           │
-│  🗺  Topology   ← Main content area                    │
-│  💻 Devices        (full width, scrollable)             │
-│  🤖 Agents                                              │
-│  🔀 Router                                              │
-│  📈 Traffic                                             │
-│  🔔 Alerts                                              │
-│  ⚙  Settings                                           │
-│         │                                               │
-└─────────┴───────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  ┌─────┐                                         🔔  👤     │
+│  │ PAN │  Panoptikon           Search...                     │
+│  └─────┘                                                     │
+├──────────┬───────────────────────────────────────────────────┤
+│          │                                                    │
+│  Dashboard                                                    │
+│  Devices      ← Main content area                            │
+│  Agents          (full width, scrollable)                     │
+│  Assets                                                       │
+│  SSH Hosts                                                    │
+│  Router                                                       │
+│  NPM                                                          │
+│  Services                                                     │
+│  Topology                                                     │
+│  Traffic                                                      │
+│  Alerts                                                       │
+│  Certificates                                                 │
+│  Settings                                                     │
+│          │                                                    │
+│  [WS: ●] [NPM: ●] v0.5.0                                   │
+└──────────┴───────────────────────────────────────────────────┘
 ```
 
-- **Sidebar:** Fixed, collapsible (icon-only mode), 240px expanded
+- **Sidebar:** Fixed, collapsible (icon-only mode), 240px expanded, with connection status indicators (WebSocket, NPM)
 - **Top bar:** App name/logo, global search, notification bell, user menu
 - **Content area:** Full remaining width, no max-width constraint (use the space)
 
@@ -617,6 +640,7 @@ The UI should feel like a network operations center — dark, information-dense,
 │  10.10.0.112                 │
 │  AA:BB:CC:DD:EE:FF           │
 │  Apple, Inc.                 │
+│  iOS · iPhone SE 2022        │
 │                              │
 │  Last seen: 2 min ago        │
 └──────────────────────────────┘
@@ -654,7 +678,9 @@ CREATE TABLE settings (
     key     TEXT PRIMARY KEY,
     value   TEXT NOT NULL
 );
--- Stores: admin_password_hash, vyos_url, vyos_api_key, scan_interval, etc.
+-- Stores: admin_password_hash, mikrotik_url, mikrotik_username, mikrotik_password,
+--         vyos_url, vyos_api_key, npm_url, npm_email, npm_password,
+--         scan_interval, webhook_url, etc.
 
 CREATE TABLE devices (
     id              TEXT PRIMARY KEY,  -- UUID
@@ -669,6 +695,13 @@ CREATE TABLE devices (
     first_seen_at   TEXT NOT NULL,     -- ISO 8601
     last_seen_at    TEXT NOT NULL,
     is_online       INTEGER DEFAULT 0,
+    -- Device fingerprinting fields
+    device_type     TEXT,              -- phone, tablet, laptop, desktop, router, printer, iot, etc.
+    os_family       TEXT,              -- iOS, Android, Windows, Linux, macOS, etc.
+    os_version      TEXT,
+    device_brand    TEXT,              -- Apple, Samsung, Google, etc.
+    device_model    TEXT,              -- iPhone SE 2022, Galaxy S24, etc.
+    enrichment_source TEXT,           -- dhcp, mdns, hostname, ttl, oui, manual
     created_at      TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -769,7 +802,7 @@ CREATE TABLE traffic_samples (
     sampled_at  TEXT NOT NULL,
     tx_bps      INTEGER,  -- bits per second
     rx_bps      INTEGER,
-    source      TEXT      -- 'agent', 'vyos', 'scan'
+    source      TEXT      -- 'agent', 'mikrotik', 'vyos', 'netflow', 'scan'
 );
 
 CREATE INDEX idx_traffic_samples_device ON traffic_samples(device_id, sampled_at);
@@ -838,96 +871,135 @@ A background task runs every hour to:
 5. Delete `alerts` older than 90 days
 6. Run `VACUUM` weekly (configurable)
 
+Data retention is configurable via Settings → Data Retention.
+
 This keeps the SQLite database small and fast. Target: <100 MB for a network with 50 devices, 10 agents, 1 year of history.
 
 ---
 
 ## 10. Milestones / MVP Scope
 
-### Milestone 0: Project Scaffolding (Week 1)
+### Milestone 0: Project Scaffolding ✅
 
-- [ ] Repository setup (monorepo: `/server`, `/agent`, `/web`)
-- [ ] Rust workspace with axum skeleton (hello world, health endpoint)
-- [ ] Next.js project with Tailwind + shadcn/ui configured, dark theme
-- [ ] SQLite database setup with sqlx migrations
-- [ ] CI: GitHub Actions for Rust build + frontend build + lint
-- [ ] Basic Dockerfile
+- [x] Repository setup (monorepo: `/server`, `/web`)
+- [x] Rust workspace with axum skeleton (hello world, health endpoint)
+- [x] Next.js project with Tailwind + shadcn/ui configured, dark theme
+- [x] SQLite database setup with sqlx migrations
+- [x] CI: GitHub Actions for Rust build + frontend build + lint
+- [x] Basic Dockerfile
 
-### Milestone 1: MVP — Device Discovery + Dashboard (Weeks 2–4)
+### Milestone 1: MVP — Device Discovery + Dashboard ✅
 
-- [ ] **Authentication:** Password setup, login, session cookies
-- [ ] **VyOS client:** Connect, fetch interfaces, DHCP leases, basic stats
-- [ ] **ARP scanner:** Periodic subnet scan, discover devices
-- [ ] **Device management:** List, auto-create on discovery, manual edit (name, icon, notes)
-- [ ] **OUI lookup:** Embedded vendor database, MAC → vendor resolution
-- [ ] **Dashboard:** Router status card, device count, recent activity
-- [ ] **Device list page:** Table/grid view, search, filter by online/offline/known
-- [ ] **Online/offline detection:** State change tracking, grace period
-- [ ] **Alerts (basic):** New device, offline/online state changes, in-app feed
-- [ ] **WebSocket:** Live updates to UI when device state changes
-- [ ] **Static frontend embedding:** Build and embed Next.js output in Rust binary
-- [ ] **Settings page:** VyOS connection, scan interval, password change
+- [x] **Authentication:** Password setup, login, session cookies, rate limiting
+- [x] **MikroTik client:** Connect to RouterOS 7+ REST API, fetch system status, interfaces, DHCP leases, routes, firewall, DNS, WireGuard
+- [x] **VyOS client:** Connect, fetch interfaces, DHCP leases, basic stats (optional, lazy-loaded)
+- [x] **ARP scanner:** Periodic subnet scan, discover devices (active + passive)
+- [x] **mDNS/SSDP discovery:** Passive device discovery via Bonjour and UPnP
+- [x] **Device management:** List, auto-create on discovery, manual edit (name, icon, notes)
+- [x] **Device fingerprinting:** Multi-layer enrichment (DHCP, hostname, mDNS, TTL, OUI) for automatic OS/type/brand/model detection
+- [x] **OUI lookup:** Embedded vendor database, MAC → vendor resolution
+- [x] **Dashboard:** Router status card, device count, top devices, recent activity
+- [x] **Device list page:** Table/grid view, search, filter by online/offline/known
+- [x] **Online/offline detection:** State change tracking, ping-based uptime monitoring
+- [x] **Alerts:** New device, offline/online state changes, in-app feed with severity filtering
+- [x] **WebSocket:** Live updates to UI when device state changes
+- [x] **Settings page:** MikroTik connection, VyOS connection (optional), NPM connection, scanner config, webhook, data retention, speedtest, audit log, config backup, password change
 
-**MVP definition of done:** A user can download one binary, run it, set a password, connect to their VyOS router, and see all devices on their network in a polished dark UI with live online/offline status and alerts.
+### Milestone 2: Agents + Traffic + SSH ✅
 
-### Milestone 2: Agents + Traffic (Weeks 5–8)
+- [x] **Agent binary:** Cross-compiled for multiple targets
+- [x] **Agent registration:** API key generation, agent management UI, binary installer download
+- [x] **Agent reports endpoint:** Receive, validate, store via WebSocket
+- [x] **Device ↔ Agent linking:** Match agent's MAC to discovered device
+- [x] **Traffic monitoring:** Per-device bandwidth graphs (1h/24h/7d/30d), NetFlow collector
+- [x] **Data aggregation:** Background rollup tasks (per-minute → hourly)
+- [x] **SSH monitoring:** Agentless remote machine monitoring with connection pooling
+- [x] **IT asset inventory:** Full asset management with type, location, owner, hardware details
 
-- [ ] **Agent binary:** Cross-compiled for 4 targets
-- [ ] **Agent registration:** API key generation, agent management UI
-- [ ] **Agent reports endpoint:** Receive, validate, store
-- [ ] **Device ↔ Agent linking:** Match agent's MAC to discovered device
-- [ ] **Device detail panel:** Slide-in panel with agent telemetry (CPU, RAM, disk, network)
-- [ ] **Traffic monitoring:** Per-device bandwidth graphs (Recharts)
-- [ ] **Data aggregation:** Background rollup tasks
-- [ ] **VyOS extended:** Routing table view, firewall rules viewer
+### Milestone 3: Topology + Polish + Integrations ✅
 
-### Milestone 3: Topology + Polish (Weeks 9–12)
+- [x] **Topology view:** SVG network map with d3-force layout
+- [x] **Manual topology editing:** Pin positions (persisted)
+- [x] **Extended alerts:** Webhook delivery (Discord, ntfy.sh, Telegram, generic JSON), bandwidth thresholds
+- [x] **Alert management:** Acknowledge, read/unread, severity filtering
+- [x] **Search:** Global search across devices, agents, alerts, SSH hosts, assets
+- [x] **Export:** CSV/JSON export for devices, traffic, alerts, assets
+- [x] **Prometheus metrics:** `/metrics` endpoint
+- [x] **NPM integration:** Full Nginx Proxy Manager management (proxy hosts, redirections, SSL, streams, dead hosts, access lists)
+- [x] **Services wizard:** Unified NPM + VyOS firewall + DNAT deployment
+- [x] **Speedtest:** Ookla integration with scheduling and history
+- [x] **Audit log:** Router operation tracking
+- [x] **Config backup:** VyOS configuration backup/restore with diff viewing
 
-- [ ] **Topology view:** SVG network map with d3-force layout
-- [ ] **Manual topology editing:** Pin positions, group devices
-- [ ] **Extended alerts:** Webhook delivery, bandwidth thresholds
-- [ ] **Alert management:** Mute, acknowledge, filter
-- [ ] **Search:** Global search across devices, IPs, MACs, names
+### Milestone 4: Future (Planned)
+
+- [ ] **Port scanning:** On-demand port scan with service identification
+- [ ] **LAN speed test:** iperf3 between server and agents
+- [ ] **Agent auto-update:** Server pushes updates to agents
+- [ ] **Topology:** Subnet grouping, device type grouping
 - [ ] **Release pipeline:** GitHub Releases, pre-built binaries (4 platforms + agent binaries)
-- [ ] **Documentation:** README, install guide, agent guide, screenshots
-- [ ] **Landing page / demo:** Static page or screenshots for the repo
 
 ---
 
 ## 11. Open Questions
 
-### Architecture & Design
+### Architecture & Design — Resolved
 
-| # | Question | Leaning | Notes |
-|---|----------|---------|-------|
-| Q1 | **License: MIT or Apache 2.0?** | MIT | Simpler, more permissive, homelab community prefers it. Apache 2.0 has patent clause which is nice but adds complexity. |
-| Q2 | **Monorepo or separate repos?** | Monorepo | Server, agent, and frontend are tightly coupled. One repo, one version, one CI. |
-| Q3 | **Next.js App Router or Pages Router?** | App Router | It's 2026, App Router is stable. Server Components for initial load, Client Components for interactive parts. |
-| Q4 | **Should the frontend be SSR or static export?** | Static export | We embed it in the Rust binary. No Node.js runtime at deploy time. API calls from client-side. SSR is unnecessary for a single-user local dashboard. |
-| Q5 | **VyOS API key storage: in SQLite or config file?** | SQLite (encrypted at rest with app-level key derived from admin password) | Simpler than managing a separate config file. But encryption adds complexity — might just store plaintext in SQLite for MVP and add encryption later. |
+| # | Question | Resolution |
+|---|----------|------------|
+| Q1 | **License: MIT or Apache 2.0?** | MIT — simpler, more permissive, homelab community prefers it. |
+| Q2 | **Monorepo or separate repos?** | Monorepo — server and frontend tightly coupled. One repo, one version, one CI. |
+| Q3 | **Next.js App Router or Pages Router?** | App Router — stable, Server Components for initial load. |
+| Q4 | **Should the frontend be SSR or static export?** | Static export — embedded in Rust binary, no Node.js runtime at deploy time. |
+| Q5 | **Router API key storage?** | SQLite — stored in settings table. |
+| Q11 | **Should we support multiple routers?** | Yes — MikroTik (primary) + VyOS (optional). Multi-router architecture implemented. |
 
-### Technical Unknowns
+### Technical Unknowns — Mostly Resolved
 
-| # | Question | Impact | Plan |
-|---|----------|--------|------|
-| Q6 | **VyOS API compatibility across versions** | Could break VyOS integration | Test against VyOS 1.4 (sagitta) and 1.5 (circinus). Document minimum supported version. |
-| Q7 | **ARP scanning without root** | Scanner won't work in unprivileged mode | Recommend running as root or with `CAP_NET_RAW`. Fallback: parse VyOS DHCP leases only (no active scanning). |
-| Q8 | **Agent auto-update mechanism** | Without it, agents get stale | Defer to v0.3. For now, agents report their version; UI shows "update available" badge. User re-runs install script manually. |
-| Q9 | **Time-series database migration** | SQLite may struggle with very high-frequency metrics at scale | Design the aggregation tables now. If SQLite becomes a bottleneck (unlikely for <100 devices), add optional InfluxDB/TimescaleDB backend behind a trait. |
-| Q10 | **mDNS/DNS-SD for hostname discovery** | Some devices don't appear in DHCP leases | Implement mDNS listener in P1. For MVP, rely on DHCP lease hostnames from VyOS. |
+| # | Question | Status |
+|---|----------|--------|
+| Q6 | **MikroTik API compatibility** | Resolved: targeting RouterOS 7+ REST API. |
+| Q7 | **ARP scanning without root** | Resolved: recommend `CAP_NET_RAW`. Fallback to passive discovery (mDNS, SSDP, DHCP leases). |
+| Q8 | **Agent auto-update mechanism** | Deferred: agents report version, user manually updates. |
+| Q9 | **Time-series database migration** | Resolved: SQLite with aggregation tables works well for <100 devices. |
+| Q10 | **mDNS/DNS-SD for hostname discovery** | Resolved: mDNS passive listener implemented. |
 
 ### Product Questions
 
 | # | Question | Notes |
 |---|----------|-------|
-| Q11 | **Should we support multiple VyOS routers?** | Not in MVP. Single router assumption simplifies everything. Revisit if people ask. |
-| Q12 | **Should agents support custom plugins/checks?** | Tempting but scope-creepy. Defer to post-v1. Keep the agent payload fixed. |
-| Q13 | **Is there value in a mobile companion app?** | No. Responsive web is sufficient. Native mobile app is a maintenance burden for a homelab tool. |
-| Q14 | **Community features: device database, shared OUI updates?** | No phone-home. OUI database ships with the binary. Users can manually update. |
+| Q12 | **Should agents support custom plugins/checks?** | Deferred to post-v1. Keep the agent payload fixed. |
+| Q13 | **Is there value in a mobile companion app?** | No. Responsive web is sufficient. |
+| Q14 | **Community features: device database, shared OUI updates?** | No phone-home. OUI database ships with the binary. |
 
 ---
 
-## Appendix A: VyOS HTTP API Reference
+## Appendix A: MikroTik RouterOS REST API Reference
+
+The MikroTik RouterOS 7+ REST API exposes resources at `https://<router>/rest/`:
+
+```
+GET  /rest/system/resource         → system status (CPU, memory, uptime, board)
+GET  /rest/interface                → all interfaces (name, type, MAC, TX/RX bytes)
+GET  /rest/ip/address               → IP addresses
+GET  /rest/ip/route                 → routing table
+POST /rest/ip/route/add             → create static route
+DELETE /rest/ip/route/<id>          → delete route
+GET  /rest/ip/dhcp-server/lease     → DHCP leases
+GET  /rest/ip/firewall/filter       → firewall filter rules
+GET  /rest/ip/dns                   → DNS settings
+PATCH /rest/ip/dns                  → update DNS settings
+GET  /rest/interface/wireguard      → WireGuard interfaces
+GET  /rest/interface/wireguard/peers → WireGuard peers
+```
+
+Authentication: HTTP Basic Auth with RouterOS username and password. API must be enabled in RouterOS:
+
+```
+/ip service set api-ssl disabled=no
+```
+
+## Appendix B: VyOS HTTP API Reference
 
 The VyOS HTTP API (available since VyOS 1.3) exposes these relevant endpoints:
 
@@ -944,7 +1016,6 @@ POST /show
 
 POST /configure
   {"op": "set", "path": ["firewall", "name", "WAN_IN", ...]}
-  (Not used in MVP — read-only first)
 ```
 
 All requests require `key=<api_key>` parameter. API must be explicitly enabled in VyOS config:
@@ -954,9 +1025,9 @@ set service https api keys id MY_KEY key 'your-api-key-here'
 set service https api
 ```
 
-## Appendix B: Similar / Related Projects
+## Appendix C: Similar / Related Projects
 
-| Project | Similarity | Why NetGUI is different |
+| Project | Similarity | Why Panoptikon is different |
 |---------|-----------|------------------------|
 | UniFi Network | UI inspiration | Proprietary, Ubiquiti hardware only |
 | Fing | Device discovery | Proprietary, SaaS-heavy, no router integration |
@@ -964,9 +1035,10 @@ set service https api
 | Uptime Kuma | Alert/monitoring | HTTP endpoint monitoring only, no network scanning |
 | Homepage (gethomepage.dev) | Dashboard | Widget-based, no network scanning or router management |
 | Netdata | Agent monitoring | Excellent agent, but no network discovery or router management |
+| The Dude (MikroTik) | Network monitoring | MikroTik-only, desktop app, no modern web UI, no asset management |
 
-NetGUI's unique position: **router management + network discovery + lightweight agents**, all in one polished self-hosted tool.
+Panoptikon's unique position: **multi-router management (MikroTik + VyOS) + network discovery + device fingerprinting + lightweight agents + reverse proxy management**, all in one polished self-hosted tool.
 
 ---
 
-*This document is a living draft. Update it as decisions are made and implementation reveals new constraints.*
+*This document is actively maintained. Last updated: 2026-02-23 (v0.5.0 — MikroTik-first architecture).*
