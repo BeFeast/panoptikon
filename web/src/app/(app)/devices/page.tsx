@@ -362,6 +362,7 @@ export default function DevicesPage() {
                 <TableHead className="text-slate-400">Vendor</TableHead>
                 <TableHead className="text-slate-400">Agent</TableHead>
                 <TableHead className="text-slate-400">Last Seen</TableHead>
+                <TableHead className="w-16 text-slate-400" />
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -375,6 +376,7 @@ export default function DevicesPage() {
                   <TableCell><Skeleton className="h-3 w-20" /></TableCell>
                   <TableCell><Skeleton className="h-3 w-12" /></TableCell>
                   <TableCell><Skeleton className="h-3 w-16" /></TableCell>
+                  <TableCell />
                 </TableRow>
               ))}
             </TableBody>
@@ -443,6 +445,7 @@ function DeviceCard({
   device: Device;
   onClick: () => void;
 }) {
+  const [waking, setWaking] = useState(false);
   const ips = device.ips ?? [];
   const primaryIp = ips[0] ?? "—";
   const displayName = device.custom_name ?? device.name ?? device.hostname ?? "Unknown Device";
@@ -453,6 +456,21 @@ function DeviceCard({
       ? (device.custom_vendor ?? device.vendor)!.slice(0, 20) + "…"
       : (device.custom_vendor ?? device.vendor)
     : null;
+
+  const canWake = !device.is_online && device.mac && !device.is_randomized_mac;
+
+  const handleWake = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setWaking(true);
+    try {
+      await wakeDevice(device.id);
+      toast.success("Magic packet sent! Device should wake up shortly.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send magic packet");
+    } finally {
+      setWaking(false);
+    }
+  };
 
   return (
     <Card
@@ -562,6 +580,20 @@ function DeviceCard({
             Last seen {timeAgo(device.last_seen_at)}
           </p>
         )}
+
+        {/* Wake-on-LAN button — offline devices with known MAC */}
+        {canWake && (
+          <Button
+            variant="secondary"
+            size="sm"
+            className="mt-3 w-full gap-2"
+            disabled={waking}
+            onClick={handleWake}
+          >
+            <Power className="h-3.5 w-3.5" />
+            {waking ? "Sending…" : "Wake"}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
@@ -591,6 +623,21 @@ function DevicesTable({
   onSort: (field: SortField) => void;
   onSelect: (device: Device) => void;
 }) {
+  const [wakingId, setWakingId] = useState<string | null>(null);
+
+  const handleWake = async (e: React.MouseEvent, device: Device) => {
+    e.stopPropagation();
+    setWakingId(device.id);
+    try {
+      await wakeDevice(device.id);
+      toast.success("Magic packet sent! Device should wake up shortly.");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to send magic packet");
+    } finally {
+      setWakingId(null);
+    }
+  };
+
   return (
     <div className="rounded-md border border-slate-800 bg-slate-900">
       <Table>
@@ -622,6 +669,7 @@ function DevicesTable({
               Last Seen
               <SortIcon field="last_seen_at" sortField={sortField} sortDir={sortDir} />
             </TableHead>
+            <TableHead className="w-16 text-slate-400" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -633,6 +681,7 @@ function DevicesTable({
                 ? device.vendor.slice(0, 20) + "…"
                 : device.vendor
               : "—";
+            const canWake = !device.is_online && device.mac && !device.is_randomized_mac;
 
             return (
               <TableRow
@@ -690,6 +739,21 @@ function DevicesTable({
                 </TableCell>
                 <TableCell className="text-xs text-slate-500">
                   {timeAgo(device.last_seen_at)}
+                </TableCell>
+                <TableCell>
+                  {canWake && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1.5 text-xs text-slate-400 hover:text-white"
+                      disabled={wakingId === device.id}
+                      onClick={(e) => handleWake(e, device)}
+                      title="Send Wake-on-LAN magic packet"
+                    >
+                      <Power className="h-3.5 w-3.5" />
+                      {wakingId === device.id ? "Sending…" : "Wake"}
+                    </Button>
+                  )}
                 </TableCell>
               </TableRow>
             );
