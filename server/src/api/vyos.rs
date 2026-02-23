@@ -2027,6 +2027,10 @@ pub async fn create_firewall_rule(
 
     audit::log_success(&state.db, "firewall_rule_create", &description, &commands).await;
 
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after firewall rule create: {e}");
+    }
+
     Ok(Json(VyosWriteResponse {
         success: true,
         message: format!("Rule {} created in {}", body.number, path.chain),
@@ -2133,6 +2137,10 @@ pub async fn update_firewall_rule(
 
     audit::log_success(&state.db, "firewall_rule_update", &description, &commands).await;
 
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after firewall rule update: {e}");
+    }
+
     Ok(Json(VyosWriteResponse {
         success: true,
         message: format!("Rule {} updated in {}", path.number, path.chain),
@@ -2185,6 +2193,9 @@ pub async fn delete_firewall_rule(
     match client.configure_delete(&base_strs).await {
         Ok(_) => {
             audit::log_success(&state.db, "firewall_rule_delete", &description, &commands).await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after firewall rule delete: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Rule {} deleted from {}", path.number, path.chain),
@@ -2274,6 +2285,9 @@ pub async fn toggle_firewall_rule(
     match result {
         Ok(_) => {
             audit::log_success(&state.db, "firewall_rule_toggle", &description, &commands).await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after firewall rule toggle: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Rule {} {}d in {}", path.number, action, path.chain),
@@ -2421,6 +2435,9 @@ pub async fn interface_toggle(
     match result {
         Ok(_) => {
             audit::log_success(&state.db, "interface_toggle", &description, &commands).await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after interface toggle: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Interface {name} {action}d successfully"),
@@ -2723,6 +2740,10 @@ pub async fn create_dhcp_static_mapping(
     )
     .await;
 
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after DHCP static mapping create: {e}");
+    }
+
     Ok(Json(VyosWriteResponse {
         success: true,
         message: format!(
@@ -2793,6 +2814,9 @@ pub async fn delete_dhcp_static_mapping(
                 &commands,
             )
             .await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after DHCP static mapping delete: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Static mapping '{}' deleted", path.name),
@@ -3046,6 +3070,9 @@ pub async fn dhcp_subnet_toggle(
         match client.configure_set(&base).await {
             Ok(_) => {
                 audit::log_success(&state.db, "dhcp_subnet_toggle", &description, &commands).await;
+                if let Err(e) = client.config_save().await {
+                    tracing::warn!("config-file save failed after DHCP subnet toggle: {e}");
+                }
                 Ok(Json(VyosWriteResponse {
                     success: true,
                     message: format!("DHCP disabled on subnet {}", path.subnet),
@@ -3079,6 +3106,9 @@ pub async fn dhcp_subnet_toggle(
         match client.configure_delete(&base).await {
             Ok(_) => {
                 audit::log_success(&state.db, "dhcp_subnet_toggle", &description, &commands).await;
+                if let Err(e) = client.config_save().await {
+                    tracing::warn!("config-file save failed after DHCP subnet toggle: {e}");
+                }
                 Ok(Json(VyosWriteResponse {
                     success: true,
                     message: format!("DHCP enabled on subnet {}", path.subnet),
@@ -3090,6 +3120,9 @@ pub async fn dhcp_subnet_toggle(
                 if msg.contains("does not exist") || msg.contains("empty") {
                     audit::log_success(&state.db, "dhcp_subnet_toggle", &description, &commands)
                         .await;
+                    if let Err(e) = client.config_save().await {
+                        tracing::warn!("config-file save failed after DHCP subnet toggle: {e}");
+                    }
                     return Ok(Json(VyosWriteResponse {
                         success: true,
                         message: format!("DHCP already enabled on subnet {}", path.subnet),
@@ -3245,6 +3278,10 @@ pub async fn update_dhcp_static_mapping(
     )
     .await;
 
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after DHCP static mapping update: {e}");
+    }
+
     Ok(Json(VyosWriteResponse {
         success: true,
         message: format!(
@@ -3396,6 +3433,10 @@ pub async fn create_static_route(
                 .await;
         }
 
+        if let Err(e) = client.config_save().await {
+            tracing::warn!("config-file save failed after static route create: {e}");
+        }
+
         Ok(Json(VyosWriteResponse {
             success: true,
             message: format!("Blackhole route for {} created", body.destination),
@@ -3465,6 +3506,10 @@ pub async fn create_static_route(
             }
         }
 
+        if let Err(e) = client.config_save().await {
+            tracing::warn!("config-file save failed after static route create: {e}");
+        }
+
         Ok(Json(VyosWriteResponse {
             success: true,
             message: format!("Static route {} via {} created", body.destination, next_hop),
@@ -3496,10 +3541,15 @@ pub async fn delete_static_route(
         .await;
 
     match result {
-        Ok(_) => Ok(Json(VyosWriteResponse {
-            success: true,
-            message: format!("Static route {} deleted", destination),
-        })),
+        Ok(_) => {
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after static route delete: {e}");
+            }
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Static route {} deleted", destination),
+            }))
+        }
         Err(e) => {
             tracing::error!("VyOS static route delete failed: {e}");
             Err((
@@ -3894,6 +3944,10 @@ pub async fn create_address_group(
     )
     .await;
 
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after address group create: {e}");
+    }
+
     Ok(Json(VyosWriteResponse {
         success: true,
         message: format!("Address group '{}' created", body.name),
@@ -3926,6 +3980,9 @@ pub async fn delete_address_group(
     {
         Ok(_) => {
             audit::log_success(&state.db, "address_group_delete", &description, &commands).await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after address group delete: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Address group '{name}' deleted"),
@@ -4009,6 +4066,9 @@ pub async fn add_address_group_member(
                 &commands,
             )
             .await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after address group member add: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Address '{}' added to group '{name}'", body.value),
@@ -4077,6 +4137,9 @@ pub async fn remove_address_group_member(
                 &commands,
             )
             .await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after address group member remove: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Address '{value}' removed from group '{name}'"),
@@ -4234,6 +4297,10 @@ pub async fn create_network_group(
     )
     .await;
 
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after network group create: {e}");
+    }
+
     Ok(Json(VyosWriteResponse {
         success: true,
         message: format!("Network group '{}' created", body.name),
@@ -4266,6 +4333,9 @@ pub async fn delete_network_group(
     {
         Ok(_) => {
             audit::log_success(&state.db, "network_group_delete", &description, &commands).await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after network group delete: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Network group '{name}' deleted"),
@@ -4349,6 +4419,9 @@ pub async fn add_network_group_member(
                 &commands,
             )
             .await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after network group member add: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Network '{}' added to group '{name}'", body.value),
@@ -4417,6 +4490,9 @@ pub async fn remove_network_group_member(
                 &commands,
             )
             .await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after network group member remove: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Network '{value}' removed from group '{name}'"),
@@ -4561,6 +4637,10 @@ pub async fn create_port_group(
 
     audit::log_success(&state.db, "port_group_create", &audit_desc, &audit_commands).await;
 
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after port group create: {e}");
+    }
+
     Ok(Json(VyosWriteResponse {
         success: true,
         message: format!("Port group '{}' created", body.name),
@@ -4593,6 +4673,9 @@ pub async fn delete_port_group(
     {
         Ok(_) => {
             audit::log_success(&state.db, "port_group_delete", &description, &commands).await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after port group delete: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Port group '{name}' deleted"),
@@ -4667,6 +4750,9 @@ pub async fn add_port_group_member(
     {
         Ok(_) => {
             audit::log_success(&state.db, "port_group_member_add", &description, &commands).await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after port group member add: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Port '{}' added to group '{name}'", body.value),
@@ -4728,6 +4814,9 @@ pub async fn remove_port_group_member(
                 &commands,
             )
             .await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after port group member remove: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Port '{value}' removed from group '{name}'"),
@@ -4932,6 +5021,9 @@ pub async fn add_dns_name_server(
                 &audit_commands,
             )
             .await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after DNS name server add: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Name server {} added", body.server),
@@ -4995,6 +5087,9 @@ pub async fn delete_dns_name_server(
                 &audit_commands,
             )
             .await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after DNS name server delete: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Name server {} removed", server),
@@ -5111,6 +5206,9 @@ pub async fn add_dns_domain_override(
                 &audit_commands,
             )
             .await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after DNS domain override add: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Domain override {} -> {} added", body.domain, body.server),
@@ -5202,6 +5300,9 @@ pub async fn edit_dns_domain_override(
                 &audit_commands,
             )
             .await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after DNS domain override edit: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Domain override {} updated to {}", domain, body.server),
@@ -5262,6 +5363,9 @@ pub async fn delete_dns_domain_override(
                 &audit_commands,
             )
             .await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after DNS domain override delete: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Domain override {} deleted", domain),
@@ -6035,6 +6139,10 @@ pub async fn wireguard_create(
     )
     .await;
 
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after WireGuard interface create: {e}");
+    }
+
     Ok(Json(WireguardKeyPair {
         private_key: "***".to_string(), // Never return the server private key
         public_key,
@@ -6116,6 +6224,9 @@ pub async fn wireguard_delete(
                 &commands,
             )
             .await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after WireGuard interface delete: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("WireGuard interface {} deleted", name),
@@ -6309,6 +6420,10 @@ pub async fn wireguard_add_peer(
 
     audit::log_success(&state.db, "wireguard_peer_add", &description, &commands).await;
 
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after WireGuard peer add: {e}");
+    }
+
     Ok(Json(VyosWriteResponse {
         success: true,
         message: format!("Peer {} added to {}", body.name, name),
@@ -6357,6 +6472,9 @@ pub async fn wireguard_delete_peer(
     {
         Ok(_) => {
             audit::log_success(&state.db, "wireguard_peer_delete", &description, &commands).await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after WireGuard peer delete: {e}");
+            }
             Ok(Json(VyosWriteResponse {
                 success: true,
                 message: format!("Peer {} deleted from {}", params.peer, params.name),
@@ -6560,6 +6678,10 @@ pub async fn wireguard_generate_client_config(
         &commands,
     )
     .await;
+
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after WireGuard client config generate: {e}");
+    }
 
     Ok(Json(ClientConfigResponse {
         config,

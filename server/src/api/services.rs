@@ -483,6 +483,10 @@ async fn create_firewall_step(
         return step_fail("firewall_rule", &format!("Failed to set description: {e}"));
     }
 
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after service firewall rule create: {e}");
+    }
+
     info!(
         "VyOS firewall rule {} created in chain {}",
         rule_number, chain
@@ -615,6 +619,10 @@ async fn create_dnat_step(state: &AppState, body: &AddServiceRequest, _desc: &st
     if let Err(e) = client.configure_set(&path).await {
         let _ = client.configure_delete(&base_path).await;
         return step_fail("dnat_rule", &format!("Failed to set translation port: {e}"));
+    }
+
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after service DNAT rule create: {e}");
     }
 
     info!("VyOS DNAT rule {} created", rule_number);
@@ -813,6 +821,9 @@ async fn remove_firewall_rule(state: &AppState, resource: &RemoveResource) -> St
 
     match client.configure_delete(&path).await {
         Ok(_) => {
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after service firewall rule delete: {e}");
+            }
             info!(
                 "VyOS firewall rule {} deleted from chain {}",
                 resource.resource_id, chain
@@ -852,6 +863,9 @@ async fn remove_dnat_rule(state: &AppState, resource: &RemoveResource) -> StepRe
 
     match client.configure_delete(&path).await {
         Ok(_) => {
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after service DNAT rule delete: {e}");
+            }
             info!("VyOS DNAT rule {} deleted", resource.resource_id);
             StepResult {
                 step: "remove_dnat_rule".into(),
