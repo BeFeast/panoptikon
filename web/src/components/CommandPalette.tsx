@@ -1,15 +1,19 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { Command } from 'cmdk'
 import {
   Activity,
   Bell,
+  BellPlus,
   Cpu,
   LayoutDashboard,
   Monitor,
   MonitorSmartphone,
   Package,
+  Plus,
+  Radar,
   Router,
   Search,
   Settings,
@@ -18,47 +22,39 @@ import {
 import { searchAll } from '@/lib/api'
 import type { SearchDevice, SearchAgent, SearchSshTarget, SearchAsset } from '@/lib/types'
 import type { LucideIcon } from 'lucide-react'
+import { toast } from 'sonner'
 
-interface PaletteItem {
-  id: string
-  label: string
-  sublabel?: string
-  href: string
-  icon?: LucideIcon
-  section: 'pages' | 'devices' | 'actions'
-  isOnline?: boolean
+interface SearchResults {
+  devices: SearchDevice[]
+  agents: SearchAgent[]
+  ssh_targets: SearchSshTarget[]
+  assets: SearchAsset[]
 }
 
-const PAGES: PaletteItem[] = [
-  { id: 'page-dashboard', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, section: 'pages' },
-  { id: 'page-devices', label: 'Devices', href: '/devices', icon: MonitorSmartphone, section: 'pages' },
-  { id: 'page-agents', label: 'Agents', href: '/agents', icon: Cpu, section: 'pages' },
-  { id: 'page-traffic', label: 'Traffic', href: '/traffic', icon: Activity, section: 'pages' },
-  { id: 'page-alerts', label: 'Alerts', href: '/alerts', icon: Bell, section: 'pages' },
-  { id: 'page-router', label: 'Router', href: '/router', icon: Router, section: 'pages' },
-  { id: 'page-settings', label: 'Settings', href: '/settings', icon: Settings, section: 'pages' },
+const EMPTY_RESULTS: SearchResults = { devices: [], agents: [], ssh_targets: [], assets: [] }
+
+interface PageItem {
+  label: string
+  href: string
+  icon: LucideIcon
+}
+
+const PAGES: PageItem[] = [
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+  { label: 'Devices', href: '/devices', icon: MonitorSmartphone },
+  { label: 'Agents', href: '/agents', icon: Cpu },
+  { label: 'Traffic', href: '/traffic', icon: Activity },
+  { label: 'Alerts', href: '/alerts', icon: Bell },
+  { label: 'Router', href: '/router', icon: Router },
+  { label: 'Settings', href: '/settings', icon: Settings },
 ]
 
 export function CommandPalette() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
-  const [activeIndex, setActiveIndex] = useState(0)
-  const [deviceItems, setDeviceItems] = useState<PaletteItem[]>([])
-  const [agentItems, setAgentItems] = useState<PaletteItem[]>([])
-  const [sshItems, setSshItems] = useState<PaletteItem[]>([])
-  const [assetItems, setAssetItems] = useState<PaletteItem[]>([])
-
-  const inputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
-
-  // Filter pages by query
-  const filteredPages = query.length > 0
-    ? PAGES.filter((p) => p.label.toLowerCase().includes(query.toLowerCase()))
-    : PAGES
-
-  // Flatten all items for keyboard navigation
-  const allItems: PaletteItem[] = [...filteredPages, ...deviceItems, ...agentItems, ...sshItems, ...assetItems]
+  const [results, setResults] = useState<SearchResults>(EMPTY_RESULTS)
+  const [scanning, setScanning] = useState(false)
 
   // ── Global Cmd+K / Ctrl+K listener ──
   useEffect(() => {
@@ -72,355 +68,257 @@ export function CommandPalette() {
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  // ── Auto-focus input when opened ──
+  // ── Reset state when closed ──
   useEffect(() => {
-    if (open) {
+    if (!open) {
       setQuery('')
-      setActiveIndex(0)
-      setDeviceItems([])
-      setAgentItems([])
-      setSshItems([])
-      setAssetItems([])
-      // Small delay to ensure DOM is ready
-      requestAnimationFrame(() => {
-        inputRef.current?.focus()
-      })
+      setResults(EMPTY_RESULTS)
     }
   }, [open])
 
   // ── Debounced search across all entity types ──
   useEffect(() => {
     if (!open || query.length < 2) {
-      setDeviceItems([])
-      setAgentItems([])
-      setSshItems([])
-      setAssetItems([])
+      setResults(EMPTY_RESULTS)
       return
     }
 
     const timer = setTimeout(async () => {
       try {
         const data = await searchAll(query)
-        setDeviceItems(data.devices.map((d: SearchDevice) => ({
-          id: `device-${d.id}`,
-          label: d.name || d.ip_address || d.mac_address,
-          sublabel: d.hostname || d.vendor || undefined,
-          href: `/devices?highlight=${d.id}`,
-          icon: Monitor,
-          section: 'devices' as const,
-          isOnline: d.is_online,
-        })))
-        setAgentItems(data.agents.map((a: SearchAgent) => ({
-          id: `agent-${a.id}`,
-          label: a.name || a.id,
-          sublabel: a.hostname || undefined,
-          href: '/agents',
-          icon: Cpu,
-          section: 'devices' as const,
-          isOnline: a.is_online,
-        })))
-        setSshItems(data.ssh_targets.map((st: SearchSshTarget) => ({
-          id: `ssh-${st.id}`,
-          label: st.name,
-          sublabel: `${st.username}@${st.host}`,
-          href: '/ssh-hosts',
-          icon: Terminal,
-          section: 'devices' as const,
-          isOnline: st.is_online,
-        })))
-        setAssetItems(data.assets.map((asset: SearchAsset) => ({
-          id: `asset-${asset.id}`,
-          label: asset.name,
-          sublabel: asset.location || asset.asset_type || undefined,
-          href: '/assets',
-          icon: Package,
-          section: 'devices' as const,
-        })))
+        setResults(data)
       } catch {
-        setDeviceItems([])
-        setAgentItems([])
-        setSshItems([])
-        setAssetItems([])
+        setResults(EMPTY_RESULTS)
       }
     }, 200)
 
     return () => clearTimeout(timer)
   }, [query, open])
 
-  // ── Reset active index when items change ──
-  useEffect(() => {
-    setActiveIndex(0)
-  }, [query, deviceItems.length, agentItems.length, sshItems.length, assetItems.length])
-
-  // ── Scroll active item into view ──
-  useEffect(() => {
-    if (!listRef.current) return
-    const activeEl = listRef.current.querySelector('[data-active="true"]')
-    if (activeEl) {
-      activeEl.scrollIntoView({ block: 'nearest' })
-    }
-  }, [activeIndex])
-
-  // ── Navigate to item ──
-  const handleSelect = useCallback(
-    (item: PaletteItem) => {
+  const navigate = useCallback(
+    (href: string) => {
       setOpen(false)
-      router.push(item.href)
+      router.push(href)
     },
     [router],
   )
 
-  // ── Keyboard navigation inside modal ──
-  function handleKeyDown(e: React.KeyboardEvent) {
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault()
-        setActiveIndex((prev) => (prev + 1) % Math.max(allItems.length, 1))
-        break
-      case 'ArrowUp':
-        e.preventDefault()
-        setActiveIndex((prev) =>
-          prev <= 0 ? Math.max(allItems.length - 1, 0) : prev - 1,
-        )
-        break
-      case 'Enter':
-        e.preventDefault()
-        if (allItems[activeIndex]) {
-          handleSelect(allItems[activeIndex])
-        }
-        break
-      case 'Escape':
-        e.preventDefault()
-        setOpen(false)
-        break
+  const handleScanNow = useCallback(async () => {
+    setOpen(false)
+    if (scanning) return
+    setScanning(true)
+    try {
+      await fetch('/api/v1/scanner/trigger', { method: 'POST', credentials: 'include' })
+      toast.success('Network scan complete')
+    } catch {
+      toast.error('Network scan failed')
+    } finally {
+      setTimeout(() => setScanning(false), 5000)
     }
-  }
+  }, [scanning])
 
-  if (!open) return null
-
-  // Build sections for rendering
-  const pagesSection = filteredPages
-  const devicesSection = deviceItems
-  const agentsSection = agentItems
-  const sshSection = sshItems
-  const assetsSection = assetItems
-
-  let runningIdx = 0
+  const hasDevices = results.devices.length > 0
+  const hasAgents = results.agents.length > 0
+  const hasSsh = results.ssh_targets.length > 0
+  const hasAssets = results.assets.length > 0
+  const hasResults = hasDevices || hasAgents || hasSsh || hasAssets
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/80 backdrop-blur-sm pt-[15vh]"
-      onClick={() => setOpen(false)}
+    <Command.Dialog
+      open={open}
+      onOpenChange={setOpen}
+      label="Command palette"
+      className="fixed inset-0 z-50"
+      overlayClassName="fixed inset-0 bg-slate-950/80 backdrop-blur-sm"
+      contentClassName="fixed left-1/2 top-[15vh] -translate-x-1/2 w-[560px] max-h-[480px] flex flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl"
+      shouldFilter={!hasResults}
     >
-      <div
-        className="w-[560px] max-h-[480px] flex flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={handleKeyDown}
-      >
-        {/* Search input */}
-        <div className="flex items-center gap-3 border-b border-slate-700 px-4 py-3">
-          <Search className="h-5 w-5 shrink-0 text-slate-500" />
-          <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search devices, agents, SSH hosts, assets..."
-            className="flex-1 bg-transparent text-lg text-white placeholder-slate-500 outline-none"
-          />
-          <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-[11px] font-medium text-slate-400">
-            ESC
-          </kbd>
-        </div>
-
-        {/* Results list */}
-        <div ref={listRef} className="flex-1 overflow-y-auto p-2">
-          {/* Pages section */}
-          {pagesSection.length > 0 && (
-            <div>
-              <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Pages
-              </div>
-              {pagesSection.map((item) => {
-                const idx = runningIdx++
-                const Icon = item.icon
-                return (
-                  <button
-                    key={item.id}
-                    data-active={activeIndex === idx}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      activeIndex === idx
-                        ? 'bg-slate-800 text-white'
-                        : 'text-slate-300 hover:bg-slate-800/50'
-                    }`}
-                    onClick={() => handleSelect(item)}
-                    onMouseEnter={() => setActiveIndex(idx)}
-                  >
-                    {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" />}
-                    <span>{item.label}</span>
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Devices section */}
-          {devicesSection.length > 0 && (
-            <div className="mt-2">
-              <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Devices
-              </div>
-              {devicesSection.map((item) => {
-                const idx = runningIdx++
-                const Icon = item.icon
-                return (
-                  <button
-                    key={item.id}
-                    data-active={activeIndex === idx}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      activeIndex === idx
-                        ? 'bg-slate-800 text-white'
-                        : 'text-slate-300 hover:bg-slate-800/50'
-                    }`}
-                    onClick={() => handleSelect(item)}
-                    onMouseEnter={() => setActiveIndex(idx)}
-                  >
-                    {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" />}
-                    <span
-                      className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-                        item.isOnline
-                          ? 'bg-emerald-400 ring-2 ring-emerald-400/30'
-                          : 'bg-slate-500'
-                      }`}
-                    />
-                    <span className="font-mono tabular-nums">{item.label}</span>
-                    {item.sublabel && (
-                      <span className="text-slate-500">({item.sublabel})</span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Agents section */}
-          {agentsSection.length > 0 && (
-            <div className="mt-2">
-              <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Agents
-              </div>
-              {agentsSection.map((item) => {
-                const idx = runningIdx++
-                const Icon = item.icon
-                return (
-                  <button
-                    key={item.id}
-                    data-active={activeIndex === idx}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      activeIndex === idx
-                        ? 'bg-slate-800 text-white'
-                        : 'text-slate-300 hover:bg-slate-800/50'
-                    }`}
-                    onClick={() => handleSelect(item)}
-                    onMouseEnter={() => setActiveIndex(idx)}
-                  >
-                    {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" />}
-                    <span
-                      className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-                        item.isOnline
-                          ? 'bg-emerald-400 ring-2 ring-emerald-400/30'
-                          : 'bg-slate-500'
-                      }`}
-                    />
-                    <span>{item.label}</span>
-                    {item.sublabel && (
-                      <span className="text-slate-500">({item.sublabel})</span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* SSH Hosts section */}
-          {sshSection.length > 0 && (
-            <div className="mt-2">
-              <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                SSH Hosts
-              </div>
-              {sshSection.map((item) => {
-                const idx = runningIdx++
-                const Icon = item.icon
-                return (
-                  <button
-                    key={item.id}
-                    data-active={activeIndex === idx}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      activeIndex === idx
-                        ? 'bg-slate-800 text-white'
-                        : 'text-slate-300 hover:bg-slate-800/50'
-                    }`}
-                    onClick={() => handleSelect(item)}
-                    onMouseEnter={() => setActiveIndex(idx)}
-                  >
-                    {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" />}
-                    <span
-                      className={`inline-block h-2 w-2 shrink-0 rounded-full ${
-                        item.isOnline
-                          ? 'bg-emerald-400 ring-2 ring-emerald-400/30'
-                          : 'bg-slate-500'
-                      }`}
-                    />
-                    <span>{item.label}</span>
-                    {item.sublabel && (
-                      <span className="text-slate-500 font-mono text-xs">{item.sublabel}</span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Assets section */}
-          {assetsSection.length > 0 && (
-            <div className="mt-2">
-              <div className="px-2 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Assets
-              </div>
-              {assetsSection.map((item) => {
-                const idx = runningIdx++
-                const Icon = item.icon
-                return (
-                  <button
-                    key={item.id}
-                    data-active={activeIndex === idx}
-                    className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      activeIndex === idx
-                        ? 'bg-slate-800 text-white'
-                        : 'text-slate-300 hover:bg-slate-800/50'
-                    }`}
-                    onClick={() => handleSelect(item)}
-                    onMouseEnter={() => setActiveIndex(idx)}
-                  >
-                    {Icon && <Icon className="h-4 w-4 shrink-0 text-slate-400" />}
-                    <span>{item.label}</span>
-                    {item.sublabel && (
-                      <span className="text-slate-500 text-xs">({item.sublabel})</span>
-                    )}
-                  </button>
-                )
-              })}
-            </div>
-          )}
-
-          {/* Empty state */}
-          {allItems.length === 0 && query.length > 0 && (
-            <div className="px-3 py-8 text-center text-sm text-slate-500">
-              No results for &ldquo;{query}&rdquo;
-            </div>
-          )}
-        </div>
+      {/* Search input */}
+      <div className="flex items-center gap-3 border-b border-slate-700 px-4 py-3">
+        <Search className="h-5 w-5 shrink-0 text-slate-500" />
+        <Command.Input
+          value={query}
+          onValueChange={setQuery}
+          placeholder="Search pages, devices, actions…"
+          className="flex-1 bg-transparent text-lg text-white placeholder-slate-500 outline-none"
+        />
+        <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-[11px] font-medium text-slate-400">
+          ESC
+        </kbd>
       </div>
-    </div>
+
+      {/* Results list */}
+      <Command.List className="flex-1 overflow-y-auto p-2">
+        <Command.Empty className="px-3 py-8 text-center text-sm text-slate-500">
+          No results found.
+        </Command.Empty>
+
+        {/* Pages */}
+        <Command.Group
+          heading="Pages"
+          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-slate-500"
+        >
+          {PAGES.map((page) => (
+            <Command.Item
+              key={page.href}
+              value={page.label}
+              onSelect={() => navigate(page.href)}
+              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+            >
+              <page.icon className="h-4 w-4 shrink-0 text-slate-400" />
+              <span>{page.label}</span>
+            </Command.Item>
+          ))}
+        </Command.Group>
+
+        {/* Quick Actions */}
+        <Command.Group
+          heading="Actions"
+          className="mt-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-slate-500"
+        >
+          <Command.Item
+            value="Scan Now"
+            onSelect={handleScanNow}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+          >
+            <Radar className="h-4 w-4 shrink-0 text-slate-400" />
+            <span>Scan Now</span>
+          </Command.Item>
+          <Command.Item
+            value="Add Agent"
+            onSelect={() => navigate('/agents')}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+          >
+            <Plus className="h-4 w-4 shrink-0 text-slate-400" />
+            <span>Add Agent</span>
+          </Command.Item>
+          <Command.Item
+            value="Add Alert"
+            onSelect={() => navigate('/alerts')}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+          >
+            <BellPlus className="h-4 w-4 shrink-0 text-slate-400" />
+            <span>Add Alert</span>
+          </Command.Item>
+        </Command.Group>
+
+        {/* Device search results */}
+        {hasDevices && (
+          <Command.Group
+            heading="Devices"
+            className="mt-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-slate-500"
+          >
+            {results.devices.map((d) => (
+              <Command.Item
+                key={`device-${d.id}`}
+                value={`device ${d.name ?? ''} ${d.ip_address ?? ''} ${d.mac_address ?? ''}`}
+                onSelect={() => navigate(`/devices?highlight=${d.id}`)}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+              >
+                <Monitor className="h-4 w-4 shrink-0 text-slate-400" />
+                <span
+                  className={`inline-block h-2 w-2 shrink-0 rounded-full ${
+                    d.is_online
+                      ? 'bg-emerald-400 ring-2 ring-emerald-400/30'
+                      : 'bg-slate-500'
+                  }`}
+                />
+                <span className="font-mono tabular-nums">
+                  {d.name || d.ip_address || d.mac_address}
+                </span>
+                {(d.hostname || d.vendor) && (
+                  <span className="text-slate-500">({d.hostname || d.vendor})</span>
+                )}
+              </Command.Item>
+            ))}
+          </Command.Group>
+        )}
+
+        {/* Agent search results */}
+        {hasAgents && (
+          <Command.Group
+            heading="Agents"
+            className="mt-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-slate-500"
+          >
+            {results.agents.map((a) => (
+              <Command.Item
+                key={`agent-${a.id}`}
+                value={`agent ${a.name ?? ''} ${a.hostname ?? ''}`}
+                onSelect={() => navigate('/agents')}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+              >
+                <Cpu className="h-4 w-4 shrink-0 text-slate-400" />
+                <span
+                  className={`inline-block h-2 w-2 shrink-0 rounded-full ${
+                    a.is_online
+                      ? 'bg-emerald-400 ring-2 ring-emerald-400/30'
+                      : 'bg-slate-500'
+                  }`}
+                />
+                <span>{a.name || a.id}</span>
+                {a.hostname && (
+                  <span className="text-slate-500">({a.hostname})</span>
+                )}
+              </Command.Item>
+            ))}
+          </Command.Group>
+        )}
+
+        {/* SSH Hosts search results */}
+        {hasSsh && (
+          <Command.Group
+            heading="SSH Hosts"
+            className="mt-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-slate-500"
+          >
+            {results.ssh_targets.map((st) => (
+              <Command.Item
+                key={`ssh-${st.id}`}
+                value={`ssh ${st.name} ${st.host}`}
+                onSelect={() => navigate('/ssh-hosts')}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+              >
+                <Terminal className="h-4 w-4 shrink-0 text-slate-400" />
+                <span
+                  className={`inline-block h-2 w-2 shrink-0 rounded-full ${
+                    st.is_online
+                      ? 'bg-emerald-400 ring-2 ring-emerald-400/30'
+                      : 'bg-slate-500'
+                  }`}
+                />
+                <span>{st.name}</span>
+                <span className="text-slate-500 font-mono text-xs">
+                  {st.username}@{st.host}
+                </span>
+              </Command.Item>
+            ))}
+          </Command.Group>
+        )}
+
+        {/* Assets search results */}
+        {hasAssets && (
+          <Command.Group
+            heading="Assets"
+            className="mt-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-slate-500"
+          >
+            {results.assets.map((asset) => (
+              <Command.Item
+                key={`asset-${asset.id}`}
+                value={`asset ${asset.name} ${asset.location ?? ''}`}
+                onSelect={() => navigate('/assets')}
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+              >
+                <Package className="h-4 w-4 shrink-0 text-slate-400" />
+                <span>{asset.name}</span>
+                {(asset.location || asset.asset_type) && (
+                  <span className="text-slate-500 text-xs">
+                    ({asset.location || asset.asset_type})
+                  </span>
+                )}
+              </Command.Item>
+            ))}
+          </Command.Group>
+        )}
+      </Command.List>
+    </Command.Dialog>
   )
 }
