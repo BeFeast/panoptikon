@@ -63,8 +63,9 @@ const TRAFFIC_ROLLUP_INDEXES_MIGRATION: &str =
 
 /// Migration 019: alert rules table for configurable alert conditions.
 const ALERT_RULES_MIGRATION: &str = include_str!("migrations/019_alert_rules.sql");
-/// Migration 019: Caddy reverse proxy hosts table.
-const CADDY_PROXY_HOSTS_MIGRATION: &str = include_str!("migrations/019_caddy_proxy_hosts.sql");
+
+/// Migration 020: Caddy reverse proxy hosts table.
+const CADDY_PROXY_HOSTS_MIGRATION: &str = include_str!("migrations/020_caddy_proxy_hosts.sql");
 
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
@@ -458,7 +459,6 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
     }
 
     // Migration 019: alert rules table.
-    // Migration 019: Caddy reverse proxy hosts table.
     let applied_19: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 19")
         .fetch_optional(pool)
         .await?
@@ -466,16 +466,30 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
 
     if !applied_19 {
         sqlx::raw_sql(ALERT_RULES_MIGRATION).execute(pool).await?;
-        sqlx::raw_sql(CADDY_PROXY_HOSTS_MIGRATION)
-            .execute(pool)
-            .await?;
 
         sqlx::query("INSERT INTO _migrations (version) VALUES (19)")
             .execute(pool)
             .await?;
 
         info!("Applied migration 019_alert_rules.sql");
-        info!("Applied migration 019_caddy_proxy_hosts.sql");
+    }
+
+    // Migration 020: Caddy reverse proxy hosts table.
+    let applied_20: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 20")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_20 {
+        sqlx::raw_sql(CADDY_PROXY_HOSTS_MIGRATION)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (20)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 020_caddy_proxy_hosts.sql");
     }
 
     // Purge expired sessions on startup.
