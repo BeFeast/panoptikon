@@ -833,6 +833,7 @@ export type AssetType =
   | "container"
   | "nas"
   | "router"
+  | "access_point"
   | "switch"
   | "iot"
   | "phone"

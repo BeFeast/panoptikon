@@ -5,6 +5,7 @@
 
 export type DeviceType =
   | "router"
+  | "access_point"
   | "laptop"
   | "desktop"
   | "phone"
@@ -130,8 +131,11 @@ const HOSTNAME_PATTERNS: Array<[RegExp, DeviceType]> = [
   // Printers
   [/printer|laserjet|deskjet|officejet/i, "printer"],
 
+  // Access points
+  [/\bap[-_]|access[-_]?point|eap[-_]/i, "access_point"],
+
   // Router
-  [/router|gateway|firewall|switch|ap-|unifi|ubnt/i, "router"],
+  [/router|gateway|firewall|switch|unifi|ubnt/i, "router"],
 
   // Generic computers
   [/desktop|workstation|pc-/i, "desktop"],

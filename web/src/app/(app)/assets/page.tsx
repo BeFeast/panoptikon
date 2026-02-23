@@ -82,6 +82,7 @@ const ASSET_TYPES: { value: AssetType; label: string; icon: typeof Server }[] = 
   { value: "container", label: "Container", icon: Container },
   { value: "nas", label: "NAS", icon: HardDrive },
   { value: "router", label: "Router", icon: Router },
+  { value: "access_point", label: "Access Point", icon: Wifi },
   { value: "switch", label: "Switch", icon: Wifi },
   { value: "iot", label: "IoT", icon: Cpu },
   { value: "phone", label: "Phone", icon: Smartphone },

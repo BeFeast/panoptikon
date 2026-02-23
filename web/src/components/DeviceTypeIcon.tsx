@@ -17,12 +17,14 @@ import {
   Smartphone,
   Tablet,
   Tv,
+  Wifi,
 } from "lucide-react";
 import type { DeviceType } from "@/lib/device-type";
 import { cn } from "@/lib/utils";
 
 const ICON_MAP: Record<DeviceType, typeof Router> = {
   router: Router,
+  access_point: Wifi,
   laptop: Laptop,
   desktop: Monitor,
   phone: Smartphone,
@@ -44,6 +46,7 @@ const ICON_MAP: Record<DeviceType, typeof Router> = {
 
 const COLOR_MAP: Record<DeviceType, string> = {
   router: "text-blue-400",
+  access_point: "text-cyan-300",
   laptop: "text-sky-400",
   desktop: "text-indigo-400",
   phone: "text-violet-400",
@@ -85,6 +88,7 @@ export function DeviceTypeIcon({ type, size = "md", className }: DeviceTypeIconP
 export function DeviceTypeLabel({ type }: { type: DeviceType }) {
   const labels: Record<DeviceType, string> = {
     router: "Router",
+    access_point: "Access Point",
     laptop: "Laptop",
     desktop: "Desktop",
     phone: "Phone",

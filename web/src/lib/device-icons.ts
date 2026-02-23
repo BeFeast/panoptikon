@@ -22,11 +22,13 @@ import {
   Smartphone,
   Tablet,
   Tv,
+  Wifi,
 } from "lucide-react";
 import { inferDeviceType, type DeviceType } from "./device-type";
 
 const ICON_MAP: Record<DeviceType, LucideIcon> = {
   router: Router,
+  access_point: Wifi,
   laptop: Laptop,
   desktop: Monitor,
   phone: Smartphone,
@@ -48,6 +50,7 @@ const ICON_MAP: Record<DeviceType, LucideIcon> = {
 
 const LABEL_MAP: Record<DeviceType, string> = {
   router: "Router",
+  access_point: "Access Point",
   laptop: "Laptop",
   desktop: "Desktop",
   phone: "Phone",

@@ -1688,7 +1688,7 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
 
 const DEVICE_TYPE_OPTIONS = [
   "", "server", "workstation", "desktop", "laptop", "vm", "container", "nas",
-  "router", "switch", "phone", "tablet", "printer", "iot", "ups", "tv", "gaming", "other",
+  "router", "access_point", "switch", "phone", "tablet", "printer", "iot", "ups", "tv", "gaming", "other",
 ];
 
 const OS_OPTIONS = [
