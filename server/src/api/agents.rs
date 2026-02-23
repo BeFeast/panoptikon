@@ -1213,8 +1213,55 @@ fn format_bytes(bytes: i64) -> String {
     }
 }
 
-/// GET /api/v1/agent/install/:platform?key=<api_key>
-/// Returns a shell script that installs the panoptikon-agent on the target platform.
+/// Supported agent platforms with their metadata.
+struct PlatformInfo {
+    /// File name for the pre-built binary artifact.
+    artifact: &'static str,
+    /// Whether this is a Windows target.
+    is_windows: bool,
+}
+
+fn platform_info(platform: &str) -> Option<PlatformInfo> {
+    match platform {
+        "linux-amd64" => Some(PlatformInfo {
+            artifact: "panoptikon-agent-linux-amd64",
+            is_windows: false,
+        }),
+        "linux-arm64" => Some(PlatformInfo {
+            artifact: "panoptikon-agent-linux-arm64",
+            is_windows: false,
+        }),
+        "darwin-arm64" => Some(PlatformInfo {
+            artifact: "panoptikon-agent-darwin-arm64",
+            is_windows: false,
+        }),
+        "darwin-amd64" => Some(PlatformInfo {
+            artifact: "panoptikon-agent-darwin-amd64",
+            is_windows: false,
+        }),
+        "windows-amd64" => Some(PlatformInfo {
+            artifact: "panoptikon-agent-windows-amd64.exe",
+            is_windows: true,
+        }),
+        _ => None,
+    }
+}
+
+/// Derive the server URL from the incoming request headers / config.
+fn server_url_from_request(headers: &HeaderMap, config: &crate::config::AppConfig) -> String {
+    if let Some(host) = headers.get("host").and_then(|v| v.to_str().ok()) {
+        format!("http://{}", host)
+    } else {
+        let listen = config.listen.as_deref().unwrap_or("0.0.0.0:8080");
+        format!("http://{}", listen)
+    }
+}
+
+/// GET /api/v1/agent/install/:platform?key=<api_key>&id=<agent_id>
+///
+/// Returns an install script for the given platform:
+/// - Linux / macOS: shell script that downloads the binary via curl
+/// - Windows: PowerShell script that downloads the .exe and registers a service
 pub async fn install_script(
     Path(platform): Path<String>,
     Query(params): Query<HashMap<String, String>>,
@@ -1229,38 +1276,102 @@ pub async fn install_script(
     };
     let agent_id = params.get("id").cloned().unwrap_or_default();
 
-    // Validate the API key exists (future: reject unknown keys)
-    let _key_exists: bool =
-        sqlx::query_scalar("SELECT COUNT(*) > 0 FROM agents WHERE api_key_hash != ''")
-            .fetch_one(&state.db)
-            .await
-            .unwrap_or(false);
-
-    // Determine server URL: prefer the Host header from the incoming request,
-    // fall back to config listen address (without hardcoded IPs).
-    let server_url = if let Some(host) = headers.get("host").and_then(|v| v.to_str().ok()) {
-        format!("http://{}", host)
-    } else {
-        let listen = state.config.listen.as_deref().unwrap_or("0.0.0.0:8080");
-        format!("http://{}", listen)
-    };
-
-    let (_target_triple, _binary_name) = match platform.as_str() {
-        "linux-amd64" => ("x86_64-unknown-linux-musl", "panoptikon-agent-linux-amd64"),
-        "linux-arm64" => ("aarch64-unknown-linux-musl", "panoptikon-agent-linux-arm64"),
-        "darwin-arm64" => ("aarch64-apple-darwin", "panoptikon-agent-darwin-arm64"),
-        "darwin-amd64" => ("x86_64-apple-darwin", "panoptikon-agent-darwin-amd64"),
-        _ => {
+    let info = match platform_info(&platform) {
+        Some(i) => i,
+        None => {
             return (
                 StatusCode::BAD_REQUEST,
-                "Unknown platform. Use: linux-amd64, linux-arm64, darwin-arm64, darwin-amd64",
+                "Unknown platform. Use: linux-amd64, linux-arm64, darwin-arm64, darwin-amd64, windows-amd64",
             )
                 .into_response();
         }
     };
 
-    // Generate install script (builds from source for now; binary releases once CI is set up)
-    let script = format!(
+    let server_url = server_url_from_request(&headers, &state.config);
+
+    if info.is_windows {
+        let script = generate_windows_script(&platform, &server_url, &api_key, &agent_id);
+        return (
+            StatusCode::OK,
+            [("content-type", "text/plain; charset=utf-8")],
+            script,
+        )
+            .into_response();
+    }
+
+    let script = generate_unix_script(&platform, &server_url, &api_key, &agent_id);
+    (
+        StatusCode::OK,
+        [("content-type", "text/plain; charset=utf-8")],
+        script,
+    )
+        .into_response()
+}
+
+/// GET /api/v1/agent/install/:platform/binary
+///
+/// Serves the pre-built agent binary for the given platform.
+/// Looks for the binary in:
+///   1. The configured `agent_binaries_dir` on the server filesystem
+///   2. Falls back to redirecting to GitHub Releases
+pub async fn install_binary(
+    Path(platform): Path<String>,
+    State(state): State<AppState>,
+) -> Response {
+    let info = match platform_info(&platform) {
+        Some(i) => i,
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                "Unknown platform. Use: linux-amd64, linux-arm64, darwin-arm64, darwin-amd64, windows-amd64",
+            )
+                .into_response();
+        }
+    };
+
+    // Try to serve from local filesystem first.
+    if let Some(dir) = &state.config.agent_binaries_dir {
+        let path = std::path::Path::new(dir).join(info.artifact);
+        if path.is_file() {
+            match tokio::fs::read(&path).await {
+                Ok(bytes) => {
+                    let content_type = if info.is_windows {
+                        "application/vnd.microsoft.portable-executable"
+                    } else {
+                        "application/octet-stream"
+                    };
+                    return (
+                        StatusCode::OK,
+                        [
+                            ("content-type", content_type),
+                            (
+                                "content-disposition",
+                                &format!("attachment; filename=\"{}\"", info.artifact),
+                            ),
+                        ],
+                        bytes,
+                    )
+                        .into_response();
+                }
+                Err(e) => {
+                    error!("Failed to read agent binary {}: {}", path.display(), e);
+                    // Fall through to GitHub redirect.
+                }
+            }
+        }
+    }
+
+    // Redirect to GitHub Releases.
+    let release_url = format!(
+        "https://github.com/BeFeast/panoptikon/releases/latest/download/{}",
+        info.artifact,
+    );
+    (StatusCode::TEMPORARY_REDIRECT, [("location", release_url)]).into_response()
+}
+
+/// Generate a Unix (Linux / macOS) install script that downloads a pre-built binary.
+fn generate_unix_script(platform: &str, server_url: &str, api_key: &str, agent_id: &str) -> String {
+    format!(
         r#"#!/bin/sh
 # Panoptikon Agent Installer — {platform}
 # Server: {server_url}
@@ -1287,30 +1398,18 @@ echo "==> Installing Panoptikon Agent ({platform})"
 echo "    Binary  : $INSTALL_DIR/panoptikon-agent"
 echo "    Config  : $CONFIG_DIR/config.toml"
 
-# Check if pre-built binary is available from GitHub releases
-RELEASE_URL="https://github.com/BeFeast/panoptikon/releases/latest/download/panoptikon-agent-{platform}"
+# Download the pre-built binary — try the server's own binary endpoint first,
+# then fall back to GitHub Releases.
+BINARY_URL="$SERVER_URL/api/v1/agent/install/{platform}/binary"
 
-if curl -fsSL --head "$RELEASE_URL" 2>/dev/null | grep -q "200\|302"; then
-    echo "==> Downloading pre-built binary..."
-    curl -fsSL "$RELEASE_URL" -o /tmp/panoptikon-agent
-    chmod +x /tmp/panoptikon-agent
-    mv /tmp/panoptikon-agent "$INSTALL_DIR/panoptikon-agent"
-else
-    echo "==> No pre-built binary found. Building from source (requires Rust)..."
-    if ! command -v cargo >/dev/null 2>&1; then
-        echo "==> Installing Rust toolchain..."
-        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
-        . "$HOME/.cargo/env"
-    fi
-    TMPDIR=$(mktemp -d)
-    echo "==> Cloning repository..."
-    git clone --depth=1 https://github.com/BeFeast/panoptikon.git "$TMPDIR/panoptikon"
-    cd "$TMPDIR/panoptikon"
-    echo "==> Building (this takes a few minutes)..."
-    cargo build --release --bin panoptikon-agent
-    mv "target/release/panoptikon-agent" "$INSTALL_DIR/panoptikon-agent"
-    rm -rf "$TMPDIR"
+echo "==> Downloading pre-built binary..."
+if ! curl -fsSL "$BINARY_URL" -o /tmp/panoptikon-agent 2>/dev/null; then
+    RELEASE_URL="https://github.com/BeFeast/panoptikon/releases/latest/download/panoptikon-agent-{platform}"
+    echo "==> Server binary not available, trying GitHub Releases..."
+    curl -fsSL -L "$RELEASE_URL" -o /tmp/panoptikon-agent
 fi
+chmod +x /tmp/panoptikon-agent
+mv /tmp/panoptikon-agent "$INSTALL_DIR/panoptikon-agent"
 
 echo "==> Writing config..."
 mkdir -p "$CONFIG_DIR"
@@ -1401,14 +1500,86 @@ echo "==> Done! Agent is reporting to $SERVER_URL"
         server_url = server_url,
         api_key = api_key,
         agent_id = agent_id,
-    );
-
-    (
-        StatusCode::OK,
-        [("content-type", "text/plain; charset=utf-8")],
-        script,
     )
-        .into_response()
+}
+
+/// Generate a Windows PowerShell install script that downloads the .exe and
+/// registers it as a Windows Service.
+fn generate_windows_script(
+    platform: &str,
+    server_url: &str,
+    api_key: &str,
+    agent_id: &str,
+) -> String {
+    format!(
+        r#"# Panoptikon Agent Installer — {platform}
+# Server: {server_url}
+# Run as Administrator: powershell -ExecutionPolicy Bypass -File panoptikon-install.ps1
+
+$ErrorActionPreference = "Stop"
+
+$ServerUrl    = "{server_url}"
+$ApiKey       = "{api_key}"
+$AgentId      = "{agent_id}"
+$InstallDir   = "$env:ProgramFiles\panoptikon"
+$ConfigDir    = "$env:ProgramData\panoptikon-agent"
+$BinaryPath   = "$InstallDir\panoptikon-agent.exe"
+
+Write-Host "==> Installing Panoptikon Agent ({platform})"
+Write-Host "    Binary  : $BinaryPath"
+Write-Host "    Config  : $ConfigDir\config.toml"
+
+# Create directories
+New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
+New-Item -ItemType Directory -Force -Path $ConfigDir  | Out-Null
+
+# Download the pre-built binary — try the server first, then GitHub Releases.
+$BinaryUrl  = "$ServerUrl/api/v1/agent/install/{platform}/binary"
+$ReleaseUrl = "https://github.com/BeFeast/panoptikon/releases/latest/download/panoptikon-agent-{platform}.exe"
+
+Write-Host "==> Downloading pre-built binary..."
+try {{
+    Invoke-WebRequest -Uri $BinaryUrl -OutFile $BinaryPath -UseBasicParsing
+}} catch {{
+    Write-Host "==> Server binary not available, trying GitHub Releases..."
+    Invoke-WebRequest -Uri $ReleaseUrl -OutFile $BinaryPath -UseBasicParsing
+}}
+
+# Write config
+Write-Host "==> Writing config..."
+@"
+server_url = "$ServerUrl"
+api_key = "$ApiKey"
+agent_id = "$AgentId"
+report_interval_seconds = 30
+"@ | Out-File "$ConfigDir\config.toml" -Encoding utf8
+
+# Stop existing service if running
+if (Get-Service -Name "PanoptikonAgent" -ErrorAction SilentlyContinue) {{
+    Write-Host "==> Stopping existing service..."
+    Stop-Service -Name "PanoptikonAgent" -Force -ErrorAction SilentlyContinue
+    sc.exe delete "PanoptikonAgent" | Out-Null
+    Start-Sleep -Seconds 2
+}}
+
+# Register as Windows Service
+Write-Host "==> Registering Windows service..."
+New-Service -Name "PanoptikonAgent" `
+    -BinaryPathName "`"$BinaryPath`" --config `"$ConfigDir\config.toml`"" `
+    -StartupType Automatic `
+    -DisplayName "Panoptikon Agent" `
+    -Description "Panoptikon system metrics collector"
+
+Start-Service -Name "PanoptikonAgent"
+
+Write-Host ""
+Write-Host "==> Done! Agent is reporting to $ServerUrl"
+"#,
+        platform = platform,
+        server_url = server_url,
+        api_key = api_key,
+        agent_id = agent_id,
+    )
 }
 
 #[cfg(test)]

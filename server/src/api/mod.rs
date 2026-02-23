@@ -104,7 +104,11 @@ pub fn router(state: AppState) -> Router {
     // Agent WebSocket + install script — authenticated via API key, not session cookie.
     let agent_ws = Router::new()
         .route("/agent/ws", get(agents::ws_handler))
-        .route("/agent/install/:platform", get(agents::install_script));
+        .route("/agent/install/:platform", get(agents::install_script))
+        .route(
+            "/agent/install/:platform/binary",
+            get(agents::install_binary),
+        );
 
     // Protected routes — each method registered in its own .route() call to avoid
     // Axum 0.7 MethodRouter chaining issue where DELETE/PATCH can be dropped
