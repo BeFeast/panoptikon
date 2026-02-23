@@ -16,23 +16,55 @@ import {
   MemoryStick,
   Monitor,
   HardDrive,
+  Layers,
+  Plus,
+  Pencil,
+  Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   fetchMikrotikStatus,
   fetchMikrotikInterfaces,
+  fetchMikrotikVlans,
   fetchMikrotikRoutes,
   fetchMikrotikDhcpLeases,
   fetchMikrotikFirewall,
   fetchMikrotikDns,
   fetchMikrotikWireguard,
+  createMikrotikVlan,
+  updateMikrotikVlan,
+  deleteMikrotikVlan,
 } from "@/lib/api";
 import type {
   MikrotikStatus,
   MikrotikInterface,
+  MikrotikVlan,
+  MikrotikVlanRequest,
   MikrotikRoute,
   MikrotikDhcpLease,
   MikrotikFirewall,
@@ -362,6 +394,367 @@ function InterfacesTable({
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+type VlanFormState = {
+  vlan_id: string;
+  name: string;
+  interface: string;
+  mtu: string;
+};
+
+const EMPTY_VLAN_FORM: VlanFormState = {
+  vlan_id: "",
+  name: "",
+  interface: "",
+  mtu: "",
+};
+
+function vlanToForm(vlan: MikrotikVlan): VlanFormState {
+  return {
+    vlan_id: vlan.vlan_id ?? "",
+    name: vlan.name ?? "",
+    interface: vlan.interface ?? "",
+    mtu: vlan.mtu ?? "",
+  };
+}
+
+function VlansPanel({
+  data,
+  loading,
+  error,
+  reload,
+}: {
+  data: MikrotikVlan[] | null;
+  loading: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
+}) {
+  const [form, setForm] = useState<VlanFormState>(EMPTY_VLAN_FORM);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<MikrotikVlan | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<MikrotikVlan | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const openCreate = () => {
+    setEditing(null);
+    setForm(EMPTY_VLAN_FORM);
+    setDialogOpen(true);
+  };
+
+  const openEdit = (vlan: MikrotikVlan) => {
+    setEditing(vlan);
+    setForm(vlanToForm(vlan));
+    setDialogOpen(true);
+  };
+
+  const handleSave = async () => {
+    const vlanId = Number(form.vlan_id.trim());
+    if (!Number.isInteger(vlanId) || vlanId < 1 || vlanId > 4094) {
+      toast.error("VLAN ID must be an integer between 1 and 4094.");
+      return;
+    }
+
+    const name = form.name.trim();
+    const iface = form.interface.trim();
+    if (!name || !iface) {
+      toast.error("Name and interface are required.");
+      return;
+    }
+
+    let mtu: number | null = null;
+    const mtuValue = form.mtu.trim();
+    if (mtuValue) {
+      const parsedMtu = Number(mtuValue);
+      if (!Number.isInteger(parsedMtu) || parsedMtu <= 0) {
+        toast.error("MTU must be a positive integer.");
+        return;
+      }
+      mtu = parsedMtu;
+    }
+
+    const payload: MikrotikVlanRequest = {
+      vlan_id: vlanId,
+      name,
+      interface: iface,
+      mtu,
+    };
+
+    setSaving(true);
+    try {
+      if (editing) {
+        if (!editing.id) {
+          toast.error("Missing VLAN id for update.");
+          return;
+        }
+        await updateMikrotikVlan(editing.id, payload);
+        toast.success(`VLAN ${name} updated.`);
+      } else {
+        await createMikrotikVlan(payload);
+        toast.success(`VLAN ${name} created.`);
+      }
+
+      await reload();
+      setDialogOpen(false);
+      setEditing(null);
+      setForm(EMPTY_VLAN_FORM);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save VLAN.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    if (!confirmDelete.id) {
+      toast.error("Missing VLAN id for delete.");
+      setConfirmDelete(null);
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      await deleteMikrotikVlan(confirmDelete.id);
+      await reload();
+      toast.success(`VLAN ${confirmDelete.name ?? confirmDelete.vlan_id ?? ""} deleted.`);
+      setConfirmDelete(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete VLAN.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const headerCols = (
+    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+      <th className="px-4 py-3 font-medium text-slate-400">VLAN ID</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Name</th>
+      <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
+      <th className="px-4 py-3 font-medium text-slate-400">MTU</th>
+      <th className="px-4 py-3 text-right font-medium text-slate-400">Actions</th>
+    </tr>
+  );
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-end">
+        <Button
+          onClick={openCreate}
+          className="bg-pink-600 text-white hover:bg-pink-700"
+          size="sm"
+        >
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          Add VLAN
+        </Button>
+      </div>
+
+      {loading ? (
+        <div className="overflow-x-auto rounded-md border border-slate-800">
+          <table className="w-full text-sm">
+            <thead>{headerCols}</thead>
+            <tbody>
+              {Array.from({ length: 4 }).map((_, i) => (
+                <tr key={i} className="border-b border-slate-800 last:border-b-0">
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-16" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-28" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-20" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <Skeleton className="h-4 w-12" />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="ml-auto flex w-fit items-center gap-2">
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                      <Skeleton className="h-8 w-8 rounded-md" />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : error ? (
+        <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+          <p className="text-xs text-rose-400">{error}</p>
+        </div>
+      ) : !data || data.length === 0 ? (
+        <p className="py-4 text-sm text-slate-500">No VLAN interfaces configured.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-md border border-slate-800">
+          <table className="w-full text-sm">
+            <thead>{headerCols}</thead>
+            <tbody>
+              {data.map((vlan, idx) => (
+                <tr
+                  key={vlan.id ?? `${vlan.name ?? "vlan"}-${vlan.vlan_id ?? idx}`}
+                  className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                >
+                  <td className="px-4 py-3">
+                    <span className="font-mono tabular-nums font-medium text-white">
+                      {vlan.vlan_id ?? "\u2014"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-slate-300">{vlan.name ?? "\u2014"}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="font-mono tabular-nums text-slate-300">
+                      {vlan.interface ?? "\u2014"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-slate-300">{vlan.mtu ?? "\u2014"}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-slate-400 hover:bg-slate-800 hover:text-white"
+                        onClick={() => openEdit(vlan)}
+                        disabled={!vlan.id}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                        onClick={() => setConfirmDelete(vlan)}
+                        disabled={!vlan.id}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setEditing(null);
+            setForm(EMPTY_VLAN_FORM);
+          }
+        }}
+      >
+        <DialogContent className="border-slate-800 bg-slate-900 text-slate-100">
+          <DialogHeader>
+            <DialogTitle className="text-white">
+              {editing ? "Edit VLAN" : "Create VLAN"}
+            </DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Configure a VLAN interface on your MikroTik router.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="vlan-id">VLAN ID</Label>
+              <Input
+                id="vlan-id"
+                value={form.vlan_id}
+                onChange={(e) => setForm((prev) => ({ ...prev, vlan_id: e.target.value }))}
+                placeholder="10"
+                inputMode="numeric"
+                className="border-slate-700 bg-slate-950 text-slate-100"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vlan-name">Name</Label>
+              <Input
+                id="vlan-name"
+                value={form.name}
+                onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+                placeholder="vlan10-office"
+                className="border-slate-700 bg-slate-950 text-slate-100"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vlan-interface">Interface</Label>
+              <Input
+                id="vlan-interface"
+                value={form.interface}
+                onChange={(e) => setForm((prev) => ({ ...prev, interface: e.target.value }))}
+                placeholder="bridge"
+                className="border-slate-700 bg-slate-950 text-slate-100"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="vlan-mtu">MTU (optional)</Label>
+              <Input
+                id="vlan-mtu"
+                value={form.mtu}
+                onChange={(e) => setForm((prev) => ({ ...prev, mtu: e.target.value }))}
+                placeholder="1500"
+                inputMode="numeric"
+                className="border-slate-700 bg-slate-950 text-slate-100"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+              className="border-slate-700 text-slate-300 hover:bg-slate-800"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-pink-600 text-white hover:bg-pink-700"
+            >
+              {saving ? "Saving..." : editing ? "Save Changes" : "Create VLAN"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+      >
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete VLAN</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              This will remove VLAN{" "}
+              <span className="font-mono text-slate-200">{confirmDelete?.name ?? ""}</span>{" "}
+              (ID {confirmDelete?.vlan_id ?? "\u2014"}). This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 text-slate-300 hover:bg-slate-800">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -1027,6 +1420,7 @@ export default function MikrotikRouter() {
   }, []);
 
   const ifaces = useData(useCallback(() => fetchMikrotikInterfaces(), []));
+  const vlans = useData(useCallback(() => fetchMikrotikVlans(), []));
   const routes = useData(useCallback(() => fetchMikrotikRoutes(), []));
   const dhcp = useData(useCallback(() => fetchMikrotikDhcpLeases(), []));
   const fw = useData(useCallback(() => fetchMikrotikFirewall(), []));
@@ -1074,6 +1468,13 @@ export default function MikrotikRouter() {
           >
             <Network className="mr-1.5 h-3.5 w-3.5" />
             Interfaces
+          </TabsTrigger>
+          <TabsTrigger
+            value="vlans"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+          >
+            <Layers className="mr-1.5 h-3.5 w-3.5" />
+            VLANs
           </TabsTrigger>
           <TabsTrigger
             value="routes"
@@ -1128,6 +1529,24 @@ export default function MikrotikRouter() {
                 data={ifaces.data}
                 loading={ifaces.loading}
                 error={ifaces.error}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="vlans">
+          <Card className="border-slate-800 bg-slate-900">
+            <CardHeader>
+              <CardTitle className="text-base text-white">
+                VLAN Interfaces
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <VlansPanel
+                data={vlans.data}
+                loading={vlans.loading}
+                error={vlans.error}
+                reload={vlans.reload}
               />
             </CardContent>
           </Card>

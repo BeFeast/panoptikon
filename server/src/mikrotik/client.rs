@@ -5,6 +5,8 @@
 
 use anyhow::{Context, Result};
 use dashmap::DashMap;
+use reqwest::Method;
+use serde::Serialize;
 use serde_json::Value;
 use std::time::{Duration, Instant};
 
@@ -141,6 +143,82 @@ impl MikrotikClient {
         Ok(parsed)
     }
 
+    /// Send a mutating request with a JSON body.
+    async fn send_json<B: Serialize + ?Sized>(
+        &self,
+        method: Method,
+        path: &str,
+        body: &B,
+    ) -> Result<()> {
+        let url = format!("{}/rest{}", self.base_url, path);
+
+        let start = Instant::now();
+        let resp = self
+            .http
+            .request(method.clone(), &url)
+            .basic_auth(&self.username, Some(&self.password))
+            .json(body)
+            .send()
+            .await
+            .context("MikroTik API request failed")?;
+
+        let status = resp.status();
+        let text = resp
+            .text()
+            .await
+            .context("failed to read MikroTik API response body")?;
+        let elapsed = start.elapsed();
+
+        tracing::info!(
+            method = %method,
+            path,
+            http_status = %status,
+            elapsed_ms = elapsed.as_millis() as u64,
+            "MikroTik API response"
+        );
+
+        if !status.is_success() {
+            anyhow::bail!("MikroTik API returned HTTP {status}: {text}");
+        }
+
+        Ok(())
+    }
+
+    /// Send a mutating request without a JSON body.
+    async fn send_no_body(&self, method: Method, path: &str) -> Result<()> {
+        let url = format!("{}/rest{}", self.base_url, path);
+
+        let start = Instant::now();
+        let resp = self
+            .http
+            .request(method.clone(), &url)
+            .basic_auth(&self.username, Some(&self.password))
+            .send()
+            .await
+            .context("MikroTik API request failed")?;
+
+        let status = resp.status();
+        let text = resp
+            .text()
+            .await
+            .context("failed to read MikroTik API response body")?;
+        let elapsed = start.elapsed();
+
+        tracing::info!(
+            method = %method,
+            path,
+            http_status = %status,
+            elapsed_ms = elapsed.as_millis() as u64,
+            "MikroTik API response"
+        );
+
+        if !status.is_success() {
+            anyhow::bail!("MikroTik API returned HTTP {status}: {text}");
+        }
+
+        Ok(())
+    }
+
     /// Fetch system resource info (CPU, RAM, uptime, version).
     pub async fn system_resource(&self) -> Result<SystemResource> {
         let val = self.get("/system/resource").await?;
@@ -154,6 +232,14 @@ impl MikrotikClient {
         let val = self.get("/interface").await?;
         let res: Vec<MtInterface> =
             serde_json::from_value(val).context("failed to parse interfaces")?;
+        Ok(res)
+    }
+
+    /// Fetch all VLAN interfaces.
+    pub async fn vlans(&self) -> Result<Vec<VlanInterface>> {
+        let val = self.get("/interface/vlan").await?;
+        let res: Vec<VlanInterface> =
+            serde_json::from_value(val).context("failed to parse VLAN interfaces")?;
         Ok(res)
     }
 
@@ -217,6 +303,23 @@ impl MikrotikClient {
         let res: Vec<WgPeer> =
             serde_json::from_value(val).context("failed to parse WireGuard peers")?;
         Ok(res)
+    }
+
+    /// Create a VLAN interface.
+    pub async fn create_vlan(&self, req: &VlanWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/interface/vlan", req).await
+    }
+
+    /// Update a VLAN interface by RouterOS `.id`.
+    pub async fn update_vlan(&self, id: &str, req: &VlanWriteRequest) -> Result<()> {
+        self.send_json(Method::PATCH, &format!("/interface/vlan/{id}"), req)
+            .await
+    }
+
+    /// Delete a VLAN interface by RouterOS `.id`.
+    pub async fn delete_vlan(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/interface/vlan/{id}"))
+            .await
     }
 }
 

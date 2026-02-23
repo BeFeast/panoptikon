@@ -50,6 +50,31 @@ pub struct MtInterface {
     pub last_link_up_time: Option<String>,
 }
 
+/// MikroTik VLAN interface (`/rest/interface/vlan`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VlanInterface {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub interface: Option<String>,
+    #[serde(rename = "vlan-id")]
+    pub vlan_id: Option<String>,
+    pub mtu: Option<String>,
+    pub disabled: Option<String>,
+    pub comment: Option<String>,
+}
+
+/// MikroTik VLAN write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct VlanWriteRequest {
+    pub name: String,
+    pub interface: String,
+    #[serde(rename = "vlan-id")]
+    pub vlan_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mtu: Option<String>,
+}
+
 /// MikroTik IP address (`/rest/ip/address`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IpAddress {

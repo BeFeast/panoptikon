@@ -65,6 +65,8 @@ import type {
   RemoveServiceResponse,
   MikrotikStatus,
   MikrotikInterface,
+  MikrotikVlan,
+  MikrotikVlanRequest,
   MikrotikRoute,
   MikrotikDhcpLease,
   MikrotikFirewall,
@@ -1193,6 +1195,25 @@ export function fetchMikrotikStatus(): Promise<MikrotikStatus> {
 
 export function fetchMikrotikInterfaces(): Promise<MikrotikInterface[]> {
   return apiGet<MikrotikInterface[]>("/api/v1/mikrotik/interfaces");
+}
+
+export function fetchMikrotikVlans(): Promise<MikrotikVlan[]> {
+  return apiGet<MikrotikVlan[]>("/api/v1/mikrotik/vlans");
+}
+
+export function createMikrotikVlan(body: MikrotikVlanRequest): Promise<void> {
+  return apiPost<void>("/api/v1/mikrotik/vlans", body);
+}
+
+export function updateMikrotikVlan(
+  id: string,
+  body: MikrotikVlanRequest
+): Promise<void> {
+  return apiPut<void>(`/api/v1/mikrotik/vlans/${encodeURIComponent(id)}`, body);
+}
+
+export function deleteMikrotikVlan(id: string): Promise<void> {
+  return apiDelete(`/api/v1/mikrotik/vlans/${encodeURIComponent(id)}`);
 }
 
 export function fetchMikrotikRoutes(): Promise<MikrotikRoute[]> {

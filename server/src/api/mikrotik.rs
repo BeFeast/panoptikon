@@ -3,11 +3,16 @@
 //! These endpoints proxy requests to a MikroTik router via its REST API,
 //! using cached responses to avoid redundant network calls.
 
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
 use serde::{Deserialize, Serialize};
 
 use super::AppState;
 use crate::mikrotik::client::MikrotikClient;
+use crate::mikrotik::types::VlanWriteRequest;
 
 // ── Helper: build a MikroTik client from DB settings ───────
 
@@ -88,6 +93,23 @@ pub struct MikrotikRouteResponse {
     pub dynamic: bool,
     pub disabled: bool,
     pub comment: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikVlanResponse {
+    pub id: Option<String>,
+    pub vlan_id: Option<String>,
+    pub name: Option<String>,
+    pub interface: Option<String>,
+    pub mtu: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikVlanUpsertRequest {
+    pub vlan_id: u16,
+    pub name: String,
+    pub interface: String,
+    pub mtu: Option<u16>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -178,6 +200,19 @@ pub struct MikrotikWgPeer {
 
 fn is_true(val: &Option<String>) -> bool {
     val.as_deref() == Some("true")
+}
+
+fn validate_vlan_upsert(body: &MikrotikVlanUpsertRequest) -> Result<(), StatusCode> {
+    if !(1..=4094).contains(&body.vlan_id) {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    if body.name.trim().is_empty() || body.interface.trim().is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    if matches!(body.mtu, Some(0)) {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+    Ok(())
 }
 
 // ── Endpoints ──────────────────────────────────────────────
@@ -294,6 +329,121 @@ pub async fn interfaces(
         state.mikrotik_cache.set("interfaces".into(), val);
     }
     Ok(Json(result))
+}
+
+/// GET /api/v1/mikrotik/vlans
+pub async fn vlans(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<MikrotikVlanResponse>>, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.mikrotik_cache.get("vlans") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let vlans = client.vlans().await.map_err(|e| {
+        tracing::error!("MikroTik VLAN list error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let result: Vec<MikrotikVlanResponse> = vlans
+        .into_iter()
+        .map(|vlan| MikrotikVlanResponse {
+            id: vlan.id,
+            vlan_id: vlan.vlan_id,
+            name: vlan.name,
+            interface: vlan.interface,
+            mtu: vlan.mtu,
+        })
+        .collect();
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.mikrotik_cache.set("vlans".into(), val);
+    }
+    Ok(Json(result))
+}
+
+/// POST /api/v1/mikrotik/vlans
+pub async fn create_vlan(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikVlanUpsertRequest>,
+) -> Result<StatusCode, StatusCode> {
+    validate_vlan_upsert(&body)?;
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = VlanWriteRequest {
+        name: body.name.trim().to_string(),
+        interface: body.interface.trim().to_string(),
+        vlan_id: body.vlan_id.to_string(),
+        mtu: body.mtu.map(|v| v.to_string()),
+    };
+
+    client.create_vlan(&req).await.map_err(|e| {
+        tracing::error!("MikroTik VLAN create error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// PUT /api/v1/mikrotik/vlans/:id
+pub async fn update_vlan(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikVlanUpsertRequest>,
+) -> Result<StatusCode, StatusCode> {
+    validate_vlan_upsert(&body)?;
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = VlanWriteRequest {
+        name: body.name.trim().to_string(),
+        interface: body.interface.trim().to_string(),
+        vlan_id: body.vlan_id.to_string(),
+        mtu: body.mtu.map(|v| v.to_string()),
+    };
+
+    client.update_vlan(id, &req).await.map_err(|e| {
+        tracing::error!("MikroTik VLAN update error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// DELETE /api/v1/mikrotik/vlans/:id
+pub async fn delete_vlan(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    client.delete_vlan(id).await.map_err(|e| {
+        tracing::error!("MikroTik VLAN delete error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// GET /api/v1/mikrotik/routes
