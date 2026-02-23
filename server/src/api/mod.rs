@@ -24,6 +24,7 @@ pub mod caddy;
 pub mod config_backups;
 pub mod dashboard;
 pub mod devices;
+pub mod dns_logs;
 pub mod error;
 pub mod export;
 pub mod metrics;
@@ -431,6 +432,11 @@ pub fn router(state: AppState) -> Router {
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))
+        // DNS query log
+        .route("/dns-logs", get(dns_logs::list))
+        .route("/dns-logs", delete(dns_logs::purge))
+        .route("/dns-logs/stats", get(dns_logs::stats))
+        .route("/dns-logs/ingest", post(dns_logs::ingest))
         // Search
         .route("/search", get(search::search))
         // Export
