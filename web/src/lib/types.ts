@@ -188,6 +188,16 @@ export interface TrafficHistoryPoint {
   tx_bps: number;
 }
 
+export type TrafficRange = "1h" | "24h" | "7d" | "30d";
+
+export interface DeviceTrafficPoint {
+  time: string;
+  avg_rx_bps: number;
+  avg_tx_bps: number;
+  max_rx_bps: number;
+  max_tx_bps: number;
+}
+
 // ─── NetFlow ────────────────────────────────────────────
 
 export interface NetflowStatus {

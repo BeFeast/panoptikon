@@ -53,6 +53,7 @@ import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
 import { MotionCard } from "@/components/MotionCard";
 
 import { downloadExport } from "@/lib/export";
+import { DeviceTrafficChart } from "@/components/DeviceTrafficChart";
 
 type Filter = "all" | "online" | "offline" | "unknown";
 type ViewMode = "grid" | "table";
@@ -886,6 +887,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
       <Tabs defaultValue="info" className="w-full">
         <TabsList className="mb-4 w-full bg-slate-800">
           <TabsTrigger value="info" className="flex-1">Info</TabsTrigger>
+          <TabsTrigger value="traffic" className="flex-1">Traffic</TabsTrigger>
           <TabsTrigger value="edit" className="flex-1">Edit</TabsTrigger>
           <TabsTrigger value="system" className="flex-1">System</TabsTrigger>
           <TabsTrigger value="ports" className="flex-1">Ports</TabsTrigger>
@@ -894,6 +896,10 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
 
         <TabsContent value="info">
           <DeviceInfoTab device={device} ips={ips} primaryIp={primaryIp} />
+        </TabsContent>
+
+        <TabsContent value="traffic">
+          <DeviceTrafficChart deviceId={device.id} />
         </TabsContent>
 
         <TabsContent value="edit">

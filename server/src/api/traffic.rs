@@ -1,6 +1,6 @@
 use crate::api::AppState;
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -51,6 +51,162 @@ pub async fn history(
             })
             .collect(),
     )
+}
+
+// ── Per-device traffic history ──────────────────────────────────────────
+
+/// A single data point in the per-device traffic history response.
+#[derive(Serialize)]
+pub struct DeviceTrafficPoint {
+    /// Time bucket label (ISO 8601).
+    pub time: String,
+    pub avg_rx_bps: i64,
+    pub avg_tx_bps: i64,
+    pub max_rx_bps: i64,
+    pub max_tx_bps: i64,
+}
+
+#[derive(Deserialize)]
+pub struct DeviceTrafficQuery {
+    /// Time range: "1h", "24h", "7d", "30d". Defaults to "1h".
+    pub range: Option<String>,
+}
+
+/// GET /api/v1/devices/:id/traffic?range=1h|24h|7d|30d
+///
+/// Returns historical traffic data for a specific device.
+/// - 1h  → per-minute from traffic_samples (last 60 min)
+/// - 24h → per-hour from traffic_hourly   (last 24 hours)
+/// - 7d  → per-hour from traffic_hourly   (last 7 days)
+/// - 30d → per-day from traffic_daily     (last 30 days)
+pub async fn device_traffic(
+    State(state): State<AppState>,
+    Path(device_id): Path<String>,
+    Query(q): Query<DeviceTrafficQuery>,
+) -> Json<Vec<DeviceTrafficPoint>> {
+    let range = q.range.as_deref().unwrap_or("1h");
+
+    let rows = match range {
+        "1h" => query_samples_minutes(&state.db, &device_id, 60).await,
+        "24h" => query_hourly(&state.db, &device_id, 24).await,
+        "7d" => query_hourly(&state.db, &device_id, 168).await,
+        "30d" => query_daily(&state.db, &device_id, 30).await,
+        _ => query_samples_minutes(&state.db, &device_id, 60).await,
+    };
+
+    Json(rows)
+}
+
+/// Query traffic_samples grouped by minute for short time ranges.
+async fn query_samples_minutes(
+    pool: &sqlx::SqlitePool,
+    device_id: &str,
+    minutes: i64,
+) -> Vec<DeviceTrafficPoint> {
+    let rows: Vec<(String, i64, i64, i64, i64)> = sqlx::query_as(
+        r#"SELECT
+               strftime('%Y-%m-%dT%H:%M:00', sampled_at) AS time,
+               CAST(AVG(rx_bps) AS INTEGER) AS avg_rx,
+               CAST(AVG(tx_bps) AS INTEGER) AS avg_tx,
+               MAX(rx_bps) AS max_rx,
+               MAX(tx_bps) AS max_tx
+           FROM traffic_samples
+           WHERE device_id = ?
+             AND sampled_at >= datetime('now', '-' || CAST(? AS TEXT) || ' minutes')
+           GROUP BY time
+           ORDER BY time ASC"#,
+    )
+    .bind(device_id)
+    .bind(minutes)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    rows.into_iter()
+        .map(
+            |(time, avg_rx, avg_tx, max_rx, max_tx)| DeviceTrafficPoint {
+                time,
+                avg_rx_bps: avg_rx,
+                avg_tx_bps: avg_tx,
+                max_rx_bps: max_rx,
+                max_tx_bps: max_tx,
+            },
+        )
+        .collect()
+}
+
+/// Query traffic_hourly for medium time ranges.
+async fn query_hourly(
+    pool: &sqlx::SqlitePool,
+    device_id: &str,
+    hours: i64,
+) -> Vec<DeviceTrafficPoint> {
+    let rows: Vec<(String, i64, i64, i64, i64)> = sqlx::query_as(
+        r#"SELECT
+               hour AS time,
+               COALESCE(avg_rx_bps, 0),
+               COALESCE(avg_tx_bps, 0),
+               COALESCE(max_rx_bps, 0),
+               COALESCE(max_tx_bps, 0)
+           FROM traffic_hourly
+           WHERE device_id = ?
+             AND hour >= datetime('now', '-' || CAST(? AS TEXT) || ' hours')
+           ORDER BY hour ASC"#,
+    )
+    .bind(device_id)
+    .bind(hours)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    rows.into_iter()
+        .map(
+            |(time, avg_rx, avg_tx, max_rx, max_tx)| DeviceTrafficPoint {
+                time,
+                avg_rx_bps: avg_rx,
+                avg_tx_bps: avg_tx,
+                max_rx_bps: max_rx,
+                max_tx_bps: max_tx,
+            },
+        )
+        .collect()
+}
+
+/// Query traffic_daily for long time ranges.
+async fn query_daily(
+    pool: &sqlx::SqlitePool,
+    device_id: &str,
+    days: i64,
+) -> Vec<DeviceTrafficPoint> {
+    let rows: Vec<(String, i64, i64, i64, i64)> = sqlx::query_as(
+        r#"SELECT
+               day AS time,
+               COALESCE(avg_rx_bps, 0),
+               COALESCE(avg_tx_bps, 0),
+               COALESCE(max_rx_bps, 0),
+               COALESCE(max_tx_bps, 0)
+           FROM traffic_daily
+           WHERE device_id = ?
+             AND day >= date('now', '-' || CAST(? AS TEXT) || ' days')
+           ORDER BY day ASC"#,
+    )
+    .bind(device_id)
+    .bind(days)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    rows.into_iter()
+        .map(
+            |(time, avg_rx, avg_tx, max_rx, max_tx)| DeviceTrafficPoint {
+                time,
+                avg_rx_bps: avg_rx,
+                avg_tx_bps: avg_tx,
+                max_rx_bps: max_rx,
+                max_tx_bps: max_tx,
+            },
+        )
+        .collect()
 }
 
 #[cfg(test)]

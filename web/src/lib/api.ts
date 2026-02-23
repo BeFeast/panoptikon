@@ -51,6 +51,8 @@ import type {
   SyslogResponse,
   TopDevice,
   TrafficHistoryPoint,
+  TrafficRange,
+  DeviceTrafficPoint,
   VyosDhcpLease,
   VyosInterface,
   VyosRoute,
@@ -372,6 +374,15 @@ export function fetchTrafficHistory(minutes = 60): Promise<TrafficHistoryPoint[]
   return apiGet<TrafficHistoryPoint[]>(`/api/v1/traffic/history?minutes=${minutes}`, {
     timeoutMs: DASHBOARD_TIMEOUT_MS,
   });
+}
+
+export function fetchDeviceTrafficHistory(
+  deviceId: string,
+  range: TrafficRange = "1h"
+): Promise<DeviceTrafficPoint[]> {
+  return apiGet<DeviceTrafficPoint[]>(
+    `/api/v1/devices/${deviceId}/traffic?range=${range}`
+  );
 }
 
 // ─── Auth ───────────────────────────────────────────────

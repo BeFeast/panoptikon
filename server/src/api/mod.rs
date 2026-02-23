@@ -127,6 +127,7 @@ pub fn router(state: AppState) -> Router {
         .route("/devices/:id/enrichment", patch(devices::update_enrichment))
         .route("/devices/:id/custom", delete(devices::reset_custom))
         .route("/devices/:id/sysinfo", get(devices::get_sysinfo))
+        .route("/devices/:id/traffic", get(traffic::device_traffic))
         // Agents
         .route("/agents", get(agents::list))
         .route("/agents", post(agents::register))

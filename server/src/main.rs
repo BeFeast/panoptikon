@@ -2,6 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 use panoptikon_server::{
     api, config, db, dhcp, mdns, netflow, retention, scanner, speedtest_scheduler, ssdp, ssh,
+    traffic_rollup,
 };
 use std::net::SocketAddr;
 use tracing::info;
@@ -135,6 +136,9 @@ async fn main() -> Result<()> {
 
     // Start the SSH agentless monitoring poller.
     ssh::start_ssh_poller(state.db.clone(), state.ws_hub.clone());
+
+    // Start traffic rollup background task (samples → hourly → daily, every 5 min).
+    traffic_rollup::start_traffic_rollup_task(state.db.clone());
 
     // Build the application router.
     let app = api::router(state);
