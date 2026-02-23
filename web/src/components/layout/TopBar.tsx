@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, Settings, Lock, LogOut } from "lucide-react";
+import { Bell, Settings, Lock, LogOut, Monitor, Cpu, Terminal, Package } from "lucide-react";
 import { searchAll, fetchRecentAlerts, fetchDashboardStats, markAllAlertsRead, logout } from "@/lib/api";
 import { useWsEvent } from "@/lib/ws";
 import { timeAgo } from "@/lib/format";
-import type { SearchResponse, SearchDevice, SearchAgent, SearchAlert, Alert } from "@/lib/types";
+import type { SearchResponse, SearchDevice, SearchAgent, SearchAlert, SearchSshTarget, SearchAsset, Alert } from "@/lib/types";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -100,6 +100,12 @@ export function TopBar() {
     for (const a of results.agents) {
       items.push({ type: "agent", id: a.id, label: a.name || a.id });
     }
+    for (const st of results.ssh_targets) {
+      items.push({ type: "ssh_target", id: st.id, label: st.name });
+    }
+    for (const asset of results.assets) {
+      items.push({ type: "asset", id: asset.id, label: asset.name });
+    }
     for (const al of results.alerts) {
       items.push({ type: "alert", id: al.id, label: al.message });
     }
@@ -147,6 +153,10 @@ export function TopBar() {
       router.push(`/devices?highlight=${id}`);
     } else if (type === "agent") {
       router.push(`/agents`);
+    } else if (type === "ssh_target") {
+      router.push(`/ssh-hosts`);
+    } else if (type === "asset") {
+      router.push(`/assets`);
     } else if (type === "alert") {
       router.push(`/alerts`);
     }
@@ -187,7 +197,7 @@ export function TopBar() {
 
   const hasResults =
     results &&
-    (results.devices.length > 0 || results.agents.length > 0 || results.alerts.length > 0);
+    (results.devices.length > 0 || results.agents.length > 0 || results.ssh_targets.length > 0 || results.assets.length > 0 || results.alerts.length > 0);
   const noResults = results && !hasResults;
 
   // Track running index across sections for keyboard nav
@@ -238,6 +248,7 @@ export function TopBar() {
                           onClick={() => navigateTo("device", d.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
                         >
+                          <Monitor className="h-4 w-4 shrink-0 text-slate-400" />
                           <span
                             className={`inline-block h-2 w-2 rounded-full ${
                               d.is_online
@@ -246,7 +257,7 @@ export function TopBar() {
                             }`}
                           />
                           <span className="font-mono tabular-nums text-white">
-                            {d.ip_address || d.mac_address}
+                            {d.name || d.ip_address || d.mac_address}
                           </span>
                           {d.hostname && (
                             <span className="text-slate-500">({d.hostname})</span>
@@ -277,6 +288,7 @@ export function TopBar() {
                           onClick={() => navigateTo("agent", a.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
                         >
+                          <Cpu className="h-4 w-4 shrink-0 text-slate-400" />
                           <span
                             className={`inline-block h-2 w-2 rounded-full ${
                               a.is_online
@@ -287,6 +299,70 @@ export function TopBar() {
                           <span className="text-white">{a.name || a.id}</span>
                           {a.hostname && (
                             <span className="text-slate-500">({a.hostname})</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* SSH Hosts */}
+                {results.ssh_targets.length > 0 && (
+                  <div>
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-slate-800">
+                      SSH Hosts
+                    </div>
+                    {results.ssh_targets.map((st: SearchSshTarget) => {
+                      const idx = runningIndex++;
+                      return (
+                        <button
+                          key={st.id}
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-800/60 ${
+                            activeIndex === idx ? "bg-slate-800/60" : ""
+                          }`}
+                          onClick={() => navigateTo("ssh_target", st.id)}
+                          onMouseEnter={() => setActiveIndex(idx)}
+                        >
+                          <Terminal className="h-4 w-4 shrink-0 text-slate-400" />
+                          <span
+                            className={`inline-block h-2 w-2 rounded-full ${
+                              st.is_online
+                                ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
+                                : "bg-slate-500"
+                            }`}
+                          />
+                          <span className="text-white">{st.name}</span>
+                          <span className="text-slate-500 font-mono text-xs">
+                            {st.username}@{st.host}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Assets */}
+                {results.assets.length > 0 && (
+                  <div>
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-slate-800">
+                      Assets
+                    </div>
+                    {results.assets.map((asset: SearchAsset) => {
+                      const idx = runningIndex++;
+                      return (
+                        <button
+                          key={asset.id}
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-slate-800/60 ${
+                            activeIndex === idx ? "bg-slate-800/60" : ""
+                          }`}
+                          onClick={() => navigateTo("asset", asset.id)}
+                          onMouseEnter={() => setActiveIndex(idx)}
+                        >
+                          <Package className="h-4 w-4 shrink-0 text-slate-400" />
+                          <span className="text-white">{asset.name}</span>
+                          <span className="text-slate-500 text-xs">{asset.asset_type}</span>
+                          {asset.location && (
+                            <span className="ml-auto text-xs text-slate-600">{asset.location}</span>
                           )}
                         </button>
                       );

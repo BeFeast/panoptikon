@@ -547,6 +547,7 @@ export interface SearchDevice {
   id: string;
   ip_address: string | null;
   hostname: string | null;
+  name: string | null;
   mac_address: string;
   vendor: string | null;
   is_online: boolean;
@@ -566,10 +567,28 @@ export interface SearchAlert {
   created_at: string;
 }
 
+export interface SearchSshTarget {
+  id: string;
+  name: string;
+  host: string;
+  username: string;
+  is_online: boolean;
+}
+
+export interface SearchAsset {
+  id: string;
+  name: string;
+  asset_type: string;
+  location: string | null;
+  serial_number: string | null;
+}
+
 export interface SearchResponse {
   devices: SearchDevice[];
   agents: SearchAgent[];
   alerts: SearchAlert[];
+  ssh_targets: SearchSshTarget[];
+  assets: SearchAsset[];
 }
 
 // ─── Audit Log ─────────────────────────────────────────
