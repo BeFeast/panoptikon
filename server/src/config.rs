@@ -28,6 +28,11 @@ pub struct AppConfig {
     /// Retention section — data cleanup periods.
     #[serde(default)]
     pub retention: RetentionConfig,
+
+    /// Directory containing pre-built agent binaries for download.
+    /// Expected layout: <dir>/panoptikon-agent-<platform>[.exe]
+    #[serde(default)]
+    pub agent_binaries_dir: Option<String>,
 }
 
 fn default_listen() -> Option<String> {
@@ -199,6 +204,7 @@ impl Default for AppConfig {
             scanner: ScannerConfig::default(),
             auth: AuthConfig::default(),
             retention: RetentionConfig::default(),
+            agent_binaries_dir: None,
         }
     }
 }
