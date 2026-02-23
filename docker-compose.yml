@@ -11,7 +11,18 @@ services:
     volumes:
       - panoptikon-data:/data
     environment:
-      - PANOPTIKON_URL=http://localhost:8080
+      - DATABASE_PATH=/data/panoptikon.db
+      # VyOS router connection
+      - VYOS_URL=
+      - VYOS_API_KEY=
+      # MikroTik router connection (configured via web UI)
+      - MIKROTIK_URL=
+      - MIKROTIK_USER=
+      - MIKROTIK_PASSWORD=
+      # Caddy Admin API endpoint (configured via web UI)
+      - CADDY_ADMIN_URL=
+      # Unbound control socket/endpoint (configured via web UI)
+      - UNBOUND_CONTROL_PATH=
     cap_add:
       - NET_RAW              # required for nmap raw socket scanning
       - NET_ADMIN            # required for ARP table access
