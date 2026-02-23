@@ -8,7 +8,9 @@ import {
   BellOff,
   Check,
   CheckCheck,
+  ChevronDown,
   Clock,
+  Download,
   MonitorSmartphone,
   Shield,
   Trash2,
@@ -38,8 +40,16 @@ import {
   deleteAllAlerts,
   markAllAlertsRead,
 } from "@/lib/api";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import type { Alert } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
+import { downloadExport } from "@/lib/export";
+import { toast } from "sonner";
 import { PageTransition } from "@/components/PageTransition";
 
 function alertIcon(type: Alert["type"]) {
@@ -240,6 +250,41 @@ export default function AlertsPage() {
         </div>
         {alerts && alerts.length > 0 && (
           <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-700 text-slate-400 hover:text-gray-200 gap-1.5"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={async () => {
+                    try {
+                      await downloadExport("/api/v1/alerts/export?format=csv", "panoptikon-alerts.csv");
+                      toast.success("Alerts exported as CSV");
+                    } catch { toast.error("Export failed"); }
+                  }}
+                >
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    try {
+                      await downloadExport("/api/v1/alerts/export?format=json", "panoptikon-alerts.json");
+                      toast.success("Alerts exported as JSON");
+                    } catch { toast.error("Export failed"); }
+                  }}
+                >
+                  Export JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {(alerts ?? []).some((a) => !a.is_read) && (
               <Button
                 variant="outline"

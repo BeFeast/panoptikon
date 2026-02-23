@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   Box,
+  ChevronDown,
+  Download,
   Pencil,
   Plus,
   Search,
@@ -53,6 +55,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   createAssetInventory,
   deleteAssetInventory,
   fetchAssets,
@@ -60,6 +68,7 @@ import {
 } from "@/lib/api";
 import type { Asset, AssetRequest, AssetType } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
+import { downloadExport } from "@/lib/export";
 import { PageTransition } from "@/components/PageTransition";
 import { toast } from "sonner";
 import AssetDetailContent from "./detail/content";
@@ -194,14 +203,51 @@ function AssetsListPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-white">Assets</h1>
-          <AssetFormDialog
-            open={addOpen}
-            onOpenChange={setAddOpen}
-            onSaved={() => {
-              setAddOpen(false);
-              load();
-            }}
-          />
+          <div className="flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-700 text-slate-400 hover:text-gray-200 gap-1.5"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={async () => {
+                    try {
+                      await downloadExport("/api/v1/assets/export?format=csv", "panoptikon-assets.csv");
+                      toast.success("Assets exported as CSV");
+                    } catch { toast.error("Export failed"); }
+                  }}
+                >
+                  Export CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={async () => {
+                    try {
+                      await downloadExport("/api/v1/assets/export?format=json", "panoptikon-assets.json");
+                      toast.success("Assets exported as JSON");
+                    } catch { toast.error("Export failed"); }
+                  }}
+                >
+                  Export JSON
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <AssetFormDialog
+              open={addOpen}
+              onOpenChange={setAddOpen}
+              onSaved={() => {
+                setAddOpen(false);
+                load();
+              }}
+            />
+          </div>
         </div>
 
         {/* Filter bar */}

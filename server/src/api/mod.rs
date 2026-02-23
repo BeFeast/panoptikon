@@ -397,6 +397,8 @@ pub fn router(state: AppState) -> Router {
         // Export
         .route("/devices/export", get(export::devices_export))
         .route("/traffic/export", get(export::traffic_export))
+        .route("/alerts/export", get(export::alerts_export))
+        .route("/assets/export", get(export::assets_export))
         // WebSocket for UI live updates
         .route("/ws", get(agents::ui_ws_handler))
         .route_layer(middleware::from_fn_with_state(
