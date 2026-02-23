@@ -942,9 +942,7 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
                             crate::oui::lookup(mac).map(|v| v.to_string())
                         };
                         let hostname = report.hostname.as_deref();
-                        let dev_name = hostname
-                            .or(vendor.as_deref())
-                            .map(|s| s.to_string());
+                        let dev_name = hostname.or(vendor.as_deref()).map(|s| s.to_string());
 
                         if let Err(e) = sqlx::query(
                             "INSERT INTO devices (id, mac, name, hostname, vendor, is_randomized_mac, \
@@ -1701,8 +1699,7 @@ mod tests {
     /// Helper: create a test AppState with an in-memory database.
     async fn test_app_state() -> (sqlx::SqlitePool, crate::api::AppState) {
         let pool = test_db().await;
-        let state =
-            crate::api::AppState::new(pool.clone(), crate::config::AppConfig::default());
+        let state = crate::api::AppState::new(pool.clone(), crate::config::AppConfig::default());
         (pool, state)
     }
 
@@ -1727,13 +1724,15 @@ mod tests {
             .expect("handle_agent_report should succeed");
 
         // Verify a device was created with the agent's MAC.
-        let device: Option<(String, String, Option<String>)> = sqlx::query_as(
-            "SELECT id, mac, hostname FROM devices WHERE mac = 'aa:bb:cc:dd:ee:f1'",
-        )
-        .fetch_optional(&pool)
-        .await
-        .unwrap();
-        assert!(device.is_some(), "Device should be auto-created from agent MAC");
+        let device: Option<(String, String, Option<String>)> =
+            sqlx::query_as("SELECT id, mac, hostname FROM devices WHERE mac = 'aa:bb:cc:dd:ee:f1'")
+                .fetch_optional(&pool)
+                .await
+                .unwrap();
+        assert!(
+            device.is_some(),
+            "Device should be auto-created from agent MAC"
+        );
         let (device_id, mac, hostname) = device.unwrap();
         assert_eq!(mac, "aa:bb:cc:dd:ee:f1");
         assert_eq!(hostname.as_deref(), Some("test-host"));
@@ -1802,12 +1801,11 @@ mod tests {
         );
 
         // Verify no duplicate device was created.
-        let device_count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE mac = ?")
-                .bind(existing_mac)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
+        let device_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE mac = ?")
+            .bind(existing_mac)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
         assert_eq!(device_count, 1, "No duplicate device should be created");
     }
 
@@ -1918,10 +1916,26 @@ mod tests {
         let os_version: Option<String> = sqlx::Row::get(&row, "os_version");
         let serial_number: Option<String> = sqlx::Row::get(&row, "serial_number");
 
-        assert_eq!(hostname.as_deref(), Some("existing-host"), "hostname should NOT be overwritten");
-        assert_eq!(os_family.as_deref(), Some("Windows"), "os_family should NOT be overwritten");
-        assert_eq!(os_version.as_deref(), Some("11"), "os_version should NOT be overwritten");
-        assert_eq!(serial_number.as_deref(), Some("PRE-SN"), "serial_number should NOT be overwritten");
+        assert_eq!(
+            hostname.as_deref(),
+            Some("existing-host"),
+            "hostname should NOT be overwritten"
+        );
+        assert_eq!(
+            os_family.as_deref(),
+            Some("Windows"),
+            "os_family should NOT be overwritten"
+        );
+        assert_eq!(
+            os_version.as_deref(),
+            Some("11"),
+            "os_version should NOT be overwritten"
+        );
+        assert_eq!(
+            serial_number.as_deref(),
+            Some("PRE-SN"),
+            "serial_number should NOT be overwritten"
+        );
     }
 
     #[tokio::test]
@@ -1969,32 +1983,35 @@ mod tests {
             .expect("agent 2 report");
 
         // Both agents should be linked to the same device.
-        let dev1: Option<String> =
-            sqlx::query_scalar("SELECT device_id FROM agents WHERE id = ?")
-                .bind(&agent1_id)
-                .fetch_optional(&pool)
-                .await
-                .unwrap()
-                .flatten();
-        let dev2: Option<String> =
-            sqlx::query_scalar("SELECT device_id FROM agents WHERE id = ?")
-                .bind(&agent2_id)
-                .fetch_optional(&pool)
-                .await
-                .unwrap()
-                .flatten();
+        let dev1: Option<String> = sqlx::query_scalar("SELECT device_id FROM agents WHERE id = ?")
+            .bind(&agent1_id)
+            .fetch_optional(&pool)
+            .await
+            .unwrap()
+            .flatten();
+        let dev2: Option<String> = sqlx::query_scalar("SELECT device_id FROM agents WHERE id = ?")
+            .bind(&agent2_id)
+            .fetch_optional(&pool)
+            .await
+            .unwrap()
+            .flatten();
 
         assert!(dev1.is_some(), "Agent 1 should have a device_id");
-        assert_eq!(dev1, dev2, "Both agents should be linked to the same device");
+        assert_eq!(
+            dev1, dev2,
+            "Both agents should be linked to the same device"
+        );
 
         // Only one device should exist with that MAC.
-        let device_count: i64 =
-            sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE mac = ?")
-                .bind(shared_mac)
-                .fetch_one(&pool)
-                .await
-                .unwrap();
-        assert_eq!(device_count, 1, "Only one device should exist for shared MAC");
+        let device_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE mac = ?")
+            .bind(shared_mac)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            device_count, 1,
+            "Only one device should exist for shared MAC"
+        );
     }
 
     #[tokio::test]
@@ -2027,6 +2044,9 @@ mod tests {
                 .await
                 .unwrap()
                 .flatten();
-        assert!(device_id.is_none(), "Agent should have no device_id without MAC");
+        assert!(
+            device_id.is_none(),
+            "Agent should have no device_id without MAC"
+        );
     }
 }
