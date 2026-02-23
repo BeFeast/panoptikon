@@ -2,7 +2,7 @@
 
 *The all-seeing eye for your home network.*
 
-**Panoptikon** is a self-hosted web application for managing a VyOS router and monitoring all devices on your local network. It combines device discovery (ARP scanning), router management (VyOS HTTP API), and lightweight agent-based telemetry into a single binary with a polished, dark-themed web UI inspired by Ubiquiti UniFi.
+**Panoptikon** is a self-hosted web application for monitoring all devices on your local network and managing MikroTik or VyOS routers. It combines device discovery (ARP scanning), router management, and lightweight agent-based telemetry into a single binary with a polished, dark-themed web UI inspired by Ubiquiti UniFi.
 
 ---
 
@@ -18,8 +18,9 @@
 ┌─────────────────────────────────────────────────────┐
 │                Rust API Server (axum)               │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐  │
-│  │ REST API │ │ WS Hub   │ │ Scanner  │ │ VyOS   │  │
-│  │          │ │          │ │ (ARP)    │ │ Client │  │ 
+│  │ REST API │ │ WS Hub   │ │ Scanner  │ │ Router │  │
+│  │          │ │          │ │ (ARP)    │ │ Client │  │
+│  │          │ │          │ │          │ │MT/VyOS │  │
 │  └──────────┘ └──────────┘ └──────────┘ └────────┘  │
 │                     │                               │
 │              ┌──────┴──────┐                        │
@@ -67,8 +68,8 @@ cargo build --release -p panoptikon-agent
 
 ```bash
 cd web
-npm install
-npm run dev
+bun install
+bun run dev
 # Open http://localhost:3000
 ```
 
@@ -76,10 +77,17 @@ npm run dev
 
 ```
 panoptikon/
-├── server/     # Rust axum backend (REST API, WebSocket hub, ARP scanner, VyOS client)
+├── server/     # Rust axum backend (REST API, WebSocket hub, ARP scanner, MikroTik + VyOS router clients)
 ├── agent/      # Rust lightweight agent (system metrics collector)
 └── web/        # Next.js 15 frontend (shadcn/ui, dark theme)
 ```
+
+## Router Integration
+
+Panoptikon supports two router platforms:
+
+- **MikroTik (primary)** — connects via the RouterOS 7+ REST API. Configure in **Settings → MikroTik**.
+- **VyOS (optional)** — connects via the VyOS HTTP API. Configure in **Settings → Router**.
 
 ## Prometheus Integration
 
