@@ -434,6 +434,8 @@ export interface SettingsData {
   mikrotik_user: string | null;
   mikrotik_password_set: boolean;
   mikrotik_enabled: boolean;
+  // Caddy
+  caddy_url: string | null;
 }
 
 // ─── Nginx Proxy Manager ─────────────────────────────────
@@ -1101,4 +1103,32 @@ export interface UpdateAlertRuleRequest {
   threshold_value?: number | null;
   notify_telegram?: boolean;
   notify_in_app?: boolean;
+}
+
+// ─── Caddy Reverse Proxy ────────────────────────────────
+
+export interface CaddyConnectionStatus {
+  configured: boolean;
+  reachable: boolean;
+  version: string | null;
+}
+
+export interface CaddyProxyHost {
+  id: string;
+  domain: string;
+  forward_host: string;
+  forward_port: number;
+  forward_scheme: string;
+  enabled: boolean;
+  ssl_enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CaddyProxyHostRequest {
+  domain: string;
+  forward_host: string;
+  forward_port: number;
+  forward_scheme: string;
+  ssl_enabled: boolean;
 }

@@ -77,6 +77,9 @@ import type {
   AlertRule,
   CreateAlertRuleRequest,
   UpdateAlertRuleRequest,
+  CaddyConnectionStatus,
+  CaddyProxyHost,
+  CaddyProxyHostRequest,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -786,6 +789,7 @@ export function updateSettings(body: {
   mikrotik_user?: string;
   mikrotik_password?: string;
   mikrotik_enabled?: boolean;
+  caddy_url?: string;
 }): Promise<SettingsData> {
   return apiPatch<SettingsData>("/api/v1/settings", body);
 }
@@ -1292,4 +1296,42 @@ export function updateAlertRule(
 
 export function deleteAlertRule(id: string): Promise<void> {
   return apiDelete(`/api/v1/alert-rules/${id}`);
+}
+
+// ─── Caddy Reverse Proxy ─────────────────────────────────
+
+export function fetchCaddyStatus(): Promise<CaddyConnectionStatus> {
+  return apiGet<CaddyConnectionStatus>("/api/v1/caddy/status");
+}
+
+export function fetchCaddyProxyHosts(): Promise<CaddyProxyHost[]> {
+  return apiGet<CaddyProxyHost[]>("/api/v1/caddy/proxy-hosts");
+}
+
+export function createCaddyProxyHost(
+  body: CaddyProxyHostRequest
+): Promise<CaddyProxyHost> {
+  return apiPost<CaddyProxyHost>("/api/v1/caddy/proxy-hosts", body);
+}
+
+export function updateCaddyProxyHost(
+  id: string,
+  body: CaddyProxyHostRequest
+): Promise<CaddyProxyHost> {
+  return apiPut<CaddyProxyHost>(`/api/v1/caddy/proxy-hosts/${id}`, body);
+}
+
+export function deleteCaddyProxyHost(id: string): Promise<void> {
+  return apiDelete(`/api/v1/caddy/proxy-hosts/${id}`);
+}
+
+export function toggleCaddyProxyHost(
+  id: string,
+  enabled: boolean
+): Promise<void> {
+  return apiPost<void>(`/api/v1/caddy/proxy-hosts/${id}/toggle`, { enabled });
+}
+
+export function syncCaddyConfig(): Promise<void> {
+  return apiPost<void>("/api/v1/caddy/sync");
 }

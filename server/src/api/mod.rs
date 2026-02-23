@@ -20,6 +20,7 @@ pub mod alerts;
 pub mod assets;
 pub mod audit;
 pub mod auth;
+pub mod caddy;
 pub mod config_backups;
 pub mod dashboard;
 pub mod devices;
@@ -59,6 +60,8 @@ pub struct AppState {
     pub mikrotik_http: reqwest::Client,
     /// TTL cache for MikroTik read operations.
     pub mikrotik_cache: Arc<crate::mikrotik::client::MikrotikCache>,
+    /// Shared reqwest::Client for Caddy Admin API.
+    pub caddy_http: reqwest::Client,
 }
 
 impl AppState {
@@ -75,6 +78,7 @@ impl AppState {
             npm_http: crate::npm::client::shared_http_client(),
             mikrotik_http: crate::mikrotik::client::shared_http_client(),
             mikrotik_cache: Arc::new(crate::mikrotik::client::MikrotikCache::new()),
+            caddy_http: crate::caddy::client::shared_http_client(),
         }
     }
 }
@@ -383,6 +387,17 @@ pub fn router(state: AppState) -> Router {
         .route("/ssh-targets/:id", delete(ssh_targets::delete))
         .route("/ssh-targets/:id/reports", get(ssh_targets::list_reports))
         .route("/ssh-targets/:id/test", post(ssh_targets::test_connection))
+        // Caddy reverse proxy manager
+        .route("/caddy/status", get(caddy::status))
+        .route("/caddy/proxy-hosts", get(caddy::list_proxy_hosts))
+        .route("/caddy/proxy-hosts", post(caddy::create_proxy_host))
+        .route("/caddy/proxy-hosts/:id", put(caddy::update_proxy_host))
+        .route("/caddy/proxy-hosts/:id", delete(caddy::delete_proxy_host))
+        .route(
+            "/caddy/proxy-hosts/:id/toggle",
+            post(caddy::toggle_proxy_host),
+        )
+        .route("/caddy/sync", post(caddy::sync))
         // MikroTik router proxy
         .route("/mikrotik/status", get(mikrotik::status))
         .route("/mikrotik/interfaces", get(mikrotik::interfaces))

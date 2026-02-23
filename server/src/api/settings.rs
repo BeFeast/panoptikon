@@ -34,6 +34,8 @@ pub struct SettingsResponse {
     /// Never return the password to the frontend — just whether one is set.
     pub mikrotik_password_set: bool,
     pub mikrotik_enabled: bool,
+    // --- Caddy ---
+    pub caddy_url: Option<String>,
 }
 
 /// Request body for updating settings.
@@ -62,6 +64,8 @@ pub struct UpdateSettingsRequest {
     pub mikrotik_user: Option<String>,
     pub mikrotik_password: Option<String>,
     pub mikrotik_enabled: Option<bool>,
+    // --- Caddy ---
+    pub caddy_url: Option<String>,
 }
 
 /// Helper: read a string setting from the settings table.
@@ -141,6 +145,9 @@ pub async fn get_settings(
         .map(|v| v == "1" || v == "true")
         .unwrap_or(false);
 
+    // Caddy settings.
+    let caddy_url = get_setting(&state, "caddy_url").await;
+
     Ok(Json(SettingsResponse {
         webhook_url,
         vyos_url,
@@ -160,6 +167,7 @@ pub async fn get_settings(
         mikrotik_user,
         mikrotik_password_set,
         mikrotik_enabled,
+        caddy_url,
     }))
 }
 
@@ -280,6 +288,12 @@ pub async fn update_settings(
             mikrotik_enabled = enabled,
             "MikroTik enabled toggle updated"
         );
+    }
+
+    // --- Caddy settings ---
+    if let Some(ref url) = body.caddy_url {
+        upsert_setting(&state, "caddy_url", url).await?;
+        info!(caddy_url = %url, "Caddy URL updated");
     }
 
     // Return current state.

@@ -11,6 +11,7 @@ import {
   Lock,
   ChevronRight,
   ShieldAlert,
+  Shield,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageTransition } from "@/components/PageTransition";
@@ -52,6 +53,13 @@ const settingsGroups: SettingsGroup[] = [
         iconBg: "bg-orange-500/10",
         title: "Nginx Proxy Manager",
         description: "Manage reverse proxy hosts via NPM.",
+      },
+      {
+        href: "/settings/caddy",
+        icon: <Shield className="h-4 w-4 text-green-400" />,
+        iconBg: "bg-green-500/10",
+        title: "Caddy Proxy",
+        description: "Manage reverse proxy hosts via Caddy.",
       },
       {
         href: "/settings/webhook",
