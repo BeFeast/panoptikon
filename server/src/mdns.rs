@@ -345,10 +345,9 @@ mod tests {
             insert_device_with_ip(&pool, "AA:BB:CC:DD:EE:03", "192.168.1.30", None).await;
 
         // First service
-        let changed =
-            upsert_mdns_info(&pool, "192.168.1.30", "smart-tv", "_airplay._tcp.local.")
-                .await
-                .unwrap();
+        let changed = upsert_mdns_info(&pool, "192.168.1.30", "smart-tv", "_airplay._tcp.local.")
+            .await
+            .unwrap();
         assert!(changed, "first service upsert should report a change");
 
         let services = get_mdns_services(&pool, &device_id).await;
@@ -372,10 +371,9 @@ mod tests {
         );
 
         // Duplicate service — should NOT be added again
-        let changed =
-            upsert_mdns_info(&pool, "192.168.1.30", "smart-tv", "_airplay._tcp.local.")
-                .await
-                .unwrap();
+        let changed = upsert_mdns_info(&pool, "192.168.1.30", "smart-tv", "_airplay._tcp.local.")
+            .await
+            .unwrap();
         assert!(!changed, "duplicate service should not report a change");
 
         let services = get_mdns_services(&pool, &device_id).await;
