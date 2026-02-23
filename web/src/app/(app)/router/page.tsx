@@ -4983,7 +4983,7 @@ function GenerateClientConfigDialog({
 
 export default function RouterPage() {
   const [summary, setSummary] = useState<RouterSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [mikrotikEnabled, setMikrotikEnabled] = useState(false);
   const [vyosConfigured, setVyosConfigured] = useState(false);
   const [routerType, setRouterType] = useState<"vyos" | "mikrotik">("mikrotik");
@@ -5010,7 +5010,7 @@ export default function RouterPage() {
         setRouterType("vyos");
       }
 
-      setLoading(false);
+      setSettingsLoaded(true);
     };
     loadSettings();
   }, []);
@@ -5043,27 +5043,16 @@ export default function RouterPage() {
     loadVyosSummary();
   }, [routerType, summary]);
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-96 w-full" />
-      </div>
-    );
-  }
-
-  const bothConfigured = vyosConfigured && mikrotikEnabled;
-  const neitherConfigured = !vyosConfigured && !mikrotikEnabled;
-
-  if (neitherConfigured) {
-    return <PageTransition><NotConfigured /></PageTransition>;
-  }
+  const bothConfigured = settingsLoaded && vyosConfigured && mikrotikEnabled;
+  const neitherConfigured = settingsLoaded && !vyosConfigured && !mikrotikEnabled;
 
   return (
     <PageTransition>
       <div className="space-y-6">
-        {/* Router type selector — only shown if both are configured */}
-        {bothConfigured && (
+        {/* Router type selector — skeleton while settings load, buttons if both configured */}
+        {!settingsLoaded ? (
+          <Skeleton className="h-9 w-48" />
+        ) : bothConfigured ? (
           <div className="flex gap-2">
             <Button
               variant={routerType === "mikrotik" ? "default" : "outline"}
@@ -5092,9 +5081,17 @@ export default function RouterPage() {
               VyOS (Optional)
             </Button>
           </div>
-        )}
+        ) : null}
 
-        {routerType === "mikrotik" && mikrotikEnabled ? (
+        {/* Content area — skeletons until settings arrive, then router-specific content */}
+        {!settingsLoaded ? (
+          <div className="space-y-6">
+            <Skeleton className="h-10 w-64" />
+            <Skeleton className="h-96 w-full" />
+          </div>
+        ) : neitherConfigured ? (
+          <NotConfigured />
+        ) : routerType === "mikrotik" && mikrotikEnabled ? (
           <MikrotikRouter />
         ) : routerType === "vyos" && !summary ? (
           <div className="space-y-6">
