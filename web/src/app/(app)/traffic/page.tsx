@@ -33,17 +33,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/PageTransition";
-
-async function downloadExport(url: string, filename: string) {
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) throw new Error(`Export failed: ${res.status}`);
-  const blob = await res.blob();
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
+import { downloadExport } from "@/lib/export";
 
 /** Format an ISO minute string to HH:mm for the X axis. */
 function formatTime(iso: string): string {

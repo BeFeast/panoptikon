@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowDown, ArrowUp, Battery, Box, CircuitBoard, Container, Cpu, Download, ExternalLink, Gamepad2, HardDrive, HelpCircle, Laptop, Loader2, LayoutGrid, List, MemoryStick, Monitor, Network, Pencil, Plus, Power, Printer, Radar, RotateCcw, Router, Search, Server, Smartphone, Tablet, Tv, VolumeX, Wifi, WifiOff } from "lucide-react";
+import { ArrowDown, ArrowUp, Battery, Box, ChevronDown, CircuitBoard, Container, Cpu, Download, ExternalLink, Gamepad2, HardDrive, HelpCircle, Laptop, Loader2, LayoutGrid, List, MemoryStick, Monitor, Network, Pencil, Plus, Power, Printer, Radar, RotateCcw, Router, Search, Server, Smartphone, Tablet, Tv, VolumeX, Wifi, WifiOff } from "lucide-react";
 import { getDeviceIcon } from "@/lib/device-icons";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,6 +26,12 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDevice, resetDeviceCustom, fetchDeviceSysinfo, createAsset } from "@/lib/api";
 import type { DeviceEvent, UptimeStats, PortScanResult, DeviceCustomFields, CreateAssetRequest } from "@/lib/api";
 import type { Device, DeviceSysinfo } from "@/lib/types";
@@ -46,21 +52,12 @@ import { PageTransition } from "@/components/PageTransition";
 import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
 import { MotionCard } from "@/components/MotionCard";
 
+import { downloadExport } from "@/lib/export";
+
 type Filter = "all" | "online" | "offline" | "unknown";
 type ViewMode = "grid" | "table";
 type SortField = "last_seen_at" | "ip" | "hostname";
 type SortDir = "asc" | "desc";
-
-async function downloadExport(url: string, filename: string) {
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) throw new Error(`Export failed: ${res.status}`);
-  const blob = await res.blob();
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
 
 export default function DevicesPage() {
   const [devices, setDevices] = useState<Device[] | null>(null);
@@ -278,24 +275,37 @@ export default function DevicesPage() {
           />
         </div>
 
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={async () => {
-            try {
-              await downloadExport(
-                "/api/v1/devices/export?format=csv",
-                "panoptikon-devices.csv"
-              );
-              toast.success("Devices exported");
-            } catch {
-              toast.error("Export failed");
-            }
-          }}
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Export CSV
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="secondary" size="sm" className="gap-1.5">
+              <Download className="h-4 w-4" />
+              Export
+              <ChevronDown className="h-3 w-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={async () => {
+                try {
+                  await downloadExport("/api/v1/devices/export?format=csv", "panoptikon-devices.csv");
+                  toast.success("Devices exported as CSV");
+                } catch { toast.error("Export failed"); }
+              }}
+            >
+              Export CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={async () => {
+                try {
+                  await downloadExport("/api/v1/devices/export?format=json", "panoptikon-devices.json");
+                  toast.success("Devices exported as JSON");
+                } catch { toast.error("Export failed"); }
+              }}
+            >
+              Export JSON
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         {/* View toggle */}
         <div className="flex shrink-0 gap-1">
