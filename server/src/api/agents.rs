@@ -916,7 +916,77 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
                 }
             }
             Ok(None) => {
-                // No matching device found — this is normal for agents on hosts not yet in the ARP table.
+                // No matching device found — auto-create a device (asset) if
+                // this agent doesn't already have one linked.
+                let current_device_id: Option<String> =
+                    sqlx::query_scalar("SELECT device_id FROM agents WHERE id = ?")
+                        .bind(agent_id)
+                        .fetch_optional(&state.db)
+                        .await
+                        .unwrap_or(None)
+                        .flatten();
+
+                if current_device_id.is_none() {
+                    // Pick the first usable MAC (prefer non-randomized).
+                    let chosen_mac = mac_addresses
+                        .iter()
+                        .find(|m| !crate::enrichment::is_randomized_mac(m))
+                        .or(mac_addresses.first());
+
+                    if let Some(mac) = chosen_mac {
+                        let new_device_id = uuid::Uuid::new_v4().to_string();
+                        let mac_is_randomized = crate::enrichment::is_randomized_mac(mac);
+                        let vendor = if mac_is_randomized {
+                            None
+                        } else {
+                            crate::oui::lookup(mac).map(|v| v.to_string())
+                        };
+                        let hostname = report.hostname.as_deref();
+                        let dev_name = hostname.or(vendor.as_deref()).map(|s| s.to_string());
+
+                        if let Err(e) = sqlx::query(
+                            "INSERT INTO devices (id, mac, name, hostname, vendor, is_randomized_mac, \
+                             first_seen_at, last_seen_at, is_online) \
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)",
+                        )
+                        .bind(&new_device_id)
+                        .bind(mac)
+                        .bind(&dev_name)
+                        .bind(hostname)
+                        .bind(&vendor)
+                        .bind(mac_is_randomized as i32)
+                        .bind(&now)
+                        .bind(&now)
+                        .execute(&state.db)
+                        .await
+                        {
+                            warn!(agent_id, mac = %mac, error = %e, "Failed to auto-create device for agent");
+                        } else {
+                            // Link agent to new device.
+                            let _ = sqlx::query("UPDATE agents SET device_id = ? WHERE id = ?")
+                                .bind(&new_device_id)
+                                .bind(agent_id)
+                                .execute(&state.db)
+                                .await;
+
+                            info!(
+                                agent_id,
+                                device_id = %new_device_id,
+                                mac = %mac,
+                                "Auto-created device (asset) from agent"
+                            );
+
+                            state.ws_hub.broadcast(
+                                "new_device",
+                                json!({
+                                    "device_id": &new_device_id,
+                                    "mac": mac,
+                                    "source": "agent",
+                                }),
+                            );
+                        }
+                    }
+                }
             }
             Err(e) => {
                 warn!(agent_id, error = %e, "Failed to query devices for MAC matching");
@@ -1058,6 +1128,56 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
         .await
         {
             warn!(agent_id, device_id = %dev_id, error = %e, "Failed to upsert device_sysinfo");
+        }
+    }
+
+    // --- Auto-populate device asset fields from agent data ---
+    // Update the linked device's hostname, OS, and hardware fields when they are empty.
+    // This ensures the asset list shows meaningful info after the first agent report.
+    if let Some(ref dev_id) = device_id {
+        let os_name = os.and_then(|o| o.name.as_deref());
+        let os_ver = os.and_then(|o| o.version.as_deref());
+
+        if report.hostname.is_some() || os_name.is_some() || os_ver.is_some() {
+            let _ = sqlx::query(
+                "UPDATE devices SET \
+                 hostname = COALESCE(hostname, ?), \
+                 os_family = COALESCE(os_family, ?), \
+                 os_version = COALESCE(os_version, ?), \
+                 device_type = COALESCE(device_type, 'computer'), \
+                 updated_at = ? \
+                 WHERE id = ?",
+            )
+            .bind(&report.hostname)
+            .bind(os_name)
+            .bind(os_ver)
+            .bind(&now)
+            .bind(dev_id)
+            .execute(&state.db)
+            .await;
+        }
+
+        // Copy hardware specs to device asset fields (only when empty).
+        if let Some(ref hw) = report.hardware {
+            let ram_str = hw.ram_total_bytes.map(format_bytes);
+
+            let _ = sqlx::query(
+                "UPDATE devices SET \
+                 serial_number = COALESCE(serial_number, ?), \
+                 cpu_manual = COALESCE(cpu_manual, ?), \
+                 ram_manual = COALESCE(ram_manual, ?), \
+                 custom_model = COALESCE(custom_model, ?), \
+                 updated_at = ? \
+                 WHERE id = ?",
+            )
+            .bind(hw.serial_number.as_deref())
+            .bind(hw.cpu_name.as_deref())
+            .bind(ram_str.as_deref())
+            .bind(hw.hardware_model.as_deref())
+            .bind(&now)
+            .bind(dev_id)
+            .execute(&state.db)
+            .await;
         }
     }
 
@@ -1571,6 +1691,362 @@ mod tests {
         assert!(
             (interval - 60.0).abs() < 0.01,
             "Interval between reports 60s apart should be 60.0, got {interval}"
+        );
+    }
+
+    // ─── Auto-Asset Creation Tests ──────────────────────────
+
+    /// Helper: create a test AppState with an in-memory database.
+    async fn test_app_state() -> (sqlx::SqlitePool, crate::api::AppState) {
+        let pool = test_db().await;
+        let state = crate::api::AppState::new(pool.clone(), crate::config::AppConfig::default());
+        (pool, state)
+    }
+
+    #[tokio::test]
+    async fn test_agent_report_auto_creates_device() {
+        // Agent sends a report with a MAC address that doesn't match any device.
+        // A new device (asset) should be auto-created and linked to the agent.
+        let (pool, state) = test_app_state().await;
+        let agent_id = insert_test_agent(&pool).await;
+
+        let report_json = serde_json::json!({
+            "agent_id": agent_id,
+            "hostname": "test-host",
+            "os": {"name": "Linux", "version": "6.1.0"},
+            "network_interfaces": [
+                {"name": "eth0", "mac": "aa:bb:cc:dd:ee:f1"}
+            ]
+        });
+
+        super::handle_agent_report(&report_json.to_string(), &agent_id, &state)
+            .await
+            .expect("handle_agent_report should succeed");
+
+        // Verify a device was created with the agent's MAC.
+        let device: Option<(String, String, Option<String>)> =
+            sqlx::query_as("SELECT id, mac, hostname FROM devices WHERE mac = 'aa:bb:cc:dd:ee:f1'")
+                .fetch_optional(&pool)
+                .await
+                .unwrap();
+        assert!(
+            device.is_some(),
+            "Device should be auto-created from agent MAC"
+        );
+        let (device_id, mac, hostname) = device.unwrap();
+        assert_eq!(mac, "aa:bb:cc:dd:ee:f1");
+        assert_eq!(hostname.as_deref(), Some("test-host"));
+
+        // Verify agent is linked to the new device.
+        let linked_device_id: Option<String> =
+            sqlx::query_scalar("SELECT device_id FROM agents WHERE id = ?")
+                .bind(&agent_id)
+                .fetch_optional(&pool)
+                .await
+                .unwrap()
+                .flatten();
+        assert_eq!(
+            linked_device_id.as_deref(),
+            Some(device_id.as_str()),
+            "Agent should be linked to the auto-created device"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_agent_report_links_to_existing_device() {
+        // A device already exists with a given MAC. Agent sends a report with
+        // that same MAC. Agent should be linked to the existing device (no new device).
+        let (pool, state) = test_app_state().await;
+        let agent_id = insert_test_agent(&pool).await;
+        let existing_mac = "aa:bb:cc:dd:ee:f2";
+
+        // Pre-create a device with this MAC.
+        let pre_device_id = uuid::Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().to_rfc3339();
+        sqlx::query(
+            "INSERT INTO devices (id, mac, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?)",
+        )
+        .bind(&pre_device_id)
+        .bind(existing_mac)
+        .bind(&now)
+        .bind(&now)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let report_json = serde_json::json!({
+            "agent_id": agent_id,
+            "hostname": "agent-host",
+            "network_interfaces": [
+                {"name": "eth0", "mac": existing_mac}
+            ]
+        });
+
+        super::handle_agent_report(&report_json.to_string(), &agent_id, &state)
+            .await
+            .expect("handle_agent_report should succeed");
+
+        // Verify agent is linked to the existing device (not a new one).
+        let linked_device_id: Option<String> =
+            sqlx::query_scalar("SELECT device_id FROM agents WHERE id = ?")
+                .bind(&agent_id)
+                .fetch_optional(&pool)
+                .await
+                .unwrap()
+                .flatten();
+        assert_eq!(
+            linked_device_id.as_deref(),
+            Some(pre_device_id.as_str()),
+            "Agent should link to existing device via MAC match"
+        );
+
+        // Verify no duplicate device was created.
+        let device_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE mac = ?")
+            .bind(existing_mac)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(device_count, 1, "No duplicate device should be created");
+    }
+
+    #[tokio::test]
+    async fn test_agent_report_populates_device_fields() {
+        // Agent report with OS and hardware info should populate the linked
+        // device's asset fields when they are empty.
+        let (pool, state) = test_app_state().await;
+        let agent_id = insert_test_agent(&pool).await;
+
+        let report_json = serde_json::json!({
+            "agent_id": agent_id,
+            "hostname": "workstation-01",
+            "os": {"name": "Ubuntu", "version": "22.04"},
+            "network_interfaces": [
+                {"name": "eth0", "mac": "aa:bb:cc:dd:ee:f3"}
+            ],
+            "hardware": {
+                "hardware_model": "ThinkPad X1 Carbon",
+                "cpu_name": "Intel i7-1260P",
+                "ram_total_bytes": 17179869184_i64,
+                "serial_number": "SN-TEST-001"
+            }
+        });
+
+        super::handle_agent_report(&report_json.to_string(), &agent_id, &state)
+            .await
+            .expect("handle_agent_report should succeed");
+
+        // Find the auto-created device.
+        let row = sqlx::query(
+            "SELECT hostname, os_family, os_version, device_type, \
+                    serial_number, cpu_manual, ram_manual, custom_model \
+             FROM devices WHERE mac = 'aa:bb:cc:dd:ee:f3'",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+        let hostname: Option<String> = sqlx::Row::get(&row, "hostname");
+        let os_family: Option<String> = sqlx::Row::get(&row, "os_family");
+        let os_version: Option<String> = sqlx::Row::get(&row, "os_version");
+        let device_type: Option<String> = sqlx::Row::get(&row, "device_type");
+        let serial_number: Option<String> = sqlx::Row::get(&row, "serial_number");
+        let cpu_manual: Option<String> = sqlx::Row::get(&row, "cpu_manual");
+        let ram_manual: Option<String> = sqlx::Row::get(&row, "ram_manual");
+        let custom_model: Option<String> = sqlx::Row::get(&row, "custom_model");
+
+        assert_eq!(hostname.as_deref(), Some("workstation-01"));
+        assert_eq!(os_family.as_deref(), Some("Ubuntu"));
+        assert_eq!(os_version.as_deref(), Some("22.04"));
+        assert_eq!(device_type.as_deref(), Some("computer"));
+        assert_eq!(serial_number.as_deref(), Some("SN-TEST-001"));
+        assert_eq!(cpu_manual.as_deref(), Some("Intel i7-1260P"));
+        assert!(ram_manual.is_some(), "ram_manual should be populated");
+        assert_eq!(custom_model.as_deref(), Some("ThinkPad X1 Carbon"));
+    }
+
+    #[tokio::test]
+    async fn test_agent_does_not_overwrite_existing_device_fields() {
+        // If a device already has hostname/OS set, agent report should NOT overwrite.
+        let (pool, state) = test_app_state().await;
+        let agent_id = insert_test_agent(&pool).await;
+        let mac = "aa:bb:cc:dd:ee:f4";
+
+        // Create device with pre-existing hostname and OS.
+        let device_id = uuid::Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().to_rfc3339();
+        sqlx::query(
+            "INSERT INTO devices (id, mac, hostname, os_family, os_version, serial_number, \
+             first_seen_at, last_seen_at) VALUES (?, ?, 'existing-host', 'Windows', '11', 'PRE-SN', ?, ?)",
+        )
+        .bind(&device_id)
+        .bind(mac)
+        .bind(&now)
+        .bind(&now)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        let report_json = serde_json::json!({
+            "agent_id": agent_id,
+            "hostname": "new-host",
+            "os": {"name": "Linux", "version": "6.1.0"},
+            "network_interfaces": [
+                {"name": "eth0", "mac": mac}
+            ],
+            "hardware": {
+                "serial_number": "NEW-SN"
+            }
+        });
+
+        super::handle_agent_report(&report_json.to_string(), &agent_id, &state)
+            .await
+            .expect("handle_agent_report should succeed");
+
+        // Existing values should be preserved (COALESCE keeps the original).
+        let row = sqlx::query(
+            "SELECT hostname, os_family, os_version, serial_number FROM devices WHERE mac = ?",
+        )
+        .bind(mac)
+        .fetch_one(&pool)
+        .await
+        .unwrap();
+
+        let hostname: Option<String> = sqlx::Row::get(&row, "hostname");
+        let os_family: Option<String> = sqlx::Row::get(&row, "os_family");
+        let os_version: Option<String> = sqlx::Row::get(&row, "os_version");
+        let serial_number: Option<String> = sqlx::Row::get(&row, "serial_number");
+
+        assert_eq!(
+            hostname.as_deref(),
+            Some("existing-host"),
+            "hostname should NOT be overwritten"
+        );
+        assert_eq!(
+            os_family.as_deref(),
+            Some("Windows"),
+            "os_family should NOT be overwritten"
+        );
+        assert_eq!(
+            os_version.as_deref(),
+            Some("11"),
+            "os_version should NOT be overwritten"
+        );
+        assert_eq!(
+            serial_number.as_deref(),
+            Some("PRE-SN"),
+            "serial_number should NOT be overwritten"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_two_agents_same_mac_single_device() {
+        // Two agents reporting the same MAC should be linked to the same device (dedup).
+        let (pool, state) = test_app_state().await;
+        let agent1_id = insert_test_agent(&pool).await;
+        let agent2_id = {
+            let id = uuid::Uuid::new_v4().to_string();
+            let hash = bcrypt::hash("test_key2", 4).unwrap();
+            sqlx::query("INSERT INTO agents (id, api_key_hash, name) VALUES (?, ?, ?)")
+                .bind(&id)
+                .bind(&hash)
+                .bind("test-agent-2")
+                .execute(&pool)
+                .await
+                .unwrap();
+            id
+        };
+
+        let shared_mac = "aa:bb:cc:dd:ee:f5";
+
+        // Agent 1 reports first — should auto-create device.
+        let report1 = serde_json::json!({
+            "agent_id": agent1_id,
+            "hostname": "host-1",
+            "network_interfaces": [
+                {"name": "eth0", "mac": shared_mac}
+            ]
+        });
+        super::handle_agent_report(&report1.to_string(), &agent1_id, &state)
+            .await
+            .expect("agent 1 report");
+
+        // Agent 2 reports with same MAC — should link to existing device.
+        let report2 = serde_json::json!({
+            "agent_id": agent2_id,
+            "hostname": "host-2",
+            "network_interfaces": [
+                {"name": "eth0", "mac": shared_mac}
+            ]
+        });
+        super::handle_agent_report(&report2.to_string(), &agent2_id, &state)
+            .await
+            .expect("agent 2 report");
+
+        // Both agents should be linked to the same device.
+        let dev1: Option<String> = sqlx::query_scalar("SELECT device_id FROM agents WHERE id = ?")
+            .bind(&agent1_id)
+            .fetch_optional(&pool)
+            .await
+            .unwrap()
+            .flatten();
+        let dev2: Option<String> = sqlx::query_scalar("SELECT device_id FROM agents WHERE id = ?")
+            .bind(&agent2_id)
+            .fetch_optional(&pool)
+            .await
+            .unwrap()
+            .flatten();
+
+        assert!(dev1.is_some(), "Agent 1 should have a device_id");
+        assert_eq!(
+            dev1, dev2,
+            "Both agents should be linked to the same device"
+        );
+
+        // Only one device should exist with that MAC.
+        let device_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE mac = ?")
+            .bind(shared_mac)
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(
+            device_count, 1,
+            "Only one device should exist for shared MAC"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_agent_no_mac_no_device_created() {
+        // Agent report with no network interfaces → no device auto-created.
+        let (pool, state) = test_app_state().await;
+        let agent_id = insert_test_agent(&pool).await;
+
+        let report_json = serde_json::json!({
+            "agent_id": agent_id,
+            "hostname": "no-mac-host"
+        });
+
+        super::handle_agent_report(&report_json.to_string(), &agent_id, &state)
+            .await
+            .expect("handle_agent_report should succeed");
+
+        // No device should be created.
+        let device_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM devices")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        assert_eq!(device_count, 0, "No device should be created without MAC");
+
+        // Agent should have no device_id.
+        let device_id: Option<String> =
+            sqlx::query_scalar("SELECT device_id FROM agents WHERE id = ?")
+                .bind(&agent_id)
+                .fetch_optional(&pool)
+                .await
+                .unwrap()
+                .flatten();
+        assert!(
+            device_id.is_none(),
+            "Agent should have no device_id without MAC"
         );
     }
 }
