@@ -71,6 +71,7 @@ import { timeAgo } from "@/lib/format";
 import { downloadExport } from "@/lib/export";
 import { PageTransition } from "@/components/PageTransition";
 import { toast } from "sonner";
+import { motion } from "framer-motion";
 import AssetDetailContent from "./detail/content";
 
 // ─── Asset type config ──────────────────────────────────
@@ -349,7 +350,7 @@ function AssetsListPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((asset) => {
+                {filtered.map((asset, index) => {
                   const typeConfig = getAssetTypeConfig(asset.asset_type);
                   const TypeIcon = typeConfig.icon;
 
@@ -363,7 +364,17 @@ function AssetsListPage() {
                   const lastSeen = asset.device_last_seen;
 
                   return (
-                    <TableRow key={asset.id} className="border-slate-800">
+                    <motion.tr
+                      key={asset.id}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        duration: 0.18,
+                        ease: "easeOut",
+                        delay: Math.min(index * 0.015, 0.12),
+                      }}
+                      className="border-b border-slate-800 transition-colors hover:bg-slate-800/60 data-[state=selected]:bg-muted"
+                    >
                       <TableCell className="font-medium text-white">
                         {asset.name}
                       </TableCell>
@@ -410,7 +421,7 @@ function AssetsListPage() {
                           </button>
                         </div>
                       </TableCell>
-                    </TableRow>
+                    </motion.tr>
                   );
                 })}
               </TableBody>

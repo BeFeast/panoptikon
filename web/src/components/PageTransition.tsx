@@ -1,13 +1,16 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 
 export function PageTransition({ children }: { children: React.ReactNode }) {
+  const prefersReducedMotion = useReducedMotion()
+
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.18, ease: 'easeOut' }}
+      style={{ willChange: 'transform, opacity' }}
     >
       {children}
     </motion.div>
