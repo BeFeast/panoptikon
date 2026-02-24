@@ -1599,3 +1599,61 @@ export interface QosSummary {
   mikrotik_simple_queue_count: number;
   mikrotik_queue_tree_count: number;
 }
+
+// ─── Dynamic DNS (DDNS) ─────────────────────────────────
+
+export interface DdnsEntry {
+  id: string;
+  provider: string;
+  hostname: string;
+  username: string | null;
+  has_password: boolean;
+  has_api_token: boolean;
+  zone: string | null;
+  interface_name: string | null;
+  ip_source: string;
+  protocol: string;
+  enabled: boolean;
+  router_type: string;
+  last_status: string;
+  last_ip: string | null;
+  last_updated_at: string | null;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DdnsEntryRequest {
+  provider: string;
+  hostname: string;
+  username?: string;
+  password?: string;
+  api_token?: string;
+  zone?: string;
+  interface_name?: string;
+  ip_source: string;
+  protocol: string;
+  enabled: boolean;
+  router_type: string;
+}
+
+export interface DdnsStatus {
+  total: number;
+  enabled: number;
+  healthy: number;
+  failing: number;
+  vyos_configured: boolean;
+  mikrotik_configured: boolean;
+}
+
+export interface VyosDdnsService {
+  name: string;
+  provider: string | null;
+  host_name: string | null;
+  zone: string | null;
+  ip_version: string | null;
+}
+
+export interface VyosDdnsConfig {
+  services: VyosDdnsService[];
+}
