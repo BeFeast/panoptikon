@@ -15,6 +15,7 @@ import {
   ShieldAlert,
   Server,
   Wifi,
+  Network,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageTransition } from "@/components/PageTransition";
@@ -64,6 +65,13 @@ const settingsGroups: SettingsGroup[] = [
         iconBg: "bg-orange-500/10",
         title: "Xiaomi Mesh",
         description: "Configure Xiaomi mesh router integration.",
+      },
+      {
+        href: "/settings/tailscale",
+        icon: <Network className="h-4 w-4 text-indigo-400" />,
+        iconBg: "bg-indigo-500/10",
+        title: "Tailscale",
+        description: "Secure remote access via WireGuard mesh VPN.",
       },
       {
         href: "/settings/webhook",

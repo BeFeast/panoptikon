@@ -44,6 +44,7 @@ pub mod settings;
 pub mod setup;
 pub mod speedtest;
 pub mod ssh_targets;
+pub mod tailscale;
 pub mod topology;
 pub mod traffic;
 pub mod unbound;
@@ -546,6 +547,8 @@ pub fn router(state: AppState) -> Router {
         .route("/qos/mikrotik/queue-tree", get(qos::mikrotik_queue_tree))
         // VPN Status Dashboard
         .route("/vpn-status", get(vpn_status::vpn_status))
+        // Tailscale
+        .route("/tailscale/status", get(tailscale::status))
         // NAT / Port Forwarding
         .route("/nat/summary", get(nat::summary))
         .route("/nat/vyos/rules", get(nat::vyos_list))
