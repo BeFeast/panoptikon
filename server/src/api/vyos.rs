@@ -2926,6 +2926,7 @@ pub struct DhcpSubnetConfig {
     pub name_server: Option<String>,
     pub domain_name: Option<String>,
     pub lease: Option<String>,
+    pub ntp_server: Option<String>,
     pub ranges: Vec<DhcpPoolRange>,
     pub static_mapping_count: usize,
     pub disabled: bool,
@@ -2995,6 +2996,15 @@ fn parse_dhcp_server_config(config: &Value) -> DhcpServerConfig {
                 })
             });
 
+            let ntp_server = subnet_val.get("ntp-server").and_then(|v| {
+                v.as_str().map(|s| s.to_string()).or_else(|| {
+                    v.as_array()
+                        .and_then(|a| a.first())
+                        .and_then(|v| v.as_str())
+                        .map(|s| s.to_string())
+                })
+            });
+
             let disabled = subnet_val.get("disable").is_some();
 
             // Parse pool ranges
@@ -3033,6 +3043,7 @@ fn parse_dhcp_server_config(config: &Value) -> DhcpServerConfig {
                 name_server,
                 domain_name,
                 lease,
+                ntp_server,
                 ranges,
                 static_mapping_count,
                 disabled,
@@ -3344,6 +3355,750 @@ pub async fn update_dhcp_static_mapping(
             path.name, body.mac, body.ip
         ),
     }))
+}
+
+// ── DHCP Server Pool Configuration ──────────────────────────────────────────
+
+/// Request body for updating DHCP subnet options.
+#[derive(Debug, Deserialize)]
+pub struct UpdateDhcpSubnetRequest {
+    pub default_router: Option<String>,
+    pub name_server: Option<String>,
+    pub domain_name: Option<String>,
+    pub lease: Option<u64>,
+    pub ntp_server: Option<String>,
+}
+
+/// PUT /api/v1/vyos/dhcp/subnets/:network/:subnet — update DHCP subnet options.
+pub async fn update_dhcp_subnet(
+    State(state): State<AppState>,
+    Path(path): Path<DhcpSubnetPath>,
+    Json(body): Json<UpdateDhcpSubnetRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    let base_path = format!(
+        "service dhcp-server shared-network-name {} subnet {}",
+        path.network, path.subnet
+    );
+    let description = format!(
+        "Update DHCP subnet options for {} (network={})",
+        path.subnet, path.network
+    );
+    let mut commands = Vec::new();
+
+    // Validate all inputs upfront
+    if let Some(ref gw) = body.default_router {
+        if !gw.is_empty() && !is_valid_ip(gw) {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: "Invalid default router IP address".to_string(),
+                }),
+            ));
+        }
+    }
+    if let Some(ref ns) = body.name_server {
+        if !ns.is_empty() && !is_valid_ip(ns) {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: "Invalid name server IP address".to_string(),
+                }),
+            ));
+        }
+    }
+    if let Some(ref ntp) = body.ntp_server {
+        if !ntp.is_empty() && !is_valid_ip(ntp) {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: "Invalid NTP server IP address".to_string(),
+                }),
+            ));
+        }
+    }
+
+    // Apply options — set non-empty values, delete empty ones
+    let options: Vec<(&str, Option<String>)> = vec![
+        (
+            "default-router",
+            body.default_router.as_ref().map(|s| s.to_string()),
+        ),
+        (
+            "name-server",
+            body.name_server.as_ref().map(|s| s.to_string()),
+        ),
+        (
+            "domain-name",
+            body.domain_name.as_ref().map(|s| s.to_string()),
+        ),
+        ("lease", body.lease.map(|l| l.to_string())),
+        (
+            "ntp-server",
+            body.ntp_server.as_ref().map(|s| s.to_string()),
+        ),
+    ];
+
+    for (option_name, value) in &options {
+        let val = match value {
+            Some(v) => v,
+            None => continue, // field not provided, skip
+        };
+
+        if !val.is_empty() {
+            commands.push(format!("set {base_path} {option_name} {val}"));
+            if let Err(e) = client
+                .configure_set(&[
+                    "service",
+                    "dhcp-server",
+                    "shared-network-name",
+                    &path.network,
+                    "subnet",
+                    &path.subnet,
+                    option_name,
+                    val,
+                ])
+                .await
+            {
+                let msg = format!("Failed to set {option_name}: {e}");
+                audit::log_failure(
+                    &state.db,
+                    "dhcp_subnet_update",
+                    &description,
+                    &commands,
+                    &msg,
+                )
+                .await;
+                return Err((
+                    StatusCode::BAD_GATEWAY,
+                    Json(VyosWriteResponse {
+                        success: false,
+                        message: msg,
+                    }),
+                ));
+            }
+        } else {
+            // Empty string means clear the option
+            commands.push(format!("delete {base_path} {option_name}"));
+            if let Err(e) = client
+                .configure_delete(&[
+                    "service",
+                    "dhcp-server",
+                    "shared-network-name",
+                    &path.network,
+                    "subnet",
+                    &path.subnet,
+                    option_name,
+                ])
+                .await
+            {
+                let msg = e.to_string();
+                if !msg.contains("does not exist") && !msg.contains("empty") {
+                    tracing::warn!("Failed to delete DHCP {option_name}: {e}");
+                }
+            }
+        }
+    }
+
+    audit::log_success(&state.db, "dhcp_subnet_update", &description, &commands).await;
+
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after DHCP subnet update: {e}");
+    }
+
+    Ok(Json(VyosWriteResponse {
+        success: true,
+        message: format!("DHCP subnet {} options updated", path.subnet),
+    }))
+}
+
+/// Request body for creating/updating a DHCP pool range.
+#[derive(Debug, Deserialize)]
+pub struct DhcpPoolRangeRequest {
+    pub start: String,
+    pub stop: String,
+}
+
+/// Path parameters for a pool range operation.
+#[derive(Debug, Deserialize)]
+pub struct DhcpPoolRangePath {
+    pub network: String,
+    pub subnet: String,
+    pub range_name: String,
+}
+
+/// POST /api/v1/vyos/dhcp/subnets/:network/:subnet/ranges — create a new pool range.
+pub async fn create_dhcp_pool_range(
+    State(state): State<AppState>,
+    Path(path): Path<DhcpPoolRangePath>,
+    Json(body): Json<DhcpPoolRangeRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    // Validate IPs
+    if !is_valid_ip(&body.start) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid start IP address".to_string(),
+            }),
+        ));
+    }
+    if !is_valid_ip(&body.stop) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid stop IP address".to_string(),
+            }),
+        ));
+    }
+
+    let description = format!(
+        "Create DHCP pool range '{}': {} - {} (network={}, subnet={})",
+        path.range_name, body.start, body.stop, path.network, path.subnet
+    );
+    let commands = vec![
+        format!(
+            "set service dhcp-server shared-network-name {} subnet {} range {} start {}",
+            path.network, path.subnet, path.range_name, body.start
+        ),
+        format!(
+            "set service dhcp-server shared-network-name {} subnet {} range {} stop {}",
+            path.network, path.subnet, path.range_name, body.stop
+        ),
+    ];
+
+    // Set start IP
+    if let Err(e) = client
+        .configure_set(&[
+            "service",
+            "dhcp-server",
+            "shared-network-name",
+            &path.network,
+            "subnet",
+            &path.subnet,
+            "range",
+            &path.range_name,
+            "start",
+            &body.start,
+        ])
+        .await
+    {
+        let msg = format!("Failed to set range start: {e}");
+        audit::log_failure(
+            &state.db,
+            "dhcp_pool_range_create",
+            &description,
+            &commands,
+            &msg,
+        )
+        .await;
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: msg,
+            }),
+        ));
+    }
+
+    // Set stop IP
+    if let Err(e) = client
+        .configure_set(&[
+            "service",
+            "dhcp-server",
+            "shared-network-name",
+            &path.network,
+            "subnet",
+            &path.subnet,
+            "range",
+            &path.range_name,
+            "stop",
+            &body.stop,
+        ])
+        .await
+    {
+        let msg = format!("Failed to set range stop: {e}");
+        audit::log_failure(
+            &state.db,
+            "dhcp_pool_range_create",
+            &description,
+            &commands,
+            &msg,
+        )
+        .await;
+        // Try to clean up the start that was already set
+        let _ = client
+            .configure_delete(&[
+                "service",
+                "dhcp-server",
+                "shared-network-name",
+                &path.network,
+                "subnet",
+                &path.subnet,
+                "range",
+                &path.range_name,
+            ])
+            .await;
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: msg,
+            }),
+        ));
+    }
+
+    audit::log_success(&state.db, "dhcp_pool_range_create", &description, &commands).await;
+
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after DHCP pool range create: {e}");
+    }
+
+    Ok(Json(VyosWriteResponse {
+        success: true,
+        message: format!(
+            "Pool range '{}' created: {} - {}",
+            path.range_name, body.start, body.stop
+        ),
+    }))
+}
+
+/// DELETE /api/v1/vyos/dhcp/subnets/:network/:subnet/ranges/:range_name — delete a pool range.
+pub async fn delete_dhcp_pool_range(
+    State(state): State<AppState>,
+    Path(path): Path<DhcpPoolRangePath>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    let description = format!(
+        "Delete DHCP pool range '{}' (network={}, subnet={})",
+        path.range_name, path.network, path.subnet
+    );
+    let commands = vec![format!(
+        "delete service dhcp-server shared-network-name {} subnet {} range {}",
+        path.network, path.subnet, path.range_name
+    )];
+
+    match client
+        .configure_delete(&[
+            "service",
+            "dhcp-server",
+            "shared-network-name",
+            &path.network,
+            "subnet",
+            &path.subnet,
+            "range",
+            &path.range_name,
+        ])
+        .await
+    {
+        Ok(_) => {
+            audit::log_success(&state.db, "dhcp_pool_range_delete", &description, &commands).await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after DHCP pool range delete: {e}");
+            }
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("Pool range '{}' deleted", path.range_name),
+            }))
+        }
+        Err(e) => {
+            let msg = format!("Failed to delete pool range: {e}");
+            audit::log_failure(
+                &state.db,
+                "dhcp_pool_range_delete",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: msg,
+                }),
+            ))
+        }
+    }
+}
+
+/// Request body for creating a DHCP subnet.
+#[derive(Debug, Deserialize)]
+pub struct CreateDhcpSubnetRequest {
+    pub network: String,
+    pub subnet: String,
+    pub default_router: Option<String>,
+    pub name_server: Option<String>,
+    pub domain_name: Option<String>,
+    pub lease: Option<u64>,
+    pub range_start: Option<String>,
+    pub range_stop: Option<String>,
+}
+
+/// POST /api/v1/vyos/dhcp/subnets — create a new DHCP subnet (and shared network if needed).
+pub async fn create_dhcp_subnet(
+    State(state): State<AppState>,
+    Json(body): Json<CreateDhcpSubnetRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    if !is_valid_cidr(&body.subnet) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid subnet CIDR. Expected format: x.x.x.x/n".to_string(),
+            }),
+        ));
+    }
+
+    if body.network.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Network name cannot be empty".to_string(),
+            }),
+        ));
+    }
+
+    let description = format!(
+        "Create DHCP subnet {} in network {}",
+        body.subnet, body.network
+    );
+    let mut commands = Vec::new();
+
+    // Set default-router (required for most DHCP setups)
+    if let Some(ref gw) = body.default_router {
+        if !gw.is_empty() {
+            if !is_valid_ip(gw) {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(VyosWriteResponse {
+                        success: false,
+                        message: "Invalid default router IP address".to_string(),
+                    }),
+                ));
+            }
+            commands.push(format!(
+                "set service dhcp-server shared-network-name {} subnet {} default-router {}",
+                body.network, body.subnet, gw
+            ));
+            if let Err(e) = client
+                .configure_set(&[
+                    "service",
+                    "dhcp-server",
+                    "shared-network-name",
+                    &body.network,
+                    "subnet",
+                    &body.subnet,
+                    "default-router",
+                    gw,
+                ])
+                .await
+            {
+                let msg = format!("Failed to create subnet: {e}");
+                audit::log_failure(
+                    &state.db,
+                    "dhcp_subnet_create",
+                    &description,
+                    &commands,
+                    &msg,
+                )
+                .await;
+                return Err((
+                    StatusCode::BAD_GATEWAY,
+                    Json(VyosWriteResponse {
+                        success: false,
+                        message: msg,
+                    }),
+                ));
+            }
+        }
+    }
+
+    // Set name-server
+    if let Some(ref ns) = body.name_server {
+        if !ns.is_empty() {
+            if !is_valid_ip(ns) {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(VyosWriteResponse {
+                        success: false,
+                        message: "Invalid name server IP address".to_string(),
+                    }),
+                ));
+            }
+            commands.push(format!(
+                "set service dhcp-server shared-network-name {} subnet {} name-server {}",
+                body.network, body.subnet, ns
+            ));
+            let _ = client
+                .configure_set(&[
+                    "service",
+                    "dhcp-server",
+                    "shared-network-name",
+                    &body.network,
+                    "subnet",
+                    &body.subnet,
+                    "name-server",
+                    ns,
+                ])
+                .await;
+        }
+    }
+
+    // Set domain-name
+    if let Some(ref dn) = body.domain_name {
+        if !dn.is_empty() {
+            commands.push(format!(
+                "set service dhcp-server shared-network-name {} subnet {} domain-name {}",
+                body.network, body.subnet, dn
+            ));
+            let _ = client
+                .configure_set(&[
+                    "service",
+                    "dhcp-server",
+                    "shared-network-name",
+                    &body.network,
+                    "subnet",
+                    &body.subnet,
+                    "domain-name",
+                    dn,
+                ])
+                .await;
+        }
+    }
+
+    // Set lease time
+    if let Some(lease) = body.lease {
+        let lease_str = lease.to_string();
+        commands.push(format!(
+            "set service dhcp-server shared-network-name {} subnet {} lease {}",
+            body.network, body.subnet, lease_str
+        ));
+        let _ = client
+            .configure_set(&[
+                "service",
+                "dhcp-server",
+                "shared-network-name",
+                &body.network,
+                "subnet",
+                &body.subnet,
+                "lease",
+                &lease_str,
+            ])
+            .await;
+    }
+
+    // Set initial pool range
+    if let (Some(ref start), Some(ref stop)) = (&body.range_start, &body.range_stop) {
+        if !start.is_empty() && !stop.is_empty() {
+            if !is_valid_ip(start) || !is_valid_ip(stop) {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(VyosWriteResponse {
+                        success: false,
+                        message: "Invalid pool range IP address".to_string(),
+                    }),
+                ));
+            }
+            commands.push(format!(
+                "set service dhcp-server shared-network-name {} subnet {} range 0 start {}",
+                body.network, body.subnet, start
+            ));
+            commands.push(format!(
+                "set service dhcp-server shared-network-name {} subnet {} range 0 stop {}",
+                body.network, body.subnet, stop
+            ));
+            let _ = client
+                .configure_set(&[
+                    "service",
+                    "dhcp-server",
+                    "shared-network-name",
+                    &body.network,
+                    "subnet",
+                    &body.subnet,
+                    "range",
+                    "0",
+                    "start",
+                    start,
+                ])
+                .await;
+            let _ = client
+                .configure_set(&[
+                    "service",
+                    "dhcp-server",
+                    "shared-network-name",
+                    &body.network,
+                    "subnet",
+                    &body.subnet,
+                    "range",
+                    "0",
+                    "stop",
+                    stop,
+                ])
+                .await;
+        }
+    }
+
+    // If no commands were generated, at least create the subnet node
+    if commands.is_empty() {
+        // Create the subnet by setting a minimal config path
+        // VyOS requires at least one property to create a node
+        commands.push(format!(
+            "set service dhcp-server shared-network-name {} subnet {}",
+            body.network, body.subnet
+        ));
+        if let Err(e) = client
+            .configure_set(&[
+                "service",
+                "dhcp-server",
+                "shared-network-name",
+                &body.network,
+                "subnet",
+                &body.subnet,
+            ])
+            .await
+        {
+            let msg = format!("Failed to create subnet: {e}");
+            audit::log_failure(
+                &state.db,
+                "dhcp_subnet_create",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
+            return Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: msg,
+                }),
+            ));
+        }
+    }
+
+    audit::log_success(&state.db, "dhcp_subnet_create", &description, &commands).await;
+
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after DHCP subnet create: {e}");
+    }
+
+    Ok(Json(VyosWriteResponse {
+        success: true,
+        message: format!(
+            "DHCP subnet {} created in network {}",
+            body.subnet, body.network
+        ),
+    }))
+}
+
+/// DELETE /api/v1/vyos/dhcp/subnets/:network/:subnet — delete a DHCP subnet.
+pub async fn delete_dhcp_subnet(
+    State(state): State<AppState>,
+    Path(path): Path<DhcpSubnetPath>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    let description = format!(
+        "Delete DHCP subnet {} (network={})",
+        path.subnet, path.network
+    );
+    let commands = vec![format!(
+        "delete service dhcp-server shared-network-name {} subnet {}",
+        path.network, path.subnet
+    )];
+
+    match client
+        .configure_delete(&[
+            "service",
+            "dhcp-server",
+            "shared-network-name",
+            &path.network,
+            "subnet",
+            &path.subnet,
+        ])
+        .await
+    {
+        Ok(_) => {
+            audit::log_success(&state.db, "dhcp_subnet_delete", &description, &commands).await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after DHCP subnet delete: {e}");
+            }
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("DHCP subnet {} deleted", path.subnet),
+            }))
+        }
+        Err(e) => {
+            let msg = format!("Failed to delete subnet: {e}");
+            audit::log_failure(
+                &state.db,
+                "dhcp_subnet_delete",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: msg,
+                }),
+            ))
+        }
+    }
 }
 
 // ── Static Routes ───────────────────────────────────────────────────────────

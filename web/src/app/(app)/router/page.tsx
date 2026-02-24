@@ -88,6 +88,11 @@ import {
   deleteDhcpStaticMapping,
   fetchDhcpServerConfig,
   toggleDhcpSubnet,
+  updateDhcpSubnet,
+  createDhcpSubnet,
+  deleteDhcpSubnet,
+  createDhcpPoolRange,
+  deleteDhcpPoolRange,
   createFirewallRule,
   updateFirewallRule,
   deleteFirewallRule,
@@ -2736,6 +2741,17 @@ function DhcpPoolsCard({
   onReload: () => void;
 }) {
   const [toggling, setToggling] = useState<string | null>(null);
+  const [editSubnet, setEditSubnet] = useState<{ network: string; subnet: DhcpSubnetConfig } | null>(null);
+  const [editForm, setEditForm] = useState({ default_router: "", name_server: "", domain_name: "", lease: "", ntp_server: "" });
+  const [editSaving, setEditSaving] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({ network: "", subnet: "", default_router: "", name_server: "", domain_name: "", lease: "", range_start: "", range_stop: "" });
+  const [createSaving, setCreateSaving] = useState(false);
+  const [addRangeFor, setAddRangeFor] = useState<{ network: string; subnet: string } | null>(null);
+  const [rangeForm, setRangeForm] = useState({ name: "", start: "", stop: "" });
+  const [rangeSaving, setRangeSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: "subnet" | "range"; network: string; subnet: string; rangeName?: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const handleToggle = async (network: string, subnet: DhcpSubnetConfig) => {
     const key = `${network}/${subnet.subnet}`;
@@ -2749,6 +2765,98 @@ function DhcpPoolsCard({
       toast.error(e instanceof Error ? e.message : "Toggle failed");
     } finally {
       setToggling(null);
+    }
+  };
+
+  const openEdit = (network: string, subnet: DhcpSubnetConfig) => {
+    setEditForm({
+      default_router: subnet.default_router ?? "",
+      name_server: subnet.name_server ?? "",
+      domain_name: subnet.domain_name ?? "",
+      lease: subnet.lease ?? "",
+      ntp_server: subnet.ntp_server ?? "",
+    });
+    setEditSubnet({ network, subnet });
+  };
+
+  const handleEditSave = async () => {
+    if (!editSubnet) return;
+    setEditSaving(true);
+    try {
+      const res = await updateDhcpSubnet(editSubnet.network, editSubnet.subnet.subnet, {
+        default_router: editForm.default_router,
+        name_server: editForm.name_server,
+        domain_name: editForm.domain_name,
+        lease: editForm.lease ? Number(editForm.lease) : undefined,
+        ntp_server: editForm.ntp_server,
+      });
+      toast.success(res.message);
+      setEditSubnet(null);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Update failed");
+    } finally {
+      setEditSaving(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    setCreateSaving(true);
+    try {
+      const res = await createDhcpSubnet({
+        network: createForm.network,
+        subnet: createForm.subnet,
+        default_router: createForm.default_router || undefined,
+        name_server: createForm.name_server || undefined,
+        domain_name: createForm.domain_name || undefined,
+        lease: createForm.lease ? Number(createForm.lease) : undefined,
+        range_start: createForm.range_start || undefined,
+        range_stop: createForm.range_stop || undefined,
+      });
+      toast.success(res.message);
+      setCreateOpen(false);
+      setCreateForm({ network: "", subnet: "", default_router: "", name_server: "", domain_name: "", lease: "", range_start: "", range_stop: "" });
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Create failed");
+    } finally {
+      setCreateSaving(false);
+    }
+  };
+
+  const handleAddRange = async () => {
+    if (!addRangeFor || !rangeForm.name) return;
+    setRangeSaving(true);
+    try {
+      const res = await createDhcpPoolRange(addRangeFor.network, addRangeFor.subnet, rangeForm.name, { start: rangeForm.start, stop: rangeForm.stop });
+      toast.success(res.message);
+      setAddRangeFor(null);
+      setRangeForm({ name: "", start: "", stop: "" });
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Add range failed");
+    } finally {
+      setRangeSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      if (deleteTarget.type === "range" && deleteTarget.rangeName) {
+        const res = await deleteDhcpPoolRange(deleteTarget.network, deleteTarget.subnet, deleteTarget.rangeName);
+        toast.success(res.message);
+      } else {
+        const res = await deleteDhcpSubnet(deleteTarget.network, deleteTarget.subnet);
+        toast.success(res.message);
+      }
+      setDeleteTarget(null);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -2770,125 +2878,309 @@ function DhcpPoolsCard({
     );
   }
 
-  if (!config || config.shared_networks.length === 0) {
-    return (
-      <p className="py-4 text-sm text-slate-500">
-        No DHCP shared networks configured.
-      </p>
-    );
-  }
-
   return (
-    <div className="space-y-4">
-      {config.shared_networks.map((net) => (
-        <div key={net.name} className="space-y-3">
-          <h4 className="text-sm font-medium text-slate-300">
-            Shared Network: <span className="text-white">{net.name}</span>
-          </h4>
+    <>
+      <div className="mb-3 flex justify-end">
+        <Button size="sm" variant="outline" className="border-slate-700 text-slate-300 hover:bg-slate-800" onClick={() => setCreateOpen(true)}>
+          <Plus className="mr-1 h-3.5 w-3.5" /> Add Subnet
+        </Button>
+      </div>
 
-          {net.subnets.map((sub) => {
-            const key = `${net.name}/${sub.subnet}`;
-            const isToggling = toggling === key;
+      {(!config || config.shared_networks.length === 0) ? (
+        <p className="py-4 text-sm text-slate-500">
+          No DHCP shared networks configured.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {config.shared_networks.map((net) => (
+            <div key={net.name} className="space-y-3">
+              <h4 className="text-sm font-medium text-slate-300">
+                Shared Network: <span className="text-white">{net.name}</span>
+              </h4>
 
-            return (
-              <div
-                key={sub.subnet}
-                className="rounded-md border border-slate-800 bg-slate-950 p-4"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-sm font-medium text-white">
-                      {sub.subnet}
-                    </span>
-                    {sub.disabled ? (
-                      <Badge
-                        variant="outline"
-                        className="border-rose-500/30 bg-rose-500/10 text-rose-400"
-                      >
-                        disabled
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                      >
-                        active
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {isToggling && (
-                      <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
-                    )}
-                    <Switch
-                      checked={!sub.disabled}
-                      onCheckedChange={() => handleToggle(net.name, sub)}
-                      disabled={isToggling}
-                    />
-                  </div>
-                </div>
+              {net.subnets.map((sub) => {
+                const key = `${net.name}/${sub.subnet}`;
+                const isToggling = toggling === key;
 
-                <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-xs sm:grid-cols-4">
-                  <div>
-                    <span className="text-slate-500">Gateway</span>
-                    <p className="font-mono text-slate-300">
-                      {sub.default_router ?? "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">DNS</span>
-                    <p className="font-mono text-slate-300">
-                      {sub.name_server ?? "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Domain</span>
-                    <p className="text-slate-300">
-                      {sub.domain_name ?? "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Lease</span>
-                    <p className="text-slate-300">
-                      {sub.lease ? `${sub.lease}s` : "—"}
-                    </p>
-                  </div>
-                </div>
-
-                {sub.ranges.length > 0 && (
-                  <div className="mt-3">
-                    <span className="text-xs text-slate-500">Pool Ranges</span>
-                    <div className="mt-1 space-y-1">
-                      {sub.ranges.map((r) => (
-                        <div
-                          key={r.name}
-                          className="flex items-center gap-2 text-xs"
-                        >
-                          <span className="text-slate-500">{r.name}:</span>
-                          <span className="font-mono text-slate-300">
-                            {r.start}
-                          </span>
-                          <span className="text-slate-600">→</span>
-                          <span className="font-mono text-slate-300">
-                            {r.stop}
-                          </span>
-                        </div>
-                      ))}
+                return (
+                  <div
+                    key={sub.subnet}
+                    className="rounded-md border border-slate-800 bg-slate-950 p-4"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-sm font-medium text-white">
+                          {sub.subnet}
+                        </span>
+                        {sub.disabled ? (
+                          <Badge
+                            variant="outline"
+                            className="border-rose-500/30 bg-rose-500/10 text-rose-400"
+                          >
+                            disabled
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                          >
+                            active
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-white" onClick={() => openEdit(net.name, sub)}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-rose-400" onClick={() => setDeleteTarget({ type: "subnet", network: net.name, subnet: sub.subnet })}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                        {isToggling && (
+                          <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+                        )}
+                        <Switch
+                          checked={!sub.disabled}
+                          onCheckedChange={() => handleToggle(net.name, sub)}
+                          disabled={isToggling}
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
 
-                {sub.static_mapping_count > 0 && (
-                  <p className="mt-2 text-xs text-slate-500">
-                    {sub.static_mapping_count} static mapping{sub.static_mapping_count !== 1 ? "s" : ""}
-                  </p>
-                )}
-              </div>
-            );
-          })}
+                    <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 text-xs sm:grid-cols-5">
+                      <div>
+                        <span className="text-slate-500">Gateway</span>
+                        <p className="font-mono text-slate-300">
+                          {sub.default_router ?? "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">DNS</span>
+                        <p className="font-mono text-slate-300">
+                          {sub.name_server ?? "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Domain</span>
+                        <p className="text-slate-300">
+                          {sub.domain_name ?? "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">Lease</span>
+                        <p className="text-slate-300">
+                          {sub.lease ? `${sub.lease}s` : "—"}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-slate-500">NTP</span>
+                        <p className="font-mono text-slate-300">
+                          {sub.ntp_server ?? "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-slate-500">Pool Ranges</span>
+                        <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-slate-400 hover:text-white" onClick={() => { setAddRangeFor({ network: net.name, subnet: sub.subnet }); setRangeForm({ name: "", start: "", stop: "" }); }}>
+                          <Plus className="mr-1 h-3 w-3" /> Add Range
+                        </Button>
+                      </div>
+                      {sub.ranges.length > 0 ? (
+                        <div className="mt-1 space-y-1">
+                          {sub.ranges.map((r) => (
+                            <div
+                              key={r.name}
+                              className="flex items-center gap-2 text-xs"
+                            >
+                              <span className="text-slate-500">{r.name}:</span>
+                              <span className="font-mono text-slate-300">
+                                {r.start}
+                              </span>
+                              <span className="text-slate-600">→</span>
+                              <span className="font-mono text-slate-300">
+                                {r.stop}
+                              </span>
+                              <Button size="icon" variant="ghost" className="ml-auto h-5 w-5 text-slate-500 hover:text-rose-400" onClick={() => setDeleteTarget({ type: "range", network: net.name, subnet: sub.subnet, rangeName: r.name })}>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-xs text-slate-600">No pool ranges configured</p>
+                      )}
+                    </div>
+
+                    {sub.static_mapping_count > 0 && (
+                      <p className="mt-2 text-xs text-slate-500">
+                        {sub.static_mapping_count} static mapping{sub.static_mapping_count !== 1 ? "s" : ""}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
+      )}
+
+      {/* Edit Subnet Options Dialog */}
+      <Dialog open={!!editSubnet} onOpenChange={(v) => { if (!v) setEditSubnet(null); }}>
+        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Edit Subnet Options</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Update DHCP options for {editSubnet?.subnet.subnet}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-slate-300">Default Gateway</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="e.g. 192.168.1.1" value={editForm.default_router} onChange={(e) => setEditForm({ ...editForm, default_router: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">DNS Server</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="e.g. 192.168.1.1" value={editForm.name_server} onChange={(e) => setEditForm({ ...editForm, name_server: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Domain Name</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="e.g. home.lan" value={editForm.domain_name} onChange={(e) => setEditForm({ ...editForm, domain_name: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Lease Time (seconds)</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" type="number" placeholder="e.g. 86400" value={editForm.lease} onChange={(e) => setEditForm({ ...editForm, lease: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">NTP Server</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="e.g. 192.168.1.1" value={editForm.ntp_server} onChange={(e) => setEditForm({ ...editForm, ntp_server: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-slate-700 text-slate-300" onClick={() => setEditSubnet(null)}>Cancel</Button>
+            <Button className="bg-sky-600 text-white hover:bg-sky-700" onClick={handleEditSave} disabled={editSaving}>
+              {editSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Subnet Dialog */}
+      <Dialog open={createOpen} onOpenChange={(v) => { if (!v) { setCreateOpen(false); setCreateForm({ network: "", subnet: "", default_router: "", name_server: "", domain_name: "", lease: "", range_start: "", range_stop: "" }); } }}>
+        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Add DHCP Subnet</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Create a new DHCP subnet with optional pool range and options.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-slate-300">Shared Network Name</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="e.g. LAN" value={createForm.network} onChange={(e) => setCreateForm({ ...createForm, network: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Subnet (CIDR)</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="e.g. 192.168.1.0/24" value={createForm.subnet} onChange={(e) => setCreateForm({ ...createForm, subnet: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Default Gateway</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="e.g. 192.168.1.1" value={createForm.default_router} onChange={(e) => setCreateForm({ ...createForm, default_router: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">DNS Server</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="e.g. 192.168.1.1" value={createForm.name_server} onChange={(e) => setCreateForm({ ...createForm, name_server: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Domain Name</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="e.g. home.lan" value={createForm.domain_name} onChange={(e) => setCreateForm({ ...createForm, domain_name: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Lease Time (seconds)</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" type="number" placeholder="e.g. 86400" value={createForm.lease} onChange={(e) => setCreateForm({ ...createForm, lease: e.target.value })} />
+            </div>
+            <div className="rounded border border-slate-800 p-3">
+              <span className="text-xs font-medium text-slate-400">Initial Pool Range (optional)</span>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <div>
+                  <Label className="text-slate-300">Start IP</Label>
+                  <Input className="border-slate-700 bg-slate-800 text-white" placeholder="e.g. 192.168.1.100" value={createForm.range_start} onChange={(e) => setCreateForm({ ...createForm, range_start: e.target.value })} />
+                </div>
+                <div>
+                  <Label className="text-slate-300">Stop IP</Label>
+                  <Input className="border-slate-700 bg-slate-800 text-white" placeholder="e.g. 192.168.1.200" value={createForm.range_stop} onChange={(e) => setCreateForm({ ...createForm, range_stop: e.target.value })} />
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-slate-700 text-slate-300" onClick={() => setCreateOpen(false)}>Cancel</Button>
+            <Button className="bg-sky-600 text-white hover:bg-sky-700" onClick={handleCreate} disabled={createSaving || !createForm.network || !createForm.subnet}>
+              {createSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Pool Range Dialog */}
+      <Dialog open={!!addRangeFor} onOpenChange={(v) => { if (!v) setAddRangeFor(null); }}>
+        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Add Pool Range</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Add a new IP address range to {addRangeFor?.subnet}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-slate-300">Range Name</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="e.g. pool-1" value={rangeForm.name} onChange={(e) => setRangeForm({ ...rangeForm, name: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Start IP</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="e.g. 192.168.1.100" value={rangeForm.start} onChange={(e) => setRangeForm({ ...rangeForm, start: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Stop IP</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="e.g. 192.168.1.200" value={rangeForm.stop} onChange={(e) => setRangeForm({ ...rangeForm, stop: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-slate-700 text-slate-300" onClick={() => setAddRangeFor(null)}>Cancel</Button>
+            <Button className="bg-sky-600 text-white hover:bg-sky-700" onClick={handleAddRange} disabled={rangeSaving || !rangeForm.name || !rangeForm.start || !rangeForm.stop}>
+              {rangeSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Add Range
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(v) => { if (!v) setDeleteTarget(null); }}>
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Delete {deleteTarget?.type === "range" ? "Pool Range" : "Subnet"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              {deleteTarget?.type === "range"
+                ? `This will remove pool range "${deleteTarget.rangeName}" from ${deleteTarget.subnet}.`
+                : `This will remove the entire DHCP subnet ${deleteTarget?.subnet} and all its configuration.`}
+              {" "}This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 text-slate-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 text-white hover:bg-rose-700" onClick={handleDelete} disabled={deleting}>
+              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

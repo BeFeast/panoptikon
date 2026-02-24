@@ -699,6 +699,54 @@ export function toggleDhcpSubnet(
   );
 }
 
+export function createDhcpSubnet(
+  body: import("./types").CreateDhcpSubnetRequest
+): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>("/api/v1/vyos/dhcp/subnets", body);
+}
+
+export function updateDhcpSubnet(
+  network: string,
+  subnet: string,
+  body: import("./types").UpdateDhcpSubnetRequest
+): Promise<VyosWriteResponse> {
+  return apiPut<VyosWriteResponse>(
+    `/api/v1/vyos/dhcp/subnets/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}`,
+    body
+  );
+}
+
+export function deleteDhcpSubnet(
+  network: string,
+  subnet: string
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/dhcp/subnets/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function createDhcpPoolRange(
+  network: string,
+  subnet: string,
+  rangeName: string,
+  body: import("./types").DhcpPoolRangeRequest
+): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>(
+    `/api/v1/vyos/dhcp/subnets/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}/ranges/${encodeURIComponent(rangeName)}`,
+    body
+  );
+}
+
+export function deleteDhcpPoolRange(
+  network: string,
+  subnet: string,
+  rangeName: string
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/dhcp/subnets/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}/ranges/${encodeURIComponent(rangeName)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
 // ─── Static Routes ──────────────────────────────────────
 
 export function createStaticRoute(body: {

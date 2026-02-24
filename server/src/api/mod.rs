@@ -215,6 +215,24 @@ pub fn router(state: AppState) -> Router {
             "/vyos/dhcp/subnets/:network/:subnet/toggle",
             post(vyos::dhcp_subnet_toggle),
         )
+        // DHCP server pool configuration
+        .route("/vyos/dhcp/subnets", post(vyos::create_dhcp_subnet))
+        .route(
+            "/vyos/dhcp/subnets/:network/:subnet",
+            put(vyos::update_dhcp_subnet),
+        )
+        .route(
+            "/vyos/dhcp/subnets/:network/:subnet",
+            delete(vyos::delete_dhcp_subnet),
+        )
+        .route(
+            "/vyos/dhcp/subnets/:network/:subnet/ranges/:range_name",
+            post(vyos::create_dhcp_pool_range),
+        )
+        .route(
+            "/vyos/dhcp/subnets/:network/:subnet/ranges/:range_name",
+            delete(vyos::delete_dhcp_pool_range),
+        )
         // Firewall write operations
         .route(
             "/vyos/firewall/:chain/rules",
