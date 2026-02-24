@@ -17,6 +17,7 @@ import {
   Server,
   Wifi,
   Network,
+  Settings2,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageTransition } from "@/components/PageTransition";
@@ -81,6 +82,10 @@ const iconMap: Record<string, { icon: React.ReactNode; iconBg: string }> = {
     icon: <Lock className="h-4 w-4 text-blue-400" />,
     iconBg: "bg-blue-500/10",
   },
+  "/settings/advanced": {
+    icon: <Settings2 className="h-4 w-4 text-slate-400" />,
+    iconBg: "bg-slate-500/10",
+  },
   "/settings/npm": {
     icon: <Globe className="h-4 w-4 text-orange-400" />,
     iconBg: "bg-orange-500/10",
@@ -113,8 +118,7 @@ export default function SettingsPage() {
         {settingsNav.map((group) => {
           const visibleItems = loaded
             ? group.items.filter(
-                (item) =>
-                  vyosConfigured || !VYOS_ONLY_SETTINGS.has(item.href)
+                (item) => vyosConfigured || !VYOS_ONLY_SETTINGS.has(item.href)
               )
             : group.items;
 

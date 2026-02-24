@@ -1,7 +1,7 @@
 /**
  * Settings navigation structure — defines which items appear in each section.
- * The "Legacy / Optional" group gates deprecated integrations away from
- * the primary Integrations section so that new users see modern defaults.
+ * The "Advanced / Legacy" group gates power-user and deprecated integrations
+ * away from the primary Integrations section so that new users see modern defaults.
  */
 
 export interface SettingsNavItem {
@@ -106,9 +106,14 @@ export const settingsNav: SettingsNavGroup[] = [
     ],
   },
   {
-    label: "Legacy / Optional",
-    subtitle: "Use Caddy for new deployments.",
+    label: "Advanced / Legacy",
+    subtitle: "Power-user settings and legacy integrations.",
     items: [
+      {
+        href: "/settings/advanced",
+        title: "Advanced",
+        description: "Toggle legacy router visibility and other advanced options.",
+      },
       {
         href: "/settings/npm",
         title: "Nginx Proxy Manager",
