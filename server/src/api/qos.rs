@@ -53,9 +53,7 @@ async fn mikrotik_client(state: &AppState) -> Option<MikrotikClient> {
 }
 
 async fn vyos_client(state: &AppState) -> Option<VyosClient> {
-    let url = get_setting(state, "vyos_url").await?;
-    let key = get_setting(state, "vyos_api_key").await?;
-    Some(VyosClient::with_http(&url, &key, state.vyos_http.clone()))
+    super::vyos::get_vyos_client_from_db(&state.db, &state.config, &state.vyos_http).await
 }
 
 fn is_true(val: &Option<String>) -> bool {

@@ -2,12 +2,12 @@ import { describe, it, expect } from "vitest";
 import { settingsNav } from "@/lib/settings-nav";
 
 describe("settingsNav visibility gating", () => {
-  const legacyGroup = settingsNav.find((g) => g.label === "Legacy / Optional");
+  const legacyGroup = settingsNav.find((g) => g.label === "Advanced / Legacy");
   const integrationsGroup = settingsNav.find(
     (g) => g.label === "Integrations",
   );
 
-  it("has a 'Legacy / Optional' section", () => {
+  it("has an 'Advanced / Legacy' section", () => {
     expect(legacyGroup).toBeDefined();
   });
 
@@ -19,8 +19,8 @@ describe("settingsNav visibility gating", () => {
     expect(npmItem!.title).toBe("Nginx Proxy Manager");
   });
 
-  it("legacy section has a subtitle guiding users toward Caddy", () => {
-    expect(legacyGroup!.subtitle).toMatch(/caddy/i);
+  it("legacy section has a subtitle describing legacy integrations", () => {
+    expect(legacyGroup!.subtitle).toMatch(/legacy integrations/i);
   });
 
   it("NPM is NOT in the primary Integrations section", () => {

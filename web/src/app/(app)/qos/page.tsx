@@ -52,6 +52,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageTransition } from "@/components/PageTransition";
 import {
+  fetchSettings,
   fetchQosSummary,
   fetchVyosTrafficPolicies,
   createVyosTrafficPolicy,
@@ -72,6 +73,7 @@ import { toast } from "sonner";
 
 export default function QosPage() {
   const [summary, setSummary] = useState<QosSummary | null>(null);
+  const [legacyRoutersEnabled, setLegacyRoutersEnabled] = useState(false);
   const [vyosPolicies, setVyosPolicies] = useState<
     VyosTrafficPolicy[] | null
   >(null);
@@ -79,6 +81,7 @@ export default function QosPage() {
   const [mtTree, setMtTree] = useState<MikrotikQueueTree[] | null>(null);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+  const vyosVisible = legacyRoutersEnabled && !!summary?.vyos_available;
 
   // Dialogs
   const [showAddVyos, setShowAddVyos] = useState(false);
@@ -128,9 +131,21 @@ export default function QosPage() {
   }, [load]);
 
   useEffect(() => {
+    fetchSettings()
+      .then((settings) => setLegacyRoutersEnabled(settings.show_legacy_routers))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (activeTab === "vyos") loadVyos();
     if (activeTab === "mikrotik") loadMtQueues();
   }, [activeTab, loadVyos, loadMtQueues]);
+
+  useEffect(() => {
+    if (!vyosVisible && activeTab === "vyos") {
+      setActiveTab("overview");
+    }
+  }, [activeTab, vyosVisible]);
 
   // -- Filter helpers --
   const filteredVyos = useMemo(() => {
@@ -232,12 +247,12 @@ export default function QosPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className={`grid gap-4 ${summary?.vyos_available ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-          {summary?.vyos_available && (
+        <div className={`grid gap-4 ${vyosVisible ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+          {vyosVisible && (
             <SummaryCard
               title="VyOS Policies"
               value={summary?.vyos_policy_count ?? null}
-              available={summary?.vyos_available ?? null}
+              available={vyosVisible}
               icon={<Router className="h-4 w-4 text-blue-400" />}
             />
           )}
@@ -264,7 +279,7 @@ export default function QosPage() {
             >
               Overview
             </TabsTrigger>
-            {summary?.vyos_available && (
+            {vyosVisible && (
               <TabsTrigger
                 value="vyos"
                 className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
@@ -294,12 +309,12 @@ export default function QosPage() {
                 </CardTitle>
                 <CardDescription className="text-slate-400">
                   Manage bandwidth queues and traffic policies across your
-                  routers.{summary?.vyos_available ? " Use VyOS traffic policies for HTB/HFSC shaping, or MikroTik" : " Use MikroTik"} simple queues for per-device bandwidth limits.
+                  routers.{vyosVisible ? " Use VyOS traffic policies for HTB/HFSC shaping, or MikroTik" : " Use MikroTik"} simple queues for per-device bandwidth limits.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 text-sm text-slate-400">
-                  {summary?.vyos_available && (
+                  {vyosVisible && (
                     <p>
                       VyOS router configured with{" "}
                       <span className="font-medium text-white">
@@ -330,7 +345,7 @@ export default function QosPage() {
                       .
                     </p>
                   )}
-                  {!summary?.vyos_available && !summary?.mikrotik_available && (
+                  {!vyosVisible && !summary?.mikrotik_available && (
                     <p>
                       No router is configured. Go to{" "}
                       <span className="font-medium text-white">Settings</span>{" "}

@@ -99,12 +99,14 @@ const VYOS_ONLY_SETTINGS = new Set([
 
 export default function SettingsPage() {
   const [vyosConfigured, setVyosConfigured] = useState(false);
+  const [legacyRoutersEnabled, setLegacyRoutersEnabled] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     fetchSettings()
       .then((settings) => {
         setVyosConfigured(!!settings.vyos_url && settings.vyos_api_key_set);
+        setLegacyRoutersEnabled(settings.show_legacy_routers);
       })
       .catch(() => {})
       .finally(() => setLoaded(true));
@@ -118,7 +120,9 @@ export default function SettingsPage() {
         {settingsNav.map((group) => {
           const visibleItems = loaded
             ? group.items.filter(
-                (item) => vyosConfigured || !VYOS_ONLY_SETTINGS.has(item.href)
+                (item) =>
+                  (legacyRoutersEnabled && vyosConfigured) ||
+                  !VYOS_ONLY_SETTINGS.has(item.href)
               )
             : group.items;
 
@@ -140,7 +144,8 @@ export default function SettingsPage() {
                 {visibleItems.map((item) => {
                   const visual = iconMap[item.href];
                   const description =
-                    item.href === "/settings/router" && !vyosConfigured
+                    item.href === "/settings/router" &&
+                    (!legacyRoutersEnabled || !vyosConfigured)
                       ? "Configure MikroTik router integration."
                       : item.description;
 
