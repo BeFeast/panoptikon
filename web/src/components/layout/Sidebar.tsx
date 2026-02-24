@@ -20,6 +20,7 @@ import {
   Search,
   Server,
   Settings,
+  Share2,
   Shield,
   Workflow,
 } from "lucide-react";
@@ -42,6 +43,7 @@ const navItems = [
   { href: "/npm", label: "NPM", icon: Globe },
   { href: "/services", label: "Services", icon: Workflow },
   { href: "/topology", label: "Topology", icon: Network },
+  { href: "/mesh", label: "Mesh", icon: Share2 },
   { href: "/traffic", label: "Traffic", icon: Activity },
   { href: "/vpn-status", label: "VPN Status", icon: Shield },
   { href: "/nat", label: "NAT", icon: ArrowRightLeft },

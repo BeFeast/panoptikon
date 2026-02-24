@@ -1804,3 +1804,25 @@ export interface CreateMikrotikNatRuleRequest {
   comment?: string;
   disabled?: boolean;
 }
+
+// ─── Mesh Topology (Xiaomi) ─────────────────────────────────
+
+export interface MeshNode {
+  ip: string;
+  mac: string;
+  name: string;
+  model: string;
+  hardware: string;
+  is_main: boolean;
+  online_devices: number;
+  backhaul_type: string;
+  parent_mac: string;
+  signal: number;
+  is_online: boolean;
+}
+
+export interface MeshTopologyResponse {
+  nodes: MeshNode[];
+  main_ip: string;
+  total_devices: number;
+}

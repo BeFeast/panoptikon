@@ -1935,3 +1935,13 @@ export function deleteMikrotikNatRule(id: string): Promise<void> {
     `/api/v1/nat/mikrotik/rules/${encodeURIComponent(id)}`
   );
 }
+
+// ─── Mesh Topology (Xiaomi) ─────────────────────────────────
+
+export function fetchMeshTopology(): Promise<
+  import("./types").MeshTopologyResponse
+> {
+  return apiGet<import("./types").MeshTopologyResponse>(
+    "/api/v1/mesh/topology"
+  );
+}

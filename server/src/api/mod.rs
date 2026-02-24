@@ -30,6 +30,7 @@ pub mod dns_logs;
 pub mod dns_query_log;
 pub mod error;
 pub mod export;
+pub mod mesh;
 pub mod metrics;
 pub mod mikrotik;
 pub mod nat;
@@ -351,6 +352,8 @@ pub fn router(state: AppState) -> Router {
         .route("/vyos/openvpn/:name", delete(vyos::openvpn_delete))
         .route("/vyos/openvpn/:name/toggle", post(vyos::openvpn_toggle))
         .route("/vyos/openvpn/:name/clients", get(vyos::openvpn_clients))
+        // Mesh topology (Xiaomi)
+        .route("/mesh/topology", get(mesh::topology))
         // Topology
         .route("/topology/graph", get(topology::graph))
         .route("/topology/positions", get(topology::get_positions))
