@@ -224,10 +224,15 @@ function DdnsFormDialog({
               >
                 {ROUTER_TYPES.map((t) => (
                   <option key={t} value={t}>
-                    {t === "vyos" ? "VyOS" : "MikroTik"}
+                    {t === "vyos" ? "VyOS (Legacy)" : "MikroTik"}
                   </option>
                 ))}
               </select>
+              {routerType === "vyos" && (
+                <p className="text-[11px] text-amber-400">
+                  VyOS is legacy — MikroTik is recommended for new deployments.
+                </p>
+              )}
             </div>
           </div>
 
