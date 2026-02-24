@@ -861,6 +861,9 @@ export function updateSettings(body: {
   xiaomi_mesh_ip?: string;
   xiaomi_mesh_password?: string;
   xiaomi_mesh_poll_interval?: number;
+  cloudflare_account_id?: string;
+  cloudflare_tunnel_id?: string;
+  cloudflare_api_token?: string;
 }): Promise<SettingsData> {
   return apiPatch<SettingsData>("/api/v1/settings", body);
 }
@@ -2004,5 +2007,36 @@ export function testXiaomiMeshConnection(
   return apiPost<import("./types").XiaomiMeshTestConnectionResponse>(
     "/api/v1/xiaomi-mesh/test-connection",
     { ip }
+  );
+}
+
+// ─── Cloudflare Tunnel ───────────────────────────────────────
+
+export function fetchCloudflareTunnelStatus(): Promise<
+  import("./types").CloudflareTunnelStatus
+> {
+  return apiGet<import("./types").CloudflareTunnelStatus>(
+    "/api/v1/cloudflare-tunnel/status"
+  );
+}
+
+export function addCloudflareTunnelRoute(
+  body: import("./types").AddTunnelRouteRequest
+): Promise<import("./types").TunnelRouteResponse> {
+  return apiPost<import("./types").TunnelRouteResponse>(
+    "/api/v1/cloudflare-tunnel/routes",
+    body
+  );
+}
+
+export function deleteCloudflareTunnelRoute(
+  hostname: string
+): Promise<import("./types").TunnelRouteResponse> {
+  return request<import("./types").TunnelRouteResponse>(
+    "/api/v1/cloudflare-tunnel/routes",
+    {
+      method: "DELETE",
+      body: JSON.stringify({ hostname }),
+    }
   );
 }
