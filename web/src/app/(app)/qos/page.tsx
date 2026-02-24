@@ -232,13 +232,15 @@ export default function QosPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid gap-4 sm:grid-cols-3">
-          <SummaryCard
-            title="VyOS Policies"
-            value={summary?.vyos_policy_count ?? null}
-            available={summary?.vyos_available ?? null}
-            icon={<Router className="h-4 w-4 text-blue-400" />}
-          />
+        <div className={`grid gap-4 ${summary?.vyos_available ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+          {summary?.vyos_available && (
+            <SummaryCard
+              title="VyOS Policies"
+              value={summary?.vyos_policy_count ?? null}
+              available={summary?.vyos_available ?? null}
+              icon={<Router className="h-4 w-4 text-blue-400" />}
+            />
+          )}
           <SummaryCard
             title="MikroTik Simple Queues"
             value={summary?.mikrotik_simple_queue_count ?? null}
@@ -292,8 +294,7 @@ export default function QosPage() {
                 </CardTitle>
                 <CardDescription className="text-slate-400">
                   Manage bandwidth queues and traffic policies across your
-                  routers. Use VyOS traffic policies for HTB/HFSC shaping, or
-                  MikroTik simple queues for per-device bandwidth limits.
+                  routers.{summary?.vyos_available ? " Use VyOS traffic policies for HTB/HFSC shaping, or MikroTik" : " Use MikroTik"} simple queues for per-device bandwidth limits.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -333,7 +334,7 @@ export default function QosPage() {
                     <p>
                       No router is configured. Go to{" "}
                       <span className="font-medium text-white">Settings</span>{" "}
-                      to configure a VyOS or MikroTik router.
+                      to configure a router.
                     </p>
                   )}
                 </div>

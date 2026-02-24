@@ -120,12 +120,14 @@ function DdnsFormDialog({
   onSave,
   initial,
   defaultRouterType,
+  routerTypes,
 }: {
   open: boolean;
   onClose: () => void;
   onSave: (body: DdnsEntryRequest) => Promise<void>;
   initial?: DdnsEntry | null;
   defaultRouterType: string;
+  routerTypes: string[];
 }) {
   const [provider, setProvider] = useState(initial?.provider ?? "cloudflare");
   const [hostname, setHostname] = useState(initial?.hostname ?? "");
@@ -215,25 +217,27 @@ function DdnsFormDialog({
                 ))}
               </select>
             </div>
-            <div className="space-y-2">
-              <Label>Router Type</Label>
-              <select
-                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100"
-                value={routerType}
-                onChange={(e) => setRouterType(e.target.value)}
-              >
-                {ROUTER_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t === "vyos" ? "VyOS (Legacy)" : "MikroTik"}
-                  </option>
-                ))}
-              </select>
-              {routerType === "vyos" && (
-                <p className="text-[11px] text-amber-400">
-                  VyOS is legacy — MikroTik is recommended for new deployments.
-                </p>
-              )}
-            </div>
+            {routerTypes.length > 1 && (
+              <div className="space-y-2">
+                <Label>Router Type</Label>
+                <select
+                  className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100"
+                  value={routerType}
+                  onChange={(e) => setRouterType(e.target.value)}
+                >
+                  {routerTypes.map((t) => (
+                    <option key={t} value={t}>
+                      {t === "vyos" ? "VyOS (Legacy)" : "MikroTik"}
+                    </option>
+                  ))}
+                </select>
+                {routerType === "vyos" && (
+                  <p className="text-[11px] text-amber-400">
+                    VyOS is legacy — MikroTik is recommended for new deployments.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -373,11 +377,16 @@ export default function DdnsPage() {
   const [pendingDelete, setPendingDelete] = useState<DdnsEntry | null>(null);
   const [search, setSearch] = useState("");
   const [defaultRouterType, setDefaultRouterType] = useState("mikrotik");
+  const [routerTypes, setRouterTypes] = useState<string[]>(["mikrotik"]);
 
-  // Determine default router type from settings
+  // Determine default router type and available types from settings
   useEffect(() => {
     fetchSettings()
       .then((settings) => {
+        const vyosConfigured = !!settings.vyos_url && settings.vyos_api_key_set;
+        const types: string[] = ["mikrotik"];
+        if (vyosConfigured) types.push("vyos");
+        setRouterTypes(types);
         setDefaultRouterType(getDefaultRouterType(settings));
       })
       .catch(() => {
@@ -704,6 +713,7 @@ export default function DdnsPage() {
         onClose={() => setShowAdd(false)}
         onSave={handleCreate}
         defaultRouterType={defaultRouterType}
+        routerTypes={routerTypes}
       />
 
       {/* Edit dialog */}
@@ -713,6 +723,7 @@ export default function DdnsPage() {
         onSave={handleUpdate}
         initial={editItem}
         defaultRouterType={defaultRouterType}
+        routerTypes={routerTypes}
       />
 
       {/* Delete confirmation */}
