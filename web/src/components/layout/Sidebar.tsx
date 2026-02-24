@@ -45,6 +45,7 @@ const navItems = [
   { href: "/qos", label: "QoS", icon: Gauge },
   { href: "/dns-logs", label: "DNS Logs", icon: Search },
   { href: "/dns-queries", label: "DNS Queries", icon: Search },
+  { href: "/ddns", label: "DDNS", icon: Globe },
   { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/certificates", label: "Certificates", icon: Shield },
   { href: "/settings", label: "Settings", icon: Settings },

@@ -79,6 +79,9 @@ const DNS_QUERY_LOG_MIGRATION: &str = include_str!("migrations/023_dns_query_log
 /// Migration 024: DNS blocklist manager tables.
 const DNS_BLOCKLISTS_MIGRATION: &str = include_str!("migrations/022_dns_blocklists.sql");
 
+/// Migration 025: Dynamic DNS client entries.
+const DDNS_ENTRIES_MIGRATION: &str = include_str!("migrations/025_ddns_entries.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -596,6 +599,22 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 022_dns_blocklists.sql");
     }
 
+    // Migration 025: Dynamic DNS client entries.
+    let applied_25: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 25")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_25 {
+        sqlx::raw_sql(DDNS_ENTRIES_MIGRATION).execute(pool).await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (25)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 025_ddns_entries.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -655,6 +674,7 @@ mod tests {
             "dns_blocklists",
             "dns_domain_overrides",
             "dns_blocked_domains",
+            "ddns_entries",
         ];
 
         for table in &expected_tables {

@@ -23,6 +23,7 @@ pub mod auth;
 pub mod caddy;
 pub mod config_backups;
 pub mod dashboard;
+pub mod ddns;
 pub mod devices;
 pub mod dns_blocklists;
 pub mod dns_logs;
@@ -506,6 +507,14 @@ pub fn router(state: AppState) -> Router {
         .route("/dns-queries", get(dns_query_log::list))
         .route("/dns-queries/stats", get(dns_query_log::stats))
         .route("/dns-queries/ingest", post(dns_query_log::ingest))
+        // Dynamic DNS (DDNS) client management
+        .route("/ddns", get(ddns::list))
+        .route("/ddns", post(ddns::create))
+        .route("/ddns/status", get(ddns::status))
+        .route("/ddns/vyos", get(ddns::vyos_config))
+        .route("/ddns/:id", put(ddns::update))
+        .route("/ddns/:id", delete(ddns::delete))
+        .route("/ddns/:id/toggle", post(ddns::toggle))
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))

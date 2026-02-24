@@ -1695,3 +1695,45 @@ export function fetchMikrotikQueueTree(): Promise<
     "/api/v1/qos/mikrotik/queue-tree"
   );
 }
+
+// ─── Dynamic DNS (DDNS) ──────────────────────────────────
+
+export function fetchDdnsEntries(): Promise<import("./types").DdnsEntry[]> {
+  return apiGet<import("./types").DdnsEntry[]>("/api/v1/ddns");
+}
+
+export function createDdnsEntry(
+  body: import("./types").DdnsEntryRequest
+): Promise<import("./types").DdnsEntry> {
+  return apiPost<import("./types").DdnsEntry>("/api/v1/ddns", body);
+}
+
+export function updateDdnsEntry(
+  id: string,
+  body: import("./types").DdnsEntryRequest
+): Promise<import("./types").DdnsEntry> {
+  return apiPut<import("./types").DdnsEntry>(`/api/v1/ddns/${id}`, body);
+}
+
+export function deleteDdnsEntry(id: string): Promise<void> {
+  return apiDelete(`/api/v1/ddns/${id}`);
+}
+
+export function toggleDdnsEntry(
+  id: string,
+  enabled: boolean
+): Promise<import("./types").DdnsEntry> {
+  return apiPost<import("./types").DdnsEntry>(`/api/v1/ddns/${id}/toggle`, {
+    enabled,
+  });
+}
+
+export function fetchDdnsStatus(): Promise<import("./types").DdnsStatus> {
+  return apiGet<import("./types").DdnsStatus>("/api/v1/ddns/status");
+}
+
+export function fetchVyosDdnsConfig(): Promise<
+  import("./types").VyosDdnsConfig
+> {
+  return apiGet<import("./types").VyosDdnsConfig>("/api/v1/ddns/vyos");
+}
