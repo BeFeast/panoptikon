@@ -500,6 +500,8 @@ export interface SettingsData {
   mikrotik_user: string | null;
   mikrotik_password_set: boolean;
   mikrotik_enabled: boolean;
+  // Unbound DNS
+  unbound_control_path: string | null;
 }
 
 // ─── Nginx Proxy Manager ─────────────────────────────────
@@ -1249,11 +1251,17 @@ export interface DnsQueryEntry {
   device_name: string | null;
 }
 
-export interface DnsQueryLogResponse {
+export interface DnsQueriesResponse {
   items: DnsQueryEntry[];
   total: number;
   page: number;
   per_page: number;
+}
+
+// Response for /api/v1/dns-logs
+export interface DnsQueryLogResponse {
+  entries: DnsQueryLogEntry[];
+  total: number;
 }
 
 export interface DnsDomainCount {
@@ -1309,7 +1317,7 @@ export interface UnboundTestConnectionResponse {
 
 // ─── DNS Logs (simpler log viewer) ──────────────────────
 
-export interface DnsLogEntry {
+export interface DnsQueryLogEntry {
   id: number;
   device_id: string | null;
   client_ip: string;
@@ -1320,11 +1328,6 @@ export interface DnsLogEntry {
   response_time_ms: number | null;
   queried_at: string;
   device_name: string | null;
-}
-
-export interface DnsLogResponse {
-  entries: DnsLogEntry[];
-  total: number;
 }
 
 export interface DnsTopDomain {

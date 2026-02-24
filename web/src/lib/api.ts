@@ -83,14 +83,14 @@ import type {
   AssetImportRow,
   AssetImportResponse,
   AssetAutoLinkResponse,
-  DnsQueryLogResponse,
-  DnsQueryStats,
   AlertRule,
   CreateAlertRuleRequest,
   UpdateAlertRuleRequest,
   TopologyGraph,
   NodePosition,
+  DnsQueriesResponse,
   DnsQueryLogResponse,
+  DnsQueryStats,
   DnsStatsResponse,
   DnsIngestEntry,
   DnsIngestResponse,
@@ -1557,7 +1557,7 @@ export function fetchDnsQueries(params?: {
   query_type?: string;
   blocked?: boolean;
   hours?: number;
-}): Promise<DnsQueryLogResponse> {
+}): Promise<DnsQueriesResponse> {
   const qs = new URLSearchParams();
   if (params?.page) qs.set("page", String(params.page));
   if (params?.per_page) qs.set("per_page", String(params.per_page));
@@ -1567,7 +1567,7 @@ export function fetchDnsQueries(params?: {
   if (params?.blocked !== undefined) qs.set("blocked", String(params.blocked));
   if (params?.hours) qs.set("hours", String(params.hours));
   const suffix = qs.toString() ? `?${qs}` : "";
-  return apiGet<DnsQueryLogResponse>(`/api/v1/dns-queries${suffix}`);
+  return apiGet<DnsQueriesResponse>(`/api/v1/dns-queries${suffix}`);
 }
 
 export function fetchDnsQueryStats(hours?: number): Promise<DnsQueryStats> {

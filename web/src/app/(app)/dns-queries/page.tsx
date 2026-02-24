@@ -25,9 +25,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { fetchDnsQueryLog, fetchDnsQueryStats } from "@/lib/api";
+import { fetchDnsQueries, fetchDnsQueryStats } from "@/lib/api";
 import type {
-  DnsQueryLogResponse,
+  DnsQueriesResponse,
   DnsQueryStats,
 } from "@/lib/types";
 import { PageTransition } from "@/components/PageTransition";
@@ -59,7 +59,7 @@ function timeAgo(dateStr: string): string {
 }
 
 export default function DnsQueriesPage() {
-  const [logData, setLogData] = useState<DnsQueryLogResponse | null>(null);
+  const [logData, setLogData] = useState<DnsQueriesResponse | null>(null);
   const [stats, setStats] = useState<DnsQueryStats | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,7 +83,7 @@ export default function DnsQueriesPage() {
 
   const loadLog = useCallback(async () => {
     try {
-      const params: Parameters<typeof fetchDnsQueryLog>[0] = {
+      const params: Parameters<typeof fetchDnsQueries>[0] = {
         page,
         per_page: perPage,
         hours,
@@ -92,7 +92,7 @@ export default function DnsQueriesPage() {
       if (blockedFilter === "blocked") params.blocked = true;
       if (blockedFilter === "allowed") params.blocked = false;
 
-      const data = await fetchDnsQueryLog(params);
+      const data = await fetchDnsQueries(params);
       setLogData(data);
       setError(null);
     } catch (err) {
