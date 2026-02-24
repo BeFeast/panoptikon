@@ -209,6 +209,17 @@ fn asset_from_row(row: sqlx::sqlite::SqliteRow) -> Result<Asset, sqlx::Error> {
     })
 }
 
+fn non_empty_trimmed(value: Option<String>) -> Option<String> {
+    value.and_then(|raw| {
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
+}
+
 const LIST_QUERY: &str = "\
     SELECT a.id, a.name, a.asset_type, a.status, a.location, a.owner, a.tags, a.notes, \
            a.purchase_date, a.serial_number, a.device_id, a.agent_id, a.ssh_target_id, \
@@ -674,12 +685,18 @@ pub async fn sync_from_devices(
     let rows = sqlx::query(
         "SELECT d.id, d.name, d.hostname, d.mac, d.device_type, d.location, \
                 d.owner, d.serial_number, \
-                (SELECT a2.id FROM agents a2 WHERE a2.device_id = d.id LIMIT 1) AS linked_agent_id \
+                (SELECT ag.id FROM agents ag WHERE ag.device_id = d.id LIMIT 1) AS linked_agent_id \
          FROM devices d \
-         WHERE d.id NOT IN (SELECT a.device_id FROM assets a WHERE a.device_id IS NOT NULL)",
+         LEFT JOIN assets a ON a.device_id = d.id \
+         WHERE a.id IS NULL",
     )
     .fetch_all(&state.db)
     .await?;
+
+    info!(
+        unlinked_devices = rows.len(),
+        "Found unlinked devices eligible for asset sync"
+    );
 
     let mut created = 0usize;
     let mut skipped = 0usize;
@@ -687,28 +704,44 @@ pub async fn sync_from_devices(
 
     for row in &rows {
         let device_id: String = row.try_get("id").unwrap_or_default();
-        let device_name: Option<String> = row.try_get("name").ok().flatten();
-        let hostname: Option<String> = row.try_get("hostname").ok().flatten();
-        let mac: String = row.try_get("mac").unwrap_or_default();
-        let device_type: Option<String> = row.try_get("device_type").ok().flatten();
-        let location: Option<String> = row.try_get("location").ok().flatten();
-        let owner: Option<String> = row.try_get("owner").ok().flatten();
-        let serial_number: Option<String> = row.try_get("serial_number").ok().flatten();
-        let linked_agent_id: Option<String> = row.try_get("linked_agent_id").ok().flatten();
+        let device_name = non_empty_trimmed(row.try_get("name").ok().flatten());
+        let hostname = non_empty_trimmed(row.try_get("hostname").ok().flatten());
+        let mac = row
+            .try_get::<String, _>("mac")
+            .ok()
+            .map(|v| v.trim().to_string())
+            .unwrap_or_default();
+        let device_type = non_empty_trimmed(row.try_get("device_type").ok().flatten());
+        let location = non_empty_trimmed(row.try_get("location").ok().flatten());
+        let owner = non_empty_trimmed(row.try_get("owner").ok().flatten());
+        let serial_number = non_empty_trimmed(row.try_get("serial_number").ok().flatten());
+        let linked_agent_id = non_empty_trimmed(row.try_get("linked_agent_id").ok().flatten());
 
-        // Use device name, then hostname, then MAC as the asset name.
-        let asset_name = device_name
+        // Use first non-empty identifier: name, hostname, then MAC.
+        let asset_name = match device_name
             .as_deref()
             .or(hostname.as_deref())
-            .unwrap_or(&mac);
+            .or((!mac.is_empty()).then_some(mac.as_str()))
+        {
+            Some(name) => name,
+            None => {
+                warn!(
+                    device_id = %device_id,
+                    "Skipped device during asset sync: missing name, hostname, and MAC"
+                );
+                details.push(format!(
+                    "Skipped device '{}' (missing name/hostname/MAC)",
+                    device_id
+                ));
+                skipped += 1;
+                continue;
+            }
+        };
 
-        if asset_name.is_empty() {
-            skipped += 1;
-            continue;
-        }
+        let normalized_device_type = device_type.as_deref().map(str::to_ascii_lowercase);
 
         // Map device_type to asset_type.
-        let asset_type = match device_type.as_deref() {
+        let asset_type = match normalized_device_type.as_deref() {
             Some("computer") | Some("desktop") | Some("laptop") => "workstation",
             Some("server") => "server",
             Some("router") | Some("gateway") => "router",
@@ -722,6 +755,13 @@ pub async fn sync_from_devices(
             Some("container") => "container",
             _ => "unknown",
         };
+
+        info!(
+            device_id = %device_id,
+            asset_name = %asset_name,
+            asset_type = %asset_type,
+            "Creating asset from discovered device"
+        );
 
         let id = uuid::Uuid::new_v4().to_string();
 
@@ -741,17 +781,34 @@ pub async fn sync_from_devices(
         .await
         {
             Ok(_) => {
-                details.push(format!("Created asset '{}' from device", asset_name));
+                details.push(format!(
+                    "Created asset '{}' from device '{}'",
+                    asset_name, device_id
+                ));
+                info!(
+                    device_id = %device_id,
+                    asset_id = %id,
+                    "Created asset from discovered device"
+                );
                 created += 1;
             }
             Err(e) => {
                 warn!(device_id = %device_id, "Failed to create asset from device: {e}");
+                details.push(format!(
+                    "Skipped device '{}' (failed to create asset)",
+                    device_id
+                ));
                 skipped += 1;
             }
         }
     }
 
-    info!(created, skipped, "Sync assets from devices completed");
+    info!(
+        created,
+        skipped,
+        scanned = rows.len(),
+        "Sync assets from devices completed"
+    );
 
     Ok(Json(SyncFromDevicesResponse {
         created,
@@ -764,7 +821,7 @@ pub async fn sync_from_devices(
 mod tests {
     use crate::db;
 
-    use super::{asset_from_row, GET_ONE_QUERY, LIST_QUERY};
+    use super::{asset_from_row, sync_from_devices, GET_ONE_QUERY, LIST_QUERY};
 
     #[tokio::test]
     async fn test_asset_crud() {
@@ -1003,5 +1060,63 @@ mod tests {
             .expect("GET_ONE_QUERY failed");
 
         assert!(row.is_none(), "Expected no row for nonexistent asset");
+    }
+
+    #[tokio::test]
+    async fn test_sync_from_devices_creates_assets_for_unlinked_devices() {
+        let pool = db::init(":memory:").await.expect("DB init failed");
+
+        // Three discovered devices with no existing assets.
+        sqlx::query(
+            "INSERT INTO devices (id, mac, name, hostname, device_type, location, owner, serial_number, first_seen_at, last_seen_at, is_online) \
+             VALUES ('dev-001', 'aa:bb:cc:dd:ee:01', NULL, 'router.local', 'router', 'Rack A', 'netops', 'SN-001', '2024-01-01 00:00:00', '2024-01-01 00:00:00', 1), \
+                    ('dev-002', 'aa:bb:cc:dd:ee:02', '', 'nas.local', 'nas', NULL, NULL, NULL, '2024-01-01 00:00:00', '2024-01-01 00:00:00', 1), \
+                    ('dev-003', 'aa:bb:cc:dd:ee:03', '', '', 'printer', NULL, NULL, NULL, '2024-01-01 00:00:00', '2024-01-01 00:00:00', 1)",
+        )
+        .execute(&pool)
+        .await
+        .expect("Insert devices failed");
+
+        sqlx::query(
+            "INSERT INTO agents (id, device_id, api_key_hash, name) VALUES ('agent-001', 'dev-001', 'hash123', 'agent')",
+        )
+        .execute(&pool)
+        .await
+        .expect("Insert agent failed");
+
+        let state = crate::api::AppState::new(pool.clone(), crate::config::AppConfig::default());
+        let axum::Json(response) = sync_from_devices(axum::extract::State(state))
+            .await
+            .unwrap_or_else(|_| panic!("sync_from_devices failed"));
+
+        assert_eq!(response.created, 3);
+        assert_eq!(response.skipped, 0);
+
+        let asset_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM assets")
+            .fetch_one(&pool)
+            .await
+            .expect("Count assets failed");
+        assert_eq!(asset_count, 3);
+
+        let dev2_name: String =
+            sqlx::query_scalar("SELECT name FROM assets WHERE device_id = 'dev-002'")
+                .fetch_one(&pool)
+                .await
+                .expect("Query asset name for dev-002 failed");
+        assert_eq!(dev2_name, "nas.local");
+
+        let dev3_name: String =
+            sqlx::query_scalar("SELECT name FROM assets WHERE device_id = 'dev-003'")
+                .fetch_one(&pool)
+                .await
+                .expect("Query asset name for dev-003 failed");
+        assert_eq!(dev3_name, "aa:bb:cc:dd:ee:03");
+
+        let dev1_agent: Option<String> =
+            sqlx::query_scalar("SELECT agent_id FROM assets WHERE device_id = 'dev-001'")
+                .fetch_one(&pool)
+                .await
+                .expect("Query asset agent_id for dev-001 failed");
+        assert_eq!(dev1_agent.as_deref(), Some("agent-001"));
     }
 }
