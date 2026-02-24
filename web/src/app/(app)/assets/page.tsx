@@ -316,13 +316,13 @@ function AssetsListPage() {
     try {
       const result = await syncAssetsFromDevices();
       if (result.created > 0) {
-        toast.success(`Created ${result.created} asset(s) from discovered devices`);
+        toast.success(`Imported ${result.created} asset(s) from discovered devices`);
         load();
       } else {
         toast.info("All discovered devices already have linked assets");
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Sync failed");
+      toast.error(err instanceof Error ? err.message : "Import from devices failed");
     } finally {
       setSyncing(false);
     }
@@ -417,7 +417,7 @@ ${filtered
               disabled={syncing}
             >
               <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
-              {syncing ? "Syncing..." : "Import from Devices"}
+              {syncing ? "Importing..." : "Import from Devices"}
             </Button>
             <Button
               variant="outline"

@@ -124,6 +124,14 @@ pub struct AutoLinkResponse {
     pub details: Vec<String>,
 }
 
+/// Response for sync-from-devices operation.
+#[derive(Debug, Serialize)]
+pub struct SyncFromDevicesResponse {
+    pub created: usize,
+    pub skipped: usize,
+    pub details: Vec<String>,
+}
+
 // ─── Helpers ─────────────────────────────────────────────
 
 fn asset_from_row(row: sqlx::sqlite::SqliteRow) -> Result<Asset, sqlx::Error> {
@@ -655,14 +663,6 @@ pub async fn auto_link(State(state): State<AppState>) -> Result<Json<AutoLinkRes
     info!(linked, "Auto-link assets to devices completed");
 
     Ok(Json(AutoLinkResponse { linked, details }))
-}
-
-/// Response for sync-from-devices operation.
-#[derive(Debug, Serialize)]
-pub struct SyncFromDevicesResponse {
-    pub created: usize,
-    pub skipped: usize,
-    pub details: Vec<String>,
 }
 
 /// POST /api/v1/assets/sync-from-devices — create assets for discovered
