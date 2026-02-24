@@ -130,6 +130,16 @@ export default function QosPage() {
     load();
   }, [load]);
 
+  // Default to MikroTik tab when available
+  useEffect(() => {
+    if (!summary) return;
+    if (summary.mikrotik_available) {
+      setActiveTab("mikrotik");
+    } else if (summary.vyos_available) {
+      setActiveTab("vyos");
+    }
+  }, [summary]);
+
   useEffect(() => {
     fetchSettings()
       .then((settings) => setLegacyRoutersEnabled(settings.show_legacy_routers))
@@ -279,6 +289,14 @@ export default function QosPage() {
             >
               Overview
             </TabsTrigger>
+            {summary?.mikrotik_available && (
+              <TabsTrigger
+                value="mikrotik"
+                className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+              >
+                MikroTik Queues
+              </TabsTrigger>
+            )}
             {vyosVisible && (
               <TabsTrigger
                 value="vyos"
@@ -288,14 +306,6 @@ export default function QosPage() {
                 <span className="ml-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] text-amber-400">
                   Legacy
                 </span>
-              </TabsTrigger>
-            )}
-            {summary?.mikrotik_available && (
-              <TabsTrigger
-                value="mikrotik"
-                className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
-              >
-                MikroTik Queues
               </TabsTrigger>
             )}
           </TabsList>

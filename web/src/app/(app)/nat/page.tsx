@@ -123,6 +123,16 @@ export default function NatPage() {
     load();
   }, [load]);
 
+  // Default to MikroTik tab when available
+  useEffect(() => {
+    if (!summary) return;
+    if (summary.mikrotik_available) {
+      setActiveTab("mikrotik");
+    } else if (summary.vyos_available) {
+      setActiveTab("vyos");
+    }
+  }, [summary]);
+
   useEffect(() => {
     fetchSettings()
       .then((settings) => setLegacyRoutersEnabled(settings.show_legacy_routers))
@@ -255,20 +265,21 @@ export default function NatPage() {
             >
               Overview
             </TabsTrigger>
-            {vyosVisible && (
-              <TabsTrigger
-                value="vyos"
-                className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
-              >
-                VyOS DNAT
-              </TabsTrigger>
-            )}
+
             {summary?.mikrotik_available && (
               <TabsTrigger
                 value="mikrotik"
                 className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
               >
                 MikroTik NAT
+              </TabsTrigger>
+            )}
+            {vyosVisible && (
+              <TabsTrigger
+                value="vyos"
+                className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+              >
+                VyOS DNAT
               </TabsTrigger>
             )}
           </TabsList>
