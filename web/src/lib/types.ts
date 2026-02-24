@@ -1852,6 +1852,7 @@ export interface XiaomiStatus {
   wan_upload: string | null;
   devices_online: number | null;
   devices_total: number | null;
+  uptime: string | null;
 }
 
 export interface XiaomiTopoNode {
@@ -1902,6 +1903,7 @@ export interface XiaomiWanInfo {
   dns: string | null;
   wan_type: string | null;
   mask: string | null;
+  ipv6_status: string | null;
 }
 
 export interface XiaomiLanPort {
@@ -1923,6 +1925,29 @@ export interface XiaomiNewStatus {
   sn: string | null;
   devices_online: number | null;
   devices_total: number | null;
+}
+
+export interface XiaomiWifiBand {
+  ssid: string | null;
+  channel: string | null;
+  bandwidth: string | null;
+  encryption: string | null;
+  signal: number | null;
+  status: string | null;
+  band_steering: string | null;
+}
+
+export interface XiaomiFirmware {
+  configured: boolean;
+  reachable: boolean;
+  router_name: string | null;
+  language: string | null;
+  rom_version: string | null;
+  hardware: string | null;
+  model: string | null;
+  country_code: string | null;
+  update_available: boolean;
+  update_version: string | null;
 }
 
 // ─── Xiaomi Mesh Settings ────────────────────────────────

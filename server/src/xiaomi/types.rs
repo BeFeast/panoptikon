@@ -258,3 +258,71 @@ pub struct LanInfoResponse {
     #[serde(default)]
     pub info: Option<LanInfo>,
 }
+
+// ── WiFi detail per band ─────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WifiBandDetail {
+    #[serde(default)]
+    pub ssid: Option<String>,
+    #[serde(default)]
+    pub channel: Option<String>,
+    #[serde(default)]
+    pub bandwidth: Option<String>,
+    #[serde(default)]
+    pub encryption: Option<String>,
+    #[serde(default)]
+    pub signal: Option<i32>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default, rename = "bandsteering")]
+    pub band_steering: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct WifiDetailAllResponse {
+    #[serde(default)]
+    pub info: Vec<WifiBandDetail>,
+}
+
+// ── Init info (firmware / hardware) ──────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InitInfo {
+    #[serde(default, rename = "routername")]
+    pub router_name: Option<String>,
+    #[serde(default)]
+    pub language: Option<String>,
+    #[serde(default, rename = "romversion")]
+    pub rom_version: Option<String>,
+    #[serde(default)]
+    pub hardware: Option<String>,
+    #[serde(default)]
+    pub model: Option<String>,
+    #[serde(default)]
+    pub countrycode: Option<String>,
+    #[serde(default)]
+    pub id: Option<String>,
+}
+
+// ── ROM update check ─────────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RomUpdateInfo {
+    #[serde(default, rename = "needUpdate")]
+    pub need_update: Option<i32>,
+    #[serde(default)]
+    pub version: Option<String>,
+    #[serde(default, rename = "changelogUrl")]
+    pub changelog_url: Option<String>,
+    #[serde(default, rename = "fileSize")]
+    pub file_size: Option<String>,
+}
+
+// ── System status with uptime ────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UptimeResponse {
+    #[serde(default)]
+    pub uptime: Option<String>,
+}

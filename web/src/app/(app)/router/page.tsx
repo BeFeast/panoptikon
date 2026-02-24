@@ -135,6 +135,7 @@ import {
 } from "@/lib/api";
 import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, RouterSummary, SpeedTestResult, SpeedTestHistoryEntry, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, DhcpServerConfig, DhcpSubnetConfig, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride, SystemInfo, SyslogResponse, MikrotikStatus, SettingsData, OpenVpnInterface, OpenVpnConnectedClient } from "@/lib/types";
 import MikrotikRouter from "@/components/MikrotikRouter";
+import XiaomiRouter from "@/components/XiaomiRouter";
 import QRCode from "qrcode";
 import { Progress } from "@/components/ui/progress";
 import { PageTransition } from "@/components/PageTransition";
@@ -5891,26 +5892,32 @@ export default function RouterPage() {
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [mikrotikEnabled, setMikrotikEnabled] = useState(false);
   const [vyosConfigured, setVyosConfigured] = useState(false);
-  const [routerType, setRouterType] = useState<"vyos" | "mikrotik">("mikrotik");
+  const [xiaomiEnabled, setXiaomiEnabled] = useState(false);
+  const [routerType, setRouterType] = useState<"vyos" | "mikrotik" | "xiaomi">("mikrotik");
 
   // Load settings to determine which routers are configured
   useEffect(() => {
     const loadSettings = async () => {
       let mtEnabled = false;
       let vyosConf = false;
+      let xiEnabled = false;
       try {
         const settings = await fetchSettings();
         mtEnabled = settings.mikrotik_enabled;
         vyosConf = !!settings.vyos_url && settings.vyos_api_key_set;
+        xiEnabled = settings.xiaomi_mesh_enabled;
       } catch {
         // ignore
       }
       setMikrotikEnabled(mtEnabled);
       setVyosConfigured(vyosConf);
+      setXiaomiEnabled(xiEnabled);
 
-      // Default to mikrotik if enabled, fallback to vyos only if mikrotik not available
+      // Default to mikrotik if enabled, fallback to xiaomi, then vyos
       if (mtEnabled) {
         setRouterType("mikrotik");
+      } else if (xiEnabled) {
+        setRouterType("xiaomi");
       } else if (vyosConf) {
         setRouterType("vyos");
       }
@@ -5948,42 +5955,61 @@ export default function RouterPage() {
     loadVyosSummary();
   }, [routerType, summary]);
 
-  const neitherConfigured = settingsLoaded && !vyosConfigured && !mikrotikEnabled;
+  const neitherConfigured = settingsLoaded && !vyosConfigured && !mikrotikEnabled && !xiaomiEnabled;
 
   return (
     <PageTransition>
       <div className="space-y-6">
-        {/* Router type selector — skeleton while settings load, tabs when MikroTik is enabled */}
+        {/* Router type selector — skeleton while settings load, tabs when multiple routers available */}
         {!settingsLoaded ? (
           <Skeleton className="h-9 w-48" />
-        ) : mikrotikEnabled ? (
+        ) : [mikrotikEnabled, vyosConfigured, xiaomiEnabled].filter(Boolean).length > 1 ? (
           <div className="flex gap-2">
-            <Button
-              variant={routerType === "mikrotik" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setRouterType("mikrotik")}
-              className={
-                routerType === "mikrotik"
-                  ? "bg-pink-600 text-white hover:bg-pink-500"
-                  : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
-              }
-            >
-              <Router className="mr-1.5 h-3.5 w-3.5" />
-              MikroTik
-            </Button>
-            <Button
-              variant={routerType === "vyos" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setRouterType("vyos")}
-              className={
-                routerType === "vyos"
-                  ? "bg-blue-600 text-white hover:bg-blue-500"
-                  : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
-              }
-            >
-              <Router className="mr-1.5 h-3.5 w-3.5" />
-              VyOS (Optional)
-            </Button>
+            {mikrotikEnabled && (
+              <Button
+                variant={routerType === "mikrotik" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setRouterType("mikrotik")}
+                className={
+                  routerType === "mikrotik"
+                    ? "bg-pink-600 text-white hover:bg-pink-500"
+                    : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
+                }
+              >
+                <Router className="mr-1.5 h-3.5 w-3.5" />
+                MikroTik
+              </Button>
+            )}
+            {xiaomiEnabled && (
+              <Button
+                variant={routerType === "xiaomi" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setRouterType("xiaomi")}
+                className={
+                  routerType === "xiaomi"
+                    ? "bg-orange-600 text-white hover:bg-orange-500"
+                    : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
+                }
+              >
+                <Router className="mr-1.5 h-3.5 w-3.5" />
+                Xiaomi
+              </Button>
+            )}
+            {vyosConfigured && (
+              <Button
+                variant={routerType === "vyos" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setRouterType("vyos")}
+                className={
+                  routerType === "vyos"
+                    ? "bg-blue-600 text-white hover:bg-blue-500"
+                    : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
+                }
+              >
+                <Router className="mr-1.5 h-3.5 w-3.5" />
+                VyOS
+              </Button>
+            )}
           </div>
         ) : null}
 
@@ -5995,6 +6021,8 @@ export default function RouterPage() {
           </div>
         ) : neitherConfigured ? (
           <NotConfigured />
+        ) : routerType === "xiaomi" && xiaomiEnabled ? (
+          <XiaomiRouter />
         ) : routerType === "mikrotik" && mikrotikEnabled ? (
           <MikrotikRouter />
         ) : routerType === "vyos" && !vyosConfigured ? (

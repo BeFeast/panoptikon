@@ -358,6 +358,36 @@ impl XiaomiClient {
             serde_json::from_value(val).context("failed to parse LAN info")?;
         res.info.context("LAN info field missing from response")
     }
+
+    /// Fetch per-band WiFi details (SSID, channel, bandwidth, band steering).
+    pub async fn wifi_detail_all(&self) -> Result<Vec<WifiBandDetail>> {
+        let val = self.get_authed("xqnetwork/wifi_detail_all").await?;
+        let res: WifiDetailAllResponse =
+            serde_json::from_value(val).context("failed to parse wifi detail all")?;
+        Ok(res.info)
+    }
+
+    /// Fetch init info (firmware version, hardware model, router name).
+    pub async fn init_info(&self) -> Result<InitInfo> {
+        let val = self.get_authed("xqsystem/init_info").await?;
+        let res: InitInfo = serde_json::from_value(val).context("failed to parse init info")?;
+        Ok(res)
+    }
+
+    /// Check for ROM/firmware updates.
+    pub async fn check_rom_update(&self) -> Result<Option<RomUpdateInfo>> {
+        let val = self.get_authed("xqsystem/check_rom_update").await?;
+        // The update info may be absent if no update is available.
+        let update: Option<RomUpdateInfo> = serde_json::from_value(val).ok();
+        Ok(update)
+    }
+
+    /// Fetch system uptime.
+    pub async fn uptime(&self) -> Result<Option<String>> {
+        let val = self.get_authed("misystem/status").await?;
+        let res: UptimeResponse = serde_json::from_value(val).context("failed to parse uptime")?;
+        Ok(res.uptime)
+    }
 }
 
 /// Extract a JavaScript variable value from HTML source.
