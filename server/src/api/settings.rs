@@ -48,6 +48,8 @@ pub struct SettingsResponse {
     pub cloudflare_api_token_set: bool,
     pub cloudflare_account_id: Option<String>,
     pub cloudflare_tunnel_id: Option<String>,
+    // --- Advanced / Legacy ---
+    pub show_legacy_routers: bool,
 }
 
 /// Request body for updating settings.
@@ -89,6 +91,8 @@ pub struct UpdateSettingsRequest {
     pub cloudflare_api_token: Option<String>,
     pub cloudflare_account_id: Option<String>,
     pub cloudflare_tunnel_id: Option<String>,
+    // --- Advanced / Legacy ---
+    pub show_legacy_routers: Option<bool>,
 }
 
 /// Helper: read a string setting from the settings table.
@@ -191,6 +195,12 @@ pub async fn get_settings(
     let cloudflare_account_id = get_setting(&state, "cloudflare_account_id").await;
     let cloudflare_tunnel_id = get_setting(&state, "cloudflare_tunnel_id").await;
 
+    // Advanced / Legacy settings.
+    let show_legacy_routers = get_setting(&state, "show_legacy_routers")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+
     Ok(Json(SettingsResponse {
         webhook_url,
         vyos_url,
@@ -219,6 +229,7 @@ pub async fn get_settings(
         cloudflare_api_token_set,
         cloudflare_account_id,
         cloudflare_tunnel_id,
+        show_legacy_routers,
     }))
 }
 
@@ -399,6 +410,20 @@ pub async fn update_settings(
     if let Some(ref tunnel_id) = body.cloudflare_tunnel_id {
         upsert_setting(&state, "cloudflare_tunnel_id", tunnel_id).await?;
         info!(cloudflare_tunnel_id = %tunnel_id, "Cloudflare tunnel ID updated");
+    }
+
+    // --- Advanced / Legacy settings ---
+    if let Some(enabled) = body.show_legacy_routers {
+        upsert_setting(
+            &state,
+            "show_legacy_routers",
+            if enabled { "1" } else { "0" },
+        )
+        .await?;
+        info!(
+            show_legacy_routers = enabled,
+            "Show legacy routers toggle updated"
+        );
     }
 
     // Return current state.

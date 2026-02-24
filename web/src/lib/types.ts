@@ -538,6 +538,8 @@ export interface SettingsData {
   cloudflare_api_token_set: boolean;
   cloudflare_account_id: string | null;
   cloudflare_tunnel_id: string | null;
+  // Advanced / Legacy
+  show_legacy_routers: boolean;
 }
 
 // ─── Nginx Proxy Manager ─────────────────────────────────
