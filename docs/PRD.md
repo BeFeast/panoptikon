@@ -28,13 +28,13 @@
 
 ## 1. Overview & Vision
 
-**Panoptikon** is a self-hosted web application for managing routers (MikroTik primary, VyOS optional), monitoring all devices on a local network, and maintaining a complete IT asset inventory — without requiring an agent on every host.
+**Panoptikon** is a self-hosted web application for managing routers (MikroTik primary/default, VyOS legacy optional), monitoring all devices on a local network, and maintaining a complete IT asset inventory — without requiring an agent on every host.
 
 Think of it as a mashup of **Ubiquiti UniFi's web console** (dark theme, topology map, polished device cards), **Fing** (network scanning, device discovery, online/offline tracking), and **Lansweeper / NetBox** (asset inventory, SSH-based agentless collection, categorization) — but open-source, with multi-router support (MikroTik + VyOS), embedded DNS and reverse proxy management, and deployable as a single Docker Compose stack.
 
 The name references Bentham's panopticon — the all-seeing observation tower — reimagined as a personal tool: *you* are the observer, your home network is the space. The `k` spelling makes it unique and ownable.
 
-**The one-liner:** The all-seeing eye for your home network. Unified monitoring and management: network devices, routers (MikroTik/VyOS), WiFi mesh (Xiaomi), DNS (Unbound), reverse proxy (Caddy), Cloudflare Tunnel, and IT asset inventory — all in one self-hosted Docker Compose stack.
+**The one-liner:** The all-seeing eye for your home network. Unified monitoring and management: network devices, routers (MikroTik first, VyOS legacy), WiFi mesh (Xiaomi), DNS (Unbound), reverse proxy (Caddy), Cloudflare Tunnel, and IT asset inventory — all in one self-hosted Docker Compose stack.
 
 **Vision:** You open a single browser tab and see your entire infrastructure: router health, every device discovered via ARP/DHCP/mDNS/SSDP, full hardware inventory collected via lightweight agents *or* direct SSH, DNS management (Unbound), reverse proxy (Caddy), and secure tunnel (Cloudflare) — all in a dark, information-dense UI that feels like a professional network operations center, not a hobbyist tool.
 
@@ -68,7 +68,7 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 
 **Primary persona:** A technical user (developer, sysadmin, homelab enthusiast) who:
 
-- Runs MikroTik (RouterOS 7+) or VyOS as their primary router (bare metal, VM, or container)
+- Runs MikroTik (RouterOS 7+) as the default primary router path, with optional VyOS support for legacy/existing deployments
 - Has 10–100 devices on the network (servers, workstations, IoT, phones)
 - Wants visibility into their network without deploying a full monitoring stack
 - Values self-hosting, open source, and low resource usage
@@ -97,7 +97,7 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 | G7 | Keep resource usage minimal — the server should run on a Raspberry Pi 4 | ✅ Done |
 | G8 | Be easy to deploy: Docker Compose stack with SQLite, minimal external dependencies | ✅ Done |
 | G9 | Open-source (MIT or Apache 2.0) with a clean, contributor-friendly codebase | ✅ Done |
-| G10 | Support multiple router backends (MikroTik primary, VyOS optional) | ✅ Done |
+| G10 | Support multiple router backends (MikroTik primary/default, VyOS legacy optional) | ✅ Done |
 
 ### Non-Goals
 
@@ -136,7 +136,7 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 
 #### F3: Router Integration ✅
 - **MikroTik (Primary):** Connect to RouterOS 7+ REST API. Full management: system status (uptime, CPU, memory, board info), interfaces (IPs, MACs, TX/RX, enable/disable), routes (view + create/delete static routes), DHCP leases, VLANs, firewall rules, traffic monitoring, NAT/port forwarding, VPN status, dynamic DNS, QoS, DNS configuration, WireGuard VPN. TTL-based caching for read operations. Settings page with connection test and enable/disable toggle.
-- **VyOS (Optional):** Connect to VyOS HTTP API. Display: system status, syslog, interfaces, routes, DHCP leases + static mappings, firewall rules (full CRUD + groups), DNS forwarding, WireGuard VPN peers. Configuration backup/restore with diff viewing. Settings page with connection test.
+- **VyOS (Legacy Optional):** Connect to VyOS HTTP API. Display: system status, syslog, interfaces, routes, DHCP leases + static mappings, firewall rules (full CRUD + groups), DNS forwarding, WireGuard VPN peers. Configuration backup/restore with diff viewing. Marked as legacy in UI and hidden by default unless legacy router visibility is enabled.
 - Connection test + health indicator in UI for both routers
 
 #### F4: Authentication ✅
@@ -374,14 +374,26 @@ A structured record for every asset in the infrastructure — servers, VMs, cont
 
 ### Router Integration Architecture
 
-Panoptikon supports a **multi-router architecture** with MikroTik as the primary/default router and VyOS as an optional secondary integration:
+Panoptikon supports a **multi-router architecture** with MikroTik as the primary/default router and VyOS as a legacy optional secondary integration:
 
 | Router | API | Status | Default |
 |--------|-----|--------|---------|
 | **MikroTik** | RouterOS 7+ REST API | ✅ Primary | Default tab in Router page |
-| **VyOS** | VyOS HTTP API (1.3+) | ✅ Optional | Lazy-loaded, hidden unless enabled |
+| **VyOS** | VyOS HTTP API (1.3+) | ⚠️ Legacy optional | Lazy-loaded and hidden by default |
 
 Both integrations use TTL-based caching for read operations and cache invalidation middleware on mutations. Each router has its own settings page and can be independently enabled/disabled.
+
+#### Router Visibility Rules
+
+**User-facing behavior (default product path):**
+- MikroTik is the default router workflow for new deployments and the default selected router view.
+- VyOS is treated as a legacy integration and labeled accordingly in router-related UI.
+- VyOS router controls are hidden by default and are shown only after enabling **Settings → Advanced → Show legacy routers**.
+
+**Developer-facing behavior (implementation contract):**
+- Legacy visibility is controlled by `settings.show_legacy_routers` (boolean), with a default of `false` when unset.
+- Router-type defaults must remain MikroTik-first (`getDefaultRouterType() -> "mikrotik"`).
+- VyOS router summary/data is lazy-loaded only when the user explicitly selects VyOS.
 
 ### Tech Stack Justification
 
@@ -758,7 +770,7 @@ CREATE TABLE settings (
     value   TEXT NOT NULL
 );
 -- Stores: admin_password_hash, mikrotik_url, mikrotik_username, mikrotik_password,
---         vyos_url, vyos_api_key, npm_url, npm_email, npm_password,
+--         vyos_url, vyos_api_key, show_legacy_routers, npm_url, npm_email, npm_password,
 --         scan_interval, webhook_url, etc.
 
 CREATE TABLE devices (
@@ -1028,7 +1040,7 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 - [x] **Online/offline detection:** State change tracking, ping-based uptime monitoring
 - [x] **Alerts:** New device, offline/online state changes, in-app feed with severity filtering
 - [x] **WebSocket:** Live updates to UI when device state changes
-- [x] **Settings page:** MikroTik connection, VyOS connection (optional), Caddy connection, Unbound connection, Cloudflare Tunnel, NPM connection, scanner config, webhook, data retention, speedtest, audit log, config backup, password change
+- [x] **Settings page:** MikroTik connection (default), VyOS connection (legacy/optional, hidden by default), Caddy connection, Unbound connection, Cloudflare Tunnel, NPM connection, scanner config, webhook, data retention, speedtest, audit log, config backup, password change
 
 ### Milestone 2: Agents + Traffic + SSH ✅
 
@@ -1092,7 +1104,7 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 | Q3 | **Next.js App Router or Pages Router?** | App Router — stable, Server Components for initial load. |
 | Q4 | **Should the frontend be SSR or static export?** | Static export — embedded in Rust binary, no Node.js runtime at deploy time. |
 | Q5 | **Router API key storage?** | SQLite — stored in settings table. |
-| Q11 | **Should we support multiple routers?** | Yes — MikroTik (primary) + VyOS (optional). Multi-router architecture implemented. |
+| Q11 | **Should we support multiple routers?** | Yes — MikroTik (primary/default) + VyOS (legacy optional). Multi-router architecture implemented. |
 
 ### Technical Unknowns — Mostly Resolved
 
