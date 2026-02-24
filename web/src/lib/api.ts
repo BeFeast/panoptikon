@@ -805,6 +805,7 @@ export function updateSettings(body: {
   mikrotik_password?: string;
   mikrotik_enabled?: boolean;
   unbound_control_path?: string;
+  caddy_admin_url?: string;
 }): Promise<SettingsData> {
   return apiPatch<SettingsData>("/api/v1/settings", body);
 }

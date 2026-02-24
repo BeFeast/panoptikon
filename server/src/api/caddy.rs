@@ -86,7 +86,10 @@ pub fn start_caddy_sync_task(state: AppState) {
 }
 
 /// Build Caddy JSON config from all enabled proxy hosts and PATCH it to the admin API.
-async fn sync_to_caddy(state: &AppState) {
+///
+/// Called after every CRUD mutation and once at startup to ensure
+/// Caddy's live config always reflects the SQLite source of truth.
+pub async fn sync_to_caddy(state: &AppState) {
     let hosts: Vec<(String, String, i64, String, i64)> = match sqlx::query_as(
         "SELECT domain, forward_host, forward_port, forward_scheme, tls_enabled \
          FROM caddy_proxy_hosts WHERE enabled = 1 ORDER BY domain",

@@ -502,6 +502,8 @@ export interface SettingsData {
   mikrotik_enabled: boolean;
   // Unbound DNS
   unbound_control_path: string | null;
+  // Caddy Reverse Proxy
+  caddy_admin_url: string | null;
 }
 
 // ─── Nginx Proxy Manager ─────────────────────────────────
