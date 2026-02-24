@@ -66,6 +66,9 @@ pub struct TimeSeriesPoint {
     pub blocked: i64,
 }
 
+/// Row type for per-device query stats: (device_id, client_ip, device_name, total, blocked).
+type DeviceStatsRow = (Option<String>, String, Option<String>, i64, i64);
+
 // ─── Query parameters ────────────────────────────────────
 
 #[derive(Debug, Deserialize)]
@@ -309,7 +312,7 @@ pub async fn stats(
     .unwrap_or_default();
 
     // Per-device stats.
-    let device_rows: Vec<(Option<String>, String, Option<String>, i64, i64)> = sqlx::query_as(
+    let device_rows: Vec<DeviceStatsRow> = sqlx::query_as(
         "SELECT q.device_id, q.client_ip, d.name, COUNT(*) AS total, \
          COALESCE(SUM(q.blocked), 0) AS blocked_cnt \
          FROM dns_query_log q \
