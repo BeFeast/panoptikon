@@ -89,7 +89,7 @@ fn wifi_index_to_band(index: i32) -> &'static str {
 
 /// Normalise a MAC address to uppercase colon-separated format.
 fn normalise_mac(mac: &str) -> String {
-    mac.to_uppercase().replace('-', ":").replace('.', ":")
+    mac.to_uppercase().replace(['-', '.'], ":")
 }
 
 /// GET /api/v1/miwifi/status — check if MiWiFi router is configured and reachable.
