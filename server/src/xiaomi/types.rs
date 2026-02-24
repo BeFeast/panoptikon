@@ -67,7 +67,7 @@ pub struct TopoGraphInner {
     pub leafs: Vec<TopoLeaf>,
 }
 
-// ── System status ───────────────────────────────────────────
+// ── System status (misystem/status) ─────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemInfo {
@@ -97,6 +97,10 @@ pub struct WanSpeed {
     pub downspeed: Option<String>,
     #[serde(default)]
     pub upspeed: Option<String>,
+    #[serde(default)]
+    pub maxdownloadspeed: Option<String>,
+    #[serde(default)]
+    pub maxuploadspeed: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -105,6 +109,10 @@ pub struct DeviceCount {
     pub online: Option<i32>,
     #[serde(default)]
     pub all: Option<i32>,
+    #[serde(default, rename = "online_without_mash")]
+    pub online_without_mesh: Option<i32>,
+    #[serde(default, rename = "all_without_mash")]
+    pub all_without_mesh: Option<i32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -118,7 +126,9 @@ pub struct SystemStatus {
     #[serde(default)]
     pub count: Option<DeviceCount>,
     #[serde(default)]
-    pub temperature: Option<i32>,
+    pub temperature: Option<f64>,
+    #[serde(default)]
+    pub uptime: Option<String>,
 }
 
 // ── Device list ─────────────────────────────────────────────
@@ -159,7 +169,7 @@ pub struct DeviceListResponse {
     pub list: Vec<MiWiFiDevice>,
 }
 
-// ── New status ──────────────────────────────────────────────
+// ── New status (misystem/newstatus) ─────────────────────────
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HardwareInfo {
@@ -175,6 +185,12 @@ pub struct HardwareInfo {
     pub sn: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BandStatus {
+    #[serde(default)]
+    pub online: Option<u32>,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct NewStatus {
     #[serde(default)]
@@ -183,6 +199,10 @@ pub struct NewStatus {
     pub wan: Option<serde_json::Value>,
     #[serde(default)]
     pub count: Option<DeviceCount>,
+    #[serde(default, rename = "2g")]
+    pub band_2g: Option<BandStatus>,
+    #[serde(default, rename = "5g")]
+    pub band_5g: Option<BandStatus>,
 }
 
 // ── WiFi connected devices ──────────────────────────────────
@@ -207,22 +227,53 @@ pub struct WifiDevicesResponse {
     pub list: Vec<WifiDevice>,
 }
 
-// ── WAN info ────────────────────────────────────────────────
+// ── WAN info (xqnetwork/wan_info) ───────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WanIpv4 {
+    #[serde(default)]
+    pub ip: Option<String>,
+    #[serde(default)]
+    pub gateway: Option<String>,
+    #[serde(default, rename = "dns1")]
+    pub dns1: Option<String>,
+    #[serde(default, rename = "dns2")]
+    pub dns2: Option<String>,
+    #[serde(default)]
+    pub mask: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WanIpv6 {
+    #[serde(default)]
+    pub ip: Option<String>,
+    #[serde(default)]
+    pub gateway: Option<String>,
+    #[serde(default)]
+    pub prefix: Option<String>,
+    #[serde(default, rename = "dns1")]
+    pub dns1: Option<String>,
+    #[serde(default, rename = "dns2")]
+    pub dns2: Option<String>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WanInfo {
+    #[serde(default)]
+    pub ipv4: Option<WanIpv4>,
+    #[serde(default)]
+    pub ipv6: Option<WanIpv6>,
+    #[serde(default, rename = "wanType")]
+    pub wan_type: Option<String>,
+    // Flat fields — some routers return these at the top level.
     #[serde(default)]
     pub ip: Option<String>,
     #[serde(default)]
     pub gateway: Option<String>,
     #[serde(default)]
     pub dns: Option<String>,
-    #[serde(default, rename = "wanType")]
-    pub wan_type: Option<String>,
     #[serde(default)]
     pub mask: Option<String>,
-    #[serde(default, rename = "ipv6")]
-    pub ipv6: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -257,4 +308,56 @@ pub struct LanInfo {
 pub struct LanInfoResponse {
     #[serde(default)]
     pub info: Option<LanInfo>,
+}
+
+// ── Init info (xqsystem/init_info) ─────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InitInfoResponse {
+    #[serde(default)]
+    pub code: Option<i32>,
+    #[serde(default, rename = "routername")]
+    pub router_name: Option<String>,
+    #[serde(default)]
+    pub hardware: Option<String>,
+    #[serde(default, rename = "romversion")]
+    pub rom_version: Option<String>,
+    #[serde(default)]
+    pub locale: Option<String>,
+}
+
+// ── ROM update check (xqsystem/check_rom_update) ───────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CheckRomUpdateResponse {
+    #[serde(default)]
+    pub code: Option<i32>,
+    #[serde(default, rename = "needUpdate")]
+    pub need_update: Option<bool>,
+    #[serde(default)]
+    pub latest: Option<String>,
+}
+
+// ── WiFi detail (xqnetwork/wifi_detail_all) ─────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WifiBandDetail {
+    #[serde(default)]
+    pub ifname: Option<String>,
+    #[serde(default)]
+    pub ssid: Option<String>,
+    #[serde(default)]
+    pub channel: Option<String>,
+    #[serde(default)]
+    pub bandwidth: Option<String>,
+    #[serde(default)]
+    pub status: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WifiDetailAllResponse {
+    #[serde(default)]
+    pub code: Option<i32>,
+    #[serde(default)]
+    pub info: Option<Vec<WifiBandDetail>>,
 }

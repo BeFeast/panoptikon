@@ -534,6 +534,10 @@ export interface SettingsData {
   xiaomi_mesh_ip: string | null;
   xiaomi_mesh_password_set: boolean;
   xiaomi_mesh_poll_interval: number | null;
+  // Xiaomi MiWiFi
+  xiaomi_ip: string | null;
+  xiaomi_password_set: boolean;
+  xiaomi_enabled: boolean;
 }
 
 // ─── Nginx Proxy Manager ─────────────────────────────────
@@ -1843,9 +1847,13 @@ export interface XiaomiStatus {
   mem_usage: number | null;
   mem_total: string | null;
   mem_type: string | null;
+  mem_hz: string | null;
   temperature: number | null;
+  uptime: string | null;
   wan_download: string | null;
   wan_upload: string | null;
+  wan_max_download: string | null;
+  wan_max_upload: string | null;
   devices_online: number | null;
   devices_total: number | null;
 }
@@ -1893,11 +1901,19 @@ export interface XiaomiWifiDevice {
 }
 
 export interface XiaomiWanInfo {
-  ip: string | null;
+  configured: boolean;
+  reachable: boolean;
+  wan_ip: string | null;
   gateway: string | null;
-  dns: string | null;
+  dns1: string | null;
+  dns2: string | null;
+  subnet_mask: string | null;
   wan_type: string | null;
-  mask: string | null;
+  ipv6_ip: string | null;
+  ipv6_gateway: string | null;
+  ipv6_prefix: string | null;
+  ipv6_dns1: string | null;
+  ipv6_dns2: string | null;
 }
 
 export interface XiaomiLanPort {
@@ -1919,6 +1935,31 @@ export interface XiaomiNewStatus {
   sn: string | null;
   devices_online: number | null;
   devices_total: number | null;
+}
+
+export interface XiaomiFirmware {
+  configured: boolean;
+  reachable: boolean;
+  router_name: string | null;
+  hardware: string | null;
+  rom_version: string | null;
+  locale: string | null;
+  update_available: boolean | null;
+  latest_version: string | null;
+}
+
+export interface XiaomiWifiBand {
+  ifname: string | null;
+  ssid: string | null;
+  channel: string | null;
+  bandwidth: string | null;
+  clients: number | null;
+}
+
+export interface XiaomiWifi {
+  configured: boolean;
+  reachable: boolean;
+  bands: XiaomiWifiBand[];
 }
 
 // ─── Xiaomi Mesh Settings ────────────────────────────────

@@ -13,6 +13,7 @@
 //!   http://<ip>/cgi-bin/luci/;stok=<TOKEN>/api/<endpoint>
 
 use anyhow::{Context, Result};
+use dashmap::DashMap;
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
@@ -20,6 +21,9 @@ use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 use tokio::sync::RwLock;
 
 use super::types::*;
+
+/// Default TTL for cached responses (30 seconds, matching MikroTik/VyOS cache).
+const CACHE_TTL: Duration = Duration::from_secs(30);
 
 /// Build the shared `reqwest::Client` for Xiaomi MiWiFi API calls.
 ///
@@ -32,6 +36,62 @@ pub fn shared_http_client() -> reqwest::Client {
         .build()
         .expect("failed to build shared reqwest client for Xiaomi MiWiFi")
 }
+
+// ── TTL Cache ──────────────────────────────────────────────
+
+/// A cache entry: the JSON value and the instant it was stored.
+struct CacheEntry {
+    value: Value,
+    inserted: Instant,
+}
+
+/// Thread-safe TTL cache for Xiaomi API responses.
+pub struct XiaomiCache {
+    map: DashMap<String, CacheEntry>,
+    ttl: Duration,
+}
+
+impl XiaomiCache {
+    pub fn new() -> Self {
+        Self {
+            map: DashMap::new(),
+            ttl: CACHE_TTL,
+        }
+    }
+
+    pub fn get(&self, key: &str) -> Option<Value> {
+        let entry = self.map.get(key)?;
+        if entry.inserted.elapsed() < self.ttl {
+            Some(entry.value.clone())
+        } else {
+            drop(entry);
+            self.map.remove(key);
+            None
+        }
+    }
+
+    pub fn set(&self, key: String, value: Value) {
+        self.map.insert(
+            key,
+            CacheEntry {
+                value,
+                inserted: Instant::now(),
+            },
+        );
+    }
+
+    pub fn clear(&self) {
+        self.map.clear();
+    }
+}
+
+impl Default for XiaomiCache {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+// ── Stok token management ──────────────────────────────────
 
 /// In-memory stok token with expiry tracking.
 #[derive(Debug, Clone)]
@@ -46,6 +106,8 @@ impl StokToken {
         self.obtained_at.elapsed() < Duration::from_secs(30 * 60)
     }
 }
+
+// ── Client ─────────────────────────────────────────────────
 
 /// Thread-safe Xiaomi MiWiFi API client with automatic token management.
 #[derive(Clone)]
@@ -85,7 +147,6 @@ impl XiaomiClient {
             .await
             .context("failed to read MiWiFi home page body")?;
 
-        // Extract key: look for `key = "..."` or `var key = "..."` in the HTML/JS
         let key = extract_js_var(&body, "key")
             .context("failed to extract 'key' from MiWiFi home page")?;
         let device_id = extract_js_var(&body, "deviceId")
@@ -100,19 +161,17 @@ impl XiaomiClient {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
-        let random: u32 = (timestamp as u32) ^ 0x1234_5678; // simple deterministic random
+        let random: u32 = (timestamp as u32) ^ 0x1234_5678;
         format!("0_{device_id}_{timestamp}_{random}")
     }
 
     /// Compute the password hash: SHA256(nonce + SHA256(password + key))
     fn hash_password(password: &str, key: &str, nonce: &str) -> String {
-        // Step 1: SHA256(password + key)
         let mut hasher = Sha256::new();
         hasher.update(password.as_bytes());
         hasher.update(key.as_bytes());
         let inner_hash = format!("{:x}", hasher.finalize());
 
-        // Step 2: SHA256(nonce + inner_hash)
         let mut hasher = Sha256::new();
         hasher.update(nonce.as_bytes());
         hasher.update(inner_hash.as_bytes());
@@ -173,7 +232,6 @@ impl XiaomiClient {
 
     /// Get a valid stok token, logging in if necessary.
     async fn get_stok(&self) -> Result<String> {
-        // Try the cached token first.
         {
             let cached = self.stok.read().await;
             if let Some(ref tok) = *cached {
@@ -183,7 +241,6 @@ impl XiaomiClient {
             }
         }
 
-        // Need to refresh.
         let token = self.login().await?;
         let mut cached = self.stok.write().await;
         *cached = Some(StokToken {
@@ -328,7 +385,7 @@ impl XiaomiClient {
         Ok(res.list)
     }
 
-    /// Fetch new status (hardware info, connected count, WiFi SSIDs).
+    /// Fetch new status (hardware info, connected count, per-band WiFi counts).
     pub async fn new_status(&self) -> Result<NewStatus> {
         let val = self.get_authed("misystem/newstatus").await?;
         let res: NewStatus = serde_json::from_value(val).context("failed to parse new status")?;
@@ -343,12 +400,12 @@ impl XiaomiClient {
         Ok(res.list)
     }
 
-    /// Fetch WAN info (type, gateway, DNS, IPv6).
-    pub async fn wan_info(&self) -> Result<WanInfo> {
+    /// Fetch WAN info (type, gateway, DNS, IPv4/IPv6).
+    pub async fn wan_info(&self) -> Result<WanInfoResponse> {
         let val = self.get_authed("xqnetwork/wan_info").await?;
         let res: WanInfoResponse =
             serde_json::from_value(val).context("failed to parse WAN info")?;
-        res.info.context("WAN info field missing from response")
+        Ok(res)
     }
 
     /// Fetch LAN info (IP, subnet, link status per port).
@@ -358,12 +415,35 @@ impl XiaomiClient {
             serde_json::from_value(val).context("failed to parse LAN info")?;
         res.info.context("LAN info field missing from response")
     }
+
+    /// Fetch router init info (firmware version, hardware, router name).
+    pub async fn init_info(&self) -> Result<InitInfoResponse> {
+        let val = self.get_authed("xqsystem/init_info").await?;
+        let res: InitInfoResponse =
+            serde_json::from_value(val).context("failed to parse init_info")?;
+        Ok(res)
+    }
+
+    /// Check for firmware updates.
+    pub async fn check_rom_update(&self) -> Result<CheckRomUpdateResponse> {
+        let val = self.get_authed("xqsystem/check_rom_update").await?;
+        let res: CheckRomUpdateResponse =
+            serde_json::from_value(val).context("failed to parse check_rom_update")?;
+        Ok(res)
+    }
+
+    /// Fetch WiFi details for all bands.
+    pub async fn wifi_detail_all(&self) -> Result<WifiDetailAllResponse> {
+        let val = self.get_authed("xqnetwork/wifi_detail_all").await?;
+        let res: WifiDetailAllResponse =
+            serde_json::from_value(val).context("failed to parse wifi_detail_all")?;
+        Ok(res)
+    }
 }
 
 /// Extract a JavaScript variable value from HTML source.
 /// Matches patterns like `var key = "abc123"`, `key = "abc123"`, `key: "abc123"`.
 fn extract_js_var(html: &str, var_name: &str) -> Option<String> {
-    // Build patterns to try, including variants with spaces
     let patterns = [
         format!("{var_name} = \""),
         format!("{var_name} = '"),
@@ -421,7 +501,6 @@ mod tests {
         let nonce = "0_AA:BB:CC:DD:EE:FF_1700000000_305419896";
 
         let hash = XiaomiClient::hash_password(password, key, nonce);
-        // Should be a 64-char hex string
         assert_eq!(hash.len(), 64);
         assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
     }
@@ -432,5 +511,29 @@ mod tests {
         assert!(nonce.starts_with("0_AA:BB:CC:DD:EE:FF_"));
         let parts: Vec<&str> = nonce.split('_').collect();
         assert_eq!(parts.len(), 4);
+    }
+
+    #[test]
+    fn cache_get_returns_none_when_empty() {
+        let cache = XiaomiCache::new();
+        assert!(cache.get("status").is_none());
+    }
+
+    #[test]
+    fn cache_set_then_get_returns_value() {
+        let cache = XiaomiCache::new();
+        let val = serde_json::json!({"code": 0});
+        cache.set("status".into(), val.clone());
+        assert_eq!(cache.get("status"), Some(val));
+    }
+
+    #[test]
+    fn cache_clear_removes_everything() {
+        let cache = XiaomiCache::new();
+        cache.set("a".into(), Value::Null);
+        cache.set("b".into(), Value::Null);
+        cache.clear();
+        assert!(cache.get("a").is_none());
+        assert!(cache.get("b").is_none());
     }
 }

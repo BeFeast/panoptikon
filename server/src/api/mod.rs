@@ -75,6 +75,8 @@ pub struct AppState {
     pub caddy_http: reqwest::Client,
     /// Shared reqwest::Client for Xiaomi MiWiFi API.
     pub xiaomi_http: reqwest::Client,
+    /// TTL cache for Xiaomi read operations.
+    pub xiaomi_cache: Arc<crate::xiaomi::client::XiaomiCache>,
     /// Shared reqwest::Client for Xiaomi Mesh test-connection.
     pub xiaomi_mesh_http: reqwest::Client,
 }
@@ -98,6 +100,7 @@ impl AppState {
                 .build()
                 .expect("caddy HTTP client"),
             xiaomi_http: crate::xiaomi::client::shared_http_client(),
+            xiaomi_cache: Arc::new(crate::xiaomi::client::XiaomiCache::new()),
             xiaomi_mesh_http: reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(10))
                 .build()
@@ -518,6 +521,8 @@ pub fn router(state: AppState) -> Router {
         .route("/xiaomi/wifi-devices", get(xiaomi::wifi_devices))
         .route("/xiaomi/wan-info", get(xiaomi::wan_info))
         .route("/xiaomi/lan-info", get(xiaomi::lan_info))
+        .route("/xiaomi/firmware", get(xiaomi::firmware))
+        .route("/xiaomi/wifi", get(xiaomi::wifi))
         // QoS / Traffic Shaping
         .route("/qos/summary", get(qos::qos_summary))
         .route("/qos/vyos/policies", get(qos::vyos_traffic_policies))
@@ -658,6 +663,9 @@ async fn vyos_cache_invalidation(
         }
         if path.contains("/mikrotik/") {
             state.mikrotik_cache.clear();
+        }
+        if path.contains("/xiaomi/") {
+            state.xiaomi_cache.clear();
         }
     }
     response

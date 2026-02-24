@@ -81,6 +81,10 @@ import type {
   MikrotikAddressListRequest,
   MikrotikDns,
   MikrotikWireguard,
+  XiaomiStatus,
+  XiaomiWanInfo,
+  XiaomiFirmware,
+  XiaomiWifi,
   Asset,
   AssetRequest,
   AssetImportRow,
@@ -861,6 +865,9 @@ export function updateSettings(body: {
   xiaomi_mesh_ip?: string;
   xiaomi_mesh_password?: string;
   xiaomi_mesh_poll_interval?: number;
+  xiaomi_ip?: string;
+  xiaomi_password?: string;
+  xiaomi_enabled?: boolean;
 }): Promise<SettingsData> {
   return apiPatch<SettingsData>("/api/v1/settings", body);
 }
@@ -1952,10 +1959,8 @@ export function fetchMeshTopology(): Promise<
 
 // ─── Xiaomi MiWiFi ───────────────────────────────────────
 
-export function fetchXiaomiStatus(): Promise<
-  import("./types").XiaomiStatus
-> {
-  return apiGet<import("./types").XiaomiStatus>("/api/v1/xiaomi/status");
+export function fetchXiaomiStatus(): Promise<XiaomiStatus> {
+  return apiGet<XiaomiStatus>("/api/v1/xiaomi/status");
 }
 
 export function fetchXiaomiTopology(): Promise<
@@ -1984,16 +1989,22 @@ export function fetchXiaomiWifiDevices(): Promise<
   );
 }
 
-export function fetchXiaomiWanInfo(): Promise<
-  import("./types").XiaomiWanInfo
-> {
-  return apiGet<import("./types").XiaomiWanInfo>("/api/v1/xiaomi/wan-info");
+export function fetchXiaomiWanInfo(): Promise<XiaomiWanInfo> {
+  return apiGet<XiaomiWanInfo>("/api/v1/xiaomi/wan-info");
 }
 
 export function fetchXiaomiLanInfo(): Promise<
   import("./types").XiaomiLanInfo
 > {
   return apiGet<import("./types").XiaomiLanInfo>("/api/v1/xiaomi/lan-info");
+}
+
+export function fetchXiaomiFirmware(): Promise<XiaomiFirmware> {
+  return apiGet<XiaomiFirmware>("/api/v1/xiaomi/firmware");
+}
+
+export function fetchXiaomiWifi(): Promise<XiaomiWifi> {
+  return apiGet<XiaomiWifi>("/api/v1/xiaomi/wifi");
 }
 
 // ─── Xiaomi Mesh Settings ────────────────────────────────

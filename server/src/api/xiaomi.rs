@@ -52,9 +52,13 @@ pub struct XiaomiStatusResponse {
     pub mem_usage: Option<f64>,
     pub mem_total: Option<String>,
     pub mem_type: Option<String>,
-    pub temperature: Option<i32>,
+    pub mem_hz: Option<String>,
+    pub temperature: Option<f64>,
+    pub uptime: Option<String>,
     pub wan_download: Option<String>,
     pub wan_upload: Option<String>,
+    pub wan_max_download: Option<String>,
+    pub wan_max_upload: Option<String>,
     pub devices_online: Option<i32>,
     pub devices_total: Option<i32>,
 }
@@ -108,11 +112,19 @@ pub struct XiaomiWifiDeviceResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct XiaomiWanInfoResponse {
-    pub ip: Option<String>,
+    pub configured: bool,
+    pub reachable: bool,
+    pub wan_ip: Option<String>,
     pub gateway: Option<String>,
-    pub dns: Option<String>,
+    pub dns1: Option<String>,
+    pub dns2: Option<String>,
+    pub subnet_mask: Option<String>,
     pub wan_type: Option<String>,
-    pub mask: Option<String>,
+    pub ipv6_ip: Option<String>,
+    pub ipv6_gateway: Option<String>,
+    pub ipv6_prefix: Option<String>,
+    pub ipv6_dns1: Option<String>,
+    pub ipv6_dns2: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -139,6 +151,34 @@ pub struct XiaomiNewStatusResponse {
     pub devices_total: Option<i32>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct XiaomiFirmwareResponse {
+    pub configured: bool,
+    pub reachable: bool,
+    pub router_name: Option<String>,
+    pub hardware: Option<String>,
+    pub rom_version: Option<String>,
+    pub locale: Option<String>,
+    pub update_available: Option<bool>,
+    pub latest_version: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct XiaomiWifiBand {
+    pub ifname: Option<String>,
+    pub ssid: Option<String>,
+    pub channel: Option<String>,
+    pub bandwidth: Option<String>,
+    pub clients: Option<u32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct XiaomiWifiResponse {
+    pub configured: bool,
+    pub reachable: bool,
+    pub bands: Vec<XiaomiWifiBand>,
+}
+
 // ── Handlers ───────────────────────────────────────────────
 
 /// GET /xiaomi/status — system status (CPU, memory, temp, speeds).
@@ -157,31 +197,51 @@ pub async fn status(
                 mem_usage: None,
                 mem_total: None,
                 mem_type: None,
+                mem_hz: None,
                 temperature: None,
+                uptime: None,
                 wan_download: None,
                 wan_upload: None,
+                wan_max_download: None,
+                wan_max_upload: None,
                 devices_online: None,
                 devices_total: None,
             }));
         }
     };
 
+    if let Some(cached) = state.xiaomi_cache.get("status") {
+        if let Ok(resp) = serde_json::from_value::<XiaomiStatusResponse>(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
     match client.system_status().await {
-        Ok(s) => Ok(Json(XiaomiStatusResponse {
-            configured: true,
-            reachable: true,
-            cpu_cores: s.cpu.as_ref().and_then(|c| c.core),
-            cpu_freq: s.cpu.as_ref().and_then(|c| c.hz.clone()),
-            cpu_load: s.cpu.as_ref().and_then(|c| c.load),
-            mem_usage: s.mem.as_ref().and_then(|m| m.usage),
-            mem_total: s.mem.as_ref().and_then(|m| m.total.clone()),
-            mem_type: s.mem.as_ref().and_then(|m| m.mem_type.clone()),
-            temperature: s.temperature,
-            wan_download: s.wan.as_ref().and_then(|w| w.downspeed.clone()),
-            wan_upload: s.wan.as_ref().and_then(|w| w.upspeed.clone()),
-            devices_online: s.count.as_ref().and_then(|c| c.online),
-            devices_total: s.count.as_ref().and_then(|c| c.all),
-        })),
+        Ok(s) => {
+            let resp = XiaomiStatusResponse {
+                configured: true,
+                reachable: true,
+                cpu_cores: s.cpu.as_ref().and_then(|c| c.core),
+                cpu_freq: s.cpu.as_ref().and_then(|c| c.hz.clone()),
+                cpu_load: s.cpu.as_ref().and_then(|c| c.load),
+                mem_usage: s.mem.as_ref().and_then(|m| m.usage),
+                mem_total: s.mem.as_ref().and_then(|m| m.total.clone()),
+                mem_type: s.mem.as_ref().and_then(|m| m.mem_type.clone()),
+                mem_hz: s.mem.as_ref().and_then(|m| m.hz.clone()),
+                temperature: s.temperature,
+                uptime: s.uptime,
+                wan_download: s.wan.as_ref().and_then(|w| w.downspeed.clone()),
+                wan_upload: s.wan.as_ref().and_then(|w| w.upspeed.clone()),
+                wan_max_download: s.wan.as_ref().and_then(|w| w.maxdownloadspeed.clone()),
+                wan_max_upload: s.wan.as_ref().and_then(|w| w.maxuploadspeed.clone()),
+                devices_online: s.count.as_ref().and_then(|c| c.online),
+                devices_total: s.count.as_ref().and_then(|c| c.all),
+            };
+            state
+                .xiaomi_cache
+                .set("status".to_string(), serde_json::to_value(&resp).unwrap());
+            Ok(Json(resp))
+        }
         Err(e) => {
             tracing::error!(error = %e, "MiWiFi status request failed");
             Ok(Json(XiaomiStatusResponse {
@@ -193,9 +253,13 @@ pub async fn status(
                 mem_usage: None,
                 mem_total: None,
                 mem_type: None,
+                mem_hz: None,
                 temperature: None,
+                uptime: None,
                 wan_download: None,
                 wan_upload: None,
+                wan_max_download: None,
+                wan_max_upload: None,
                 devices_online: None,
                 devices_total: None,
             }))
@@ -203,7 +267,7 @@ pub async fn status(
     }
 }
 
-/// GET /xiaomi/topology — mesh topology graph (no auth required).
+/// GET /xiaomi/topology — mesh topology graph.
 pub async fn topology(
     State(state): State<AppState>,
 ) -> Result<Json<XiaomiTopoResponse>, StatusCode> {
@@ -341,26 +405,85 @@ pub async fn wifi_devices(
     }
 }
 
-/// GET /xiaomi/wan-info — WAN connection details.
+/// GET /xiaomi/wan-info — WAN connection details (IPv4 + IPv6).
 pub async fn wan_info(
     State(state): State<AppState>,
 ) -> Result<Json<XiaomiWanInfoResponse>, StatusCode> {
     let client = match xiaomi_client(&state).await {
         Some(c) => c,
-        None => return Err(StatusCode::SERVICE_UNAVAILABLE),
+        None => {
+            return Ok(Json(XiaomiWanInfoResponse {
+                configured: false,
+                reachable: false,
+                wan_ip: None,
+                gateway: None,
+                dns1: None,
+                dns2: None,
+                subnet_mask: None,
+                wan_type: None,
+                ipv6_ip: None,
+                ipv6_gateway: None,
+                ipv6_prefix: None,
+                ipv6_dns1: None,
+                ipv6_dns2: None,
+            }));
+        }
     };
 
+    if let Some(cached) = state.xiaomi_cache.get("wan_info") {
+        if let Ok(resp) = serde_json::from_value::<XiaomiWanInfoResponse>(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
     match client.wan_info().await {
-        Ok(info) => Ok(Json(XiaomiWanInfoResponse {
-            ip: info.ip,
-            gateway: info.gateway,
-            dns: info.dns,
-            wan_type: info.wan_type,
-            mask: info.mask,
-        })),
+        Ok(wan) => {
+            let info = wan.info.as_ref();
+            let ipv4 = info.and_then(|i| i.ipv4.as_ref());
+            let ipv6 = info.and_then(|i| i.ipv6.as_ref());
+            let resp = XiaomiWanInfoResponse {
+                configured: true,
+                reachable: true,
+                wan_ip: ipv4
+                    .and_then(|v| v.ip.clone())
+                    .or_else(|| info.and_then(|i| i.ip.clone())),
+                gateway: ipv4
+                    .and_then(|v| v.gateway.clone())
+                    .or_else(|| info.and_then(|i| i.gateway.clone())),
+                dns1: ipv4.and_then(|v| v.dns1.clone()),
+                dns2: ipv4.and_then(|v| v.dns2.clone()),
+                subnet_mask: ipv4
+                    .and_then(|v| v.mask.clone())
+                    .or_else(|| info.and_then(|i| i.mask.clone())),
+                wan_type: info.and_then(|i| i.wan_type.clone()),
+                ipv6_ip: ipv6.and_then(|v| v.ip.clone()),
+                ipv6_gateway: ipv6.and_then(|v| v.gateway.clone()),
+                ipv6_prefix: ipv6.and_then(|v| v.prefix.clone()),
+                ipv6_dns1: ipv6.and_then(|v| v.dns1.clone()),
+                ipv6_dns2: ipv6.and_then(|v| v.dns2.clone()),
+            };
+            state
+                .xiaomi_cache
+                .set("wan_info".to_string(), serde_json::to_value(&resp).unwrap());
+            Ok(Json(resp))
+        }
         Err(e) => {
             tracing::error!(error = %e, "MiWiFi WAN info request failed");
-            Err(StatusCode::BAD_GATEWAY)
+            Ok(Json(XiaomiWanInfoResponse {
+                configured: true,
+                reachable: false,
+                wan_ip: None,
+                gateway: None,
+                dns1: None,
+                dns2: None,
+                subnet_mask: None,
+                wan_type: None,
+                ipv6_ip: None,
+                ipv6_gateway: None,
+                ipv6_prefix: None,
+                ipv6_dns1: None,
+                ipv6_dns2: None,
+            }))
         }
     }
 }
@@ -391,6 +514,148 @@ pub async fn lan_info(
         Err(e) => {
             tracing::error!(error = %e, "MiWiFi LAN info request failed");
             Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// GET /xiaomi/firmware — firmware version and update check.
+pub async fn firmware(
+    State(state): State<AppState>,
+) -> Result<Json<XiaomiFirmwareResponse>, StatusCode> {
+    let client = match xiaomi_client(&state).await {
+        Some(c) => c,
+        None => {
+            return Ok(Json(XiaomiFirmwareResponse {
+                configured: false,
+                reachable: false,
+                router_name: None,
+                hardware: None,
+                rom_version: None,
+                locale: None,
+                update_available: None,
+                latest_version: None,
+            }));
+        }
+    };
+
+    if let Some(cached) = state.xiaomi_cache.get("firmware") {
+        if let Ok(resp) = serde_json::from_value::<XiaomiFirmwareResponse>(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    // Fetch both init_info and check_rom_update concurrently.
+    let (init_res, update_res) = tokio::join!(client.init_info(), client.check_rom_update());
+
+    match init_res {
+        Ok(init) => {
+            let update = update_res.ok();
+            let resp = XiaomiFirmwareResponse {
+                configured: true,
+                reachable: true,
+                router_name: init.router_name,
+                hardware: init.hardware,
+                rom_version: init.rom_version,
+                locale: init.locale,
+                update_available: update.as_ref().and_then(|u| u.need_update),
+                latest_version: update.as_ref().and_then(|u| u.latest.clone()),
+            };
+            state
+                .xiaomi_cache
+                .set("firmware".to_string(), serde_json::to_value(&resp).unwrap());
+            Ok(Json(resp))
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "MiWiFi firmware info request failed");
+            Ok(Json(XiaomiFirmwareResponse {
+                configured: true,
+                reachable: false,
+                router_name: None,
+                hardware: None,
+                rom_version: None,
+                locale: None,
+                update_available: None,
+                latest_version: None,
+            }))
+        }
+    }
+}
+
+/// GET /xiaomi/wifi — WiFi bands summary.
+pub async fn wifi(State(state): State<AppState>) -> Result<Json<XiaomiWifiResponse>, StatusCode> {
+    let client = match xiaomi_client(&state).await {
+        Some(c) => c,
+        None => {
+            return Ok(Json(XiaomiWifiResponse {
+                configured: false,
+                reachable: false,
+                bands: vec![],
+            }));
+        }
+    };
+
+    if let Some(cached) = state.xiaomi_cache.get("wifi") {
+        if let Ok(resp) = serde_json::from_value::<XiaomiWifiResponse>(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    // Fetch wifi details and new status concurrently.
+    let (detail_res, newstatus_res) = tokio::join!(client.wifi_detail_all(), client.new_status());
+
+    match detail_res {
+        Ok(detail) => {
+            let newstatus = newstatus_res.ok();
+            let bands: Vec<XiaomiWifiBand> = detail
+                .info
+                .unwrap_or_default()
+                .into_iter()
+                .map(|band| {
+                    // Try to get client counts from newstatus per-band info.
+                    let clients = band
+                        .ifname
+                        .as_deref()
+                        .and_then(|ifname| {
+                            let ns = newstatus.as_ref()?;
+                            if ifname.contains("2g")
+                                || ifname.contains("2.4")
+                                || ifname.starts_with("wl0")
+                            {
+                                ns.band_2g.as_ref().and_then(|b| b.online)
+                            } else if ifname.contains("5g") || ifname.starts_with("wl1") {
+                                ns.band_5g.as_ref().and_then(|b| b.online)
+                            } else {
+                                None
+                            }
+                        })
+                        .or_else(|| band.status.as_deref().and_then(|s| s.parse().ok()));
+                    XiaomiWifiBand {
+                        ifname: band.ifname,
+                        ssid: band.ssid,
+                        channel: band.channel,
+                        bandwidth: band.bandwidth,
+                        clients,
+                    }
+                })
+                .collect();
+
+            let resp = XiaomiWifiResponse {
+                configured: true,
+                reachable: true,
+                bands,
+            };
+            state
+                .xiaomi_cache
+                .set("wifi".to_string(), serde_json::to_value(&resp).unwrap());
+            Ok(Json(resp))
+        }
+        Err(e) => {
+            tracing::error!(error = %e, "MiWiFi WiFi info request failed");
+            Ok(Json(XiaomiWifiResponse {
+                configured: true,
+                reachable: false,
+                bands: vec![],
+            }))
         }
     }
 }

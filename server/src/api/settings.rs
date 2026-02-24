@@ -44,6 +44,10 @@ pub struct SettingsResponse {
     /// Never return the password to the frontend — just whether one is set.
     pub xiaomi_mesh_password_set: bool,
     pub xiaomi_mesh_poll_interval: Option<u64>,
+    // --- Xiaomi MiWiFi ---
+    pub xiaomi_ip: Option<String>,
+    pub xiaomi_password_set: bool,
+    pub xiaomi_enabled: bool,
 }
 
 /// Request body for updating settings.
@@ -81,6 +85,10 @@ pub struct UpdateSettingsRequest {
     pub xiaomi_mesh_ip: Option<String>,
     pub xiaomi_mesh_password: Option<String>,
     pub xiaomi_mesh_poll_interval: Option<u64>,
+    // --- Xiaomi MiWiFi ---
+    pub xiaomi_ip: Option<String>,
+    pub xiaomi_password: Option<String>,
+    pub xiaomi_enabled: Option<bool>,
 }
 
 /// Helper: read a string setting from the settings table.
@@ -178,6 +186,14 @@ pub async fn get_settings(
         .and_then(|v| v.parse().ok())
         .or(Some(30));
 
+    // Xiaomi MiWiFi settings.
+    let xiaomi_ip = get_setting(&state, "xiaomi_ip").await;
+    let xiaomi_password_set = get_setting(&state, "xiaomi_password").await.is_some();
+    let xiaomi_enabled = get_setting(&state, "xiaomi_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+
     Ok(Json(SettingsResponse {
         webhook_url,
         vyos_url,
@@ -203,6 +219,9 @@ pub async fn get_settings(
         xiaomi_mesh_ip,
         xiaomi_mesh_password_set,
         xiaomi_mesh_poll_interval,
+        xiaomi_ip,
+        xiaomi_password_set,
+        xiaomi_enabled,
     }))
 }
 
@@ -367,6 +386,22 @@ pub async fn update_settings(
             xiaomi_mesh_poll_interval = interval,
             "Xiaomi Mesh poll interval updated"
         );
+    }
+
+    // --- Xiaomi MiWiFi settings ---
+    if let Some(ref ip) = body.xiaomi_ip {
+        upsert_setting(&state, "xiaomi_ip", ip).await?;
+        info!(xiaomi_ip = %ip, "Xiaomi IP updated");
+    }
+
+    if let Some(ref password) = body.xiaomi_password {
+        upsert_setting(&state, "xiaomi_password", password).await?;
+        info!("Xiaomi password updated");
+    }
+
+    if let Some(enabled) = body.xiaomi_enabled {
+        upsert_setting(&state, "xiaomi_enabled", if enabled { "1" } else { "0" }).await?;
+        info!(xiaomi_enabled = enabled, "Xiaomi enabled toggle updated");
     }
 
     // Return current state.
