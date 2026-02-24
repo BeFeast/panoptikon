@@ -505,6 +505,8 @@ export interface SettingsData {
   webhook_url: string | null;
   vyos_url: string | null;
   vyos_api_key_set: boolean;
+  /** Whether VyOS is fully configured (URL + API key both set) — legacy router toggle. */
+  vyos_configured: boolean;
   // Network Scanner
   scan_interval_seconds: number | null;
   scan_subnets: string | null;

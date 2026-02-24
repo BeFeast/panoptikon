@@ -369,13 +369,15 @@ export default function DdnsPage() {
   const [search, setSearch] = useState("");
   const [defaultRouterType, setDefaultRouterType] = useState("mikrotik");
 
-  // Determine default router type from settings
+  // Determine default router type from settings.
+  // Prefer MikroTik when enabled; fall back to VyOS when it's the only
+  // configured router (legacy/optional toggle).
   useEffect(() => {
     fetchSettings()
       .then((settings) => {
         if (settings.mikrotik_enabled) {
           setDefaultRouterType("mikrotik");
-        } else if (settings.vyos_url && settings.vyos_api_key_set) {
+        } else if (settings.vyos_configured) {
           setDefaultRouterType("vyos");
         } else {
           setDefaultRouterType("mikrotik");

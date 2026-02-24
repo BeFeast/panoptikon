@@ -5904,7 +5904,7 @@ export default function RouterPage() {
       try {
         const settings = await fetchSettings();
         mtEnabled = settings.mikrotik_enabled;
-        vyosConf = !!settings.vyos_url && settings.vyos_api_key_set;
+        vyosConf = settings.vyos_configured;
         xiEnabled = settings.xiaomi_mesh_enabled;
       } catch {
         // ignore

@@ -12,6 +12,9 @@ pub struct SettingsResponse {
     pub vyos_url: Option<String>,
     /// Masked API key — never return the full key to the frontend.
     pub vyos_api_key_set: bool,
+    /// Whether VyOS is fully configured (URL + API key both set).
+    /// This serves as the "legacy router enabled" indicator.
+    pub vyos_configured: bool,
     // --- Network Scanner ---
     pub scan_interval_seconds: Option<u64>,
     pub scan_subnets: Option<String>,
@@ -191,10 +194,14 @@ pub async fn get_settings(
     let cloudflare_account_id = get_setting(&state, "cloudflare_account_id").await;
     let cloudflare_tunnel_id = get_setting(&state, "cloudflare_tunnel_id").await;
 
+    // VyOS is "configured" (legacy toggle on) when both URL and API key are set.
+    let vyos_configured = vyos_url.is_some() && vyos_api_key_set;
+
     Ok(Json(SettingsResponse {
         webhook_url,
         vyos_url,
         vyos_api_key_set,
+        vyos_configured,
         scan_interval_seconds,
         scan_subnets,
         ping_sweep_enabled,

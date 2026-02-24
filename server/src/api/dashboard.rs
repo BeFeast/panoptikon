@@ -1,4 +1,5 @@
 use crate::api::AppState;
+use crate::mikrotik::client::MikrotikClient;
 use axum::{
     extract::{Query, State},
     Json,
@@ -50,50 +51,44 @@ pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
         .await
         .unwrap_or(0);
 
-    // Check VyOS connectivity — read settings from DB first, fall back to config.
+    // Check router connectivity — try MikroTik first (primary), then VyOS (legacy).
     let router_status = {
-        let db_url: Option<String> =
-            sqlx::query_scalar(r#"SELECT value FROM settings WHERE key = 'vyos_url'"#)
-                .fetch_optional(&state.db)
-                .await
-                .ok()
-                .flatten();
-        let db_key: Option<String> =
-            sqlx::query_scalar(r#"SELECT value FROM settings WHERE key = 'vyos_api_key'"#)
-                .fetch_optional(&state.db)
-                .await
-                .ok()
-                .flatten();
+        let mut status = "unconfigured".to_string();
 
-        let url = db_url
-            .filter(|s| !s.is_empty())
-            .or_else(|| state.config.vyos.url.clone());
-        let key = db_key
-            .filter(|s| !s.is_empty())
-            .or_else(|| state.config.vyos.api_key.clone());
+        // Try MikroTik first (primary router)
+        if let Some(client) = mikrotik_client(&state).await {
+            match tokio::time::timeout(Duration::from_secs(5), client.system_resource()).await {
+                Ok(Ok(_)) => status = "connected".to_string(),
+                _ => status = "disconnected".to_string(),
+            }
+        }
 
-        match (url, key) {
-            (Some(u), Some(k)) if !u.is_empty() && !k.is_empty() => {
-                let client = crate::vyos::client::VyosClient::new(&u, &k);
+        // Fall back to VyOS if MikroTik is not configured
+        if status == "unconfigured" {
+            if let Some(client) =
+                super::vyos::get_vyos_client_from_db(&state.db, &state.config, &state.vyos_http)
+                    .await
+            {
                 match tokio::time::timeout(
                     Duration::from_secs(5),
                     client.show(&["system", "uptime"]),
                 )
                 .await
                 {
-                    Ok(Ok(_)) => "connected".to_string(),
-                    _ => "disconnected".to_string(),
+                    Ok(Ok(_)) => status = "connected".to_string(),
+                    _ => status = "disconnected".to_string(),
                 }
             }
-            _ => "unconfigured".to_string(),
         }
+
+        status
     };
 
-    // Latest WAN traffic from traffic_samples (source = 'vyos'), most recent entry
+    // Latest WAN traffic — check both MikroTik and VyOS sources, use the most recent.
     let (wan_rx_bps, wan_tx_bps): (i64, i64) = sqlx::query_as(
         "SELECT COALESCE(rx_bps, 0), COALESCE(tx_bps, 0)
          FROM traffic_samples
-         WHERE source = 'vyos'
+         WHERE source IN ('vyos', 'mikrotik')
          ORDER BY sampled_at DESC LIMIT 1",
     )
     .fetch_optional(&state.db)
@@ -109,6 +104,44 @@ pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
         wan_rx_bps,
         wan_tx_bps,
     })
+}
+
+/// Try to construct a MikroTik client from saved settings.
+async fn mikrotik_client(state: &AppState) -> Option<MikrotikClient> {
+    let get_setting = |key: &str| {
+        let db = state.db.clone();
+        let key = key.to_string();
+        async move {
+            sqlx::query_scalar::<_, String>("SELECT value FROM settings WHERE key = ?")
+                .bind(&key)
+                .fetch_optional(&db)
+                .await
+                .ok()
+                .flatten()
+                .filter(|v| !v.is_empty())
+        }
+    };
+
+    let enabled = get_setting("mikrotik_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+    if !enabled {
+        return None;
+    }
+
+    let url = get_setting("mikrotik_url").await?;
+    let user = get_setting("mikrotik_user")
+        .await
+        .unwrap_or_else(|| "admin".to_string());
+    let password = get_setting("mikrotik_password").await.unwrap_or_default();
+
+    Some(MikrotikClient::with_http(
+        &url,
+        &user,
+        &password,
+        state.mikrotik_http.clone(),
+    ))
 }
 
 /// GET /api/v1/dashboard/top-devices?limit=5
