@@ -1575,3 +1575,52 @@ export function fetchDnsQueryStats(hours?: number): Promise<DnsQueryStats> {
   const qs = hours ? `?hours=${hours}` : "";
   return apiGet<DnsQueryStats>(`/api/v1/dns-queries/stats${qs}`);
 }
+
+// ─── Dynamic DNS ─────────────────────────────────────────
+
+export function fetchDynamicDnsList(): Promise<
+  import("./types").DynamicDnsEntry[]
+> {
+  return apiGet<import("./types").DynamicDnsEntry[]>("/api/v1/dynamic-dns");
+}
+
+export function createDynamicDns(
+  body: import("./types").DynamicDnsRequest
+): Promise<import("./types").DynamicDnsEntry> {
+  return apiPost<import("./types").DynamicDnsEntry>(
+    "/api/v1/dynamic-dns",
+    body
+  );
+}
+
+export function updateDynamicDns(
+  id: string,
+  body: import("./types").DynamicDnsRequest
+): Promise<import("./types").DynamicDnsEntry> {
+  return apiPut<import("./types").DynamicDnsEntry>(
+    `/api/v1/dynamic-dns/${id}`,
+    body
+  );
+}
+
+export function deleteDynamicDns(id: string): Promise<void> {
+  return apiDelete(`/api/v1/dynamic-dns/${id}`);
+}
+
+export function toggleDynamicDns(
+  id: string,
+  enabled: boolean
+): Promise<import("./types").DynamicDnsEntry> {
+  return apiPost<import("./types").DynamicDnsEntry>(
+    `/api/v1/dynamic-dns/${id}/toggle`,
+    { enabled }
+  );
+}
+
+export function refreshDynamicDnsStatus(
+  id: string
+): Promise<import("./types").DynamicDnsEntry> {
+  return apiPost<import("./types").DynamicDnsEntry>(
+    `/api/v1/dynamic-dns/${id}/status`
+  );
+}

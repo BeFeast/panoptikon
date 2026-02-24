@@ -1414,3 +1414,35 @@ export interface DnsUnboundConfigResponse {
   config: string;
   domain_count: number;
 }
+
+// ─── Dynamic DNS ─────────────────────────────────────────
+
+export interface DynamicDnsEntry {
+  id: string;
+  name: string;
+  provider: string;
+  hostname: string;
+  username: string;
+  interface: string;
+  ip_source: string;
+  enabled: boolean;
+  router_type: string;
+  last_ip: string | null;
+  last_status: string | null;
+  last_update_at: string | null;
+  last_error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DynamicDnsRequest {
+  name: string;
+  provider: string;
+  hostname: string;
+  username: string;
+  password: string;
+  interface: string;
+  ip_source: string;
+  enabled: boolean;
+  router_type: string;
+}

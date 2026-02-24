@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ShieldAlert,
   Server,
+  RefreshCw,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageTransition } from "@/components/PageTransition";
@@ -102,6 +103,13 @@ const settingsGroups: SettingsGroup[] = [
         iconBg: "bg-rose-500/10",
         title: "DNS Blocklists",
         description: "Block ads and trackers via DNS blocklists.",
+      },
+      {
+        href: "/settings/dynamic-dns",
+        icon: <RefreshCw className="h-4 w-4 text-violet-400" />,
+        iconBg: "bg-violet-500/10",
+        title: "Dynamic DNS",
+        description: "Manage DDNS clients for dynamic IP updates.",
       },
     ],
   },

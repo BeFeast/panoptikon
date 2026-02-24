@@ -27,6 +27,7 @@ pub mod devices;
 pub mod dns_blocklists;
 pub mod dns_logs;
 pub mod dns_query_log;
+pub mod dynamic_dns;
 pub mod error;
 pub mod export;
 pub mod metrics;
@@ -470,6 +471,13 @@ pub fn router(state: AppState) -> Router {
         .route("/dns-logs", delete(dns_logs::purge))
         .route("/dns-logs/stats", get(dns_logs::stats))
         .route("/dns-logs/ingest", post(dns_logs::ingest))
+        // Dynamic DNS
+        .route("/dynamic-dns", get(dynamic_dns::list))
+        .route("/dynamic-dns", post(dynamic_dns::create))
+        .route("/dynamic-dns/:id", put(dynamic_dns::update))
+        .route("/dynamic-dns/:id", delete(dynamic_dns::delete))
+        .route("/dynamic-dns/:id/toggle", post(dynamic_dns::toggle))
+        .route("/dynamic-dns/:id/status", post(dynamic_dns::status))
         // Search
         .route("/search", get(search::search))
         // Export
