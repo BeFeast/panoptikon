@@ -38,6 +38,10 @@ pub struct SettingsResponse {
     pub unbound_control_path: Option<String>,
     // --- Caddy Reverse Proxy ---
     pub caddy_admin_url: Option<String>,
+    // --- Cloudflare Tunnel ---
+    pub cloudflare_api_token_set: bool,
+    pub cloudflare_account_id: Option<String>,
+    pub cloudflare_tunnel_id: Option<String>,
 }
 
 /// Request body for updating settings.
@@ -70,6 +74,10 @@ pub struct UpdateSettingsRequest {
     pub unbound_control_path: Option<String>,
     // --- Caddy Reverse Proxy ---
     pub caddy_admin_url: Option<String>,
+    // --- Cloudflare Tunnel ---
+    pub cloudflare_api_token: Option<String>,
+    pub cloudflare_account_id: Option<String>,
+    pub cloudflare_tunnel_id: Option<String>,
 }
 
 /// Helper: read a string setting from the settings table.
@@ -155,6 +163,11 @@ pub async fn get_settings(
     // Caddy settings.
     let caddy_admin_url = get_setting(&state, "caddy_admin_url").await;
 
+    // Cloudflare Tunnel settings.
+    let cloudflare_api_token_set = get_setting(&state, "cloudflare_api_token").await.is_some();
+    let cloudflare_account_id = get_setting(&state, "cloudflare_account_id").await;
+    let cloudflare_tunnel_id = get_setting(&state, "cloudflare_tunnel_id").await;
+
     Ok(Json(SettingsResponse {
         webhook_url,
         vyos_url,
@@ -176,6 +189,9 @@ pub async fn get_settings(
         mikrotik_enabled,
         unbound_control_path,
         caddy_admin_url,
+        cloudflare_api_token_set,
+        cloudflare_account_id,
+        cloudflare_tunnel_id,
     }))
 }
 
@@ -308,6 +324,20 @@ pub async fn update_settings(
     if let Some(ref url) = body.caddy_admin_url {
         upsert_setting(&state, "caddy_admin_url", url).await?;
         info!(caddy_admin_url = %url, "Caddy admin URL updated");
+    }
+
+    // --- Cloudflare Tunnel settings ---
+    if let Some(ref token) = body.cloudflare_api_token {
+        upsert_setting(&state, "cloudflare_api_token", token).await?;
+        info!("Cloudflare API token updated");
+    }
+    if let Some(ref id) = body.cloudflare_account_id {
+        upsert_setting(&state, "cloudflare_account_id", id).await?;
+        info!(cloudflare_account_id = %id, "Cloudflare account ID updated");
+    }
+    if let Some(ref id) = body.cloudflare_tunnel_id {
+        upsert_setting(&state, "cloudflare_tunnel_id", id).await?;
+        info!(cloudflare_tunnel_id = %id, "Cloudflare tunnel ID updated");
     }
 
     // Return current state.

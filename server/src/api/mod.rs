@@ -21,6 +21,7 @@ pub mod assets;
 pub mod audit;
 pub mod auth;
 pub mod caddy;
+pub mod cloudflare_tunnel;
 pub mod config_backups;
 pub mod dashboard;
 pub mod ddns;
@@ -578,6 +579,14 @@ pub fn router(state: AppState) -> Router {
         .route("/ddns/:id", put(ddns::update))
         .route("/ddns/:id", delete(ddns::delete))
         .route("/ddns/:id/toggle", post(ddns::toggle))
+        // Cloudflare Tunnel
+        .route("/cf-tunnel/status", get(cloudflare_tunnel::status))
+        .route("/cf-tunnel/routes", get(cloudflare_tunnel::list_routes))
+        .route("/cf-tunnel/routes", post(cloudflare_tunnel::add_route))
+        .route(
+            "/cf-tunnel/routes/:hostname",
+            delete(cloudflare_tunnel::delete_route),
+        )
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))

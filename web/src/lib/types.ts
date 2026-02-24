@@ -1826,3 +1826,41 @@ export interface MeshTopologyResponse {
   main_ip: string;
   total_devices: number;
 }
+
+// ─── Cloudflare Tunnel ─────────────────────────────────────
+
+export interface CfTunnelOverview {
+  configured: boolean;
+  id: string;
+  name: string;
+  status: string;
+  created_at: string;
+  connections: CfTunnelConnection[];
+  routes: CfTunnelRoute[];
+}
+
+export interface CfTunnelConnection {
+  id: string;
+  origin_ip: string;
+  opened_at: string;
+  is_pending_reconnect: boolean;
+  colo_name: string;
+}
+
+export interface CfTunnelRoute {
+  hostname: string;
+  service: string;
+  path: string;
+  latency_ms: number | null;
+}
+
+export interface AddCfTunnelRouteRequest {
+  hostname: string;
+  service: string;
+  path?: string;
+}
+
+export interface CfTunnelMutationResponse {
+  success: boolean;
+  message: string;
+}

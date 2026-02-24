@@ -1945,3 +1945,34 @@ export function fetchMeshTopology(): Promise<
     "/api/v1/mesh/topology"
   );
 }
+
+// ─── Cloudflare Tunnel ─────────────────────────────────────
+
+export function fetchCfTunnelStatus(): Promise<
+  import("./types").CfTunnelOverview
+> {
+  return apiGet<import("./types").CfTunnelOverview>("/api/v1/cf-tunnel/status");
+}
+
+export function fetchCfTunnelRoutes(): Promise<
+  import("./types").CfTunnelRoute[]
+> {
+  return apiGet<import("./types").CfTunnelRoute[]>("/api/v1/cf-tunnel/routes");
+}
+
+export function addCfTunnelRoute(
+  body: import("./types").AddCfTunnelRouteRequest
+): Promise<import("./types").CfTunnelMutationResponse> {
+  return apiPost<import("./types").CfTunnelMutationResponse>(
+    "/api/v1/cf-tunnel/routes",
+    body
+  );
+}
+
+export function deleteCfTunnelRoute(
+  hostname: string
+): Promise<import("./types").CfTunnelMutationResponse> {
+  return apiDelete(
+    `/api/v1/cf-tunnel/routes/${encodeURIComponent(hostname)}`
+  ) as unknown as Promise<import("./types").CfTunnelMutationResponse>;
+}
