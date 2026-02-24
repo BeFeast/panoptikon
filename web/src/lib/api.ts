@@ -857,6 +857,10 @@ export function updateSettings(body: {
   mikrotik_enabled?: boolean;
   unbound_control_path?: string;
   caddy_admin_url?: string;
+  xiaomi_mesh_enabled?: boolean;
+  xiaomi_mesh_ip?: string;
+  xiaomi_mesh_password?: string;
+  xiaomi_mesh_poll_interval?: number;
 }): Promise<SettingsData> {
   return apiPatch<SettingsData>("/api/v1/settings", body);
 }
@@ -1990,4 +1994,15 @@ export function fetchXiaomiLanInfo(): Promise<
   import("./types").XiaomiLanInfo
 > {
   return apiGet<import("./types").XiaomiLanInfo>("/api/v1/xiaomi/lan-info");
+}
+
+// ─── Xiaomi Mesh Settings ────────────────────────────────
+
+export function testXiaomiMeshConnection(
+  ip?: string
+): Promise<import("./types").XiaomiMeshTestConnectionResponse> {
+  return apiPost<import("./types").XiaomiMeshTestConnectionResponse>(
+    "/api/v1/xiaomi-mesh/test-connection",
+    { ip }
+  );
 }

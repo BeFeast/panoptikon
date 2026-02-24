@@ -529,6 +529,11 @@ export interface SettingsData {
   unbound_control_path: string | null;
   // Caddy Reverse Proxy
   caddy_admin_url: string | null;
+  // Xiaomi Mesh
+  xiaomi_mesh_enabled: boolean;
+  xiaomi_mesh_ip: string | null;
+  xiaomi_mesh_password_set: boolean;
+  xiaomi_mesh_poll_interval: number | null;
 }
 
 // ─── Nginx Proxy Manager ─────────────────────────────────
@@ -1914,4 +1919,15 @@ export interface XiaomiNewStatus {
   sn: string | null;
   devices_online: number | null;
   devices_total: number | null;
+}
+
+// ─── Xiaomi Mesh Settings ────────────────────────────────
+
+export interface XiaomiMeshTestConnectionResponse {
+  success: boolean;
+  message: string;
+  router_model: string | null;
+  hardware: string | null;
+  firmware: string | null;
+  router_name: string | null;
 }
