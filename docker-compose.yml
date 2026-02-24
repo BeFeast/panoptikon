@@ -66,6 +66,20 @@ services:
     volumes:
       - ./docker/unbound/unbound.conf:/opt/unbound/etc/unbound/unbound.conf:ro
 
+  # ── Cloudflared — Cloudflare Tunnel ingress ──────────────────────────────────
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    restart: unless-stopped
+    networks:
+      - panoptikon-net
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      caddy:
+        condition: service_started
+
 networks:
   panoptikon-net:
     name: panoptikon-net
