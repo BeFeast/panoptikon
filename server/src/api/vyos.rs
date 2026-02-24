@@ -6469,7 +6469,7 @@ pub async fn wireguard_list(
 }
 
 /// Parse VyOS wireguard configuration JSON into a list of interfaces.
-fn parse_wireguard_config(config: &Value) -> Vec<WireguardInterface> {
+pub(crate) fn parse_wireguard_config(config: &Value) -> Vec<WireguardInterface> {
     let mut interfaces = Vec::new();
 
     let obj = match config.as_object() {
@@ -6598,7 +6598,7 @@ type WgRuntimePeerData = (
     Option<String>,
 );
 
-fn merge_wireguard_runtime_stats(iface: &mut WireguardInterface, text: &str) {
+pub(crate) fn merge_wireguard_runtime_stats(iface: &mut WireguardInterface, text: &str) {
     let mut current_pubkey: Option<String> = None;
     let mut current_handshake: Option<i64> = None;
     let mut current_rx: Option<u64> = None;
