@@ -20,11 +20,15 @@ Setup guide for the Panoptikon MikroTik integration test environment. Uses 2-3 l
 │  │ .200         │  │ .201         │  │ .202         │         │
 │  │ 256MB / 1CPU │  │ 256MB / 1CPU │  │ 128MB / 1CPU │         │
 │  └──────────────┘  └──────────────┘  └──────────────┘         │
-│                                                                 │
-│  ┌──────────────────┐                                           │
-│  │ Panoptikon       │                                           │
-│  │ 10.10.0.14:8080  │  (monitoring all of the above)           │
-│  └──────────────────┘                                           │
+│          │                │                │                    │
+│          └────────────────┼────────────────┘                    │
+│                      DNS queries                                │
+│                           ▼                                     │
+│  ┌──────────────────────────────────┐                           │
+│  │ Panoptikon          CT 115      │                           │
+│  │ 10.10.0.22:8080  (dashboard)    │                           │
+│  │ 10.10.0.22:53   (Unbound DNS)  │                           │
+│  └──────────────────────────────────┘                           │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -78,7 +82,7 @@ If the MikroTik CHR VM is not yet configured, follow these steps from the Router
 # 4. Configure DHCP server for the test subnet
 /ip pool add name=test-pool ranges=10.10.0.200-10.10.0.254
 /ip dhcp-server add name=test-dhcp interface=bridge-test address-pool=test-pool
-/ip dhcp-server network add address=10.10.0.0/24 gateway=10.10.0.125 dns-server=1.1.1.1
+/ip dhcp-server network add address=10.10.0.0/24 gateway=10.10.0.125 dns-server=10.10.0.22
 
 # 5. Enable masquerade for internet access (if the CHR has WAN)
 /ip firewall nat add chain=srcnat out-interface=ether1 action=masquerade
@@ -92,6 +96,55 @@ If the MikroTik CHR VM is not yet configured, follow these steps from the Router
 
 ```routeros
 /user add name=panoptikon password=panoptikon-test group=read
+```
+
+## DNS Setup (Unbound on LXC 115)
+
+Panoptikon runs Unbound as a network-wide DNS resolver on LXC 115 (`10.10.0.22`). The setup script configures test containers to use it automatically.
+
+### What the setup script does
+
+1. **Opens port 53** on the Proxmox firewall for CT 115 (UDP + TCP, source `10.10.0.0/24`)
+2. **Sets `10.10.0.22`** as the nameserver for all test containers
+3. **Installs `dnsutils`** in test containers so `dig` is available for verification
+
+### MikroTik DHCP — hand out Unbound as DNS
+
+If test containers use DHCP (instead of static IPs), update the MikroTik DHCP network to hand out Panoptikon's Unbound:
+
+```routeros
+# Update existing DHCP network to use Panoptikon DNS
+/ip dhcp-server network set [find address="10.10.0.0/24"] dns-server=10.10.0.22
+```
+
+### Verify DNS from a test client
+
+```bash
+# External DNS forwarding (should resolve via Unbound → root hints)
+pct exec 200 -- dig @10.10.0.22 google.com +short
+
+# Local record resolution (ok.labs test zone configured in unbound.conf)
+pct exec 200 -- dig @10.10.0.22 local.ok.labs +short
+# Expected: 10.10.0.22
+
+# Verify the container's default resolver is Unbound
+pct exec 200 -- dig google.com +short
+```
+
+### Manual firewall setup (if not using the setup script)
+
+If CT 115 already exists and you need to open port 53 manually:
+
+```bash
+# Add rules to /etc/pve/firewall/115.fw
+cat >> /etc/pve/firewall/115.fw <<'EOF'
+[OPTIONS]
+enable: 1
+
+[RULES]
+IN ACCEPT -p udp -dport 53 -source +10.10.0.0/24 -log nolog -comment allow-dns-udp
+IN ACCEPT -p tcp -dport 53 -source +10.10.0.0/24 -log nolog -comment allow-dns-tcp
+EOF
 ```
 
 ## Validation Scenarios
@@ -205,6 +258,9 @@ pct exec 201 -- bash -c "while true; do curl -s -o /dev/null https://speed.cloud
 | Panoptikon doesn't see containers | Verify ARP scanner subnet includes `10.10.0.0/24` in `panoptikon.toml` |
 | REST API connection refused | Check MikroTik: `/ip service print` — api-ssl should be enabled |
 | Containers have no internet | Check NAT masquerade: `/ip firewall nat print` |
+| DNS queries to 10.10.0.22 fail | Verify Unbound container is running: `docker compose ps unbound` |
+| DNS queries timeout | Check CT 115 firewall allows port 53: `cat /etc/pve/firewall/115.fw` |
+| `local.ok.labs` not resolving | Verify unbound.conf has `local-data` entry and restart: `docker compose restart unbound` |
 
 ## Cleanup
 

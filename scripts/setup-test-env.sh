@@ -27,7 +27,7 @@ MIKROTIK_GW="10.10.0.125"
 BRIDGE="vmbr0"
 TEMPLATE="local:vztmpl/debian-12-standard_12.7-1_amd64.tar.zst"
 STORAGE="local-lvm"
-NAMESERVER="1.1.1.1"
+NAMESERVER="10.10.0.22"           # Panoptikon Unbound on LXC 115
 
 # Container definitions: CTID  NAME              IP               RAM(MB)  DISK(GB)  DESCRIPTION
 CONTAINERS=(
@@ -55,10 +55,56 @@ check_prerequisites() {
 }
 
 # ---------------------------------------------------------------------------
+# Panoptikon LXC 115 — open port 53 for DNS
+# ---------------------------------------------------------------------------
+PANOPTIKON_CTID="115"
+
+open_dns_port() {
+  local fw_dir="/etc/pve/firewall"
+  local fw_file="${fw_dir}/${PANOPTIKON_CTID}.fw"
+
+  if [[ ! -d "$fw_dir" ]]; then
+    log "Proxmox firewall directory not found — skipping DNS port config"
+    return 0
+  fi
+
+  # Create or append firewall rules for LXC 115
+  if [[ -f "$fw_file" ]] && grep -q "comment=allow-dns" "$fw_file"; then
+    log "DNS firewall rules already present for CT $PANOPTIKON_CTID"
+    return 0
+  fi
+
+  log "Opening port 53 (TCP+UDP) on CT $PANOPTIKON_CTID firewall..."
+
+  # Ensure [OPTIONS] section exists with firewall enabled
+  if [[ ! -f "$fw_file" ]] || ! grep -q '^\[OPTIONS\]' "$fw_file"; then
+    cat >> "$fw_file" <<'FWEOF'
+[OPTIONS]
+enable: 1
+
+FWEOF
+  fi
+
+  # Ensure [RULES] section exists
+  if ! grep -q '^\[RULES\]' "$fw_file"; then
+    echo "[RULES]" >> "$fw_file"
+  fi
+
+  # Add DNS allow rules
+  cat >> "$fw_file" <<FWEOF
+IN ACCEPT -p udp -dport 53 -source +10.10.0.0/24 -log nolog -comment allow-dns-udp
+IN ACCEPT -p tcp -dport 53 -source +10.10.0.0/24 -log nolog -comment allow-dns-tcp
+FWEOF
+
+  log "Firewall rules added for CT $PANOPTIKON_CTID"
+}
+
+# ---------------------------------------------------------------------------
 # Create containers
 # ---------------------------------------------------------------------------
 create_containers() {
   check_prerequisites
+  open_dns_port
 
   for entry in "${CONTAINERS[@]}"; do
     read -r ctid name ip ram disk desc <<< "$entry"
@@ -91,7 +137,7 @@ create_containers() {
     log "Installing basic tools in $ctid..."
     pct exec "$ctid" -- bash -c "
       apt-get update -qq &&
-      apt-get install -y -qq curl iputils-ping net-tools > /dev/null 2>&1
+      apt-get install -y -qq curl iputils-ping net-tools dnsutils > /dev/null 2>&1
     " || log "Warning: package install in $ctid may have failed (non-fatal)"
 
     log "Container $ctid ($name) ready at ${ip%%/*}"

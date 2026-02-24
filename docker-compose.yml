@@ -58,9 +58,10 @@ services:
     restart: unless-stopped
     networks:
       - panoptikon-net
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
     expose:
-      - "53/tcp"
-      - "53/udp"
       - "5335/tcp"
       - "5335/udp"
     volumes:
