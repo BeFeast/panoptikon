@@ -1059,6 +1059,12 @@ export interface AssetAutoLinkResponse {
   details: string[];
 }
 
+export interface AssetSyncFromDevicesResponse {
+  created: number;
+  skipped: number;
+  details: string[];
+}
+
 // ─── SSH Targets (agentless monitoring) ─────────────────
 
 export interface SshTarget {

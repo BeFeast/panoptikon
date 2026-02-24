@@ -657,6 +657,109 @@ pub async fn auto_link(State(state): State<AppState>) -> Result<Json<AutoLinkRes
     Ok(Json(AutoLinkResponse { linked, details }))
 }
 
+/// Response for sync-from-devices operation.
+#[derive(Debug, Serialize)]
+pub struct SyncFromDevicesResponse {
+    pub created: usize,
+    pub skipped: usize,
+    pub details: Vec<String>,
+}
+
+/// POST /api/v1/assets/sync-from-devices — create assets for discovered
+/// devices that don't already have a linked asset.
+pub async fn sync_from_devices(
+    State(state): State<AppState>,
+) -> Result<Json<SyncFromDevicesResponse>, AppError> {
+    // Find devices that are not already linked to any asset.
+    let rows = sqlx::query(
+        "SELECT d.id, d.name, d.hostname, d.mac, d.device_type, d.location, \
+                d.owner, d.serial_number, \
+                (SELECT a2.id FROM agents a2 WHERE a2.device_id = d.id LIMIT 1) AS linked_agent_id \
+         FROM devices d \
+         WHERE d.id NOT IN (SELECT a.device_id FROM assets a WHERE a.device_id IS NOT NULL)",
+    )
+    .fetch_all(&state.db)
+    .await?;
+
+    let mut created = 0usize;
+    let mut skipped = 0usize;
+    let mut details = Vec::new();
+
+    for row in &rows {
+        let device_id: String = row.try_get("id").unwrap_or_default();
+        let device_name: Option<String> = row.try_get("name").ok().flatten();
+        let hostname: Option<String> = row.try_get("hostname").ok().flatten();
+        let mac: String = row.try_get("mac").unwrap_or_default();
+        let device_type: Option<String> = row.try_get("device_type").ok().flatten();
+        let location: Option<String> = row.try_get("location").ok().flatten();
+        let owner: Option<String> = row.try_get("owner").ok().flatten();
+        let serial_number: Option<String> = row.try_get("serial_number").ok().flatten();
+        let linked_agent_id: Option<String> = row.try_get("linked_agent_id").ok().flatten();
+
+        // Use device name, then hostname, then MAC as the asset name.
+        let asset_name = device_name
+            .as_deref()
+            .or(hostname.as_deref())
+            .unwrap_or(&mac);
+
+        if asset_name.is_empty() {
+            skipped += 1;
+            continue;
+        }
+
+        // Map device_type to asset_type.
+        let asset_type = match device_type.as_deref() {
+            Some("computer") | Some("desktop") | Some("laptop") => "workstation",
+            Some("server") => "server",
+            Some("router") | Some("gateway") => "router",
+            Some("switch") => "switch",
+            Some("access_point") | Some("ap") => "unknown",
+            Some("printer") => "printer",
+            Some("phone") | Some("tablet") => "phone",
+            Some("nas") | Some("storage") => "nas",
+            Some("tv") | Some("media") | Some("iot") | Some("camera") | Some("sensor") => "iot",
+            Some("vm") | Some("virtual_machine") => "vm",
+            Some("container") => "container",
+            _ => "unknown",
+        };
+
+        let id = uuid::Uuid::new_v4().to_string();
+
+        match sqlx::query(
+            "INSERT INTO assets (id, name, asset_type, status, location, owner, serial_number, device_id, agent_id) \
+             VALUES (?, ?, ?, 'active', ?, ?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(asset_name)
+        .bind(asset_type)
+        .bind(location.as_deref())
+        .bind(owner.as_deref())
+        .bind(serial_number.as_deref())
+        .bind(&device_id)
+        .bind(linked_agent_id.as_deref())
+        .execute(&state.db)
+        .await
+        {
+            Ok(_) => {
+                details.push(format!("Created asset '{}' from device", asset_name));
+                created += 1;
+            }
+            Err(e) => {
+                warn!(device_id = %device_id, "Failed to create asset from device: {e}");
+                skipped += 1;
+            }
+        }
+    }
+
+    info!(created, skipped, "Sync assets from devices completed");
+
+    Ok(Json(SyncFromDevicesResponse {
+        created,
+        skipped,
+        details,
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::db;

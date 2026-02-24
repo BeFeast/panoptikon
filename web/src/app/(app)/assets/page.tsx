@@ -25,6 +25,7 @@ import {
   Wifi,
   CircleHelp,
   FileText,
+  RefreshCw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -69,6 +70,7 @@ import {
   deleteAssetInventory,
   fetchAssets,
   importAssets,
+  syncAssetsFromDevices,
   updateAssetInventory,
 } from "@/lib/api";
 import type { Asset, AssetRequest, AssetType, AssetStatus, AssetImportRow } from "@/lib/types";
@@ -307,6 +309,25 @@ function AssetsListPage() {
     }
   };
 
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSyncFromDevices = async () => {
+    setSyncing(true);
+    try {
+      const result = await syncAssetsFromDevices();
+      if (result.created > 0) {
+        toast.success(`Created ${result.created} asset(s) from discovered devices`);
+        load();
+      } else {
+        toast.info("All discovered devices already have linked assets");
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const handlePdfExport = () => {
     if (!filtered || filtered.length === 0) {
       toast.error("No assets to export");
@@ -388,6 +409,16 @@ ${filtered
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold text-white">Assets</h1>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-gray-700 text-slate-400 hover:text-gray-200 gap-1.5"
+              onClick={handleSyncFromDevices}
+              disabled={syncing}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
+              {syncing ? "Syncing..." : "Import from Devices"}
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -564,7 +595,7 @@ ${filtered
               <p className="mt-1 text-sm text-slate-600">
                 {hasFilters
                   ? "Try adjusting your search or filter criteria."
-                  : "Add an asset to start tracking your IT inventory."}
+                  : "Click \"Import from Devices\" to create assets from discovered network devices, or add one manually."}
               </p>
             </div>
           ) : (
