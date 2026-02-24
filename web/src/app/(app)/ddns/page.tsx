@@ -58,6 +58,7 @@ import {
   fetchSettings,
 } from "@/lib/api";
 import type { DdnsEntry, DdnsEntryRequest, DdnsStatus } from "@/lib/types";
+import { ROUTER_TYPES, getDefaultRouterType } from "@/lib/router-config";
 import { toast } from "sonner";
 
 const PROVIDERS = [
@@ -75,7 +76,6 @@ const PROVIDERS = [
 
 const PROTOCOLS = ["ipv4", "ipv6", "both"];
 const IP_SOURCES = ["wan", "interface", "web"];
-const ROUTER_TYPES = ["mikrotik", "vyos"];
 
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
@@ -378,13 +378,7 @@ export default function DdnsPage() {
   useEffect(() => {
     fetchSettings()
       .then((settings) => {
-        if (settings.mikrotik_enabled) {
-          setDefaultRouterType("mikrotik");
-        } else if (settings.vyos_url && settings.vyos_api_key_set) {
-          setDefaultRouterType("vyos");
-        } else {
-          setDefaultRouterType("mikrotik");
-        }
+        setDefaultRouterType(getDefaultRouterType(settings));
       })
       .catch(() => {
         // Keep mikrotik as default on error
