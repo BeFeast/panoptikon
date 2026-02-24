@@ -215,10 +215,17 @@ pub async fn status(
             }))
         }
         Err(e) => {
-            tracing::error!(error = %e, "MiWiFi status request failed");
+            tracing::warn!(
+                error = %e,
+                "MiWiFi status request failed, probing connectivity via init_info"
+            );
+            let reachable = client.init_info().await.is_ok();
+            if !reachable {
+                tracing::error!("MiWiFi status and init_info probes both failed");
+            }
             Ok(Json(XiaomiStatusResponse {
                 configured: true,
-                reachable: false,
+                reachable,
                 cpu_cores: None,
                 cpu_freq: None,
                 cpu_load: None,
