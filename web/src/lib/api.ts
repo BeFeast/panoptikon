@@ -1458,3 +1458,89 @@ export function ingestDnsLogs(
 export function purgeDnsLogs(): Promise<DnsPurgeResponse> {
   return apiDelete("/api/v1/dns-logs") as unknown as Promise<DnsPurgeResponse>;
 }
+
+// ─── DNS Blocklists ──────────────────────────────────────
+
+export function fetchDnsBlocklists(): Promise<
+  import("./types").DnsBlocklist[]
+> {
+  return apiGet<import("./types").DnsBlocklist[]>("/api/v1/dns-blocklists");
+}
+
+export function createDnsBlocklist(
+  body: import("./types").DnsBlocklistRequest
+): Promise<import("./types").DnsBlocklist> {
+  return apiPost<import("./types").DnsBlocklist>(
+    "/api/v1/dns-blocklists",
+    body
+  );
+}
+
+export function updateDnsBlocklist(
+  id: string,
+  body: import("./types").DnsBlocklistRequest
+): Promise<import("./types").DnsBlocklist> {
+  return apiPut<import("./types").DnsBlocklist>(
+    `/api/v1/dns-blocklists/${id}`,
+    body
+  );
+}
+
+export function deleteDnsBlocklist(id: string): Promise<void> {
+  return apiDelete(`/api/v1/dns-blocklists/${id}`);
+}
+
+export function toggleDnsBlocklist(
+  id: string,
+  enabled: boolean
+): Promise<import("./types").DnsBlocklist> {
+  return apiPost<import("./types").DnsBlocklist>(
+    `/api/v1/dns-blocklists/${id}/toggle`,
+    { enabled }
+  );
+}
+
+export function downloadDnsBlocklist(
+  id: string
+): Promise<import("./types").DnsBlocklistDownloadResponse> {
+  return apiPost<import("./types").DnsBlocklistDownloadResponse>(
+    `/api/v1/dns-blocklists/${id}/download`
+  );
+}
+
+export function fetchDnsBlocklistStats(): Promise<
+  import("./types").DnsBlocklistStats
+> {
+  return apiGet<import("./types").DnsBlocklistStats>(
+    "/api/v1/dns-blocklists/stats"
+  );
+}
+
+export function fetchDnsBlocklistOverrides(): Promise<
+  import("./types").DnsBlocklistDomainOverride[]
+> {
+  return apiGet<import("./types").DnsBlocklistDomainOverride[]>(
+    "/api/v1/dns-blocklists/overrides"
+  );
+}
+
+export function createDnsBlocklistOverride(
+  body: import("./types").DnsBlocklistDomainOverrideRequest
+): Promise<import("./types").DnsBlocklistDomainOverride> {
+  return apiPost<import("./types").DnsBlocklistDomainOverride>(
+    "/api/v1/dns-blocklists/overrides",
+    body
+  );
+}
+
+export function deleteDnsBlocklistOverride(id: string): Promise<void> {
+  return apiDelete(`/api/v1/dns-blocklists/overrides/${id}`);
+}
+
+export function fetchDnsUnboundConfig(): Promise<
+  import("./types").DnsUnboundConfigResponse
+> {
+  return apiGet<import("./types").DnsUnboundConfigResponse>(
+    "/api/v1/dns-blocklists/unbound-config"
+  );
+}

@@ -1317,3 +1317,59 @@ export interface DnsIngestResponse {
 export interface DnsPurgeResponse {
   deleted: number;
 }
+
+// ─── DNS Blocklists ─────────────────────────────────────
+
+export interface DnsBlocklist {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  format: string;
+  domain_count: number;
+  last_downloaded_at: string | null;
+  last_error: string | null;
+  refresh_interval_hours: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DnsBlocklistRequest {
+  name: string;
+  url: string;
+  enabled: boolean;
+  format: string;
+  refresh_interval_hours: number;
+}
+
+export interface DnsBlocklistDomainOverride {
+  id: string;
+  domain: string;
+  action: "whitelist" | "blacklist";
+  created_at: string;
+}
+
+export interface DnsBlocklistDomainOverrideRequest {
+  domain: string;
+  action: "whitelist" | "blacklist";
+}
+
+export interface DnsBlocklistStats {
+  total_blocklists: number;
+  enabled_blocklists: number;
+  total_blocked_domains: number;
+  whitelist_count: number;
+  blacklist_count: number;
+  last_updated: string | null;
+}
+
+export interface DnsBlocklistDownloadResponse {
+  success: boolean;
+  message: string;
+  domain_count: number;
+}
+
+export interface DnsUnboundConfigResponse {
+  config: string;
+  domain_count: number;
+}
