@@ -1826,3 +1826,92 @@ export interface MeshTopologyResponse {
   main_ip: string;
   total_devices: number;
 }
+
+// ─── Xiaomi MiWiFi ──────────────────────────────────────
+
+export interface XiaomiStatus {
+  configured: boolean;
+  reachable: boolean;
+  cpu_cores: number | null;
+  cpu_freq: string | null;
+  cpu_load: number | null;
+  mem_usage: number | null;
+  mem_total: string | null;
+  mem_type: string | null;
+  temperature: number | null;
+  wan_download: string | null;
+  wan_upload: string | null;
+  devices_online: number | null;
+  devices_total: number | null;
+}
+
+export interface XiaomiTopoNode {
+  mac: string | null;
+  name: string | null;
+  locale: string | null;
+  ip: string | null;
+  online: number | null;
+  hardware: string | null;
+  model: string | null;
+}
+
+export interface XiaomiTopoLeaf {
+  mac: string | null;
+  ip: string | null;
+  name: string | null;
+  online: number | null;
+  parent_id: string | null;
+}
+
+export interface XiaomiTopology {
+  nodes: XiaomiTopoNode[];
+  leafs: XiaomiTopoLeaf[];
+}
+
+export interface XiaomiDevice {
+  mac: string | null;
+  name: string | null;
+  ip: string | null;
+  download_speed: string | null;
+  upload_speed: string | null;
+  online: boolean;
+  device_type: number | null;
+  parent_id: string | null;
+}
+
+export interface XiaomiWifiDevice {
+  mac: string | null;
+  ip: string | null;
+  name: string | null;
+  signal: number | null;
+  band: string | null;
+}
+
+export interface XiaomiWanInfo {
+  ip: string | null;
+  gateway: string | null;
+  dns: string | null;
+  wan_type: string | null;
+  mask: string | null;
+}
+
+export interface XiaomiLanPort {
+  port: number | null;
+  link_status: string | null;
+  speed: string | null;
+}
+
+export interface XiaomiLanInfo {
+  ip: string | null;
+  mask: string | null;
+  ports: XiaomiLanPort[];
+}
+
+export interface XiaomiNewStatus {
+  mac: string | null;
+  platform: string | null;
+  version: string | null;
+  sn: string | null;
+  devices_online: number | null;
+  devices_total: number | null;
+}

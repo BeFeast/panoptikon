@@ -1945,3 +1945,49 @@ export function fetchMeshTopology(): Promise<
     "/api/v1/mesh/topology"
   );
 }
+
+// ─── Xiaomi MiWiFi ───────────────────────────────────────
+
+export function fetchXiaomiStatus(): Promise<
+  import("./types").XiaomiStatus
+> {
+  return apiGet<import("./types").XiaomiStatus>("/api/v1/xiaomi/status");
+}
+
+export function fetchXiaomiTopology(): Promise<
+  import("./types").XiaomiTopology
+> {
+  return apiGet<import("./types").XiaomiTopology>("/api/v1/xiaomi/topology");
+}
+
+export function fetchXiaomiDevices(): Promise<
+  import("./types").XiaomiDevice[]
+> {
+  return apiGet<import("./types").XiaomiDevice[]>("/api/v1/xiaomi/devices");
+}
+
+export function fetchXiaomiNewStatus(): Promise<
+  import("./types").XiaomiNewStatus
+> {
+  return apiGet<import("./types").XiaomiNewStatus>("/api/v1/xiaomi/new-status");
+}
+
+export function fetchXiaomiWifiDevices(): Promise<
+  import("./types").XiaomiWifiDevice[]
+> {
+  return apiGet<import("./types").XiaomiWifiDevice[]>(
+    "/api/v1/xiaomi/wifi-devices"
+  );
+}
+
+export function fetchXiaomiWanInfo(): Promise<
+  import("./types").XiaomiWanInfo
+> {
+  return apiGet<import("./types").XiaomiWanInfo>("/api/v1/xiaomi/wan-info");
+}
+
+export function fetchXiaomiLanInfo(): Promise<
+  import("./types").XiaomiLanInfo
+> {
+  return apiGet<import("./types").XiaomiLanInfo>("/api/v1/xiaomi/lan-info");
+}
