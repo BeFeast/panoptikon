@@ -1099,12 +1099,19 @@ export interface MikrotikDhcpLease {
 }
 
 export interface MikrotikFirewallRule {
+  id: string | null;
   chain: string | null;
   action: string | null;
   protocol: string | null;
   src_address: string | null;
   dst_address: string | null;
+  src_port: string | null;
   dst_port: string | null;
+  in_interface: string | null;
+  out_interface: string | null;
+  connection_state: string | null;
+  src_address_list: string | null;
+  dst_address_list: string | null;
   comment: string | null;
   disabled: boolean;
   bytes: string | null;
@@ -1112,6 +1119,7 @@ export interface MikrotikFirewallRule {
 }
 
 export interface MikrotikNatRule {
+  id: string | null;
   chain: string | null;
   action: string | null;
   protocol: string | null;
@@ -1125,9 +1133,55 @@ export interface MikrotikNatRule {
   disabled: boolean;
 }
 
+export interface MikrotikAddressListEntry {
+  id: string | null;
+  list: string | null;
+  address: string | null;
+  comment: string | null;
+  disabled: boolean;
+}
+
 export interface MikrotikFirewall {
   filter_rules: MikrotikFirewallRule[];
   nat_rules: MikrotikNatRule[];
+  address_lists: MikrotikAddressListEntry[];
+}
+
+export interface MikrotikFirewallRuleRequest {
+  chain: string;
+  action: string;
+  protocol?: string;
+  src_address?: string;
+  dst_address?: string;
+  src_port?: string;
+  dst_port?: string;
+  in_interface?: string;
+  out_interface?: string;
+  connection_state?: string;
+  src_address_list?: string;
+  dst_address_list?: string;
+  comment?: string;
+  disabled?: boolean;
+}
+
+export interface MikrotikNatRuleRequest {
+  chain: string;
+  action: string;
+  protocol?: string;
+  src_address?: string;
+  dst_address?: string;
+  dst_port?: string;
+  to_addresses?: string;
+  to_ports?: string;
+  out_interface?: string;
+  comment?: string;
+  disabled?: boolean;
+}
+
+export interface MikrotikAddressListRequest {
+  list: string;
+  address: string;
+  comment?: string;
 }
 
 export interface MikrotikDns {

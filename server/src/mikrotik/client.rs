@@ -382,6 +382,95 @@ impl MikrotikClient {
         self.send_no_body(Method::DELETE, &format!("/interface/vlan/{id}"))
             .await
     }
+
+    // ── Firewall filter CRUD ────────────────────────────────
+
+    /// Create a firewall filter rule.
+    pub async fn create_firewall_filter(&self, req: &FirewallFilterWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/ip/firewall/filter", req)
+            .await
+    }
+
+    /// Update a firewall filter rule by RouterOS `.id`.
+    pub async fn update_firewall_filter(
+        &self,
+        id: &str,
+        req: &FirewallFilterWriteRequest,
+    ) -> Result<()> {
+        self.send_json(Method::PATCH, &format!("/ip/firewall/filter/{id}"), req)
+            .await
+    }
+
+    /// Delete a firewall filter rule by RouterOS `.id`.
+    pub async fn delete_firewall_filter(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/ip/firewall/filter/{id}"))
+            .await
+    }
+
+    /// Enable or disable a firewall filter rule by RouterOS `.id`.
+    pub async fn toggle_firewall_filter(&self, id: &str, disabled: bool) -> Result<()> {
+        let body = serde_json::json!({ "disabled": if disabled { "true" } else { "false" } });
+        self.send_json(Method::PATCH, &format!("/ip/firewall/filter/{id}"), &body)
+            .await
+    }
+
+    /// Move a firewall filter rule to a new position.
+    pub async fn move_firewall_filter(&self, id: &str, destination: Option<&str>) -> Result<()> {
+        let mut body = serde_json::json!({ "numbers": id });
+        if let Some(dest) = destination {
+            body["destination"] = serde_json::Value::String(dest.to_string());
+        }
+        self.post("/ip/firewall/filter/move", &body).await?;
+        Ok(())
+    }
+
+    // ── Firewall NAT CRUD ───────────────────────────────────
+
+    /// Create a firewall NAT rule.
+    pub async fn create_firewall_nat(&self, req: &FirewallNatWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/ip/firewall/nat", req).await
+    }
+
+    /// Update a firewall NAT rule by RouterOS `.id`.
+    pub async fn update_firewall_nat(&self, id: &str, req: &FirewallNatWriteRequest) -> Result<()> {
+        self.send_json(Method::PATCH, &format!("/ip/firewall/nat/{id}"), req)
+            .await
+    }
+
+    /// Delete a firewall NAT rule by RouterOS `.id`.
+    pub async fn delete_firewall_nat(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/ip/firewall/nat/{id}"))
+            .await
+    }
+
+    /// Enable or disable a firewall NAT rule by RouterOS `.id`.
+    pub async fn toggle_firewall_nat(&self, id: &str, disabled: bool) -> Result<()> {
+        let body = serde_json::json!({ "disabled": if disabled { "true" } else { "false" } });
+        self.send_json(Method::PATCH, &format!("/ip/firewall/nat/{id}"), &body)
+            .await
+    }
+
+    // ── Address list CRUD ───────────────────────────────────
+
+    /// Fetch firewall address list entries.
+    pub async fn firewall_address_list(&self) -> Result<Vec<AddressListEntry>> {
+        let val = self.get("/ip/firewall/address-list").await?;
+        let res: Vec<AddressListEntry> =
+            serde_json::from_value(val).context("failed to parse firewall address list")?;
+        Ok(res)
+    }
+
+    /// Create a firewall address list entry.
+    pub async fn create_address_list_entry(&self, req: &AddressListWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/ip/firewall/address-list", req)
+            .await
+    }
+
+    /// Delete a firewall address list entry by RouterOS `.id`.
+    pub async fn delete_address_list_entry(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/ip/firewall/address-list/{id}"))
+            .await
+    }
 }
 
 #[cfg(test)]

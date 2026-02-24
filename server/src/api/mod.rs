@@ -421,6 +421,53 @@ pub fn router(state: AppState) -> Router {
         .route("/mikrotik/routes", get(mikrotik::routes))
         .route("/mikrotik/dhcp-leases", get(mikrotik::dhcp_leases))
         .route("/mikrotik/firewall", get(mikrotik::firewall))
+        // MikroTik firewall filter CRUD
+        .route(
+            "/mikrotik/firewall/filter",
+            post(mikrotik::create_firewall_filter),
+        )
+        .route(
+            "/mikrotik/firewall/filter/:id",
+            put(mikrotik::update_firewall_filter),
+        )
+        .route(
+            "/mikrotik/firewall/filter/:id",
+            delete(mikrotik::delete_firewall_filter),
+        )
+        .route(
+            "/mikrotik/firewall/filter/:id/toggle",
+            patch(mikrotik::toggle_firewall_filter),
+        )
+        .route(
+            "/mikrotik/firewall/filter/:id/move",
+            post(mikrotik::move_firewall_filter),
+        )
+        // MikroTik firewall NAT CRUD
+        .route(
+            "/mikrotik/firewall/nat",
+            post(mikrotik::create_firewall_nat),
+        )
+        .route(
+            "/mikrotik/firewall/nat/:id",
+            put(mikrotik::update_firewall_nat),
+        )
+        .route(
+            "/mikrotik/firewall/nat/:id",
+            delete(mikrotik::delete_firewall_nat),
+        )
+        .route(
+            "/mikrotik/firewall/nat/:id/toggle",
+            patch(mikrotik::toggle_firewall_nat),
+        )
+        // MikroTik address list CRUD
+        .route(
+            "/mikrotik/firewall/address-list",
+            post(mikrotik::create_address_list_entry),
+        )
+        .route(
+            "/mikrotik/firewall/address-list/:id",
+            delete(mikrotik::delete_address_list_entry),
+        )
         .route("/mikrotik/dns", get(mikrotik::dns))
         .route("/mikrotik/wireguard", get(mikrotik::wireguard))
         // Assets (IT inventory)

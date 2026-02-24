@@ -143,6 +143,16 @@ pub struct FirewallFilter {
     pub dst_port: Option<String>,
     #[serde(rename = "src-port")]
     pub src_port: Option<String>,
+    #[serde(rename = "in-interface")]
+    pub in_interface: Option<String>,
+    #[serde(rename = "out-interface")]
+    pub out_interface: Option<String>,
+    #[serde(rename = "connection-state")]
+    pub connection_state: Option<String>,
+    #[serde(rename = "src-address-list")]
+    pub src_address_list: Option<String>,
+    #[serde(rename = "dst-address-list")]
+    pub dst_address_list: Option<String>,
     pub comment: Option<String>,
     pub disabled: Option<String>,
     pub bytes: Option<String>,
@@ -171,6 +181,82 @@ pub struct FirewallNat {
     pub out_interface: Option<String>,
     pub comment: Option<String>,
     pub disabled: Option<String>,
+}
+
+/// MikroTik firewall address list entry (`/rest/ip/firewall/address-list`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AddressListEntry {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub list: Option<String>,
+    pub address: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<String>,
+}
+
+/// Write payload for creating/updating a firewall filter rule.
+#[derive(Debug, Clone, Serialize)]
+pub struct FirewallFilterWriteRequest {
+    pub chain: String,
+    pub action: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<String>,
+    #[serde(rename = "src-address", skip_serializing_if = "Option::is_none")]
+    pub src_address: Option<String>,
+    #[serde(rename = "dst-address", skip_serializing_if = "Option::is_none")]
+    pub dst_address: Option<String>,
+    #[serde(rename = "src-port", skip_serializing_if = "Option::is_none")]
+    pub src_port: Option<String>,
+    #[serde(rename = "dst-port", skip_serializing_if = "Option::is_none")]
+    pub dst_port: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<String>,
+    #[serde(rename = "src-address-list", skip_serializing_if = "Option::is_none")]
+    pub src_address_list: Option<String>,
+    #[serde(rename = "dst-address-list", skip_serializing_if = "Option::is_none")]
+    pub dst_address_list: Option<String>,
+    #[serde(rename = "in-interface", skip_serializing_if = "Option::is_none")]
+    pub in_interface: Option<String>,
+    #[serde(rename = "out-interface", skip_serializing_if = "Option::is_none")]
+    pub out_interface: Option<String>,
+    #[serde(rename = "connection-state", skip_serializing_if = "Option::is_none")]
+    pub connection_state: Option<String>,
+}
+
+/// Write payload for creating/updating a firewall NAT rule.
+#[derive(Debug, Clone, Serialize)]
+pub struct FirewallNatWriteRequest {
+    pub chain: String,
+    pub action: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<String>,
+    #[serde(rename = "src-address", skip_serializing_if = "Option::is_none")]
+    pub src_address: Option<String>,
+    #[serde(rename = "dst-address", skip_serializing_if = "Option::is_none")]
+    pub dst_address: Option<String>,
+    #[serde(rename = "dst-port", skip_serializing_if = "Option::is_none")]
+    pub dst_port: Option<String>,
+    #[serde(rename = "to-addresses", skip_serializing_if = "Option::is_none")]
+    pub to_addresses: Option<String>,
+    #[serde(rename = "to-ports", skip_serializing_if = "Option::is_none")]
+    pub to_ports: Option<String>,
+    #[serde(rename = "out-interface", skip_serializing_if = "Option::is_none")]
+    pub out_interface: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<String>,
+}
+
+/// Write payload for creating an address list entry.
+#[derive(Debug, Clone, Serialize)]
+pub struct AddressListWriteRequest {
+    pub list: String,
+    pub address: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
 }
 
 /// MikroTik DNS settings (`/rest/ip/dns`).

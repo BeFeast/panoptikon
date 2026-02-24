@@ -21,6 +21,9 @@ import {
   Pencil,
   Trash2,
   BarChart3,
+  ChevronUp,
+  ChevronDown,
+  Power,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -70,6 +73,17 @@ import {
   createMikrotikVlan,
   updateMikrotikVlan,
   deleteMikrotikVlan,
+  createMikrotikFirewallFilter,
+  updateMikrotikFirewallFilter,
+  deleteMikrotikFirewallFilter,
+  toggleMikrotikFirewallFilter,
+  moveMikrotikFirewallFilter,
+  createMikrotikFirewallNat,
+  updateMikrotikFirewallNat,
+  deleteMikrotikFirewallNat,
+  toggleMikrotikFirewallNat,
+  createMikrotikAddressListEntry,
+  deleteMikrotikAddressListEntry,
   fetchTrafficHistory,
 } from "@/lib/api";
 import { formatBps } from "@/lib/format";
@@ -81,6 +95,12 @@ import type {
   MikrotikRoute,
   MikrotikDhcpLease,
   MikrotikFirewall,
+  MikrotikFirewallRule,
+  MikrotikNatRule,
+  MikrotikFirewallRuleRequest,
+  MikrotikNatRuleRequest,
+  MikrotikAddressListEntry,
+  MikrotikAddressListRequest,
   MikrotikDns,
   MikrotikWireguard,
   TrafficHistoryPoint,
@@ -1009,42 +1029,526 @@ function DhcpLeasesTable({
   );
 }
 
-// ── Firewall Tables ───────────────────────────────────────
+// ── Firewall Filter Rule Dialog ───────────────────────────
+
+const selectClass =
+  "h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-3 text-sm text-white focus:outline-none focus:ring-1 focus:ring-blue-500";
+
+function FilterRuleDialog({
+  open,
+  onOpenChange,
+  rule,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  rule: MikrotikFirewallRule | null;
+  onSave: (body: MikrotikFirewallRuleRequest, id?: string) => void;
+}) {
+  const [form, setForm] = useState<MikrotikFirewallRuleRequest>({
+    chain: "forward",
+    action: "accept",
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (rule) {
+      setForm({
+        chain: rule.chain ?? "forward",
+        action: rule.action ?? "accept",
+        protocol: rule.protocol ?? undefined,
+        src_address: rule.src_address ?? undefined,
+        dst_address: rule.dst_address ?? undefined,
+        src_port: rule.src_port ?? undefined,
+        dst_port: rule.dst_port ?? undefined,
+        in_interface: rule.in_interface ?? undefined,
+        out_interface: rule.out_interface ?? undefined,
+        connection_state: rule.connection_state ?? undefined,
+        src_address_list: rule.src_address_list ?? undefined,
+        dst_address_list: rule.dst_address_list ?? undefined,
+        comment: rule.comment ?? undefined,
+        disabled: rule.disabled,
+      });
+    } else {
+      setForm({ chain: "forward", action: "accept" });
+    }
+  }, [rule, open]);
+
+  const handleSubmit = async () => {
+    setSaving(true);
+    try {
+      onSave(form, rule?.id ?? undefined);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const showPorts = form.protocol === "tcp" || form.protocol === "udp" || form.protocol === "tcp,udp";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-slate-800 bg-slate-900 sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-white">
+            {rule ? "Edit Filter Rule" : "Add Filter Rule"}
+          </DialogTitle>
+          <DialogDescription>
+            {rule ? "Update the firewall filter rule." : "Create a new firewall filter rule."}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-slate-300">Chain</Label>
+              <select value={form.chain} onChange={(e) => setForm({ ...form, chain: e.target.value })} className={selectClass}>
+                <option value="forward">forward</option>
+                <option value="input">input</option>
+                <option value="output">output</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-slate-300">Action</Label>
+              <select value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value })} className={selectClass}>
+                <option value="accept">accept</option>
+                <option value="drop">drop</option>
+                <option value="reject">reject</option>
+                <option value="jump">jump</option>
+                <option value="log">log</option>
+                <option value="passthrough">passthrough</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <Label className="text-slate-300">Protocol</Label>
+            <select value={form.protocol ?? ""} onChange={(e) => setForm({ ...form, protocol: e.target.value || undefined })} className={selectClass}>
+              <option value="">any</option>
+              <option value="tcp">tcp</option>
+              <option value="udp">udp</option>
+              <option value="icmp">icmp</option>
+              <option value="tcp,udp">tcp+udp</option>
+              <option value="gre">gre</option>
+              <option value="esp">esp</option>
+              <option value="ah">ah</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-slate-300">Src Address</Label>
+              <Input value={form.src_address ?? ""} onChange={(e) => setForm({ ...form, src_address: e.target.value || undefined })} placeholder="e.g. 192.168.1.0/24" className="border-slate-800 bg-slate-950 text-white" />
+            </div>
+            <div>
+              <Label className="text-slate-300">Dst Address</Label>
+              <Input value={form.dst_address ?? ""} onChange={(e) => setForm({ ...form, dst_address: e.target.value || undefined })} placeholder="e.g. 10.0.0.1" className="border-slate-800 bg-slate-950 text-white" />
+            </div>
+          </div>
+          {showPorts && (
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-slate-300">Src Port</Label>
+                <Input value={form.src_port ?? ""} onChange={(e) => setForm({ ...form, src_port: e.target.value || undefined })} placeholder="e.g. 1024-65535" className="border-slate-800 bg-slate-950 text-white" />
+              </div>
+              <div>
+                <Label className="text-slate-300">Dst Port</Label>
+                <Input value={form.dst_port ?? ""} onChange={(e) => setForm({ ...form, dst_port: e.target.value || undefined })} placeholder="e.g. 80,443" className="border-slate-800 bg-slate-950 text-white" />
+              </div>
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-slate-300">In Interface</Label>
+              <Input value={form.in_interface ?? ""} onChange={(e) => setForm({ ...form, in_interface: e.target.value || undefined })} placeholder="e.g. ether1" className="border-slate-800 bg-slate-950 text-white" />
+            </div>
+            <div>
+              <Label className="text-slate-300">Out Interface</Label>
+              <Input value={form.out_interface ?? ""} onChange={(e) => setForm({ ...form, out_interface: e.target.value || undefined })} placeholder="e.g. ether2" className="border-slate-800 bg-slate-950 text-white" />
+            </div>
+          </div>
+          <div>
+            <Label className="text-slate-300">Connection State</Label>
+            <Input value={form.connection_state ?? ""} onChange={(e) => setForm({ ...form, connection_state: e.target.value || undefined })} placeholder="e.g. established,related" className="border-slate-800 bg-slate-950 text-white" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-slate-300">Src Address List</Label>
+              <Input value={form.src_address_list ?? ""} onChange={(e) => setForm({ ...form, src_address_list: e.target.value || undefined })} placeholder="Address list name" className="border-slate-800 bg-slate-950 text-white" />
+            </div>
+            <div>
+              <Label className="text-slate-300">Dst Address List</Label>
+              <Input value={form.dst_address_list ?? ""} onChange={(e) => setForm({ ...form, dst_address_list: e.target.value || undefined })} placeholder="Address list name" className="border-slate-800 bg-slate-950 text-white" />
+            </div>
+          </div>
+          <div>
+            <Label className="text-slate-300">Comment</Label>
+            <Input value={form.comment ?? ""} onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })} placeholder="Rule description" className="border-slate-800 bg-slate-950 text-white" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-slate-700 text-slate-300">
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
+            {saving ? "Saving..." : rule ? "Update" : "Create"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── NAT Rule Dialog ──────────────────────────────────────
+
+function NatRuleDialog({
+  open,
+  onOpenChange,
+  rule,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  rule: MikrotikNatRule | null;
+  onSave: (body: MikrotikNatRuleRequest, id?: string) => void;
+}) {
+  const [form, setForm] = useState<MikrotikNatRuleRequest>({
+    chain: "dstnat",
+    action: "dst-nat",
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (rule) {
+      setForm({
+        chain: rule.chain ?? "dstnat",
+        action: rule.action ?? "dst-nat",
+        protocol: rule.protocol ?? undefined,
+        src_address: rule.src_address ?? undefined,
+        dst_address: rule.dst_address ?? undefined,
+        dst_port: rule.dst_port ?? undefined,
+        to_addresses: rule.to_addresses ?? undefined,
+        to_ports: rule.to_ports ?? undefined,
+        out_interface: rule.out_interface ?? undefined,
+        comment: rule.comment ?? undefined,
+        disabled: rule.disabled,
+      });
+    } else {
+      setForm({ chain: "dstnat", action: "dst-nat" });
+    }
+  }, [rule, open]);
+
+  const handleSubmit = async () => {
+    setSaving(true);
+    try {
+      onSave(form, rule?.id ?? undefined);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const showPorts = form.protocol === "tcp" || form.protocol === "udp" || form.protocol === "tcp,udp";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-slate-800 bg-slate-900 sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="text-white">
+            {rule ? "Edit NAT Rule" : "Add NAT Rule"}
+          </DialogTitle>
+          <DialogDescription>
+            {rule ? "Update the NAT rule." : "Create a new NAT rule."}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-slate-300">Chain</Label>
+              <select value={form.chain} onChange={(e) => setForm({ ...form, chain: e.target.value })} className={selectClass}>
+                <option value="dstnat">dstnat</option>
+                <option value="srcnat">srcnat</option>
+              </select>
+            </div>
+            <div>
+              <Label className="text-slate-300">Action</Label>
+              <select value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value })} className={selectClass}>
+                <option value="dst-nat">dst-nat</option>
+                <option value="masquerade">masquerade</option>
+                <option value="src-nat">src-nat</option>
+                <option value="accept">accept</option>
+                <option value="redirect">redirect</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <Label className="text-slate-300">Protocol</Label>
+            <select value={form.protocol ?? ""} onChange={(e) => setForm({ ...form, protocol: e.target.value || undefined })} className={selectClass}>
+              <option value="">any</option>
+              <option value="tcp">tcp</option>
+              <option value="udp">udp</option>
+              <option value="icmp">icmp</option>
+              <option value="tcp,udp">tcp+udp</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-slate-300">Src Address</Label>
+              <Input value={form.src_address ?? ""} onChange={(e) => setForm({ ...form, src_address: e.target.value || undefined })} placeholder="e.g. 192.168.1.0/24" className="border-slate-800 bg-slate-950 text-white" />
+            </div>
+            <div>
+              <Label className="text-slate-300">Dst Address</Label>
+              <Input value={form.dst_address ?? ""} onChange={(e) => setForm({ ...form, dst_address: e.target.value || undefined })} placeholder="e.g. 10.0.0.1" className="border-slate-800 bg-slate-950 text-white" />
+            </div>
+          </div>
+          {showPorts && (
+            <div>
+              <Label className="text-slate-300">Dst Port</Label>
+              <Input value={form.dst_port ?? ""} onChange={(e) => setForm({ ...form, dst_port: e.target.value || undefined })} placeholder="e.g. 80,443" className="border-slate-800 bg-slate-950 text-white" />
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-slate-300">To Addresses</Label>
+              <Input value={form.to_addresses ?? ""} onChange={(e) => setForm({ ...form, to_addresses: e.target.value || undefined })} placeholder="e.g. 192.168.1.100" className="border-slate-800 bg-slate-950 text-white" />
+            </div>
+            <div>
+              <Label className="text-slate-300">To Ports</Label>
+              <Input value={form.to_ports ?? ""} onChange={(e) => setForm({ ...form, to_ports: e.target.value || undefined })} placeholder="e.g. 8080" className="border-slate-800 bg-slate-950 text-white" />
+            </div>
+          </div>
+          <div>
+            <Label className="text-slate-300">Out Interface</Label>
+            <Input value={form.out_interface ?? ""} onChange={(e) => setForm({ ...form, out_interface: e.target.value || undefined })} placeholder="e.g. ether1" className="border-slate-800 bg-slate-950 text-white" />
+          </div>
+          <div>
+            <Label className="text-slate-300">Comment</Label>
+            <Input value={form.comment ?? ""} onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })} placeholder="Rule description" className="border-slate-800 bg-slate-950 text-white" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-slate-700 text-slate-300">
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
+            {saving ? "Saving..." : rule ? "Update" : "Create"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Address List Entry Dialog ────────────────────────────
+
+function AddressListDialog({
+  open,
+  onOpenChange,
+  existingLists,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  existingLists: string[];
+  onSave: (body: MikrotikAddressListRequest) => void;
+}) {
+  const [form, setForm] = useState<MikrotikAddressListRequest>({
+    list: "",
+    address: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setForm({ list: existingLists[0] ?? "", address: "" });
+    }
+  }, [open, existingLists]);
+
+  const handleSubmit = async () => {
+    if (!form.list.trim() || !form.address.trim()) return;
+    setSaving(true);
+    try {
+      onSave(form);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-white">Add Address List Entry</DialogTitle>
+          <DialogDescription>Add a new entry to a firewall address list.</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div>
+            <Label className="text-slate-300">List Name</Label>
+            <Input value={form.list} onChange={(e) => setForm({ ...form, list: e.target.value })} placeholder="e.g. blocked-ips" className="border-slate-800 bg-slate-950 text-white" />
+          </div>
+          <div>
+            <Label className="text-slate-300">Address</Label>
+            <Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="e.g. 10.0.0.1 or 10.0.0.0/24" className="border-slate-800 bg-slate-950 text-white" />
+          </div>
+          <div>
+            <Label className="text-slate-300">Comment</Label>
+            <Input value={form.comment ?? ""} onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })} placeholder="Optional description" className="border-slate-800 bg-slate-950 text-white" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="border-slate-700 text-slate-300">
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={saving || !form.list.trim() || !form.address.trim()} className="bg-blue-600 hover:bg-blue-700">
+            {saving ? "Adding..." : "Add Entry"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Firewall Panel (full CRUD) ───────────────────────────
 
 function FirewallPanel({
   data,
   loading,
   error,
+  onReload,
 }: {
   data: MikrotikFirewall | null;
   loading: boolean;
   error: string | null;
+  onReload: () => void;
 }) {
-  const filterHeaderCols = (
-    <tr className="border-b border-slate-800 bg-slate-950 text-left">
-      <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Action</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Src</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Port</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Status</th>
-    </tr>
-  );
+  // Filter rule dialog state
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [editingFilter, setEditingFilter] = useState<MikrotikFirewallRule | null>(null);
+  const [confirmDeleteFilter, setConfirmDeleteFilter] = useState<string | null>(null);
 
-  const natHeaderCols = (
-    <tr className="border-b border-slate-800 bg-slate-950 text-left">
-      <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Action</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Port</th>
-      <th className="px-4 py-3 font-medium text-slate-400">To</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
-    </tr>
-  );
+  // NAT rule dialog state
+  const [natDialogOpen, setNatDialogOpen] = useState(false);
+  const [editingNat, setEditingNat] = useState<MikrotikNatRule | null>(null);
+  const [confirmDeleteNat, setConfirmDeleteNat] = useState<string | null>(null);
 
+  // Address list dialog state
+  const [addrDialogOpen, setAddrDialogOpen] = useState(false);
+  const [confirmDeleteAddr, setConfirmDeleteAddr] = useState<string | null>(null);
+
+  // ── Filter CRUD handlers ─────
+  const handleSaveFilter = async (body: MikrotikFirewallRuleRequest, id?: string) => {
+    try {
+      if (id) {
+        await updateMikrotikFirewallFilter(id, body);
+        toast.success("Filter rule updated");
+      } else {
+        await createMikrotikFirewallFilter(body);
+        toast.success("Filter rule created");
+      }
+      setFilterDialogOpen(false);
+      setEditingFilter(null);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save filter rule");
+    }
+  };
+
+  const handleDeleteFilter = async (id: string) => {
+    try {
+      await deleteMikrotikFirewallFilter(id);
+      toast.success("Filter rule deleted");
+      setConfirmDeleteFilter(null);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete filter rule");
+    }
+  };
+
+  const handleToggleFilter = async (rule: MikrotikFirewallRule) => {
+    if (!rule.id) return;
+    try {
+      await toggleMikrotikFirewallFilter(rule.id, !rule.disabled);
+      toast.success(rule.disabled ? "Rule enabled" : "Rule disabled");
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to toggle rule");
+    }
+  };
+
+  const handleMoveFilter = async (rule: MikrotikFirewallRule, direction: "up" | "down") => {
+    if (!rule.id || !data) return;
+    const idx = data.filter_rules.findIndex((r) => r.id === rule.id);
+    if (idx < 0) return;
+    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= data.filter_rules.length) return;
+    const destId = data.filter_rules[targetIdx].id ?? undefined;
+    try {
+      await moveMikrotikFirewallFilter(rule.id, direction === "up" ? destId : undefined);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to move rule");
+    }
+  };
+
+  // ── NAT CRUD handlers ─────
+  const handleSaveNat = async (body: MikrotikNatRuleRequest, id?: string) => {
+    try {
+      if (id) {
+        await updateMikrotikFirewallNat(id, body);
+        toast.success("NAT rule updated");
+      } else {
+        await createMikrotikFirewallNat(body);
+        toast.success("NAT rule created");
+      }
+      setNatDialogOpen(false);
+      setEditingNat(null);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save NAT rule");
+    }
+  };
+
+  const handleDeleteNat = async (id: string) => {
+    try {
+      await deleteMikrotikFirewallNat(id);
+      toast.success("NAT rule deleted");
+      setConfirmDeleteNat(null);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete NAT rule");
+    }
+  };
+
+  const handleToggleNat = async (rule: MikrotikNatRule) => {
+    if (!rule.id) return;
+    try {
+      await toggleMikrotikFirewallNat(rule.id, !rule.disabled);
+      toast.success(rule.disabled ? "NAT rule enabled" : "NAT rule disabled");
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to toggle NAT rule");
+    }
+  };
+
+  // ── Address list handlers ─────
+  const handleSaveAddr = async (body: MikrotikAddressListRequest) => {
+    try {
+      await createMikrotikAddressListEntry(body);
+      toast.success("Address list entry added");
+      setAddrDialogOpen(false);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to add address list entry");
+    }
+  };
+
+  const handleDeleteAddr = async (id: string) => {
+    try {
+      await deleteMikrotikAddressListEntry(id);
+      toast.success("Address list entry removed");
+      setConfirmDeleteAddr(null);
+      onReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete address list entry");
+    }
+  };
+
+  // ── Loading / error states ─────
   if (loading) {
     return (
       <Card className="border-slate-800 bg-slate-900">
@@ -1052,24 +1556,10 @@ function FirewallPanel({
           <CardTitle className="text-base text-white">Filter Rules</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto rounded-md border border-slate-800">
-            <table className="w-full text-sm">
-              <thead>{filterHeaderCols}</thead>
-              <tbody>
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <tr key={i} className="border-b border-slate-800 last:border-b-0">
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-14" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-10" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-3 w-20" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-3 w-20" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-4 w-10" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-3 w-24" /></td>
-                    <td className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full" />
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -1089,11 +1579,86 @@ function FirewallPanel({
     );
   }
 
+  // Collect unique address list names
+  const addrListNames = [...new Set((data?.address_lists ?? []).map((a) => a.list).filter(Boolean) as string[])];
+
+  // Group address list entries by list name
+  const addrListsByName: Record<string, MikrotikAddressListEntry[]> = {};
+  for (const entry of data?.address_lists ?? []) {
+    const name = entry.list ?? "unknown";
+    if (!addrListsByName[name]) addrListsByName[name] = [];
+    addrListsByName[name].push(entry);
+  }
+
   return (
     <div className="space-y-4">
+      {/* Dialogs */}
+      <FilterRuleDialog
+        open={filterDialogOpen}
+        onOpenChange={(o) => { setFilterDialogOpen(o); if (!o) setEditingFilter(null); }}
+        rule={editingFilter}
+        onSave={handleSaveFilter}
+      />
+      <NatRuleDialog
+        open={natDialogOpen}
+        onOpenChange={(o) => { setNatDialogOpen(o); if (!o) setEditingNat(null); }}
+        rule={editingNat}
+        onSave={handleSaveNat}
+      />
+      <AddressListDialog
+        open={addrDialogOpen}
+        onOpenChange={setAddrDialogOpen}
+        existingLists={addrListNames}
+        onSave={handleSaveAddr}
+      />
+
+      {/* Delete confirmations */}
+      <AlertDialog open={confirmDeleteFilter !== null} onOpenChange={(o) => { if (!o) setConfirmDeleteFilter(null); }}>
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete filter rule?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone. The rule will be permanently removed from the router.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 text-slate-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={() => confirmDeleteFilter && handleDeleteFilter(confirmDeleteFilter)}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDeleteNat !== null} onOpenChange={(o) => { if (!o) setConfirmDeleteNat(null); }}>
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete NAT rule?</AlertDialogTitle>
+            <AlertDialogDescription>This action cannot be undone. The NAT rule will be permanently removed from the router.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 text-slate-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={() => confirmDeleteNat && handleDeleteNat(confirmDeleteNat)}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDeleteAddr !== null} onOpenChange={(o) => { if (!o) setConfirmDeleteAddr(null); }}>
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Remove address list entry?</AlertDialogTitle>
+            <AlertDialogDescription>This entry will be permanently removed from the address list.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 text-slate-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={() => confirmDeleteAddr && handleDeleteAddr(confirmDeleteAddr)}>Remove</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ── Filter Rules Card ─────────────────────────── */}
       <Card className="border-slate-800 bg-slate-900">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base text-white">Filter Rules</CardTitle>
+          <Button size="sm" onClick={() => { setEditingFilter(null); setFilterDialogOpen(true); }} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Rule
+          </Button>
         </CardHeader>
         <CardContent>
           {!data?.filter_rules.length ? (
@@ -1101,12 +1666,24 @@ function FirewallPanel({
           ) : (
             <div className="overflow-x-auto rounded-md border border-slate-800">
               <table className="w-full text-sm">
-                <thead>{filterHeaderCols}</thead>
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                    <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Action</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Src</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Port</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Actions</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {data.filter_rules.map((rule, i) => (
                     <tr
-                      key={i}
-                      className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                      key={rule.id ?? i}
+                      className={`border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors ${rule.disabled ? "opacity-50" : ""}`}
                     >
                       <td className="px-4 py-3 text-slate-300">{rule.chain ?? "\u2014"}</td>
                       <td className="px-4 py-3">
@@ -1117,7 +1694,9 @@ function FirewallPanel({
                               ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
                               : rule.action === "drop"
                                 ? "border-rose-500/30 bg-rose-500/10 text-rose-400 text-xs"
-                                : "border-slate-700 text-slate-400 text-xs"
+                                : rule.action === "reject"
+                                  ? "border-amber-500/30 bg-amber-500/10 text-amber-400 text-xs"
+                                  : "border-slate-700 text-slate-400 text-xs"
                           }
                         >
                           {rule.action ?? "\u2014"}
@@ -1126,12 +1705,12 @@ function FirewallPanel({
                       <td className="px-4 py-3 text-slate-300">{rule.protocol ?? "any"}</td>
                       <td className="px-4 py-3">
                         <span className="font-mono tabular-nums text-xs text-slate-400">
-                          {rule.src_address ?? "any"}
+                          {rule.src_address ?? rule.src_address_list ?? "any"}
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <span className="font-mono tabular-nums text-xs text-slate-400">
-                          {rule.dst_address ?? "any"}
+                          {rule.dst_address ?? rule.dst_address_list ?? "any"}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-slate-300">{rule.dst_port ?? "\u2014"}</td>
@@ -1150,6 +1729,25 @@ function FirewallPanel({
                           {rule.disabled ? "disabled" : "enabled"}
                         </Badge>
                       </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-white" onClick={() => handleMoveFilter(rule, "up")} disabled={i === 0} title="Move up">
+                            <ChevronUp className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-white" onClick={() => handleMoveFilter(rule, "down")} disabled={i === data.filter_rules.length - 1} title="Move down">
+                            <ChevronDown className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-white" onClick={() => handleToggleFilter(rule)} title={rule.disabled ? "Enable" : "Disable"}>
+                            <Power className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-white" onClick={() => { setEditingFilter(rule); setFilterDialogOpen(true); }} title="Edit">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400" onClick={() => rule.id && setConfirmDeleteFilter(rule.id)} title="Delete">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1159,9 +1757,13 @@ function FirewallPanel({
         </CardContent>
       </Card>
 
+      {/* ── NAT Rules Card ────────────────────────────── */}
       <Card className="border-slate-800 bg-slate-900">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base text-white">NAT Rules</CardTitle>
+          <Button size="sm" onClick={() => { setEditingNat(null); setNatDialogOpen(true); }} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Rule
+          </Button>
         </CardHeader>
         <CardContent>
           {!data?.nat_rules.length ? (
@@ -1169,12 +1771,24 @@ function FirewallPanel({
           ) : (
             <div className="overflow-x-auto rounded-md border border-slate-800">
               <table className="w-full text-sm">
-                <thead>{natHeaderCols}</thead>
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                    <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Action</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Port</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">To</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Actions</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {data.nat_rules.map((rule, i) => (
                     <tr
-                      key={i}
-                      className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                      key={rule.id ?? i}
+                      className={`border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors ${rule.disabled ? "opacity-50" : ""}`}
                     >
                       <td className="px-4 py-3 text-slate-300">{rule.chain ?? "\u2014"}</td>
                       <td className="px-4 py-3 text-slate-300">{rule.action ?? "\u2014"}</td>
@@ -1194,10 +1808,74 @@ function FirewallPanel({
                       <td className="px-4 py-3">
                         <span className="text-slate-500">{rule.comment ?? ""}</span>
                       </td>
+                      <td className="px-4 py-3">
+                        <Badge
+                          variant="outline"
+                          className={
+                            rule.disabled
+                              ? "border-slate-700 text-slate-500 text-xs"
+                              : "border-emerald-500/30 text-emerald-400 text-xs"
+                          }
+                        >
+                          {rule.disabled ? "disabled" : "enabled"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-white" onClick={() => handleToggleNat(rule)} title={rule.disabled ? "Enable" : "Disable"}>
+                            <Power className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-white" onClick={() => { setEditingNat(rule); setNatDialogOpen(true); }} title="Edit">
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400" onClick={() => rule.id && setConfirmDeleteNat(rule.id)} title="Delete">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Address Lists Card ────────────────────────── */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base text-white">Address Lists</CardTitle>
+          <Button size="sm" onClick={() => setAddrDialogOpen(true)} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Entry
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {Object.keys(addrListsByName).length === 0 ? (
+            <p className="py-4 text-sm text-slate-500">No address lists configured.</p>
+          ) : (
+            <div className="space-y-3">
+              {Object.entries(addrListsByName).map(([listName, entries]) => (
+                <div key={listName} className="rounded-md border border-slate-800">
+                  <div className="border-b border-slate-800 bg-slate-950 px-4 py-2">
+                    <span className="text-sm font-medium text-white">{listName}</span>
+                    <span className="ml-2 text-xs text-slate-500">({entries.length} entries)</span>
+                  </div>
+                  <div className="divide-y divide-slate-800">
+                    {entries.map((entry) => (
+                      <div key={entry.id} className="flex items-center justify-between px-4 py-2">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-xs text-slate-300">{entry.address ?? "\u2014"}</span>
+                          {entry.comment && <span className="text-xs text-slate-500">{entry.comment}</span>}
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400" onClick={() => entry.id && setConfirmDeleteAddr(entry.id)} title="Remove">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
@@ -1791,6 +2469,7 @@ export default function MikrotikRouter() {
             data={fw.data}
             loading={fw.loading}
             error={fw.error}
+            onReload={fw.reload}
           />
         </TabsContent>
 
