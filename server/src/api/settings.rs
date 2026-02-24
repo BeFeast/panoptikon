@@ -191,6 +191,7 @@ pub async fn get_settings(
     let cloudflare_account_id = get_setting(&state, "cloudflare_account_id").await;
     let cloudflare_tunnel_id = get_setting(&state, "cloudflare_tunnel_id").await;
 
+
     Ok(Json(SettingsResponse {
         webhook_url,
         vyos_url,
@@ -400,6 +401,7 @@ pub async fn update_settings(
         upsert_setting(&state, "cloudflare_tunnel_id", tunnel_id).await?;
         info!(cloudflare_tunnel_id = %tunnel_id, "Cloudflare tunnel ID updated");
     }
+
 
     // Return current state.
     get_settings(State(state)).await
