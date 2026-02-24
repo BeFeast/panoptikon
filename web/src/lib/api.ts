@@ -86,6 +86,7 @@ import type {
   AssetImportRow,
   AssetImportResponse,
   AssetAutoLinkResponse,
+  AssetSyncFromDevicesResponse,
   AlertRule,
   CreateAlertRuleRequest,
   UpdateAlertRuleRequest,
@@ -1476,6 +1477,12 @@ export function importAssets(
 
 export function autoLinkAssets(): Promise<AssetAutoLinkResponse> {
   return apiPost<AssetAutoLinkResponse>("/api/v1/assets/auto-link");
+}
+
+export function syncAssetsFromDevices(): Promise<AssetSyncFromDevicesResponse> {
+  return apiPost<AssetSyncFromDevicesResponse>(
+    "/api/v1/assets/sync-from-devices"
+  );
 }
 
 // ─── Alert Rules ─────────────────────────────────────────

@@ -95,20 +95,26 @@ export default function XiaomiMeshSettingsPage() {
     });
   }
 
+  const ipValid = isValidIpv4(ip);
+  const intervalNum = Number(pollInterval);
+  const intervalValid =
+    !isNaN(intervalNum) && intervalNum >= 10 && intervalNum <= 300;
+  const passwordRequired = enabled && !passwordSet && password.length === 0;
+  const canSave = dirty && ipValid && intervalValid && !passwordRequired;
+
   async function handleSave() {
     // Validate
-    if (!isValidIpv4(ip)) {
+    if (!ipValid) {
       setSaveStatus("error");
       setSaveMsg("Invalid IPv4 address.");
       return;
     }
-    if (enabled && !passwordSet && password.length === 0) {
+    if (passwordRequired) {
       setSaveStatus("error");
       setSaveMsg("Password is required when integration is enabled.");
       return;
     }
-    const interval = Number(pollInterval);
-    if (isNaN(interval) || interval < 10 || interval > 300) {
+    if (!intervalValid) {
       setSaveStatus("error");
       setSaveMsg("Poll interval must be between 10 and 300 seconds.");
       return;
@@ -123,14 +129,14 @@ export default function XiaomiMeshSettingsPage() {
       if (ip !== (savedIp ?? "10.10.0.199")) body.xiaomi_mesh_ip = ip;
       if (password.length > 0) body.xiaomi_mesh_password = password;
       if (pollInterval !== (savedPollInterval ?? "30"))
-        body.xiaomi_mesh_poll_interval = interval;
+        body.xiaomi_mesh_poll_interval = intervalNum;
 
       // Always send all changed fields
       if (Object.keys(body).length === 0 && dirty) {
         // If dirty flag is set but body is empty, send all fields
         body.xiaomi_mesh_enabled = enabled;
         body.xiaomi_mesh_ip = ip;
-        body.xiaomi_mesh_poll_interval = interval;
+        body.xiaomi_mesh_poll_interval = intervalNum;
       }
 
       const res = await fetch("/api/v1/settings", {
@@ -211,7 +217,7 @@ export default function XiaomiMeshSettingsPage() {
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-500/10">
                 <Wifi className="h-4 w-4 text-orange-400" />
               </div>
-              <div>
+              <div className="flex-1">
                 <CardTitle className="text-base text-white">
                   Xiaomi Mesh Connection
                 </CardTitle>
@@ -220,25 +226,29 @@ export default function XiaomiMeshSettingsPage() {
                   topology, and device info.
                 </CardDescription>
               </div>
+              <div className="flex items-center gap-2">
+                <Label
+                  htmlFor="xiaomi-enabled"
+                  className="text-xs text-slate-400"
+                >
+                  {enabled ? "Enabled" : "Disabled"}
+                </Label>
+                <Switch
+                  id="xiaomi-enabled"
+                  checked={enabled}
+                  onCheckedChange={setEnabled}
+                />
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Enable toggle */}
-            <div className="flex items-center justify-between">
-              <Label htmlFor="xiaomi-enabled" className="text-xs text-slate-400">
-                Enable Integration
-              </Label>
-              <Switch
-                id="xiaomi-enabled"
-                checked={enabled}
-                onCheckedChange={setEnabled}
-              />
-            </div>
-
             {/* Router IP */}
             <div className="space-y-1.5">
               <Label htmlFor="xiaomi-ip" className="text-xs text-slate-400">
-                Router IP
+                Router IP{" "}
+                {savedIp && (
+                  <span className="text-emerald-500">(saved)</span>
+                )}
               </Label>
               <Input
                 id="xiaomi-ip"
@@ -248,6 +258,11 @@ export default function XiaomiMeshSettingsPage() {
                 className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
                 placeholder="10.10.0.199"
               />
+              {ip && !ipValid && (
+                <p className="text-xs text-rose-400">
+                  Enter a valid IPv4 address.
+                </p>
+              )}
             </div>
 
             {/* Password */}
@@ -273,6 +288,11 @@ export default function XiaomiMeshSettingsPage() {
                     : "Enter router password"
                 }
               />
+              {passwordRequired && (
+                <p className="text-xs text-rose-400">
+                  Password is required when integration is enabled.
+                </p>
+              )}
             </div>
 
             {/* Poll interval */}
@@ -293,7 +313,11 @@ export default function XiaomiMeshSettingsPage() {
                 className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
                 placeholder="30"
               />
-              <p className="text-xs text-slate-600">Min 10s, max 300s</p>
+              {pollInterval && !intervalValid && (
+                <p className="text-xs text-rose-400">
+                  Must be between 10 and 300 seconds.
+                </p>
+              )}
             </div>
 
             {/* Save status messages */}
@@ -346,7 +370,7 @@ export default function XiaomiMeshSettingsPage() {
             <div className="flex gap-2">
               <Button
                 onClick={handleSave}
-                disabled={!dirty || saveStatus === "loading"}
+                disabled={!canSave || saveStatus === "loading"}
                 className="bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
               >
                 {saveStatus === "loading" ? (
@@ -357,7 +381,7 @@ export default function XiaomiMeshSettingsPage() {
               <Button
                 variant="outline"
                 onClick={handleTest}
-                disabled={!ip || testStatus === "loading"}
+                disabled={!ip || !ipValid || testStatus === "loading"}
                 className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
               >
                 {testStatus === "loading" ? (

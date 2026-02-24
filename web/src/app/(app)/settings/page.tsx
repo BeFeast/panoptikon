@@ -46,6 +46,13 @@ const settingsGroups: SettingsGroup[] = [
         description: "Configure MikroTik or VyOS router integration.",
       },
       {
+        href: "/settings/xiaomi-mesh",
+        icon: <Wifi className="h-4 w-4 text-red-400" />,
+        iconBg: "bg-red-500/10",
+        title: "Xiaomi Mesh",
+        description: "Configure Xiaomi mesh router integration.",
+      },
+      {
         href: "/settings/caddy",
         icon: <Shield className="h-4 w-4 text-emerald-400" />,
         iconBg: "bg-emerald-500/10",
@@ -58,13 +65,6 @@ const settingsGroups: SettingsGroup[] = [
         iconBg: "bg-teal-500/10",
         title: "Unbound DNS",
         description: "Manage local DNS A records via Unbound.",
-      },
-      {
-        href: "/settings/xiaomi-mesh",
-        icon: <Wifi className="h-4 w-4 text-orange-400" />,
-        iconBg: "bg-orange-500/10",
-        title: "Xiaomi Mesh",
-        description: "Configure Xiaomi mesh router integration.",
       },
       {
         href: "/settings/tailscale",
