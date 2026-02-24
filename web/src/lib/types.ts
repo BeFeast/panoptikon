@@ -1989,3 +1989,35 @@ export interface AddCloudflareRouteRequest {
   service: string;
   path?: string;
 }
+
+// ─── Tailscale ──────────────────────────────────────────────
+
+export interface TailscalePeer {
+  hostname: string;
+  dns_name: string;
+  os: string;
+  tailscale_ips: string[];
+  online: boolean;
+  active: boolean;
+  exit_node: boolean;
+  exit_node_option: boolean;
+  rx_bytes: number;
+  tx_bytes: number;
+  last_seen: string | null;
+}
+
+export interface TailscaleStatusResponse {
+  connected: boolean;
+  backend_state: string;
+  hostname: string;
+  dns_name: string;
+  tailscale_ips: string[];
+  os: string;
+  exit_node: boolean;
+  exit_node_option: boolean;
+  subnet_routes: string[];
+  magic_dns_suffix: string;
+  peers: TailscalePeer[];
+  online_peers: number;
+  total_peers: number;
+}

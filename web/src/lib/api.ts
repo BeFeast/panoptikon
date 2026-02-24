@@ -2044,3 +2044,13 @@ export function deleteCloudflareTunnelRoute(
     `/api/v1/cloudflare-tunnel/routes/${encodeURIComponent(hostname)}`
   ) as unknown as Promise<import("./types").CloudflareTunnelWriteResponse>;
 }
+
+// ─── Tailscale ──────────────────────────────────────────────
+
+export function fetchTailscaleStatus(): Promise<
+  import("./types").TailscaleStatusResponse
+> {
+  return apiGet<import("./types").TailscaleStatusResponse>(
+    "/api/v1/tailscale/status"
+  );
+}

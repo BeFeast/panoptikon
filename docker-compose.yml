@@ -10,6 +10,7 @@ services:
       - "8080:8080"
     volumes:
       - panoptikon-data:/data
+      - tailscale-run:/var/run/tailscale:ro
     environment:
       - DATABASE_PATH=/data/panoptikon.db
       # VyOS router connection
@@ -81,6 +82,24 @@ services:
       caddy:
         condition: service_started
 
+  # ── Tailscale — secure remote access via WireGuard mesh VPN ───────────────
+  tailscale:
+    image: tailscale/tailscale:latest
+    container_name: panoptikon-tailscale
+    restart: unless-stopped
+    networks:
+      - panoptikon-net
+    environment:
+      - TS_AUTHKEY=${TS_AUTHKEY}
+      - TS_EXTRA_ARGS=--advertise-routes=10.10.0.0/24
+      - TS_STATE_DIR=/var/lib/tailscale
+    volumes:
+      - tailscale-state:/var/lib/tailscale
+      - tailscale-run:/var/run/tailscale
+      - /dev/net/tun:/dev/net/tun
+    cap_add:
+      - NET_ADMIN
+
 networks:
   panoptikon-net:
     name: panoptikon-net
@@ -90,3 +109,5 @@ volumes:
   panoptikon-data:
   caddy-data:
   caddy-config:
+  tailscale-state:
+  tailscale-run:

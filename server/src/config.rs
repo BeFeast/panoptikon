@@ -33,6 +33,10 @@ pub struct AppConfig {
     /// Expected layout: <dir>/panoptikon-agent-<platform>[.exe]
     #[serde(default)]
     pub agent_binaries_dir: Option<String>,
+
+    /// Path to the Tailscale daemon Unix socket.
+    #[serde(default)]
+    pub tailscale_socket: Option<String>,
 }
 
 fn default_listen() -> Option<String> {
@@ -205,6 +209,7 @@ impl Default for AppConfig {
             auth: AuthConfig::default(),
             retention: RetentionConfig::default(),
             agent_binaries_dir: None,
+            tailscale_socket: None,
         }
     }
 }
