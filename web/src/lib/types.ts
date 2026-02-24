@@ -1414,3 +1414,29 @@ export interface DnsUnboundConfigResponse {
   config: string;
   domain_count: number;
 }
+
+// ─── VPN Status Dashboard ────────────────────────────────
+
+export interface VpnPeerStatus {
+  name: string;
+  public_key: string | null;
+  endpoint: string | null;
+  allowed_ips: string[];
+  last_handshake: number | null;
+  rx_bytes: number | null;
+  tx_bytes: number | null;
+  is_online: boolean;
+}
+
+export interface VpnInterfaceStatus {
+  name: string;
+  status: string | null;
+  listen_port: number | null;
+  public_key: string | null;
+  peers: VpnPeerStatus[];
+}
+
+export interface VpnStatusResponse {
+  router_type: string;
+  interfaces: VpnInterfaceStatus[];
+}

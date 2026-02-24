@@ -28,7 +28,7 @@ async fn get_setting(state: &AppState, key: &str) -> Option<String> {
 
 /// Try to construct a MikroTik client from saved settings.
 /// Returns `None` if MikroTik is not configured or not enabled.
-async fn mikrotik_client(state: &AppState) -> Option<MikrotikClient> {
+pub(crate) async fn mikrotik_client(state: &AppState) -> Option<MikrotikClient> {
     let enabled = get_setting(state, "mikrotik_enabled")
         .await
         .map(|v| v == "1" || v == "true")

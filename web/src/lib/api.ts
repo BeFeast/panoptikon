@@ -95,6 +95,7 @@ import type {
   DnsIngestEntry,
   DnsIngestResponse,
   DnsPurgeResponse,
+  VpnStatusResponse,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -1574,4 +1575,10 @@ export function fetchDnsQueries(params?: {
 export function fetchDnsQueryStats(hours?: number): Promise<DnsQueryStats> {
   const qs = hours ? `?hours=${hours}` : "";
   return apiGet<DnsQueryStats>(`/api/v1/dns-queries/stats${qs}`);
+}
+
+// ─── VPN Status ──────────────────────────────────────────
+
+export function fetchVpnStatus(): Promise<VpnStatusResponse> {
+  return apiGet<VpnStatusResponse>("/api/v1/vpn/status");
 }

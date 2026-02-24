@@ -19,6 +19,7 @@ import {
   Server,
   Settings,
   Shield,
+  ShieldCheck,
   Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -37,6 +38,7 @@ const navItems = [
   { href: "/assets", label: "Assets", icon: Box },
   { href: "/ssh-hosts", label: "SSH Hosts", icon: Server },
   { href: "/router", label: "Router", icon: Router },
+  { href: "/vpn-status", label: "VPN Status", icon: ShieldCheck },
   { href: "/npm", label: "NPM", icon: Globe },
   { href: "/services", label: "Services", icon: Workflow },
   { href: "/topology", label: "Topology", icon: Network },

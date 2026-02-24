@@ -42,6 +42,7 @@ pub mod ssh_targets;
 pub mod topology;
 pub mod traffic;
 pub mod unbound;
+pub mod vpn_status;
 pub mod vyos;
 
 pub use error::AppError;
@@ -303,6 +304,8 @@ pub fn router(state: AppState) -> Router {
             "/vyos/dns/forwarding/domain-overrides/:domain",
             delete(vyos::delete_dns_domain_override),
         )
+        // VPN Status (unified across router types)
+        .route("/vpn/status", get(vpn_status::vpn_status))
         // WireGuard VPN
         .route("/vyos/wireguard", get(vyos::wireguard_list))
         .route("/vyos/wireguard", post(vyos::wireguard_create))
