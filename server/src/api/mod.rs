@@ -32,6 +32,7 @@ pub mod export;
 pub mod metrics;
 pub mod mikrotik;
 pub mod npm;
+pub mod qos;
 pub mod scanner;
 pub mod search;
 pub mod services;
@@ -423,6 +424,31 @@ pub fn router(state: AppState) -> Router {
         .route("/mikrotik/firewall", get(mikrotik::firewall))
         .route("/mikrotik/dns", get(mikrotik::dns))
         .route("/mikrotik/wireguard", get(mikrotik::wireguard))
+        // QoS / Traffic Shaping
+        .route("/qos/summary", get(qos::qos_summary))
+        .route("/qos/vyos/policies", get(qos::vyos_traffic_policies))
+        .route("/qos/vyos/policies", post(qos::create_vyos_traffic_policy))
+        .route(
+            "/qos/vyos/policies/:policy_type/:name",
+            delete(qos::delete_vyos_traffic_policy),
+        )
+        .route(
+            "/qos/mikrotik/simple-queues",
+            get(qos::mikrotik_simple_queues),
+        )
+        .route(
+            "/qos/mikrotik/simple-queues",
+            post(qos::create_mikrotik_simple_queue),
+        )
+        .route(
+            "/qos/mikrotik/simple-queues/:id",
+            put(qos::update_mikrotik_simple_queue),
+        )
+        .route(
+            "/qos/mikrotik/simple-queues/:id",
+            delete(qos::delete_mikrotik_simple_queue),
+        )
+        .route("/qos/mikrotik/queue-tree", get(qos::mikrotik_queue_tree))
         // Assets (IT inventory)
         .route("/assets", get(assets::list))
         .route("/assets", post(assets::create))

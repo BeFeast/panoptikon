@@ -382,6 +382,39 @@ impl MikrotikClient {
         self.send_no_body(Method::DELETE, &format!("/interface/vlan/{id}"))
             .await
     }
+
+    /// Fetch all simple queues.
+    pub async fn simple_queues(&self) -> Result<Vec<SimpleQueue>> {
+        let val = self.get("/queue/simple").await?;
+        let res: Vec<SimpleQueue> =
+            serde_json::from_value(val).context("failed to parse simple queues")?;
+        Ok(res)
+    }
+
+    /// Create a simple queue.
+    pub async fn create_simple_queue(&self, req: &SimpleQueueWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/queue/simple", req).await
+    }
+
+    /// Update a simple queue by RouterOS `.id`.
+    pub async fn update_simple_queue(&self, id: &str, req: &SimpleQueueWriteRequest) -> Result<()> {
+        self.send_json(Method::PATCH, &format!("/queue/simple/{id}"), req)
+            .await
+    }
+
+    /// Delete a simple queue by RouterOS `.id`.
+    pub async fn delete_simple_queue(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/queue/simple/{id}"))
+            .await
+    }
+
+    /// Fetch all queue tree entries.
+    pub async fn queue_tree(&self) -> Result<Vec<QueueTree>> {
+        let val = self.get("/queue/tree").await?;
+        let res: Vec<QueueTree> =
+            serde_json::from_value(val).context("failed to parse queue tree")?;
+        Ok(res)
+    }
 }
 
 #[cfg(test)]
