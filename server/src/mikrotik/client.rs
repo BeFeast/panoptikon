@@ -408,6 +408,23 @@ impl MikrotikClient {
             .await
     }
 
+    /// Create a firewall NAT rule.
+    pub async fn create_nat_rule(&self, req: &FirewallNatWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/ip/firewall/nat", req).await
+    }
+
+    /// Update a firewall NAT rule by RouterOS `.id`.
+    pub async fn update_nat_rule(&self, id: &str, req: &FirewallNatWriteRequest) -> Result<()> {
+        self.send_json(Method::PATCH, &format!("/ip/firewall/nat/{id}"), req)
+            .await
+    }
+
+    /// Delete a firewall NAT rule by RouterOS `.id`.
+    pub async fn delete_nat_rule(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/ip/firewall/nat/{id}"))
+            .await
+    }
+
     /// Fetch all queue tree entries.
     pub async fn queue_tree(&self) -> Result<Vec<QueueTree>> {
         let val = self.get("/queue/tree").await?;

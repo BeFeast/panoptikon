@@ -1624,6 +1624,67 @@ export function fetchDnsQueryStats(hours?: number): Promise<DnsQueryStats> {
   return apiGet<DnsQueryStats>(`/api/v1/dns-queries/stats${qs}`);
 }
 
+// ─── NAT / Port Forwarding ───────────────────────────────────
+
+export function fetchVyosDnatRules(): Promise<
+  import("./types").VyosDnatListResponse
+> {
+  return apiGet<import("./types").VyosDnatListResponse>(
+    "/api/v1/nat/vyos/rules"
+  );
+}
+
+export function createVyosDnatRule(
+  body: import("./types").VyosDnatRequest
+): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>("/api/v1/nat/vyos/rules", body);
+}
+
+export function updateVyosDnatRule(
+  number: number,
+  body: import("./types").VyosDnatRequest
+): Promise<VyosWriteResponse> {
+  return apiPut<VyosWriteResponse>(`/api/v1/nat/vyos/rules/${number}`, body);
+}
+
+export function deleteVyosDnatRule(
+  number: number
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/nat/vyos/rules/${number}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function fetchMikrotikNatRules(): Promise<
+  import("./types").MikrotikNatRuleResponse[]
+> {
+  return apiGet<import("./types").MikrotikNatRuleResponse[]>(
+    "/api/v1/nat/mikrotik/rules"
+  );
+}
+
+export function createMikrotikNatRule(
+  body: import("./types").MikrotikNatRuleRequest
+): Promise<void> {
+  return apiPost<void>("/api/v1/nat/mikrotik/rules", body);
+}
+
+export function updateMikrotikNatRule(
+  id: string,
+  body: import("./types").MikrotikNatRuleRequest
+): Promise<void> {
+  return apiPut<void>(
+    `/api/v1/nat/mikrotik/rules/${encodeURIComponent(id)}`,
+    body
+  );
+}
+
+export function deleteMikrotikNatRule(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/nat/mikrotik/rules/${encodeURIComponent(id)}`
+  );
+}
+
 // ─── QoS / Traffic Shaping ───────────────────────────────────
 
 export function fetchQosSummary(): Promise<

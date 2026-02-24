@@ -31,6 +31,7 @@ pub mod error;
 pub mod export;
 pub mod metrics;
 pub mod mikrotik;
+pub mod nat;
 pub mod npm;
 pub mod qos;
 pub mod scanner;
@@ -442,6 +443,15 @@ pub fn router(state: AppState) -> Router {
         .route("/mikrotik/firewall", get(mikrotik::firewall))
         .route("/mikrotik/dns", get(mikrotik::dns))
         .route("/mikrotik/wireguard", get(mikrotik::wireguard))
+        // NAT / Port Forwarding
+        .route("/nat/vyos/rules", get(nat::vyos_list_dnat))
+        .route("/nat/vyos/rules", post(nat::vyos_create_dnat))
+        .route("/nat/vyos/rules/:number", put(nat::vyos_update_dnat))
+        .route("/nat/vyos/rules/:number", delete(nat::vyos_delete_dnat))
+        .route("/nat/mikrotik/rules", get(nat::mikrotik_list_nat))
+        .route("/nat/mikrotik/rules", post(nat::mikrotik_create_nat))
+        .route("/nat/mikrotik/rules/:id", put(nat::mikrotik_update_nat))
+        .route("/nat/mikrotik/rules/:id", delete(nat::mikrotik_delete_nat))
         // QoS / Traffic Shaping
         .route("/qos/summary", get(qos::qos_summary))
         .route("/qos/vyos/policies", get(qos::vyos_traffic_policies))
@@ -557,10 +567,10 @@ async fn vyos_cache_invalidation(
     let is_mutating = !matches!(*request.method(), Method::GET);
     let response = next.run(request).await;
     if is_mutating && response.status().is_success() {
-        if path.contains("/vyos/") {
+        if path.contains("/vyos/") || path.contains("/nat/vyos/") {
             state.vyos_cache.clear();
         }
-        if path.contains("/mikrotik/") {
+        if path.contains("/mikrotik/") || path.contains("/nat/mikrotik/") {
             state.mikrotik_cache.clear();
         }
     }

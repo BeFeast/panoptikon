@@ -421,6 +421,49 @@ export interface NatDestinationRule {
   protocol: string | null;
 }
 
+export interface VyosDnatListResponse {
+  rules: NatDestinationRule[];
+}
+
+export interface VyosDnatRequest {
+  rule_number: number;
+  external_port: number;
+  internal_ip: string;
+  internal_port: number;
+  protocol?: string;
+  inbound_interface?: string;
+  description?: string;
+}
+
+export interface MikrotikNatRuleResponse {
+  id: string | null;
+  chain: string | null;
+  action: string | null;
+  protocol: string | null;
+  src_address: string | null;
+  dst_address: string | null;
+  dst_port: string | null;
+  to_addresses: string | null;
+  to_ports: string | null;
+  out_interface: string | null;
+  comment: string | null;
+  disabled: boolean;
+}
+
+export interface MikrotikNatRuleRequest {
+  chain: string;
+  action: string;
+  protocol?: string;
+  dst_port?: string;
+  to_addresses?: string;
+  to_ports?: string;
+  src_address?: string;
+  dst_address?: string;
+  out_interface?: string;
+  comment?: string;
+  disabled?: boolean;
+}
+
 // ─── Firewall ───────────────────────────────────────────
 
 export interface FirewallRule {

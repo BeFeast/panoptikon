@@ -173,6 +173,31 @@ pub struct FirewallNat {
     pub disabled: Option<String>,
 }
 
+/// MikroTik firewall NAT write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct FirewallNatWriteRequest {
+    pub chain: String,
+    pub action: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dst-port")]
+    pub dst_port: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "to-addresses")]
+    pub to_addresses: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "to-ports")]
+    pub to_ports: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "src-address")]
+    pub src_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dst-address")]
+    pub dst_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "out-interface")]
+    pub out_interface: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<String>,
+}
+
 /// MikroTik DNS settings (`/rest/ip/dns`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DnsSettings {
