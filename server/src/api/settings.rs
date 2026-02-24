@@ -38,6 +38,10 @@ pub struct SettingsResponse {
     pub unbound_control_path: Option<String>,
     // --- Caddy Reverse Proxy ---
     pub caddy_admin_url: Option<String>,
+    // --- MiWiFi (Xiaomi mesh router) ---
+    pub miwifi_url: Option<String>,
+    /// Never return the password to the frontend — just whether one is set.
+    pub miwifi_password_set: bool,
 }
 
 /// Request body for updating settings.
@@ -70,6 +74,9 @@ pub struct UpdateSettingsRequest {
     pub unbound_control_path: Option<String>,
     // --- Caddy Reverse Proxy ---
     pub caddy_admin_url: Option<String>,
+    // --- MiWiFi (Xiaomi mesh router) ---
+    pub miwifi_url: Option<String>,
+    pub miwifi_password: Option<String>,
 }
 
 /// Helper: read a string setting from the settings table.
@@ -155,6 +162,10 @@ pub async fn get_settings(
     // Caddy settings.
     let caddy_admin_url = get_setting(&state, "caddy_admin_url").await;
 
+    // MiWiFi settings.
+    let miwifi_url = get_setting(&state, "miwifi_url").await;
+    let miwifi_password_set = get_setting(&state, "miwifi_password").await.is_some();
+
     Ok(Json(SettingsResponse {
         webhook_url,
         vyos_url,
@@ -176,6 +187,8 @@ pub async fn get_settings(
         mikrotik_enabled,
         unbound_control_path,
         caddy_admin_url,
+        miwifi_url,
+        miwifi_password_set,
     }))
 }
 
@@ -308,6 +321,17 @@ pub async fn update_settings(
     if let Some(ref url) = body.caddy_admin_url {
         upsert_setting(&state, "caddy_admin_url", url).await?;
         info!(caddy_admin_url = %url, "Caddy admin URL updated");
+    }
+
+    // --- MiWiFi (Xiaomi mesh router) settings ---
+    if let Some(ref url) = body.miwifi_url {
+        upsert_setting(&state, "miwifi_url", url).await?;
+        info!(miwifi_url = %url, "MiWiFi URL updated");
+    }
+
+    if let Some(ref password) = body.miwifi_password {
+        upsert_setting(&state, "miwifi_password", password).await?;
+        info!("MiWiFi password updated");
     }
 
     // Return current state.

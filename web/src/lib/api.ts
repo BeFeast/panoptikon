@@ -1945,3 +1945,13 @@ export function fetchMeshTopology(): Promise<
     "/api/v1/mesh/topology"
   );
 }
+
+// ─── MiWiFi (Xiaomi Mesh Router) ────────────────────────────
+
+export function fetchMiWiFiStatus(): Promise<import("./types").MiWiFiStatus> {
+  return apiGet<import("./types").MiWiFiStatus>("/api/v1/miwifi/status");
+}
+
+export function fetchWifiClients(): Promise<import("./types").WifiClientsResponse> {
+  return apiGet<import("./types").WifiClientsResponse>("/api/v1/miwifi/wifi-clients");
+}

@@ -6,6 +6,7 @@ pub mod enrichment;
 pub mod mdns;
 pub mod mikrotik;
 pub mod mikrotik_traffic;
+pub mod miwifi;
 pub mod netflow;
 pub mod npm;
 pub mod oui;

@@ -33,9 +33,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDevice, resetDeviceCustom, fetchDeviceSysinfo, createAsset } from "@/lib/api";
+import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDevice, resetDeviceCustom, fetchDeviceSysinfo, createAsset, fetchWifiClients } from "@/lib/api";
 import type { DeviceEvent, UptimeStats, PortScanResult, DeviceCustomFields, CreateAssetRequest } from "@/lib/api";
-import type { Device, DeviceSysinfo } from "@/lib/types";
+import type { Device, DeviceSysinfo, WifiClientInfo, WifiClientsResponse } from "@/lib/types";
 import { formatPercent, timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
 import { getOsDisplay } from "@/lib/os-icons";
@@ -933,6 +933,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
           <TabsTrigger value="edit" className="flex-1">Edit</TabsTrigger>
           <TabsTrigger value="system" className="flex-1">System</TabsTrigger>
           <TabsTrigger value="ports" className="flex-1">Ports</TabsTrigger>
+          <TabsTrigger value="wifi" className="flex-1">WiFi</TabsTrigger>
           <TabsTrigger value="events" className="flex-1">Events</TabsTrigger>
           <TabsTrigger value="traffic" className="flex-1">Traffic</TabsTrigger>
         </TabsList>
@@ -951,6 +952,10 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
 
         <TabsContent value="ports">
           <DevicePortsTab deviceId={device.id} />
+        </TabsContent>
+
+        <TabsContent value="wifi">
+          <DeviceWifiTab deviceMac={device.mac} />
         </TabsContent>
 
         <TabsContent value="events">
@@ -1315,6 +1320,206 @@ function DeviceSystemTab({ deviceId }: { deviceId: string }) {
       </p>
     </div>
   );
+}
+
+// ─── Device WiFi Tab ────────────────────────────────────
+
+/** Signal strength color: green > -50, yellow > -70, red otherwise. */
+function signalColor(dbm: number): string {
+  if (dbm > -50) return "text-emerald-400";
+  if (dbm > -70) return "text-yellow-400";
+  return "text-red-400";
+}
+
+function signalBgColor(dbm: number): string {
+  if (dbm > -50) return "bg-emerald-500/20 text-emerald-400";
+  if (dbm > -70) return "bg-yellow-500/20 text-yellow-400";
+  return "bg-red-500/20 text-red-400";
+}
+
+function DeviceWifiTab({ deviceMac }: { deviceMac: string }) {
+  const [wifiData, setWifiData] = useState<WifiClientInfo | null | undefined>(undefined);
+  const [loading, setLoading] = useState(true);
+  const [notConfigured, setNotConfigured] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetchWifiClients()
+      .then((resp: WifiClientsResponse) => {
+        if (cancelled) return;
+        if (!resp.configured) {
+          setNotConfigured(true);
+          setWifiData(null);
+          return;
+        }
+        // Match by MAC address (case-insensitive).
+        const normalMac = deviceMac.toUpperCase().replace(/-/g, ":");
+        const match = resp.clients.find(
+          (c) => c.mac.toUpperCase().replace(/-/g, ":") === normalMac
+        );
+        setWifiData(match ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setWifiData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [deviceMac]);
+
+  if (loading) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-48 w-full bg-slate-800" />
+      </div>
+    );
+  }
+
+  if (notConfigured) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <WifiOff className="mb-2 h-8 w-8 text-slate-600" />
+        <p className="text-sm text-slate-500">MiWiFi not configured</p>
+        <p className="mt-1 text-xs text-slate-600">
+          Configure MiWiFi router settings to view WiFi data
+        </p>
+      </div>
+    );
+  }
+
+  if (!wifiData) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <WifiOff className="mb-2 h-8 w-8 text-slate-600" />
+        <p className="text-sm text-slate-500">No WiFi data available</p>
+        <p className="mt-1 text-xs text-slate-600">
+          This device was not found in the MiWiFi mesh network
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-lg border border-slate-700 bg-slate-900 p-4">
+        <div className="grid gap-4">
+          {/* Connection Type */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-400">Connection</span>
+            <Badge variant="outline" className={
+              wifiData.connection_type === "wifi"
+                ? "border-blue-500/30 bg-blue-500/20 text-blue-400"
+                : "border-slate-600 bg-slate-800 text-slate-400"
+            }>
+              {wifiData.connection_type === "wifi" ? (
+                <><Wifi className="mr-1 h-3 w-3" /> WiFi</>
+              ) : (
+                <><Network className="mr-1 h-3 w-3" /> Wired</>
+              )}
+            </Badge>
+          </div>
+
+          {/* Signal Strength */}
+          {wifiData.signal_dbm != null && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-400">Signal Strength</span>
+              <div className="flex items-center gap-2">
+                <span className={`rounded px-2 py-0.5 text-sm font-mono ${signalBgColor(wifiData.signal_dbm)}`}>
+                  {wifiData.signal_dbm} dBm
+                </span>
+                <div className="flex items-end gap-0.5">
+                  {[1, 2, 3, 4].map((bar) => {
+                    const threshold = -80 + (bar - 1) * 10;
+                    const active = wifiData.signal_dbm! >= threshold;
+                    return (
+                      <div
+                        key={bar}
+                        className={`w-1 rounded-sm ${active ? signalColor(wifiData.signal_dbm!) : "bg-slate-700"}`}
+                        style={{ height: `${bar * 4}px` }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Band */}
+          {wifiData.band && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-400">Band</span>
+              <Badge variant="outline" className={
+                wifiData.band === "5GHz"
+                  ? "border-violet-500/30 bg-violet-500/20 text-violet-400"
+                  : wifiData.band === "6GHz"
+                  ? "border-cyan-500/30 bg-cyan-500/20 text-cyan-400"
+                  : "border-amber-500/30 bg-amber-500/20 text-amber-400"
+              }>
+                {wifiData.band}
+              </Badge>
+            </div>
+          )}
+
+          {/* Mesh Node */}
+          {wifiData.mesh_node && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-400">Mesh Node</span>
+              <span className="text-sm text-slate-300">{wifiData.mesh_node}</span>
+            </div>
+          )}
+
+          {/* IP Address */}
+          {wifiData.ip && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-400">IP (from router)</span>
+              <span className="font-mono text-sm text-slate-300">{wifiData.ip}</span>
+            </div>
+          )}
+
+          {/* Speeds */}
+          {(wifiData.upload_speed || wifiData.download_speed) && (
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-slate-400">Speed</span>
+              <div className="flex items-center gap-3 text-xs">
+                {wifiData.download_speed && (
+                  <span className="flex items-center gap-1 text-emerald-400">
+                    <ArrowDown className="h-3 w-3" />
+                    {formatSpeed(wifiData.download_speed)}
+                  </span>
+                )}
+                {wifiData.upload_speed && (
+                  <span className="flex items-center gap-1 text-blue-400">
+                    <ArrowUp className="h-3 w-3" />
+                    {formatSpeed(wifiData.upload_speed)}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Online Status */}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-slate-400">Router Status</span>
+            <span className={`inline-flex items-center gap-1.5 text-sm ${wifiData.online ? "text-emerald-400" : "text-slate-500"}`}>
+              <span className={`inline-block h-2 w-2 rounded-full ${wifiData.online ? "bg-emerald-400" : "bg-slate-500"}`} />
+              {wifiData.online ? "Online" : "Offline"}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Format bytes/sec speed string to human-readable. */
+function formatSpeed(bytesPerSec: string): string {
+  const bps = parseFloat(bytesPerSec);
+  if (isNaN(bps) || bps === 0) return "0 B/s";
+  if (bps >= 1_000_000) return `${(bps / 1_000_000).toFixed(1)} MB/s`;
+  if (bps >= 1_000) return `${(bps / 1_000).toFixed(1)} KB/s`;
+  return `${Math.round(bps)} B/s`;
 }
 
 // ─── Device State Timeline ──────────────────────────────

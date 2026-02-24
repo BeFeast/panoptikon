@@ -33,6 +33,7 @@ pub mod export;
 pub mod mesh;
 pub mod metrics;
 pub mod mikrotik;
+pub mod miwifi;
 pub mod nat;
 pub mod npm;
 pub mod qos;
@@ -71,6 +72,8 @@ pub struct AppState {
     pub mikrotik_cache: Arc<crate::mikrotik::client::MikrotikCache>,
     /// Shared reqwest::Client for Caddy Admin API.
     pub caddy_http: reqwest::Client,
+    /// Shared reqwest::Client for Xiaomi MiWiFi API.
+    pub miwifi_http: reqwest::Client,
 }
 
 impl AppState {
@@ -91,6 +94,7 @@ impl AppState {
                 .timeout(std::time::Duration::from_secs(10))
                 .build()
                 .expect("caddy HTTP client"),
+            miwifi_http: crate::miwifi::client::shared_http_client(),
         }
     }
 }
@@ -521,6 +525,9 @@ pub fn router(state: AppState) -> Router {
         .route("/qos/mikrotik/queue-tree", get(qos::mikrotik_queue_tree))
         // VPN Status Dashboard
         .route("/vpn-status", get(vpn_status::vpn_status))
+        // MiWiFi (Xiaomi mesh router)
+        .route("/miwifi/status", get(miwifi::status))
+        .route("/miwifi/wifi-clients", get(miwifi::wifi_clients))
         // NAT / Port Forwarding
         .route("/nat/summary", get(nat::summary))
         .route("/nat/vyos/rules", get(nat::vyos_list))

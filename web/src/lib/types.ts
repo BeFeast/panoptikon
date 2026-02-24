@@ -529,6 +529,9 @@ export interface SettingsData {
   unbound_control_path: string | null;
   // Caddy Reverse Proxy
   caddy_admin_url: string | null;
+  // MiWiFi (Xiaomi mesh router)
+  miwifi_url: string | null;
+  miwifi_password_set: boolean;
 }
 
 // ─── Nginx Proxy Manager ─────────────────────────────────
@@ -1825,4 +1828,37 @@ export interface MeshTopologyResponse {
   nodes: MeshNode[];
   main_ip: string;
   total_devices: number;
+}
+
+// ─── MiWiFi (Xiaomi Mesh Router) ────────────────────────────
+
+export interface MiWiFiStatus {
+  configured: boolean;
+  reachable: boolean;
+}
+
+export interface WifiClientInfo {
+  mac: string;
+  /** Signal strength in dBm. */
+  signal_dbm: number | null;
+  /** WiFi band: "2.4GHz", "5GHz", "6GHz". */
+  band: string | null;
+  /** Connection type: "wifi" or "wired". */
+  connection_type: string;
+  /** Parent mesh node name. */
+  mesh_node: string | null;
+  /** Device IP address. */
+  ip: string | null;
+  /** Whether device is currently online. */
+  online: boolean;
+  /** Upload speed (bytes/sec string from router). */
+  upload_speed: string | null;
+  /** Download speed (bytes/sec string from router). */
+  download_speed: string | null;
+}
+
+export interface WifiClientsResponse {
+  configured: boolean;
+  reachable: boolean;
+  clients: WifiClientInfo[];
 }
