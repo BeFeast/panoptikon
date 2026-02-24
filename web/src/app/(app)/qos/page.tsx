@@ -268,6 +268,9 @@ export default function QosPage() {
                 className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
               >
                 VyOS Policies
+                <span className="ml-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] text-amber-400">
+                  Legacy
+                </span>
               </TabsTrigger>
             )}
             {summary?.mikrotik_available && (

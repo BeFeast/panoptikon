@@ -223,6 +223,12 @@ function StatusHeader({ status }: { status: RouterStatus }) {
         </div>
       </div>
       <div className="flex items-center gap-2">
+        <Badge
+          variant="outline"
+          className="border-amber-500/30 bg-amber-500/10 text-amber-400"
+        >
+          Legacy
+        </Badge>
         {status.reachable ? (
           <Badge
             variant="outline"
@@ -6008,10 +6014,23 @@ export default function RouterPage() {
               >
                 <Router className="mr-1.5 h-3.5 w-3.5" />
                 VyOS
+                <Badge variant="outline" className="ml-1.5 border-amber-500/30 bg-amber-500/10 text-amber-400 text-[10px] px-1.5 py-0">
+                  Legacy
+                </Badge>
               </Button>
             )}
           </div>
         ) : null}
+
+        {/* VyOS legacy note */}
+        {settingsLoaded && routerType === "vyos" && (
+          <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
+            <p className="text-xs text-amber-400">
+              VyOS support is legacy. MikroTik is the recommended router platform for new deployments.
+            </p>
+          </div>
+        )}
 
         {/* Content area — skeletons until settings arrive, then router-specific content */}
         {!settingsLoaded ? (
