@@ -28,6 +28,7 @@ describe("getDefaultRouterType", () => {
         mikrotik_enabled: true,
         vyos_url: null,
         vyos_api_key_set: false,
+        show_legacy_routers: false,
       }),
     ).toBe("mikrotik");
   });
@@ -38,18 +39,31 @@ describe("getDefaultRouterType", () => {
         mikrotik_enabled: true,
         vyos_url: "https://vyos.local",
         vyos_api_key_set: true,
+        show_legacy_routers: true,
       }),
     ).toBe("mikrotik");
   });
 
-  it("returns vyos when only vyos is configured", () => {
+  it("returns vyos when only vyos is configured and legacy routers are enabled", () => {
     expect(
       getDefaultRouterType({
         mikrotik_enabled: false,
         vyos_url: "https://vyos.local",
         vyos_api_key_set: true,
+        show_legacy_routers: true,
       }),
     ).toBe("vyos");
+  });
+
+  it("returns mikrotik when vyos is configured but legacy routers are disabled", () => {
+    expect(
+      getDefaultRouterType({
+        mikrotik_enabled: false,
+        vyos_url: "https://vyos.local",
+        vyos_api_key_set: true,
+        show_legacy_routers: false,
+      }),
+    ).toBe("mikrotik");
   });
 
   it("returns mikrotik when vyos_url is set but api key is not", () => {
@@ -58,6 +72,7 @@ describe("getDefaultRouterType", () => {
         mikrotik_enabled: false,
         vyos_url: "https://vyos.local",
         vyos_api_key_set: false,
+        show_legacy_routers: true,
       }),
     ).toBe("mikrotik");
   });
@@ -68,6 +83,7 @@ describe("getDefaultRouterType", () => {
         mikrotik_enabled: false,
         vyos_url: null,
         vyos_api_key_set: false,
+        show_legacy_routers: false,
       }),
     ).toBe("mikrotik");
   });

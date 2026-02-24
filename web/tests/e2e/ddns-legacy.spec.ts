@@ -1,4 +1,27 @@
 import { test, expect, login } from "../../e2e/fixtures";
+import type { Page } from "@playwright/test";
+
+async function enableLegacyVyos(page: Page) {
+  const response = await page.request.patch("/api/v1/settings", {
+    data: {
+      show_legacy_routers: true,
+      vyos_url: "http://vyos.local",
+      vyos_api_key: "test-api-key",
+    },
+  });
+  expect(response.ok()).toBeTruthy();
+}
+
+async function disableLegacyVyos(page: Page) {
+  const response = await page.request.patch("/api/v1/settings", {
+    data: {
+      show_legacy_routers: false,
+      vyos_url: "",
+      vyos_api_key: "",
+    },
+  });
+  expect(response.ok()).toBeTruthy();
+}
 
 test.describe("Settings page — legacy section visibility", () => {
   test.beforeEach(async ({ page }) => {
@@ -15,11 +38,9 @@ test.describe("Settings page — legacy section visibility", () => {
   test("NPM card is inside the Legacy / Optional section", async ({
     page,
   }) => {
-    // Find the legacy section heading, then verify the NPM card follows it
     const legacyHeading = page.getByText("Legacy / Optional", { exact: true });
     await expect(legacyHeading).toBeVisible({ timeout: 10000 });
 
-    // The NPM card should be visible on the settings page
     await expect(page.getByText("Nginx Proxy Manager")).toBeVisible();
     await expect(
       page.getByText("Legacy reverse proxy — consider migrating to Caddy."),
@@ -33,15 +54,15 @@ test.describe("Settings page — legacy section visibility", () => {
   });
 
   test("NPM is not in the Integrations section", async ({ page }) => {
-    // The Integrations section should contain Router, Caddy, DNS, etc.
-    // but NOT Nginx Proxy Manager
     const integrationsHeading = page.getByText("Integrations", { exact: true });
     await expect(integrationsHeading).toBeVisible({ timeout: 10000 });
 
-    // Get the section between "Integrations" and "Network" headings
-    // Verify Router is present (as a link in Integrations)
-    await expect(page.getByText("Configure MikroTik or VyOS router integration.")).toBeVisible();
-    await expect(page.getByText("Primary reverse proxy — manage hosts via Caddy.")).toBeVisible();
+    await expect(
+      page.getByText(/Configure MikroTik( or VyOS)? router integration\./),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Primary reverse proxy — manage hosts via Caddy."),
+    ).toBeVisible();
 
     await page.screenshot({
       path: "tests/screenshots/settings-legacy-section.png",
@@ -62,76 +83,89 @@ test.describe("DDNS page — MikroTik default selection", () => {
     ).toBeVisible({ timeout: 15000 });
   });
 
-  test("Add Entry dialog defaults Router Type to MikroTik", async ({
+  test("Add Entry dialog hides Router Type selector when legacy routers are off", async ({
     page,
   }) => {
-    await expect(
-      page.getByRole("heading", { name: "Dynamic DNS", level: 1 }),
-    ).toBeVisible({ timeout: 15000 });
-
-    // Open the Add Entry dialog
     await page.getByRole("button", { name: "Add Entry" }).click();
-    await expect(page.locator('[role="dialog"]')).toBeVisible({
-      timeout: 5000,
-    });
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
 
-    // The Router Type selector should default to MikroTik
-    const routerSelect = page
-      .locator('[role="dialog"]')
-      .locator("select")
-      .filter({ has: page.locator('option[value="mikrotik"]') });
-    await expect(routerSelect).toHaveValue("mikrotik");
-
-    await page.screenshot({
-      path: "tests/screenshots/ddns-add-dialog-mikrotik-default.png",
-    });
+    await expect(
+      dialog.locator("label").filter({ hasText: "Router Type" }),
+    ).toHaveCount(0);
+    await expect(dialog.locator('option[value="vyos"]')).toHaveCount(0);
   });
 
-  test("VyOS is available as a router type option in the selector", async ({
+  test("Add Entry dialog defaults Router Type to MikroTik when legacy routers are enabled", async ({
     page,
   }) => {
-    await expect(
-      page.getByRole("heading", { name: "Dynamic DNS", level: 1 }),
-    ).toBeVisible({ timeout: 15000 });
+    await enableLegacyVyos(page);
+    try {
+      await page.goto("/ddns");
+      await page.getByRole("button", { name: "Add Entry" }).click();
+      await expect(page.locator('[role="dialog"]')).toBeVisible({
+        timeout: 5000,
+      });
 
-    // Open the Add Entry dialog
-    await page.getByRole("button", { name: "Add Entry" }).click();
-    await expect(page.locator('[role="dialog"]')).toBeVisible({
-      timeout: 5000,
-    });
+      const routerSelect = page
+        .locator('[role="dialog"]')
+        .locator("select")
+        .filter({ has: page.locator('option[value="mikrotik"]') });
+      await expect(routerSelect).toHaveValue("mikrotik");
 
-    // VyOS should be available as an option
-    const vyosOption = page
-      .locator('[role="dialog"]')
-      .locator('option[value="vyos"]');
-    await expect(vyosOption).toBeAttached();
-    await expect(vyosOption).toHaveText("VyOS");
+      await page.screenshot({
+        path: "tests/screenshots/ddns-add-dialog-mikrotik-default.png",
+      });
+    } finally {
+      await disableLegacyVyos(page);
+    }
+  });
+
+  test("VyOS is available as a router type option in the selector when legacy routers are enabled", async ({
+    page,
+  }) => {
+    await enableLegacyVyos(page);
+    try {
+      await page.goto("/ddns");
+      await page.getByRole("button", { name: "Add Entry" }).click();
+      await expect(page.locator('[role="dialog"]')).toBeVisible({
+        timeout: 5000,
+      });
+
+      const vyosOption = page
+        .locator('[role="dialog"]')
+        .locator('option[value="vyos"]');
+      await expect(vyosOption).toBeAttached();
+      await expect(vyosOption).toHaveText("VyOS (Legacy)");
+    } finally {
+      await disableLegacyVyos(page);
+    }
   });
 
   test("MikroTik is the first option in the Router Type selector", async ({
     page,
   }) => {
-    await expect(
-      page.getByRole("heading", { name: "Dynamic DNS", level: 1 }),
-    ).toBeVisible({ timeout: 15000 });
+    await enableLegacyVyos(page);
+    try {
+      await page.goto("/ddns");
+      await page.getByRole("button", { name: "Add Entry" }).click();
+      await expect(page.locator('[role="dialog"]')).toBeVisible({
+        timeout: 5000,
+      });
 
-    // Open the Add Entry dialog
-    await page.getByRole("button", { name: "Add Entry" }).click();
-    await expect(page.locator('[role="dialog"]')).toBeVisible({
-      timeout: 5000,
-    });
+      const routerSelect = page
+        .locator('[role="dialog"]')
+        .locator("select")
+        .filter({ has: page.locator('option[value="mikrotik"]') });
+      const firstOption = routerSelect.locator("option").first();
+      await expect(firstOption).toHaveAttribute("value", "mikrotik");
+      await expect(firstOption).toHaveText("MikroTik");
 
-    // Get all options in the router type selector
-    const routerSelect = page
-      .locator('[role="dialog"]')
-      .locator("select")
-      .filter({ has: page.locator('option[value="mikrotik"]') });
-    const firstOption = routerSelect.locator("option").first();
-    await expect(firstOption).toHaveAttribute("value", "mikrotik");
-    await expect(firstOption).toHaveText("MikroTik");
-
-    await page.screenshot({
-      path: "tests/screenshots/ddns-router-type-options.png",
-    });
+      await page.screenshot({
+        path: "tests/screenshots/ddns-router-type-options.png",
+      });
+    } finally {
+      await disableLegacyVyos(page);
+    }
   });
 });
