@@ -365,6 +365,7 @@ export interface DhcpSubnetConfig {
   name_server: string | null;
   domain_name: string | null;
   lease: string | null;
+  ntp_server: string | null;
   ranges: DhcpPoolRange[];
   static_mapping_count: number;
   disabled: boolean;
@@ -377,6 +378,30 @@ export interface DhcpSharedNetwork {
 
 export interface DhcpServerConfig {
   shared_networks: DhcpSharedNetwork[];
+}
+
+export interface UpdateDhcpSubnetRequest {
+  default_router?: string;
+  name_server?: string;
+  domain_name?: string;
+  lease?: number;
+  ntp_server?: string;
+}
+
+export interface CreateDhcpSubnetRequest {
+  network: string;
+  subnet: string;
+  default_router?: string;
+  name_server?: string;
+  domain_name?: string;
+  lease?: number;
+  range_start?: string;
+  range_stop?: string;
+}
+
+export interface DhcpPoolRangeRequest {
+  start: string;
+  stop: string;
 }
 
 export interface VyosWriteResponse {
