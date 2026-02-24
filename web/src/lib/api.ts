@@ -857,6 +857,10 @@ export function updateSettings(body: {
   mikrotik_enabled?: boolean;
   unbound_control_path?: string;
   caddy_admin_url?: string;
+  xiaomi_mesh_ip?: string;
+  xiaomi_mesh_password?: string;
+  xiaomi_mesh_enabled?: boolean;
+  xiaomi_mesh_poll_interval?: number;
 }): Promise<SettingsData> {
   return apiPatch<SettingsData>("/api/v1/settings", body);
 }
@@ -1933,5 +1937,16 @@ export function updateMikrotikNatRule(
 export function deleteMikrotikNatRule(id: string): Promise<void> {
   return apiDelete(
     `/api/v1/nat/mikrotik/rules/${encodeURIComponent(id)}`
+  );
+}
+
+// ─── Xiaomi Mesh ─────────────────────────────────────────
+
+export function testXiaomiMeshConnection(
+  ip?: string
+): Promise<import("./types").XiaomiTestConnectionResponse> {
+  return apiPost<import("./types").XiaomiTestConnectionResponse>(
+    "/api/v1/xiaomi-mesh/test-connection",
+    { ip }
   );
 }

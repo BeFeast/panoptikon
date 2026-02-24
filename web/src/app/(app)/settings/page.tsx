@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ShieldAlert,
   Server,
+  Wifi,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageTransition } from "@/components/PageTransition";
@@ -41,6 +42,13 @@ const settingsGroups: SettingsGroup[] = [
         iconBg: "bg-blue-500/10",
         title: "Router",
         description: "Configure MikroTik or VyOS router integration.",
+      },
+      {
+        href: "/settings/xiaomi-mesh",
+        icon: <Wifi className="h-4 w-4 text-red-400" />,
+        iconBg: "bg-red-500/10",
+        title: "Xiaomi Mesh",
+        description: "Configure Xiaomi mesh router integration.",
       },
       {
         href: "/settings/npm",

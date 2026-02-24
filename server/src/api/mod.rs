@@ -47,6 +47,7 @@ pub mod traffic;
 pub mod unbound;
 pub mod vpn_status;
 pub mod vyos;
+pub mod xiaomi_mesh;
 
 pub use error::AppError;
 
@@ -491,6 +492,11 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/mikrotik/dns", get(mikrotik::dns))
         .route("/mikrotik/wireguard", get(mikrotik::wireguard))
+        // Xiaomi Mesh
+        .route(
+            "/xiaomi-mesh/test-connection",
+            post(xiaomi_mesh::test_connection),
+        )
         // QoS / Traffic Shaping
         .route("/qos/summary", get(qos::qos_summary))
         .route("/qos/vyos/policies", get(qos::vyos_traffic_policies))
