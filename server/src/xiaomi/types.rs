@@ -372,7 +372,11 @@ pub struct RomUpdateInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UptimeResponse {
-    #[serde(default, deserialize_with = "de_opt_string_from_any")]
+    #[serde(
+        default,
+        rename = "upTime",
+        deserialize_with = "de_opt_string_from_any"
+    )]
     pub uptime: Option<String>,
 }
 
