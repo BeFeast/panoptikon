@@ -33,9 +33,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDevice, resetDeviceCustom, fetchDeviceSysinfo, createAsset } from "@/lib/api";
+import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDevice, resetDeviceCustom, fetchDeviceSysinfo, createAsset, fetchXiaomiWifiDevices, fetchXiaomiDevices, fetchXiaomiStatus } from "@/lib/api";
 import type { DeviceEvent, UptimeStats, PortScanResult, DeviceCustomFields, CreateAssetRequest } from "@/lib/api";
-import type { Device, DeviceSysinfo } from "@/lib/types";
+import type { Device, DeviceSysinfo, DeviceWifiInfo, XiaomiWifiDevice, XiaomiDevice } from "@/lib/types";
 import { formatPercent, timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
 import { getOsDisplay } from "@/lib/os-icons";
@@ -78,6 +78,7 @@ export default function DevicesPage() {
   const [sortField, setSortField] = useState<SortField>("last_seen_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [addAssetOpen, setAddAssetOpen] = useState(false);
+  const [wifiMap, setWifiMap] = useState<Record<string, DeviceWifiInfo>>({});
 
   const load = useCallback(async () => {
     try {
@@ -92,6 +93,75 @@ export default function DevicesPage() {
     const interval = setInterval(load, 15_000);
     return () => clearInterval(interval);
   }, [load]);
+
+  // Fetch Xiaomi WiFi data for device list columns
+  useEffect(() => {
+    const loadWifi = async () => {
+      try {
+        // Check if Xiaomi is configured first
+        const status = await fetchXiaomiStatus();
+        if (!status.configured) return;
+
+        // Fetch both APIs in parallel and merge client-side
+        const [wifiDevices, allDevices] = await Promise.all([
+          fetchXiaomiWifiDevices(),
+          fetchXiaomiDevices(),
+        ]);
+
+        // Build device lookup by MAC for speed/online/parent info
+        const deviceByMac: Record<string, XiaomiDevice> = {};
+        for (const d of allDevices) {
+          if (d.mac) deviceByMac[d.mac.toUpperCase()] = d;
+        }
+
+        const map: Record<string, DeviceWifiInfo> = {};
+
+        // Merge WiFi signal data with device data
+        for (const w of wifiDevices) {
+          if (!w.mac) continue;
+          const mac = w.mac.toUpperCase();
+          const dev = deviceByMac[mac];
+          map[mac] = {
+            mac,
+            signal_dbm: w.signal ?? null,
+            band: w.band ?? null,
+            connection_type: "wifi",
+            mesh_node: dev?.parent_id ?? null,
+            router_name: dev?.name ?? w.name ?? null,
+            upload_bps: dev?.upload_speed ? parseFloat(dev.upload_speed) : null,
+            download_bps: dev?.download_speed ? parseFloat(dev.download_speed) : null,
+            is_online: dev?.online ?? true,
+          };
+        }
+
+        // Add wired devices (in device list but not in wifi list)
+        for (const d of allDevices) {
+          if (!d.mac) continue;
+          const mac = d.mac.toUpperCase();
+          if (!map[mac]) {
+            map[mac] = {
+              mac,
+              signal_dbm: null,
+              band: null,
+              connection_type: "wired",
+              mesh_node: d.parent_id ?? null,
+              router_name: d.name ?? null,
+              upload_bps: d.upload_speed ? parseFloat(d.upload_speed) : null,
+              download_bps: d.download_speed ? parseFloat(d.download_speed) : null,
+              is_online: d.online,
+            };
+          }
+        }
+
+        setWifiMap(map);
+      } catch {
+        // WiFi data is optional — silently ignore
+      }
+    };
+    loadWifi();
+    const interval = setInterval(loadWifi, 30_000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Keep a ref to current devices so WS handler can look up names without stale closure
   const devicesRef = useRef(devices);
@@ -439,6 +509,7 @@ export default function DevicesPage() {
           sortDir={sortDir}
           onSort={toggleSort}
           onSelect={setSelectedDevice}
+          wifiMap={wifiMap}
         />
       )}
 
@@ -655,13 +726,16 @@ function DevicesTable({
   sortDir,
   onSort,
   onSelect,
+  wifiMap,
 }: {
   devices: Device[];
   sortField: SortField;
   sortDir: SortDir;
   onSort: (field: SortField) => void;
   onSelect: (device: Device) => void;
+  wifiMap: Record<string, DeviceWifiInfo>;
 }) {
+  const hasWifi = Object.keys(wifiMap).length > 0;
   const [wakingId, setWakingId] = useState<string | null>(null);
 
   const handleWake = async (e: React.MouseEvent, device: Device) => {
@@ -701,6 +775,13 @@ function DevicesTable({
             <TableHead className="text-slate-400">MAC</TableHead>
             <TableHead className="text-slate-400">Vendor</TableHead>
             <TableHead className="text-slate-400">Agent</TableHead>
+            {hasWifi && (
+              <>
+                <TableHead className="text-slate-400">Signal</TableHead>
+                <TableHead className="text-slate-400">Band</TableHead>
+                <TableHead className="text-slate-400">Mesh Node</TableHead>
+              </>
+            )}
             <TableHead className="text-slate-400">24h Status</TableHead>
             <TableHead
               className="cursor-pointer select-none text-slate-400 hover:text-white"
@@ -784,6 +865,38 @@ function DevicesTable({
                     ? `${formatPercent(device.agent.cpu_percent)} / ${formatPercent(device.agent.memory_percent)}`
                     : "—"}
                 </TableCell>
+                {hasWifi && (() => {
+                  const wifi = wifiMap[device.mac?.toUpperCase()];
+                  return (
+                    <>
+                      <TableCell className="text-xs">
+                        {wifi?.signal_dbm != null ? (
+                          <span className={
+                            wifi.signal_dbm > -50 ? "text-emerald-400" :
+                            wifi.signal_dbm > -70 ? "text-yellow-400" :
+                            "text-rose-400"
+                          }>
+                            {wifi.signal_dbm} dBm
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {wifi?.band ? (
+                          <Badge variant="outline" className="text-[10px] border-sky-500/50 text-sky-400">
+                            {wifi.band}
+                          </Badge>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs text-slate-400">
+                        {wifi?.mesh_node ?? "—"}
+                      </TableCell>
+                    </>
+                  );
+                })()}
                 <TableCell>
                   {device.status_timeline && device.status_timeline.length > 0 ? (
                     <StatusSparkline timeline={device.status_timeline} width={72} height={10} />
@@ -935,6 +1048,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
           <TabsTrigger value="ports" className="flex-1">Ports</TabsTrigger>
           <TabsTrigger value="events" className="flex-1">Events</TabsTrigger>
           <TabsTrigger value="traffic" className="flex-1">Traffic</TabsTrigger>
+          <TabsTrigger value="wifi" className="flex-1">WiFi</TabsTrigger>
         </TabsList>
 
         <TabsContent value="info">
@@ -959,6 +1073,10 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
 
         <TabsContent value="traffic">
           <DeviceTrafficChart deviceId={device.id} />
+        </TabsContent>
+
+        <TabsContent value="wifi">
+          <DeviceWifiTab mac={device.mac} />
         </TabsContent>
       </Tabs>
     </>
@@ -2326,6 +2444,176 @@ function AddAssetDialog({
     </Dialog>
   );
 }
+
+// ─── Device WiFi Tab ────────────────────────────────────
+
+function SignalBadge({ dbm }: { dbm: number }) {
+  let color = "bg-red-500/20 text-red-400 border-red-500/30";
+  if (dbm > -50) color = "bg-green-500/20 text-green-400 border-green-500/30";
+  else if (dbm > -70) color = "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
+  return (
+    <Badge variant="outline" className={`font-mono text-xs ${color}`}>
+      {dbm} dBm
+    </Badge>
+  );
+}
+
+function DeviceWifiTab({ mac }: { mac: string }) {
+  const [wifiInfo, setWifiInfo] = useState<DeviceWifiInfo | null | undefined>(undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const status = await fetchXiaomiStatus();
+        if (!status.configured) { if (!cancelled) setWifiInfo(null); return; }
+
+        const [wifiDevices, allDevices] = await Promise.all([
+          fetchXiaomiWifiDevices(),
+          fetchXiaomiDevices(),
+        ]);
+
+        const normalizedMac = mac.toUpperCase();
+
+        // Look for WiFi info
+        const wifiDev = wifiDevices.find((w) => w.mac?.toUpperCase() === normalizedMac);
+        const devInfo = allDevices.find((d) => d.mac?.toUpperCase() === normalizedMac);
+
+        if (!wifiDev && !devInfo) {
+          if (!cancelled) setWifiInfo(null);
+          return;
+        }
+
+        const info: DeviceWifiInfo = {
+          mac: normalizedMac,
+          signal_dbm: wifiDev?.signal ?? null,
+          band: wifiDev?.band ?? null,
+          connection_type: wifiDev ? "wifi" : "wired",
+          mesh_node: devInfo?.parent_id ?? null,
+          router_name: devInfo?.name ?? wifiDev?.name ?? null,
+          upload_bps: devInfo?.upload_speed ? parseFloat(devInfo.upload_speed) : null,
+          download_bps: devInfo?.download_speed ? parseFloat(devInfo.download_speed) : null,
+          is_online: devInfo?.online ?? true,
+        };
+
+        if (!cancelled) setWifiInfo(info);
+      } catch {
+        if (!cancelled) setWifiInfo(null);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [mac]);
+
+  if (wifiInfo === undefined) {
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-48 w-full bg-slate-800" />
+      </div>
+    );
+  }
+
+  if (!wifiInfo) {
+    return (
+      <div className="flex flex-col items-center justify-center py-8 text-center">
+        <Wifi className="mb-2 h-8 w-8 text-slate-600" />
+        <p className="text-sm text-slate-500">No WiFi data available</p>
+        <p className="mt-1 text-xs text-slate-600">
+          Configure Xiaomi MiWiFi integration in Settings to see WiFi details
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2">
+        <Wifi className="h-4 w-4 text-cyan-400" />
+        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+          WiFi Connection
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        {/* Connection Type */}
+        <InfoRow label="Connection" value={wifiInfo.connection_type === "wifi" ? "Wireless" : "Wired"} />
+
+        {/* Signal Strength */}
+        {wifiInfo.signal_dbm != null && (
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
+              Signal
+            </span>
+            <SignalBadge dbm={wifiInfo.signal_dbm} />
+          </div>
+        )}
+
+        {/* Band */}
+        {wifiInfo.band && (
+          <div className="flex items-baseline justify-between gap-4">
+            <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
+              Band
+            </span>
+            <Badge variant="outline" className="border-slate-600 text-slate-300 text-xs">
+              {wifiInfo.band}
+            </Badge>
+          </div>
+        )}
+
+        {/* Mesh Node */}
+        {wifiInfo.mesh_node && (
+          <InfoRow label="Mesh Node" value={wifiInfo.mesh_node} />
+        )}
+
+        {/* Router Name */}
+        {wifiInfo.router_name && (
+          <InfoRow label="Router Name" value={wifiInfo.router_name} />
+        )}
+
+        {/* Upload/Download Speed */}
+        {(wifiInfo.upload_bps != null || wifiInfo.download_bps != null) && (
+          <>
+            <Separator className="bg-slate-800" />
+            <div className="flex items-center gap-2">
+              <Network className="h-4 w-4 text-slate-500" />
+              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                Current Speed
+              </p>
+            </div>
+            {wifiInfo.download_bps != null && (
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
+                  Download
+                </span>
+                <span className="font-mono text-sm text-green-400">
+                  {formatSpeed(wifiInfo.download_bps)}
+                </span>
+              </div>
+            )}
+            {wifiInfo.upload_bps != null && (
+              <div className="flex items-baseline justify-between gap-4">
+                <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
+                  Upload
+                </span>
+                <span className="font-mono text-sm text-blue-400">
+                  {formatSpeed(wifiInfo.upload_bps)}
+                </span>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Format bytes/s to a human-readable speed string. */
+function formatSpeed(bps: number): string {
+  if (bps < 1024) return `${bps} B/s`;
+  if (bps < 1024 * 1024) return `${(bps / 1024).toFixed(1)} KB/s`;
+  return `${(bps / (1024 * 1024)).toFixed(1)} MB/s`;
+}
+
+// ─── InfoRow Helper ─────────────────────────────────────
 
 function InfoRow({
   label,
