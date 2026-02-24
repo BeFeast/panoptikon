@@ -1931,3 +1931,18 @@ export interface XiaomiMeshTestConnectionResponse {
   firmware: string | null;
   router_name: string | null;
 }
+
+// ─── Device WiFi Info (merged from wifi-devices + devices) ──
+
+/** Merged WiFi info for a single device (built client-side from Xiaomi APIs). */
+export interface DeviceWifiInfo {
+  mac: string;
+  signal_dbm: number | null;
+  band: string | null;
+  connection_type: string;
+  mesh_node: string | null;
+  router_name: string | null;
+  upload_bps: number | null;
+  download_bps: number | null;
+  is_online: boolean;
+}
