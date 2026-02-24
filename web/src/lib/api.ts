@@ -88,6 +88,11 @@ import type {
   UpdateAlertRuleRequest,
   TopologyGraph,
   NodePosition,
+  DnsQueryLogResponse,
+  DnsStatsResponse,
+  DnsIngestEntry,
+  DnsIngestResponse,
+  DnsPurgeResponse,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -1404,4 +1409,52 @@ export function testUnboundConnection(): Promise<UnboundTestConnectionResponse> 
   return apiPost<UnboundTestConnectionResponse>(
     "/api/v1/unbound/test-connection"
   );
+}
+
+// ─── DNS Query Log ──────────────────────────────────────
+
+export function fetchDnsQueryLog(params?: {
+  device_id?: string;
+  domain?: string;
+  client_ip?: string;
+  blocked?: boolean;
+  since?: string;
+  until?: string;
+  limit?: number;
+  offset?: number;
+}): Promise<DnsQueryLogResponse> {
+  const qs = new URLSearchParams();
+  if (params?.device_id) qs.set("device_id", params.device_id);
+  if (params?.domain) qs.set("domain", params.domain);
+  if (params?.client_ip) qs.set("client_ip", params.client_ip);
+  if (params?.blocked !== undefined) qs.set("blocked", String(params.blocked));
+  if (params?.since) qs.set("since", params.since);
+  if (params?.until) qs.set("until", params.until);
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.offset) qs.set("offset", String(params.offset));
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return apiGet<DnsQueryLogResponse>(`/api/v1/dns-logs${suffix}`);
+}
+
+export function fetchDnsStats(params?: {
+  since?: string;
+  until?: string;
+  device_id?: string;
+}): Promise<DnsStatsResponse> {
+  const qs = new URLSearchParams();
+  if (params?.since) qs.set("since", params.since);
+  if (params?.until) qs.set("until", params.until);
+  if (params?.device_id) qs.set("device_id", params.device_id);
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return apiGet<DnsStatsResponse>(`/api/v1/dns-logs/stats${suffix}`);
+}
+
+export function ingestDnsLogs(
+  entries: DnsIngestEntry[]
+): Promise<DnsIngestResponse> {
+  return apiPost<DnsIngestResponse>("/api/v1/dns-logs/ingest", { entries });
+}
+
+export function purgeDnsLogs(): Promise<DnsPurgeResponse> {
+  return apiDelete("/api/v1/dns-logs") as unknown as Promise<DnsPurgeResponse>;
 }

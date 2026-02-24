@@ -1255,3 +1255,65 @@ export interface UnboundTestConnectionResponse {
   success: boolean;
   message: string;
 }
+
+// ─── DNS Query Log ──────────────────────────────────────
+
+export interface DnsQueryLogEntry {
+  id: number;
+  device_id: string | null;
+  client_ip: string;
+  domain: string;
+  query_type: string;
+  result: string;
+  blocked: boolean;
+  response_time_ms: number | null;
+  queried_at: string;
+  device_name: string | null;
+}
+
+export interface DnsQueryLogResponse {
+  entries: DnsQueryLogEntry[];
+  total: number;
+}
+
+export interface DnsTopDomain {
+  domain: string;
+  count: number;
+}
+
+export interface DnsDeviceStats {
+  device_id: string | null;
+  client_ip: string;
+  device_name: string | null;
+  total_queries: number;
+  blocked_queries: number;
+  unique_domains: number;
+}
+
+export interface DnsStatsResponse {
+  total_queries: number;
+  total_blocked: number;
+  unique_domains: number;
+  unique_clients: number;
+  top_queried: DnsTopDomain[];
+  top_blocked: DnsTopDomain[];
+  device_stats: DnsDeviceStats[];
+}
+
+export interface DnsIngestEntry {
+  client_ip: string;
+  domain: string;
+  query_type?: string;
+  result?: string;
+  blocked?: boolean;
+  response_time_ms?: number;
+}
+
+export interface DnsIngestResponse {
+  inserted: number;
+  total: number;
+}
+
+export interface DnsPurgeResponse {
+  deleted: number;
+}
