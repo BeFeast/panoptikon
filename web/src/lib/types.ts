@@ -1745,3 +1745,62 @@ export interface VyosDdnsService {
 export interface VyosDdnsConfig {
   services: VyosDdnsService[];
 }
+
+// ─── NAT Management ─────────────────────────────────────────
+
+export interface NatSummary {
+  vyos_available: boolean;
+  mikrotik_available: boolean;
+  vyos_rule_count: number;
+  mikrotik_rule_count: number;
+}
+
+export interface CreateVyosNatRuleRequest {
+  rule: number;
+  description?: string;
+  protocol?: string;
+  inbound_interface?: string;
+  external_port: string;
+  internal_ip: string;
+  internal_port: string;
+}
+
+export interface UpdateVyosNatRuleRequest {
+  description?: string;
+  protocol?: string;
+  inbound_interface?: string;
+  external_port?: string;
+  internal_ip?: string;
+  internal_port?: string;
+}
+
+export interface NatRuleResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface MikrotikNatRuleWithId {
+  id: string | null;
+  chain: string | null;
+  action: string | null;
+  protocol: string | null;
+  src_address: string | null;
+  dst_address: string | null;
+  dst_port: string | null;
+  to_addresses: string | null;
+  to_ports: string | null;
+  out_interface: string | null;
+  comment: string | null;
+  disabled: boolean;
+}
+
+export interface CreateMikrotikNatRuleRequest {
+  chain: string;
+  action: string;
+  protocol?: string;
+  dst_port?: string;
+  to_addresses?: string;
+  to_ports?: string;
+  comment?: string;
+  disabled?: boolean;
+}

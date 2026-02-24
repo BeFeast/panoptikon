@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Activity,
+  ArrowRightLeft,
   Bell,
   Box,
   ChevronLeft,
@@ -43,6 +44,7 @@ const navItems = [
   { href: "/topology", label: "Topology", icon: Network },
   { href: "/traffic", label: "Traffic", icon: Activity },
   { href: "/vpn-status", label: "VPN Status", icon: Shield },
+  { href: "/nat", label: "NAT", icon: ArrowRightLeft },
   { href: "/qos", label: "QoS", icon: Gauge },
   { href: "/dns-logs", label: "DNS Logs", icon: Search },
   { href: "/dns-queries", label: "DNS Queries", icon: Search },

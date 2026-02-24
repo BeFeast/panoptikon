@@ -32,6 +32,7 @@ pub mod error;
 pub mod export;
 pub mod metrics;
 pub mod mikrotik;
+pub mod nat;
 pub mod npm;
 pub mod qos;
 pub mod scanner;
@@ -517,6 +518,16 @@ pub fn router(state: AppState) -> Router {
         .route("/qos/mikrotik/queue-tree", get(qos::mikrotik_queue_tree))
         // VPN Status Dashboard
         .route("/vpn-status", get(vpn_status::vpn_status))
+        // NAT / Port Forwarding
+        .route("/nat/summary", get(nat::summary))
+        .route("/nat/vyos/rules", get(nat::vyos_list))
+        .route("/nat/vyos/rules", post(nat::vyos_create))
+        .route("/nat/vyos/rules/:rule_number", put(nat::vyos_update))
+        .route("/nat/vyos/rules/:rule_number", delete(nat::vyos_delete))
+        .route("/nat/mikrotik/rules", get(nat::mikrotik_list))
+        .route("/nat/mikrotik/rules", post(nat::mikrotik_create))
+        .route("/nat/mikrotik/rules/:id", put(nat::mikrotik_update))
+        .route("/nat/mikrotik/rules/:id", delete(nat::mikrotik_delete))
         // Assets (IT inventory)
         .route("/assets", get(assets::list))
         .route("/assets", post(assets::create))
