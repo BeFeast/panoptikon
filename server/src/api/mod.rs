@@ -49,6 +49,7 @@ pub mod unbound;
 pub mod vpn_status;
 pub mod vyos;
 pub mod xiaomi;
+pub mod xiaomi_mesh;
 
 pub use error::AppError;
 
@@ -74,6 +75,8 @@ pub struct AppState {
     pub caddy_http: reqwest::Client,
     /// Shared reqwest::Client for Xiaomi MiWiFi API.
     pub xiaomi_http: reqwest::Client,
+    /// Shared reqwest::Client for Xiaomi Mesh test-connection.
+    pub xiaomi_mesh_http: reqwest::Client,
 }
 
 impl AppState {
@@ -95,6 +98,10 @@ impl AppState {
                 .build()
                 .expect("caddy HTTP client"),
             xiaomi_http: crate::xiaomi::client::shared_http_client(),
+            xiaomi_mesh_http: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(10))
+                .build()
+                .expect("xiaomi mesh HTTP client"),
         }
     }
 }
@@ -435,6 +442,11 @@ pub fn router(state: AppState) -> Router {
         .route("/unbound/dns-records/:id", delete(unbound::delete))
         .route("/unbound/dns-records/:id/toggle", post(unbound::toggle))
         .route("/unbound/test-connection", post(unbound::test_connection))
+        // Xiaomi Mesh
+        .route(
+            "/xiaomi-mesh/test-connection",
+            post(xiaomi_mesh::test_connection),
+        )
         // Unified Services wizard
         .route("/services/add", post(services::add_service))
         .route("/services/remove", post(services::remove_service))

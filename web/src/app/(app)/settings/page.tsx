@@ -14,6 +14,7 @@ import {
   ChevronRight,
   ShieldAlert,
   Server,
+  Wifi,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageTransition } from "@/components/PageTransition";
@@ -56,6 +57,13 @@ const settingsGroups: SettingsGroup[] = [
         iconBg: "bg-teal-500/10",
         title: "Unbound DNS",
         description: "Manage local DNS A records via Unbound.",
+      },
+      {
+        href: "/settings/xiaomi-mesh",
+        icon: <Wifi className="h-4 w-4 text-orange-400" />,
+        iconBg: "bg-orange-500/10",
+        title: "Xiaomi Mesh",
+        description: "Configure Xiaomi mesh router integration.",
       },
       {
         href: "/settings/webhook",
