@@ -948,6 +948,46 @@ export function generateWireguardClientConfig(
   );
 }
 
+// ─── OpenVPN ─────────────────────────────────────────────
+
+export function fetchOpenVpnInterfaces(): Promise<
+  import("./types").OpenVpnInterface[]
+> {
+  return apiGet<import("./types").OpenVpnInterface[]>("/api/v1/vyos/openvpn");
+}
+
+export function createOpenVpnInterface(
+  body: import("./types").CreateOpenVpnInterfaceRequest
+): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>("/api/v1/vyos/openvpn", body);
+}
+
+export function deleteOpenVpnInterface(
+  name: string
+): Promise<VyosWriteResponse> {
+  return apiDelete(
+    `/api/v1/vyos/openvpn/${encodeURIComponent(name)}`
+  ) as unknown as Promise<VyosWriteResponse>;
+}
+
+export function toggleOpenVpnInterface(
+  name: string,
+  disable: boolean
+): Promise<VyosWriteResponse> {
+  return apiPost<VyosWriteResponse>(
+    `/api/v1/vyos/openvpn/${encodeURIComponent(name)}/toggle`,
+    { disable }
+  );
+}
+
+export function fetchOpenVpnClients(
+  name: string
+): Promise<import("./types").OpenVpnConnectedClient[]> {
+  return apiGet<import("./types").OpenVpnConnectedClient[]>(
+    `/api/v1/vyos/openvpn/${encodeURIComponent(name)}/clients`
+  );
+}
+
 // ─── Topology ───────────────────────────────────────────
 
 export type { NodePosition };

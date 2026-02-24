@@ -342,6 +342,12 @@ pub fn router(state: AppState) -> Router {
             "/vyos/wireguard/:name/peers/:peer/generate-config",
             post(vyos::wireguard_generate_client_config),
         )
+        // OpenVPN
+        .route("/vyos/openvpn", get(vyos::openvpn_list))
+        .route("/vyos/openvpn", post(vyos::openvpn_create))
+        .route("/vyos/openvpn/:name", delete(vyos::openvpn_delete))
+        .route("/vyos/openvpn/:name/toggle", post(vyos::openvpn_toggle))
+        .route("/vyos/openvpn/:name/clients", get(vyos::openvpn_clients))
         // Topology
         .route("/topology/graph", get(topology::graph))
         .route("/topology/positions", get(topology::get_positions))
