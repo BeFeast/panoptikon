@@ -1,6 +1,55 @@
 //! Deserialization types for Xiaomi MiWiFi API responses.
 
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+
+fn de_opt_string_from_any<'de, D>(deserializer: D) -> Result<Option<String>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<serde_json::Value>::deserialize(deserializer)?;
+    Ok(value.and_then(|v| match v {
+        serde_json::Value::String(s) => {
+            if s.trim().is_empty() {
+                None
+            } else {
+                Some(s)
+            }
+        }
+        serde_json::Value::Number(n) => Some(n.to_string()),
+        serde_json::Value::Bool(b) => Some(b.to_string()),
+        _ => None,
+    }))
+}
+
+fn de_opt_f64_from_any<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<serde_json::Value>::deserialize(deserializer)?;
+    Ok(value.and_then(|v| match v {
+        serde_json::Value::Number(n) => n.as_f64(),
+        serde_json::Value::String(s) => s.trim().parse::<f64>().ok(),
+        serde_json::Value::Bool(b) => Some(if b { 1.0 } else { 0.0 }),
+        _ => None,
+    }))
+}
+
+fn de_opt_i32_from_any<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = Option::<serde_json::Value>::deserialize(deserializer)?;
+    Ok(value.and_then(|v| match v {
+        serde_json::Value::Number(n) => n
+            .as_i64()
+            .and_then(|v| i32::try_from(v).ok())
+            .or_else(|| n.as_u64().and_then(|v| i32::try_from(v).ok()))
+            .or_else(|| n.as_f64().map(|v| v.round() as i32)),
+        serde_json::Value::String(s) => s.trim().parse::<f64>().ok().map(|v| v.round() as i32),
+        serde_json::Value::Bool(b) => Some(if b { 1 } else { 0 }),
+        _ => None,
+    }))
+}
 
 // ── Wrapper: every MiWiFi response has `{ "code": 0, ... }` ──
 
@@ -71,39 +120,39 @@ pub struct TopoGraphInner {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemInfo {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_f64_from_any")]
     pub usage: Option<f64>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_string_from_any")]
     pub total: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_string_from_any")]
     pub hz: Option<String>,
-    #[serde(default, rename = "type")]
+    #[serde(default, rename = "type", deserialize_with = "de_opt_string_from_any")]
     pub mem_type: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CpuInfo {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_i32_from_any")]
     pub core: Option<i32>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_string_from_any")]
     pub hz: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_f64_from_any")]
     pub load: Option<f64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WanSpeed {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_string_from_any")]
     pub downspeed: Option<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_string_from_any")]
     pub upspeed: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceCount {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_i32_from_any")]
     pub online: Option<i32>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_i32_from_any")]
     pub all: Option<i32>,
 }
 
@@ -117,7 +166,7 @@ pub struct SystemStatus {
     pub wan: Option<WanSpeed>,
     #[serde(default)]
     pub count: Option<DeviceCount>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_i32_from_any")]
     pub temperature: Option<i32>,
 }
 
@@ -323,6 +372,50 @@ pub struct RomUpdateInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UptimeResponse {
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_string_from_any")]
     pub uptime: Option<String>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn system_status_deserializes_mixed_scalar_types() {
+        let payload = serde_json::json!({
+            "code": 0,
+            "mem": {
+                "usage": "0.42",
+                "total": 256,
+                "hz": 2400,
+                "type": 1
+            },
+            "cpu": {
+                "core": "4",
+                "hz": 880,
+                "load": "12.5"
+            },
+            "wan": {
+                "downspeed": 12345,
+                "upspeed": "9876"
+            },
+            "count": {
+                "online": "7",
+                "all": 11
+            },
+            "temperature": "46"
+        });
+
+        let parsed: SystemStatus = serde_json::from_value(payload).expect("status should parse");
+        assert_eq!(parsed.mem.and_then(|m| m.total), Some("256".to_string()));
+        assert_eq!(parsed.cpu.and_then(|c| c.core), Some(4));
+        assert_eq!(parsed.temperature, Some(46));
+    }
+
+    #[test]
+    fn uptime_deserializes_from_number() {
+        let payload = serde_json::json!({ "uptime": 123 });
+        let parsed: UptimeResponse = serde_json::from_value(payload).expect("uptime should parse");
+        assert_eq!(parsed.uptime, Some("123".to_string()));
+    }
 }
