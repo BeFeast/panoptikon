@@ -210,8 +210,8 @@ fn asset_from_row(row: sqlx::sqlite::SqliteRow) -> Result<Asset, sqlx::Error> {
 }
 
 fn non_empty_trimmed(value: Option<String>) -> Option<String> {
-    value.and_then(|raw| {
-        let trimmed = raw.trim();
+    value.and_then(|v| {
+        let trimmed = v.trim();
         if trimmed.is_empty() {
             None
         } else {
@@ -681,21 +681,20 @@ pub struct SyncFromDevicesResponse {
 pub async fn sync_from_devices(
     State(state): State<AppState>,
 ) -> Result<Json<SyncFromDevicesResponse>, AppError> {
-    // Find devices that are not already linked to any asset.
+    // Load discovered devices and whether each device is already linked to an asset.
     let rows = sqlx::query(
         "SELECT d.id, d.name, d.hostname, d.mac, d.device_type, d.location, \
                 d.owner, d.serial_number, \
-                (SELECT ag.id FROM agents ag WHERE ag.device_id = d.id LIMIT 1) AS linked_agent_id \
-         FROM devices d \
-         LEFT JOIN assets a ON a.device_id = d.id \
-         WHERE a.id IS NULL",
+                (SELECT ag.id FROM agents ag WHERE ag.device_id = d.id LIMIT 1) AS linked_agent_id, \
+                (SELECT a.id FROM assets a WHERE a.device_id = d.id LIMIT 1) AS linked_asset_id \
+         FROM devices d",
     )
     .fetch_all(&state.db)
     .await?;
 
     info!(
-        unlinked_devices = rows.len(),
-        "Found unlinked devices eligible for asset sync"
+        devices_found = rows.len(),
+        "Sync assets from devices started"
     );
 
     let mut created = 0usize;
@@ -710,12 +709,29 @@ pub async fn sync_from_devices(
             .try_get::<String, _>("mac")
             .ok()
             .map(|v| v.trim().to_string())
+            .filter(|v| !v.is_empty())
             .unwrap_or_default();
         let device_type = non_empty_trimmed(row.try_get("device_type").ok().flatten());
         let location = non_empty_trimmed(row.try_get("location").ok().flatten());
         let owner = non_empty_trimmed(row.try_get("owner").ok().flatten());
         let serial_number = non_empty_trimmed(row.try_get("serial_number").ok().flatten());
         let linked_agent_id = non_empty_trimmed(row.try_get("linked_agent_id").ok().flatten());
+        let linked_asset_id: Option<String> = row.try_get("linked_asset_id").ok().flatten();
+
+        // Only skip when an asset is already linked to this specific device.
+        if let Some(asset_id) = linked_asset_id {
+            skipped += 1;
+            details.push(format!(
+                "Skipped device '{}' (already linked to asset '{}')",
+                device_id, asset_id
+            ));
+            info!(
+                device_id = %device_id,
+                asset_id = %asset_id,
+                "Skipping device during sync: already linked to asset"
+            );
+            continue;
+        }
 
         // Use first non-empty identifier: name, hostname, then MAC.
         let asset_name = match device_name
@@ -795,8 +811,8 @@ pub async fn sync_from_devices(
             Err(e) => {
                 warn!(device_id = %device_id, "Failed to create asset from device: {e}");
                 details.push(format!(
-                    "Skipped device '{}' (failed to create asset)",
-                    device_id
+                    "Skipped device '{}' (failed to create asset: {})",
+                    device_id, e
                 ));
                 skipped += 1;
             }
@@ -804,10 +820,8 @@ pub async fn sync_from_devices(
     }
 
     info!(
-        created,
-        skipped,
-        scanned = rows.len(),
-        "Sync assets from devices completed"
+        devices_found = rows.len(),
+        created, skipped, "Sync assets from devices completed"
     );
 
     Ok(Json(SyncFromDevicesResponse {
@@ -819,6 +833,10 @@ pub async fn sync_from_devices(
 
 #[cfg(test)]
 mod tests {
+    use axum::extract::State;
+
+    use crate::api::AppState;
+    use crate::config::AppConfig;
     use crate::db;
 
     use super::{asset_from_row, sync_from_devices, GET_ONE_QUERY, LIST_QUERY};
