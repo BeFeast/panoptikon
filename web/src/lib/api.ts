@@ -1575,3 +1575,75 @@ export function fetchDnsQueryStats(hours?: number): Promise<DnsQueryStats> {
   const qs = hours ? `?hours=${hours}` : "";
   return apiGet<DnsQueryStats>(`/api/v1/dns-queries/stats${qs}`);
 }
+
+// ─── QoS / Traffic Shaping ───────────────────────────────────
+
+export function fetchQosSummary(): Promise<
+  import("./types").QosSummary
+> {
+  return apiGet<import("./types").QosSummary>("/api/v1/qos/summary");
+}
+
+export function fetchVyosTrafficPolicies(): Promise<
+  import("./types").VyosTrafficPoliciesResponse
+> {
+  return apiGet<import("./types").VyosTrafficPoliciesResponse>(
+    "/api/v1/qos/vyos/policies"
+  );
+}
+
+export function createVyosTrafficPolicy(
+  body: import("./types").CreateVyosTrafficPolicyRequest
+): Promise<import("./types").VyosQosWriteResponse> {
+  return apiPost<import("./types").VyosQosWriteResponse>(
+    "/api/v1/qos/vyos/policies",
+    body
+  );
+}
+
+export function deleteVyosTrafficPolicy(
+  policyType: string,
+  name: string
+): Promise<import("./types").VyosQosWriteResponse> {
+  return apiDelete(
+    `/api/v1/qos/vyos/policies/${encodeURIComponent(policyType)}/${encodeURIComponent(name)}`
+  ) as unknown as Promise<import("./types").VyosQosWriteResponse>;
+}
+
+export function fetchMikrotikSimpleQueues(): Promise<
+  import("./types").MikrotikSimpleQueue[]
+> {
+  return apiGet<import("./types").MikrotikSimpleQueue[]>(
+    "/api/v1/qos/mikrotik/simple-queues"
+  );
+}
+
+export function createMikrotikSimpleQueue(
+  body: import("./types").MikrotikSimpleQueueRequest
+): Promise<void> {
+  return apiPost<void>("/api/v1/qos/mikrotik/simple-queues", body);
+}
+
+export function updateMikrotikSimpleQueue(
+  id: string,
+  body: import("./types").MikrotikSimpleQueueRequest
+): Promise<void> {
+  return apiPut<void>(
+    `/api/v1/qos/mikrotik/simple-queues/${encodeURIComponent(id)}`,
+    body
+  );
+}
+
+export function deleteMikrotikSimpleQueue(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/qos/mikrotik/simple-queues/${encodeURIComponent(id)}`
+  );
+}
+
+export function fetchMikrotikQueueTree(): Promise<
+  import("./types").MikrotikQueueTree[]
+> {
+  return apiGet<import("./types").MikrotikQueueTree[]>(
+    "/api/v1/qos/mikrotik/queue-tree"
+  );
+}

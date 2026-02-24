@@ -1414,3 +1414,111 @@ export interface DnsUnboundConfigResponse {
   config: string;
   domain_count: number;
 }
+
+// ─── QoS / Traffic Shaping ──────────────────────────────────
+
+export interface VyosTrafficPolicyClass {
+  id: string;
+  bandwidth: string | null;
+  ceiling: string | null;
+  priority: string | null;
+  queue_type: string | null;
+  description?: string | null;
+}
+
+export interface VyosTrafficPolicy {
+  name: string;
+  policy_type: string;
+  bandwidth: string | null;
+  default_bandwidth?: string | null;
+  default_ceiling?: string | null;
+  description?: string | null;
+  classes: VyosTrafficPolicyClass[];
+}
+
+export interface VyosTrafficPoliciesResponse {
+  policies: VyosTrafficPolicy[];
+}
+
+export interface CreateVyosTrafficPolicyRequest {
+  name: string;
+  policy_type: string;
+  bandwidth: string;
+  default_bandwidth?: string;
+  default_ceiling?: string;
+  description?: string;
+  classes?: CreateVyosTrafficPolicyClassRequest[];
+}
+
+export interface CreateVyosTrafficPolicyClassRequest {
+  id: string;
+  bandwidth?: string;
+  ceiling?: string;
+  priority?: string;
+  queue_type?: string;
+  description?: string;
+}
+
+export interface VyosQosWriteResponse {
+  success: boolean;
+  message: string;
+}
+
+export interface MikrotikSimpleQueue {
+  id: string | null;
+  name: string;
+  target: string;
+  max_limit: string | null;
+  burst_limit: string | null;
+  burst_threshold: string | null;
+  burst_time: string | null;
+  priority: string | null;
+  comment: string | null;
+  disabled: boolean;
+  parent: string | null;
+  bytes: string | null;
+  packets: string | null;
+  rate: string | null;
+  packet_rate: string | null;
+  dynamic: boolean;
+}
+
+export interface MikrotikSimpleQueueRequest {
+  name: string;
+  target: string;
+  max_limit: string;
+  burst_limit?: string;
+  burst_threshold?: string;
+  burst_time?: string;
+  priority?: string;
+  comment?: string;
+  disabled?: boolean;
+  parent?: string;
+}
+
+export interface MikrotikQueueTree {
+  id: string | null;
+  name: string;
+  parent: string | null;
+  packet_mark: string | null;
+  priority: string | null;
+  max_limit: string | null;
+  burst_limit: string | null;
+  burst_threshold: string | null;
+  burst_time: string | null;
+  comment: string | null;
+  disabled: boolean;
+  bytes: string | null;
+  packets: string | null;
+  rate: string | null;
+  packet_rate: string | null;
+  dynamic: boolean;
+}
+
+export interface QosSummary {
+  vyos_available: boolean;
+  mikrotik_available: boolean;
+  vyos_policy_count: number;
+  mikrotik_simple_queue_count: number;
+  mikrotik_queue_tree_count: number;
+}

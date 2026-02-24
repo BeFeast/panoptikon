@@ -225,6 +225,94 @@ pub struct MonitorTrafficResult {
     pub tx_bits_per_second: Option<String>,
 }
 
+/// MikroTik simple queue (`/rest/queue/simple`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SimpleQueue {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub target: Option<String>,
+    #[serde(rename = "max-limit")]
+    pub max_limit: Option<String>,
+    #[serde(rename = "burst-limit")]
+    pub burst_limit: Option<String>,
+    #[serde(rename = "burst-threshold")]
+    pub burst_threshold: Option<String>,
+    #[serde(rename = "burst-time")]
+    pub burst_time: Option<String>,
+    pub priority: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<String>,
+    #[serde(rename = "total-queue")]
+    pub total_queue: Option<String>,
+    pub parent: Option<String>,
+    pub bytes: Option<String>,
+    pub packets: Option<String>,
+    #[serde(rename = "queued-bytes")]
+    pub queued_bytes: Option<String>,
+    #[serde(rename = "queued-packets")]
+    pub queued_packets: Option<String>,
+    pub rate: Option<String>,
+    #[serde(rename = "packet-rate")]
+    pub packet_rate: Option<String>,
+    pub invalid: Option<String>,
+    pub dynamic: Option<String>,
+}
+
+/// MikroTik simple queue write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct SimpleQueueWriteRequest {
+    pub name: String,
+    pub target: String,
+    #[serde(rename = "max-limit")]
+    pub max_limit: String,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "burst-limit")]
+    pub burst_limit: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "burst-threshold")]
+    pub burst_threshold: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "burst-time")]
+    pub burst_time: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent: Option<String>,
+}
+
+/// MikroTik queue tree entry (`/rest/queue/tree`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct QueueTree {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub parent: Option<String>,
+    #[serde(rename = "packet-mark")]
+    pub packet_mark: Option<String>,
+    pub priority: Option<String>,
+    #[serde(rename = "max-limit")]
+    pub max_limit: Option<String>,
+    #[serde(rename = "burst-limit")]
+    pub burst_limit: Option<String>,
+    #[serde(rename = "burst-threshold")]
+    pub burst_threshold: Option<String>,
+    #[serde(rename = "burst-time")]
+    pub burst_time: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<String>,
+    pub bytes: Option<String>,
+    pub packets: Option<String>,
+    pub rate: Option<String>,
+    #[serde(rename = "packet-rate")]
+    pub packet_rate: Option<String>,
+    pub invalid: Option<String>,
+    pub dynamic: Option<String>,
+    #[serde(rename = "queued-bytes")]
+    pub queued_bytes: Option<String>,
+}
+
 /// MikroTik WireGuard peer (`/rest/interface/wireguard/peers`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WgPeer {
