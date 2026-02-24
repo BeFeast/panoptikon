@@ -5,6 +5,10 @@
 **Статус:** Draft  
 **Родительский документ:** [PRD.md](./PRD.md)
 
+> **Legacy status (as of 2026-02-24):** VyOS integration is a legacy compatibility path.  
+> MikroTik is the primary/default router strategy.  
+> VyOS UI entry points are hidden by default and should only be exposed after enabling **Settings → Advanced → Show legacy routers**.
+
 ---
 
 ## Vision

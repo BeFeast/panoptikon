@@ -2,7 +2,7 @@
 
 *The all-seeing eye for your home network.*
 
-**Panoptikon** is a self-hosted web application for monitoring all devices on your local network and managing MikroTik or VyOS routers. It combines device discovery (ARP scanning), router management, and lightweight agent-based telemetry into a single binary with a polished, dark-themed web UI inspired by Ubiquiti UniFi.
+**Panoptikon** is a self-hosted web application for monitoring all devices on your local network and managing routers, with **MikroTik as the primary/default path** and **VyOS as a legacy integration**. It combines device discovery (ARP scanning), router management, and lightweight agent-based telemetry into a single binary with a polished, dark-themed web UI inspired by Ubiquiti UniFi.
 
 ---
 
@@ -86,8 +86,8 @@ panoptikon/
 
 Panoptikon supports two router platforms:
 
-- **MikroTik (primary)** — connects via the RouterOS 7+ REST API. Configure in **Settings → MikroTik**.
-- **VyOS (optional)** — connects via the VyOS HTTP API. Configure in **Settings → Router**.
+- **MikroTik (primary/default)** — connects via the RouterOS 7+ REST API. This is the default router path in UI and docs. Configure in **Settings → Router → MikroTik**.
+- **VyOS (legacy)** — connects via the VyOS HTTP API. VyOS is hidden by default; enable **Settings → Advanced → Show legacy routers** to surface legacy VyOS options, then configure in **Settings → Router → VyOS (Legacy)**.
 
 ## Prometheus Integration
 
