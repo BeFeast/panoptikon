@@ -130,12 +130,10 @@ import {
   deleteDnsDomainOverride,
   fetchSystemInfo,
   fetchSyslog,
-  fetchMikrotikStatus,
   fetchSettings,
 } from "@/lib/api";
-import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, RouterSummary, SpeedTestResult, SpeedTestHistoryEntry, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, DhcpServerConfig, DhcpSubnetConfig, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride, SystemInfo, SyslogResponse, MikrotikStatus, SettingsData, OpenVpnInterface, OpenVpnConnectedClient } from "@/lib/types";
-import MikrotikRouter from "@/components/MikrotikRouter";
-import XiaomiRouter from "@/components/XiaomiRouter";
+import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, RouterSummary, SpeedTestResult, SpeedTestHistoryEntry, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, DhcpServerConfig, DhcpSubnetConfig, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride, SystemInfo, SyslogResponse, SettingsData, OpenVpnInterface, OpenVpnConnectedClient } from "@/lib/types";
+import { RouterSelector } from "@/components/RouterSelector";
 import QRCode from "qrcode";
 import { Progress } from "@/components/ui/progress";
 import { PageTransition } from "@/components/PageTransition";
@@ -5894,14 +5892,14 @@ function OpenVpnInterfaceCard({
 // ── Main Page ───────────────────────────────────────────
 
 export default function RouterPage() {
+  const router = useRouter();
   const [summary, setSummary] = useState<RouterSummary | null>(null);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [mikrotikEnabled, setMikrotikEnabled] = useState(false);
   const [vyosConfigured, setVyosConfigured] = useState(false);
   const [xiaomiEnabled, setXiaomiEnabled] = useState(false);
-  const [routerType, setRouterType] = useState<"vyos" | "mikrotik" | "xiaomi">("mikrotik");
 
-  // Load settings to determine which routers are configured
+  // Load settings and redirect to sub-route for MikroTik/Xiaomi
   useEffect(() => {
     const loadSettings = async () => {
       let mtEnabled = false;
@@ -5919,23 +5917,24 @@ export default function RouterPage() {
       setVyosConfigured(vyosConf);
       setXiaomiEnabled(xiEnabled);
 
-      // Default to mikrotik if enabled, fallback to xiaomi, then vyos
+      // Redirect to deep-link sub-routes for MikroTik/Xiaomi
       if (mtEnabled) {
-        setRouterType("mikrotik");
+        router.replace("/router/mikrotik");
+        return;
       } else if (xiEnabled) {
-        setRouterType("xiaomi");
-      } else if (vyosConf) {
-        setRouterType("vyos");
+        router.replace("/router/xiaomi");
+        return;
       }
 
       setSettingsLoaded(true);
     };
     loadSettings();
-  }, []);
+  }, [router]);
 
-  // Lazy-load VyOS summary only when VyOS tab is selected
+  // Lazy-load VyOS summary
   useEffect(() => {
-    if (routerType !== "vyos") return;
+    if (!settingsLoaded) return;
+    if (!vyosConfigured) return;
     if (summary) return; // already loaded
 
     const loadVyosSummary = async () => {
@@ -5959,80 +5958,16 @@ export default function RouterPage() {
       }
     };
     loadVyosSummary();
-  }, [routerType, summary]);
+  }, [settingsLoaded, vyosConfigured, summary]);
 
   const neitherConfigured = settingsLoaded && !vyosConfigured && !mikrotikEnabled && !xiaomiEnabled;
 
   return (
     <PageTransition>
       <div className="space-y-6">
-        {/* Router type selector — skeleton while settings load, tabs when multiple routers available */}
-        {!settingsLoaded ? (
-          <Skeleton className="h-9 w-48" />
-        ) : [mikrotikEnabled, vyosConfigured, xiaomiEnabled].filter(Boolean).length > 1 ? (
-          <div className="flex gap-2">
-            {mikrotikEnabled && (
-              <Button
-                variant={routerType === "mikrotik" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setRouterType("mikrotik")}
-                className={
-                  routerType === "mikrotik"
-                    ? "bg-pink-600 text-white hover:bg-pink-500"
-                    : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
-                }
-              >
-                <Router className="mr-1.5 h-3.5 w-3.5" />
-                MikroTik
-              </Button>
-            )}
-            {xiaomiEnabled && (
-              <Button
-                variant={routerType === "xiaomi" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setRouterType("xiaomi")}
-                className={
-                  routerType === "xiaomi"
-                    ? "bg-orange-600 text-white hover:bg-orange-500"
-                    : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
-                }
-              >
-                <Router className="mr-1.5 h-3.5 w-3.5" />
-                Xiaomi
-              </Button>
-            )}
-            {vyosConfigured && (
-              <Button
-                variant={routerType === "vyos" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setRouterType("vyos")}
-                className={
-                  routerType === "vyos"
-                    ? "bg-blue-600 text-white hover:bg-blue-500"
-                    : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
-                }
-              >
-                <Router className="mr-1.5 h-3.5 w-3.5" />
-                VyOS
-                <Badge variant="outline" className="ml-1.5 border-amber-500/30 bg-amber-500/10 text-amber-400 text-[10px] px-1.5 py-0">
-                  Legacy
-                </Badge>
-              </Button>
-            )}
-          </div>
-        ) : null}
+        <RouterSelector active="vyos" />
 
-        {/* VyOS legacy note */}
-        {settingsLoaded && routerType === "vyos" && (
-          <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-            <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
-            <p className="text-xs text-amber-400">
-              VyOS support is legacy. MikroTik is the recommended router platform for new deployments.
-            </p>
-          </div>
-        )}
-
-        {/* Content area — skeletons until settings arrive, then router-specific content */}
+        {/* Content area — skeletons until settings arrive, then VyOS content */}
         {!settingsLoaded ? (
           <div className="space-y-6">
             <Skeleton className="h-10 w-64" />
@@ -6040,24 +5975,20 @@ export default function RouterPage() {
           </div>
         ) : neitherConfigured ? (
           <NotConfigured />
-        ) : routerType === "xiaomi" && xiaomiEnabled ? (
-          <XiaomiRouter />
-        ) : routerType === "mikrotik" && mikrotikEnabled ? (
-          <MikrotikRouter />
-        ) : routerType === "vyos" && !vyosConfigured ? (
+        ) : !vyosConfigured ? (
           <VyosNotConfigured />
-        ) : routerType === "vyos" && !summary ? (
+        ) : !summary ? (
           <div className="space-y-6">
             <Skeleton className="h-10 w-64" />
             <Skeleton className="h-96 w-full" />
           </div>
-        ) : routerType === "vyos" && summary?.status.configured ? (
+        ) : summary.status.configured ? (
           <Suspense fallback={null}>
             <RouterTabs summary={summary} />
           </Suspense>
-        ) : routerType === "vyos" ? (
+        ) : (
           <VyosNotConfigured />
-        ) : null}
+        )}
       </div>
     </PageTransition>
   );
