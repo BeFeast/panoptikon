@@ -51,6 +51,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageTransition } from "@/components/PageTransition";
 import {
+  fetchSettings,
   fetchNatSummary,
   fetchVyosNatRules,
   createVyosNatRule,
@@ -70,10 +71,12 @@ import { toast } from "sonner";
 
 export default function NatPage() {
   const [summary, setSummary] = useState<NatSummary | null>(null);
+  const [legacyRoutersEnabled, setLegacyRoutersEnabled] = useState(false);
   const [vyosRules, setVyosRules] = useState<NatDestinationRule[] | null>(null);
   const [mtRules, setMtRules] = useState<MikrotikNatRuleWithId[] | null>(null);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+  const vyosVisible = legacyRoutersEnabled && !!summary?.vyos_available;
 
   // Dialogs
   const [showAddVyos, setShowAddVyos] = useState(false);
@@ -121,9 +124,21 @@ export default function NatPage() {
   }, [load]);
 
   useEffect(() => {
+    fetchSettings()
+      .then((settings) => setLegacyRoutersEnabled(settings.show_legacy_routers))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (activeTab === "vyos") loadVyos();
     if (activeTab === "mikrotik") loadMt();
   }, [activeTab, loadVyos, loadMt]);
+
+  useEffect(() => {
+    if (!vyosVisible && activeTab === "vyos") {
+      setActiveTab("overview");
+    }
+  }, [activeTab, vyosVisible]);
 
   // -- Filter helpers --
   const filteredVyos = useMemo(() => {
@@ -215,11 +230,11 @@ export default function NatPage() {
 
         {/* Summary Cards */}
         <div className="grid gap-4 sm:grid-cols-2">
-          {summary?.vyos_available && (
+          {vyosVisible && (
             <SummaryCard
               title="VyOS DNAT Rules"
               value={summary?.vyos_rule_count ?? null}
-              available={summary?.vyos_available ?? null}
+              available={vyosVisible}
               icon={<Router className="h-4 w-4 text-blue-400" />}
             />
           )}
@@ -240,7 +255,7 @@ export default function NatPage() {
             >
               Overview
             </TabsTrigger>
-            {summary?.vyos_available && (
+            {vyosVisible && (
               <TabsTrigger
                 value="vyos"
                 className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
@@ -280,7 +295,7 @@ export default function NatPage() {
                 </CardTitle>
                 <CardDescription className="text-slate-400">
                   Manage destination NAT (port forwarding) rules on your
-                  {summary?.vyos_available ? " VyOS and MikroTik routers" : " MikroTik router"}.
+                  {vyosVisible ? " VyOS and MikroTik routers" : " MikroTik router"}.
                   Select a tab above to view and manage rules for each router type.
                 </CardDescription>
               </CardHeader>
@@ -292,7 +307,7 @@ export default function NatPage() {
                   </div>
                 ) : (
                   <div className="text-sm text-slate-400 space-y-2">
-                    {summary.vyos_available && (
+                    {vyosVisible && (
                       <p>
                         VyOS router connected with {summary.vyos_rule_count} DNAT rule(s).
                       </p>

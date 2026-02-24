@@ -15,7 +15,10 @@ export type RouterType = (typeof ROUTER_TYPES)[number];
 export function getDefaultRouterType(
   _settings: Pick<
     SettingsData,
-    "mikrotik_enabled" | "vyos_url" | "vyos_api_key_set"
+    | "mikrotik_enabled"
+    | "vyos_url"
+    | "vyos_api_key_set"
+    | "show_legacy_routers"
   > | null,
 ): RouterType {
   return "mikrotik";

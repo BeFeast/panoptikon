@@ -385,8 +385,9 @@ export default function DdnsPage() {
     fetchSettings()
       .then((settings) => {
         const vyosConfigured = !!settings.vyos_url && settings.vyos_api_key_set;
+        const legacyRoutersEnabled = settings.show_legacy_routers;
         const types: string[] = ["mikrotik"];
-        if (vyosConfigured) types.push("vyos");
+        if (legacyRoutersEnabled && vyosConfigured) types.push("vyos");
         setRouterTypes(types);
       })
       .catch(() => {

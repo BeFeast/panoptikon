@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageTransition } from "@/components/PageTransition";
-import { fetchVpnStatus } from "@/lib/api";
+import { fetchSettings, fetchVpnStatus } from "@/lib/api";
 import type { VpnStatusResponse, VpnInterfaceStatus } from "@/lib/types";
 
 /** Format bytes into a human-readable string. */
@@ -60,9 +60,11 @@ function timeAgo(ts: number | null): string {
 
 export default function VpnStatusPage() {
   const [data, setData] = useState<VpnStatusResponse | null>(null);
+  const [legacyRoutersEnabled, setLegacyRoutersEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+  const vyosVisible = legacyRoutersEnabled && !!data?.vyos_available;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -82,6 +84,18 @@ export default function VpnStatusPage() {
     const id = setInterval(load, 30_000);
     return () => clearInterval(id);
   }, [load]);
+
+  useEffect(() => {
+    fetchSettings()
+      .then((settings) => setLegacyRoutersEnabled(settings.show_legacy_routers))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!vyosVisible && activeTab === "vyos") {
+      setActiveTab("overview");
+    }
+  }, [activeTab, vyosVisible]);
 
   const filteredInterfaces = useMemo(() => {
     if (!data) return null;
@@ -113,6 +127,12 @@ export default function VpnStatusPage() {
     () => filteredInterfaces?.filter((i) => i.source === "mikrotik") ?? [],
     [filteredInterfaces],
   );
+  const overviewInterfaces = useMemo(() => {
+    if (!data) return [];
+    return vyosVisible
+      ? data.interfaces
+      : data.interfaces.filter((i) => i.source !== "vyos");
+  }, [data, vyosVisible]);
 
   return (
     <PageTransition>
@@ -138,7 +158,7 @@ export default function VpnStatusPage() {
         <div className="grid gap-4 sm:grid-cols-4">
           <SummaryCard
             title="Interfaces"
-            value={data?.interfaces.length ?? null}
+            value={data ? overviewInterfaces.length : null}
             loading={loading && !data}
             icon={<Shield className="h-4 w-4 text-blue-400" />}
           />
@@ -178,7 +198,7 @@ export default function VpnStatusPage() {
             >
               Overview
             </TabsTrigger>
-            {data?.vyos_available && (
+            {vyosVisible && (
               <TabsTrigger
                 value="vyos"
                 className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
@@ -211,7 +231,7 @@ export default function VpnStatusPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 text-sm text-slate-400">
-                  {data?.vyos_available && (
+                  {vyosVisible && (
                     <p>
                       VyOS:{" "}
                       <span className="font-medium text-white">
@@ -265,7 +285,7 @@ export default function VpnStatusPage() {
                       )
                     </p>
                   )}
-                  {!data?.vyos_available && !data?.mikrotik_available && !loading && (
+                  {!vyosVisible && !data?.mikrotik_available && !loading && (
                     <p>
                       No router is configured. Go to{" "}
                       <span className="font-medium text-white">Settings</span>{" "}
@@ -277,9 +297,9 @@ export default function VpnStatusPage() {
             </Card>
 
             {/* All interfaces overview */}
-            {data && data.interfaces.length > 0 && (
+            {overviewInterfaces.length > 0 && (
               <div className="space-y-4">
-                {data.interfaces.map((iface) => (
+                {overviewInterfaces.map((iface) => (
                   <InterfaceCard key={`${iface.source}-${iface.name}`} iface={iface} />
                 ))}
               </div>
