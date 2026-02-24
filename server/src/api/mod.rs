@@ -520,6 +520,8 @@ pub fn router(state: AppState) -> Router {
         .route("/xiaomi/wifi-devices", get(xiaomi::wifi_devices))
         .route("/xiaomi/wan-info", get(xiaomi::wan_info))
         .route("/xiaomi/lan-info", get(xiaomi::lan_info))
+        .route("/xiaomi/wifi-bands", get(xiaomi::wifi_bands))
+        .route("/xiaomi/firmware", get(xiaomi::firmware))
         // QoS / Traffic Shaping
         .route("/qos/summary", get(qos::qos_summary))
         .route("/qos/vyos/policies", get(qos::vyos_traffic_policies))

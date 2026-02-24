@@ -1999,6 +1999,20 @@ export function fetchXiaomiLanInfo(): Promise<
   return apiGet<import("./types").XiaomiLanInfo>("/api/v1/xiaomi/lan-info");
 }
 
+export function fetchXiaomiWifiBands(): Promise<
+  import("./types").XiaomiWifiBand[]
+> {
+  return apiGet<import("./types").XiaomiWifiBand[]>(
+    "/api/v1/xiaomi/wifi-bands"
+  );
+}
+
+export function fetchXiaomiFirmware(): Promise<
+  import("./types").XiaomiFirmware
+> {
+  return apiGet<import("./types").XiaomiFirmware>("/api/v1/xiaomi/firmware");
+}
+
 // ─── Xiaomi Mesh Settings ────────────────────────────────
 
 export function testXiaomiMeshConnection(
