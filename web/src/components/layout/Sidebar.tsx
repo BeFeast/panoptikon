@@ -20,7 +20,6 @@ import {
   Server,
   Settings,
   Shield,
-  Shield,
   Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
