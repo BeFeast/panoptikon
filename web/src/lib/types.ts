@@ -1235,6 +1235,65 @@ export interface CaddyTestConnectionResponse {
   message: string;
 }
 
+// ─── DNS Query Log ──────────────────────────────────────
+
+export interface DnsQueryEntry {
+  id: number;
+  device_id: string | null;
+  client_ip: string;
+  domain: string;
+  query_type: string;
+  response_code: string;
+  blocked: boolean;
+  response_time_ms: number | null;
+  upstream: string | null;
+  queried_at: string;
+  device_name: string | null;
+}
+
+export interface DnsQueriesResponse {
+  items: DnsQueryEntry[];
+  total: number;
+  page: number;
+  per_page: number;
+}
+
+// Response for /api/v1/dns-logs
+export interface DnsQueryLogResponse {
+  entries: DnsQueryLogEntry[];
+  total: number;
+}
+
+export interface DnsDomainCount {
+  domain: string;
+  count: number;
+}
+
+export interface DnsDeviceQueryStats {
+  device_id: string | null;
+  client_ip: string;
+  device_name: string | null;
+  total_queries: number;
+  blocked_queries: number;
+}
+
+export interface DnsTimeSeriesPoint {
+  time: string;
+  total: number;
+  blocked: number;
+}
+
+export interface DnsQueryStats {
+  total_queries: number;
+  blocked_queries: number;
+  unique_domains: number;
+  unique_clients: number;
+  top_queried_domains: DnsDomainCount[];
+  top_blocked_domains: DnsDomainCount[];
+  per_device_stats: DnsDeviceQueryStats[];
+  queries_over_time: DnsTimeSeriesPoint[];
+}
+
 // ─── Unbound DNS ─────────────────────────────────────────
 
 export interface UnboundDnsRecord {
@@ -1256,7 +1315,7 @@ export interface UnboundTestConnectionResponse {
   message: string;
 }
 
-// ─── DNS Query Log ──────────────────────────────────────
+// ─── DNS Logs (simpler log viewer) ──────────────────────
 
 export interface DnsQueryLogEntry {
   id: number;
@@ -1269,11 +1328,6 @@ export interface DnsQueryLogEntry {
   response_time_ms: number | null;
   queried_at: string;
   device_name: string | null;
-}
-
-export interface DnsQueryLogResponse {
-  entries: DnsQueryLogEntry[];
-  total: number;
 }
 
 export interface DnsTopDomain {

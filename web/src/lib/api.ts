@@ -88,7 +88,9 @@ import type {
   UpdateAlertRuleRequest,
   TopologyGraph,
   NodePosition,
+  DnsQueriesResponse,
   DnsQueryLogResponse,
+  DnsQueryStats,
   DnsStatsResponse,
   DnsIngestEntry,
   DnsIngestResponse,
@@ -1543,4 +1545,32 @@ export function fetchDnsUnboundConfig(): Promise<
   return apiGet<import("./types").DnsUnboundConfigResponse>(
     "/api/v1/dns-blocklists/unbound-config"
   );
+}
+
+// ─── DNS Query Log (per-device stats) ────────────────────
+
+export function fetchDnsQueries(params?: {
+  page?: number;
+  per_page?: number;
+  device_id?: string;
+  domain?: string;
+  query_type?: string;
+  blocked?: boolean;
+  hours?: number;
+}): Promise<DnsQueriesResponse> {
+  const qs = new URLSearchParams();
+  if (params?.page) qs.set("page", String(params.page));
+  if (params?.per_page) qs.set("per_page", String(params.per_page));
+  if (params?.device_id) qs.set("device_id", params.device_id);
+  if (params?.domain) qs.set("domain", params.domain);
+  if (params?.query_type) qs.set("query_type", params.query_type);
+  if (params?.blocked !== undefined) qs.set("blocked", String(params.blocked));
+  if (params?.hours) qs.set("hours", String(params.hours));
+  const suffix = qs.toString() ? `?${qs}` : "";
+  return apiGet<DnsQueriesResponse>(`/api/v1/dns-queries${suffix}`);
+}
+
+export function fetchDnsQueryStats(hours?: number): Promise<DnsQueryStats> {
+  const qs = hours ? `?hours=${hours}` : "";
+  return apiGet<DnsQueryStats>(`/api/v1/dns-queries/stats${qs}`);
 }

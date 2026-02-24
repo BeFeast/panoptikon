@@ -42,6 +42,7 @@ const navItems = [
   { href: "/topology", label: "Topology", icon: Network },
   { href: "/traffic", label: "Traffic", icon: Activity },
   { href: "/dns-logs", label: "DNS Logs", icon: Search },
+  { href: "/dns-queries", label: "DNS Queries", icon: Search },
   { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/certificates", label: "Certificates", icon: Shield },
   { href: "/settings", label: "Settings", icon: Settings },

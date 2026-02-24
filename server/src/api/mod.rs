@@ -26,6 +26,7 @@ pub mod dashboard;
 pub mod devices;
 pub mod dns_blocklists;
 pub mod dns_logs;
+pub mod dns_query_log;
 pub mod error;
 pub mod export;
 pub mod metrics;
@@ -457,6 +458,10 @@ pub fn router(state: AppState) -> Router {
             "/dns-blocklists/:id/download",
             post(dns_blocklists::download),
         )
+        // DNS query log
+        .route("/dns-queries", get(dns_query_log::list))
+        .route("/dns-queries/stats", get(dns_query_log::stats))
+        .route("/dns-queries/ingest", post(dns_query_log::ingest))
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))
