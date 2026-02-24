@@ -28,13 +28,13 @@
 
 ## 1. Overview & Vision
 
-**Panoptikon** is a self-hosted web application for managing routers (MikroTik primary, VyOS optional), monitoring all devices on a local network, and maintaining a complete IT asset inventory — without requiring an agent on every host.
+**Panoptikon** is a self-hosted web application for managing routers (MikroTik primary/default, VyOS legacy optional and hidden by default), monitoring all devices on a local network, and maintaining a complete IT asset inventory — without requiring an agent on every host.
 
 Think of it as a mashup of **Ubiquiti UniFi's web console** (dark theme, topology map, polished device cards), **Fing** (network scanning, device discovery, online/offline tracking), and **Lansweeper / NetBox** (asset inventory, SSH-based agentless collection, categorization) — but open-source, with multi-router support (MikroTik + VyOS), embedded DNS and reverse proxy management, and deployable as a single Docker Compose stack.
 
 The name references Bentham's panopticon — the all-seeing observation tower — reimagined as a personal tool: *you* are the observer, your home network is the space. The `k` spelling makes it unique and ownable.
 
-**The one-liner:** The all-seeing eye for your home network. Unified monitoring and management: network devices, routers (MikroTik/VyOS), WiFi mesh (Xiaomi), DNS (Unbound), reverse proxy (Caddy), Cloudflare Tunnel, and IT asset inventory — all in one self-hosted Docker Compose stack.
+**The one-liner:** The all-seeing eye for your home network. Unified monitoring and management: network devices, routers (MikroTik primary path + legacy VyOS when explicitly enabled), WiFi mesh (Xiaomi), DNS (Unbound), reverse proxy (Caddy), Cloudflare Tunnel, and IT asset inventory — all in one self-hosted Docker Compose stack.
 
 **Vision:** You open a single browser tab and see your entire infrastructure: router health, every device discovered via ARP/DHCP/mDNS/SSDP, full hardware inventory collected via lightweight agents *or* direct SSH, DNS management (Unbound), reverse proxy (Caddy), and secure tunnel (Cloudflare) — all in a dark, information-dense UI that feels like a professional network operations center, not a hobbyist tool.
 
@@ -68,7 +68,7 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 
 **Primary persona:** A technical user (developer, sysadmin, homelab enthusiast) who:
 
-- Runs MikroTik (RouterOS 7+) or VyOS as their primary router (bare metal, VM, or container)
+- Runs MikroTik (RouterOS 7+) as the primary router path (bare metal, VM, or container), with optional legacy VyOS integration when needed
 - Has 10–100 devices on the network (servers, workstations, IoT, phones)
 - Wants visibility into their network without deploying a full monitoring stack
 - Values self-hosting, open source, and low resource usage
@@ -136,7 +136,7 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 
 #### F3: Router Integration ✅
 - **MikroTik (Primary):** Connect to RouterOS 7+ REST API. Full management: system status (uptime, CPU, memory, board info), interfaces (IPs, MACs, TX/RX, enable/disable), routes (view + create/delete static routes), DHCP leases, VLANs, firewall rules, traffic monitoring, NAT/port forwarding, VPN status, dynamic DNS, QoS, DNS configuration, WireGuard VPN. TTL-based caching for read operations. Settings page with connection test and enable/disable toggle.
-- **VyOS (Optional):** Connect to VyOS HTTP API. Display: system status, syslog, interfaces, routes, DHCP leases + static mappings, firewall rules (full CRUD + groups), DNS forwarding, WireGuard VPN peers. Configuration backup/restore with diff viewing. Settings page with connection test.
+- **VyOS (Legacy Optional):** Connect to VyOS HTTP API. Display: system status, syslog, interfaces, routes, DHCP leases + static mappings, firewall rules (full CRUD + groups), DNS forwarding, WireGuard VPN peers. Configuration backup/restore with diff viewing. Marked as legacy and hidden from default flows unless explicitly enabled/configured.
 - Connection test + health indicator in UI for both routers
 
 #### F4: Authentication ✅
@@ -382,6 +382,18 @@ Panoptikon supports a **multi-router architecture** with MikroTik as the primary
 | **VyOS** | VyOS HTTP API (1.3+) | ✅ Optional | Lazy-loaded, hidden unless enabled |
 
 Both integrations use TTL-based caching for read operations and cache invalidation middleware on mutations. Each router has its own settings page and can be independently enabled/disabled.
+
+### Default Router Strategy (User + Developer Contract)
+
+**User-facing behavior (default):**
+- MikroTik is the primary router path in router-management and router-settings defaults.
+- VyOS is legacy and treated as hidden/advanced in default flows; users expose it via **Settings → Advanced → Show legacy routers** and/or existing VyOS configuration.
+- When both routers are available, MikroTik is selected first and VyOS remains opt-in.
+
+**Developer-facing behavior (must preserve):**
+- Keep `"mikrotik"` as the default router type in selection helpers and new router-related features.
+- Keep legacy VyOS visibility gated behind explicit legacy controls (`show_legacy_routers`) or explicit VyOS configuration checks.
+- Keep VyOS API requests lazy-loaded in mixed-router screens; do not fetch legacy data by default on initial page load.
 
 ### Tech Stack Justification
 
@@ -1028,7 +1040,7 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 - [x] **Online/offline detection:** State change tracking, ping-based uptime monitoring
 - [x] **Alerts:** New device, offline/online state changes, in-app feed with severity filtering
 - [x] **WebSocket:** Live updates to UI when device state changes
-- [x] **Settings page:** MikroTik connection, VyOS connection (optional), Caddy connection, Unbound connection, Cloudflare Tunnel, NPM connection, scanner config, webhook, data retention, speedtest, audit log, config backup, password change
+- [x] **Settings page:** MikroTik connection (primary), VyOS connection (legacy optional), advanced toggle for legacy router visibility, Caddy connection, Unbound connection, Cloudflare Tunnel, NPM connection, scanner config, webhook, data retention, speedtest, audit log, config backup, password change
 
 ### Milestone 2: Agents + Traffic + SSH ✅
 
