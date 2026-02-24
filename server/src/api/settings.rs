@@ -34,6 +34,11 @@ pub struct SettingsResponse {
     /// Never return the password to the frontend — just whether one is set.
     pub mikrotik_password_set: bool,
     pub mikrotik_enabled: bool,
+    // --- Xiaomi MiWiFi ---
+    pub xiaomi_url: Option<String>,
+    /// Never return the password to the frontend — just whether one is set.
+    pub xiaomi_password_set: bool,
+    pub xiaomi_enabled: bool,
     // --- Unbound DNS ---
     pub unbound_control_path: Option<String>,
     // --- Caddy Reverse Proxy ---
@@ -66,6 +71,10 @@ pub struct UpdateSettingsRequest {
     pub mikrotik_user: Option<String>,
     pub mikrotik_password: Option<String>,
     pub mikrotik_enabled: Option<bool>,
+    // --- Xiaomi MiWiFi ---
+    pub xiaomi_url: Option<String>,
+    pub xiaomi_password: Option<String>,
+    pub xiaomi_enabled: Option<bool>,
     // --- Unbound DNS ---
     pub unbound_control_path: Option<String>,
     // --- Caddy Reverse Proxy ---
@@ -149,6 +158,14 @@ pub async fn get_settings(
         .map(|v| v == "1" || v == "true")
         .unwrap_or(false);
 
+    // Xiaomi MiWiFi settings.
+    let xiaomi_url = get_setting(&state, "xiaomi_url").await;
+    let xiaomi_password_set = get_setting(&state, "xiaomi_password").await.is_some();
+    let xiaomi_enabled = get_setting(&state, "xiaomi_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+
     // Unbound DNS settings.
     let unbound_control_path = get_setting(&state, "unbound_control_path").await;
 
@@ -174,6 +191,9 @@ pub async fn get_settings(
         mikrotik_user,
         mikrotik_password_set,
         mikrotik_enabled,
+        xiaomi_url,
+        xiaomi_password_set,
+        xiaomi_enabled,
         unbound_control_path,
         caddy_admin_url,
     }))
@@ -296,6 +316,22 @@ pub async fn update_settings(
             mikrotik_enabled = enabled,
             "MikroTik enabled toggle updated"
         );
+    }
+
+    // --- Xiaomi MiWiFi settings ---
+    if let Some(ref url) = body.xiaomi_url {
+        upsert_setting(&state, "xiaomi_url", url).await?;
+        info!(xiaomi_url = %url, "Xiaomi URL updated");
+    }
+
+    if let Some(ref password) = body.xiaomi_password {
+        upsert_setting(&state, "xiaomi_password", password).await?;
+        info!("Xiaomi password updated");
+    }
+
+    if let Some(enabled) = body.xiaomi_enabled {
+        upsert_setting(&state, "xiaomi_enabled", if enabled { "1" } else { "0" }).await?;
+        info!(xiaomi_enabled = enabled, "Xiaomi enabled toggle updated");
     }
 
     // --- Unbound DNS settings ---

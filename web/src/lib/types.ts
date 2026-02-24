@@ -525,6 +525,10 @@ export interface SettingsData {
   mikrotik_user: string | null;
   mikrotik_password_set: boolean;
   mikrotik_enabled: boolean;
+  // Xiaomi MiWiFi
+  xiaomi_url: string | null;
+  xiaomi_password_set: boolean;
+  xiaomi_enabled: boolean;
   // Unbound DNS
   unbound_control_path: string | null;
   // Caddy Reverse Proxy
@@ -1803,4 +1807,78 @@ export interface CreateMikrotikNatRuleRequest {
   to_ports?: string;
   comment?: string;
   disabled?: boolean;
+}
+
+// ─── Xiaomi MiWiFi ──────────────────────────────────────
+
+export interface XiaomiStatus {
+  configured: boolean;
+  reachable: boolean;
+  cpu: XiaomiCpu | null;
+  mem: XiaomiMem | null;
+  temperature: number | null;
+  uptime: string | null;
+  wan_traffic: XiaomiWanTraffic | null;
+  device_count: XiaomiDeviceCount | null;
+}
+
+export interface XiaomiCpu {
+  cores: number | null;
+  frequency: string | null;
+  load: number | null;
+}
+
+export interface XiaomiMem {
+  usage: number | null;
+  total: string | null;
+  frequency: string | null;
+  mem_type: string | null;
+}
+
+export interface XiaomiWanTraffic {
+  download_speed: string | null;
+  upload_speed: string | null;
+  max_download_speed: string | null;
+  max_upload_speed: string | null;
+}
+
+export interface XiaomiDeviceCount {
+  online: number | null;
+  total: number | null;
+  online_without_mesh: number | null;
+  total_without_mesh: number | null;
+}
+
+export interface XiaomiWanInfo {
+  wan_type: string | null;
+  ip: string | null;
+  mask: string | null;
+  gateway: string | null;
+  dns_servers: string[];
+  ipv6_ip: string | null;
+  ipv6_gateway: string | null;
+  ipv6_dns: string[];
+  ipv6_prefix: string | null;
+}
+
+export interface XiaomiWifiBand {
+  name: string;
+  ssid: string | null;
+  channel: string | null;
+  bandwidth: string | null;
+  encryption: string | null;
+  band_steering: string | null;
+  status: string | null;
+}
+
+export interface XiaomiWifiInfo {
+  bands: XiaomiWifiBand[];
+}
+
+export interface XiaomiFirmware {
+  router_name: string | null;
+  rom_version: string | null;
+  hardware: string | null;
+  language: string | null;
+  update_available: boolean;
 }

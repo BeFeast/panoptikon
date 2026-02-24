@@ -47,6 +47,7 @@ pub mod traffic;
 pub mod unbound;
 pub mod vpn_status;
 pub mod vyos;
+pub mod xiaomi;
 
 pub use error::AppError;
 
@@ -70,6 +71,10 @@ pub struct AppState {
     pub mikrotik_cache: Arc<crate::mikrotik::client::MikrotikCache>,
     /// Shared reqwest::Client for Caddy Admin API.
     pub caddy_http: reqwest::Client,
+    /// Shared reqwest::Client for Xiaomi MiWiFi API.
+    pub xiaomi_http: reqwest::Client,
+    /// TTL cache for Xiaomi read operations.
+    pub xiaomi_cache: Arc<crate::xiaomi::client::XiaomiCache>,
 }
 
 impl AppState {
@@ -90,6 +95,8 @@ impl AppState {
                 .timeout(std::time::Duration::from_secs(10))
                 .build()
                 .expect("caddy HTTP client"),
+            xiaomi_http: crate::xiaomi::client::shared_http_client(),
+            xiaomi_cache: Arc::new(crate::xiaomi::client::XiaomiCache::new()),
         }
     }
 }
@@ -491,6 +498,11 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/mikrotik/dns", get(mikrotik::dns))
         .route("/mikrotik/wireguard", get(mikrotik::wireguard))
+        // Xiaomi MiWiFi router proxy
+        .route("/xiaomi/status", get(xiaomi::status))
+        .route("/xiaomi/wan", get(xiaomi::wan_info))
+        .route("/xiaomi/wifi", get(xiaomi::wifi))
+        .route("/xiaomi/firmware", get(xiaomi::firmware))
         // QoS / Traffic Shaping
         .route("/qos/summary", get(qos::qos_summary))
         .route("/qos/vyos/policies", get(qos::vyos_traffic_policies))
@@ -631,6 +643,9 @@ async fn vyos_cache_invalidation(
         }
         if path.contains("/mikrotik/") {
             state.mikrotik_cache.clear();
+        }
+        if path.contains("/xiaomi/") {
+            state.xiaomi_cache.clear();
         }
     }
     response

@@ -1935,3 +1935,31 @@ export function deleteMikrotikNatRule(id: string): Promise<void> {
     `/api/v1/nat/mikrotik/rules/${encodeURIComponent(id)}`
   );
 }
+
+// ── Xiaomi MiWiFi ────────────────────────────────────────
+
+export function fetchXiaomiStatus(): Promise<
+  import("./types").XiaomiStatus
+> {
+  return apiGet<import("./types").XiaomiStatus>("/api/v1/xiaomi/status");
+}
+
+export function fetchXiaomiWanInfo(): Promise<
+  import("./types").XiaomiWanInfo
+> {
+  return apiGet<import("./types").XiaomiWanInfo>("/api/v1/xiaomi/wan");
+}
+
+export function fetchXiaomiWifi(): Promise<
+  import("./types").XiaomiWifiInfo
+> {
+  return apiGet<import("./types").XiaomiWifiInfo>("/api/v1/xiaomi/wifi");
+}
+
+export function fetchXiaomiFirmware(): Promise<
+  import("./types").XiaomiFirmware
+> {
+  return apiGet<import("./types").XiaomiFirmware>(
+    "/api/v1/xiaomi/firmware"
+  );
+}
