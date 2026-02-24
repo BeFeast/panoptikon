@@ -55,6 +55,7 @@ import {
   deleteDdnsEntry,
   toggleDdnsEntry,
   fetchDdnsStatus,
+  fetchSettings,
 } from "@/lib/api";
 import type { DdnsEntry, DdnsEntryRequest, DdnsStatus } from "@/lib/types";
 import { toast } from "sonner";
@@ -74,7 +75,7 @@ const PROVIDERS = [
 
 const PROTOCOLS = ["ipv4", "ipv6", "both"];
 const IP_SOURCES = ["wan", "interface", "web"];
-const ROUTER_TYPES = ["vyos", "mikrotik"];
+const ROUTER_TYPES = ["mikrotik", "vyos"];
 
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
@@ -118,11 +119,13 @@ function DdnsFormDialog({
   onClose,
   onSave,
   initial,
+  defaultRouterType,
 }: {
   open: boolean;
   onClose: () => void;
   onSave: (body: DdnsEntryRequest) => Promise<void>;
   initial?: DdnsEntry | null;
+  defaultRouterType: string;
 }) {
   const [provider, setProvider] = useState(initial?.provider ?? "cloudflare");
   const [hostname, setHostname] = useState(initial?.hostname ?? "");
@@ -136,7 +139,7 @@ function DdnsFormDialog({
   const [ipSource, setIpSource] = useState(initial?.ip_source ?? "wan");
   const [protocol, setProtocol] = useState(initial?.protocol ?? "ipv4");
   const [routerType, setRouterType] = useState(
-    initial?.router_type ?? "vyos"
+    initial?.router_type ?? defaultRouterType
   );
   const [enabled, setEnabled] = useState(initial?.enabled ?? true);
   const [saving, setSaving] = useState(false);
@@ -152,10 +155,10 @@ function DdnsFormDialog({
       setInterfaceName(initial?.interface_name ?? "");
       setIpSource(initial?.ip_source ?? "wan");
       setProtocol(initial?.protocol ?? "ipv4");
-      setRouterType(initial?.router_type ?? "vyos");
+      setRouterType(initial?.router_type ?? defaultRouterType);
       setEnabled(initial?.enabled ?? true);
     }
-  }, [open, initial]);
+  }, [open, initial, defaultRouterType]);
 
   const handleSubmit = async () => {
     if (!hostname.trim()) {
@@ -364,6 +367,24 @@ export default function DdnsPage() {
   const [editItem, setEditItem] = useState<DdnsEntry | null>(null);
   const [pendingDelete, setPendingDelete] = useState<DdnsEntry | null>(null);
   const [search, setSearch] = useState("");
+  const [defaultRouterType, setDefaultRouterType] = useState("mikrotik");
+
+  // Determine default router type from settings
+  useEffect(() => {
+    fetchSettings()
+      .then((settings) => {
+        if (settings.mikrotik_enabled) {
+          setDefaultRouterType("mikrotik");
+        } else if (settings.vyos_url && settings.vyos_api_key_set) {
+          setDefaultRouterType("vyos");
+        } else {
+          setDefaultRouterType("mikrotik");
+        }
+      })
+      .catch(() => {
+        // Keep mikrotik as default on error
+      });
+  }, []);
 
   const loadData = useCallback(async () => {
     try {
@@ -683,6 +704,7 @@ export default function DdnsPage() {
         open={showAdd}
         onClose={() => setShowAdd(false)}
         onSave={handleCreate}
+        defaultRouterType={defaultRouterType}
       />
 
       {/* Edit dialog */}
@@ -691,6 +713,7 @@ export default function DdnsPage() {
         onClose={() => setEditItem(null)}
         onSave={handleUpdate}
         initial={editItem}
+        defaultRouterType={defaultRouterType}
       />
 
       {/* Delete confirmation */}
