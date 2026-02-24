@@ -28,6 +28,7 @@ interface SettingsItem {
 
 interface SettingsGroup {
   label: string;
+  subtitle?: string;
   items: SettingsItem[];
 }
 
@@ -43,18 +44,11 @@ const settingsGroups: SettingsGroup[] = [
         description: "Configure MikroTik or VyOS router integration.",
       },
       {
-        href: "/settings/npm",
-        icon: <Globe className="h-4 w-4 text-orange-400" />,
-        iconBg: "bg-orange-500/10",
-        title: "Nginx Proxy Manager",
-        description: "Manage reverse proxy hosts via NPM.",
-      },
-      {
         href: "/settings/caddy",
         icon: <Shield className="h-4 w-4 text-emerald-400" />,
         iconBg: "bg-emerald-500/10",
         title: "Caddy Reverse Proxy",
-        description: "Manage reverse proxy hosts via Caddy.",
+        description: "Primary reverse proxy — manage hosts via Caddy.",
       },
       {
         href: "/settings/dns",
@@ -138,6 +132,19 @@ const settingsGroups: SettingsGroup[] = [
       },
     ],
   },
+  {
+    label: "Legacy / Optional",
+    subtitle: "Use Caddy for new deployments.",
+    items: [
+      {
+        href: "/settings/npm",
+        icon: <Globe className="h-4 w-4 text-orange-400" />,
+        iconBg: "bg-orange-500/10",
+        title: "Nginx Proxy Manager",
+        description: "Legacy reverse proxy — consider migrating to Caddy.",
+      },
+    ],
+  },
 ];
 
 export default function SettingsPage() {
@@ -148,9 +155,16 @@ export default function SettingsPage() {
 
         {settingsGroups.map((group) => (
           <section key={group.label} className="space-y-3">
-            <h2 className="text-xs font-medium uppercase tracking-wider text-slate-500">
-              {group.label}
-            </h2>
+            <div>
+              <h2 className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                {group.label}
+              </h2>
+              {group.subtitle && (
+                <p className="mt-1 text-xs text-slate-600">
+                  {group.subtitle}
+                </p>
+              )}
+            </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               {group.items.map((item) => (
                 <Link key={item.href} href={item.href} className="group">
