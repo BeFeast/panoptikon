@@ -43,6 +43,7 @@ pub mod ssh_targets;
 pub mod topology;
 pub mod traffic;
 pub mod unbound;
+pub mod vpn_status;
 pub mod vyos;
 
 pub use error::AppError;
@@ -467,6 +468,8 @@ pub fn router(state: AppState) -> Router {
             delete(qos::delete_mikrotik_simple_queue),
         )
         .route("/qos/mikrotik/queue-tree", get(qos::mikrotik_queue_tree))
+        // VPN Status Dashboard
+        .route("/vpn-status", get(vpn_status::vpn_status))
         // Assets (IT inventory)
         .route("/assets", get(assets::list))
         .route("/assets", post(assets::create))

@@ -20,6 +20,7 @@ import {
   Server,
   Settings,
   Shield,
+  Shield,
   Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,7 @@ const navItems = [
   { href: "/services", label: "Services", icon: Workflow },
   { href: "/topology", label: "Topology", icon: Network },
   { href: "/traffic", label: "Traffic", icon: Activity },
+  { href: "/vpn-status", label: "VPN Status", icon: Shield },
   { href: "/qos", label: "QoS", icon: Gauge },
   { href: "/dns-logs", label: "DNS Logs", icon: Search },
   { href: "/dns-queries", label: "DNS Queries", icon: Search },

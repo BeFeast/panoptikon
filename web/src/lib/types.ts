@@ -1540,6 +1540,43 @@ export interface MikrotikQueueTree {
   dynamic: boolean;
 }
 
+// ─── VPN Status Dashboard ───────────────────────────────────
+
+export interface VpnPeerStatus {
+  name: string;
+  public_key: string | null;
+  endpoint: string | null;
+  allowed_ips: string[];
+  last_handshake: number | null;
+  rx_bytes: number | null;
+  tx_bytes: number | null;
+  /** "online" if handshake within last 3 minutes, "offline" otherwise. */
+  connectivity: string;
+}
+
+export interface VpnInterfaceStatus {
+  name: string;
+  address: string | null;
+  port: number | null;
+  public_key: string | null;
+  status: string | null;
+  peers: VpnPeerStatus[];
+  peers_online: number;
+  peers_total: number;
+  /** "vyos" or "mikrotik" */
+  source: string;
+}
+
+export interface VpnStatusResponse {
+  vyos_available: boolean;
+  mikrotik_available: boolean;
+  interfaces: VpnInterfaceStatus[];
+  total_peers: number;
+  online_peers: number;
+  total_rx_bytes: number;
+  total_tx_bytes: number;
+}
+
 export interface QosSummary {
   vyos_available: boolean;
   mikrotik_available: boolean;

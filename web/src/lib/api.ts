@@ -1624,6 +1624,14 @@ export function fetchDnsQueryStats(hours?: number): Promise<DnsQueryStats> {
   return apiGet<DnsQueryStats>(`/api/v1/dns-queries/stats${qs}`);
 }
 
+// ─── VPN Status Dashboard ────────────────────────────────────
+
+export function fetchVpnStatus(): Promise<
+  import("./types").VpnStatusResponse
+> {
+  return apiGet<import("./types").VpnStatusResponse>("/api/v1/vpn-status");
+}
+
 // ─── QoS / Traffic Shaping ───────────────────────────────────
 
 export function fetchQosSummary(): Promise<
