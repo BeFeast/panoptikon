@@ -372,7 +372,11 @@ pub struct RomUpdateInfo {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UptimeResponse {
-    #[serde(default, deserialize_with = "de_opt_string_from_any")]
+    #[serde(
+        default,
+        rename = "upTime",
+        deserialize_with = "de_opt_string_from_any"
+    )]
     pub uptime: Option<String>,
 }
 
@@ -414,8 +418,15 @@ mod tests {
 
     #[test]
     fn uptime_deserializes_from_number() {
-        let payload = serde_json::json!({ "uptime": 123 });
+        let payload = serde_json::json!({ "upTime": 123 });
         let parsed: UptimeResponse = serde_json::from_value(payload).expect("uptime should parse");
         assert_eq!(parsed.uptime, Some("123".to_string()));
+    }
+
+    #[test]
+    fn uptime_deserializes_from_string() {
+        let payload = serde_json::json!({ "upTime": "849715.25" });
+        let parsed: UptimeResponse = serde_json::from_value(payload).expect("uptime should parse");
+        assert_eq!(parsed.uptime, Some("849715.25".to_string()));
     }
 }
