@@ -76,6 +76,9 @@ const UNBOUND_DNS_RECORDS_MIGRATION: &str = include_str!("migrations/022_unbound
 /// Migration 023: DNS query log table for per-device query history.
 const DNS_QUERY_LOG_MIGRATION: &str = include_str!("migrations/023_dns_query_log.sql");
 
+/// Migration 024: DNS blocklist manager tables.
+const DNS_BLOCKLISTS_MIGRATION: &str = include_str!("migrations/022_dns_blocklists.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -575,6 +578,24 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!(dns_deleted, "Purged old DNS query logs on startup");
     }
 
+    // Migration 024: DNS blocklist manager tables.
+    let applied_24: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 24")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_24 {
+        sqlx::raw_sql(DNS_BLOCKLISTS_MIGRATION)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (24)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 022_dns_blocklists.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -631,6 +652,9 @@ mod tests {
             "caddy_proxy_hosts",
             "unbound_dns_records",
             "dns_query_log",
+            "dns_blocklists",
+            "dns_domain_overrides",
+            "dns_blocked_domains",
         ];
 
         for table in &expected_tables {

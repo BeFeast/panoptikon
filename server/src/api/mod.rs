@@ -24,6 +24,7 @@ pub mod caddy;
 pub mod config_backups;
 pub mod dashboard;
 pub mod devices;
+pub mod dns_blocklists;
 pub mod dns_logs;
 pub mod error;
 pub mod export;
@@ -429,6 +430,33 @@ pub fn router(state: AppState) -> Router {
         .route("/assets/:id", get(assets::get_one))
         .route("/assets/:id", put(assets::update))
         .route("/assets/:id", delete(assets::delete))
+        // DNS Blocklists
+        .route("/dns-blocklists", get(dns_blocklists::list))
+        .route("/dns-blocklists", post(dns_blocklists::create))
+        .route("/dns-blocklists/stats", get(dns_blocklists::stats))
+        .route(
+            "/dns-blocklists/unbound-config",
+            get(dns_blocklists::unbound_config),
+        )
+        .route(
+            "/dns-blocklists/overrides",
+            get(dns_blocklists::list_overrides),
+        )
+        .route(
+            "/dns-blocklists/overrides",
+            post(dns_blocklists::create_override),
+        )
+        .route(
+            "/dns-blocklists/overrides/:id",
+            delete(dns_blocklists::delete_override),
+        )
+        .route("/dns-blocklists/:id", put(dns_blocklists::update))
+        .route("/dns-blocklists/:id", delete(dns_blocklists::delete))
+        .route("/dns-blocklists/:id/toggle", post(dns_blocklists::toggle))
+        .route(
+            "/dns-blocklists/:id/download",
+            post(dns_blocklists::download),
+        )
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))
