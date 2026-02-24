@@ -1255,3 +1255,41 @@ export interface UnboundTestConnectionResponse {
   success: boolean;
   message: string;
 }
+
+// ─── DNS Blocklists ─────────────────────────────────────
+
+export interface DnsBlocklist {
+  id: string;
+  name: string;
+  url: string;
+  enabled: boolean;
+  auto_refresh_hours: number | null;
+  domain_count: number;
+  last_updated_at: string | null;
+  created_at: string;
+}
+
+export interface DnsBlocklistStats {
+  total_blocklists: number;
+  enabled_blocklists: number;
+  total_blocked_domains: number;
+  whitelist_count: number;
+  blacklist_count: number;
+}
+
+export interface DnsDomainOverrideEntry {
+  domain: string;
+  action: "whitelist" | "blacklist";
+  created_at: string;
+}
+
+export interface DnsBlocklistSyncResponse {
+  success: boolean;
+  message: string;
+  domain_count: number;
+}
+
+export interface DnsUnboundConfigResponse {
+  config: string;
+  domain_count: number;
+}

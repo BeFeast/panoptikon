@@ -88,6 +88,11 @@ import type {
   UpdateAlertRuleRequest,
   TopologyGraph,
   NodePosition,
+  DnsBlocklist,
+  DnsBlocklistStats,
+  DnsDomainOverrideEntry,
+  DnsBlocklistSyncResponse,
+  DnsUnboundConfigResponse,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -1403,5 +1408,65 @@ export function toggleUnboundDnsRecord(
 export function testUnboundConnection(): Promise<UnboundTestConnectionResponse> {
   return apiPost<UnboundTestConnectionResponse>(
     "/api/v1/unbound/test-connection"
+  );
+}
+
+// ─── DNS Blocklists ──────────────────────────────────────
+
+export function fetchDnsBlocklists(): Promise<DnsBlocklist[]> {
+  return apiGet<DnsBlocklist[]>("/api/v1/dns-blocklists");
+}
+
+export function createDnsBlocklist(body: {
+  name: string;
+  url: string;
+  enabled?: boolean;
+  auto_refresh_hours?: number | null;
+}): Promise<DnsBlocklist> {
+  return apiPost<DnsBlocklist>("/api/v1/dns-blocklists", body);
+}
+
+export function updateDnsBlocklist(
+  id: string,
+  body: {
+    name?: string;
+    url?: string;
+    enabled?: boolean;
+    auto_refresh_hours?: number | null;
+  }
+): Promise<DnsBlocklist> {
+  return apiPut<DnsBlocklist>(`/api/v1/dns-blocklists/${id}`, body);
+}
+
+export function deleteDnsBlocklist(id: string): Promise<void> {
+  return apiDelete(`/api/v1/dns-blocklists/${id}`);
+}
+
+export function syncDnsBlocklist(id: string): Promise<DnsBlocklistSyncResponse> {
+  return apiPost<DnsBlocklistSyncResponse>(`/api/v1/dns-blocklists/${id}/sync`);
+}
+
+export function fetchDnsBlocklistStats(): Promise<DnsBlocklistStats> {
+  return apiGet<DnsBlocklistStats>("/api/v1/dns-blocklists/stats");
+}
+
+export function fetchDnsBlocklistConfig(): Promise<DnsUnboundConfigResponse> {
+  return apiGet<DnsUnboundConfigResponse>("/api/v1/dns-blocklists/generate-config");
+}
+
+export function fetchDnsDomainOverrides(): Promise<DnsDomainOverrideEntry[]> {
+  return apiGet<DnsDomainOverrideEntry[]>("/api/v1/dns-blocklists/overrides");
+}
+
+export function createDnsDomainOverride(body: {
+  domain: string;
+  action: "whitelist" | "blacklist";
+}): Promise<DnsDomainOverrideEntry> {
+  return apiPost<DnsDomainOverrideEntry>("/api/v1/dns-blocklists/overrides", body);
+}
+
+export function deleteDnsDomainOverride(domain: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/dns-blocklists/overrides/${encodeURIComponent(domain)}`
   );
 }

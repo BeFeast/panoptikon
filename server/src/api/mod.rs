@@ -24,6 +24,7 @@ pub mod caddy;
 pub mod config_backups;
 pub mod dashboard;
 pub mod devices;
+pub mod dns_blocklists;
 pub mod error;
 pub mod export;
 pub mod metrics;
@@ -397,6 +398,32 @@ pub fn router(state: AppState) -> Router {
         .route("/unbound/dns-records/:id", delete(unbound::delete))
         .route("/unbound/dns-records/:id/toggle", post(unbound::toggle))
         .route("/unbound/test-connection", post(unbound::test_connection))
+        // DNS Blocklists
+        .route("/dns-blocklists", get(dns_blocklists::list))
+        .route("/dns-blocklists", post(dns_blocklists::create))
+        .route("/dns-blocklists/stats", get(dns_blocklists::stats))
+        .route(
+            "/dns-blocklists/generate-config",
+            get(dns_blocklists::generate_config),
+        )
+        .route(
+            "/dns-blocklists/overrides",
+            get(dns_blocklists::list_overrides),
+        )
+        .route(
+            "/dns-blocklists/overrides",
+            post(dns_blocklists::create_override),
+        )
+        .route(
+            "/dns-blocklists/overrides/:domain",
+            delete(dns_blocklists::delete_override),
+        )
+        .route("/dns-blocklists/:id", put(dns_blocklists::update))
+        .route("/dns-blocklists/:id", delete(dns_blocklists::delete))
+        .route(
+            "/dns-blocklists/:id/sync",
+            post(dns_blocklists::sync_blocklist),
+        )
         // Unified Services wizard
         .route("/services/add", post(services::add_service))
         .route("/services/remove", post(services::remove_service))
