@@ -113,6 +113,7 @@ pub struct XiaomiWanInfoResponse {
     pub dns: Option<String>,
     pub wan_type: Option<String>,
     pub mask: Option<String>,
+    pub ipv6: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -137,6 +138,32 @@ pub struct XiaomiNewStatusResponse {
     pub sn: Option<String>,
     pub devices_online: Option<i32>,
     pub devices_total: Option<i32>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct XiaomiWifiBandResponse {
+    pub ssid: Option<String>,
+    pub channel: Option<String>,
+    pub bandwidth: Option<String>,
+    pub signal: Option<i32>,
+    pub status: Option<String>,
+    pub ifname: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct XiaomiInitInfoResponse {
+    pub router_name: Option<String>,
+    pub hardware: Option<String>,
+    pub rom_version: Option<String>,
+    pub language: Option<String>,
+    pub countrycode: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct XiaomiRomUpdateResponse {
+    pub update_available: bool,
+    pub latest_version: Option<String>,
+    pub changelog_url: Option<String>,
 }
 
 // ── Handlers ───────────────────────────────────────────────
@@ -357,6 +384,7 @@ pub async fn wan_info(
             dns: info.dns,
             wan_type: info.wan_type,
             mask: info.mask,
+            ipv6: info.ipv6,
         })),
         Err(e) => {
             tracing::error!(error = %e, "MiWiFi WAN info request failed");
@@ -390,6 +418,82 @@ pub async fn lan_info(
         })),
         Err(e) => {
             tracing::error!(error = %e, "MiWiFi LAN info request failed");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// GET /xiaomi/wifi-detail-all — per-band WiFi details.
+pub async fn wifi_detail_all(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<XiaomiWifiBandResponse>>, StatusCode> {
+    let client = match xiaomi_client(&state).await {
+        Some(c) => c,
+        None => return Err(StatusCode::SERVICE_UNAVAILABLE),
+    };
+
+    match client.wifi_detail_all().await {
+        Ok(bands) => Ok(Json(
+            bands
+                .into_iter()
+                .map(|b| XiaomiWifiBandResponse {
+                    ssid: b.ssid,
+                    channel: b.channel,
+                    bandwidth: b.bandwidth,
+                    signal: b.signal,
+                    status: b.status,
+                    ifname: b.ifname,
+                })
+                .collect(),
+        )),
+        Err(e) => {
+            tracing::error!(error = %e, "MiWiFi wifi_detail_all request failed");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// GET /xiaomi/init-info — router identity, firmware version, locale.
+pub async fn init_info(
+    State(state): State<AppState>,
+) -> Result<Json<XiaomiInitInfoResponse>, StatusCode> {
+    let client = match xiaomi_client(&state).await {
+        Some(c) => c,
+        None => return Err(StatusCode::SERVICE_UNAVAILABLE),
+    };
+
+    match client.init_info().await {
+        Ok(info) => Ok(Json(XiaomiInitInfoResponse {
+            router_name: info.router_name,
+            hardware: info.hardware,
+            rom_version: info.rom_version,
+            language: info.language,
+            countrycode: info.countrycode,
+        })),
+        Err(e) => {
+            tracing::error!(error = %e, "MiWiFi init_info request failed");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// GET /xiaomi/rom-update — check for firmware update.
+pub async fn rom_update(
+    State(state): State<AppState>,
+) -> Result<Json<XiaomiRomUpdateResponse>, StatusCode> {
+    let client = match xiaomi_client(&state).await {
+        Some(c) => c,
+        None => return Err(StatusCode::SERVICE_UNAVAILABLE),
+    };
+
+    match client.check_rom_update().await {
+        Ok(update) => Ok(Json(XiaomiRomUpdateResponse {
+            update_available: update.need_update.unwrap_or(0) == 1,
+            latest_version: update.version,
+            changelog_url: update.changelog_url,
+        })),
+        Err(e) => {
+            tracing::error!(error = %e, "MiWiFi check_rom_update request failed");
             Err(StatusCode::BAD_GATEWAY)
         }
     }

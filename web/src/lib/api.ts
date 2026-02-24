@@ -1991,3 +1991,23 @@ export function fetchXiaomiLanInfo(): Promise<
 > {
   return apiGet<import("./types").XiaomiLanInfo>("/api/v1/xiaomi/lan-info");
 }
+
+export function fetchXiaomiWifiDetailAll(): Promise<
+  import("./types").XiaomiWifiBand[]
+> {
+  return apiGet<import("./types").XiaomiWifiBand[]>(
+    "/api/v1/xiaomi/wifi-detail-all"
+  );
+}
+
+export function fetchXiaomiInitInfo(): Promise<
+  import("./types").XiaomiInitInfo
+> {
+  return apiGet<import("./types").XiaomiInitInfo>("/api/v1/xiaomi/init-info");
+}
+
+export function fetchXiaomiRomUpdate(): Promise<
+  import("./types").XiaomiRomUpdate
+> {
+  return apiGet<import("./types").XiaomiRomUpdate>("/api/v1/xiaomi/rom-update");
+}

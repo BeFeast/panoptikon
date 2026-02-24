@@ -258,3 +258,61 @@ pub struct LanInfoResponse {
     #[serde(default)]
     pub info: Option<LanInfo>,
 }
+
+// ── WiFi detail (all bands) ────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WifiBandDetail {
+    #[serde(default)]
+    pub ssid: Option<String>,
+    #[serde(default)]
+    pub channel: Option<String>,
+    #[serde(default)]
+    pub bandwidth: Option<String>,
+    #[serde(default)]
+    pub signal: Option<i32>,
+    #[serde(default)]
+    pub status: Option<String>,
+    #[serde(default, rename = "ifname")]
+    pub ifname: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct WifiDetailAllResponse {
+    #[serde(default)]
+    pub info: Vec<WifiBandDetail>,
+}
+
+// ── Init info (firmware / hardware identity) ───────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InitInfo {
+    #[serde(default, rename = "routername")]
+    pub router_name: Option<String>,
+    #[serde(default)]
+    pub hardware: Option<String>,
+    #[serde(default, rename = "romversion")]
+    pub rom_version: Option<String>,
+    #[serde(default)]
+    pub language: Option<String>,
+    #[serde(default)]
+    pub countrycode: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct InitInfoResponse {
+    #[serde(flatten)]
+    pub info: InitInfo,
+}
+
+// ── ROM update check ───────────────────────────────────────
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RomUpdateCheck {
+    #[serde(default, rename = "needUpdate")]
+    pub need_update: Option<i32>,
+    #[serde(default)]
+    pub version: Option<String>,
+    #[serde(default, rename = "changelogUrl")]
+    pub changelog_url: Option<String>,
+}

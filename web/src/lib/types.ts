@@ -529,6 +529,8 @@ export interface SettingsData {
   unbound_control_path: string | null;
   // Caddy Reverse Proxy
   caddy_admin_url: string | null;
+  // Xiaomi MiWiFi
+  xiaomi_enabled: boolean;
 }
 
 // ─── Nginx Proxy Manager ─────────────────────────────────
@@ -1893,6 +1895,7 @@ export interface XiaomiWanInfo {
   dns: string | null;
   wan_type: string | null;
   mask: string | null;
+  ipv6: unknown | null;
 }
 
 export interface XiaomiLanPort {
@@ -1914,4 +1917,27 @@ export interface XiaomiNewStatus {
   sn: string | null;
   devices_online: number | null;
   devices_total: number | null;
+}
+
+export interface XiaomiWifiBand {
+  ssid: string | null;
+  channel: string | null;
+  bandwidth: string | null;
+  signal: number | null;
+  status: string | null;
+  ifname: string | null;
+}
+
+export interface XiaomiInitInfo {
+  router_name: string | null;
+  hardware: string | null;
+  rom_version: string | null;
+  language: string | null;
+  countrycode: string | null;
+}
+
+export interface XiaomiRomUpdate {
+  update_available: boolean;
+  latest_version: string | null;
+  changelog_url: string | null;
 }

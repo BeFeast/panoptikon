@@ -38,6 +38,8 @@ pub struct SettingsResponse {
     pub unbound_control_path: Option<String>,
     // --- Caddy Reverse Proxy ---
     pub caddy_admin_url: Option<String>,
+    // --- Xiaomi MiWiFi ---
+    pub xiaomi_enabled: bool,
 }
 
 /// Request body for updating settings.
@@ -155,6 +157,12 @@ pub async fn get_settings(
     // Caddy settings.
     let caddy_admin_url = get_setting(&state, "caddy_admin_url").await;
 
+    // Xiaomi MiWiFi settings.
+    let xiaomi_enabled = get_setting(&state, "xiaomi_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+
     Ok(Json(SettingsResponse {
         webhook_url,
         vyos_url,
@@ -176,6 +184,7 @@ pub async fn get_settings(
         mikrotik_enabled,
         unbound_control_path,
         caddy_admin_url,
+        xiaomi_enabled,
     }))
 }
 
