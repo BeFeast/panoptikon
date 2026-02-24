@@ -124,6 +124,14 @@ pub struct AutoLinkResponse {
     pub details: Vec<String>,
 }
 
+/// Response for sync-from-devices operation.
+#[derive(Debug, Serialize)]
+pub struct SyncFromDevicesResponse {
+    pub created: usize,
+    pub skipped: usize,
+    pub details: Vec<String>,
+}
+
 // ─── Helpers ─────────────────────────────────────────────
 
 fn asset_from_row(row: sqlx::sqlite::SqliteRow) -> Result<Asset, sqlx::Error> {
@@ -657,14 +665,6 @@ pub async fn auto_link(State(state): State<AppState>) -> Result<Json<AutoLinkRes
     Ok(Json(AutoLinkResponse { linked, details }))
 }
 
-/// Response for sync-from-devices operation.
-#[derive(Debug, Serialize)]
-pub struct SyncFromDevicesResponse {
-    pub created: usize,
-    pub skipped: usize,
-    pub details: Vec<String>,
-}
-
 /// POST /api/v1/assets/sync-from-devices — create assets for discovered
 /// devices that don't already have a linked asset.
 pub async fn sync_from_devices(
@@ -763,6 +763,7 @@ pub async fn sync_from_devices(
 #[cfg(test)]
 mod tests {
     use crate::db;
+    use sqlx::Row;
 
     use super::{asset_from_row, GET_ONE_QUERY, LIST_QUERY};
 
@@ -1003,5 +1004,138 @@ mod tests {
             .expect("GET_ONE_QUERY failed");
 
         assert!(row.is_none(), "Expected no row for nonexistent asset");
+    }
+
+    /// Regression test for #328: discovered devices should be importable as
+    /// assets via sync-from-devices so the assets page is not empty.
+    #[tokio::test]
+    async fn test_sync_from_devices_creates_assets() {
+        let pool = db::init(":memory:").await.expect("DB init failed");
+
+        // Insert two discovered devices with no corresponding assets.
+        sqlx::query(
+            "INSERT INTO devices (id, mac, name, hostname, first_seen_at, last_seen_at, is_online, device_type) \
+             VALUES ('dev-100', 'AA:BB:CC:00:00:01', 'switch-core', 'switch-core.local', \
+                     '2024-01-01 00:00:00', '2024-06-15 12:00:00', 1, 'switch')",
+        )
+        .execute(&pool)
+        .await
+        .expect("Insert device 1 failed");
+
+        sqlx::query(
+            "INSERT INTO devices (id, mac, hostname, first_seen_at, last_seen_at, is_online) \
+             VALUES ('dev-200', 'AA:BB:CC:00:00:02', 'printer.local', \
+                     '2024-01-01 00:00:00', '2024-06-15 11:00:00', 0)",
+        )
+        .execute(&pool)
+        .await
+        .expect("Insert device 2 failed");
+
+        // Verify assets table is empty.
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM assets")
+            .fetch_one(&pool)
+            .await
+            .expect("Count query failed");
+        assert_eq!(count, 0, "Assets table should be empty before sync");
+
+        // Simulate sync-from-devices using the same query as the handler.
+        let rows = sqlx::query(
+            "SELECT d.id, d.name, d.hostname, d.mac, d.device_type, d.location, \
+                    d.owner, d.serial_number, \
+                    (SELECT a2.id FROM agents a2 WHERE a2.device_id = d.id LIMIT 1) AS linked_agent_id \
+             FROM devices d \
+             WHERE d.id NOT IN (SELECT a.device_id FROM assets a WHERE a.device_id IS NOT NULL)",
+        )
+        .fetch_all(&pool)
+        .await
+        .expect("Sync query failed");
+
+        assert_eq!(rows.len(), 2, "Should find 2 unlinked devices");
+
+        // Create assets from discovered devices using the same logic as the handler.
+        for row in &rows {
+            let device_id: String = row.try_get("id").unwrap_or_default();
+            let device_name: Option<String> = row.try_get("name").ok().flatten();
+            let hostname: Option<String> = row.try_get("hostname").ok().flatten();
+            let mac: String = row.try_get("mac").unwrap_or_default();
+            let device_type: Option<String> = row.try_get("device_type").ok().flatten();
+
+            let asset_name = device_name
+                .as_deref()
+                .or(hostname.as_deref())
+                .unwrap_or(&mac);
+
+            let asset_type = match device_type.as_deref() {
+                Some("switch") => "switch",
+                _ => "unknown",
+            };
+
+            let asset_id = uuid::Uuid::new_v4().to_string();
+
+            sqlx::query(
+                "INSERT INTO assets (id, name, asset_type, status, device_id) \
+                 VALUES (?, ?, ?, 'active', ?)",
+            )
+            .bind(&asset_id)
+            .bind(asset_name)
+            .bind(asset_type)
+            .bind(&device_id)
+            .execute(&pool)
+            .await
+            .expect("Insert asset from device failed");
+        }
+
+        // Verify assets were created.
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM assets")
+            .fetch_one(&pool)
+            .await
+            .expect("Count query failed");
+        assert_eq!(count, 2, "Two assets should have been created");
+
+        // Verify device_type was mapped correctly.
+        let switch_type: String =
+            sqlx::query_scalar("SELECT asset_type FROM assets WHERE device_id = 'dev-100'")
+                .fetch_one(&pool)
+                .await
+                .expect("Query failed");
+        assert_eq!(
+            switch_type, "switch",
+            "device_type 'switch' should map to asset_type 'switch'"
+        );
+
+        let unknown_type: String =
+            sqlx::query_scalar("SELECT asset_type FROM assets WHERE device_id = 'dev-200'")
+                .fetch_one(&pool)
+                .await
+                .expect("Query failed");
+        assert_eq!(
+            unknown_type, "unknown",
+            "No device_type should map to 'unknown'"
+        );
+
+        // Verify the LIST_QUERY now returns these assets (regression: page should not be empty).
+        let asset_rows = sqlx::query(LIST_QUERY)
+            .fetch_all(&pool)
+            .await
+            .expect("LIST_QUERY failed");
+        assert_eq!(
+            asset_rows.len(),
+            2,
+            "LIST_QUERY should return the synced assets"
+        );
+
+        // Running sync again should find no new devices.
+        let second_sync = sqlx::query(
+            "SELECT d.id FROM devices d \
+             WHERE d.id NOT IN (SELECT a.device_id FROM assets a WHERE a.device_id IS NOT NULL)",
+        )
+        .fetch_all(&pool)
+        .await
+        .expect("Second sync query failed");
+        assert_eq!(
+            second_sync.len(),
+            0,
+            "No devices should remain unlinked after sync"
+        );
     }
 }
