@@ -1864,3 +1864,74 @@ export function fetchVyosDdnsConfig(): Promise<
 > {
   return apiGet<import("./types").VyosDdnsConfig>("/api/v1/ddns/vyos");
 }
+
+// ─── NAT / Port Forwarding ───────────────────────────────────
+
+export function fetchNatSummary(): Promise<import("./types").NatSummary> {
+  return apiGet<import("./types").NatSummary>("/api/v1/nat/summary");
+}
+
+export function fetchVyosNatRules(): Promise<
+  import("./types").NatDestinationRule[]
+> {
+  return apiGet<import("./types").NatDestinationRule[]>(
+    "/api/v1/nat/vyos/rules"
+  );
+}
+
+export function createVyosNatRule(
+  body: import("./types").CreateVyosNatRuleRequest
+): Promise<import("./types").NatRuleResponse> {
+  return apiPost<import("./types").NatRuleResponse>(
+    "/api/v1/nat/vyos/rules",
+    body
+  );
+}
+
+export function updateVyosNatRule(
+  ruleNumber: number,
+  body: import("./types").UpdateVyosNatRuleRequest
+): Promise<import("./types").NatRuleResponse> {
+  return apiPut<import("./types").NatRuleResponse>(
+    `/api/v1/nat/vyos/rules/${ruleNumber}`,
+    body
+  );
+}
+
+export function deleteVyosNatRule(
+  ruleNumber: number
+): Promise<import("./types").NatRuleResponse> {
+  return apiDelete(
+    `/api/v1/nat/vyos/rules/${ruleNumber}`
+  ) as unknown as Promise<import("./types").NatRuleResponse>;
+}
+
+export function fetchMikrotikNatRules(): Promise<
+  import("./types").MikrotikNatRuleWithId[]
+> {
+  return apiGet<import("./types").MikrotikNatRuleWithId[]>(
+    "/api/v1/nat/mikrotik/rules"
+  );
+}
+
+export function createMikrotikNatRule(
+  body: import("./types").CreateMikrotikNatRuleRequest
+): Promise<void> {
+  return apiPost<void>("/api/v1/nat/mikrotik/rules", body);
+}
+
+export function updateMikrotikNatRule(
+  id: string,
+  body: import("./types").CreateMikrotikNatRuleRequest
+): Promise<void> {
+  return apiPut<void>(
+    `/api/v1/nat/mikrotik/rules/${encodeURIComponent(id)}`,
+    body
+  );
+}
+
+export function deleteMikrotikNatRule(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/nat/mikrotik/rules/${encodeURIComponent(id)}`
+  );
+}
