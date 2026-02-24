@@ -61,7 +61,7 @@ import {
   fetchDnsBlocklistConfig,
   fetchDnsDomainOverrides,
   createDnsDomainOverride,
-  deleteDnsDomainOverride,
+  deleteDnsBlocklistOverride,
 } from "@/lib/api";
 import type {
   DnsBlocklist,
@@ -181,7 +181,7 @@ export default function DnsBlocklistsPage() {
   async function handleDeleteOverride() {
     if (!pendingDeleteOverride) return;
     try {
-      await deleteDnsDomainOverride(pendingDeleteOverride);
+      await deleteDnsBlocklistOverride(pendingDeleteOverride);
       setOverrides(
         (prev) =>
           prev?.filter((o) => o.domain !== pendingDeleteOverride) ?? null

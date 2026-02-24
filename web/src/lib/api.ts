@@ -1465,7 +1465,7 @@ export function createDnsDomainOverride(body: {
   return apiPost<DnsDomainOverrideEntry>("/api/v1/dns-blocklists/overrides", body);
 }
 
-export function deleteDnsDomainOverride(domain: string): Promise<void> {
+export function deleteDnsBlocklistOverride(domain: string): Promise<void> {
   return apiDelete(
     `/api/v1/dns-blocklists/overrides/${encodeURIComponent(domain)}`
   );
