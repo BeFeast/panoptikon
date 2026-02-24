@@ -76,6 +76,7 @@ import {
 import type { Asset, AssetRequest, AssetType, AssetStatus, AssetImportRow } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
 import { downloadExport } from "@/lib/export";
+import { loadAssetsWithDeviceSync } from "@/lib/assets";
 import { PageTransition } from "@/components/PageTransition";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
@@ -235,7 +236,12 @@ function AssetsListPage() {
 
   const load = useCallback(async () => {
     try {
-      setAssets(await fetchAssets());
+      const loadedAssets = await loadAssetsWithDeviceSync({
+        fetchAssets,
+        syncAssetsFromDevices,
+      });
+      setAssets(loadedAssets);
+      setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load assets");
     }
