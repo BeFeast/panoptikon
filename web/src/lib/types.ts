@@ -529,6 +529,10 @@ export interface SettingsData {
   unbound_control_path: string | null;
   // Caddy Reverse Proxy
   caddy_admin_url: string | null;
+  // Cloudflare Tunnel
+  cloudflare_account_id: string | null;
+  cloudflare_tunnel_id: string | null;
+  cloudflare_api_token_set: boolean;
 }
 
 // ─── Nginx Proxy Manager ─────────────────────────────────
@@ -1914,4 +1918,45 @@ export interface XiaomiNewStatus {
   sn: string | null;
   devices_online: number | null;
   devices_total: number | null;
+}
+
+// ─── Cloudflare Tunnel ──────────────────────────────────────
+
+export interface CloudflareTunnelStatus {
+  configured: boolean;
+  tunnel_id: string | null;
+  tunnel_name: string | null;
+  status: string | null;
+  connectors: TunnelConnector[];
+  routes: TunnelRoute[];
+}
+
+export interface TunnelConnector {
+  id: string;
+  run_at: string | null;
+  is_pending_reconnect: boolean;
+  origin_ip: string | null;
+  opened_at: string | null;
+}
+
+export interface TunnelRoute {
+  hostname: string;
+  service: string;
+  path: string | null;
+  latency_ms: number | null;
+}
+
+export interface AddTunnelRouteRequest {
+  hostname: string;
+  service: string;
+  path?: string;
+}
+
+export interface DeleteTunnelRouteRequest {
+  hostname: string;
+}
+
+export interface TunnelRouteResponse {
+  success: boolean;
+  message: string;
 }

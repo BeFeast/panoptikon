@@ -21,6 +21,7 @@ pub mod assets;
 pub mod audit;
 pub mod auth;
 pub mod caddy;
+pub mod cloudflare_tunnel;
 pub mod config_backups;
 pub mod dashboard;
 pub mod ddns;
@@ -74,6 +75,8 @@ pub struct AppState {
     pub caddy_http: reqwest::Client,
     /// Shared reqwest::Client for Xiaomi MiWiFi API.
     pub xiaomi_http: reqwest::Client,
+    /// Shared reqwest::Client for Cloudflare API.
+    pub cloudflare_http: reqwest::Client,
 }
 
 impl AppState {
@@ -95,6 +98,10 @@ impl AppState {
                 .build()
                 .expect("caddy HTTP client"),
             xiaomi_http: crate::xiaomi::client::shared_http_client(),
+            cloudflare_http: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(15))
+                .build()
+                .expect("cloudflare HTTP client"),
         }
     }
 }
@@ -605,6 +612,16 @@ pub fn router(state: AppState) -> Router {
         .route("/traffic/export", get(export::traffic_export))
         .route("/alerts/export", get(export::alerts_export))
         .route("/assets/export", get(export::assets_export))
+        // Cloudflare Tunnel
+        .route("/cloudflare-tunnel/status", get(cloudflare_tunnel::status))
+        .route(
+            "/cloudflare-tunnel/routes",
+            post(cloudflare_tunnel::add_route),
+        )
+        .route(
+            "/cloudflare-tunnel/routes",
+            delete(cloudflare_tunnel::delete_route),
+        )
         // WebSocket for UI live updates
         .route("/ws", get(agents::ui_ws_handler))
         .route_layer(middleware::from_fn_with_state(
