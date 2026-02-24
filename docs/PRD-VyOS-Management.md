@@ -1,15 +1,27 @@
-# Panoptikon — VyOS Management GUI (PRD Addendum)
+# Panoptikon — VyOS Management GUI (Legacy PRD Addendum)
 
 **Версия:** 0.1.0-draft  
 **Дата:** 2026-02-22  
-**Статус:** Draft  
+**Статус:** Legacy Draft  
 **Родительский документ:** [PRD.md](./PRD.md)
+
+---
+
+## Legacy Status & Visibility (2026-02-24)
+
+- **MikroTik is the primary/default router path** in Panoptikon product strategy.
+- **VyOS is a legacy integration** and is hidden by default in user-facing navigation for new deployments.
+- **User path:** enable `Settings → Advanced → Show legacy routers`, then configure VyOS in `Settings → Router → VyOS (Legacy)`.
+- **Developer contract:**
+  - Keep `show_legacy_routers` default behavior set to `false`.
+  - Keep default router selection on MikroTik (`mikrotik`), not VyOS.
+  - Treat this document as legacy maintenance scope for existing VyOS installs, not as the primary roadmap for new router features.
 
 ---
 
 ## Vision
 
-Panoptikon должен стать полноценным web GUI для управления VyOS — не просто viewer, а инструмент, через который homelab-инженер делает 80% повседневных задач: открыть порт, заблокировать IP, добавить WireGuard peer, поднять статический маршрут. SSH остаётся для edge-cases и initial setup.
+Для существующих legacy-инсталляций Panoptikon должен быть полноценным web GUI для управления VyOS — не просто viewer, а инструмент, через который homelab-инженер делает 80% повседневных задач: открыть порт, заблокировать IP, добавить WireGuard peer, поднять статический маршрут. SSH остаётся для edge-cases и initial setup.
 
 **Целевое состояние (v1.0):** Открываешь Panoptikon — и можешь управлять firewall, NAT, DNS, WireGuard и маршрутами без единой SSH-сессии.
 
