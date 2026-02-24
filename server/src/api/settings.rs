@@ -44,6 +44,10 @@ pub struct SettingsResponse {
     /// Never return the password to the frontend — just whether one is set.
     pub xiaomi_mesh_password_set: bool,
     pub xiaomi_mesh_poll_interval: Option<u64>,
+    // --- Cloudflare Tunnel ---
+    pub cloudflare_account_id: Option<String>,
+    pub cloudflare_tunnel_id: Option<String>,
+    pub cloudflare_api_token_set: bool,
 }
 
 /// Request body for updating settings.
@@ -81,6 +85,10 @@ pub struct UpdateSettingsRequest {
     pub xiaomi_mesh_ip: Option<String>,
     pub xiaomi_mesh_password: Option<String>,
     pub xiaomi_mesh_poll_interval: Option<u64>,
+    // --- Cloudflare Tunnel ---
+    pub cloudflare_account_id: Option<String>,
+    pub cloudflare_tunnel_id: Option<String>,
+    pub cloudflare_api_token: Option<String>,
 }
 
 /// Helper: read a string setting from the settings table.
@@ -178,6 +186,11 @@ pub async fn get_settings(
         .and_then(|v| v.parse().ok())
         .or(Some(30));
 
+    // Cloudflare Tunnel settings.
+    let cloudflare_account_id = get_setting(&state, "cloudflare_account_id").await;
+    let cloudflare_tunnel_id = get_setting(&state, "cloudflare_tunnel_id").await;
+    let cloudflare_api_token_set = get_setting(&state, "cloudflare_api_token").await.is_some();
+
     Ok(Json(SettingsResponse {
         webhook_url,
         vyos_url,
@@ -203,6 +216,9 @@ pub async fn get_settings(
         xiaomi_mesh_ip,
         xiaomi_mesh_password_set,
         xiaomi_mesh_poll_interval,
+        cloudflare_account_id,
+        cloudflare_tunnel_id,
+        cloudflare_api_token_set,
     }))
 }
 
@@ -367,6 +383,22 @@ pub async fn update_settings(
             xiaomi_mesh_poll_interval = interval,
             "Xiaomi Mesh poll interval updated"
         );
+    }
+
+    // --- Cloudflare Tunnel settings ---
+    if let Some(ref account_id) = body.cloudflare_account_id {
+        upsert_setting(&state, "cloudflare_account_id", account_id).await?;
+        info!("Cloudflare account ID updated");
+    }
+
+    if let Some(ref tunnel_id) = body.cloudflare_tunnel_id {
+        upsert_setting(&state, "cloudflare_tunnel_id", tunnel_id).await?;
+        info!("Cloudflare tunnel ID updated");
+    }
+
+    if let Some(ref token) = body.cloudflare_api_token {
+        upsert_setting(&state, "cloudflare_api_token", token).await?;
+        info!("Cloudflare API token updated");
     }
 
     // Return current state.

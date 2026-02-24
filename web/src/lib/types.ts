@@ -534,6 +534,10 @@ export interface SettingsData {
   xiaomi_mesh_ip: string | null;
   xiaomi_mesh_password_set: boolean;
   xiaomi_mesh_poll_interval: number | null;
+  // Cloudflare Tunnel
+  cloudflare_account_id: string | null;
+  cloudflare_tunnel_id: string | null;
+  cloudflare_api_token_set: boolean;
 }
 
 // ─── Nginx Proxy Manager ─────────────────────────────────
@@ -1930,4 +1934,45 @@ export interface XiaomiMeshTestConnectionResponse {
   hardware: string | null;
   firmware: string | null;
   router_name: string | null;
+}
+
+// ─── Cloudflare Tunnel ──────────────────────────────────────
+
+export interface TunnelConnection {
+  id: string;
+  origin_ip: string | null;
+  opened_at: string | null;
+  is_pending_reconnect: boolean;
+  colo_name: string | null;
+}
+
+export interface TunnelRoute {
+  hostname: string | null;
+  service: string;
+  path: string | null;
+  latency_ms: number | null;
+}
+
+export interface TunnelStatusResponse {
+  configured: boolean;
+  tunnel_id: string | null;
+  tunnel_name: string | null;
+  status: string | null;
+  connections: TunnelConnection[];
+  routes: TunnelRoute[];
+}
+
+export interface AddTunnelRouteRequest {
+  hostname: string;
+  service: string;
+  path?: string;
+}
+
+export interface RemoveTunnelRouteRequest {
+  hostname: string;
+}
+
+export interface TunnelWriteResponse {
+  success: boolean;
+  message: string;
 }

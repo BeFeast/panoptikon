@@ -21,6 +21,7 @@ pub mod assets;
 pub mod audit;
 pub mod auth;
 pub mod caddy;
+pub mod cloudflare_tunnel;
 pub mod config_backups;
 pub mod dashboard;
 pub mod ddns;
@@ -77,6 +78,8 @@ pub struct AppState {
     pub xiaomi_http: reqwest::Client,
     /// Shared reqwest::Client for Xiaomi Mesh test-connection.
     pub xiaomi_mesh_http: reqwest::Client,
+    /// Shared reqwest::Client for Cloudflare API.
+    pub cf_http: reqwest::Client,
 }
 
 impl AppState {
@@ -102,6 +105,10 @@ impl AppState {
                 .timeout(std::time::Duration::from_secs(10))
                 .build()
                 .expect("xiaomi mesh HTTP client"),
+            cf_http: reqwest::Client::builder()
+                .timeout(std::time::Duration::from_secs(15))
+                .build()
+                .expect("cloudflare HTTP client"),
         }
     }
 }
@@ -602,6 +609,16 @@ pub fn router(state: AppState) -> Router {
         .route("/ddns/:id", put(ddns::update))
         .route("/ddns/:id", delete(ddns::delete))
         .route("/ddns/:id/toggle", post(ddns::toggle))
+        // Cloudflare Tunnel
+        .route("/cloudflare-tunnel/status", get(cloudflare_tunnel::status))
+        .route(
+            "/cloudflare-tunnel/routes",
+            post(cloudflare_tunnel::add_route),
+        )
+        .route(
+            "/cloudflare-tunnel/routes/remove",
+            post(cloudflare_tunnel::remove_route),
+        )
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))
