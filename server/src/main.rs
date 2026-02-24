@@ -140,6 +140,9 @@ async fn main() -> Result<()> {
     // Start the MikroTik interface traffic poller (polls every 60s when enabled).
     mikrotik_traffic::start_mikrotik_traffic_poller(state.db.clone(), state.mikrotik_http.clone());
 
+    // Sync proxy host config to Caddy on startup.
+    api::caddy::start_caddy_sync_task(state.clone());
+
     // Build the application router.
     let app = api::router(state);
 
