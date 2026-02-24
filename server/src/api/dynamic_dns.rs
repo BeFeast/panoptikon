@@ -160,7 +160,7 @@ pub async fn create(
             let _ = sqlx::query(
                 "UPDATE dynamic_dns SET last_error = ?, last_status = 'config_error', updated_at = datetime('now') WHERE id = ?",
             )
-            .bind(format!("{e}"))
+            .bind(e.to_string())
             .bind(&id)
             .execute(&state.db)
             .await;
@@ -239,7 +239,7 @@ pub async fn update(
                 let _ = sqlx::query(
                     "UPDATE dynamic_dns SET last_error = ?, last_status = 'config_error', updated_at = datetime('now') WHERE id = ?",
                 )
-                .bind(format!("{e}"))
+                .bind(e.to_string())
                 .bind(&id)
                 .execute(&state.db)
                 .await;
