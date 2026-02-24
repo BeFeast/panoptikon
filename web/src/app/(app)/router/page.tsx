@@ -118,6 +118,10 @@ import {
   addWireguardPeer,
   deleteWireguardPeer,
   generateWireguardClientConfig,
+  fetchOpenVpnInterfaces,
+  createOpenVpnInterface,
+  deleteOpenVpnInterface,
+  toggleOpenVpnInterface,
   fetchDnsForwarding,
   addDnsNameServer,
   deleteDnsNameServer,
@@ -129,7 +133,7 @@ import {
   fetchMikrotikStatus,
   fetchSettings,
 } from "@/lib/api";
-import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, RouterSummary, SpeedTestResult, SpeedTestHistoryEntry, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, DhcpServerConfig, DhcpSubnetConfig, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride, SystemInfo, SyslogResponse, MikrotikStatus, SettingsData } from "@/lib/types";
+import type { FirewallConfig, FirewallChain, FirewallRule, FirewallRuleRequest, FirewallGroups, RouterStatus, RouterSummary, SpeedTestResult, SpeedTestHistoryEntry, VyosDhcpLease, VyosInterface, VyosRoute, DhcpStaticMapping, DhcpServerConfig, DhcpSubnetConfig, WireguardInterface, ClientConfigResponse, DnsForwardingConfig, DnsDomainOverride, SystemInfo, SyslogResponse, MikrotikStatus, SettingsData, OpenVpnInterface, OpenVpnConnectedClient } from "@/lib/types";
 import MikrotikRouter from "@/components/MikrotikRouter";
 import QRCode from "qrcode";
 import { Progress } from "@/components/ui/progress";
@@ -5301,6 +5305,585 @@ function GenerateClientConfigDialog({
   );
 }
 
+// ── OpenVPN Panel ────────────────────────────────────────
+
+function OpenVpnPanel({
+  interfaces,
+  loading,
+  error,
+  onReload,
+}: {
+  interfaces: OpenVpnInterface[] | null;
+  loading: boolean;
+  error: string | null;
+  onReload: () => void;
+}) {
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+
+  if (loading) {
+    return (
+      <Card className="border-slate-800 bg-slate-900">
+        <CardContent className="py-8">
+          <div className="flex items-center justify-center gap-2 text-slate-400">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            Loading OpenVPN interfaces…
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-slate-800 bg-slate-900">
+        <CardContent className="py-8">
+          <div className="flex flex-col items-center gap-2 text-slate-400">
+            <AlertCircle className="h-5 w-5 text-red-400" />
+            <p className="text-sm">{error}</p>
+            <Button variant="outline" size="sm" onClick={onReload}>
+              Retry
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const ovpnInterfaces = interfaces ?? [];
+
+  return (
+    <div className="space-y-4">
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base text-white">
+            OpenVPN Interfaces
+          </CardTitle>
+          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+            <DialogTrigger asChild>
+              <Button size="sm" variant="outline">
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Create Interface
+              </Button>
+            </DialogTrigger>
+            <CreateOpenVpnInterfaceDialog
+              onCreated={() => {
+                setShowCreateDialog(false);
+                onReload();
+              }}
+            />
+          </Dialog>
+        </CardHeader>
+        <CardContent>
+          {ovpnInterfaces.length === 0 ? (
+            <div className="py-8 text-center text-sm text-slate-500">
+              No OpenVPN interfaces configured. Create one to get started.
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {ovpnInterfaces.map((iface) => (
+                <OpenVpnInterfaceCard
+                  key={iface.name}
+                  iface={iface}
+                  onReload={onReload}
+                />
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+// ── Create OpenVPN Interface Dialog ──────────────────────
+
+function CreateOpenVpnInterfaceDialog({
+  onCreated,
+}: {
+  onCreated: () => void;
+}) {
+  const [name, setName] = useState("vtun0");
+  const [mode, setMode] = useState("server");
+  const [protocol, setProtocol] = useState("udp");
+  const [localPort, setLocalPort] = useState("1194");
+  const [subnet, setSubnet] = useState("10.8.0.0/24");
+  const [remoteHost, setRemoteHost] = useState("");
+  const [remotePort, setRemotePort] = useState("1194");
+  const [encryption, setEncryption] = useState("aes256");
+  const [hash, setHash] = useState("sha512");
+  const [description, setDescription] = useState("");
+  const [tlsCaCert, setTlsCaCert] = useState("");
+  const [tlsCert, setTlsCert] = useState("");
+  const [tlsKey, setTlsKey] = useState("");
+  const [tlsDh, setTlsDh] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleCreate = async () => {
+    if (!name || !mode) {
+      toast.error("Please fill in required fields");
+      return;
+    }
+    setSaving(true);
+    try {
+      await createOpenVpnInterface({
+        name,
+        mode,
+        protocol: protocol || undefined,
+        local_port: mode === "server" ? parseInt(localPort, 10) || undefined : undefined,
+        subnet: mode === "server" && subnet ? subnet : undefined,
+        remote_host: mode === "client" && remoteHost ? remoteHost : undefined,
+        remote_port: mode === "client" ? parseInt(remotePort, 10) || undefined : undefined,
+        encryption: encryption || undefined,
+        hash: hash || undefined,
+        description: description || undefined,
+        tls_ca_cert: tlsCaCert || undefined,
+        tls_cert: tlsCert || undefined,
+        tls_key: tlsKey || undefined,
+        tls_dh: mode === "server" && tlsDh ? tlsDh : undefined,
+      });
+      toast.success(`OpenVPN interface ${name} created`);
+      onCreated();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Failed to create interface"
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg max-h-[80vh] overflow-y-auto">
+      <DialogHeader>
+        <DialogTitle className="text-white">
+          Create OpenVPN Interface
+        </DialogTitle>
+        <DialogDescription>
+          Configure a new OpenVPN interface. TLS certificate paths refer to
+          files on the VyOS router filesystem.
+        </DialogDescription>
+      </DialogHeader>
+
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="text-slate-300">Interface Name</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="vtun0"
+              className="mt-1 border-slate-700 bg-slate-800 text-white"
+            />
+          </div>
+          <div>
+            <Label className="text-slate-300">Mode</Label>
+            <select
+              value={mode}
+              onChange={(e) => setMode(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white"
+            >
+              <option value="server">Server</option>
+              <option value="client">Client</option>
+              <option value="site-to-site">Site-to-Site</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="text-slate-300">Protocol</Label>
+            <select
+              value={protocol}
+              onChange={(e) => setProtocol(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white"
+            >
+              <option value="udp">UDP</option>
+              <option value="tcp-passive">TCP (Server)</option>
+              <option value="tcp-active">TCP (Client)</option>
+            </select>
+          </div>
+          {mode === "server" && (
+            <div>
+              <Label className="text-slate-300">Local Port</Label>
+              <Input
+                value={localPort}
+                onChange={(e) => setLocalPort(e.target.value)}
+                placeholder="1194"
+                type="number"
+                className="mt-1 border-slate-700 bg-slate-800 text-white"
+              />
+            </div>
+          )}
+          {mode === "client" && (
+            <div>
+              <Label className="text-slate-300">Remote Port</Label>
+              <Input
+                value={remotePort}
+                onChange={(e) => setRemotePort(e.target.value)}
+                placeholder="1194"
+                type="number"
+                className="mt-1 border-slate-700 bg-slate-800 text-white"
+              />
+            </div>
+          )}
+        </div>
+
+        {mode === "client" && (
+          <div>
+            <Label className="text-slate-300">Remote Host</Label>
+            <Input
+              value={remoteHost}
+              onChange={(e) => setRemoteHost(e.target.value)}
+              placeholder="vpn.example.com"
+              className="mt-1 border-slate-700 bg-slate-800 text-white"
+            />
+          </div>
+        )}
+
+        {mode === "server" && (
+          <div>
+            <Label className="text-slate-300">Server Subnet (CIDR)</Label>
+            <Input
+              value={subnet}
+              onChange={(e) => setSubnet(e.target.value)}
+              placeholder="10.8.0.0/24"
+              className="mt-1 border-slate-700 bg-slate-800 text-white"
+            />
+          </div>
+        )}
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label className="text-slate-300">Encryption</Label>
+            <Input
+              value={encryption}
+              onChange={(e) => setEncryption(e.target.value)}
+              placeholder="aes256"
+              className="mt-1 border-slate-700 bg-slate-800 text-white"
+            />
+          </div>
+          <div>
+            <Label className="text-slate-300">Hash</Label>
+            <Input
+              value={hash}
+              onChange={(e) => setHash(e.target.value)}
+              placeholder="sha512"
+              className="mt-1 border-slate-700 bg-slate-800 text-white"
+            />
+          </div>
+        </div>
+
+        <div>
+          <Label className="text-slate-300">Description</Label>
+          <Input
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Optional description"
+            className="mt-1 border-slate-700 bg-slate-800 text-white"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-slate-300 text-sm font-medium">TLS Certificates (file paths on VyOS)</Label>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-xs text-slate-400">CA Certificate</Label>
+              <Input
+                value={tlsCaCert}
+                onChange={(e) => setTlsCaCert(e.target.value)}
+                placeholder="/config/auth/ca.crt"
+                className="mt-1 border-slate-700 bg-slate-800 text-white text-xs"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-slate-400">Certificate</Label>
+              <Input
+                value={tlsCert}
+                onChange={(e) => setTlsCert(e.target.value)}
+                placeholder="/config/auth/server.crt"
+                className="mt-1 border-slate-700 bg-slate-800 text-white text-xs"
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-slate-400">Private Key</Label>
+              <Input
+                value={tlsKey}
+                onChange={(e) => setTlsKey(e.target.value)}
+                placeholder="/config/auth/server.key"
+                className="mt-1 border-slate-700 bg-slate-800 text-white text-xs"
+              />
+            </div>
+            {mode === "server" && (
+              <div>
+                <Label className="text-xs text-slate-400">DH Parameters</Label>
+                <Input
+                  value={tlsDh}
+                  onChange={(e) => setTlsDh(e.target.value)}
+                  placeholder="/config/auth/dh.pem"
+                  className="mt-1 border-slate-700 bg-slate-800 text-white text-xs"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button onClick={handleCreate} disabled={saving}>
+            {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+            Create Interface
+          </Button>
+        </DialogFooter>
+      </div>
+    </DialogContent>
+  );
+}
+
+// ── OpenVPN Interface Card ──────────────────────────────
+
+function OpenVpnInterfaceCard({
+  iface,
+  onReload,
+}: {
+  iface: OpenVpnInterface;
+  onReload: () => void;
+}) {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [toggling, setToggling] = useState(false);
+  const [showClients, setShowClients] = useState(false);
+
+  const handleDeleteInterface = async () => {
+    setDeleting(true);
+    try {
+      await deleteOpenVpnInterface(iface.name);
+      toast.success(`Interface ${iface.name} deleted`);
+      onReload();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Failed to delete interface"
+      );
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  const handleToggle = async () => {
+    setToggling(true);
+    try {
+      const newDisable = !iface.disabled;
+      await toggleOpenVpnInterface(iface.name, newDisable);
+      toast.success(
+        `OpenVPN interface ${iface.name} ${newDisable ? "disabled" : "enabled"}`
+      );
+      onReload();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Failed to toggle interface"
+      );
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  const modeLabel =
+    iface.mode === "server"
+      ? "Server"
+      : iface.mode === "client"
+        ? "Client"
+        : iface.mode === "site-to-site"
+          ? "Site-to-Site"
+          : iface.mode ?? "Unknown";
+
+  return (
+    <Card className="border-slate-700 bg-slate-800/50">
+      <CardHeader className="flex flex-row items-center justify-between pb-3">
+        <div className="flex items-center gap-3">
+          <div className="rounded-md bg-orange-950/50 p-2">
+            <Globe className="h-4 w-4 text-orange-400" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-semibold text-white">
+                {iface.name}
+              </span>
+              <Badge
+                variant="outline"
+                className="text-[10px] border-orange-800 text-orange-400"
+              >
+                {modeLabel}
+              </Badge>
+              {iface.disabled ? (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] border-red-800 text-red-400"
+                >
+                  Disabled
+                </Badge>
+              ) : iface.status === "u/u" ? (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] border-emerald-800 text-emerald-400"
+                >
+                  Up
+                </Badge>
+              ) : (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] border-slate-600 text-slate-400"
+                >
+                  {iface.status ?? "Unknown"}
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-3 mt-1 text-xs text-slate-400">
+              {iface.protocol && <span>Protocol: {iface.protocol}</span>}
+              {iface.local_port && <span>Port: {iface.local_port}</span>}
+              {iface.subnet && <span>Subnet: {iface.subnet}</span>}
+              {iface.remote_host && <span>Remote: {iface.remote_host}</span>}
+              {iface.encryption && <span>Cipher: {iface.encryption}</span>}
+            </div>
+            {iface.description && (
+              <p className="text-xs text-slate-500 mt-0.5">{iface.description}</p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 w-7 p-0 text-slate-400 hover:text-white"
+            onClick={handleToggle}
+            disabled={toggling}
+            title={iface.disabled ? "Enable" : "Disable"}
+          >
+            {toggling ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Power className="h-3.5 w-3.5" />
+            )}
+          </Button>
+          <AlertDialog
+            open={showDeleteConfirm}
+            onOpenChange={setShowDeleteConfirm}
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-slate-400 hover:text-red-400"
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+            <AlertDialogContent className="border-slate-800 bg-slate-900">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-white">
+                  Delete {iface.name}?
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently remove the OpenVPN interface and all its
+                  configuration from the router.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel className="border-slate-700">
+                  Cancel
+                </AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDeleteInterface}
+                  disabled={deleting}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  {deleting && (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  )}
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </CardHeader>
+
+      {/* Connected clients for server mode */}
+      {iface.mode === "server" && (
+        <CardContent className="pt-0">
+          <div className="border-t border-slate-700 pt-3">
+            <button
+              onClick={() => setShowClients(!showClients)}
+              className="flex items-center gap-2 text-xs text-slate-400 hover:text-white transition-colors"
+            >
+              <Users className="h-3.5 w-3.5" />
+              {iface.clients.length} connected client
+              {iface.clients.length !== 1 ? "s" : ""}
+            </button>
+
+            {showClients && iface.clients.length > 0 && (
+              <div className="mt-3 overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-slate-700 text-slate-400">
+                      <th className="py-1.5 pr-3 text-left font-medium">
+                        Common Name
+                      </th>
+                      <th className="py-1.5 pr-3 text-left font-medium">
+                        Real Address
+                      </th>
+                      <th className="py-1.5 pr-3 text-left font-medium">
+                        Virtual Address
+                      </th>
+                      <th className="py-1.5 pr-3 text-right font-medium">
+                        Received
+                      </th>
+                      <th className="py-1.5 pr-3 text-right font-medium">
+                        Sent
+                      </th>
+                      <th className="py-1.5 text-left font-medium">
+                        Connected Since
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {iface.clients.map((c, i) => (
+                      <tr
+                        key={i}
+                        className="border-b border-slate-800 last:border-0"
+                      >
+                        <td className="py-1.5 pr-3 text-white">
+                          {c.common_name}
+                        </td>
+                        <td className="py-1.5 pr-3 text-slate-300">
+                          {c.real_address ?? "-"}
+                        </td>
+                        <td className="py-1.5 pr-3 text-slate-300">
+                          {c.virtual_address ?? "-"}
+                        </td>
+                        <td className="py-1.5 pr-3 text-right text-slate-300">
+                          {c.bytes_received != null
+                            ? formatBytes(c.bytes_received)
+                            : "-"}
+                        </td>
+                        <td className="py-1.5 pr-3 text-right text-slate-300">
+                          {c.bytes_sent != null
+                            ? formatBytes(c.bytes_sent)
+                            : "-"}
+                        </td>
+                        <td className="py-1.5 text-slate-400">
+                          {c.connected_since ?? "-"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
 // ── Main Page ───────────────────────────────────────────
 
 export default function RouterPage() {
@@ -5518,6 +6101,20 @@ function RouterTabs({ summary }: { summary: RouterSummary }) {
     useCallback(() => fetchWireguardInterfaces(), [])
   );
 
+  const openvpn = useSummaryData(
+    null as OpenVpnInterface[] | null,
+    useCallback(() => fetchOpenVpnInterfaces(), [])
+  );
+
+  // Auto-load OpenVPN data on VPN tab
+  const openvpnLoadedRef = useRef(false);
+  useEffect(() => {
+    if (tab === "vpn" && !openvpnLoadedRef.current) {
+      openvpnLoadedRef.current = true;
+      openvpn.reload();
+    }
+  }, [tab, openvpn]);
+
   const reloadInterfaces = useCallback(() => {
     interfaces.reload();
     configIfaces.reload();
@@ -5718,12 +6315,20 @@ function RouterTabs({ summary }: { summary: RouterSummary }) {
         </TabsContent>
 
         <TabsContent value="vpn">
-          <WireGuardPanel
-            interfaces={Array.isArray(wireguard.data) ? wireguard.data : null}
-            loading={wireguard.loading}
-            error={wireguard.error}
-            onReload={wireguard.reload}
-          />
+          <div className="space-y-6">
+            <WireGuardPanel
+              interfaces={Array.isArray(wireguard.data) ? wireguard.data : null}
+              loading={wireguard.loading}
+              error={wireguard.error}
+              onReload={wireguard.reload}
+            />
+            <OpenVpnPanel
+              interfaces={Array.isArray(openvpn.data) ? openvpn.data : null}
+              loading={openvpn.loading}
+              error={openvpn.error}
+              onReload={openvpn.reload}
+            />
+          </div>
         </TabsContent>
 
         <TabsContent value="speedtest">

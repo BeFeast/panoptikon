@@ -804,6 +804,58 @@ export interface ClientConfigResponse {
   public_key: string;
 }
 
+// ─── OpenVPN ────────────────────────────────────────────
+
+export interface OpenVpnConnectedClient {
+  common_name: string;
+  real_address: string | null;
+  virtual_address: string | null;
+  bytes_received: number | null;
+  bytes_sent: number | null;
+  connected_since: string | null;
+}
+
+export interface OpenVpnInterface {
+  name: string;
+  mode: string | null;
+  protocol: string | null;
+  local_port: number | null;
+  local_address: string | null;
+  remote_host: string | null;
+  remote_port: number | null;
+  encryption: string | null;
+  hash: string | null;
+  subnet: string | null;
+  description: string | null;
+  status: string | null;
+  tls_ca_cert: string | null;
+  tls_cert: string | null;
+  tls_key: string | null;
+  tls_dh: string | null;
+  push_routes: string[];
+  clients: OpenVpnConnectedClient[];
+  disabled: boolean;
+}
+
+export interface CreateOpenVpnInterfaceRequest {
+  name: string;
+  mode: string;
+  protocol?: string;
+  local_port?: number;
+  local_address?: string;
+  remote_host?: string;
+  remote_port?: number;
+  encryption?: string;
+  hash?: string;
+  subnet?: string;
+  description?: string;
+  tls_ca_cert?: string;
+  tls_cert?: string;
+  tls_key?: string;
+  tls_dh?: string;
+  push_routes?: string[];
+}
+
 // ─── System Info ───────────────────────────────────────
 
 export interface CpuLoad {

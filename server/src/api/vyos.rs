@@ -7554,6 +7554,762 @@ pub(crate) async fn get_vyos_client_or_503(
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)
 }
 
+// ── OpenVPN ─────────────────────────────────────────────────────────
+
+/// A connected OpenVPN client (from runtime status).
+#[derive(Debug, Clone, Serialize)]
+pub struct OpenVpnConnectedClient {
+    pub common_name: String,
+    pub real_address: Option<String>,
+    pub virtual_address: Option<String>,
+    pub bytes_received: Option<u64>,
+    pub bytes_sent: Option<u64>,
+    pub connected_since: Option<String>,
+}
+
+/// Represents a configured OpenVPN interface (server or client mode).
+#[derive(Debug, Clone, Serialize)]
+pub struct OpenVpnInterface {
+    pub name: String,
+    pub mode: Option<String>,
+    pub protocol: Option<String>,
+    pub local_port: Option<u32>,
+    pub local_address: Option<String>,
+    pub remote_host: Option<String>,
+    pub remote_port: Option<u32>,
+    pub encryption: Option<String>,
+    pub hash: Option<String>,
+    pub subnet: Option<String>,
+    pub description: Option<String>,
+    pub status: Option<String>,
+    pub tls_ca_cert: Option<String>,
+    pub tls_cert: Option<String>,
+    pub tls_key: Option<String>,
+    pub tls_dh: Option<String>,
+    pub push_routes: Vec<String>,
+    pub clients: Vec<OpenVpnConnectedClient>,
+    pub disabled: bool,
+}
+
+/// Request body for creating an OpenVPN interface.
+#[derive(Debug, Deserialize)]
+pub struct CreateOpenVpnInterfaceRequest {
+    /// Interface name, e.g. "vtun0"
+    pub name: String,
+    /// Mode: "server", "client", or "site-to-site"
+    pub mode: String,
+    /// Protocol: "udp" or "tcp-passive" (server) / "tcp-active" (client)
+    pub protocol: Option<String>,
+    /// Local port (for server mode)
+    pub local_port: Option<u16>,
+    /// Local address (bind address)
+    pub local_address: Option<String>,
+    /// Remote host (for client mode)
+    pub remote_host: Option<String>,
+    /// Remote port (for client mode)
+    pub remote_port: Option<u16>,
+    /// Encryption cipher (e.g. "aes256")
+    pub encryption: Option<String>,
+    /// Hash algorithm (e.g. "sha512")
+    pub hash: Option<String>,
+    /// Server subnet in CIDR (e.g. "10.8.0.0/24"), for server mode
+    pub subnet: Option<String>,
+    /// Description
+    pub description: Option<String>,
+    /// TLS CA certificate file path on VyOS
+    pub tls_ca_cert: Option<String>,
+    /// TLS certificate file path on VyOS
+    pub tls_cert: Option<String>,
+    /// TLS key file path on VyOS
+    pub tls_key: Option<String>,
+    /// TLS DH params file path on VyOS
+    pub tls_dh: Option<String>,
+    /// Routes to push to clients
+    pub push_routes: Option<Vec<String>>,
+}
+
+/// Validate an OpenVPN interface name (vtun0, vtun1, ...).
+fn is_valid_ovpn_name(name: &str) -> bool {
+    if !name.starts_with("vtun") {
+        return false;
+    }
+    let suffix = &name[4..];
+    !suffix.is_empty() && suffix.chars().all(|c| c.is_ascii_digit())
+}
+
+/// Validate OpenVPN mode.
+fn is_valid_ovpn_mode(mode: &str) -> bool {
+    matches!(mode, "server" | "client" | "site-to-site")
+}
+
+/// GET /api/v1/vyos/openvpn — list all OpenVPN interfaces with connected clients.
+pub async fn openvpn_list(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<OpenVpnInterface>>, StatusCode> {
+    let client = get_vyos_client_or_503(&state).await?;
+
+    let config = match client.retrieve(&["interfaces", "openvpn"]).await {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::warn!("VyOS openvpn config query failed (returning empty): {e}");
+            return Ok(Json(vec![]));
+        }
+    };
+
+    let mut interfaces = parse_openvpn_config(&config);
+
+    // Fetch interface link status from `show interfaces`
+    if let Ok(iface_raw) = client.show(&["interfaces"]).await {
+        let iface_text = iface_raw.as_str().unwrap_or("");
+        let iface_list = parse_interfaces_text(iface_text);
+        for ovpn in &mut interfaces {
+            if let Some(sys_iface) = iface_list.iter().find(|i| i.name == ovpn.name) {
+                ovpn.status = Some(sys_iface.link_state.clone());
+            }
+        }
+    }
+
+    // Fetch connected clients for server-mode interfaces
+    for ovpn in &mut interfaces {
+        if ovpn.mode.as_deref() == Some("server") {
+            if let Ok(raw) = client.show(&["interfaces", "openvpn", &ovpn.name]).await {
+                let text = raw.as_str().unwrap_or("");
+                ovpn.clients = parse_openvpn_status_clients(text);
+            }
+        }
+    }
+
+    Ok(Json(interfaces))
+}
+
+/// Parse VyOS OpenVPN configuration JSON into a list of interfaces.
+fn parse_openvpn_config(config: &Value) -> Vec<OpenVpnInterface> {
+    let mut interfaces = Vec::new();
+
+    let obj = match config.as_object() {
+        Some(o) => o,
+        None => return interfaces,
+    };
+
+    for (iface_name, iface_val) in obj {
+        let iface_obj = match iface_val.as_object() {
+            Some(o) => o,
+            None => continue,
+        };
+
+        let mode = iface_obj
+            .get("mode")
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+
+        let protocol = iface_obj
+            .get("protocol")
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+
+        let local_port = iface_obj.get("local-port").and_then(|v| {
+            v.as_u64()
+                .map(|n| n as u32)
+                .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+        });
+
+        let local_address = iface_obj
+            .get("local-address")
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+
+        let remote_host = iface_obj.get("remote-host").and_then(|v| {
+            if let Some(s) = v.as_str() {
+                Some(s.to_string())
+            } else if let Some(arr) = v.as_array() {
+                arr.first().and_then(|a| a.as_str().map(|s| s.to_string()))
+            } else {
+                None
+            }
+        });
+
+        let remote_port = iface_obj.get("remote-port").and_then(|v| {
+            v.as_u64()
+                .map(|n| n as u32)
+                .or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+        });
+
+        let encryption_obj = iface_obj.get("encryption");
+        let encryption = encryption_obj
+            .and_then(|e| e.as_object())
+            .and_then(|o| o.get("cipher"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()))
+            .or_else(|| encryption_obj.and_then(|v| v.as_str().map(|s| s.to_string())));
+
+        let hash = iface_obj
+            .get("hash")
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+
+        // Server subnet: "server subnet <cidr>"
+        let subnet = iface_obj
+            .get("server")
+            .and_then(|v| v.as_object())
+            .and_then(|o| o.get("subnet"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+
+        let description = iface_obj
+            .get("description")
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+
+        // TLS settings
+        let tls = iface_obj.get("tls").and_then(|v| v.as_object());
+        let tls_ca_cert = tls
+            .and_then(|o| o.get("ca-cert-file"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let tls_cert = tls
+            .and_then(|o| o.get("cert-file"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let tls_key = tls
+            .and_then(|o| o.get("key-file"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let tls_dh = tls
+            .and_then(|o| o.get("dh-file"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+
+        // Push routes
+        let push_routes = iface_obj
+            .get("push-route")
+            .map(|v| {
+                if let Some(s) = v.as_str() {
+                    vec![s.to_string()]
+                } else if let Some(arr) = v.as_array() {
+                    arr.iter()
+                        .filter_map(|a| a.as_str().map(|s| s.to_string()))
+                        .collect()
+                } else {
+                    Vec::new()
+                }
+            })
+            .unwrap_or_default();
+
+        // Check if disabled
+        let disabled = iface_obj.contains_key("disable");
+
+        interfaces.push(OpenVpnInterface {
+            name: iface_name.clone(),
+            mode,
+            protocol,
+            local_port,
+            local_address,
+            remote_host,
+            remote_port,
+            encryption,
+            hash,
+            subnet,
+            description,
+            status: None,
+            tls_ca_cert,
+            tls_cert,
+            tls_key,
+            tls_dh,
+            push_routes,
+            clients: Vec::new(),
+            disabled,
+        });
+    }
+
+    interfaces
+}
+
+/// Parse connected clients from `show interfaces openvpn vtunN` output.
+///
+/// VyOS OpenVPN status output for a server interface looks like:
+/// ```text
+/// Client list:
+///   Common Name     Real Address       Virtual Address   Bytes Received   Bytes Sent   Connected Since
+///   client1         1.2.3.4:12345      10.8.0.2          123456           654321       2024-01-01 12:00:00
+/// ```
+fn parse_openvpn_status_clients(text: &str) -> Vec<OpenVpnConnectedClient> {
+    let mut clients = Vec::new();
+    let mut in_client_list = false;
+    let mut header_seen = false;
+
+    for line in text.lines() {
+        let trimmed = line.trim();
+
+        if trimmed.starts_with("Client list") || trimmed.contains("CLIENT LIST") {
+            in_client_list = true;
+            header_seen = false;
+            continue;
+        }
+
+        if in_client_list && !header_seen {
+            // Skip header line
+            if trimmed.contains("Common Name") || trimmed.contains("common_name") {
+                header_seen = true;
+                continue;
+            }
+            // Also skip separator lines
+            if trimmed.starts_with("---") || trimmed.starts_with("===") {
+                continue;
+            }
+        }
+
+        if in_client_list && header_seen {
+            // End of client list
+            if trimmed.is_empty()
+                || trimmed.starts_with("ROUTING")
+                || trimmed.starts_with("GLOBAL")
+                || trimmed.starts_with("END")
+            {
+                in_client_list = false;
+                continue;
+            }
+
+            let parts: Vec<&str> = trimmed.split_whitespace().collect();
+            if parts.len() >= 2 {
+                let common_name = parts[0].to_string();
+                let real_address = parts.get(1).map(|s| s.to_string());
+                let virtual_address = parts.get(2).map(|s| s.to_string());
+                let bytes_received = parts.get(3).and_then(|s| s.parse().ok());
+                let bytes_sent = parts.get(4).and_then(|s| s.parse().ok());
+                let connected_since = if parts.len() >= 7 {
+                    Some(format!("{} {}", parts[5], parts[6]))
+                } else {
+                    parts.get(5).map(|s| s.to_string())
+                };
+
+                clients.push(OpenVpnConnectedClient {
+                    common_name,
+                    real_address,
+                    virtual_address,
+                    bytes_received,
+                    bytes_sent,
+                    connected_since,
+                });
+            }
+        }
+    }
+
+    clients
+}
+
+/// POST /api/v1/vyos/openvpn — create an OpenVPN interface.
+pub async fn openvpn_create(
+    State(state): State<AppState>,
+    Json(body): Json<CreateOpenVpnInterfaceRequest>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    // Validate interface name
+    if !is_valid_ovpn_name(&body.name) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid interface name. Use vtun0, vtun1, etc.".to_string(),
+            }),
+        ));
+    }
+
+    // Validate mode
+    if !is_valid_ovpn_mode(&body.mode) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid mode. Use 'server', 'client', or 'site-to-site'.".to_string(),
+            }),
+        ));
+    }
+
+    // Validate subnet if provided (server mode)
+    if let Some(ref subnet) = body.subnet {
+        if !is_valid_cidr(subnet) {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: "Invalid subnet. Expected CIDR format like 10.8.0.0/24".to_string(),
+                }),
+            ));
+        }
+    }
+
+    let description = format!(
+        "Create OpenVPN interface {} (mode: {})",
+        body.name, body.mode
+    );
+    let mut commands = Vec::new();
+
+    let base = ["interfaces", "openvpn", body.name.as_str()];
+
+    // Set mode
+    commands.push(format!(
+        "set interfaces openvpn {} mode {}",
+        body.name, body.mode
+    ));
+    if let Err(e) = client
+        .configure_set(&[base[0], base[1], base[2], "mode", &body.mode])
+        .await
+    {
+        let msg = format!("Failed to set OpenVPN mode: {e}");
+        audit::log_failure(
+            &state.db,
+            "openvpn_interface_create",
+            &description,
+            &commands,
+            &msg,
+        )
+        .await;
+        return Err((
+            StatusCode::BAD_GATEWAY,
+            Json(VyosWriteResponse {
+                success: false,
+                message: msg,
+            }),
+        ));
+    }
+
+    // Set protocol
+    if let Some(ref proto) = body.protocol {
+        commands.push(format!(
+            "set interfaces openvpn {} protocol {}",
+            body.name, proto
+        ));
+        let _ = client
+            .configure_set(&[base[0], base[1], base[2], "protocol", proto])
+            .await;
+    }
+
+    // Set local port
+    if let Some(port) = body.local_port {
+        let port_str = port.to_string();
+        commands.push(format!(
+            "set interfaces openvpn {} local-port {}",
+            body.name, port
+        ));
+        let _ = client
+            .configure_set(&[base[0], base[1], base[2], "local-port", &port_str])
+            .await;
+    }
+
+    // Set local address
+    if let Some(ref addr) = body.local_address {
+        commands.push(format!(
+            "set interfaces openvpn {} local-address {}",
+            body.name, addr
+        ));
+        let _ = client
+            .configure_set(&[base[0], base[1], base[2], "local-address", addr])
+            .await;
+    }
+
+    // Set remote host (client mode)
+    if let Some(ref host) = body.remote_host {
+        commands.push(format!(
+            "set interfaces openvpn {} remote-host {}",
+            body.name, host
+        ));
+        let _ = client
+            .configure_set(&[base[0], base[1], base[2], "remote-host", host])
+            .await;
+    }
+
+    // Set remote port (client mode)
+    if let Some(port) = body.remote_port {
+        let port_str = port.to_string();
+        commands.push(format!(
+            "set interfaces openvpn {} remote-port {}",
+            body.name, port
+        ));
+        let _ = client
+            .configure_set(&[base[0], base[1], base[2], "remote-port", &port_str])
+            .await;
+    }
+
+    // Set encryption
+    if let Some(ref cipher) = body.encryption {
+        commands.push(format!(
+            "set interfaces openvpn {} encryption cipher {}",
+            body.name, cipher
+        ));
+        let _ = client
+            .configure_set(&[base[0], base[1], base[2], "encryption", "cipher", cipher])
+            .await;
+    }
+
+    // Set hash
+    if let Some(ref hash) = body.hash {
+        commands.push(format!(
+            "set interfaces openvpn {} hash {}",
+            body.name, hash
+        ));
+        let _ = client
+            .configure_set(&[base[0], base[1], base[2], "hash", hash])
+            .await;
+    }
+
+    // Set server subnet
+    if let Some(ref subnet) = body.subnet {
+        commands.push(format!(
+            "set interfaces openvpn {} server subnet {}",
+            body.name, subnet
+        ));
+        let _ = client
+            .configure_set(&[base[0], base[1], base[2], "server", "subnet", subnet])
+            .await;
+    }
+
+    // Set description
+    if let Some(ref desc) = body.description {
+        let _ = client
+            .configure_set(&[base[0], base[1], base[2], "description", desc])
+            .await;
+    }
+
+    // Set TLS settings
+    if let Some(ref ca) = body.tls_ca_cert {
+        commands.push(format!(
+            "set interfaces openvpn {} tls ca-cert-file {}",
+            body.name, ca
+        ));
+        let _ = client
+            .configure_set(&[base[0], base[1], base[2], "tls", "ca-cert-file", ca])
+            .await;
+    }
+    if let Some(ref cert) = body.tls_cert {
+        let _ = client
+            .configure_set(&[base[0], base[1], base[2], "tls", "cert-file", cert])
+            .await;
+    }
+    if let Some(ref key) = body.tls_key {
+        let _ = client
+            .configure_set(&[base[0], base[1], base[2], "tls", "key-file", key])
+            .await;
+    }
+    if let Some(ref dh) = body.tls_dh {
+        let _ = client
+            .configure_set(&[base[0], base[1], base[2], "tls", "dh-file", dh])
+            .await;
+    }
+
+    // Set push routes
+    if let Some(ref routes) = body.push_routes {
+        for route in routes {
+            commands.push(format!(
+                "set interfaces openvpn {} push-route {}",
+                body.name, route
+            ));
+            let _ = client
+                .configure_set(&[base[0], base[1], base[2], "push-route", route])
+                .await;
+        }
+    }
+
+    audit::log_success(
+        &state.db,
+        "openvpn_interface_create",
+        &description,
+        &commands,
+    )
+    .await;
+
+    if let Err(e) = client.config_save().await {
+        tracing::warn!("config-file save failed after OpenVPN interface create: {e}");
+    }
+
+    Ok(Json(VyosWriteResponse {
+        success: true,
+        message: format!("OpenVPN interface {} created", body.name),
+    }))
+}
+
+/// DELETE /api/v1/vyos/openvpn/:name — delete an OpenVPN interface.
+pub async fn openvpn_delete(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    if !is_valid_ovpn_name(&name) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid interface name".to_string(),
+            }),
+        ));
+    }
+
+    let description = format!("Delete OpenVPN interface {}", name);
+    let commands = vec![format!("delete interfaces openvpn {}", name)];
+
+    tracing::info!("VyOS: deleting OpenVPN interface {}", name);
+
+    match client
+        .configure_delete(&["interfaces", "openvpn", &name])
+        .await
+    {
+        Ok(_) => {
+            audit::log_success(
+                &state.db,
+                "openvpn_interface_delete",
+                &description,
+                &commands,
+            )
+            .await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after OpenVPN interface delete: {e}");
+            }
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("OpenVPN interface {} deleted", name),
+            }))
+        }
+        Err(e) => {
+            let msg = format!("Failed to delete OpenVPN interface: {e}");
+            audit::log_failure(
+                &state.db,
+                "openvpn_interface_delete",
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: msg,
+                }),
+            ))
+        }
+    }
+}
+
+/// POST /api/v1/vyos/openvpn/:name/toggle — enable or disable an OpenVPN interface.
+pub async fn openvpn_toggle(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> Result<Json<VyosWriteResponse>, (StatusCode, Json<VyosWriteResponse>)> {
+    let client = get_vyos_client_or_503(&state).await.map_err(|_| {
+        (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Router not configured".to_string(),
+            }),
+        )
+    })?;
+
+    if !is_valid_ovpn_name(&name) {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(VyosWriteResponse {
+                success: false,
+                message: "Invalid interface name".to_string(),
+            }),
+        ));
+    }
+
+    let disable = body
+        .get("disable")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(true);
+
+    let (action, description) = if disable {
+        ("disable", format!("Disable OpenVPN interface {}", name))
+    } else {
+        ("enable", format!("Enable OpenVPN interface {}", name))
+    };
+
+    let commands = if disable {
+        vec![format!("set interfaces openvpn {} disable", name)]
+    } else {
+        vec![format!("delete interfaces openvpn {} disable", name)]
+    };
+
+    let result = if disable {
+        client
+            .configure_set(&["interfaces", "openvpn", &name, "disable"])
+            .await
+    } else {
+        client
+            .configure_delete(&["interfaces", "openvpn", &name, "disable"])
+            .await
+    };
+
+    match result {
+        Ok(_) => {
+            audit::log_success(
+                &state.db,
+                &format!("openvpn_interface_{}", action),
+                &description,
+                &commands,
+            )
+            .await;
+            if let Err(e) = client.config_save().await {
+                tracing::warn!("config-file save failed after OpenVPN toggle: {e}");
+            }
+            Ok(Json(VyosWriteResponse {
+                success: true,
+                message: format!("OpenVPN interface {} {}d", name, action),
+            }))
+        }
+        Err(e) => {
+            let msg = format!("Failed to {} OpenVPN interface: {e}", action);
+            audit::log_failure(
+                &state.db,
+                &format!("openvpn_interface_{}", action),
+                &description,
+                &commands,
+                &msg,
+            )
+            .await;
+            Err((
+                StatusCode::BAD_GATEWAY,
+                Json(VyosWriteResponse {
+                    success: false,
+                    message: msg,
+                }),
+            ))
+        }
+    }
+}
+
+/// GET /api/v1/vyos/openvpn/:name/clients — get connected clients for an OpenVPN server.
+pub async fn openvpn_clients(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+) -> Result<Json<Vec<OpenVpnConnectedClient>>, StatusCode> {
+    let client = get_vyos_client_or_503(&state).await?;
+
+    if !is_valid_ovpn_name(&name) {
+        return Ok(Json(vec![]));
+    }
+
+    match client.show(&["interfaces", "openvpn", &name]).await {
+        Ok(raw) => {
+            let text = raw.as_str().unwrap_or("");
+            Ok(Json(parse_openvpn_status_clients(text)))
+        }
+        Err(e) => {
+            tracing::warn!("Failed to get OpenVPN clients for {}: {e}", name);
+            Ok(Json(vec![]))
+        }
+    }
+}
+
 // ── Tests ───────────────────────────────────────────────────────────
 
 #[cfg(test)]
