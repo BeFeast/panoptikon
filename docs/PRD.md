@@ -2,9 +2,9 @@
 
 ## Product Requirements Document
 
-**Version:** 0.5.0
+**Version:** 0.6.0
 **Author:** Oleg Kossoy (concept) / AI-assisted (document)
-**Date:** 2026-02-23
+**Date:** 2026-02-24
 **Status:** Active
 
 ---
@@ -30,13 +30,13 @@
 
 **Panoptikon** is a self-hosted web application for managing routers (MikroTik primary, VyOS optional), monitoring all devices on a local network, and maintaining a complete IT asset inventory — without requiring an agent on every host.
 
-Think of it as a mashup of **Ubiquiti UniFi's web console** (dark theme, topology map, polished device cards), **Fing** (network scanning, device discovery, online/offline tracking), and **Lansweeper / NetBox** (asset inventory, SSH-based agentless collection, categorization) — but open-source, with multi-router support (MikroTik + VyOS), and running as a single binary.
+Think of it as a mashup of **Ubiquiti UniFi's web console** (dark theme, topology map, polished device cards), **Fing** (network scanning, device discovery, online/offline tracking), and **Lansweeper / NetBox** (asset inventory, SSH-based agentless collection, categorization) — but open-source, with multi-router support (MikroTik + VyOS), embedded DNS and reverse proxy management, and deployable as a single Docker Compose stack.
 
 The name references Bentham's panopticon — the all-seeing observation tower — reimagined as a personal tool: *you* are the observer, your home network is the space. The `k` spelling makes it unique and ownable.
 
-**The one-liner:** A beautiful, UniFi-inspired control plane and asset management system for your MikroTik/VyOS home/lab network.
+**The one-liner:** The all-seeing eye for your home network. Unified monitoring and management: network devices, routers (MikroTik/VyOS), WiFi mesh (Xiaomi), DNS (Unbound), reverse proxy (Caddy), Cloudflare Tunnel, and IT asset inventory — all in one self-hosted Docker Compose stack.
 
-**Vision:** You open a single browser tab and see your entire infrastructure: router health, every device discovered via ARP/DHCP/mDNS/SSDP, full hardware inventory collected either via lightweight agents *or* direct SSH — all in a dark, information-dense UI that feels like a professional network operations center, not a hobbyist tool.
+**Vision:** You open a single browser tab and see your entire infrastructure: router health, every device discovered via ARP/DHCP/mDNS/SSDP, full hardware inventory collected via lightweight agents *or* direct SSH, DNS management (Unbound), reverse proxy (Caddy), and secure tunnel (Cloudflare) — all in a dark, information-dense UI that feels like a professional network operations center, not a hobbyist tool.
 
 ### Asset Management Vision
 
@@ -95,7 +95,7 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 | G5 | Maintain a complete IT asset inventory — hardware, OS, ownership, location — without external tools | ✅ Done |
 | G6 | Support agentless SSH-based monitoring for hosts where installing an agent is not possible or desired | ✅ Done |
 | G7 | Keep resource usage minimal — the server should run on a Raspberry Pi 4 | ✅ Done |
-| G8 | Be easy to deploy: single binary + SQLite, no external dependencies | ✅ Done |
+| G8 | Be easy to deploy: Docker Compose stack with SQLite, minimal external dependencies | ✅ Done |
 | G9 | Open-source (MIT or Apache 2.0) with a clean, contributor-friendly codebase | ✅ Done |
 | G10 | Support multiple router backends (MikroTik primary, VyOS optional) | ✅ Done |
 
@@ -119,8 +119,9 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 #### F1: Dashboard ✅
 - Router status card: uptime, CPU, memory, interface summary
 - Active devices count (online now / total known)
-- Top devices by traffic
+- Top devices by traffic with **sparkline charts**
 - Recent alerts feed
+- Framer Motion animations for smooth transitions
 
 #### F2: Device Discovery & Management ✅
 - **ARP scan** on configurable subnets (active + passive)
@@ -129,12 +130,12 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 - Scan runs on a schedule (configurable) and on-demand
 - MAC → vendor lookup via local OUI database (IEEE MA-L, embedded at build time)
 - Device list with: IP, MAC, hostname (via DHCP lease or mDNS), vendor, first seen, last seen, online/offline status
-- Manual device tagging: custom name, icon, notes, "known" vs "unknown" flag
+- Manual device tagging: custom name, **device type icon** (auto-detected or manual), notes, "known" vs "unknown" flag
 - Online/offline history per device (state change log)
 - **Device fingerprinting:** multi-layer enrichment engine detecting OS family, device type, brand, and model via DHCP, hostname patterns, mDNS services, TTL analysis, and OUI lookup
 
 #### F3: Router Integration ✅
-- **MikroTik (Primary):** Connect to RouterOS 7+ REST API. Display: system status (uptime, CPU, memory, board info), interfaces (IPs, MACs, TX/RX, enable/disable), routes (view + create/delete static routes), DHCP leases, firewall rules, DNS configuration, WireGuard VPN. TTL-based caching for read operations. Settings page with connection test and enable/disable toggle.
+- **MikroTik (Primary):** Connect to RouterOS 7+ REST API. Full management: system status (uptime, CPU, memory, board info), interfaces (IPs, MACs, TX/RX, enable/disable), routes (view + create/delete static routes), DHCP leases, VLANs, firewall rules, traffic monitoring, NAT/port forwarding, VPN status, dynamic DNS, QoS, DNS configuration, WireGuard VPN. TTL-based caching for read operations. Settings page with connection test and enable/disable toggle.
 - **VyOS (Optional):** Connect to VyOS HTTP API. Display: system status, syslog, interfaces, routes, DHCP leases + static mappings, firewall rules (full CRUD + groups), DNS forwarding, WireGuard VPN peers. Configuration backup/restore with diff viewing. Settings page with connection test.
 - Connection test + health indicator in UI for both routers
 
@@ -218,11 +219,32 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 - Access lists (IP-based access control)
 - Dedicated settings page with connection test
 
+#### F15b: Caddy Proxy Manager ✅
+- Full integration with Caddy Admin API
+- Proxy host management (create, update, delete)
+- Automatic HTTPS via Caddy's built-in ACME
+- Live configuration reload without downtime
+- Part of the embedded Docker Compose stack (replaces NPM as the primary reverse proxy)
+
+#### F15c: Unbound DNS Manager ✅
+- Local DNS record management (A, AAAA, CNAME, PTR)
+- DNS blocklist management (ad blocking, malware domains)
+- Query log visualization and search
+- Upstream forwarder configuration
+- Part of the embedded Docker Compose stack
+
+#### F15d: Cloudflare Tunnel Management ✅
+- Tunnel status monitoring and management
+- Ingress rule configuration (route external domains to internal services)
+- Optional 4th service in the Docker Compose stack
+- Secure external access without port forwarding
+
 #### F16: Services Wizard ✅
 - Unified orchestration for deploying services: NPM proxy host + VyOS firewall rules + DNAT rules
 - Single API call with per-step status reporting
 
-#### F17: Global Search ✅
+#### F17: Global Search & Command Palette ✅
+- **Cmd+K command palette** for quick navigation and actions
 - Search across devices, agents, alerts, SSH hosts, and assets
 - Unified results with type indicators
 
@@ -313,23 +335,34 @@ A structured record for every asset in the infrastructure — servers, VMs, cont
 └──────────┬──────────────────────┬───────────────────────────┘
            │ REST (CRUD)          │ WebSocket (live updates)
            ▼                      ▼
-┌─────────────────────────────────────────────────────────────┐
-│                  Rust API Server (axum)                      │
-│                                                              │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────────────┐ │
-│  │ REST API │ │ WS Hub   │ │ Scanner  │ │ Router Clients │ │
-│  │(devices, │ │ (push    │ │ (ARP,    │ │ ┌────────────┐ │ │
-│  │ alerts,  │ │  updates │ │ mDNS,    │ │ │ MikroTik   │ │ │
-│  │ agents,  │ │  to UI)  │ │ SSDP,    │ │ │ (REST API) │ │ │
-│  │ assets,  │ │          │ │ NetFlow) │ │ ├────────────┤ │ │
-│  │ ssh,     │ │          │ │          │ │ │ VyOS       │ │ │
-│  │ npm)     │ │          │ │          │ │ │ (HTTP API) │ │ │
-│  └──────────┘ └──────────┘ └──────────┘ │ └────────────┘ │ │
-│                     │                    └────────────────┘ │
-│            ┌────────┴────────┐                              │
-│            │   SQLite (sqlx) │                              │
-│            └─────────────────┘                              │
-└───────────────────┬──────────────────┬──────────────────────┘
+┌══════════════════════════════════════════════════════════════┐
+║              Docker Compose Stack                            ║
+║                                                              ║
+║  ┌────────────────────────────────────────────────────────┐  ║
+║  │              Panoptikon (Rust + axum)                  │  ║
+║  │                                                        │  ║
+║  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ │  ║
+║  │  │ REST API │ │ WS Hub   │ │ Scanner  │ │ Router   │ │  ║
+║  │  │(devices, │ │ (push    │ │ (ARP,    │ │ Clients  │ │  ║
+║  │  │ alerts,  │ │  updates │ │ mDNS,    │ │┌────────┐│ │  ║
+║  │  │ agents,  │ │  to UI)  │ │ SSDP,    │ ││MikroTik││ │  ║
+║  │  │ assets,  │ │          │ │ NetFlow) │ │├────────┤│ │  ║
+║  │  │ caddy,   │ │          │ │          │ ││VyOS    ││ │  ║
+║  │  │ unbound, │ │          │ │          │ │└────────┘│ │  ║
+║  │  │ cf-tun)  │ │          │ │          │ │          │ │  ║
+║  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ │  ║
+║  │                     │                                  │  ║
+║  │            ┌────────┴────────┐                         │  ║
+║  │            │   SQLite (sqlx) │                         │  ║
+║  │            └─────────────────┘                         │  ║
+║  └────────────────────────────────────────────────────────┘  ║
+║                                                              ║
+║  ┌──────────┐  ┌──────────┐  ┌──────────────┐               ║
+║  │  Caddy   │  │ Unbound  │  │ Cloudflared  │ (optional)    ║
+║  │ (reverse │  │  (DNS    │  │ (CF Tunnel)  │               ║
+║  │  proxy)  │  │ resolver)│  │              │               ║
+║  └──────────┘  └──────────┘  └──────────────┘               ║
+╚══════════════════════════════════════════════════════════════╝
                     │ WebSocket        │ SSH polling
         ┌───────────┼───────────┐      │
         ▼           ▼           ▼      ▼
@@ -362,49 +395,87 @@ Both integrations use TTL-based caching for read operations and cache invalidati
 | **Charts** | Recharts | React-native, composable, responsive. Better DX than Chart.js for React apps. Good dark theme customization. |
 | **Topology rendering** | SVG + d3-force | Accessible (DOM nodes, not canvas pixels), interactive (click/hover events are trivial), good enough performance for <200 nodes. |
 | **Network scanning** | `pnet` (Rust) + system ARP table | `pnet` for raw ARP packet crafting when root, fallback to parsing `/proc/net/arp` or `arp -a` output. No nmap dependency required. |
+| **Reverse proxy** | Caddy | Automatic HTTPS, simple config, Admin API for programmatic management. Replaces NPM as the primary/embedded reverse proxy. |
+| **DNS resolver** | Unbound | Lightweight recursive DNS resolver with local zone support, blocklists, and query logging. Embedded in the Docker Compose stack. |
+| **Tunnel** | Cloudflared | Cloudflare Tunnel for secure external access without port forwarding. Optional 4th service in Docker Compose. |
+| **Animations** | Framer Motion | Smooth, declarative animations for React. Card transitions, page enters, and micro-interactions. |
 | **OUI database** | Embedded IEEE MA-L CSV | Compiled into the binary. Updated on release. No runtime download needed. |
 
 ### Deployment Model
 
-The server ships as a **single binary** with the Next.js frontend **statically exported and embedded** (using `rust-embed` or similar). This means:
+The primary deployment method is **Docker Compose**, packaging Panoptikon with its embedded services:
+
+```yaml
+# docker-compose.yml (simplified)
+services:
+  panoptikon:
+    image: panoptikon/panoptikon:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/data          # SQLite database
+      - ./config:/config      # panoptikon.toml
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy:/etc/caddy
+
+  unbound:
+    image: mvance/unbound:latest
+    ports:
+      - "53:53/udp"
+      - "53:53/tcp"
+    volumes:
+      - ./unbound:/opt/unbound/etc/unbound
+
+  cloudflared:                 # Optional
+    image: cloudflare/cloudflared:latest
+    command: tunnel run
+    profiles: ["tunnel"]
+```
 
 ```bash
-# Install and run:
-curl -L https://github.com/BeFeast/panoptikon/releases/latest/download/panoptikon-linux-amd64 -o panoptikon
-chmod +x panoptikon
-./panoptikon --listen 0.0.0.0:8080
-# → SQLite database created at ./panoptikon.db
+# Quick start:
+git clone https://github.com/BeFeast/panoptikon && cd panoptikon
+docker compose up -d
+# → SQLite database created at ./data/panoptikon.db
 # → Open http://localhost:8080
 ```
 
-No Docker required (though a Dockerfile is provided). No Node.js runtime needed at deploy time. One binary, one database file.
+The Panoptikon binary itself embeds the Next.js frontend (statically exported via `rust-embed`). The binary can also run standalone without Docker, but Docker Compose is the recommended deployment for the full stack (reverse proxy + DNS + tunnel).
 
-### Reference Deployment: Proxmox + MikroTik
+**Docker Hub releases** are planned for automated image publishing.
 
-**MikroTik** runs as the primary router (hardware device, CHR VM, or container):
+### Reference Deployment: Proxmox + MikroTik + Docker Compose
+
+**MikroTik CHR** runs as the primary router (hardware device, CHR VM, or container):
 - RouterOS 7+ with REST API enabled
 - API accessible from LAN
 - Enable REST API: `/ip/service set api-ssl address=10.10.0.0/24`
 
-**Panoptikon** runs as an **unprivileged LXC** on a Proxmox host:
-- OS: Debian 12 (minimal)
-- Resources: 1 vCPU, 256 MB RAM, 2 GB disk (mostly SQLite)
+**Panoptikon Docker Compose stack** runs on a Proxmox host (LXC or VM with Docker):
+- OS: Debian 12 with Docker Engine
+- Resources: 1–2 vCPUs, 512 MB RAM, 4 GB disk
 - Network: bridged to LAN — **required** for ARP scanning to reach all devices
 - Required capabilities: `CAP_NET_RAW` (ARP raw sockets via pnet), `CAP_NET_ADMIN` (interface operations)
+- Stack includes: **panoptikon** (core) + **caddy** (reverse proxy) + **unbound** (DNS) + **cloudflared** (optional tunnel)
 
-```ini
-# /etc/pve/lxc/<id>.conf (Proxmox LXC config)
-net0: name=eth0,bridge=vmbr0,ip=10.10.0.X/24,gw=10.10.0.1
-lxc.cap.keep: net_admin net_raw
+```yaml
+# Docker Compose services:
+# panoptikon  — Rust backend + embedded Next.js frontend + SQLite
+# caddy       — Reverse proxy with automatic HTTPS
+# unbound     — Local DNS resolver with blocklists
+# cloudflared — Cloudflare Tunnel (optional, enable with --profile tunnel)
 ```
 
 **Optional VyOS** — if running VyOS alongside MikroTik (e.g. as a dedicated firewall VM):
 - VyOS VM: 2 vCPUs, 512 MB RAM, 2 NICs
 - VyOS HTTP API enabled and reachable from LAN
 - Enable in Panoptikon Settings → VyOS Router
-
-**Why LXC and not a full VM?**
-Panoptikon is a single Rust binary + SQLite. A full VM (with its own kernel) wastes resources. LXC with `net_raw`/`net_admin` capabilities gives everything needed: raw ARP sockets work, interface stats work, no privilege issues.
 
 ### Build Pipeline
 
@@ -414,6 +485,10 @@ Frontend (Next.js):  bun run build → static export → /out/
 Backend (Rust):      cargo build --release ← rust-embed includes /out/
                                                       ↓
                               Single binary: panoptikon (~15-25 MB)
+                                                      ↓
+Docker:              Dockerfile → multi-stage build → panoptikon image
+                                                      ↓
+Compose:             docker-compose.yml → panoptikon + caddy + unbound + cloudflared
 ```
 
 ---
@@ -603,6 +678,9 @@ The UI should feel like a network operations center — dark, information-dense,
 │  Assets                                                       │
 │  SSH Hosts                                                    │
 │  Router                                                       │
+│  Caddy                                                        │
+│  Unbound                                                      │
+│  CF Tunnel                                                    │
 │  NPM                                                          │
 │  Services                                                     │
 │  Topology                                                     │
@@ -611,7 +689,7 @@ The UI should feel like a network operations center — dark, information-dense,
 │  Certificates                                                 │
 │  Settings                                                     │
 │          │                                                    │
-│  [WS: ●] [NPM: ●] v0.5.0                                   │
+│  [WS: ●] [Caddy: ●] v0.6.0                                 │
 └──────────┴───────────────────────────────────────────────────┘
 ```
 
@@ -950,7 +1028,7 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 - [x] **Online/offline detection:** State change tracking, ping-based uptime monitoring
 - [x] **Alerts:** New device, offline/online state changes, in-app feed with severity filtering
 - [x] **WebSocket:** Live updates to UI when device state changes
-- [x] **Settings page:** MikroTik connection, VyOS connection (optional), NPM connection, scanner config, webhook, data retention, speedtest, audit log, config backup, password change
+- [x] **Settings page:** MikroTik connection, VyOS connection (optional), Caddy connection, Unbound connection, Cloudflare Tunnel, NPM connection, scanner config, webhook, data retention, speedtest, audit log, config backup, password change
 
 ### Milestone 2: Agents + Traffic + SSH ✅
 
@@ -973,12 +1051,27 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 - [x] **Export:** CSV/JSON export for devices, traffic, alerts, assets
 - [x] **Prometheus metrics:** `/metrics` endpoint
 - [x] **NPM integration:** Full Nginx Proxy Manager management (proxy hosts, redirections, SSL, streams, dead hosts, access lists)
+- [x] **Caddy proxy manager:** Admin API integration for reverse proxy management (replaces NPM as primary)
+- [x] **Unbound DNS manager:** Local DNS records, blocklists, query log visualization
+- [x] **Cloudflare Tunnel management:** Tunnel status, ingress rules, optional Docker Compose service
 - [x] **Services wizard:** Unified NPM + VyOS firewall + DNAT deployment
 - [x] **Speedtest:** Ookla integration with scheduling and history
 - [x] **Audit log:** Router operation tracking
 - [x] **Config backup:** VyOS configuration backup/restore with diff viewing
+- [x] **Cmd+K command palette:** Quick navigation and action execution
+- [x] **Framer Motion animations:** Smooth card transitions and micro-interactions
+- [x] **Device type icons:** Visual device identification in lists and topology
+- [x] **Dashboard sparklines:** Inline bandwidth charts on dashboard cards
 
-### Milestone 4: Future (Planned)
+### Milestone 4: Embedded Stack & Integrations (In Progress)
+
+- [ ] **Xiaomi BE3600 mesh integration:** WiFi client list, mesh topology, signal strength monitoring
+- [ ] **Docker Compose packaging:** Docker Hub releases, automated image builds
+- [ ] **DNS test setup:** Configure Unbound as the network-wide DNS resolver
+- [ ] **pfSense feature parity analysis:** Gap analysis for pfSense migration path
+- [ ] **UI cleanup:** Polish, consistency, responsive improvements
+
+### Milestone 5: Future (Planned)
 
 - [ ] **Port scanning:** On-demand port scan with service identification
 - [ ] **LAN speed test:** iperf3 between server and agents
@@ -1084,8 +1177,8 @@ set service https api
 | Netdata | Agent monitoring | Excellent agent, but no network discovery or router management |
 | The Dude (MikroTik) | Network monitoring | MikroTik-only, desktop app, no modern web UI, no asset management |
 
-Panoptikon's unique position: **multi-router management (MikroTik + VyOS) + network discovery + device fingerprinting + lightweight agents + reverse proxy management**, all in one polished self-hosted tool.
+Panoptikon's unique position: **multi-router management (MikroTik + VyOS) + network discovery + device fingerprinting + lightweight agents + embedded DNS (Unbound) + reverse proxy (Caddy) + Cloudflare Tunnel + IT asset inventory**, all in one polished self-hosted Docker Compose stack.
 
 ---
 
-*This document is actively maintained. Last updated: 2026-02-23 (v0.5.0 — MikroTik-first architecture).*
+*This document is actively maintained. Last updated: 2026-02-24 (v0.6.0 — Caddy+Unbound embedded stack, Docker Compose deployment).*
