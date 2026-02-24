@@ -865,6 +865,7 @@ export function updateSettings(body: {
   cloudflare_api_token?: string;
   cloudflare_account_id?: string;
   cloudflare_tunnel_id?: string;
+  show_legacy_routers?: boolean;
 }): Promise<SettingsData> {
   return apiPatch<SettingsData>("/api/v1/settings", body);
 }

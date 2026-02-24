@@ -106,9 +106,14 @@ export const settingsNav: SettingsNavGroup[] = [
     ],
   },
   {
-    label: "Legacy / Optional",
-    subtitle: "Use Caddy for new deployments.",
+    label: "Advanced / Legacy",
+    subtitle: "Advanced options and legacy integrations.",
     items: [
+      {
+        href: "/settings/advanced",
+        title: "Advanced Settings",
+        description: "Legacy router visibility and other advanced options.",
+      },
       {
         href: "/settings/npm",
         title: "Nginx Proxy Manager",

@@ -15,6 +15,7 @@ import {
   ChevronRight,
   ShieldAlert,
   Server,
+  Settings,
   Wifi,
   Network,
 } from "lucide-react";
@@ -80,6 +81,10 @@ const iconMap: Record<string, { icon: React.ReactNode; iconBg: string }> = {
   "/settings/password": {
     icon: <Lock className="h-4 w-4 text-blue-400" />,
     iconBg: "bg-blue-500/10",
+  },
+  "/settings/advanced": {
+    icon: <Settings className="h-4 w-4 text-slate-400" />,
+    iconBg: "bg-slate-500/10",
   },
   "/settings/npm": {
     icon: <Globe className="h-4 w-4 text-orange-400" />,
