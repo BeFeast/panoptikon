@@ -670,22 +670,26 @@ pub struct SyncFromDevicesResponse {
 pub async fn sync_from_devices(
     State(state): State<AppState>,
 ) -> Result<Json<SyncFromDevicesResponse>, AppError> {
-    // Find devices that are not already linked to any asset.
+    // Fetch all devices and decide per-device whether an asset should be created.
+    // This keeps the "already linked" check explicit and makes logging clearer.
     let rows = sqlx::query(
         "SELECT d.id, d.name, d.hostname, d.mac, d.device_type, d.location, \
                 d.owner, d.serial_number, \
-                (SELECT a2.id FROM agents a2 WHERE a2.device_id = d.id LIMIT 1) AS linked_agent_id \
+                EXISTS(SELECT 1 FROM assets a WHERE a.device_id = d.id) AS has_linked_asset, \
+                (SELECT ag.id FROM agents ag WHERE ag.device_id = d.id LIMIT 1) AS linked_agent_id \
          FROM devices d \
-         WHERE d.id NOT IN (SELECT a.device_id FROM assets a WHERE a.device_id IS NOT NULL)",
+         ORDER BY d.last_seen_at DESC",
     )
     .fetch_all(&state.db)
     .await?;
+    let devices_total = rows.len();
+    info!(devices_total, "Sync assets from devices started");
 
     let mut created = 0usize;
     let mut skipped = 0usize;
     let mut details = Vec::new();
 
-    for row in &rows {
+    for row in rows {
         let device_id: String = row.try_get("id").unwrap_or_default();
         let device_name: Option<String> = row.try_get("name").ok().flatten();
         let hostname: Option<String> = row.try_get("hostname").ok().flatten();
@@ -694,18 +698,58 @@ pub async fn sync_from_devices(
         let location: Option<String> = row.try_get("location").ok().flatten();
         let owner: Option<String> = row.try_get("owner").ok().flatten();
         let serial_number: Option<String> = row.try_get("serial_number").ok().flatten();
+        let has_linked_asset = row
+            .try_get::<i64, _>("has_linked_asset")
+            .map(|v| v != 0)
+            .unwrap_or(false);
         let linked_agent_id: Option<String> = row.try_get("linked_agent_id").ok().flatten();
 
-        // Use device name, then hostname, then MAC as the asset name.
-        let asset_name = device_name
-            .as_deref()
-            .or(hostname.as_deref())
-            .unwrap_or(&mac);
+        info!(
+            device_id = %device_id,
+            device_name = device_name.as_deref().unwrap_or_default(),
+            hostname = hostname.as_deref().unwrap_or_default(),
+            mac = %mac,
+            has_linked_asset,
+            "Evaluating device for asset sync",
+        );
 
-        if asset_name.is_empty() {
+        if has_linked_asset {
             skipped += 1;
+            details.push(format!(
+                "Skipped device '{}' (already linked to an asset)",
+                device_id
+            ));
+            info!(
+                device_id = %device_id,
+                "Skipping device because a linked asset already exists"
+            );
             continue;
         }
+
+        // Use non-empty device name, then non-empty hostname, then non-empty MAC.
+        let asset_name = device_name
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .or(hostname.as_deref())
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .or(Some(mac.as_str()))
+            .map(str::trim)
+            .filter(|s| !s.is_empty());
+
+        let Some(asset_name) = asset_name else {
+            skipped += 1;
+            details.push(format!(
+                "Skipped device '{}' (missing name/hostname/mac)",
+                device_id
+            ));
+            info!(
+                device_id = %device_id,
+                "Skipping device because no usable asset name could be derived"
+            );
+            continue;
+        };
 
         // Map device_type to asset_type.
         let asset_type = match device_type.as_deref() {
@@ -743,15 +787,27 @@ pub async fn sync_from_devices(
             Ok(_) => {
                 details.push(format!("Created asset '{}' from device", asset_name));
                 created += 1;
+                info!(
+                    device_id = %device_id,
+                    asset_name = asset_name,
+                    "Created asset from discovered device"
+                );
             }
             Err(e) => {
                 warn!(device_id = %device_id, "Failed to create asset from device: {e}");
+                details.push(format!(
+                    "Failed to create asset from device '{}': {e}",
+                    device_id
+                ));
                 skipped += 1;
             }
         }
     }
 
-    info!(created, skipped, "Sync assets from devices completed");
+    info!(
+        devices_total,
+        created, skipped, "Sync assets from devices completed"
+    );
 
     Ok(Json(SyncFromDevicesResponse {
         created,
@@ -762,6 +818,8 @@ pub async fn sync_from_devices(
 
 #[cfg(test)]
 mod tests {
+    use axum::{extract::State, Json};
+
     use crate::db;
 
     use super::{asset_from_row, GET_ONE_QUERY, LIST_QUERY};
@@ -820,6 +878,59 @@ mod tests {
             .await
             .expect("Query failed");
         assert_eq!(remaining, 0);
+    }
+
+    #[tokio::test]
+    async fn test_sync_from_devices_creates_assets_for_unlinked_devices() {
+        let pool = db::init(":memory:").await.expect("DB init failed");
+
+        // Include an empty string `name` to verify fallback uses hostname/mac.
+        sqlx::query(
+            "INSERT INTO devices (id, mac, name, hostname, first_seen_at, last_seen_at, is_online) \
+             VALUES ('dev-1', 'aa:bb:cc:dd:ee:01', '', 'router.local', datetime('now'), datetime('now'), 1)",
+        )
+        .execute(&pool)
+        .await
+        .expect("Insert dev-1 failed");
+        sqlx::query(
+            "INSERT INTO devices (id, mac, name, hostname, first_seen_at, last_seen_at, is_online) \
+             VALUES ('dev-2', 'aa:bb:cc:dd:ee:02', NULL, NULL, datetime('now'), datetime('now'), 1)",
+        )
+        .execute(&pool)
+        .await
+        .expect("Insert dev-2 failed");
+        sqlx::query(
+            "INSERT INTO devices (id, mac, name, hostname, first_seen_at, last_seen_at, is_online) \
+             VALUES ('dev-3', 'aa:bb:cc:dd:ee:03', 'NAS-01', NULL, datetime('now'), datetime('now'), 1)",
+        )
+        .execute(&pool)
+        .await
+        .expect("Insert dev-3 failed");
+
+        let state = crate::api::AppState::new(pool.clone(), crate::config::AppConfig::default());
+        let Json(resp) = super::sync_from_devices(State(state))
+            .await
+            .unwrap_or_else(|_| panic!("sync_from_devices failed"));
+
+        assert_eq!(
+            resp.created, 3,
+            "Expected all three devices to create assets"
+        );
+        assert_eq!(resp.skipped, 0, "Expected no skipped devices");
+
+        let created_assets: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM assets")
+            .fetch_one(&pool)
+            .await
+            .expect("Count assets failed");
+        assert_eq!(created_assets, 3, "Expected 3 created assets");
+
+        let linked_assets: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM assets WHERE device_id IN ('dev-1', 'dev-2', 'dev-3')",
+        )
+        .fetch_one(&pool)
+        .await
+        .expect("Count linked assets failed");
+        assert_eq!(linked_assets, 3, "Expected every device to be linked");
     }
 
     /// Insert fixture data for devices, device_ips, agents, agent_reports,
