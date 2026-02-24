@@ -17,6 +17,13 @@ use serde_json::Value;
 /// Returns `(base_url, pool)` — the base URL includes the scheme and address,
 /// e.g. `"http://127.0.0.1:54321"`.
 async fn spawn_test_server() -> (String, sqlx::SqlitePool) {
+    spawn_test_server_with_config(config::AppConfig::default()).await
+}
+
+/// Spawn a real axum server with an explicit config.
+async fn spawn_test_server_with_config(
+    app_config: config::AppConfig,
+) -> (String, sqlx::SqlitePool) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
         .expect("failed to bind random port");
@@ -27,8 +34,7 @@ async fn spawn_test_server() -> (String, sqlx::SqlitePool) {
         .await
         .expect("in-memory DB init failed");
 
-    let config = config::AppConfig::default();
-    let state = api::AppState::new(pool.clone(), config);
+    let state = api::AppState::new(pool.clone(), app_config);
     let app = api::router(state);
 
     // CRITICAL: must use `into_make_service_with_connect_info` so that
@@ -56,7 +62,15 @@ fn http_client() -> reqwest::Client {
 /// Helper: run setup on a fresh DB and return the client (with session cookie)
 /// and base URL.
 async fn setup_fresh(password: &str) -> (reqwest::Client, String) {
-    let (base_url, _pool) = spawn_test_server().await;
+    setup_fresh_with_config(password, config::AppConfig::default()).await
+}
+
+/// Same as `setup_fresh` but allows passing an explicit config.
+async fn setup_fresh_with_config(
+    password: &str,
+    app_config: config::AppConfig,
+) -> (reqwest::Client, String) {
+    let (base_url, _pool) = spawn_test_server_with_config(app_config).await;
     let client = http_client();
 
     let resp = client
@@ -277,6 +291,64 @@ async fn test_setup_with_vyos_settings() {
 }
 
 // ── Test 7: Login before setup returns 428 ──────────────────────────
+
+#[tokio::test]
+async fn test_settings_vyos_falls_back_to_config_when_db_empty() {
+    let mut app_config = config::AppConfig::default();
+    app_config.vyos.url = Some("http://127.0.0.1:9".to_string());
+    app_config.vyos.api_key = Some("legacy-config-key".to_string());
+
+    let (client, base_url) = setup_fresh_with_config("settings_fallback_pw", app_config).await;
+
+    let resp = client
+        .get(format!("{base_url}/api/v1/settings"))
+        .send()
+        .await
+        .expect("settings request failed");
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: Value = resp.json().await.expect("settings json parse failed");
+    assert_eq!(body["vyos_url"].as_str(), Some("http://127.0.0.1:9"));
+    assert_eq!(body["vyos_api_key_set"].as_bool(), Some(true));
+}
+
+#[tokio::test]
+async fn test_qos_summary_vyos_available_from_config_fallback() {
+    let mut app_config = config::AppConfig::default();
+    app_config.vyos.url = Some("http://127.0.0.1:9".to_string());
+    app_config.vyos.api_key = Some("legacy-config-key".to_string());
+
+    let (client, base_url) = setup_fresh_with_config("qos_fallback_pw", app_config).await;
+
+    let resp = client
+        .get(format!("{base_url}/api/v1/qos/summary"))
+        .send()
+        .await
+        .expect("qos summary request failed");
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: Value = resp.json().await.expect("qos summary json parse failed");
+    assert_eq!(body["vyos_available"].as_bool(), Some(true));
+}
+
+#[tokio::test]
+async fn test_vpn_status_vyos_available_from_config_fallback() {
+    let mut app_config = config::AppConfig::default();
+    app_config.vyos.url = Some("http://127.0.0.1:9".to_string());
+    app_config.vyos.api_key = Some("legacy-config-key".to_string());
+
+    let (client, base_url) = setup_fresh_with_config("vpn_fallback_pw", app_config).await;
+
+    let resp = client
+        .get(format!("{base_url}/api/v1/vpn-status"))
+        .send()
+        .await
+        .expect("vpn status request failed");
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: Value = resp.json().await.expect("vpn status json parse failed");
+    assert_eq!(body["vyos_available"].as_bool(), Some(true));
+}
 
 #[tokio::test]
 async fn test_login_before_setup_returns_precondition() {

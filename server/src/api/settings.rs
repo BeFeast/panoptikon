@@ -112,19 +112,28 @@ pub async fn get_settings(
 ) -> Result<Json<SettingsResponse>, StatusCode> {
     let webhook_url = webhook::get_webhook_url(&state.db).await;
 
-    // Prefer DB overrides, but keep legacy file/env-based VyOS config visible
-    // so existing setups remain functional without re-saving settings.
-    let vyos_url = get_setting(&state, "vyos_url")
-        .await
-        .or_else(|| state.config.vyos.url.clone().filter(|v| !v.is_empty()));
-
-    let vyos_api_key_set = get_setting(&state, "vyos_api_key").await.is_some()
-        || state
+    // Keep legacy compatibility: if DB settings are absent, fall back to
+    // values from panoptikon.toml so existing VyOS setups remain detected.
+    let vyos_url = get_setting(&state, "vyos_url").await.or_else(|| {
+        state
             .config
             .vyos
-            .api_key
-            .as_ref()
-            .is_some_and(|k| !k.is_empty());
+            .url
+            .clone()
+            .filter(|v| !v.trim().is_empty())
+    });
+
+    let vyos_api_key_set = get_setting(&state, "vyos_api_key")
+        .await
+        .or_else(|| {
+            state
+                .config
+                .vyos
+                .api_key
+                .clone()
+                .filter(|v| !v.trim().is_empty())
+        })
+        .is_some();
 
     // Network Scanner settings (fall back to config defaults).
     let scan_interval_seconds = get_setting(&state, "scan_interval_seconds")
