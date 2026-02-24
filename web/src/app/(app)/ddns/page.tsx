@@ -58,7 +58,7 @@ import {
   fetchSettings,
 } from "@/lib/api";
 import type { DdnsEntry, DdnsEntryRequest, DdnsStatus } from "@/lib/types";
-import { ROUTER_TYPES, getDefaultRouterType } from "@/lib/router-config";
+import { ROUTER_TYPES, getDefaultRouterType, getAvailableRouterTypes } from "@/lib/router-config";
 import { toast } from "sonner";
 
 const PROVIDERS = [
@@ -383,10 +383,7 @@ export default function DdnsPage() {
   useEffect(() => {
     fetchSettings()
       .then((settings) => {
-        const vyosConfigured = !!settings.vyos_url && settings.vyos_api_key_set;
-        const types: string[] = ["mikrotik"];
-        if (vyosConfigured) types.push("vyos");
-        setRouterTypes(types);
+        setRouterTypes(getAvailableRouterTypes(settings));
         setDefaultRouterType(getDefaultRouterType(settings));
       })
       .catch(() => {
@@ -670,9 +667,13 @@ export default function DdnsPage() {
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className="border-slate-600 text-slate-400 text-xs"
+                        className={
+                          entry.router_type === "vyos"
+                            ? "border-amber-600/40 text-amber-400 text-xs"
+                            : "border-slate-600 text-slate-400 text-xs"
+                        }
                       >
-                        {entry.router_type === "vyos" ? "VyOS" : "MikroTik"}
+                        {entry.router_type === "vyos" ? "VyOS (Legacy)" : "MikroTik"}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
@@ -716,14 +717,18 @@ export default function DdnsPage() {
         routerTypes={routerTypes}
       />
 
-      {/* Edit dialog */}
+      {/* Edit dialog — always include VyOS when editing existing VyOS entries */}
       <DdnsFormDialog
         open={!!editItem}
         onClose={() => setEditItem(null)}
         onSave={handleUpdate}
         initial={editItem}
         defaultRouterType={defaultRouterType}
-        routerTypes={routerTypes}
+        routerTypes={
+          editItem?.router_type === "vyos" && !routerTypes.includes("vyos")
+            ? [...routerTypes, "vyos"]
+            : routerTypes
+        }
       />
 
       {/* Delete confirmation */}
