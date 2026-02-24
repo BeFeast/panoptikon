@@ -58,7 +58,7 @@ import {
   fetchSettings,
 } from "@/lib/api";
 import type { DdnsEntry, DdnsEntryRequest, DdnsStatus } from "@/lib/types";
-import { ROUTER_TYPES, getDefaultRouterType } from "@/lib/router-config";
+import { ROUTER_TYPES } from "@/lib/router-config";
 import { toast } from "sonner";
 
 const PROVIDERS = [
@@ -376,10 +376,11 @@ export default function DdnsPage() {
   const [editItem, setEditItem] = useState<DdnsEntry | null>(null);
   const [pendingDelete, setPendingDelete] = useState<DdnsEntry | null>(null);
   const [search, setSearch] = useState("");
-  const [defaultRouterType, setDefaultRouterType] = useState("mikrotik");
+  const defaultRouterType = "mikrotik";
   const [routerTypes, setRouterTypes] = useState<string[]>(["mikrotik"]);
 
-  // Determine default router type and available types from settings
+  // Default router type is always MikroTik (#330).
+  // We still fetch settings to determine available router types for the selector.
   useEffect(() => {
     fetchSettings()
       .then((settings) => {
@@ -387,10 +388,9 @@ export default function DdnsPage() {
         const types: string[] = ["mikrotik"];
         if (vyosConfigured) types.push("vyos");
         setRouterTypes(types);
-        setDefaultRouterType(getDefaultRouterType(settings));
       })
       .catch(() => {
-        // Keep mikrotik as default on error
+        // Keep mikrotik only on error
       });
   }, []);
 
