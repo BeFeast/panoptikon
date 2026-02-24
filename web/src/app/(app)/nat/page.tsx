@@ -215,12 +215,14 @@ export default function NatPage() {
 
         {/* Summary Cards */}
         <div className="grid gap-4 sm:grid-cols-2">
-          <SummaryCard
-            title="VyOS DNAT Rules"
-            value={summary?.vyos_rule_count ?? null}
-            available={summary?.vyos_available ?? null}
-            icon={<Router className="h-4 w-4 text-blue-400" />}
-          />
+          {summary?.vyos_available && (
+            <SummaryCard
+              title="VyOS DNAT Rules"
+              value={summary?.vyos_rule_count ?? null}
+              available={summary?.vyos_available ?? null}
+              icon={<Router className="h-4 w-4 text-blue-400" />}
+            />
+          )}
           <SummaryCard
             title="MikroTik NAT Rules"
             value={summary?.mikrotik_rule_count ?? null}
@@ -277,9 +279,9 @@ export default function NatPage() {
                   NAT / Port Forwarding Overview
                 </CardTitle>
                 <CardDescription className="text-slate-400">
-                  Manage destination NAT (port forwarding) rules on your VyOS
-                  and MikroTik routers. Select a tab above to view and manage
-                  rules for each router type.
+                  Manage destination NAT (port forwarding) rules on your
+                  {summary?.vyos_available ? " VyOS and MikroTik routers" : " MikroTik router"}.
+                  Select a tab above to view and manage rules for each router type.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -290,11 +292,11 @@ export default function NatPage() {
                   </div>
                 ) : (
                   <div className="text-sm text-slate-400 space-y-2">
-                    <p>
-                      {summary.vyos_available
-                        ? `VyOS router connected with ${summary.vyos_rule_count} DNAT rule(s).`
-                        : "VyOS router not configured."}
-                    </p>
+                    {summary.vyos_available && (
+                      <p>
+                        VyOS router connected with {summary.vyos_rule_count} DNAT rule(s).
+                      </p>
+                    )}
                     <p>
                       {summary.mikrotik_available
                         ? `MikroTik router connected with ${summary.mikrotik_rule_count} NAT rule(s).`

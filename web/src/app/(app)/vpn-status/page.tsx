@@ -269,7 +269,7 @@ export default function VpnStatusPage() {
                     <p>
                       No router is configured. Go to{" "}
                       <span className="font-medium text-white">Settings</span>{" "}
-                      to configure a VyOS or MikroTik router.
+                      to configure a router.
                     </p>
                   )}
                 </div>
