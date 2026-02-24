@@ -41,10 +41,7 @@ pub async fn test_connection(
     Json(body): Json<XiaomiTestConnectionRequest>,
 ) -> Result<Json<XiaomiTestConnectionResponse>, StatusCode> {
     // Use the IP from the request body, or fall back to stored setting.
-    let ip = body.ip.filter(|s| !s.is_empty()).or_else(|| {
-        // Block on the stored setting (we're already in an async context).
-        None
-    });
+    let ip = body.ip.filter(|s| !s.is_empty());
 
     let ip = match ip {
         Some(ip) => ip,
