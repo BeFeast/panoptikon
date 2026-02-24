@@ -10,9 +10,12 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::AppState;
+use super::{audit, AppState};
 use crate::mikrotik::client::MikrotikClient;
-use crate::mikrotik::types::VlanWriteRequest;
+use crate::mikrotik::types::{
+    FirewallAddressListWriteRequest, FirewallFilterWriteRequest, FirewallNatWriteRequest,
+    VlanWriteRequest,
+};
 
 // ── Helper: build a MikroTik client from DB settings ───────
 
@@ -129,16 +132,21 @@ pub struct MikrotikDhcpLeaseResponse {
 pub struct MikrotikFirewallResponse {
     pub filter_rules: Vec<MikrotikFirewallRule>,
     pub nat_rules: Vec<MikrotikNatRule>,
+    pub address_lists: Vec<MikrotikAddressListEntry>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MikrotikFirewallRule {
+    pub id: Option<String>,
     pub chain: Option<String>,
     pub action: Option<String>,
     pub protocol: Option<String>,
     pub src_address: Option<String>,
     pub dst_address: Option<String>,
+    pub src_port: Option<String>,
     pub dst_port: Option<String>,
+    pub in_interface: Option<String>,
+    pub out_interface: Option<String>,
     pub comment: Option<String>,
     pub disabled: bool,
     pub bytes: Option<String>,
@@ -147,6 +155,7 @@ pub struct MikrotikFirewallRule {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MikrotikNatRule {
+    pub id: Option<String>,
     pub chain: Option<String>,
     pub action: Option<String>,
     pub protocol: Option<String>,
@@ -155,9 +164,63 @@ pub struct MikrotikNatRule {
     pub dst_port: Option<String>,
     pub to_addresses: Option<String>,
     pub to_ports: Option<String>,
+    pub in_interface: Option<String>,
     pub out_interface: Option<String>,
     pub comment: Option<String>,
     pub disabled: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikAddressListEntry {
+    pub id: Option<String>,
+    pub list: Option<String>,
+    pub address: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: bool,
+    pub dynamic: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikFirewallFilterRequest {
+    pub chain: String,
+    pub action: String,
+    pub protocol: Option<String>,
+    pub src_address: Option<String>,
+    pub dst_address: Option<String>,
+    pub src_port: Option<String>,
+    pub dst_port: Option<String>,
+    pub in_interface: Option<String>,
+    pub out_interface: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikFirewallNatRequest {
+    pub chain: String,
+    pub action: String,
+    pub protocol: Option<String>,
+    pub src_address: Option<String>,
+    pub dst_address: Option<String>,
+    pub dst_port: Option<String>,
+    pub to_addresses: Option<String>,
+    pub to_ports: Option<String>,
+    pub in_interface: Option<String>,
+    pub out_interface: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikToggleRequest {
+    pub disabled: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikAddressListRequest {
+    pub list: String,
+    pub address: String,
+    pub comment: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -541,16 +604,21 @@ pub async fn firewall(
 
     let filter = client.firewall_filter().await.unwrap_or_default();
     let nat = client.firewall_nat().await.unwrap_or_default();
+    let addr_list = client.firewall_address_list().await.unwrap_or_default();
 
     let filter_rules: Vec<MikrotikFirewallRule> = filter
         .into_iter()
         .map(|f| MikrotikFirewallRule {
+            id: f.id,
             chain: f.chain,
             action: f.action,
             protocol: f.protocol,
             src_address: f.src_address,
             dst_address: f.dst_address,
+            src_port: f.src_port,
             dst_port: f.dst_port,
+            in_interface: f.in_interface,
+            out_interface: f.out_interface,
             comment: f.comment,
             disabled: is_true(&f.disabled),
             bytes: f.bytes,
@@ -561,6 +629,7 @@ pub async fn firewall(
     let nat_rules: Vec<MikrotikNatRule> = nat
         .into_iter()
         .map(|n| MikrotikNatRule {
+            id: n.id,
             chain: n.chain,
             action: n.action,
             protocol: n.protocol,
@@ -569,15 +638,29 @@ pub async fn firewall(
             dst_port: n.dst_port,
             to_addresses: n.to_addresses,
             to_ports: n.to_ports,
+            in_interface: n.in_interface,
             out_interface: n.out_interface,
             comment: n.comment,
             disabled: is_true(&n.disabled),
         })
         .collect();
 
+    let address_lists: Vec<MikrotikAddressListEntry> = addr_list
+        .into_iter()
+        .map(|a| MikrotikAddressListEntry {
+            id: a.id,
+            list: a.list,
+            address: a.address,
+            comment: a.comment,
+            disabled: is_true(&a.disabled),
+            dynamic: is_true(&a.dynamic),
+        })
+        .collect();
+
     let result = MikrotikFirewallResponse {
         filter_rules,
         nat_rules,
+        address_lists,
     };
 
     if let Ok(val) = serde_json::to_value(&result) {
@@ -687,4 +770,459 @@ pub async fn wireguard(
         state.mikrotik_cache.set("wireguard".into(), val);
     }
     Ok(Json(result))
+}
+
+// ── Firewall Filter CRUD ──────────────────────────────────
+
+fn to_filter_write(body: &MikrotikFirewallFilterRequest) -> FirewallFilterWriteRequest {
+    FirewallFilterWriteRequest {
+        chain: body.chain.clone(),
+        action: body.action.clone(),
+        protocol: body.protocol.clone(),
+        src_address: body.src_address.clone(),
+        dst_address: body.dst_address.clone(),
+        src_port: body.src_port.clone(),
+        dst_port: body.dst_port.clone(),
+        in_interface: body.in_interface.clone(),
+        out_interface: body.out_interface.clone(),
+        comment: body.comment.clone(),
+        disabled: body
+            .disabled
+            .map(|d| if d { "true" } else { "false" }.to_string()),
+    }
+}
+
+/// POST /api/v1/mikrotik/firewall/filter
+pub async fn create_firewall_filter(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikFirewallFilterRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = to_filter_write(&body);
+    let desc = format!(
+        "Create MikroTik filter rule: chain={} action={}",
+        body.chain, body.action
+    );
+    let cmds = vec![format!("POST /ip/firewall/filter chain={}", body.chain)];
+
+    match client.create_firewall_filter(&req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_firewall_filter_create", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_firewall_filter_create",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik firewall filter create error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// PATCH /api/v1/mikrotik/firewall/filter/:id
+pub async fn update_firewall_filter(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikFirewallFilterRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = to_filter_write(&body);
+    let desc = format!("Update MikroTik filter rule {id}");
+    let cmds = vec![format!("PATCH /ip/firewall/filter/{id}")];
+
+    match client.update_firewall_filter(id, &req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_firewall_filter_update", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_firewall_filter_update",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik firewall filter update error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// DELETE /api/v1/mikrotik/firewall/filter/:id
+pub async fn delete_firewall_filter(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let desc = format!("Delete MikroTik filter rule {id}");
+    let cmds = vec![format!("DELETE /ip/firewall/filter/{id}")];
+
+    match client.delete_firewall_filter(id).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_firewall_filter_delete", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_firewall_filter_delete",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik firewall filter delete error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// POST /api/v1/mikrotik/firewall/filter/:id/toggle
+pub async fn toggle_firewall_filter(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikToggleRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let label = if body.disabled { "disable" } else { "enable" };
+    let desc = format!("{label} MikroTik filter rule {id}");
+    let cmds = vec![format!(
+        "PATCH /ip/firewall/filter/{id} disabled={}",
+        body.disabled
+    )];
+
+    match client.toggle_firewall_filter(id, body.disabled).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_firewall_filter_toggle", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_firewall_filter_toggle",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik firewall filter toggle error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+// ── Firewall NAT CRUD ─────────────────────────────────────
+
+fn to_nat_write(body: &MikrotikFirewallNatRequest) -> FirewallNatWriteRequest {
+    FirewallNatWriteRequest {
+        chain: body.chain.clone(),
+        action: body.action.clone(),
+        protocol: body.protocol.clone(),
+        src_address: body.src_address.clone(),
+        dst_address: body.dst_address.clone(),
+        dst_port: body.dst_port.clone(),
+        to_addresses: body.to_addresses.clone(),
+        to_ports: body.to_ports.clone(),
+        in_interface: body.in_interface.clone(),
+        out_interface: body.out_interface.clone(),
+        comment: body.comment.clone(),
+        disabled: body
+            .disabled
+            .map(|d| if d { "true" } else { "false" }.to_string()),
+    }
+}
+
+/// POST /api/v1/mikrotik/firewall/nat
+pub async fn create_firewall_nat(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikFirewallNatRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = to_nat_write(&body);
+    let desc = format!(
+        "Create MikroTik NAT rule: chain={} action={}",
+        body.chain, body.action
+    );
+    let cmds = vec![format!("POST /ip/firewall/nat chain={}", body.chain)];
+
+    match client.create_firewall_nat(&req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_firewall_nat_create", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_firewall_nat_create",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik firewall NAT create error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// PATCH /api/v1/mikrotik/firewall/nat/:id
+pub async fn update_firewall_nat(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikFirewallNatRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = to_nat_write(&body);
+    let desc = format!("Update MikroTik NAT rule {id}");
+    let cmds = vec![format!("PATCH /ip/firewall/nat/{id}")];
+
+    match client.update_firewall_nat(id, &req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_firewall_nat_update", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_firewall_nat_update",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik firewall NAT update error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// DELETE /api/v1/mikrotik/firewall/nat/:id
+pub async fn delete_firewall_nat(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let desc = format!("Delete MikroTik NAT rule {id}");
+    let cmds = vec![format!("DELETE /ip/firewall/nat/{id}")];
+
+    match client.delete_firewall_nat(id).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_firewall_nat_delete", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_firewall_nat_delete",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik firewall NAT delete error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// POST /api/v1/mikrotik/firewall/nat/:id/toggle
+pub async fn toggle_firewall_nat(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikToggleRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let label = if body.disabled { "disable" } else { "enable" };
+    let desc = format!("{label} MikroTik NAT rule {id}");
+    let cmds = vec![format!(
+        "PATCH /ip/firewall/nat/{id} disabled={}",
+        body.disabled
+    )];
+
+    match client.toggle_firewall_nat(id, body.disabled).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_firewall_nat_toggle", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_firewall_nat_toggle",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik firewall NAT toggle error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+// ── Address List CRUD ─────────────────────────────────────
+
+/// POST /api/v1/mikrotik/firewall/address-list
+pub async fn create_address_list(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikAddressListRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = FirewallAddressListWriteRequest {
+        list: body.list.clone(),
+        address: body.address.clone(),
+        comment: body.comment.clone(),
+        disabled: None,
+    };
+
+    let desc = format!(
+        "Add {} to MikroTik address list '{}'",
+        body.address, body.list
+    );
+    let cmds = vec![format!(
+        "POST /ip/firewall/address-list list={} address={}",
+        body.list, body.address
+    )];
+
+    match client.create_firewall_address_list(&req).await {
+        Ok(()) => {
+            audit::log_success(
+                &state.db,
+                "mikrotik_firewall_address_list_create",
+                &desc,
+                &cmds,
+            )
+            .await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_firewall_address_list_create",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik address list create error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// DELETE /api/v1/mikrotik/firewall/address-list/:id
+pub async fn delete_address_list(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let desc = format!("Delete MikroTik address list entry {id}");
+    let cmds = vec![format!("DELETE /ip/firewall/address-list/{id}")];
+
+    match client.delete_firewall_address_list(id).await {
+        Ok(()) => {
+            audit::log_success(
+                &state.db,
+                "mikrotik_firewall_address_list_delete",
+                &desc,
+                &cmds,
+            )
+            .await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_firewall_address_list_delete",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik address list delete error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
 }

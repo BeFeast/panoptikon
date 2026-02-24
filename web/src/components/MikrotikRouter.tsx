@@ -21,6 +21,8 @@ import {
   Pencil,
   Trash2,
   BarChart3,
+  Power,
+  List,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -70,6 +72,16 @@ import {
   createMikrotikVlan,
   updateMikrotikVlan,
   deleteMikrotikVlan,
+  createMikrotikFirewallFilter,
+  updateMikrotikFirewallFilter,
+  deleteMikrotikFirewallFilter,
+  toggleMikrotikFirewallFilter,
+  createMikrotikFirewallNat,
+  updateMikrotikFirewallNat,
+  deleteMikrotikFirewallNat,
+  toggleMikrotikFirewallNat,
+  createMikrotikAddressList,
+  deleteMikrotikAddressList,
   fetchTrafficHistory,
 } from "@/lib/api";
 import { formatBps } from "@/lib/format";
@@ -81,6 +93,12 @@ import type {
   MikrotikRoute,
   MikrotikDhcpLease,
   MikrotikFirewall,
+  MikrotikFirewallRule,
+  MikrotikNatRule,
+  MikrotikAddressListEntry,
+  MikrotikFirewallFilterRequest,
+  MikrotikFirewallNatRequest,
+  MikrotikAddressListRequest,
   MikrotikDns,
   MikrotikWireguard,
   TrafficHistoryPoint,
@@ -1011,39 +1029,645 @@ function DhcpLeasesTable({
 
 // ── Firewall Tables ───────────────────────────────────────
 
+function ActionBadge({ action }: { action: string | null }) {
+  const lower = (action ?? "").toLowerCase();
+  const cls =
+    lower === "accept" || lower === "masquerade"
+      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+      : lower === "drop"
+        ? "border-rose-500/30 bg-rose-500/10 text-rose-400 text-xs"
+        : lower === "reject"
+          ? "border-orange-500/30 bg-orange-500/10 text-orange-400 text-xs"
+          : "border-slate-700 text-slate-400 text-xs";
+  return (
+    <Badge variant="outline" className={cls}>
+      {action ?? "\u2014"}
+    </Badge>
+  );
+}
+
+const EMPTY_FILTER_FORM: MikrotikFirewallFilterRequest = {
+  chain: "forward",
+  action: "drop",
+  protocol: undefined,
+  src_address: undefined,
+  dst_address: undefined,
+  src_port: undefined,
+  dst_port: undefined,
+  in_interface: undefined,
+  out_interface: undefined,
+  comment: undefined,
+  disabled: false,
+};
+
+const EMPTY_NAT_FORM: MikrotikFirewallNatRequest = {
+  chain: "dstnat",
+  action: "dst-nat",
+  protocol: undefined,
+  src_address: undefined,
+  dst_address: undefined,
+  dst_port: undefined,
+  to_addresses: undefined,
+  to_ports: undefined,
+  in_interface: undefined,
+  out_interface: undefined,
+  comment: undefined,
+  disabled: false,
+};
+
+function filterRuleToForm(rule: MikrotikFirewallRule): MikrotikFirewallFilterRequest {
+  return {
+    chain: rule.chain ?? "forward",
+    action: rule.action ?? "drop",
+    protocol: rule.protocol ?? undefined,
+    src_address: rule.src_address ?? undefined,
+    dst_address: rule.dst_address ?? undefined,
+    src_port: rule.src_port ?? undefined,
+    dst_port: rule.dst_port ?? undefined,
+    in_interface: rule.in_interface ?? undefined,
+    out_interface: rule.out_interface ?? undefined,
+    comment: rule.comment ?? undefined,
+    disabled: rule.disabled,
+  };
+}
+
+function natRuleToForm(rule: MikrotikNatRule): MikrotikFirewallNatRequest {
+  return {
+    chain: rule.chain ?? "dstnat",
+    action: rule.action ?? "dst-nat",
+    protocol: rule.protocol ?? undefined,
+    src_address: rule.src_address ?? undefined,
+    dst_address: rule.dst_address ?? undefined,
+    dst_port: rule.dst_port ?? undefined,
+    to_addresses: rule.to_addresses ?? undefined,
+    to_ports: rule.to_ports ?? undefined,
+    in_interface: rule.in_interface ?? undefined,
+    out_interface: rule.out_interface ?? undefined,
+    comment: rule.comment ?? undefined,
+    disabled: rule.disabled,
+  };
+}
+
+function FirewallFilterDialog({
+  open,
+  onOpenChange,
+  editRule,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  editRule: MikrotikFirewallRule | null;
+  onSaved: () => void;
+}) {
+  const isEdit = editRule !== null;
+  const [form, setForm] = useState<MikrotikFirewallFilterRequest>({ ...EMPTY_FILTER_FORM });
+  const [saving, setSaving] = useState(false);
+  const showPorts = form.protocol === "tcp" || form.protocol === "udp";
+
+  useEffect(() => {
+    if (!open) return;
+    if (editRule) {
+      setForm(filterRuleToForm(editRule));
+    } else {
+      setForm({ ...EMPTY_FILTER_FORM });
+    }
+  }, [open, editRule]);
+
+  const handleSave = async () => {
+    if (!form.chain.trim() || !form.action.trim()) {
+      toast.error("Chain and action are required.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const body: MikrotikFirewallFilterRequest = {
+        ...form,
+        protocol: form.protocol || undefined,
+        src_address: form.src_address || undefined,
+        dst_address: form.dst_address || undefined,
+        src_port: form.src_port || undefined,
+        dst_port: form.dst_port || undefined,
+        in_interface: form.in_interface || undefined,
+        out_interface: form.out_interface || undefined,
+        comment: form.comment || undefined,
+      };
+      if (isEdit && editRule?.id) {
+        await updateMikrotikFirewallFilter(editRule.id, body);
+        toast.success("Filter rule updated.");
+      } else {
+        await createMikrotikFirewallFilter(body);
+        toast.success("Filter rule created.");
+      }
+      onOpenChange(false);
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg border-slate-800 bg-slate-900 text-slate-100">
+        <DialogHeader>
+          <DialogTitle className="text-white">
+            {isEdit ? "Edit Filter Rule" : "Create Filter Rule"}
+          </DialogTitle>
+          <DialogDescription className="text-slate-400">
+            Configure a MikroTik firewall filter rule.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Chain</Label>
+              <select
+                value={form.chain}
+                onChange={(e) => setForm({ ...form, chain: e.target.value })}
+                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white"
+              >
+                <option value="forward">forward</option>
+                <option value="input">input</option>
+                <option value="output">output</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Action</Label>
+              <select
+                value={form.action}
+                onChange={(e) => setForm({ ...form, action: e.target.value })}
+                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white"
+              >
+                <option value="accept">accept</option>
+                <option value="drop">drop</option>
+                <option value="reject">reject</option>
+                <option value="jump">jump</option>
+                <option value="return">return</option>
+                <option value="log">log</option>
+                <option value="passthrough">passthrough</option>
+              </select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Protocol</Label>
+            <select
+              value={form.protocol ?? ""}
+              onChange={(e) => setForm({ ...form, protocol: e.target.value || undefined })}
+              className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white"
+            >
+              <option value="">any</option>
+              <option value="tcp">tcp</option>
+              <option value="udp">udp</option>
+              <option value="icmp">icmp</option>
+              <option value="gre">gre</option>
+              <option value="esp">esp</option>
+              <option value="ah">ah</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Src Address</Label>
+              <Input
+                value={form.src_address ?? ""}
+                onChange={(e) => setForm({ ...form, src_address: e.target.value || undefined })}
+                placeholder="e.g. 192.168.1.0/24"
+                className="border-slate-700 bg-slate-800"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Dst Address</Label>
+              <Input
+                value={form.dst_address ?? ""}
+                onChange={(e) => setForm({ ...form, dst_address: e.target.value || undefined })}
+                placeholder="e.g. 10.0.0.1"
+                className="border-slate-700 bg-slate-800"
+              />
+            </div>
+          </div>
+          {showPorts && (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Src Port</Label>
+                <Input
+                  value={form.src_port ?? ""}
+                  onChange={(e) => setForm({ ...form, src_port: e.target.value || undefined })}
+                  placeholder="e.g. 1024-65535"
+                  className="border-slate-700 bg-slate-800"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Dst Port</Label>
+                <Input
+                  value={form.dst_port ?? ""}
+                  onChange={(e) => setForm({ ...form, dst_port: e.target.value || undefined })}
+                  placeholder="e.g. 80,443"
+                  className="border-slate-700 bg-slate-800"
+                />
+              </div>
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label>Comment</Label>
+            <Input
+              value={form.comment ?? ""}
+              onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })}
+              placeholder="Rule description"
+              className="border-slate-700 bg-slate-800"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-pink-600 text-white hover:bg-pink-700"
+          >
+            {saving ? "Saving\u2026" : isEdit ? "Update" : "Create"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function FirewallNatDialog({
+  open,
+  onOpenChange,
+  editRule,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  editRule: MikrotikNatRule | null;
+  onSaved: () => void;
+}) {
+  const isEdit = editRule !== null;
+  const [form, setForm] = useState<MikrotikFirewallNatRequest>({ ...EMPTY_NAT_FORM });
+  const [saving, setSaving] = useState(false);
+  const showPorts = form.protocol === "tcp" || form.protocol === "udp";
+
+  useEffect(() => {
+    if (!open) return;
+    if (editRule) {
+      setForm(natRuleToForm(editRule));
+    } else {
+      setForm({ ...EMPTY_NAT_FORM });
+    }
+  }, [open, editRule]);
+
+  const handleSave = async () => {
+    if (!form.chain.trim() || !form.action.trim()) {
+      toast.error("Chain and action are required.");
+      return;
+    }
+    setSaving(true);
+    try {
+      const body: MikrotikFirewallNatRequest = {
+        ...form,
+        protocol: form.protocol || undefined,
+        src_address: form.src_address || undefined,
+        dst_address: form.dst_address || undefined,
+        dst_port: form.dst_port || undefined,
+        to_addresses: form.to_addresses || undefined,
+        to_ports: form.to_ports || undefined,
+        in_interface: form.in_interface || undefined,
+        out_interface: form.out_interface || undefined,
+        comment: form.comment || undefined,
+      };
+      if (isEdit && editRule?.id) {
+        await updateMikrotikFirewallNat(editRule.id, body);
+        toast.success("NAT rule updated.");
+      } else {
+        await createMikrotikFirewallNat(body);
+        toast.success("NAT rule created.");
+      }
+      onOpenChange(false);
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg border-slate-800 bg-slate-900 text-slate-100">
+        <DialogHeader>
+          <DialogTitle className="text-white">
+            {isEdit ? "Edit NAT Rule" : "Create NAT Rule"}
+          </DialogTitle>
+          <DialogDescription className="text-slate-400">
+            Configure a MikroTik firewall NAT rule.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Chain</Label>
+              <select
+                value={form.chain}
+                onChange={(e) => setForm({ ...form, chain: e.target.value })}
+                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white"
+              >
+                <option value="dstnat">dstnat</option>
+                <option value="srcnat">srcnat</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label>Action</Label>
+              <select
+                value={form.action}
+                onChange={(e) => setForm({ ...form, action: e.target.value })}
+                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white"
+              >
+                <option value="dst-nat">dst-nat</option>
+                <option value="src-nat">src-nat</option>
+                <option value="masquerade">masquerade</option>
+                <option value="accept">accept</option>
+                <option value="redirect">redirect</option>
+                <option value="netmap">netmap</option>
+              </select>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Protocol</Label>
+            <select
+              value={form.protocol ?? ""}
+              onChange={(e) => setForm({ ...form, protocol: e.target.value || undefined })}
+              className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white"
+            >
+              <option value="">any</option>
+              <option value="tcp">tcp</option>
+              <option value="udp">udp</option>
+              <option value="icmp">icmp</option>
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Dst Address</Label>
+              <Input
+                value={form.dst_address ?? ""}
+                onChange={(e) => setForm({ ...form, dst_address: e.target.value || undefined })}
+                placeholder="e.g. 203.0.113.1"
+                className="border-slate-700 bg-slate-800"
+              />
+            </div>
+            {showPorts && (
+              <div className="space-y-2">
+                <Label>Dst Port</Label>
+                <Input
+                  value={form.dst_port ?? ""}
+                  onChange={(e) => setForm({ ...form, dst_port: e.target.value || undefined })}
+                  placeholder="e.g. 8080"
+                  className="border-slate-700 bg-slate-800"
+                />
+              </div>
+            )}
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>To Addresses</Label>
+              <Input
+                value={form.to_addresses ?? ""}
+                onChange={(e) => setForm({ ...form, to_addresses: e.target.value || undefined })}
+                placeholder="e.g. 192.168.1.100"
+                className="border-slate-700 bg-slate-800"
+              />
+            </div>
+            {showPorts && (
+              <div className="space-y-2">
+                <Label>To Ports</Label>
+                <Input
+                  value={form.to_ports ?? ""}
+                  onChange={(e) => setForm({ ...form, to_ports: e.target.value || undefined })}
+                  placeholder="e.g. 80"
+                  className="border-slate-700 bg-slate-800"
+                />
+              </div>
+            )}
+          </div>
+          <div className="space-y-2">
+            <Label>Comment</Label>
+            <Input
+              value={form.comment ?? ""}
+              onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })}
+              placeholder="Rule description"
+              className="border-slate-700 bg-slate-800"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-pink-600 text-white hover:bg-pink-700"
+          >
+            {saving ? "Saving\u2026" : isEdit ? "Update" : "Create"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddressListDialog({
+  open,
+  onOpenChange,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState<MikrotikAddressListRequest>({ list: "", address: "" });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) setForm({ list: "", address: "" });
+  }, [open]);
+
+  const handleSave = async () => {
+    if (!form.list.trim() || !form.address.trim()) {
+      toast.error("List name and address are required.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await createMikrotikAddressList({
+        list: form.list.trim(),
+        address: form.address.trim(),
+        comment: form.comment?.trim() || undefined,
+      });
+      toast.success("Address list entry added.");
+      onOpenChange(false);
+      onSaved();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Save failed.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md border-slate-800 bg-slate-900 text-slate-100">
+        <DialogHeader>
+          <DialogTitle className="text-white">Add Address List Entry</DialogTitle>
+          <DialogDescription className="text-slate-400">
+            Add an address to a MikroTik address list.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-2">
+          <div className="space-y-2">
+            <Label>List Name</Label>
+            <Input
+              value={form.list}
+              onChange={(e) => setForm({ ...form, list: e.target.value })}
+              placeholder="e.g. blocked"
+              className="border-slate-700 bg-slate-800"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Address</Label>
+            <Input
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              placeholder="e.g. 10.0.0.0/8"
+              className="border-slate-700 bg-slate-800"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Comment</Label>
+            <Input
+              value={form.comment ?? ""}
+              onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })}
+              placeholder="Optional description"
+              className="border-slate-700 bg-slate-800"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-pink-600 text-white hover:bg-pink-700"
+          >
+            {saving ? "Adding\u2026" : "Add"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function FirewallPanel({
   data,
   loading,
   error,
+  reload,
 }: {
   data: MikrotikFirewall | null;
   loading: boolean;
   error: string | null;
+  reload: () => Promise<void>;
 }) {
-  const filterHeaderCols = (
-    <tr className="border-b border-slate-800 bg-slate-950 text-left">
-      <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Action</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Src</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Port</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Status</th>
-    </tr>
-  );
+  const [filterDialogOpen, setFilterDialogOpen] = useState(false);
+  const [editFilter, setEditFilter] = useState<MikrotikFirewallRule | null>(null);
+  const [confirmDeleteFilter, setConfirmDeleteFilter] = useState<MikrotikFirewallRule | null>(null);
+  const [natDialogOpen, setNatDialogOpen] = useState(false);
+  const [editNat, setEditNat] = useState<MikrotikNatRule | null>(null);
+  const [confirmDeleteNat, setConfirmDeleteNat] = useState<MikrotikNatRule | null>(null);
+  const [addrDialogOpen, setAddrDialogOpen] = useState(false);
+  const [confirmDeleteAddr, setConfirmDeleteAddr] = useState<MikrotikAddressListEntry | null>(null);
+  const [toggling, setToggling] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
-  const natHeaderCols = (
-    <tr className="border-b border-slate-800 bg-slate-950 text-left">
-      <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Action</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Port</th>
-      <th className="px-4 py-3 font-medium text-slate-400">To</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
-    </tr>
-  );
+  const handleToggleFilter = async (rule: MikrotikFirewallRule) => {
+    if (!rule.id) return;
+    setToggling(rule.id);
+    try {
+      await toggleMikrotikFirewallFilter(rule.id, !rule.disabled);
+      toast.success(rule.disabled ? "Rule enabled." : "Rule disabled.");
+      await reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Toggle failed.");
+    } finally {
+      setToggling(null);
+    }
+  };
+
+  const handleDeleteFilter = async () => {
+    if (!confirmDeleteFilter?.id) return;
+    const id = confirmDeleteFilter.id;
+    setConfirmDeleteFilter(null);
+    setDeleting(id);
+    try {
+      await deleteMikrotikFirewallFilter(id);
+      toast.success("Filter rule deleted.");
+      await reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed.");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleToggleNat = async (rule: MikrotikNatRule) => {
+    if (!rule.id) return;
+    setToggling(rule.id);
+    try {
+      await toggleMikrotikFirewallNat(rule.id, !rule.disabled);
+      toast.success(rule.disabled ? "Rule enabled." : "Rule disabled.");
+      await reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Toggle failed.");
+    } finally {
+      setToggling(null);
+    }
+  };
+
+  const handleDeleteNat = async () => {
+    if (!confirmDeleteNat?.id) return;
+    const id = confirmDeleteNat.id;
+    setConfirmDeleteNat(null);
+    setDeleting(id);
+    try {
+      await deleteMikrotikFirewallNat(id);
+      toast.success("NAT rule deleted.");
+      await reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed.");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleDeleteAddr = async () => {
+    if (!confirmDeleteAddr?.id) return;
+    const id = confirmDeleteAddr.id;
+    setConfirmDeleteAddr(null);
+    setDeleting(id);
+    try {
+      await deleteMikrotikAddressList(id);
+      toast.success("Address list entry deleted.");
+      await reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed.");
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -1054,7 +1678,19 @@ function FirewallPanel({
         <CardContent>
           <div className="overflow-x-auto rounded-md border border-slate-800">
             <table className="w-full text-sm">
-              <thead>{filterHeaderCols}</thead>
+              <thead>
+                <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                  <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
+                  <th className="px-4 py-3 font-medium text-slate-400">Action</th>
+                  <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+                  <th className="px-4 py-3 font-medium text-slate-400">Src</th>
+                  <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
+                  <th className="px-4 py-3 font-medium text-slate-400">Port</th>
+                  <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
+                  <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+                  <th className="px-4 py-3 font-medium text-slate-400">Actions</th>
+                </tr>
+              </thead>
               <tbody>
                 {Array.from({ length: 3 }).map((_, i) => (
                   <tr key={i} className="border-b border-slate-800 last:border-b-0">
@@ -1066,6 +1702,7 @@ function FirewallPanel({
                     <td className="px-4 py-3"><Skeleton className="h-4 w-10" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-3 w-24" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></td>
+                    <td className="px-4 py-3"><Skeleton className="h-8 w-20" /></td>
                   </tr>
                 ))}
               </tbody>
@@ -1089,11 +1726,33 @@ function FirewallPanel({
     );
   }
 
+  // Group address list entries by list name
+  const addressGroups: Record<string, MikrotikAddressListEntry[]> = {};
+  for (const entry of data?.address_lists ?? []) {
+    const name = entry.list ?? "(unnamed)";
+    if (!addressGroups[name]) addressGroups[name] = [];
+    addressGroups[name].push(entry);
+  }
+
   return (
     <div className="space-y-4">
+      {/* Filter Rules */}
       <Card className="border-slate-800 bg-slate-900">
         <CardHeader>
-          <CardTitle className="text-base text-white">Filter Rules</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base text-white">Filter Rules</CardTitle>
+            <Button
+              size="sm"
+              className="bg-pink-600 text-white hover:bg-pink-700"
+              onClick={() => {
+                setEditFilter(null);
+                setFilterDialogOpen(true);
+              }}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add Rule
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {!data?.filter_rules.length ? (
@@ -1101,27 +1760,30 @@ function FirewallPanel({
           ) : (
             <div className="overflow-x-auto rounded-md border border-slate-800">
               <table className="w-full text-sm">
-                <thead>{filterHeaderCols}</thead>
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                    <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Action</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Src</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Port</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+                    <th className="px-4 py-3 text-right font-medium text-slate-400">Actions</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {data.filter_rules.map((rule, i) => (
                     <tr
-                      key={i}
-                      className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                      key={rule.id ?? i}
+                      className={`border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors ${
+                        rule.disabled ? "opacity-50" : ""
+                      }`}
                     >
                       <td className="px-4 py-3 text-slate-300">{rule.chain ?? "\u2014"}</td>
                       <td className="px-4 py-3">
-                        <Badge
-                          variant="outline"
-                          className={
-                            rule.action === "accept"
-                              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
-                              : rule.action === "drop"
-                                ? "border-rose-500/30 bg-rose-500/10 text-rose-400 text-xs"
-                                : "border-slate-700 text-slate-400 text-xs"
-                          }
-                        >
-                          {rule.action ?? "\u2014"}
-                        </Badge>
+                        <ActionBadge action={rule.action} />
                       </td>
                       <td className="px-4 py-3 text-slate-300">{rule.protocol ?? "any"}</td>
                       <td className="px-4 py-3">
@@ -1150,6 +1812,41 @@ function FirewallPanel({
                           {rule.disabled ? "disabled" : "enabled"}
                         </Badge>
                       </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-400 hover:bg-slate-800 hover:text-white"
+                            onClick={() => handleToggleFilter(rule)}
+                            disabled={!rule.id || toggling === rule.id}
+                            title={rule.disabled ? "Enable" : "Disable"}
+                          >
+                            <Power className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-400 hover:bg-slate-800 hover:text-white"
+                            onClick={() => {
+                              setEditFilter(rule);
+                              setFilterDialogOpen(true);
+                            }}
+                            disabled={!rule.id}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                            onClick={() => setConfirmDeleteFilter(rule)}
+                            disabled={!rule.id || deleting === rule.id}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1159,9 +1856,23 @@ function FirewallPanel({
         </CardContent>
       </Card>
 
+      {/* NAT Rules */}
       <Card className="border-slate-800 bg-slate-900">
         <CardHeader>
-          <CardTitle className="text-base text-white">NAT Rules</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base text-white">NAT Rules</CardTitle>
+            <Button
+              size="sm"
+              className="bg-pink-600 text-white hover:bg-pink-700"
+              onClick={() => {
+                setEditNat(null);
+                setNatDialogOpen(true);
+              }}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add NAT Rule
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {!data?.nat_rules.length ? (
@@ -1169,15 +1880,31 @@ function FirewallPanel({
           ) : (
             <div className="overflow-x-auto rounded-md border border-slate-800">
               <table className="w-full text-sm">
-                <thead>{natHeaderCols}</thead>
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                    <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Action</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Port</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">To</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+                    <th className="px-4 py-3 text-right font-medium text-slate-400">Actions</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {data.nat_rules.map((rule, i) => (
                     <tr
-                      key={i}
-                      className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                      key={rule.id ?? i}
+                      className={`border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors ${
+                        rule.disabled ? "opacity-50" : ""
+                      }`}
                     >
                       <td className="px-4 py-3 text-slate-300">{rule.chain ?? "\u2014"}</td>
-                      <td className="px-4 py-3 text-slate-300">{rule.action ?? "\u2014"}</td>
+                      <td className="px-4 py-3">
+                        <ActionBadge action={rule.action} />
+                      </td>
                       <td className="px-4 py-3 text-slate-300">{rule.protocol ?? "any"}</td>
                       <td className="px-4 py-3">
                         <span className="font-mono tabular-nums text-xs text-slate-400">
@@ -1194,6 +1921,53 @@ function FirewallPanel({
                       <td className="px-4 py-3">
                         <span className="text-slate-500">{rule.comment ?? ""}</span>
                       </td>
+                      <td className="px-4 py-3">
+                        <Badge
+                          variant="outline"
+                          className={
+                            rule.disabled
+                              ? "border-slate-700 text-slate-500 text-xs"
+                              : "border-emerald-500/30 text-emerald-400 text-xs"
+                          }
+                        >
+                          {rule.disabled ? "disabled" : "enabled"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-400 hover:bg-slate-800 hover:text-white"
+                            onClick={() => handleToggleNat(rule)}
+                            disabled={!rule.id || toggling === rule.id}
+                            title={rule.disabled ? "Enable" : "Disable"}
+                          >
+                            <Power className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-slate-400 hover:bg-slate-800 hover:text-white"
+                            onClick={() => {
+                              setEditNat(rule);
+                              setNatDialogOpen(true);
+                            }}
+                            disabled={!rule.id}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                            onClick={() => setConfirmDeleteNat(rule)}
+                            disabled={!rule.id || deleting === rule.id}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1202,6 +1976,204 @@ function FirewallPanel({
           )}
         </CardContent>
       </Card>
+
+      {/* Address Lists */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base text-white">Address Lists</CardTitle>
+            <Button
+              size="sm"
+              className="bg-pink-600 text-white hover:bg-pink-700"
+              onClick={() => setAddrDialogOpen(true)}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add Entry
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {Object.keys(addressGroups).length === 0 ? (
+            <p className="py-4 text-sm text-slate-500">No address list entries.</p>
+          ) : (
+            <div className="space-y-3">
+              {Object.entries(addressGroups).map(([listName, entries]) => (
+                <div key={listName}>
+                  <div className="mb-1 flex items-center gap-2">
+                    <List className="h-3.5 w-3.5 text-slate-400" />
+                    <span className="text-sm font-medium text-slate-300">{listName}</span>
+                    <Badge variant="outline" className="border-slate-700 text-slate-500 text-xs">
+                      {entries.length}
+                    </Badge>
+                  </div>
+                  <div className="overflow-x-auto rounded-md border border-slate-800">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                          <th className="px-4 py-2 font-medium text-slate-400">Address</th>
+                          <th className="px-4 py-2 font-medium text-slate-400">Comment</th>
+                          <th className="px-4 py-2 font-medium text-slate-400">Type</th>
+                          <th className="px-4 py-2 text-right font-medium text-slate-400">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {entries.map((entry, i) => (
+                          <tr
+                            key={entry.id ?? i}
+                            className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                          >
+                            <td className="px-4 py-2">
+                              <span className="font-mono tabular-nums text-xs text-slate-300">
+                                {entry.address ?? "\u2014"}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2 text-slate-500">
+                              {entry.comment ?? ""}
+                            </td>
+                            <td className="px-4 py-2">
+                              <Badge
+                                variant="outline"
+                                className={
+                                  entry.dynamic
+                                    ? "border-blue-500/30 text-blue-400 text-xs"
+                                    : "border-slate-700 text-slate-400 text-xs"
+                                }
+                              >
+                                {entry.dynamic ? "dynamic" : "static"}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-2 text-right">
+                              {!entry.dynamic && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                                  onClick={() => setConfirmDeleteAddr(entry)}
+                                  disabled={!entry.id || deleting === entry.id}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Dialogs */}
+      <FirewallFilterDialog
+        open={filterDialogOpen}
+        onOpenChange={(open) => {
+          setFilterDialogOpen(open);
+          if (!open) setEditFilter(null);
+        }}
+        editRule={editFilter}
+        onSaved={reload}
+      />
+      <FirewallNatDialog
+        open={natDialogOpen}
+        onOpenChange={(open) => {
+          setNatDialogOpen(open);
+          if (!open) setEditNat(null);
+        }}
+        editRule={editNat}
+        onSaved={reload}
+      />
+      <AddressListDialog
+        open={addrDialogOpen}
+        onOpenChange={setAddrDialogOpen}
+        onSaved={reload}
+      />
+
+      {/* Delete Confirmation Dialogs */}
+      <AlertDialog
+        open={confirmDeleteFilter !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDeleteFilter(null);
+        }}
+      >
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete Filter Rule</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to delete this filter rule? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 bg-slate-800 text-slate-300">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 text-white hover:bg-rose-700"
+              onClick={handleDeleteFilter}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={confirmDeleteNat !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDeleteNat(null);
+        }}
+      >
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete NAT Rule</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Are you sure you want to delete this NAT rule? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 bg-slate-800 text-slate-300">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 text-white hover:bg-rose-700"
+              onClick={handleDeleteNat}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={confirmDeleteAddr !== null}
+        onOpenChange={(open) => {
+          if (!open) setConfirmDeleteAddr(null);
+        }}
+      >
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete Address List Entry</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Remove <span className="font-mono text-white">{confirmDeleteAddr?.address}</span> from
+              list <span className="font-medium text-white">{confirmDeleteAddr?.list}</span>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 bg-slate-800 text-slate-300">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-rose-600 text-white hover:bg-rose-700"
+              onClick={handleDeleteAddr}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -1791,6 +2763,7 @@ export default function MikrotikRouter() {
             data={fw.data}
             loading={fw.loading}
             error={fw.error}
+            reload={fw.reload}
           />
         </TabsContent>
 

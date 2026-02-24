@@ -143,10 +143,39 @@ pub struct FirewallFilter {
     pub dst_port: Option<String>,
     #[serde(rename = "src-port")]
     pub src_port: Option<String>,
+    #[serde(rename = "in-interface")]
+    pub in_interface: Option<String>,
+    #[serde(rename = "out-interface")]
+    pub out_interface: Option<String>,
     pub comment: Option<String>,
     pub disabled: Option<String>,
     pub bytes: Option<String>,
     pub packets: Option<String>,
+}
+
+/// MikroTik firewall filter write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct FirewallFilterWriteRequest {
+    pub chain: String,
+    pub action: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "src-address")]
+    pub src_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dst-address")]
+    pub dst_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "src-port")]
+    pub src_port: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dst-port")]
+    pub dst_port: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "in-interface")]
+    pub in_interface: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "out-interface")]
+    pub out_interface: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<String>,
 }
 
 /// MikroTik firewall NAT rule (`/rest/ip/firewall/nat`).
@@ -167,9 +196,61 @@ pub struct FirewallNat {
     pub to_addresses: Option<String>,
     #[serde(rename = "to-ports")]
     pub to_ports: Option<String>,
+    #[serde(rename = "in-interface")]
+    pub in_interface: Option<String>,
     #[serde(rename = "out-interface")]
     pub out_interface: Option<String>,
     pub comment: Option<String>,
+    pub disabled: Option<String>,
+}
+
+/// MikroTik firewall NAT write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct FirewallNatWriteRequest {
+    pub chain: String,
+    pub action: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "src-address")]
+    pub src_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dst-address")]
+    pub dst_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dst-port")]
+    pub dst_port: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "to-addresses")]
+    pub to_addresses: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "to-ports")]
+    pub to_ports: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "in-interface")]
+    pub in_interface: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "out-interface")]
+    pub out_interface: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<String>,
+}
+
+/// MikroTik firewall address list entry (`/rest/ip/firewall/address-list`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FirewallAddressList {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub list: Option<String>,
+    pub address: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<String>,
+    pub dynamic: Option<String>,
+}
+
+/// MikroTik firewall address list write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct FirewallAddressListWriteRequest {
+    pub list: String,
+    pub address: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub disabled: Option<String>,
 }
 

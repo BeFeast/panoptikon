@@ -76,6 +76,9 @@ import type {
   MikrotikRoute,
   MikrotikDhcpLease,
   MikrotikFirewall,
+  MikrotikFirewallFilterRequest,
+  MikrotikFirewallNatRequest,
+  MikrotikAddressListRequest,
   MikrotikDns,
   MikrotikWireguard,
   Asset,
@@ -1336,6 +1339,82 @@ export function fetchMikrotikDhcpLeases(): Promise<MikrotikDhcpLease[]> {
 
 export function fetchMikrotikFirewall(): Promise<MikrotikFirewall> {
   return apiGet<MikrotikFirewall>("/api/v1/mikrotik/firewall");
+}
+
+export function createMikrotikFirewallFilter(
+  body: MikrotikFirewallFilterRequest
+): Promise<void> {
+  return apiPost<void>("/api/v1/mikrotik/firewall/filter", body);
+}
+
+export function updateMikrotikFirewallFilter(
+  id: string,
+  body: MikrotikFirewallFilterRequest
+): Promise<void> {
+  return apiPatch<void>(
+    `/api/v1/mikrotik/firewall/filter/${encodeURIComponent(id)}`,
+    body
+  );
+}
+
+export function deleteMikrotikFirewallFilter(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/mikrotik/firewall/filter/${encodeURIComponent(id)}`
+  );
+}
+
+export function toggleMikrotikFirewallFilter(
+  id: string,
+  disabled: boolean
+): Promise<void> {
+  return apiPost<void>(
+    `/api/v1/mikrotik/firewall/filter/${encodeURIComponent(id)}/toggle`,
+    { disabled }
+  );
+}
+
+export function createMikrotikFirewallNat(
+  body: MikrotikFirewallNatRequest
+): Promise<void> {
+  return apiPost<void>("/api/v1/mikrotik/firewall/nat", body);
+}
+
+export function updateMikrotikFirewallNat(
+  id: string,
+  body: MikrotikFirewallNatRequest
+): Promise<void> {
+  return apiPatch<void>(
+    `/api/v1/mikrotik/firewall/nat/${encodeURIComponent(id)}`,
+    body
+  );
+}
+
+export function deleteMikrotikFirewallNat(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/mikrotik/firewall/nat/${encodeURIComponent(id)}`
+  );
+}
+
+export function toggleMikrotikFirewallNat(
+  id: string,
+  disabled: boolean
+): Promise<void> {
+  return apiPost<void>(
+    `/api/v1/mikrotik/firewall/nat/${encodeURIComponent(id)}/toggle`,
+    { disabled }
+  );
+}
+
+export function createMikrotikAddressList(
+  body: MikrotikAddressListRequest
+): Promise<void> {
+  return apiPost<void>("/api/v1/mikrotik/firewall/address-list", body);
+}
+
+export function deleteMikrotikAddressList(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/mikrotik/firewall/address-list/${encodeURIComponent(id)}`
+  );
 }
 
 export function fetchMikrotikDns(): Promise<MikrotikDns> {

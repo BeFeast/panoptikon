@@ -1176,12 +1176,16 @@ export interface MikrotikDhcpLease {
 }
 
 export interface MikrotikFirewallRule {
+  id: string | null;
   chain: string | null;
   action: string | null;
   protocol: string | null;
   src_address: string | null;
   dst_address: string | null;
+  src_port: string | null;
   dst_port: string | null;
+  in_interface: string | null;
+  out_interface: string | null;
   comment: string | null;
   disabled: boolean;
   bytes: string | null;
@@ -1189,6 +1193,7 @@ export interface MikrotikFirewallRule {
 }
 
 export interface MikrotikNatRule {
+  id: string | null;
   chain: string | null;
   action: string | null;
   protocol: string | null;
@@ -1197,14 +1202,60 @@ export interface MikrotikNatRule {
   dst_port: string | null;
   to_addresses: string | null;
   to_ports: string | null;
+  in_interface: string | null;
   out_interface: string | null;
   comment: string | null;
   disabled: boolean;
 }
 
+export interface MikrotikAddressListEntry {
+  id: string | null;
+  list: string | null;
+  address: string | null;
+  comment: string | null;
+  disabled: boolean;
+  dynamic: boolean;
+}
+
 export interface MikrotikFirewall {
   filter_rules: MikrotikFirewallRule[];
   nat_rules: MikrotikNatRule[];
+  address_lists: MikrotikAddressListEntry[];
+}
+
+export interface MikrotikFirewallFilterRequest {
+  chain: string;
+  action: string;
+  protocol?: string;
+  src_address?: string;
+  dst_address?: string;
+  src_port?: string;
+  dst_port?: string;
+  in_interface?: string;
+  out_interface?: string;
+  comment?: string;
+  disabled?: boolean;
+}
+
+export interface MikrotikFirewallNatRequest {
+  chain: string;
+  action: string;
+  protocol?: string;
+  src_address?: string;
+  dst_address?: string;
+  dst_port?: string;
+  to_addresses?: string;
+  to_ports?: string;
+  in_interface?: string;
+  out_interface?: string;
+  comment?: string;
+  disabled?: boolean;
+}
+
+export interface MikrotikAddressListRequest {
+  list: string;
+  address: string;
+  comment?: string;
 }
 
 export interface MikrotikDns {
