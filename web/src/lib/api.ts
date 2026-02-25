@@ -1315,6 +1315,18 @@ export function fetchMikrotikStatus(): Promise<MikrotikStatus> {
   return apiGet<MikrotikStatus>("/api/v1/mikrotik/status");
 }
 
+export function testMikrotikConnection(
+  url?: string,
+  user?: string,
+  password?: string
+): Promise<MikrotikStatus> {
+  return apiPost<MikrotikStatus>("/api/v1/mikrotik/test-connection", {
+    url,
+    user,
+    password,
+  });
+}
+
 export function fetchMikrotikInterfaces(): Promise<MikrotikInterface[]> {
   return apiGet<MikrotikInterface[]>("/api/v1/mikrotik/interfaces");
 }

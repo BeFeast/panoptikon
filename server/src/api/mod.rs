@@ -462,6 +462,7 @@ pub fn router(state: AppState) -> Router {
         .route("/ssh-targets/:id/test", post(ssh_targets::test_connection))
         // MikroTik router proxy
         .route("/mikrotik/status", get(mikrotik::status))
+        .route("/mikrotik/test-connection", post(mikrotik::test_connection))
         .route("/mikrotik/interfaces", get(mikrotik::interfaces))
         .route("/mikrotik/vlans", get(mikrotik::vlans))
         .route("/mikrotik/vlans", post(mikrotik::create_vlan))

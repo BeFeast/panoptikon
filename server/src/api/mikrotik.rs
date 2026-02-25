@@ -72,6 +72,13 @@ pub struct MikrotikStatusResponse {
     pub platform: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct MikrotikTestConnectionRequest {
+    pub url: Option<String>,
+    pub user: Option<String>,
+    pub password: Option<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MikrotikInterfaceResponse {
     pub name: String,
@@ -279,6 +286,86 @@ fn validate_vlan_upsert(body: &MikrotikVlanUpsertRequest) -> Result<(), StatusCo
 }
 
 // ── Endpoints ──────────────────────────────────────────────
+
+/// POST /api/v1/mikrotik/test-connection
+///
+/// Tests connectivity using request body values first (unsaved form fields),
+/// then falls back to saved settings for omitted fields.
+pub async fn test_connection(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikTestConnectionRequest>,
+) -> Result<Json<MikrotikStatusResponse>, StatusCode> {
+    let url = body
+        .url
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .map(|v| v.to_string())
+        .or(get_setting(&state, "mikrotik_url").await);
+
+    let Some(url) = url else {
+        return Ok(Json(MikrotikStatusResponse {
+            configured: false,
+            reachable: false,
+            version: None,
+            uptime: None,
+            cpu_load: None,
+            total_memory: None,
+            free_memory: None,
+            board_name: None,
+            architecture: None,
+            platform: None,
+        }));
+    };
+
+    let user = body
+        .user
+        .as_deref()
+        .map(str::trim)
+        .filter(|v| !v.is_empty())
+        .map(|v| v.to_string())
+        .or(get_setting(&state, "mikrotik_user").await)
+        .unwrap_or_else(|| "admin".to_string());
+
+    let password = match body.password {
+        Some(password) => password,
+        None => get_setting(&state, "mikrotik_password")
+            .await
+            .unwrap_or_default(),
+    };
+
+    let client = MikrotikClient::with_http(&url, &user, &password, state.mikrotik_http.clone());
+
+    match client.system_resource().await {
+        Ok(res) => Ok(Json(MikrotikStatusResponse {
+            configured: true,
+            reachable: true,
+            version: res.version,
+            uptime: res.uptime,
+            cpu_load: res.cpu_load,
+            total_memory: res.total_memory,
+            free_memory: res.free_memory,
+            board_name: res.board_name,
+            architecture: res.architecture,
+            platform: res.platform,
+        })),
+        Err(e) => {
+            tracing::warn!("MikroTik test connection failed: {e}");
+            Ok(Json(MikrotikStatusResponse {
+                configured: true,
+                reachable: false,
+                version: None,
+                uptime: None,
+                cpu_load: None,
+                total_memory: None,
+                free_memory: None,
+                board_name: None,
+                architecture: None,
+                platform: None,
+            }))
+        }
+    }
+}
 
 /// GET /api/v1/mikrotik/status
 pub async fn status(

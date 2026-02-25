@@ -22,7 +22,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { fetchRouterStatus, fetchMikrotikStatus } from "@/lib/api";
+import {
+  fetchRouterStatus,
+  testMikrotikConnection,
+} from "@/lib/api";
 import { PageTransition } from "@/components/PageTransition";
 import Link from "next/link";
 
@@ -203,7 +206,7 @@ function MikrotikPanel() {
   const [savedUser, setSavedUser] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [passwordSet, setPasswordSet] = useState(false);
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState(true);
   const [savedEnabled, setSavedEnabled] = useState(false);
   const [saveStatus, setSaveStatus] = useState<Status>("idle");
   const [saveMsg, setSaveMsg] = useState("");
@@ -290,7 +293,11 @@ function MikrotikPanel() {
     setTestStatus("loading");
     setTestMsg("");
     try {
-      const data = await fetchMikrotikStatus();
+      const data = await testMikrotikConnection(
+        url,
+        user,
+        password.length > 0 ? password : undefined
+      );
       if (data.reachable) {
         setTestStatus("success");
         setTestMsg(
@@ -304,9 +311,7 @@ function MikrotikPanel() {
         );
       } else {
         setTestStatus("error");
-        setTestMsg(
-          "Router not configured. Save URL, user, and password first."
-        );
+        setTestMsg("Router URL is required.");
       }
     } catch {
       setTestStatus("error");
@@ -337,7 +342,7 @@ function MikrotikPanel() {
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-          placeholder="http://10.10.0.109"
+          placeholder="http://10.10.0.125"
         />
       </div>
 
@@ -395,7 +400,7 @@ function MikrotikPanel() {
         <Button
           variant="outline"
           onClick={handleTest}
-          disabled={(!savedUrl && !url) || testStatus === "loading"}
+          disabled={!url || testStatus === "loading"}
           className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
         >
           {testStatus === "loading" ? (

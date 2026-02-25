@@ -180,7 +180,7 @@ pub async fn get_settings(
     let mikrotik_enabled = get_setting(&state, "mikrotik_enabled")
         .await
         .map(|v| v == "1" || v == "true")
-        .unwrap_or(false);
+        .unwrap_or(true);
 
     // Unbound DNS settings.
     let unbound_control_path = get_setting(&state, "unbound_control_path").await;
