@@ -5917,16 +5917,9 @@ export default function RouterPage() {
       setVyosConfigured(vyosConf);
       setXiaomiEnabled(xiEnabled);
 
-      // Redirect to deep-link sub-routes for MikroTik/Xiaomi
-      if (mtEnabled) {
-        router.replace("/router/mikrotik");
-        return;
-      } else if (xiEnabled) {
-        router.replace("/router/xiaomi");
-        return;
-      }
-
-      setSettingsLoaded(true);
+      // Always redirect to MikroTik (primary router)
+      router.replace("/router/mikrotik");
+      return;
     };
     loadSettings();
   }, [router]);
@@ -5965,7 +5958,7 @@ export default function RouterPage() {
   return (
     <PageTransition>
       <div className="space-y-6">
-        <RouterSelector active="vyos" />
+        <RouterSelector active="mikrotik" />
 
         {/* Content area — skeletons until settings arrive, then VyOS content */}
         {!settingsLoaded ? (
