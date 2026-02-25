@@ -126,7 +126,7 @@ export default function XiaomiMeshSettingsPage() {
     try {
       const body: Record<string, string | boolean | number> = {};
       if (enabled !== savedEnabled) body.xiaomi_mesh_enabled = enabled;
-      if (ip !== (savedIp ?? "10.10.0.199")) body.xiaomi_mesh_ip = ip;
+      if (ip !== savedIp) body.xiaomi_mesh_ip = ip;
       if (password.length > 0) body.xiaomi_mesh_password = password;
       if (pollInterval !== (savedPollInterval ?? "30"))
         body.xiaomi_mesh_poll_interval = intervalNum;
