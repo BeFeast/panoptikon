@@ -418,7 +418,7 @@ mod tests {
 
     #[test]
     fn uptime_deserializes_from_number() {
-        let payload = serde_json::json!({ "uptime": 123 });
+        let payload = serde_json::json!({ "upTime": 123 });
         let parsed: UptimeResponse = serde_json::from_value(payload).expect("uptime should parse");
         assert_eq!(parsed.uptime, Some("123".to_string()));
     }
