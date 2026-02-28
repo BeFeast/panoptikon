@@ -32,8 +32,8 @@ export const settingsNav: SettingsNavGroup[] = [
       },
       {
         href: "/settings/caddy",
-        title: "Caddy Reverse Proxy",
-        description: "Primary reverse proxy — manage hosts via Caddy.",
+        title: "Caddy Configuration",
+        description: "Configure the Caddy Admin API URL.",
       },
       {
         href: "/settings/dns",

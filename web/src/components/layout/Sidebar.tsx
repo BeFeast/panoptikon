@@ -42,6 +42,7 @@ const navItems = [
   { href: "/ssh-hosts", label: "SSH Hosts", icon: Server },
   { href: "/router", label: "Router", icon: Router },
   { href: "/npm", label: "NPM", icon: Globe },
+  { href: "/proxy", label: "Proxy", icon: Shield },
   { href: "/services", label: "Services", icon: Workflow },
   { href: "/topology", label: "Topology", icon: Network },
   { href: "/mesh", label: "Mesh", icon: Share2 },
