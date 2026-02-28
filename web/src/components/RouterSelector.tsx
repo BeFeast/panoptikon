@@ -40,7 +40,7 @@ export function RouterSelector({ active }: RouterSelectorProps) {
   }
 
   const count = [mikrotikEnabled, xiaomiEnabled, vyosConfigured].filter(Boolean).length;
-  if (count <= 1) return null;
+  if (count === 0) return null;
 
   return (
     <div className="space-y-3">
