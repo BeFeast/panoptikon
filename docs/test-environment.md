@@ -1,24 +1,32 @@
-# MikroTik Test Environment
+# Test Environment — LXC Containers on DevBox Proxmox
 
-Setup guide for the Panoptikon MikroTik integration test environment. Uses 2-3 lightweight LXC containers on Proxmox with a MikroTik CHR instance as the gateway.
+Setup guide for the Panoptikon test environment. Uses lightweight LXC containers on Proxmox DevBox as real DHCP clients and mDNS devices for testing device discovery, DHCP lease tracking, and mDNS identification.
+
+## Why LXC Containers?
+
+- Static DHCP leases don't test the discovery logic end-to-end
+- Mock data doesn't exercise the real network stack
+- LXC containers are real DHCP clients with real ARP entries and real mDNS announcements
+- Lightweight: each container uses 128–512 MB RAM
 
 ## Network Topology
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│  Proxmox Host                                                   │
+│  Proxmox Host (DevBox 10.10.0.11)                               │
 │                                                                 │
 │  ┌──────────────────┐     vmbr0 (10.10.0.0/24)                 │
 │  │ MikroTik CHR     │◄────────────────┐                        │
 │  │ 10.10.0.125      │                 │                        │
-│  │ (gateway/router)  │    ┌────────────┼────────────┐           │
+│  │ (DHCP / gateway)  │    ┌────────────┼────────────┐           │
 │  └──────────────────┘    │            │            │           │
 │                          │            │            │           │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
-│  │ pan-test-web │  │ pan-test-db  │  │ pan-test-iot │         │
-│  │ CT 200       │  │ CT 201       │  │ CT 202       │         │
-│  │ .200         │  │ .201         │  │ .202         │         │
-│  │ 256MB / 1CPU │  │ 256MB / 1CPU │  │ 128MB / 1CPU │         │
+│  │ test-alpine  │  │ test-ubuntu  │  │ test-debian  │         │
+│  │ CT 201       │  │ CT 202       │  │ CT 203       │         │
+│  │ DHCP         │  │ DHCP         │  │ DHCP         │         │
+│  │ 128MB / 1CPU │  │ 512MB / 1CPU │  │ 512MB / 1CPU │         │
+│  │ Alpine       │  │ Ubuntu 22.04 │  │ Debian 12    │         │
 │  └──────────────┘  └──────────────┘  └──────────────┘         │
 │          │                │                │                    │
 │          └────────────────┼────────────────┘                    │
@@ -34,36 +42,63 @@ Setup guide for the Panoptikon MikroTik integration test environment. Uses 2-3 l
 
 ## Prerequisites
 
-- **Proxmox VE** host (Forge/DevBox) with `pct` available
+- **Proxmox VE** host (DevBox 10.10.0.11) with `pct` available
 - **MikroTik CHR** VM already running at `10.10.0.125` with:
   - RouterOS 7+ installed
   - REST API enabled (`/ip/service set api-ssl address=10.10.0.0/24`)
   - DHCP server configured on the `10.10.0.0/24` subnet
   - Bridge `vmbr0` connected to the MikroTik interface
-- **Debian 12 LXC template** available (script downloads automatically if missing)
-
-## Quick Start
-
-```bash
-# Create the test containers (run on Proxmox host)
-sudo bash scripts/setup-test-env.sh create
-
-# Check status
-sudo bash scripts/setup-test-env.sh status
-
-# Tear down when done
-sudo bash scripts/setup-test-env.sh destroy
-```
+- LXC templates: Alpine, Ubuntu 22.04, Debian 12 (scripts download automatically if missing)
 
 ## Container Details
 
-| CTID | Hostname       | IP           | RAM   | Disk | Purpose                              |
-|------|----------------|--------------|-------|------|--------------------------------------|
-| 200  | pan-test-web   | 10.10.0.200  | 256MB | 2GB  | Web server (nginx) — HTTP traffic    |
-| 201  | pan-test-db    | 10.10.0.201  | 256MB | 2GB  | Database — heavier workload sim      |
-| 202  | pan-test-iot   | 10.10.0.202  | 128MB | 1GB  | IoT device — minimal DHCP client     |
+| CTID | Hostname     | OS           | RAM   | Disk | Purpose                                   |
+|------|--------------|--------------|-------|------|-------------------------------------------|
+| 201  | test-alpine  | Alpine       | 128MB | 2GB  | Minimal Linux — basic DHCP lease discovery |
+| 202  | test-ubuntu  | Ubuntu 22.04 | 512MB | 2GB  | mDNS via avahi-daemon                      |
+| 203  | test-debian  | Debian 12    | 512MB | 2GB  | Different vendor fingerprint               |
 
-All containers use MikroTik CHR (`10.10.0.125`) as their default gateway.
+All containers:
+- Get their IP via DHCP from MikroTik (no static assignments)
+- Are connected to `vmbr0` (same LAN as Panoptikon)
+- Run `avahi-daemon` for mDNS `.local` name announcements
+- Have hostname visible in MikroTik DHCP leases
+- Start on boot (`onboot: 1`)
+- Use unprivileged mode for security
+
+## Quick Start
+
+### 1. Create the containers
+
+```bash
+scp scripts/test-env/setup-lxc.sh root@10.10.0.11:/tmp/
+ssh root@10.10.0.11 bash /tmp/setup-lxc.sh
+```
+
+The script is idempotent — running it again skips existing containers and ensures they're started.
+
+### 2. Verify the environment
+
+```bash
+scp scripts/test-env/verify-lxc.sh root@10.10.0.11:/tmp/
+ssh root@10.10.0.11 bash /tmp/verify-lxc.sh
+```
+
+This checks:
+- All containers are running
+- Each container has a DHCP lease
+- avahi-daemon is running (for mDNS)
+- mDNS `.local` names resolve
+- Containers can reach MikroTik gateway
+
+### 3. Tear down (optional)
+
+```bash
+scp scripts/test-env/teardown-lxc.sh root@10.10.0.11:/tmp/
+ssh root@10.10.0.11 bash /tmp/teardown-lxc.sh
+```
+
+This stops and destroys all 3 containers.
 
 ## MikroTik CHR Setup
 
@@ -102,12 +137,6 @@ If the MikroTik CHR VM is not yet configured, follow these steps from the Router
 
 Panoptikon runs Unbound as a network-wide DNS resolver on LXC 115 (`10.10.0.22`). The setup script configures test containers to use it automatically.
 
-### What the setup script does
-
-1. **Opens port 53** on the Proxmox firewall for CT 115 (UDP + TCP, source `10.10.0.0/24`)
-2. **Sets `10.10.0.22`** as the nameserver for all test containers
-3. **Installs `dnsutils`** in test containers so `dig` is available for verification
-
 ### MikroTik DHCP — hand out Unbound as DNS
 
 If test containers use DHCP (instead of static IPs), update the MikroTik DHCP network to hand out Panoptikon's Unbound:
@@ -120,36 +149,31 @@ If test containers use DHCP (instead of static IPs), update the MikroTik DHCP ne
 ### Verify DNS from a test client
 
 ```bash
-# External DNS forwarding (should resolve via Unbound → root hints)
-pct exec 200 -- dig @10.10.0.22 google.com +short
-
-# Local record resolution (ok.labs test zone configured in unbound.conf)
-pct exec 200 -- dig @10.10.0.22 local.ok.labs +short
-# Expected: 10.10.0.22
+# External DNS forwarding (should resolve via Unbound -> root hints)
+pct exec 201 -- sh -c "nslookup google.com 10.10.0.22"
 
 # Verify the container's default resolver is Unbound
-pct exec 200 -- dig google.com +short
+pct exec 202 -- bash -c "dig google.com +short"
 ```
 
-### Manual firewall setup (if not using the setup script)
+## Verification in Panoptikon
 
-If CT 115 already exists and you need to open port 53 manually:
+After the containers are running, verify in Panoptikon:
+
+1. **Devices page** — 3 new devices should appear (may take up to 60s for the next scan cycle)
+2. **Hostnames** — `test-alpine`, `test-ubuntu`, `test-debian` pulled from MikroTik DHCP leases
+3. **mDNS names** — `test-ubuntu.local` and `test-debian.local` visible for Ubuntu/Debian containers
+4. **Device identification** — each container should be identified with its OS type
+
+### API check
 
 ```bash
-# Add rules to /etc/pve/firewall/115.fw
-cat >> /etc/pve/firewall/115.fw <<'EOF'
-[OPTIONS]
-enable: 1
-
-[RULES]
-IN ACCEPT -p udp -dport 53 -source +10.10.0.0/24 -log nolog -comment allow-dns-udp
-IN ACCEPT -p tcp -dport 53 -source +10.10.0.0/24 -log nolog -comment allow-dns-tcp
-EOF
+# Check MikroTik DHCP leases (should include test-* hostnames)
+curl -sb cookies.txt http://localhost:8080/api/v1/mikrotik/dhcp-leases | \
+  jq '.[] | select(.host_name | startswith("test-"))'
 ```
 
 ## Validation Scenarios
-
-Use these test containers to validate each MikroTik integration feature:
 
 ### 1. DHCP Lease Tracking
 
@@ -157,118 +181,97 @@ Use these test containers to validate each MikroTik integration feature:
 
 ```bash
 # On the Proxmox host — restart a container to trigger DHCP
-pct stop 202 && pct start 202
+pct stop 201 && pct start 201
 
-# In Panoptikon UI → Devices page
-# Expect: pan-test-iot appears with IP 10.10.0.202, source "DHCP"
+# In Panoptikon UI -> Devices page
+# Expect: test-alpine appears with a DHCP-assigned IP, source "DHCP"
 ```
 
-**API check:**
-```bash
-curl -s http://10.10.0.14:8080/api/v1/devices | jq '.[] | select(.ip == "10.10.0.202")'
-```
+### 2. mDNS Discovery
 
-### 2. Traffic Monitoring
-
-**Goal:** Verify per-device bandwidth charts show traffic from test containers.
+**Goal:** Verify containers with avahi-daemon are discovered via mDNS.
 
 ```bash
-# Generate traffic from pan-test-web
-pct exec 200 -- bash -c "curl -s -o /dev/null http://example.com; sleep 1; curl -s -o /dev/null http://example.com"
+# From any machine on the LAN with avahi-browse:
+avahi-browse -art | grep test-
 
-# Generate heavier traffic from pan-test-db
-pct exec 201 -- bash -c "dd if=/dev/urandom bs=1M count=10 | curl -X POST -d @- http://example.com 2>/dev/null || true"
-
-# In Panoptikon UI → Device detail → Bandwidth tab
-# Expect: TX/RX bytes increase for the respective devices
+# Expected: test-ubuntu.local and test-debian.local entries appear
+# test-alpine.local should also appear (avahi installed by setup script)
 ```
 
-### 3. Firewall Rule Visibility
+### 3. Device Identification (Vendor Fingerprint)
 
-**Goal:** Verify Panoptikon displays MikroTik firewall rules.
+**Goal:** Verify Panoptikon correctly identifies different OS types.
+
+The three containers present different DHCP vendor class identifiers:
+- Alpine: minimal dhclient fingerprint
+- Ubuntu 22.04: standard Ubuntu dhclient
+- Debian 12: Debian-specific dhclient
+
+Check the Panoptikon Devices page — each device should show the correct OS in its identification details.
+
+### 4. Firewall Rule Testing
+
+**Goal:** Verify Panoptikon can manage firewall rules that affect test containers.
 
 ```routeros
 # Add a test firewall rule on MikroTik
-/ip firewall filter add chain=forward src-address=10.10.0.202 action=drop comment="block-iot-test"
+/ip firewall filter add chain=forward src-address=10.10.0.202 action=drop comment="block-test-ubuntu"
 ```
 
 ```bash
-# In Panoptikon UI → Router → Firewall tab
-# Expect: "block-iot-test" rule visible
+# In Panoptikon UI -> Router -> Firewall tab
+# Expect: "block-test-ubuntu" rule visible
 
-# Verify IoT container is blocked
-pct exec 202 -- ping -c2 8.8.8.8  # Should fail
+# Verify container is blocked
+pct exec 202 -- bash -c "ping -c2 8.8.8.8"  # Should fail
 
 # Clean up
-# /ip firewall filter remove [find comment="block-iot-test"]
+# /ip firewall filter remove [find comment="block-test-ubuntu"]
 ```
 
-### 4. VLAN Integration
-
-**Goal:** Verify VLAN assignment and tagging works through Panoptikon.
-
-```routeros
-# On MikroTik — assign test container to VLAN 100
-/interface bridge port add bridge=bridge-test interface=ether2 pvid=100
-```
-
-```bash
-# In Panoptikon UI → Router → VLANs tab
-# Expect: VLAN 100 visible with associated interfaces
-
-# In Panoptikon UI → Topology view
-# Expect: VLAN grouping shown for tagged devices
-```
-
-### 5. Device Discovery (ARP + mDNS)
+### 5. ARP Discovery
 
 **Goal:** Verify containers appear via ARP scanning (not just DHCP).
 
 ```bash
-# All three containers should appear in Panoptikon device list
-# even if DHCP leases expire — ARP scanner picks them up
-
 # Generate ARP traffic
-pct exec 200 -- ping -c3 10.10.0.125
-pct exec 201 -- ping -c3 10.10.0.125
+pct exec 201 -- sh -c "ping -c3 10.10.0.125"
+pct exec 202 -- bash -c "ping -c3 10.10.0.125"
+pct exec 203 -- bash -c "ping -c3 10.10.0.125"
 
-# Check Panoptikon API
-curl -s http://10.10.0.14:8080/api/v1/devices | jq '.[].ip' | sort
-# Expect: 10.10.0.200, 10.10.0.201, 10.10.0.202 in the list
-```
-
-## Generating Sustained Test Traffic
-
-For longer validation sessions, run background traffic generators:
-
-```bash
-# On pan-test-web (CT 200) — periodic HTTP requests
-pct exec 200 -- bash -c "while true; do curl -s -o /dev/null http://example.com; sleep 5; done" &
-
-# On pan-test-db (CT 201) — periodic DNS + larger transfers
-pct exec 201 -- bash -c "while true; do curl -s -o /dev/null https://speed.cloudflare.com/__down?bytes=1000000; sleep 10; done" &
+# Check Panoptikon API — all three should be present
+curl -sb cookies.txt http://localhost:8080/api/v1/devices | jq '.[].ip' | sort
 ```
 
 ## Troubleshooting
 
 | Problem | Check |
 |---------|-------|
-| Containers can't reach gateway | `pct exec 200 -- ping 10.10.0.125` — verify bridge connectivity |
+| Containers can't reach gateway | `pct exec 201 -- ping 10.10.0.125` — verify bridge connectivity |
 | No DHCP leases on MikroTik | Verify DHCP server is running: `/ip dhcp-server print` |
 | Panoptikon doesn't see containers | Verify ARP scanner subnet includes `10.10.0.0/24` in `panoptikon.toml` |
 | REST API connection refused | Check MikroTik: `/ip service print` — api-ssl should be enabled |
 | Containers have no internet | Check NAT masquerade: `/ip firewall nat print` |
+| mDNS not working | Verify avahi-daemon: `pct exec 202 -- systemctl status avahi-daemon` |
 | DNS queries to 10.10.0.22 fail | Verify Unbound container is running: `docker compose ps unbound` |
 | DNS queries timeout | Check CT 115 firewall allows port 53: `cat /etc/pve/firewall/115.fw` |
-| `local.ok.labs` not resolving | Verify unbound.conf has `local-data` entry and restart: `docker compose restart unbound` |
 
 ## Cleanup
 
 ```bash
 # Remove all test containers
-sudo bash scripts/setup-test-env.sh destroy
+scp scripts/test-env/teardown-lxc.sh root@10.10.0.11:/tmp/
+ssh root@10.10.0.11 bash /tmp/teardown-lxc.sh
 
 # Remove MikroTik test rules (from RouterOS terminal)
-/ip firewall filter remove [find comment="block-iot-test"]
+/ip firewall filter remove [find comment~"block-test"]
 /user remove panoptikon
 ```
+
+## Notes
+
+- Proxmox API: `https://10.10.0.11:8006` (credentials in Infisical under `/proxmox-devbox`)
+- Root password for all containers: `panoptikon-test` (test environment only)
+- The containers can be left running permanently as a stable test environment
+- Storage: `local-lvm`, 2 GB root disk each
