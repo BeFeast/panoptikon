@@ -1313,6 +1313,26 @@ pub async fn get_sysinfo(
     Ok(Json(sysinfo))
 }
 
+/// POST /api/v1/devices/identify — trigger device identification from all sources.
+///
+/// Queries MikroTik DHCP leases, Xiaomi device list, and VyOS DHCP leases
+/// to resolve unknown devices with hostnames and names.
+pub async fn identify(
+    State(state): State<AppState>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    tokio::spawn({
+        let pool = state.db.clone();
+        let config = state.config.clone();
+        async move {
+            crate::dhcp::run_all_identification(&pool, &config).await;
+        }
+    });
+
+    Ok(Json(
+        serde_json::json!({"status": "identification started"}),
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

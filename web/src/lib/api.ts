@@ -281,6 +281,10 @@ export function wakeDevice(id: string): Promise<void> {
   return apiPost<void>(`/api/v1/devices/${id}/wake`);
 }
 
+export function identifyDevices(): Promise<{ status: string }> {
+  return apiPost<{ status: string }>("/api/v1/devices/identify");
+}
+
 export interface PortEntry {
   port: number;
   protocol: string;

@@ -147,6 +147,7 @@ pub fn router(state: AppState) -> Router {
         // Devices
         .route("/devices", get(devices::list))
         .route("/devices", post(devices::create))
+        .route("/devices/identify", post(devices::identify))
         .route("/devices/:id", get(devices::get_one))
         .route("/devices/:id", patch(devices::update))
         .route("/devices/:id/events", get(devices::events))

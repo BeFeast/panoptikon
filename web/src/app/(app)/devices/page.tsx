@@ -33,7 +33,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDevice, resetDeviceCustom, fetchDeviceSysinfo, createAsset, fetchXiaomiWifiDevices, fetchXiaomiDevices, fetchXiaomiStatus } from "@/lib/api";
+import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDevice, resetDeviceCustom, fetchDeviceSysinfo, createAsset, fetchXiaomiWifiDevices, fetchXiaomiDevices, fetchXiaomiStatus, identifyDevices } from "@/lib/api";
 import type { DeviceEvent, UptimeStats, PortScanResult, DeviceCustomFields, CreateAssetRequest } from "@/lib/api";
 import type { Device, DeviceSysinfo, DeviceWifiInfo, XiaomiWifiDevice, XiaomiDevice } from "@/lib/types";
 import { formatPercent, timeAgo } from "@/lib/format";
@@ -65,6 +65,7 @@ type SortDir = "asc" | "desc";
 export default function DevicesPage() {
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [scanningNetwork, setScanningNetwork] = useState(false);
+  const [identifying, setIdentifying] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
@@ -330,6 +331,34 @@ export default function DevicesPage() {
               <>
                 <Radar className="mr-2 h-4 w-4" />
                 Scan Now
+              </>
+            )}
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={identifying}
+            onClick={async () => {
+              setIdentifying(true);
+              try {
+                await identifyDevices();
+                toast.success("Device identification started");
+                setTimeout(load, 3000);
+              } catch {
+                toast.error("Device identification failed");
+              } finally {
+                setTimeout(() => setIdentifying(false), 5000);
+              }
+            }}
+          >
+            {identifying ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Identifying…
+              </>
+            ) : (
+              <>
+                <Search className="mr-2 h-4 w-4" />
+                Identify
               </>
             )}
           </Button>

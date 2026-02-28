@@ -1,12 +1,15 @@
-//! DHCP hostname enrichment — reads DHCP lease hostnames and populates device records.
+//! Device identification — resolves unknown devices via DHCP hostnames from
+//! multiple sources: VyOS, MikroTik, and Xiaomi MiWiFi.
 //!
-//! Periodically queries the VyOS DHCP leases API and updates devices that have
-//! no hostname with the hostname from their DHCP lease.
+//! Periodically queries all configured router APIs and updates devices that have
+//! no hostname/name with the identifiers from their DHCP lease or device list.
 
 use sqlx::SqlitePool;
 use tracing::{debug, info, warn};
 
 use crate::config::AppConfig;
+use crate::mikrotik::client::MikrotikClient;
+use crate::xiaomi::client::XiaomiClient;
 
 /// DHCP lease entry as returned by the VyOS API proxy.
 #[derive(Debug, serde::Deserialize)]
@@ -226,16 +229,250 @@ fn parse_dhcp_leases(text: &str) -> Vec<DhcpLease> {
     leases
 }
 
-/// Start the periodic DHCP hostname enrichment task.
+/// Read a setting value from the `settings` table.
+async fn get_setting(pool: &SqlitePool, key: &str) -> Option<String> {
+    sqlx::query_scalar::<_, String>("SELECT value FROM settings WHERE key = ?")
+        .bind(key)
+        .fetch_optional(pool)
+        .await
+        .ok()
+        .flatten()
+        .filter(|v| !v.is_empty())
+}
+
+/// Run a single MikroTik DHCP hostname enrichment pass.
 ///
-/// Runs every 5 minutes to pick up new DHCP leases and populate hostnames.
-pub fn start_dhcp_enrichment_task(pool: SqlitePool, config: AppConfig) {
-    if config.vyos.url.is_none() || config.vyos.api_key.is_none() {
-        info!("DHCP enrichment disabled (VyOS not configured)");
+/// Fetches DHCP leases from the MikroTik router and updates device hostnames
+/// for devices that don't already have one.
+pub async fn enrich_from_mikrotik_leases(pool: &SqlitePool) {
+    let enabled = get_setting(pool, "mikrotik_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+    if !enabled {
         return;
     }
 
-    info!("Starting DHCP hostname enrichment (every 5 min)");
+    let url = match get_setting(pool, "mikrotik_url").await {
+        Some(u) => u,
+        None => return,
+    };
+    let user = get_setting(pool, "mikrotik_user")
+        .await
+        .unwrap_or_else(|| "admin".to_string());
+    let password = get_setting(pool, "mikrotik_password")
+        .await
+        .unwrap_or_default();
+
+    let http = crate::mikrotik::client::shared_http_client();
+    let client = MikrotikClient::with_http(&url, &user, &password, http);
+
+    let leases = match client.dhcp_leases().await {
+        Ok(l) => l,
+        Err(e) => {
+            debug!("MikroTik DHCP enrichment: failed to fetch leases: {e}");
+            return;
+        }
+    };
+
+    if leases.is_empty() {
+        debug!("MikroTik DHCP enrichment: no leases found");
+        return;
+    }
+
+    let mut updated = 0u32;
+    for lease in &leases {
+        let hostname = match lease.host_name {
+            Some(ref h) if !h.is_empty() => h,
+            _ => continue,
+        };
+        let mac = match lease.mac_address {
+            Some(ref m) => m.to_lowercase(),
+            None => continue,
+        };
+
+        // Update hostname for devices that don't already have one.
+        let result = sqlx::query(
+            r#"UPDATE devices SET hostname = ?, updated_at = datetime('now')
+               WHERE mac = ? AND (hostname IS NULL OR hostname = '')"#,
+        )
+        .bind(hostname)
+        .bind(&mac)
+        .execute(pool)
+        .await;
+
+        match result {
+            Ok(r) if r.rows_affected() > 0 => {
+                info!(mac = %mac, hostname = %hostname, "MikroTik DHCP hostname set");
+                updated += 1;
+
+                // Also trigger enrichment with the new hostname
+                trigger_enrichment_for_mac(pool, &mac).await;
+            }
+            Ok(_) => {}
+            Err(e) => {
+                warn!(mac = %mac, error = %e, "Failed to set MikroTik DHCP hostname");
+            }
+        }
+    }
+
+    if updated > 0 {
+        info!(
+            updated,
+            total_leases = leases.len(),
+            "MikroTik DHCP hostname enrichment complete"
+        );
+    }
+}
+
+/// Run a single Xiaomi MiWiFi device list enrichment pass.
+///
+/// Fetches the device list from the Xiaomi router and updates device hostnames/names
+/// for devices that don't already have one.
+pub async fn enrich_from_xiaomi_devices(pool: &SqlitePool) {
+    let enabled = get_setting(pool, "xiaomi_mesh_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+    if !enabled {
+        return;
+    }
+
+    let ip = match get_setting(pool, "xiaomi_mesh_ip").await {
+        Some(i) => i,
+        None => return,
+    };
+    let password = match get_setting(pool, "xiaomi_mesh_password").await {
+        Some(p) => p,
+        None => return,
+    };
+
+    let http = crate::xiaomi::client::shared_http_client();
+    let client = XiaomiClient::new(&ip, &password, http);
+
+    let devices = match client.device_list().await {
+        Ok(d) => d,
+        Err(e) => {
+            debug!("Xiaomi enrichment: failed to fetch device list: {e}");
+            return;
+        }
+    };
+
+    if devices.is_empty() {
+        debug!("Xiaomi enrichment: no devices found");
+        return;
+    }
+
+    let mut updated = 0u32;
+    for dev in &devices {
+        let mac = match dev.mac {
+            Some(ref m) => m.to_lowercase(),
+            None => continue,
+        };
+
+        // Xiaomi returns a friendly name set by the user or auto-detected.
+        let device_name = match dev.name {
+            Some(ref n) if !n.is_empty() => n,
+            _ => continue,
+        };
+
+        // Update the name field for devices that don't already have one.
+        // Use `name` (not hostname) since Xiaomi names are user-friendly labels.
+        let result = sqlx::query(
+            r#"UPDATE devices SET name = ?, updated_at = datetime('now')
+               WHERE mac = ? AND (name IS NULL OR name = '')"#,
+        )
+        .bind(device_name)
+        .bind(&mac)
+        .execute(pool)
+        .await;
+
+        match result {
+            Ok(r) if r.rows_affected() > 0 => {
+                info!(mac = %mac, name = %device_name, "Xiaomi device name set");
+                updated += 1;
+            }
+            Ok(_) => {}
+            Err(e) => {
+                warn!(mac = %mac, error = %e, "Failed to set Xiaomi device name");
+            }
+        }
+
+        // Also try to set hostname from the Xiaomi device's IP entries
+        // (Xiaomi sometimes provides a hostname-like identifier)
+        if let Some(ref ip_list) = Some(&dev.ip) {
+            for ip_entry in ip_list.iter() {
+                if let Some(ref dev_ip) = ip_entry.ip {
+                    // Update hostname via IP match if device has no hostname yet
+                    let _ = sqlx::query(
+                        r#"UPDATE devices SET hostname = COALESCE(hostname, ?), updated_at = datetime('now')
+                           WHERE id IN (
+                               SELECT device_id FROM device_ips WHERE ip = ? AND is_current = 1
+                           ) AND (hostname IS NULL OR hostname = '')"#,
+                    )
+                    .bind(device_name)
+                    .bind(dev_ip)
+                    .execute(pool)
+                    .await;
+                }
+            }
+        }
+    }
+
+    if updated > 0 {
+        info!(
+            updated,
+            total_devices = devices.len(),
+            "Xiaomi device name enrichment complete"
+        );
+    }
+}
+
+/// Re-run enrichment heuristics for a device identified by MAC.
+///
+/// Called after setting a new hostname so the enrichment engine can extract
+/// OS, type, and model information from the newly discovered hostname.
+async fn trigger_enrichment_for_mac(pool: &SqlitePool, mac: &str) {
+    let row: Option<(String, Option<String>, Option<String>, Option<String>)> = sqlx::query_as(
+        r#"SELECT d.id, d.hostname, d.vendor, d.mdns_services
+           FROM devices d WHERE d.mac = ?"#,
+    )
+    .bind(mac)
+    .fetch_optional(pool)
+    .await
+    .ok()
+    .flatten();
+
+    if let Some((device_id, hostname, vendor, mdns_services)) = row {
+        crate::enrichment::enrich_device(
+            pool,
+            &device_id,
+            "", // IP not needed for hostname-based enrichment
+            mac,
+            hostname.as_deref(),
+            vendor.as_deref(),
+            mdns_services.as_deref(),
+            None,
+        )
+        .await;
+    }
+}
+
+/// Run all device identification sources in sequence.
+///
+/// Called periodically and can also be triggered manually via the API.
+pub async fn run_all_identification(pool: &SqlitePool, config: &AppConfig) {
+    enrich_from_dhcp_leases(pool, config).await;
+    enrich_from_mikrotik_leases(pool).await;
+    enrich_from_xiaomi_devices(pool).await;
+}
+
+/// Start the periodic device identification task.
+///
+/// Runs every 5 minutes to pick up new DHCP leases and device names
+/// from all configured sources: VyOS, MikroTik, and Xiaomi MiWiFi.
+pub fn start_dhcp_enrichment_task(pool: SqlitePool, config: AppConfig) {
+    info!("Starting device identification enrichment (every 5 min)");
     tokio::spawn(async move {
         // Initial delay to let the server start up.
         tokio::time::sleep(std::time::Duration::from_secs(30)).await;
@@ -243,7 +480,7 @@ pub fn start_dhcp_enrichment_task(pool: SqlitePool, config: AppConfig) {
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(300));
         loop {
             interval.tick().await;
-            enrich_from_dhcp_leases(&pool, &config).await;
+            run_all_identification(&pool, &config).await;
         }
     });
 }

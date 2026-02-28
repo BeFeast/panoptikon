@@ -125,7 +125,7 @@ async fn main() -> Result<()> {
         info!("NetFlow collector disabled (set netflow_enabled = true in [scanner])");
     }
 
-    // Start DHCP hostname enrichment (pulls hostnames from VyOS DHCP leases).
+    // Start device identification enrichment (VyOS, MikroTik, Xiaomi DHCP/device lists).
     dhcp::start_dhcp_enrichment_task(state.db.clone(), app_config.clone());
 
     // Start UPnP/SSDP discovery (device type + manufacturer from multicast).
