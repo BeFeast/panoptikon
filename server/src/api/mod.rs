@@ -470,6 +470,14 @@ pub fn router(state: AppState) -> Router {
         .route("/mikrotik/vlans/:id", delete(mikrotik::delete_vlan))
         .route("/mikrotik/routes", get(mikrotik::routes))
         .route("/mikrotik/dhcp-leases", get(mikrotik::dhcp_leases))
+        .route(
+            "/mikrotik/dhcp-leases/:id",
+            delete(mikrotik::delete_dhcp_lease),
+        )
+        .route(
+            "/mikrotik/dhcp-static-mappings",
+            post(mikrotik::create_dhcp_static_mapping),
+        )
         .route("/mikrotik/firewall", get(mikrotik::firewall))
         .route(
             "/mikrotik/firewall/filter",

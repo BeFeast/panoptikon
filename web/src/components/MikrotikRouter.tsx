@@ -23,6 +23,7 @@ import {
   BarChart3,
   Power,
   List,
+  Pin,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -82,6 +83,7 @@ import {
   toggleMikrotikFirewallNat,
   createMikrotikAddressList,
   deleteMikrotikAddressList,
+  createMikrotikDhcpStaticMapping,
   fetchTrafficHistory,
 } from "@/lib/api";
 import { formatBps } from "@/lib/format";
@@ -917,11 +919,40 @@ function DhcpLeasesTable({
   data,
   loading,
   error,
+  reload,
 }: {
   data: MikrotikDhcpLease[] | null;
   loading: boolean;
   error: string | null;
+  reload: () => Promise<void>;
 }) {
+  const [pinning, setPinning] = useState<string | null>(null);
+
+  const handlePin = async (lease: MikrotikDhcpLease) => {
+    if (!lease.mac_address) return;
+    const key = `${lease.address}-${lease.mac_address}`;
+    setPinning(key);
+    try {
+      await createMikrotikDhcpStaticMapping({
+        address: lease.address,
+        mac_address: lease.mac_address,
+        comment: lease.host_name
+          ? `Reserved for ${lease.host_name}`
+          : undefined,
+      });
+      toast.success(
+        `Reserved ${lease.address} for ${lease.mac_address}`
+      );
+      await reload();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Failed to create static mapping"
+      );
+    } finally {
+      setPinning(null);
+    }
+  };
+
   const headerCols = (
     <tr className="border-b border-slate-800 bg-slate-950 text-left">
       <th className="px-4 py-3 font-medium text-slate-400">IP Address</th>
@@ -930,6 +961,7 @@ function DhcpLeasesTable({
       <th className="px-4 py-3 font-medium text-slate-400">Server</th>
       <th className="px-4 py-3 font-medium text-slate-400">Expires</th>
       <th className="px-4 py-3 font-medium text-slate-400">State</th>
+      <th className="px-4 py-3 font-medium text-slate-400 w-16" />
     </tr>
   );
 
@@ -947,6 +979,7 @@ function DhcpLeasesTable({
                 <td className="px-4 py-3"><Skeleton className="h-4 w-20" /></td>
                 <td className="px-4 py-3"><Skeleton className="h-3 w-28" /></td>
                 <td className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></td>
+                <td className="px-4 py-3" />
               </tr>
             ))}
           </tbody>
@@ -977,50 +1010,68 @@ function DhcpLeasesTable({
       <table className="w-full text-sm">
         <thead>{headerCols}</thead>
         <tbody>
-          {data.map((lease, idx) => (
-            <tr
-              key={`${lease.address}-${idx}`}
-              className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
-            >
-              <td className="px-4 py-3">
-                <span className="font-mono tabular-nums font-medium text-white">
-                  {lease.address}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <span className="font-mono tabular-nums text-xs text-slate-400">
-                  {lease.mac_address ?? "\u2014"}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <span className="text-slate-300">
-                  {lease.host_name ?? "\u2014"}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <span className="text-slate-300">
-                  {lease.server ?? "\u2014"}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <span className="font-mono tabular-nums text-xs text-slate-400">
-                  {lease.expires_after ?? "\u2014"}
-                </span>
-              </td>
-              <td className="px-4 py-3">
-                <Badge
-                  variant="outline"
-                  className={
-                    lease.status === "bound"
-                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
-                      : "border-slate-700 text-slate-500 text-xs"
-                  }
-                >
-                  {lease.status ?? "\u2014"}
-                </Badge>
-              </td>
-            </tr>
-          ))}
+          {data.map((lease, idx) => {
+            const key = `${lease.address}-${lease.mac_address}`;
+            const isPinning = pinning === key;
+            return (
+              <tr
+                key={`${lease.address}-${idx}`}
+                className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+              >
+                <td className="px-4 py-3">
+                  <span className="font-mono tabular-nums font-medium text-white">
+                    {lease.address}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="font-mono tabular-nums text-xs text-slate-400">
+                    {lease.mac_address ?? "\u2014"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="text-slate-300">
+                    {lease.host_name ?? "\u2014"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="text-slate-300">
+                    {lease.server ?? "\u2014"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="font-mono tabular-nums text-xs text-slate-400">
+                    {lease.expires_after ?? "\u2014"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <Badge
+                    variant="outline"
+                    className={
+                      lease.status === "bound"
+                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+                        : "border-slate-700 text-slate-500 text-xs"
+                    }
+                  >
+                    {lease.dynamic ? lease.status ?? "\u2014" : "static"}
+                  </Badge>
+                </td>
+                <td className="px-4 py-3">
+                  {lease.dynamic && lease.mac_address && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-slate-400 hover:text-amber-400"
+                      title="Reserve (create static mapping)"
+                      disabled={isPinning}
+                      onClick={() => handlePin(lease)}
+                    >
+                      <Pin className={`h-3.5 w-3.5 ${isPinning ? "animate-pulse" : ""}`} />
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -2736,6 +2787,7 @@ export default function MikrotikRouter() {
                 data={dhcp.data}
                 loading={dhcp.loading}
                 error={dhcp.error}
+                reload={dhcp.reload}
               />
             </CardContent>
           </Card>
