@@ -96,8 +96,10 @@ pub async fn test_connection(
                     })
                 }
                 Err(_) => Json(XiaomiMeshTestConnectionResponse {
-                    success: true,
-                    message: format!("Connected to {ip} but could not parse router info response."),
+                    success: false,
+                    message: format!(
+                        "Connected to {ip} but response is not valid Xiaomi router JSON."
+                    ),
                     router_model: None,
                     hardware: None,
                     firmware: None,
