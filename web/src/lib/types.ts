@@ -1192,6 +1192,13 @@ export interface MikrotikDhcpLease {
   comment: string | null;
 }
 
+export interface MikrotikDhcpStaticMappingRequest {
+  address: string;
+  mac_address: string;
+  server?: string;
+  comment?: string;
+}
+
 export interface MikrotikFirewallRule {
   id: string | null;
   chain: string | null;

@@ -127,6 +127,18 @@ pub struct DhcpLease {
     pub comment: Option<String>,
 }
 
+/// MikroTik DHCP static lease write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct DhcpLeaseWriteRequest {
+    pub address: String,
+    #[serde(rename = "mac-address")]
+    pub mac_address: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub server: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+}
+
 /// MikroTik firewall filter rule (`/rest/ip/firewall/filter`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FirewallFilter {

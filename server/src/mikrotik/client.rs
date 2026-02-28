@@ -304,6 +304,12 @@ impl MikrotikClient {
         Ok(res)
     }
 
+    /// Create a static DHCP lease (reservation).
+    pub async fn create_dhcp_lease(&self, req: &DhcpLeaseWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/ip/dhcp-server/lease", req)
+            .await
+    }
+
     /// Fetch firewall filter rules.
     pub async fn firewall_filter(&self) -> Result<Vec<FirewallFilter>> {
         let val = self.get("/ip/firewall/filter").await?;

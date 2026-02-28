@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 use super::{audit, AppState};
 use crate::mikrotik::client::MikrotikClient;
 use crate::mikrotik::types::{
-    FirewallAddressListWriteRequest, FirewallFilterWriteRequest, FirewallNatWriteRequest,
-    VlanWriteRequest,
+    DhcpLeaseWriteRequest, FirewallAddressListWriteRequest, FirewallFilterWriteRequest,
+    FirewallNatWriteRequest, VlanWriteRequest,
 };
 
 // ── Helper: build a MikroTik client from DB settings ───────
@@ -227,6 +227,14 @@ pub struct MikrotikToggleRequest {
 pub struct MikrotikAddressListRequest {
     pub list: String,
     pub address: String,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikDhcpStaticMappingRequest {
+    pub address: String,
+    pub mac_address: String,
+    pub server: Option<String>,
     pub comment: Option<String>,
 }
 
@@ -673,6 +681,64 @@ pub async fn dhcp_leases(
         state.mikrotik_cache.set("dhcp-leases".into(), val);
     }
     Ok(Json(result))
+}
+
+/// POST /api/v1/mikrotik/dhcp-leases/static
+///
+/// Create a static DHCP mapping (reservation) from a dynamic lease's IP and MAC.
+pub async fn create_dhcp_static_mapping(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikDhcpStaticMappingRequest>,
+) -> Result<StatusCode, StatusCode> {
+    if body.address.trim().is_empty() || body.mac_address.trim().is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = DhcpLeaseWriteRequest {
+        address: body.address.trim().to_string(),
+        mac_address: body.mac_address.trim().to_string(),
+        server: body.server.as_deref().map(|s| s.trim().to_string()),
+        comment: body.comment.clone(),
+    };
+
+    let desc = format!(
+        "Create static DHCP mapping: {} -> {}",
+        body.address, body.mac_address
+    );
+    let cmds = vec![format!(
+        "POST /ip/dhcp-server/lease address={} mac-address={}",
+        body.address, body.mac_address
+    )];
+
+    match client.create_dhcp_lease(&req).await {
+        Ok(()) => {
+            audit::log_success(
+                &state.db,
+                "mikrotik_dhcp_static_mapping_create",
+                &desc,
+                &cmds,
+            )
+            .await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_dhcp_static_mapping_create",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik DHCP static mapping create error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
 }
 
 /// GET /api/v1/mikrotik/firewall
