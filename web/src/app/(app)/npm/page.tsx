@@ -2244,9 +2244,9 @@ export default function NpmPage() {
   const reachable = status?.reachable ?? false;
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
             <Globe className="h-5 w-5 text-orange-400" />

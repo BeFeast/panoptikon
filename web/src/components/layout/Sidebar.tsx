@@ -108,6 +108,12 @@ const navGroups: NavGroup[] = [
   },
 ];
 
+/** Flat list of all nav items — used by MobileSidebar. */
+export const navItems: NavItem[] = [
+  ...navGroups.flatMap((g) => g.items),
+  { href: "/settings", label: "Settings", icon: Settings },
+];
+
 /** Settings link — always visible at the bottom, outside groups. */
 const settingsItem: NavItem = {
   href: "/settings",
@@ -262,7 +268,7 @@ export function Sidebar() {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "flex flex-col border-r border-slate-800 bg-slate-950 transition-all duration-200",
+          "hidden md:flex flex-col border-r border-slate-800 bg-slate-950 transition-all duration-200",
           sidebarCollapsed ? "w-16" : "w-60",
         )}
       >
