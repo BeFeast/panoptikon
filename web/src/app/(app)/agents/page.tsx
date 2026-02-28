@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AlertTriangle, Check, Copy, Pencil, Plus, Terminal, Trash2, X } from "lucide-react";
 import { SparklineChart } from "@/components/sparkline-chart";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +45,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { copyToClipboard } from "@/lib/utils";
 
 export default function AgentsPage() {
+  const router = useRouter();
   const [agents, setAgents] = useState<Agent[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
@@ -184,11 +186,16 @@ export default function AgentsPage() {
             </TableHeader>
             <TableBody>
               {agents.map((agent) => (
-                <TableRow key={agent.id} className="border-slate-800">
+                <TableRow
+                  key={agent.id}
+                  className="border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors"
+                  onClick={() => router.push(`/agents/detail?id=${agent.id}`)}
+                >
                   <TableCell className="font-medium text-white">
                     {renamingId === agent.id ? (
                       <form
                         className="flex flex-col gap-1"
+                        onClick={(e) => e.stopPropagation()}
                         onSubmit={async (e) => {
                           e.preventDefault();
                           setRenameError(null);
@@ -234,12 +241,14 @@ export default function AgentsPage() {
                             <Link
                               href={`/agents/detail?id=${agent.id}`}
                               className="hover:text-blue-400 transition-colors hover:underline"
+                              onClick={(e) => e.stopPropagation()}
                             >
                               {agent.name ?? agent.id.slice(0, 8)}
                             </Link>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
+                                e.preventDefault();
                                 setRenamingId(agent.id);
                                 setRenameValue(agent.name ?? "");
                                 setRenameError(null);
@@ -281,7 +290,7 @@ export default function AgentsPage() {
                   </TableCell>
                   <TableCell>
                     <button
-                      onClick={() => setPendingDelete(agent)}
+                      onClick={(e) => { e.stopPropagation(); setPendingDelete(agent); }}
                       className="rounded p-1 text-slate-600 hover:bg-rose-500/10 hover:text-rose-400 transition-colors"
                       title="Delete agent"
                     >
