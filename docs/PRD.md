@@ -2,9 +2,9 @@
 
 ## Product Requirements Document
 
-**Version:** 0.6.0
+**Version:** 0.7.0
 **Author:** Oleg Kossoy (concept) / AI-assisted (document)
-**Date:** 2026-02-24
+**Date:** 2026-02-28
 **Status:** Active
 
 ---
@@ -210,7 +210,7 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 - ✅ CSV/JSON export of device list, alert history, traffic data, assets
 - ✅ Prometheus metrics endpoint (`/metrics`) for integration with existing monitoring
 
-#### F15: Nginx Proxy Manager (NPM) Integration ✅
+#### F15: Nginx Proxy Manager (NPM) Integration ✅ *(Legacy — replaced by Caddy)*
 - Proxy host management (create, update, delete, toggle)
 - Redirection host configuration
 - SSL certificate management (Let's Encrypt + custom)
@@ -218,6 +218,7 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 - Dead hosts (status monitoring)
 - Access lists (IP-based access control)
 - Dedicated settings page with connection test
+- **Note:** NPM is retained for backward compatibility. New deployments should use Caddy (F15b).
 
 #### F15b: Caddy Proxy Manager ✅
 - Full integration with Caddy Admin API
@@ -379,9 +380,58 @@ Panoptikon supports a **multi-router architecture** with MikroTik as the primary
 | Router | API | Status | Default |
 |--------|-----|--------|---------|
 | **MikroTik** | RouterOS 7+ REST API | ✅ Primary | Default tab in Router page |
-| **VyOS** | VyOS HTTP API (1.3+) | ✅ Optional | Lazy-loaded, hidden unless enabled |
+| **VyOS** | VyOS HTTP API (1.3+) | ⚠️ Legacy | Lazy-loaded, hidden unless enabled |
+| **pfSense** | — | ❌ Deprecated | Will be replaced by MikroTik |
 
-Both integrations use TTL-based caching for read operations and cache invalidation middleware on mutations. Each router has its own settings page and can be independently enabled/disabled.
+MikroTik CHR (10.10.0.125) is the primary router — REST API, DHCP server, and firewall. MikroTik DHCP leases are the primary source for device identification on the Assets page.
+
+Both MikroTik and VyOS integrations use TTL-based caching for read operations and cache invalidation middleware on mutations. Each router has its own settings page and can be independently enabled/disabled.
+
+### WiFi Mesh Architecture
+
+**Xiaomi BE3600 2.5G** — WiFi mesh network (4 nodes):
+
+| Role | IP | Location |
+|------|-----|----------|
+| Main (CAP) | 10.10.0.199 | OK Home / Live Studio |
+| Satellite | 10.10.0.52 | Basement |
+| Satellite | 10.10.0.53 | Floor 2 |
+| Satellite | 10.10.0.54 | Network Enclosure |
+
+- **Authentication:** `stok` token via SHA256 hash of the admin password
+- **Key endpoints:** `topo_graph` (no auth required), `status`, `devicelist`, `wifi_devices`, `wan_info`, `lan_info`, `wifi_bands`, `firmware`
+- **Integration:** Panoptikon polls mesh status, device list, and topology via the Xiaomi HTTP API
+- **Settings:** `xiaomi_mesh_enabled`, `xiaomi_mesh_ip` (default: `10.10.0.199`), `xiaomi_mesh_password`, `xiaomi_mesh_poll_interval`
+
+### Reverse Proxy Architecture
+
+| Proxy | Status | Notes |
+|-------|--------|-------|
+| **Caddy** | ✅ Primary | Admin API at `localhost:2019`, Docker container alongside Panoptikon |
+| **NPM (Nginx Proxy Manager)** | ⚠️ Legacy | Retained for backward compatibility, replaced by Caddy |
+
+Caddy is the primary reverse proxy manager:
+- Admin API: `localhost:2019` (Docker container running alongside Panoptikon)
+- UI: dedicated `/proxy` page in main navigation
+- Manages: `*.oklabs.uk` domains + SSL certificates via automatic ACME
+- SQLite is the source of truth; configuration is synced to Caddy JSON admin API
+
+### Network Inventory (Assets) Architecture
+
+The **Assets page** serves as the unified network inventory. Device identification uses multiple sources with the following priority:
+
+1. **DHCP hostname** — from MikroTik DHCP leases (most reliable)
+2. **mDNS** — passive discovery via Bonjour/DNS-SD
+3. **Xiaomi device name** — from Xiaomi mesh `devicelist` endpoint
+4. **OUI lookup** — IEEE MAC vendor prefix (only useful if MAC is not randomized)
+
+Data sources for the asset inventory:
+- **MikroTik DHCP leases** — IP, MAC, hostname, lease status
+- **Xiaomi devicelist** — connected WiFi clients with names, signal strength
+- **mDNS/SSDP** — passive device discovery
+- **Panoptikon agents** — installed agents with live telemetry
+- **SSH targets** — agentless monitoring via SSH polling
+- **Manual entry** — user-provided metadata
 
 ### Default Router Strategy (User + Developer Contract)
 
@@ -407,7 +457,8 @@ Both integrations use TTL-based caching for read operations and cache invalidati
 | **Charts** | Recharts | React-native, composable, responsive. Better DX than Chart.js for React apps. Good dark theme customization. |
 | **Topology rendering** | SVG + d3-force | Accessible (DOM nodes, not canvas pixels), interactive (click/hover events are trivial), good enough performance for <200 nodes. |
 | **Network scanning** | `pnet` (Rust) + system ARP table | `pnet` for raw ARP packet crafting when root, fallback to parsing `/proc/net/arp` or `arp -a` output. No nmap dependency required. |
-| **Reverse proxy** | Caddy | Automatic HTTPS, simple config, Admin API for programmatic management. Replaces NPM as the primary/embedded reverse proxy. |
+| **Reverse proxy** | Caddy | Automatic HTTPS, simple config, Admin API for programmatic management. Primary/embedded reverse proxy (NPM is legacy). |
+| **WiFi mesh** | Xiaomi BE3600 2.5G | 4-node mesh network. HTTP API with stok token auth. Provides device list, topology, signal strength. |
 | **DNS resolver** | Unbound | Lightweight recursive DNS resolver with local zone support, blocklists, and query logging. Embedded in the Docker Compose stack. |
 | **Tunnel** | Cloudflared | Cloudflare Tunnel for secure external access without port forwarding. Optional 4th service in Docker Compose. |
 | **Animations** | Framer Motion | Smooth, declarative animations for React. Card transitions, page enters, and micro-interactions. |
@@ -1077,10 +1128,10 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 
 ### Milestone 4: Embedded Stack & Integrations (In Progress)
 
-- [ ] **Xiaomi BE3600 mesh integration:** WiFi client list, mesh topology, signal strength monitoring
+- [x] **Xiaomi BE3600 mesh integration:** WiFi client list, mesh topology (4 nodes), signal strength monitoring, device list, firmware status, WAN/LAN info, per-band WiFi details
 - [ ] **Docker Compose packaging:** Docker Hub releases, automated image builds
 - [ ] **DNS test setup:** Configure Unbound as the network-wide DNS resolver
-- [ ] **pfSense feature parity analysis:** Gap analysis for pfSense migration path
+- [ ] **pfSense deprecation:** pfSense is deprecated; MikroTik CHR is the primary router going forward
 - [ ] **UI cleanup:** Polish, consistency, responsive improvements
 
 ### Milestone 5: Future (Planned)
@@ -1193,4 +1244,4 @@ Panoptikon's unique position: **multi-router management (MikroTik + VyOS) + netw
 
 ---
 
-*This document is actively maintained. Last updated: 2026-02-24 (v0.6.0 — Caddy+Unbound embedded stack, Docker Compose deployment).*
+*This document is actively maintained. Last updated: 2026-02-28 (v0.7.0 — MikroTik primary, Caddy proxy, Xiaomi mesh, Assets inventory, pfSense deprecated).*
