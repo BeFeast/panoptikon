@@ -168,6 +168,12 @@ pub struct SystemStatus {
     pub count: Option<DeviceCount>,
     #[serde(default, deserialize_with = "de_opt_i32_from_any")]
     pub temperature: Option<i32>,
+    #[serde(
+        default,
+        rename = "upTime",
+        deserialize_with = "de_opt_string_from_any"
+    )]
+    pub uptime: Option<String>,
 }
 
 // ── Device list ─────────────────────────────────────────────

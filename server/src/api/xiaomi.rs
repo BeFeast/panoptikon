@@ -195,25 +195,22 @@ pub async fn status(
     };
 
     match client.system_status().await {
-        Ok(s) => {
-            let uptime = client.uptime().await.ok().flatten();
-            Ok(Json(XiaomiStatusResponse {
-                configured: true,
-                reachable: true,
-                cpu_cores: s.cpu.as_ref().and_then(|c| c.core),
-                cpu_freq: s.cpu.as_ref().and_then(|c| c.hz.clone()),
-                cpu_load: s.cpu.as_ref().and_then(|c| c.load),
-                mem_usage: s.mem.as_ref().and_then(|m| m.usage),
-                mem_total: s.mem.as_ref().and_then(|m| m.total.clone()),
-                mem_type: s.mem.as_ref().and_then(|m| m.mem_type.clone()),
-                temperature: s.temperature,
-                wan_download: s.wan.as_ref().and_then(|w| w.downspeed.clone()),
-                wan_upload: s.wan.as_ref().and_then(|w| w.upspeed.clone()),
-                devices_online: s.count.as_ref().and_then(|c| c.online),
-                devices_total: s.count.as_ref().and_then(|c| c.all),
-                uptime,
-            }))
-        }
+        Ok(s) => Ok(Json(XiaomiStatusResponse {
+            configured: true,
+            reachable: true,
+            cpu_cores: s.cpu.as_ref().and_then(|c| c.core),
+            cpu_freq: s.cpu.as_ref().and_then(|c| c.hz.clone()),
+            cpu_load: s.cpu.as_ref().and_then(|c| c.load),
+            mem_usage: s.mem.as_ref().and_then(|m| m.usage),
+            mem_total: s.mem.as_ref().and_then(|m| m.total.clone()),
+            mem_type: s.mem.as_ref().and_then(|m| m.mem_type.clone()),
+            temperature: s.temperature,
+            wan_download: s.wan.as_ref().and_then(|w| w.downspeed.clone()),
+            wan_upload: s.wan.as_ref().and_then(|w| w.upspeed.clone()),
+            devices_online: s.count.as_ref().and_then(|c| c.online),
+            devices_total: s.count.as_ref().and_then(|c| c.all),
+            uptime: s.uptime,
+        })),
         Err(e) => {
             tracing::warn!(
                 error = %e,

@@ -27,6 +27,7 @@ import {
   fetchXiaomiWifiDevices,
   fetchXiaomiFirmware,
 } from "@/lib/api";
+import { formatBytes } from "@/lib/format";
 import type {
   XiaomiStatus,
   XiaomiWanInfo,
@@ -76,6 +77,13 @@ function formatUptime(seconds: string | null): string {
   return `${mins}m`;
 }
 
+function formatSpeed(bytesPerSec: string | null): string {
+  if (!bytesPerSec) return "0 B/s";
+  const n = parseFloat(bytesPerSec);
+  if (isNaN(n) || n === 0) return "0 B/s";
+  return `${formatBytes(n)}/s`;
+}
+
 function progressColor(value: number): string {
   if (value >= 90) return "bg-red-500";
   if (value >= 70) return "bg-amber-500";
@@ -91,7 +99,7 @@ function tempColor(temp: number): string {
 // ── System Stats Section ─────────────────────────────────
 
 function SystemStats({ status }: { status: XiaomiStatus }) {
-  const cpuLoad = status.cpu_load ?? 0;
+  const cpuLoad = status.cpu_load ? Math.round(status.cpu_load * 100) : 0;
   const memUsage = status.mem_usage ? Math.round(status.mem_usage * 100) : 0;
 
   return (
@@ -180,11 +188,11 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
             <div className="mt-1 flex items-center gap-3 text-sm">
               <span className="flex items-center gap-1 text-emerald-400">
                 <ArrowDown className="h-3 w-3" />
-                {status.wan_download ?? "0"} B/s
+                {formatSpeed(status.wan_download)}
               </span>
               <span className="flex items-center gap-1 text-blue-400">
                 <ArrowUp className="h-3 w-3" />
-                {status.wan_upload ?? "0"} B/s
+                {formatSpeed(status.wan_upload)}
               </span>
             </div>
           </div>
