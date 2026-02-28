@@ -27,12 +27,22 @@ async fn mesh_router_ip(state: &AppState) -> String {
 
 // ── Raw Xiaomi topo_graph response shapes ───────────────────
 
+/// Inner graph object containing nodes (and optionally leafs).
+#[derive(Debug, Deserialize)]
+struct XiaomiTopoGraph {
+    #[serde(default)]
+    nodes: Vec<XiaomiTopoNode>,
+}
+
 /// Root response from `api/misystem/topo_graph`.
+///
+/// The actual Xiaomi response nests the node list inside `graph.nodes`,
+/// **not** at the top-level `list` key.
 #[derive(Debug, Deserialize)]
 struct XiaomiTopoResponse {
     code: i32,
     #[serde(default)]
-    list: Vec<XiaomiTopoNode>,
+    graph: Option<XiaomiTopoGraph>,
 }
 
 /// A single node in the Xiaomi mesh topology.
@@ -133,9 +143,10 @@ pub async fn topology(
         return Err(StatusCode::BAD_GATEWAY);
     }
 
+    let topo_nodes = raw.graph.map(|g| g.nodes).unwrap_or_default();
+
     let mut total_devices = 0i32;
-    let nodes: Vec<MeshNode> = raw
-        .list
+    let nodes: Vec<MeshNode> = topo_nodes
         .into_iter()
         .map(|n| {
             total_devices += n.online;
