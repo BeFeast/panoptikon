@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { type ReactNode, useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Settings, Lock, LogOut, Monitor, Cpu, Terminal, Package } from "lucide-react";
 import { searchAll, fetchRecentAlerts, fetchDashboardStats, markAllAlertsRead, logout } from "@/lib/api";
@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-export function TopBar() {
+export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResponse | null>(null);
@@ -204,7 +204,10 @@ export function TopBar() {
   let runningIndex = 0;
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-slate-800 bg-slate-950 px-6">
+    <header className="flex h-14 items-center justify-between border-b border-slate-800 bg-slate-950 px-3 md:px-6 gap-2">
+      {/* Mobile menu button */}
+      {mobileMenu}
+
       {/* Search */}
       <div className="relative flex-1 max-w-md" ref={containerRef}>
         <input
