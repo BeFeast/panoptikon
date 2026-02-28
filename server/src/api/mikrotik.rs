@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 use super::{audit, AppState};
 use crate::mikrotik::client::MikrotikClient;
 use crate::mikrotik::types::{
-    FirewallAddressListWriteRequest, FirewallFilterWriteRequest, FirewallNatWriteRequest,
-    VlanWriteRequest,
+    DhcpStaticLeaseWriteRequest, FirewallAddressListWriteRequest, FirewallFilterWriteRequest,
+    FirewallNatWriteRequest, VlanWriteRequest,
 };
 
 // ── Helper: build a MikroTik client from DB settings ───────
@@ -132,6 +132,13 @@ pub struct MikrotikDhcpLeaseResponse {
     pub server: Option<String>,
     pub dynamic: bool,
     pub disabled: bool,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikCreateDhcpStaticRequest {
+    pub address: String,
+    pub mac_address: String,
     pub comment: Option<String>,
 }
 
@@ -1309,6 +1316,75 @@ pub async fn delete_address_list(
             )
             .await;
             tracing::error!("MikroTik address list delete error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// POST /api/v1/mikrotik/dhcp-static-mappings
+pub async fn create_dhcp_static_mapping(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikCreateDhcpStaticRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = DhcpStaticLeaseWriteRequest {
+        address: body.address.clone(),
+        mac_address: body.mac_address.clone(),
+        comment: body.comment.clone(),
+    };
+
+    let desc = format!(
+        "Create MikroTik static DHCP mapping: {} -> {}",
+        body.mac_address, body.address
+    );
+    let cmds = vec![format!(
+        "POST /ip/dhcp-server/lease address={} mac-address={}",
+        body.address, body.mac_address
+    )];
+
+    match client.create_dhcp_static_lease(&req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_dhcp_static_create", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_dhcp_static_create", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik DHCP static mapping create error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// DELETE /api/v1/mikrotik/dhcp-leases/:id
+pub async fn delete_dhcp_lease(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let desc = format!("Delete MikroTik DHCP lease {id}");
+    let cmds = vec![format!("DELETE /ip/dhcp-server/lease/{id}")];
+
+    match client.delete_dhcp_lease(id).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_dhcp_lease_delete", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_dhcp_lease_delete", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik DHCP lease delete error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
     }

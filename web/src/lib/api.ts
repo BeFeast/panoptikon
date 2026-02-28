@@ -75,6 +75,7 @@ import type {
   MikrotikVlanRequest,
   MikrotikRoute,
   MikrotikDhcpLease,
+  MikrotikDhcpStaticMappingRequest,
   MikrotikFirewall,
   MikrotikFirewallFilterRequest,
   MikrotikFirewallNatRequest,
@@ -1356,6 +1357,16 @@ export function fetchMikrotikRoutes(): Promise<MikrotikRoute[]> {
 
 export function fetchMikrotikDhcpLeases(): Promise<MikrotikDhcpLease[]> {
   return apiGet<MikrotikDhcpLease[]>("/api/v1/mikrotik/dhcp-leases");
+}
+
+export function createMikrotikDhcpStaticMapping(
+  body: MikrotikDhcpStaticMappingRequest
+): Promise<void> {
+  return apiPost<void>("/api/v1/mikrotik/dhcp-static-mappings", body);
+}
+
+export function deleteMikrotikDhcpLease(id: string): Promise<void> {
+  return apiDelete(`/api/v1/mikrotik/dhcp-leases/${encodeURIComponent(id)}`);
 }
 
 export function fetchMikrotikFirewall(): Promise<MikrotikFirewall> {
