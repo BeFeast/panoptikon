@@ -25,7 +25,6 @@ import {
   Settings,
   Share2,
   Shield,
-  Wifi,
   Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -97,7 +96,6 @@ export const navGroups: NavGroup[] = [
     items: [
       { href: "/agents", label: "Agents", icon: Cpu },
       { href: "/ssh-hosts", label: "SSH Hosts", icon: Server },
-      { href: "/xiaomi", label: "Xiaomi", icon: Wifi },
       { href: "/cloudflare-tunnel", label: "CF Tunnel", icon: Cloud },
     ],
   },

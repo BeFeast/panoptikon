@@ -6,8 +6,10 @@ import { Router, Settings } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchSettings } from "@/lib/api";
 import XiaomiRouter from "@/components/XiaomiRouter";
+import XiaomiMeshTopology from "@/components/XiaomiMeshTopology";
 import { PageTransition } from "@/components/PageTransition";
 import { RouterSelector } from "@/components/RouterSelector";
 
@@ -39,7 +41,18 @@ export default function XiaomiRouterPage() {
             <Skeleton className="h-96 w-full" />
           </div>
         ) : xiaomiEnabled ? (
-          <XiaomiRouter />
+          <Tabs defaultValue="system" className="space-y-4">
+            <TabsList className="bg-slate-900 border border-slate-800">
+              <TabsTrigger value="system">System</TabsTrigger>
+              <TabsTrigger value="mesh">Mesh Topology</TabsTrigger>
+            </TabsList>
+            <TabsContent value="system">
+              <XiaomiRouter />
+            </TabsContent>
+            <TabsContent value="mesh">
+              <XiaomiMeshTopology />
+            </TabsContent>
+          </Tabs>
         ) : (
           <div className="flex min-h-[60vh] items-center justify-center">
             <Card className="w-full max-w-md border-slate-800 bg-slate-900">

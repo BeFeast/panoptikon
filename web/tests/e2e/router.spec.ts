@@ -1,10 +1,13 @@
 import { test, expect, login } from "../../e2e/fixtures";
 
 /**
- * E2E tests for the router pages (MikroTik + VyOS).
+ * E2E tests for the router pages (MikroTik + Xiaomi).
  *
  * These tests verify page load, connection status display, interface list
  * rendering, and mobile layout (regression for #416).
+ *
+ * VyOS has been removed from the RouterSelector (#491).
+ * Xiaomi is now only under Router tabs (not a separate nav item).
  *
  * The tests run against a dev environment where no real router is connected,
  * so they exercise the "not configured" / "unreachable" paths as well as
@@ -169,15 +172,13 @@ test.describe("Router Page — MikroTik", () => {
   });
 });
 
-test.describe("Router Page — VyOS", () => {
+test.describe("Router Page — /router redirects to MikroTik", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });
 
-  test("VyOS route redirects to MikroTik (primary router)", async ({
-    page,
-  }) => {
-    // /router always redirects to /router/mikrotik
+  test("/router redirects to /router/mikrotik", async ({ page }) => {
+    // /router always redirects to /router/mikrotik (VyOS removed in #491)
     await page.goto("/router/");
     await page.waitForURL(/\/router\/mikrotik/, { timeout: 15000 });
 
@@ -187,52 +188,121 @@ test.describe("Router Page — VyOS", () => {
     ).toBeVisible({ timeout: 15000 });
 
     await page.screenshot({
-      path: "tests/screenshots/router-vyos-redirect.png",
+      path: "tests/screenshots/router-redirect.png",
     });
   });
 
-  test("VyOS link appears in RouterSelector when VyOS is configured", async ({
+  test("VyOS button is NOT shown in RouterSelector (#491)", async ({
     page,
   }) => {
-    // Configure VyOS settings first
-    await page.goto("/settings/router/");
-    await page.getByRole("tab", { name: /VyOS/ }).click();
-    await expect(page.locator("#vyos-url")).toBeVisible({ timeout: 15000 });
-
-    await page.locator("#vyos-url").fill("https://10.10.0.50");
-    await page.locator("#vyos-key").fill("test-api-key");
-    await page.getByRole("button", { name: "Save" }).click();
-    await expect(page.getByText("VyOS settings saved.")).toBeVisible({
-      timeout: 10000,
-    });
-
-    // Navigate to router page — should redirect to /router/mikrotik
-    await page.goto("/router/");
-    await page.waitForURL(/\/router\/mikrotik/, { timeout: 15000 });
-
-    // RouterSelector should now show the VyOS button with Legacy badge
-    const vyosLink = page.getByRole("link", { name: /VyOS/ });
-    await expect(vyosLink).toBeVisible({ timeout: 15000 });
-    // The Legacy badge is inside the VyOS link
-    await expect(vyosLink.getByText("Legacy")).toBeVisible();
-
-    await page.screenshot({
-      path: "tests/screenshots/router-vyos-selector.png",
-    });
-  });
-
-  test("VyOS mobile layout does not overflow (#416)", async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto("/router/");
-    await page.waitForURL(/\/router\/mikrotik/, { timeout: 15000 });
-
-    // RouterSelector should render without overflow on mobile
+    await page.goto("/router/mikrotik/");
     await expect(
       page.getByRole("link", { name: /MikroTik/ }),
     ).toBeVisible({ timeout: 15000 });
 
+    // VyOS button should NOT be present — it was removed in #491
+    await expect(
+      page.getByRole("link", { name: /VyOS/ }),
+    ).not.toBeVisible();
+
     await page.screenshot({
-      path: "tests/screenshots/router-vyos-mobile.png",
+      path: "tests/screenshots/router-no-vyos.png",
+    });
+  });
+});
+
+test.describe("Router Page — Xiaomi (#491)", () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test("Xiaomi is NOT in the Infrastructure sidebar section (#491)", async ({
+    page,
+  }) => {
+    await page.goto("/dashboard/");
+    await expect(
+      page.getByRole("link", { name: "Dashboard" }).first(),
+    ).toBeVisible({ timeout: 15000 });
+
+    // Infrastructure section should NOT contain a Xiaomi link
+    // The sidebar links for Infrastructure are: Agents, SSH Hosts, CF Tunnel
+    const sidebar = page.locator("aside");
+    await expect(sidebar.getByRole("link", { name: "Agents" })).toBeVisible();
+    await expect(sidebar.getByRole("link", { name: "SSH Hosts" })).toBeVisible();
+
+    // Xiaomi should NOT appear as a standalone sidebar link
+    await expect(
+      sidebar.getByRole("link", { name: "Xiaomi", exact: true }),
+    ).not.toBeVisible();
+
+    await page.screenshot({
+      path: "tests/screenshots/sidebar-no-xiaomi.png",
+      fullPage: true,
+    });
+  });
+
+  test("/xiaomi redirects to /router/xiaomi (#491)", async ({ page }) => {
+    // Old /xiaomi URL should redirect to the merged router/xiaomi page
+    await page.goto("/xiaomi/");
+    await page.waitForURL(/\/router\/xiaomi/, { timeout: 15000 });
+
+    // Should see the RouterSelector with Xiaomi button
+    await expect(
+      page.getByRole("link", { name: /Xiaomi/ }),
+    ).toBeVisible({ timeout: 15000 });
+
+    await page.screenshot({
+      path: "tests/screenshots/xiaomi-redirect.png",
+    });
+  });
+
+  test("Xiaomi router page has System and Mesh Topology tabs (#491)", async ({
+    page,
+  }) => {
+    await page.goto("/router/xiaomi/");
+
+    // RouterSelector should show MikroTik and Xiaomi buttons
+    await expect(
+      page.getByRole("link", { name: /MikroTik/ }),
+    ).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.getByRole("link", { name: /Xiaomi/ }),
+    ).toBeVisible();
+
+    // Either the tabs (System / Mesh Topology) are visible when Xiaomi is enabled,
+    // or the "Not Configured" card is shown. Both are valid states.
+    const systemTab = page.getByRole("tab", { name: "System" });
+    const meshTab = page.getByRole("tab", { name: "Mesh Topology" });
+    const notConfigured = page.getByText("Xiaomi Mesh Not Configured");
+
+    // Wait for either tabs or the not-configured card
+    await expect(
+      systemTab.or(notConfigured),
+    ).toBeVisible({ timeout: 15000 });
+
+    // If tabs are visible, verify both exist
+    if (await systemTab.isVisible()) {
+      await expect(meshTab).toBeVisible();
+    }
+
+    await page.screenshot({
+      path: "tests/screenshots/router-xiaomi-tabs.png",
+    });
+  });
+
+  test("Xiaomi router page mobile layout does not overflow", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    await page.goto("/router/xiaomi/");
+
+    // RouterSelector should render
+    await expect(
+      page.getByRole("link", { name: /Xiaomi/ }),
+    ).toBeVisible({ timeout: 15000 });
+
+    await page.screenshot({
+      path: "tests/screenshots/router-xiaomi-mobile.png",
       fullPage: true,
     });
 
