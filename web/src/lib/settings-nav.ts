@@ -31,11 +31,6 @@ export const settingsNav: SettingsNavGroup[] = [
         description: "Configure Xiaomi mesh router integration.",
       },
       {
-        href: "/settings/caddy",
-        title: "Caddy Reverse Proxy",
-        description: "Primary reverse proxy — manage hosts via Caddy.",
-      },
-      {
         href: "/settings/dns",
         title: "Unbound DNS",
         description: "Manage local DNS A records via Unbound.",

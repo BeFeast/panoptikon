@@ -145,7 +145,7 @@ export default function NpmSettingsPage() {
           <p className="text-xs text-amber-400">
             Legacy — consider migrating to{" "}
             <Link
-              href="/settings/caddy"
+              href="/caddy"
               className="font-medium underline hover:text-amber-300"
             >
               Caddy

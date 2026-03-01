@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   Router,
   Globe,
-  Shield,
   ShieldBan,
   Radar,
   Bell,
@@ -33,10 +32,6 @@ const iconMap: Record<string, { icon: React.ReactNode; iconBg: string }> = {
   "/settings/xiaomi-mesh": {
     icon: <Wifi className="h-4 w-4 text-red-400" />,
     iconBg: "bg-red-500/10",
-  },
-  "/settings/caddy": {
-    icon: <Shield className="h-4 w-4 text-emerald-400" />,
-    iconBg: "bg-emerald-500/10",
   },
   "/settings/dns": {
     icon: <Server className="h-4 w-4 text-teal-400" />,
