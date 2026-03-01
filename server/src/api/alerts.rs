@@ -313,6 +313,34 @@ where
     result.is_some()
 }
 
+/// Check if a recent alert of the same type already exists for a device
+/// within the given cooldown window (in seconds). Used to deduplicate
+/// alerts from device state flapping (e.g. repeated online/offline cycles).
+pub async fn recent_alert_exists<'e, E>(
+    executor: E,
+    device_id: &str,
+    alert_type: &str,
+    cooldown_secs: i64,
+) -> bool
+where
+    E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+{
+    let result: Option<i64> = sqlx::query_scalar(
+        r#"SELECT 1 FROM alerts
+           WHERE device_id = ? AND type = ?
+             AND created_at > datetime('now', '-' || ? || ' seconds')
+           LIMIT 1"#,
+    )
+    .bind(device_id)
+    .bind(alert_type)
+    .bind(cooldown_secs)
+    .fetch_optional(executor)
+    .await
+    .unwrap_or(None);
+
+    result.is_some()
+}
+
 /// Determine the severity level for an alert type.
 pub fn severity_for_alert_type(alert_type: &str) -> &'static str {
     match alert_type {
