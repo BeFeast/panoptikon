@@ -55,7 +55,7 @@ interface NavGroup {
   defaultCollapsed?: boolean;
 }
 
-const navGroups: NavGroup[] = [
+export const navGroups: NavGroup[] = [
   {
     key: "network",
     label: "Network",
@@ -128,7 +128,7 @@ const settingsItem: NavItem = {
 
 const STORAGE_KEY = "panoptikon-nav-groups";
 
-function useGroupCollapse(groups: NavGroup[], pathname: string | null) {
+export function useGroupCollapse(groups: NavGroup[], pathname: string | null) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
     const defaults: Record<string, boolean> = {};
     for (const g of groups) {
