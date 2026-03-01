@@ -265,8 +265,9 @@ test.describe("Router Page — Xiaomi (#491)", () => {
     await expect(
       page.getByRole("link", { name: /MikroTik/ }),
     ).toBeVisible({ timeout: 15000 });
+    // Use exact match to avoid matching "Configure Xiaomi Mesh" link shown in not-configured state
     await expect(
-      page.getByRole("link", { name: /Xiaomi/ }),
+      page.getByRole("link", { name: "Xiaomi", exact: true }),
     ).toBeVisible();
 
     // Either the tabs (System / Mesh Topology) are visible when Xiaomi is enabled,
@@ -296,9 +297,9 @@ test.describe("Router Page — Xiaomi (#491)", () => {
     await page.setViewportSize({ width: 375, height: 667 });
     await page.goto("/router/xiaomi/");
 
-    // RouterSelector should render
+    // RouterSelector should render — use exact match to avoid matching "Configure Xiaomi Mesh"
     await expect(
-      page.getByRole("link", { name: /Xiaomi/ }),
+      page.getByRole("link", { name: "Xiaomi", exact: true }),
     ).toBeVisible({ timeout: 15000 });
 
     await page.screenshot({
