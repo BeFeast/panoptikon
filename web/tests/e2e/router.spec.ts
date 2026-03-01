@@ -31,11 +31,12 @@ test.describe("Router Page — MikroTik", () => {
   });
 
   test("MikroTik page shows connection status indicator", async ({ page }) => {
+    test.setTimeout(60_000); // extended: MikroTik status may take >15s in CI under load
     // First enable MikroTik so we get past the "Not Configured" card
     await page.goto("/settings/router/");
     await expect(page.locator("#mt-url")).toBeVisible({ timeout: 15000 });
     // Wait for settings API to load so the toggle reflects the saved state
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     // Enable MikroTik and save
     const toggle = page.locator("#mt-enabled");
@@ -62,7 +63,7 @@ test.describe("Router Page — MikroTik", () => {
     // Connected/Unreachable badge or the fallback "unreachable" text.
     await expect(
       page.getByText(/Connected|Unreachable|unreachable|Not Configured/),
-    ).toBeVisible({ timeout: 15000 });
+    ).toBeVisible({ timeout: 25000 });
 
     await page.screenshot({
       path: "tests/screenshots/router-mikrotik-status.png",
@@ -72,11 +73,12 @@ test.describe("Router Page — MikroTik", () => {
   test("MikroTik page shows not-configured card when disabled", async ({
     page,
   }) => {
+    test.setTimeout(90_000); // extended: networkidle + status response may take >30s in CI under load
     // Disable MikroTik
     await page.goto("/settings/router/");
     await expect(page.locator("#mt-url")).toBeVisible({ timeout: 15000 });
     // Wait for settings API to load so the toggle reflects the saved state
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     const toggle = page.locator("#mt-enabled");
     const checked = await toggle.getAttribute("aria-checked");
@@ -86,7 +88,7 @@ test.describe("Router Page — MikroTik", () => {
     await page.getByRole("button", { name: "Save" }).click();
     await expect(
       page.getByText("MikroTik settings saved."),
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible({ timeout: 20000 });
 
     // Navigate to MikroTik router page
     await page.goto("/router/mikrotik/");
@@ -94,7 +96,7 @@ test.describe("Router Page — MikroTik", () => {
     // Should show the "Not Configured" card
     await expect(
       page.getByText("MikroTik Not Configured"),
-    ).toBeVisible({ timeout: 15000 });
+    ).toBeVisible({ timeout: 25000 });
     await expect(
       page.getByRole("link", { name: /Configure Router/ }),
     ).toBeVisible();

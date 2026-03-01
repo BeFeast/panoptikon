@@ -12,15 +12,16 @@ test.describe("Settings page — legacy section visibility", () => {
     ).toBeVisible({ timeout: 10000 });
   });
 
-  test("NPM card is inside the Advanced / Legacy section", async ({
+  test("Advanced settings card is inside the Advanced / Legacy section", async ({
     page,
   }) => {
     const legacyHeading = page.getByText("Advanced / Legacy", { exact: true });
     await expect(legacyHeading).toBeVisible({ timeout: 10000 });
 
-    await expect(page.getByText("Nginx Proxy Manager")).toBeVisible();
+    // NPM was removed from settings nav (#492); only "Advanced" remains in this section
+    await expect(page.getByText("Advanced", { exact: true })).toBeVisible();
     await expect(
-      page.getByText("Legacy reverse proxy — consider migrating to Caddy."),
+      page.getByText("Toggle legacy router visibility and other advanced options."),
     ).toBeVisible();
   });
 

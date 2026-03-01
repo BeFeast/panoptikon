@@ -53,7 +53,7 @@ test.describe("Cloudflare Tunnel Settings", () => {
   }) => {
     await page.goto("/settings/");
     await expect(
-      page.getByText("Cloudflare Tunnel"),
+      page.getByText("Cloudflare Tunnel", { exact: true }),
     ).toBeVisible({ timeout: 15000 });
 
     await page.screenshot({
