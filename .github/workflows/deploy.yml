@@ -1,0 +1,13 @@
+name: Deploy to LXC
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Build & Deploy to LXC 115
+    runs-on: self-hosted
+    steps:
+      - name: Run deploy script
+        run: /home/shtrudel/src/panoptikon/scripts/deploy-lxc.sh
