@@ -62,6 +62,7 @@ struct XiaomiTopoGraph {
     hardware: String,
     /// 2 = AP mode (main node), 1 = mesh satellite.
     #[serde(default)]
+    #[allow(dead_code)]
     mode: i32,
     /// Number of online devices. May be a string or number in the JSON.
     #[serde(default)]
@@ -83,6 +84,7 @@ struct XiaomiTopoLeaf {
     hardware: String,
     /// 1 = mesh satellite, 2 = AP mode.
     #[serde(default)]
+    #[allow(dead_code)]
     mode: i32,
     /// Connection type: "wired" or "wireless".
     #[serde(default)]
