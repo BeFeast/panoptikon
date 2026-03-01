@@ -1313,6 +1313,72 @@ pub async fn get_sysinfo(
     Ok(Json(sysinfo))
 }
 
+/// POST /api/v1/devices/identify — manually trigger device identification
+/// from external sources (MikroTik DHCP, Xiaomi router).
+///
+/// Useful when the user configures router credentials after devices are
+/// already discovered. Re-queries all external sources and updates hostnames
+/// for devices that don't already have one.
+pub async fn identify_all(State(state): State<AppState>) -> Result<Json<IdentifyResult>, AppError> {
+    // Fetch all devices with their MAC addresses.
+    let rows: Vec<(String, String)> =
+        sqlx::query_as("SELECT id, mac FROM devices ORDER BY last_seen_at DESC")
+            .fetch_all(&state.db)
+            .await?;
+
+    let count = rows.len();
+    crate::scanner::device_identify::identify_from_external_sources(&state.db, &rows).await;
+
+    // After external identification, re-run enrichment on devices that got new hostnames.
+    for (device_id, mac) in &rows {
+        let hostname: Option<String> =
+            sqlx::query_scalar("SELECT hostname FROM devices WHERE id = ?")
+                .bind(device_id)
+                .fetch_optional(&state.db)
+                .await?
+                .flatten();
+        let vendor: Option<String> = sqlx::query_scalar("SELECT vendor FROM devices WHERE id = ?")
+            .bind(device_id)
+            .fetch_optional(&state.db)
+            .await?
+            .flatten();
+        let mdns_svcs: Option<String> =
+            sqlx::query_scalar("SELECT mdns_services FROM devices WHERE id = ?")
+                .bind(device_id)
+                .fetch_optional(&state.db)
+                .await?
+                .flatten();
+        let ip: Option<String> = sqlx::query_scalar(
+            "SELECT ip FROM device_ips WHERE device_id = ? AND is_current = 1 LIMIT 1",
+        )
+        .bind(device_id)
+        .fetch_optional(&state.db)
+        .await?;
+
+        let ip_str = ip.as_deref().unwrap_or("");
+        crate::enrichment::enrich_device(
+            &state.db,
+            device_id,
+            ip_str,
+            mac,
+            hostname.as_deref(),
+            vendor.as_deref(),
+            mdns_svcs.as_deref(),
+            None,
+        )
+        .await;
+    }
+
+    Ok(Json(IdentifyResult {
+        devices_checked: count,
+    }))
+}
+
+#[derive(Debug, Serialize)]
+pub struct IdentifyResult {
+    pub devices_checked: usize,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

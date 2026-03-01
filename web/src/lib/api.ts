@@ -377,6 +377,16 @@ export function createAsset(body: CreateAssetRequest): Promise<Device> {
   return apiPost<Device>("/api/v1/devices", body);
 }
 
+// ─── Device Identification ──────────────────────────────
+
+export interface IdentifyResult {
+  devices_checked: number;
+}
+
+export function identifyDevices(): Promise<IdentifyResult> {
+  return apiPost<IdentifyResult>("/api/v1/devices/identify");
+}
+
 // ─── Agents ─────────────────────────────────────────────
 
 export function fetchAgents(): Promise<Agent[]> {
