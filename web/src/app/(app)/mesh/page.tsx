@@ -21,10 +21,10 @@ import {
   Loader2,
   RefreshCw,
   Wifi,
+  WifiOff,
   Cable,
   MonitorSmartphone,
   Crown,
-  WifiOff,
   Settings,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -39,6 +39,8 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 
 // ─── Types ──────────────────────────────────────────────
@@ -404,40 +406,41 @@ export default function MeshPage() {
     return (
       <PageTransition>
         <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-          <div className="mx-4 flex max-w-md flex-col items-center gap-4 rounded-xl border border-slate-800 bg-slate-900/80 p-8 text-center shadow-lg">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-500/10">
-              <WifiOff className="h-6 w-6 text-rose-400" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-base font-semibold text-white">
-                Mesh router unreachable
-              </h2>
-              <p className="text-sm leading-relaxed text-slate-400">
-                Could not connect to the Xiaomi mesh router. Make sure the
-                router IP is correct and the device is reachable on your
-                network.
+          <Card className="w-full max-w-md border-slate-800 bg-slate-900">
+            <CardContent className="flex flex-col items-center gap-4 py-12">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/10">
+                <WifiOff className="h-8 w-8 text-rose-400" />
+              </div>
+              <h1 className="text-xl font-semibold text-white">
+                Mesh Topology Unavailable
+              </h1>
+              <p className="text-center text-sm text-slate-400">
+                Could not load mesh topology from the Xiaomi router. Make sure the router is powered on and the IP address is correct in Settings.
               </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <Link
-                href="/settings/xiaomi-mesh"
-                className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-500"
-              >
-                <Settings className="h-3.5 w-3.5" />
-                Xiaomi Mesh Settings
-              </Link>
-              <button
-                onClick={() => {
-                  setLoading(true)
-                  buildGraph(true)
-                }}
-                className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-800"
-              >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Retry
-              </button>
-            </div>
-          </div>
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  className="border-slate-800 text-slate-300 hover:bg-slate-800"
+                  onClick={() => {
+                    setLoading(true)
+                    buildGraph(true)
+                  }}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Retry
+                </Button>
+                <Link href="/settings/xiaomi-mesh">
+                  <Button
+                    variant="outline"
+                    className="border-slate-800 text-slate-300 hover:bg-slate-800"
+                  >
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </PageTransition>
     )
