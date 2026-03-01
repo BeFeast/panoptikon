@@ -245,7 +245,7 @@ export default function CloudflareTunnelPage() {
               <p className="mt-2 text-sm text-slate-500">
                 Set your Cloudflare API token, account ID, and tunnel ID in{" "}
                 <a
-                  href="/settings"
+                  href="/settings/cloudflare-tunnel"
                   className="text-blue-400 underline hover:text-blue-300"
                 >
                   Settings

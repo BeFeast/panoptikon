@@ -81,7 +81,7 @@ const iconMap: Record<string, { icon: React.ReactNode; iconBg: string }> = {
     icon: <Settings2 className="h-4 w-4 text-slate-400" />,
     iconBg: "bg-slate-500/10",
   },
-  "/settings/npm": {
+  "/settings/cloudflare-tunnel": {
     icon: <Globe className="h-4 w-4 text-orange-400" />,
     iconBg: "bg-orange-500/10",
   },

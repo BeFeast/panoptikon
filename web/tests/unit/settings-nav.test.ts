@@ -11,23 +11,23 @@ describe("settingsNav visibility gating", () => {
     expect(legacyGroup).toBeDefined();
   });
 
-  it("legacy section contains NPM (Nginx Proxy Manager)", () => {
+  it("legacy section does not contain NPM (replaced by Caddy)", () => {
     const npmItem = legacyGroup!.items.find(
       (i) => i.href === "/settings/npm",
     );
-    expect(npmItem).toBeDefined();
-    expect(npmItem!.title).toBe("Nginx Proxy Manager");
+    expect(npmItem).toBeUndefined();
   });
 
   it("legacy section has a subtitle describing legacy integrations", () => {
     expect(legacyGroup!.subtitle).toMatch(/legacy integrations/i);
   });
 
-  it("NPM is NOT in the primary Integrations section", () => {
-    const npmInIntegrations = integrationsGroup!.items.find(
-      (i) => i.href === "/settings/npm",
+  it("Cloudflare Tunnel is in the primary Integrations section", () => {
+    const cfItem = integrationsGroup!.items.find(
+      (i) => i.href === "/settings/cloudflare-tunnel",
     );
-    expect(npmInIntegrations).toBeUndefined();
+    expect(cfItem).toBeDefined();
+    expect(cfItem!.title).toBe("Cloudflare Tunnel");
   });
 
   it("Router integration is in the primary Integrations section", () => {
