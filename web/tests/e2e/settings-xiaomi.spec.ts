@@ -20,11 +20,18 @@ test.describe("Xiaomi Mesh Settings", () => {
   test("save default IP 10.10.0.199 persists after reload", async ({
     page,
   }) => {
-    // The default IP is pre-filled in the form
-    await expect(page.locator("#xiaomi-ip")).toHaveValue("10.10.0.199");
+    // Explicitly set the IP to the default value. A prior test (e.g. mesh.spec.ts)
+    // may have saved a different IP to the DB, so we cannot simply assert the
+    // current value — we must restore it and verify it round-trips correctly.
+    await page.locator("#xiaomi-ip").fill("10.10.0.199");
 
-    // Tweak poll interval to make the form dirty so Save is enabled
-    await page.locator("#xiaomi-poll-interval").fill("60");
+    // Use a poll interval that differs from whatever is currently saved so the
+    // form is guaranteed to be dirty regardless of prior test state.
+    const currentInterval = await page
+      .locator("#xiaomi-poll-interval")
+      .inputValue();
+    const newInterval = currentInterval === "60" ? "90" : "60";
+    await page.locator("#xiaomi-poll-interval").fill(newInterval);
 
     await page.getByRole("button", { name: "Save" }).click();
     await expect(
