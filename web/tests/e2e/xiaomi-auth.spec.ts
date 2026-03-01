@@ -239,7 +239,8 @@ test.describe("Xiaomi Router — auth fallback (#489)", () => {
     await page.goto("/router/xiaomi/");
 
     await expect(page.getByText("WiFi Bands")).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText("HomeWiFi")).toBeVisible();
+    // Use exact: true to avoid strict mode violation — "HomeWiFi" is a substring of "HomeWiFi_5G"
+    await expect(page.getByText("HomeWiFi", { exact: true })).toBeVisible();
     await expect(page.getByText("HomeWiFi_5G")).toBeVisible();
     await expect(page.getByText("2.4 GHz")).toBeVisible();
     await expect(page.getByText("5 GHz")).toBeVisible();
@@ -257,7 +258,8 @@ test.describe("Xiaomi Router — auth fallback (#489)", () => {
       timeout: 15000,
     });
     await expect(page.getByText("1.0.67")).toBeVisible();
-    await expect(page.getByText("RB03")).toBeVisible();
+    // Use exact: true — "RB03" is a case-insensitive substring of "xiaomi.router.rb03"
+    await expect(page.getByText("RB03", { exact: true })).toBeVisible();
     await expect(page.getByText("Up to date")).toBeVisible();
 
     await page.screenshot({
