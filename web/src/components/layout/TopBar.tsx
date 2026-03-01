@@ -3,7 +3,7 @@
 import { type ReactNode, useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Bell, Settings, Lock, LogOut, Monitor, Cpu, Terminal, Package } from "lucide-react";
-import { searchAll, fetchRecentAlerts, fetchDashboardStats, markAllAlertsRead, logout } from "@/lib/api";
+import { searchAll, fetchRecentAlerts, fetchDashboardStats, markAllAlertsRead, deleteAllAlerts, logout } from "@/lib/api";
 import { useWsEvent } from "@/lib/ws";
 import { timeAgo } from "@/lib/format";
 import type { SearchResponse, SearchDevice, SearchAgent, SearchAlert, SearchSshTarget, SearchAsset, Alert } from "@/lib/types";
@@ -52,10 +52,20 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
     return () => clearInterval(interval);
   }, [refreshAlerts]);
 
+  // Debounced refresh — coalesce rapid WS events into a single API call
+  const wsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const debouncedRefresh = useCallback(() => {
+    if (wsDebounceRef.current) clearTimeout(wsDebounceRef.current);
+    wsDebounceRef.current = setTimeout(() => {
+      refreshAlerts();
+      wsDebounceRef.current = null;
+    }, 2_000);
+  }, [refreshAlerts]);
+
   // Refresh on WebSocket device/agent events (often accompany alerts)
   useWsEvent(
     ["device_online", "device_offline", "new_device", "agent_offline"],
-    refreshAlerts,
+    debouncedRefresh,
   );
 
   // Click outside to close bell dropdown
@@ -74,6 +84,16 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
       await markAllAlertsRead();
       setUnreadCount(0);
       setAlerts((prev) => prev.map((a) => ({ ...a, is_read: true })));
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleClearAll() {
+    try {
+      await deleteAllAlerts();
+      setUnreadCount(0);
+      setAlerts([]);
     } catch {
       // ignore
     }
@@ -428,14 +448,24 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
             <div className="absolute right-0 top-full z-50 mt-1 w-80 rounded-md border border-slate-800 bg-slate-950 shadow-xl">
               <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2.5">
                 <span className="text-sm font-semibold text-white">Notifications</span>
-                {unreadCount > 0 && (
-                  <button
-                    onClick={handleMarkAllRead}
-                    className="text-xs text-accent hover:text-accent/80 transition-colors"
-                  >
-                    Mark all read
-                  </button>
-                )}
+                <div className="flex items-center gap-3">
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-xs text-accent hover:text-accent/80 transition-colors"
+                    >
+                      Mark all read
+                    </button>
+                  )}
+                  {alerts.length > 0 && (
+                    <button
+                      onClick={handleClearAll}
+                      className="text-xs text-slate-400 hover:text-rose-400 transition-colors"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="max-h-72 overflow-y-auto">

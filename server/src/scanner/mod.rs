@@ -12,7 +12,7 @@ use std::time::Duration;
 use tokio::task::JoinSet;
 use tracing::{debug, error, info, warn};
 
-use crate::api::alerts::{is_device_muted, severity_for_alert_type};
+use crate::api::alerts::{is_device_muted, recent_alert_exists, severity_for_alert_type};
 use crate::config::ScannerConfig;
 
 /// Enrichment target tuple: (device_id, ip, mac, hostname, vendor, mdns_services).
@@ -266,8 +266,10 @@ pub async fn process_scan_results(
                     .execute(&mut *tx)
                     .await?;
 
-                    // Create alert (skip if device is muted).
-                    if !is_device_muted(&mut *tx, &device_id).await {
+                    // Create alert (skip if device is muted or duplicate).
+                    if !is_device_muted(&mut *tx, &device_id).await
+                        && !recent_alert_exists(&mut *tx, &device_id, "device_online", 600).await
+                    {
                         let alert_id = uuid::Uuid::new_v4().to_string();
                         let severity = severity_for_alert_type("device_online");
                         sqlx::query(
@@ -498,8 +500,10 @@ pub async fn process_scan_results(
         .execute(&mut *tx)
         .await?;
 
-        // Create alert (skip if device is muted).
-        if !is_device_muted(&mut *tx, device_id).await {
+        // Create alert (skip if device is muted or duplicate).
+        if !is_device_muted(&mut *tx, device_id).await
+            && !recent_alert_exists(&mut *tx, device_id, "device_offline", 600).await
+        {
             let alert_id = uuid::Uuid::new_v4().to_string();
             let severity = severity_for_alert_type("device_offline");
             sqlx::query(
