@@ -3,20 +3,24 @@ import { test, expect, login } from "../../e2e/fixtures";
 test.describe("Xiaomi Mesh Settings", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
+    // Set up response listener BEFORE navigating so we don't miss the fetch
+    const settingsLoaded = page.waitForResponse(
+      (resp) =>
+        /\/api\/v1\/settings($|[?/])/.test(resp.url()) &&
+        resp.request().method() === "GET" &&
+        resp.status() === 200,
+      { timeout: 15000 },
+    );
     await page.goto("/settings/xiaomi-mesh/");
+    // Wait for the settings API response so the form is populated before we interact
+    await settingsLoaded;
     await expect(page.locator("#xiaomi-ip")).toBeVisible({ timeout: 15000 });
-    // Wait for the settings API call to complete so tests don't race with it
-    await page.waitForLoadState("networkidle");
   });
 
   test("save default IP 10.10.0.199 persists after reload", async ({
     page,
   }) => {
-    // Explicitly clear and set the default IP to ensure a known state
-    // regardless of what the database contains from previous test runs
-    // (avoids test-pollution and browser autofill overriding the value).
-    await page.locator("#xiaomi-ip").clear();
-    await page.locator("#xiaomi-ip").fill("10.10.0.199");
+    // The default IP is pre-filled in the form
     await expect(page.locator("#xiaomi-ip")).toHaveValue("10.10.0.199");
 
     // Tweak poll interval to make the form dirty so Save is enabled
@@ -27,10 +31,17 @@ test.describe("Xiaomi Mesh Settings", () => {
       page.getByText("Xiaomi Mesh settings saved."),
     ).toBeVisible({ timeout: 10000 });
 
+    // Wait for settings on reload
+    const reloadSettingsLoaded = page.waitForResponse(
+      (resp) =>
+        /\/api\/v1\/settings($|[?/])/.test(resp.url()) &&
+        resp.request().method() === "GET" &&
+        resp.status() === 200,
+      { timeout: 15000 },
+    );
     await page.reload();
+    await reloadSettingsLoaded;
     await expect(page.locator("#xiaomi-ip")).toBeVisible({ timeout: 15000 });
-    // Wait for the settings API to finish loading before asserting persisted values
-    await page.waitForLoadState("networkidle");
 
     // IP must be 10.10.0.199 — not empty or null
     await expect(page.locator("#xiaomi-ip")).toHaveValue("10.10.0.199");
@@ -50,7 +61,16 @@ test.describe("Xiaomi Mesh Settings", () => {
       page.getByText("Xiaomi Mesh settings saved."),
     ).toBeVisible({ timeout: 10000 });
 
+    // Wait for settings on reload
+    const reloadSettingsLoaded = page.waitForResponse(
+      (resp) =>
+        /\/api\/v1\/settings($|[?/])/.test(resp.url()) &&
+        resp.request().method() === "GET" &&
+        resp.status() === 200,
+      { timeout: 15000 },
+    );
     await page.reload();
+    await reloadSettingsLoaded;
     await expect(page.locator("#xiaomi-ip")).toBeVisible({ timeout: 15000 });
 
     await expect(page.locator("#xiaomi-ip")).toHaveValue("10.10.0.1");
@@ -78,7 +98,16 @@ test.describe("Xiaomi Mesh Settings", () => {
       page.getByText("Xiaomi Mesh settings saved."),
     ).toBeVisible({ timeout: 10000 });
 
+    // Wait for settings on reload
+    const reloadSettingsLoaded = page.waitForResponse(
+      (resp) =>
+        /\/api\/v1\/settings($|[?/])/.test(resp.url()) &&
+        resp.request().method() === "GET" &&
+        resp.status() === 200,
+      { timeout: 15000 },
+    );
     await page.reload();
+    await reloadSettingsLoaded;
     await expect(toggle).toBeVisible({ timeout: 15000 });
     await expect(toggle).toHaveAttribute("aria-checked", "true");
 
@@ -105,8 +134,17 @@ test.describe("Xiaomi Mesh Settings", () => {
       page.getByText("Xiaomi Mesh settings saved."),
     ).toBeVisible({ timeout: 10000 });
 
+    // Wait for settings on reload
+    const reloadSettingsLoaded = page.waitForResponse(
+      (resp) =>
+        /\/api\/v1\/settings($|[?/])/.test(resp.url()) &&
+        resp.request().method() === "GET" &&
+        resp.status() === 200,
+      { timeout: 15000 },
+    );
     // Reload and verify password was stored
     await page.reload();
+    await reloadSettingsLoaded;
     await expect(page.locator("#xiaomi-password")).toBeVisible({
       timeout: 15000,
     });
@@ -132,7 +170,16 @@ test.describe("Xiaomi Mesh Settings", () => {
       page.getByText("Xiaomi Mesh settings saved."),
     ).toBeVisible({ timeout: 10000 });
 
+    // Wait for settings on reload
+    const reloadSettingsLoaded = page.waitForResponse(
+      (resp) =>
+        /\/api\/v1\/settings($|[?/])/.test(resp.url()) &&
+        resp.request().method() === "GET" &&
+        resp.status() === 200,
+      { timeout: 15000 },
+    );
     await page.reload();
+    await reloadSettingsLoaded;
     await expect(page.locator("#xiaomi-poll-interval")).toBeVisible({
       timeout: 15000,
     });

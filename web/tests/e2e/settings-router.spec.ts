@@ -3,11 +3,19 @@ import { test, expect, login } from "../../e2e/fixtures";
 test.describe("Router Settings — MikroTik", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
+    // Set up response listener BEFORE navigating so we don't miss the fetch
+    const settingsLoaded = page.waitForResponse(
+      (resp) =>
+        /\/api\/v1\/settings($|[?/])/.test(resp.url()) &&
+        resp.request().method() === "GET" &&
+        resp.status() === 200,
+      { timeout: 15000 },
+    );
     await page.goto("/settings/router/");
+    // Wait for the settings API response so the form is populated before we interact
+    await settingsLoaded;
     // MikroTik tab is active by default
     await expect(page.locator("#mt-url")).toBeVisible({ timeout: 15000 });
-    // Wait for the settings API call to complete so toggle state is loaded
-    await page.waitForLoadState("networkidle");
   });
 
   test("default URL placeholder shows 10.10.0.125", async ({ page }) => {
@@ -30,7 +38,16 @@ test.describe("Router Settings — MikroTik", () => {
       page.getByText("MikroTik settings saved."),
     ).toBeVisible({ timeout: 10000 });
 
+    // Wait for settings on reload
+    const reloadSettingsLoaded = page.waitForResponse(
+      (resp) =>
+        /\/api\/v1\/settings($|[?/])/.test(resp.url()) &&
+        resp.request().method() === "GET" &&
+        resp.status() === 200,
+      { timeout: 15000 },
+    );
     await page.reload();
+    await reloadSettingsLoaded;
     await expect(page.locator("#mt-url")).toBeVisible({ timeout: 15000 });
 
     await expect(page.locator("#mt-url")).toHaveValue(testUrl);
@@ -57,7 +74,16 @@ test.describe("Router Settings — MikroTik", () => {
       page.getByText("MikroTik settings saved."),
     ).toBeVisible({ timeout: 10000 });
 
+    // Wait for settings on reload
+    const reloadSettingsLoaded = page.waitForResponse(
+      (resp) =>
+        /\/api\/v1\/settings($|[?/])/.test(resp.url()) &&
+        resp.request().method() === "GET" &&
+        resp.status() === 200,
+      { timeout: 15000 },
+    );
     await page.reload();
+    await reloadSettingsLoaded;
     await expect(toggle).toBeVisible({ timeout: 15000 });
     await expect(toggle).toHaveAttribute("aria-checked", expected);
   });
@@ -83,12 +109,29 @@ test.describe("Router Settings — MikroTik", () => {
 test.describe("Router Settings — VyOS", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
+    // Set up response listener BEFORE navigating so we don't miss the MikroTik fetch
+    const mikrotikSettingsLoaded = page.waitForResponse(
+      (resp) =>
+        /\/api\/v1\/settings($|[?/])/.test(resp.url()) &&
+        resp.request().method() === "GET" &&
+        resp.status() === 200,
+      { timeout: 15000 },
+    );
     await page.goto("/settings/router/");
+    await mikrotikSettingsLoaded;
+
+    // Set up listener for VyOS panel's fetch BEFORE clicking the tab
+    const vyosSettingsLoaded = page.waitForResponse(
+      (resp) =>
+        /\/api\/v1\/settings($|[?/])/.test(resp.url()) &&
+        resp.request().method() === "GET" &&
+        resp.status() === 200,
+      { timeout: 15000 },
+    );
     // Switch to VyOS tab
     await page.getByRole("tab", { name: /VyOS/ }).click();
+    await vyosSettingsLoaded;
     await expect(page.locator("#vyos-url")).toBeVisible({ timeout: 15000 });
-    // Wait for the settings API call to complete
-    await page.waitForLoadState("networkidle");
   });
 
   test("save and reload persists URL and API key", async ({ page }) => {
@@ -102,8 +145,26 @@ test.describe("Router Settings — VyOS", () => {
       timeout: 10000,
     });
 
+    // Set up listeners for both panels on reload
+    const reloadMikrotikLoaded = page.waitForResponse(
+      (resp) =>
+        /\/api\/v1\/settings($|[?/])/.test(resp.url()) &&
+        resp.request().method() === "GET" &&
+        resp.status() === 200,
+      { timeout: 15000 },
+    );
     await page.reload();
+    await reloadMikrotikLoaded;
+
+    const reloadVyosLoaded = page.waitForResponse(
+      (resp) =>
+        /\/api\/v1\/settings($|[?/])/.test(resp.url()) &&
+        resp.request().method() === "GET" &&
+        resp.status() === 200,
+      { timeout: 15000 },
+    );
     await page.getByRole("tab", { name: /VyOS/ }).click();
+    await reloadVyosLoaded;
     await expect(page.locator("#vyos-url")).toBeVisible({ timeout: 15000 });
 
     await expect(page.locator("#vyos-url")).toHaveValue(testUrl);
