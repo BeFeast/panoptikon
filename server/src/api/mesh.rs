@@ -123,8 +123,8 @@ pub async fn topology(
 
     let resp = client.get(&url).send().await.map_err(|e| {
         warn!("failed to fetch mesh topology from {url}: {e}");
-        AppError::BadGateway(format!(
-            "Could not reach Xiaomi mesh router at {router_ip}. Check the router IP in Settings \u{2192} Xiaomi Mesh."
+        AppError::ServiceUnavailable(format!(
+            "Xiaomi mesh router at {router_ip} is not reachable. Check that the router IP is correct in Settings."
         ))
     })?;
 
@@ -134,21 +134,22 @@ pub async fn topology(
             resp.status().as_u16()
         );
         return Err(AppError::BadGateway(format!(
-            "Xiaomi mesh router at {router_ip} returned an error. Verify the router is a Xiaomi mesh device."
+            "Xiaomi mesh router at {router_ip} returned an error (HTTP {})",
+            resp.status().as_u16()
         )));
     }
 
     let raw: XiaomiTopoResponse = resp.json().await.map_err(|e| {
         warn!("failed to parse mesh topology response: {e}");
         AppError::BadGateway(format!(
-            "Invalid response from Xiaomi mesh router at {router_ip}. The device may not be a supported Xiaomi mesh router."
+            "Unexpected response from Xiaomi mesh router at {router_ip}"
         ))
     })?;
 
     if raw.code != 0 {
         warn!("mesh topology returned error code {}", raw.code);
         return Err(AppError::BadGateway(format!(
-            "Xiaomi mesh router at {router_ip} returned error code {}.",
+            "Xiaomi mesh router at {router_ip} returned error code {}",
             raw.code
         )));
     }
