@@ -105,9 +105,11 @@ async fn fetch_xiaomi_hostnames(db: &SqlitePool) -> Option<Vec<(String, Hostname
         .await
         .unwrap_or_else(|| "10.10.0.199".to_string());
     let password = get_setting(db, "xiaomi_mesh_password").await?;
+    let proxy_host = get_setting(db, "xiaomi_mesh_proxy_host").await;
 
     let http = crate::xiaomi::client::shared_http_client();
-    let client = crate::xiaomi::client::XiaomiClient::new(&ip, &password, http);
+    let client =
+        crate::xiaomi::client::XiaomiClient::new(&ip, &password, http, proxy_host.as_deref());
 
     match client.device_list().await {
         Ok(devices) => {

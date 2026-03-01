@@ -117,8 +117,14 @@ async fn fetch_xiaomi_device_names(
         Some(p) => p,
         None => return result,
     };
+    let proxy_host = get_setting(db, "xiaomi_mesh_proxy_host").await;
 
-    let client = crate::xiaomi::client::XiaomiClient::new(&ip, &password, http.clone());
+    let client = crate::xiaomi::client::XiaomiClient::new(
+        &ip,
+        &password,
+        http.clone(),
+        proxy_host.as_deref(),
+    );
 
     match client.device_list().await {
         Ok(devices) => {

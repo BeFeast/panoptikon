@@ -44,6 +44,9 @@ pub struct SettingsResponse {
     /// Never return the password to the frontend — just whether one is set.
     pub xiaomi_mesh_password_set: bool,
     pub xiaomi_mesh_poll_interval: Option<u64>,
+    /// Optional proxy host (IP:port) for reaching the Xiaomi router when direct
+    /// access is blocked (e.g. router filters port 80 from non-DHCP clients).
+    pub xiaomi_mesh_proxy_host: Option<String>,
     // --- Cloudflare Tunnel ---
     pub cloudflare_api_token_set: bool,
     pub cloudflare_account_id: Option<String>,
@@ -87,6 +90,7 @@ pub struct UpdateSettingsRequest {
     pub xiaomi_mesh_ip: Option<String>,
     pub xiaomi_mesh_password: Option<String>,
     pub xiaomi_mesh_poll_interval: Option<u64>,
+    pub xiaomi_mesh_proxy_host: Option<String>,
     // --- Cloudflare Tunnel ---
     pub cloudflare_api_token: Option<String>,
     pub cloudflare_account_id: Option<String>,
@@ -208,6 +212,7 @@ pub async fn get_settings(
         .await
         .and_then(|v| v.parse().ok())
         .or(Some(30));
+    let xiaomi_mesh_proxy_host = get_setting(&state, "xiaomi_mesh_proxy_host").await;
 
     // Cloudflare Tunnel settings.
     let cloudflare_api_token_set = get_setting(&state, "cloudflare_api_token").await.is_some();
@@ -245,6 +250,7 @@ pub async fn get_settings(
         xiaomi_mesh_ip,
         xiaomi_mesh_password_set,
         xiaomi_mesh_poll_interval,
+        xiaomi_mesh_proxy_host,
         cloudflare_api_token_set,
         cloudflare_account_id,
         cloudflare_tunnel_id,
@@ -413,6 +419,11 @@ pub async fn update_settings(
             xiaomi_mesh_poll_interval = interval,
             "Xiaomi Mesh poll interval updated"
         );
+    }
+
+    if let Some(ref proxy_host) = body.xiaomi_mesh_proxy_host {
+        upsert_setting(&state, "xiaomi_mesh_proxy_host", proxy_host).await?;
+        info!(xiaomi_mesh_proxy_host = %proxy_host, "Xiaomi Mesh proxy host updated");
     }
 
     // --- Cloudflare Tunnel settings ---

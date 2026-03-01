@@ -36,8 +36,14 @@ async fn xiaomi_client(state: &AppState) -> Option<XiaomiClient> {
         .await
         .unwrap_or_else(|| "10.10.0.199".to_string());
     let password = get_setting(state, "xiaomi_mesh_password").await?;
+    let proxy_host = get_setting(state, "xiaomi_mesh_proxy_host").await;
 
-    Some(XiaomiClient::new(&ip, &password, state.xiaomi_http.clone()))
+    Some(XiaomiClient::new(
+        &ip,
+        &password,
+        state.xiaomi_http.clone(),
+        proxy_host.as_deref(),
+    ))
 }
 
 // ── Response types ─────────────────────────────────────────
