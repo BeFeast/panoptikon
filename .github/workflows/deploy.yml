@@ -11,3 +11,25 @@ jobs:
     steps:
       - name: Run deploy script
         run: /home/shtrudel/src/panoptikon/scripts/deploy-lxc.sh
+
+  smoke-test:
+    name: Post-Deploy Smoke Test
+    runs-on: self-hosted
+    needs: [deploy]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Playwright browsers
+        working-directory: web
+        run: ~/.bun/bin/bun x playwright install chromium --with-deps
+
+      - name: Run smoke tests against LXC 115
+        run: REPO_ROOT="$GITHUB_WORKSPACE" scripts/smoke-test.sh http://10.10.0.22:8080
+
+      - name: Alert on failure
+        if: failure()
+        run: |
+          echo "::error::Smoke test failed after deploy to LXC 115. Deploy is NOT verified."
+          gh issue comment 428 --repo "$GITHUB_REPOSITORY" --body "Smoke test failed after deploy. Manual verification needed." || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

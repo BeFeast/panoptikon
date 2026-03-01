@@ -19,22 +19,37 @@ CARGO="${CARGO:-$HOME/.cargo/bin/cargo}"
 
 cd "$REPO_ROOT"
 
-echo "=== Step 1/4: Pulling latest main ==="
+echo "=== Step 1/5: Pulling latest main ==="
 git checkout main
 git pull origin main
 
-echo "=== Step 2/4: Building web frontend ==="
+echo "=== Step 2/5: Building web frontend ==="
 cd web
 "$BUN" install --frozen-lockfile
 "$BUN" run build
 cd "$REPO_ROOT"
 
-echo "=== Step 3/4: Building Rust server ==="
+echo "=== Step 3/5: Building Rust server ==="
 "$CARGO" build --release -p panoptikon-server
 
-echo "=== Step 4/4: Deploying to LXC $LXC_ID ==="
+echo "=== Step 4/5: Deploying to LXC $LXC_ID ==="
 scp target/release/panoptikon-server "$DEVBOX":/tmp/panoptikon-server
 ssh "$DEVBOX" "pct exec $LXC_ID -- systemctl stop panoptikon; pct push $LXC_ID /tmp/panoptikon-server /usr/local/bin/panoptikon-server; pct exec $LXC_ID -- systemctl start panoptikon"
 
 echo ""
 echo "Deploy complete — panoptikon is running on LXC $LXC_ID"
+
+echo ""
+echo "=== Step 5/5: Post-deploy smoke test ==="
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+if REPO_ROOT="$REPO_ROOT" "$SCRIPT_DIR/smoke-test.sh" "http://10.10.0.22:8080"; then
+  echo "Smoke test passed — deploy is verified."
+else
+  echo "SMOKE TEST FAILED — deploy is NOT verified."
+  echo "Alerting Oleg..."
+  # Send alert via GitHub issue comment if gh is available
+  if command -v gh &>/dev/null; then
+    gh issue comment 428 --repo BeFeast/panoptikon --body "Smoke test failed after deploy to LXC $LXC_ID. Manual verification needed." 2>/dev/null || true
+  fi
+  exit 1
+fi
