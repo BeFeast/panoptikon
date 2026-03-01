@@ -75,7 +75,7 @@ function HealthRing({ online, total }: { online: number; total: number }) {
 
   return (
     <div className="flex flex-col items-center justify-center gap-1">
-      <div className="relative h-28 w-28">
+      <div className="relative aspect-square w-full max-w-[7rem]">
         <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
           <circle
             cx="50"
@@ -143,7 +143,7 @@ function StatCard({
   href?: string;
 }) {
   const inner = (
-    <Card className="border-slate-800 bg-slate-900 transition-all hover:border-blue-500/50 hover:bg-slate-800/60 hover:shadow-lg hover:shadow-blue-500/5">
+    <Card className="h-full border-slate-800 bg-slate-900 transition-all hover:border-blue-500/50 hover:bg-slate-800/60 hover:shadow-lg hover:shadow-blue-500/5">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-slate-400">
           {title}
@@ -172,7 +172,7 @@ function StatCard({
 
 function StatCardSkeleton() {
   return (
-    <Card className="border-slate-800 bg-slate-900">
+    <Card className="h-full border-slate-800 bg-slate-900">
       <CardHeader className="pb-2">
         <Skeleton className="h-4 w-24" />
       </CardHeader>
@@ -344,9 +344,9 @@ export default function DashboardPage() {
       <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
 
       {/* ── Bento Grid ─────────────────────────────────── */}
-      <StaggerContainer className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+      <StaggerContainer className="grid grid-cols-1 gap-4 lg:grid-cols-5 items-stretch">
         {/* ── Health Score Ring ─────────────────────────── */}
-        <StaggerItem><Card className="border-slate-800 bg-slate-900 lg:col-span-1">
+        <StaggerItem className="h-full"><Card className="h-full border-slate-800 bg-slate-900 lg:col-span-1">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-slate-400">
               System Health
@@ -358,13 +358,13 @@ export default function DashboardPage() {
             ) : stats ? (
               <HealthRing online={stats.devices_online} total={stats.devices_total} />
             ) : (
-              <Skeleton className="h-28 w-28 rounded-full" />
+              <Skeleton className="aspect-square w-full max-w-[7rem] rounded-full" />
             )}
           </CardContent>
         </Card></StaggerItem>
 
         {/* ── Stat Cards Row ───────────────────────────── */}
-        <StaggerItem className="lg:col-span-4"><div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StaggerItem className="h-full lg:col-span-4"><div className="grid h-full grid-cols-2 gap-4 lg:grid-cols-4">
           {statsError ? (
             <>
               <StatCard
