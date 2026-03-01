@@ -1598,7 +1598,7 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "panoptikon-agent"
-version = "0.6.19"
+version = "0.6.20"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1617,7 +1617,7 @@ dependencies = [
 
 [[package]]
 name = "panoptikon-server"
-version = "0.6.19"
+version = "0.6.20"
 dependencies = [
  "anyhow",
  "axum",
