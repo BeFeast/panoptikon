@@ -2658,64 +2658,64 @@ export default function MikrotikRouter() {
             value="system"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Activity className="mr-1.5 h-3.5 w-3.5" />
-            System
+            <Activity className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">System</span>
           </TabsTrigger>
           <TabsTrigger
             value="interfaces"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Network className="mr-1.5 h-3.5 w-3.5" />
-            Interfaces
+            <Network className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Interfaces</span>
           </TabsTrigger>
           <TabsTrigger
             value="vlans"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Layers className="mr-1.5 h-3.5 w-3.5" />
-            VLANs
+            <Layers className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">VLANs</span>
           </TabsTrigger>
           <TabsTrigger
             value="routes"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Globe className="mr-1.5 h-3.5 w-3.5" />
-            Routes
+            <Globe className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Routes</span>
           </TabsTrigger>
           <TabsTrigger
             value="dhcp"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Server className="mr-1.5 h-3.5 w-3.5" />
-            DHCP
+            <Server className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">DHCP</span>
           </TabsTrigger>
           <TabsTrigger
             value="dns"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Search className="mr-1.5 h-3.5 w-3.5" />
-            DNS
+            <Search className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">DNS</span>
           </TabsTrigger>
           <TabsTrigger
             value="firewall"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Shield className="mr-1.5 h-3.5 w-3.5" />
-            Firewall
+            <Shield className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Firewall</span>
           </TabsTrigger>
           <TabsTrigger
             value="vpn"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Lock className="mr-1.5 h-3.5 w-3.5" />
-            VPN
+            <Lock className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">VPN</span>
           </TabsTrigger>
           <TabsTrigger
             value="traffic"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <BarChart3 className="mr-1.5 h-3.5 w-3.5" />
-            Traffic
+            <BarChart3 className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Traffic</span>
           </TabsTrigger>
         </TabsList>
 
