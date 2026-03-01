@@ -1,4 +1,4 @@
-.PHONY: build build-prod dev clean deploy
+.PHONY: build build-prod dev clean deploy smoke-test
 
 # Default build: web + Rust binary (correct order for rust-embed)
 build: ## Build production binary with embedded frontend
@@ -19,3 +19,8 @@ deploy: build ## Build and deploy to LXC 115 (10.10.0.22)
 	scp target/release/panoptikon-server root@10.10.0.22:/usr/local/bin/panoptikon-server.new
 	ssh root@10.10.0.22 "systemctl stop panoptikon.service && mv /usr/local/bin/panoptikon-server.new /usr/local/bin/panoptikon-server && chmod 755 /usr/local/bin/panoptikon-server && systemctl start panoptikon.service"
 	@echo "✅ Deployed to 10.10.0.22:8080"
+	@echo "Running smoke tests..."
+	scripts/smoke-test.sh http://10.10.0.22:8080
+
+smoke-test: ## Run post-deploy smoke tests against LXC 115
+	scripts/smoke-test.sh http://10.10.0.22:8080
