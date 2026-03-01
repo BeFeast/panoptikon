@@ -197,7 +197,7 @@ pub async fn identify_from_external_sources(db: &SqlitePool, device_macs: &[(Str
                 .ok()
                 .flatten();
 
-        let (current_hostname, current_name) = match existing {
+        let (current_hostname, _current_name) = match existing {
             Some((h, n)) => (h, n),
             None => continue,
         };
