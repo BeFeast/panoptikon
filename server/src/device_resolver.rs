@@ -193,11 +193,12 @@ pub async fn resolve_devices(db: &SqlitePool) -> ResolveResult {
 
     for (mac, mapping) in &mac_to_hostname {
         // Update hostname for devices that don't have one yet.
-        // Also set name if it's null (display name).
+        // Also set name if it's null (display name), and mark as known.
         let updated = sqlx::query(
             "UPDATE devices SET \
              hostname = ?, \
              name = COALESCE(name, ?), \
+             is_known = 1, \
              updated_at = ? \
              WHERE mac = ? AND hostname IS NULL",
         )

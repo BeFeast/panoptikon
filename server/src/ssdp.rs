@@ -230,6 +230,7 @@ pub async fn enrich_from_ssdp(pool: &SqlitePool) {
                         CASE WHEN ? IS NOT NULL OR ? IS NOT NULL THEN 'ssdp' ELSE NULL END,
                         enrichment_source
                     ),
+                    is_known = 1,
                     updated_at = datetime('now')
                 WHERE id = ? AND enrichment_corrected != 1"#,
             )

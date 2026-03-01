@@ -107,9 +107,10 @@ pub async fn enrich_from_dhcp_leases(pool: &SqlitePool, config: &AppConfig) {
 
         // Update hostname for devices that don't already have one.
         let result = sqlx::query(
-            r#"UPDATE devices SET hostname = ?, updated_at = datetime('now')
+            r#"UPDATE devices SET hostname = ?, name = COALESCE(name, ?), is_known = 1, updated_at = datetime('now')
                WHERE mac = ? AND (hostname IS NULL OR hostname = '')"#,
         )
+        .bind(hostname)
         .bind(hostname)
         .bind(&mac_normalized)
         .execute(pool)

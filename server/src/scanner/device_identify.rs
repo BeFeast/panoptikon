@@ -202,12 +202,13 @@ pub async fn identify_from_external_sources(db: &SqlitePool, device_macs: &[(Str
             None => continue,
         };
 
-        // Priority 1: MikroTik DHCP hostname → sets `hostname` column.
+        // Priority 1: MikroTik DHCP hostname → sets `hostname` + `name` + marks known.
         if current_hostname.is_none() || current_hostname.as_deref() == Some("") {
             if let Some(dhcp_hostname) = mikrotik_hostnames.get(&mac_lower) {
                 if let Err(e) = sqlx::query(
-                    "UPDATE devices SET hostname = ?, updated_at = datetime('now') WHERE id = ? AND (hostname IS NULL OR hostname = '')",
+                    "UPDATE devices SET hostname = ?, name = COALESCE(name, ?), is_known = 1, updated_at = datetime('now') WHERE id = ? AND (hostname IS NULL OR hostname = '')",
                 )
+                .bind(dhcp_hostname)
                 .bind(dhcp_hostname)
                 .bind(device_id)
                 .execute(db)
@@ -222,12 +223,13 @@ pub async fn identify_from_external_sources(db: &SqlitePool, device_macs: &[(Str
             }
         }
 
-        // Priority 2: Xiaomi device name → sets `hostname` column (since `name` is user-assigned).
+        // Priority 2: Xiaomi device name → sets `hostname` + `name` + marks known.
         if current_hostname.is_none() || current_hostname.as_deref() == Some("") {
             if let Some(xiaomi_name) = xiaomi_names.get(&mac_lower) {
                 if let Err(e) = sqlx::query(
-                    "UPDATE devices SET hostname = ?, updated_at = datetime('now') WHERE id = ? AND (hostname IS NULL OR hostname = '')",
+                    "UPDATE devices SET hostname = ?, name = COALESCE(name, ?), is_known = 1, updated_at = datetime('now') WHERE id = ? AND (hostname IS NULL OR hostname = '')",
                 )
+                .bind(xiaomi_name)
                 .bind(xiaomi_name)
                 .bind(device_id)
                 .execute(db)

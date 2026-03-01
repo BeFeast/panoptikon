@@ -156,8 +156,9 @@ async fn update_hostname(
     match hostname {
         Some(hostname) => {
             if let Err(e) = sqlx::query(
-                "UPDATE devices SET hostname = ?, updated_at = ? WHERE id = ? AND (hostname IS NULL OR hostname != ?)",
+                "UPDATE devices SET hostname = ?, name = COALESCE(name, ?), is_known = 1, updated_at = ? WHERE id = ? AND (hostname IS NULL OR hostname != ?)",
             )
+            .bind(hostname)
             .bind(hostname)
             .bind(now)
             .bind(device_id)
