@@ -255,6 +255,7 @@ export default function XiaomiMeshSettingsPage() {
                 type="text"
                 value={ip}
                 onChange={(e) => setIp(e.target.value)}
+                autoComplete="off"
                 className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
                 placeholder="10.10.0.199"
               />
@@ -281,6 +282,7 @@ export default function XiaomiMeshSettingsPage() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="off"
                 className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
                 placeholder={
                   passwordSet
