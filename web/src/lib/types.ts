@@ -2060,3 +2060,15 @@ export interface TailscaleStatusResponse {
   online_peers: number;
   total_peers: number;
 }
+
+// ─── Device Resolution ─────────────────────────────────
+
+/** Result of a device identity resolution operation. */
+export interface ResolveResult {
+  /** Number of devices updated with a new hostname. */
+  resolved: number;
+  /** Total number of candidate devices (no hostname). */
+  candidates: number;
+  /** Which sources were successfully queried. */
+  sources_queried: string[];
+}

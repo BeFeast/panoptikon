@@ -1,6 +1,7 @@
 pub mod api;
 pub mod config;
 pub mod db;
+pub mod device_resolver;
 pub mod dhcp;
 pub mod enrichment;
 pub mod mdns;
