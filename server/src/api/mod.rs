@@ -5,9 +5,9 @@ use axum::extract::State;
 use axum::http::{header, Method};
 use axum::{
     middleware::{self, Next},
-    response::Response,
+    response::{IntoResponse, Response},
     routing::{delete, get, patch, post, put},
-    Router,
+    Json, Router,
 };
 use sqlx::SqlitePool;
 use std::sync::Arc;
@@ -126,6 +126,7 @@ pub fn router(state: AppState) -> Router {
     // Public routes — no auth required.
     let public_routes = Router::new()
         .route("/health", get(health))
+        .route("/version", get(server_version))
         .route("/auth/login", post(auth::login))
         .route("/auth/logout", post(auth::logout))
         .route("/auth/status", get(auth::status))
@@ -699,4 +700,9 @@ async fn vyos_cache_invalidation(
 /// Simple health check endpoint.
 async fn health() -> &'static str {
     "ok"
+}
+
+/// Returns the server binary version from Cargo.toml.
+async fn server_version() -> impl IntoResponse {
+    Json(serde_json::json!({ "version": env!("CARGO_PKG_VERSION") }))
 }

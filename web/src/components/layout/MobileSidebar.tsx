@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, Menu, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { navGroups, useGroupCollapse } from "./Sidebar";
+import { navGroups, useGroupCollapse, useServerVersion } from "./Sidebar";
 import {
   Sheet,
   SheetContent,
@@ -17,6 +17,7 @@ export function MobileSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const wsConnected = useWsConnected();
+  const serverVersion = useServerVersion();
   const { collapsed: groupCollapsed, toggle: toggleGroup } = useGroupCollapse(
     navGroups,
     pathname,
@@ -144,7 +145,7 @@ export function MobileSidebar() {
                 {wsConnected ? "Live" : "Disconnected"}
               </span>
               <p className="ml-auto text-[10px] text-slate-700">
-                Panoptikon {process.env.NEXT_PUBLIC_VERSION || "v0.5.0"}
+                Panoptikon {serverVersion ?? "..."}
               </p>
             </div>
           </div>

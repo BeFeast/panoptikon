@@ -184,6 +184,22 @@ export function useGroupCollapse(groups: NavGroup[], pathname: string | null) {
   return { collapsed, toggle };
 }
 
+/** Fetches the server binary version from the backend. */
+export function useServerVersion(): string | null {
+  const [version, setVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/v1/version", { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.version) setVersion(`v${data.version}`);
+      })
+      .catch(() => {});
+  }, []);
+
+  return version;
+}
+
 /** NPM connectivity state: null = not configured, true = reachable, false = unreachable. */
 function useNpmStatus(): null | boolean {
   const [status, setStatus] = useState<null | boolean>(null);
@@ -222,6 +238,7 @@ export function Sidebar() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const wsConnected = useWsConnected();
   const npmStatus = useNpmStatus();
+  const serverVersion = useServerVersion();
   const { collapsed: groupCollapsed, toggle: toggleGroup } = useGroupCollapse(
     navGroups,
     pathname,
@@ -403,7 +420,7 @@ export function Sidebar() {
                 </Tooltip>
               )}
               <p className="text-[10px] text-slate-700">
-                Panoptikon {process.env.NEXT_PUBLIC_VERSION || "v0.5.0"}
+                Panoptikon {serverVersion ?? "..."}
               </p>
             </div>
           ) : (
