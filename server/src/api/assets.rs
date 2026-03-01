@@ -833,10 +833,6 @@ pub async fn sync_from_devices(
 
 #[cfg(test)]
 mod tests {
-    use axum::extract::State;
-
-    use crate::api::AppState;
-    use crate::config::AppConfig;
     use crate::db;
 
     use super::{asset_from_row, sync_from_devices, GET_ONE_QUERY, LIST_QUERY};
