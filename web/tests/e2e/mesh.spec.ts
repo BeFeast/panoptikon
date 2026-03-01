@@ -283,6 +283,28 @@ async function mockXiaomiTopology(page: Page, data: unknown) {
   );
 }
 
+/**
+ * Mock /api/v1/settings to return xiaomi_mesh_enabled: true so the router page
+ * shows the tabbed view (System + Mesh Topology) instead of "Not Configured".
+ * Proxies the real response and patches the single field.
+ */
+async function mockXiaomiEnabled(page: Page) {
+  await page.route("**/api/v1/settings", async (route) => {
+    try {
+      const response = await route.fetch();
+      const json = await response.json();
+      json.xiaomi_mesh_enabled = true;
+      await route.fulfill({ response, json });
+    } catch {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ xiaomi_mesh_enabled: true }),
+      });
+    }
+  });
+}
+
 test.describe("Xiaomi Topology Page — BE3600 satellite nodes (#473)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
@@ -291,11 +313,18 @@ test.describe("Xiaomi Topology Page — BE3600 satellite nodes (#473)", () => {
   test("shows correct mesh node count for BE3600 with leafs promoted to nodes", async ({
     page,
   }) => {
+    // /xiaomi/ now redirects to /router/xiaomi/ which requires xiaomi_mesh_enabled.
+    // Mock settings so the Mesh Topology tab is available (#491).
+    await mockXiaomiEnabled(page);
     await mockXiaomiTopology(page, MOCK_XIAOMI_TOPOLOGY_BE3600);
-    await page.goto("/xiaomi/");
+    await page.goto("/router/xiaomi/");
 
-    // "Mesh Nodes" stat card should show 4 (1 main + 3 satellites)
-    const meshNodesCard = page.locator("text=Mesh Nodes").locator("..");
+    // Switch to the Mesh Topology tab where XiaomiMeshTopology is rendered
+    await page.getByRole("tab", { name: "Mesh Topology" }).click();
+
+    // "Mesh Nodes" stat card should show 4 (1 main + 3 satellites).
+    // Use getByText with exact:true to avoid matching the "Network mesh nodes from..." subtitle.
+    const meshNodesCard = page.getByText("Mesh Nodes", { exact: true }).locator("..");
     await expect(meshNodesCard).toBeVisible({ timeout: 15000 });
     await expect(meshNodesCard.getByText("4")).toBeVisible();
 
@@ -316,8 +345,13 @@ test.describe("Xiaomi Topology Page — BE3600 satellite nodes (#473)", () => {
   });
 
   test("empty state when no mesh nodes or leafs", async ({ page }) => {
+    // Mock settings so the Mesh Topology tab is available (#491).
+    await mockXiaomiEnabled(page);
     await mockXiaomiTopology(page, { nodes: [], leafs: [] });
-    await page.goto("/xiaomi/");
+    await page.goto("/router/xiaomi/");
+
+    // Switch to the Mesh Topology tab
+    await page.getByRole("tab", { name: "Mesh Topology" }).click();
 
     // Should show empty state message
     await expect(
