@@ -73,6 +73,7 @@ const navGroups: NavGroup[] = [
     label: "Routing & Proxy",
     items: [
       { href: "/router", label: "Router", icon: Router },
+      { href: "/caddy", label: "Caddy", icon: Shield },
       { href: "/services", label: "Services", icon: Workflow },
       { href: "/nat", label: "NAT", icon: ArrowRightLeft },
       { href: "/qos", label: "QoS", icon: Gauge },
