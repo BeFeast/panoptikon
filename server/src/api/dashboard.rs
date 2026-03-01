@@ -1,4 +1,5 @@
 use crate::api::AppState;
+use crate::mikrotik::client::MikrotikClient;
 use axum::{
     extract::{Query, State},
     Json,
@@ -32,6 +33,65 @@ pub struct LimitQuery {
     pub limit: Option<i64>,
 }
 
+/// Read a single setting value from the DB.
+async fn get_setting(state: &AppState, key: &str) -> Option<String> {
+    sqlx::query_scalar::<_, String>("SELECT value FROM settings WHERE key = ?")
+        .bind(key)
+        .fetch_optional(&state.db)
+        .await
+        .ok()
+        .flatten()
+        .filter(|v| !v.is_empty())
+}
+
+/// Check MikroTik router connectivity with a 5-second timeout.
+async fn check_mikrotik(state: &AppState) -> Option<bool> {
+    let enabled = get_setting(state, "mikrotik_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+    if !enabled {
+        return None; // not configured
+    }
+
+    let url = get_setting(state, "mikrotik_url").await?;
+    let user = get_setting(state, "mikrotik_user")
+        .await
+        .unwrap_or_else(|| "admin".to_string());
+    let password = get_setting(state, "mikrotik_password")
+        .await
+        .unwrap_or_default();
+
+    let client = MikrotikClient::with_http(&url, &user, &password, state.mikrotik_http.clone());
+    match tokio::time::timeout(Duration::from_secs(5), client.system_resource()).await {
+        Ok(Ok(_)) => Some(true),   // connected
+        Ok(Err(_)) => Some(false), // configured but unreachable
+        Err(_) => Some(false),     // timeout
+    }
+}
+
+/// Check VyOS router connectivity with a 5-second timeout.
+async fn check_vyos(state: &AppState) -> Option<bool> {
+    let db_url = get_setting(state, "vyos_url").await;
+    let db_key = get_setting(state, "vyos_api_key").await;
+
+    let url = db_url.or_else(|| state.config.vyos.url.clone());
+    let key = db_key.or_else(|| state.config.vyos.api_key.clone());
+
+    match (url, key) {
+        (Some(u), Some(k)) if !u.is_empty() && !k.is_empty() => {
+            let client = crate::vyos::client::VyosClient::new(&u, &k);
+            match tokio::time::timeout(Duration::from_secs(5), client.show(&["system", "uptime"]))
+                .await
+            {
+                Ok(Ok(_)) => Some(true), // connected
+                _ => Some(false),        // configured but unreachable
+            }
+        }
+        _ => None, // not configured
+    }
+}
+
 /// GET /api/v1/dashboard/stats
 pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
     let devices_online: i64 =
@@ -50,50 +110,23 @@ pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
         .await
         .unwrap_or(0);
 
-    // Check VyOS connectivity — read settings from DB first, fall back to config.
-    let router_status = {
-        let db_url: Option<String> =
-            sqlx::query_scalar(r#"SELECT value FROM settings WHERE key = 'vyos_url'"#)
-                .fetch_optional(&state.db)
-                .await
-                .ok()
-                .flatten();
-        let db_key: Option<String> =
-            sqlx::query_scalar(r#"SELECT value FROM settings WHERE key = 'vyos_api_key'"#)
-                .fetch_optional(&state.db)
-                .await
-                .ok()
-                .flatten();
+    // Check both MikroTik and VyOS router connectivity in parallel.
+    let (mikrotik_result, vyos_result) = tokio::join!(check_mikrotik(&state), check_vyos(&state));
 
-        let url = db_url
-            .filter(|s| !s.is_empty())
-            .or_else(|| state.config.vyos.url.clone());
-        let key = db_key
-            .filter(|s| !s.is_empty())
-            .or_else(|| state.config.vyos.api_key.clone());
-
-        match (url, key) {
-            (Some(u), Some(k)) if !u.is_empty() && !k.is_empty() => {
-                let client = crate::vyos::client::VyosClient::new(&u, &k);
-                match tokio::time::timeout(
-                    Duration::from_secs(5),
-                    client.show(&["system", "uptime"]),
-                )
-                .await
-                {
-                    Ok(Ok(_)) => "connected".to_string(),
-                    _ => "disconnected".to_string(),
-                }
-            }
-            _ => "unconfigured".to_string(),
-        }
+    let router_status = match (mikrotik_result, vyos_result) {
+        // Either router is connected → "connected"
+        (Some(true), _) | (_, Some(true)) => "connected".to_string(),
+        // At least one is configured but not reachable → "disconnected"
+        (Some(false), _) | (_, Some(false)) => "disconnected".to_string(),
+        // Neither is configured
+        _ => "unconfigured".to_string(),
     };
 
-    // Latest WAN traffic from traffic_samples (source = 'vyos'), most recent entry
+    // Latest WAN traffic — check all sources (mikrotik, netflow, agent),
+    // not just 'vyos' which is never inserted.
     let (wan_rx_bps, wan_tx_bps): (i64, i64) = sqlx::query_as(
         "SELECT COALESCE(rx_bps, 0), COALESCE(tx_bps, 0)
          FROM traffic_samples
-         WHERE source = 'vyos'
          ORDER BY sampled_at DESC LIMIT 1",
     )
     .fetch_optional(&state.db)
