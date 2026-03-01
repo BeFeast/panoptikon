@@ -39,9 +39,11 @@ test.describe("Settings page — legacy section visibility", () => {
     await expect(
       page.getByText("Configure MikroTik router integration."),
     ).toBeVisible();
+
+    // Caddy Reverse Proxy is now a top-level page (/caddy), not listed in Settings Integrations.
     await expect(
       page.getByText("Primary reverse proxy — manage hosts via Caddy."),
-    ).toBeVisible();
+    ).toHaveCount(0);
 
     await page.screenshot({
       path: "tests/screenshots/settings-legacy-section.png",
