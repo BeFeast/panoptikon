@@ -34,6 +34,8 @@ test.describe("Router Page — MikroTik", () => {
     // First enable MikroTik so we get past the "Not Configured" card
     await page.goto("/settings/router/");
     await expect(page.locator("#mt-url")).toBeVisible({ timeout: 15000 });
+    // Wait for settings API to load so the toggle reflects the saved state
+    await page.waitForLoadState("networkidle");
 
     // Enable MikroTik and save
     const toggle = page.locator("#mt-enabled");
@@ -73,6 +75,8 @@ test.describe("Router Page — MikroTik", () => {
     // Disable MikroTik
     await page.goto("/settings/router/");
     await expect(page.locator("#mt-url")).toBeVisible({ timeout: 15000 });
+    // Wait for settings API to load so the toggle reflects the saved state
+    await page.waitForLoadState("networkidle");
 
     const toggle = page.locator("#mt-enabled");
     const checked = await toggle.getAttribute("aria-checked");
@@ -106,6 +110,8 @@ test.describe("Router Page — MikroTik", () => {
     // Enable MikroTik with a URL
     await page.goto("/settings/router/");
     await expect(page.locator("#mt-url")).toBeVisible({ timeout: 15000 });
+    // Wait for settings API to load so the toggle reflects the saved state
+    await page.waitForLoadState("networkidle");
 
     const toggle = page.locator("#mt-enabled");
     await expect(toggle).toBeVisible();

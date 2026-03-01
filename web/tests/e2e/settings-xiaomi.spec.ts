@@ -5,12 +5,18 @@ test.describe("Xiaomi Mesh Settings", () => {
     await login(page);
     await page.goto("/settings/xiaomi-mesh/");
     await expect(page.locator("#xiaomi-ip")).toBeVisible({ timeout: 15000 });
+    // Wait for the settings API call to complete so tests don't race with it
+    await page.waitForLoadState("networkidle");
   });
 
   test("save default IP 10.10.0.199 persists after reload", async ({
     page,
   }) => {
-    // The default IP is pre-filled in the form
+    // Explicitly clear and set the default IP to ensure a known state
+    // regardless of what the database contains from previous test runs
+    // (avoids test-pollution and browser autofill overriding the value).
+    await page.locator("#xiaomi-ip").clear();
+    await page.locator("#xiaomi-ip").fill("10.10.0.199");
     await expect(page.locator("#xiaomi-ip")).toHaveValue("10.10.0.199");
 
     // Tweak poll interval to make the form dirty so Save is enabled
@@ -23,6 +29,8 @@ test.describe("Xiaomi Mesh Settings", () => {
 
     await page.reload();
     await expect(page.locator("#xiaomi-ip")).toBeVisible({ timeout: 15000 });
+    // Wait for the settings API to finish loading before asserting persisted values
+    await page.waitForLoadState("networkidle");
 
     // IP must be 10.10.0.199 — not empty or null
     await expect(page.locator("#xiaomi-ip")).toHaveValue("10.10.0.199");
