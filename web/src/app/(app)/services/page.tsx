@@ -40,6 +40,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { PageTransition } from "@/components/PageTransition";
+import { HelpTooltip } from "@/components/HelpTooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   addService,
   removeService,
@@ -483,25 +489,42 @@ export default function ServicesPage() {
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold text-white">Services</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-white">Services</h1>
+              <HelpTooltip text="One-click service deployment — creates an NPM reverse proxy entry, firewall rule, and DNAT port forward in a single step." />
+            </div>
             <p className="mt-1 text-sm text-slate-400">
               Deploy or remove services end-to-end — NPM reverse proxy,
               firewall, and DNAT in one flow.
             </p>
           </div>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              onClick={openRemoveDialog}
-              className="border-slate-700 text-slate-300 hover:bg-slate-800"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Remove Service
-            </Button>
-            <Button onClick={openWizard}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Service
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  onClick={openRemoveDialog}
+                  className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Remove Service
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+                Remove a deployed service and clean up its proxy, firewall, and NAT entries
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button onClick={openWizard}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Service
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+                Launch the service wizard to create proxy, firewall, and NAT entries together
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
 
@@ -564,9 +587,12 @@ export default function ServicesPage() {
               Loading...
             </div>
           ) : proxyHosts.length === 0 ? (
-            <div className="py-12 text-center text-sm text-slate-500">
-              No proxy hosts configured yet. Click &quot;Add Service&quot; to
-              create one.
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Globe className="mb-4 h-12 w-12 text-slate-600" />
+              <p className="text-lg font-medium text-slate-400">No services deployed yet</p>
+              <p className="mt-1 max-w-sm text-sm text-slate-600">
+                Click &quot;Add Service&quot; to create your first service. The wizard will set up reverse proxy, firewall, and NAT entries automatically.
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">

@@ -39,6 +39,12 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { PageTransition } from "@/components/PageTransition";
+import { HelpTooltip } from "@/components/HelpTooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { fetchDnsQueryLog, fetchDnsStats, purgeDnsLogs } from "@/lib/api";
 import type {
   DnsQueryLogEntry,
@@ -142,18 +148,28 @@ export default function DnsLogsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              DNS Query Log
-            </h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight">
+                DNS Query Log
+              </h1>
+              <HelpTooltip text="Shows DNS queries made by devices on your network. Useful for spotting suspicious domains and debugging connectivity. Data is kept for 7 days." />
+            </div>
             <p className="text-muted-foreground">
               Per-device DNS query history and statistics (7-day retention)
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={handleRefresh}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={handleRefresh}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Refresh
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+                Reload the query log with the latest entries
+              </TooltipContent>
+            </Tooltip>
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" size="sm">

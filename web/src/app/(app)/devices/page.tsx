@@ -50,6 +50,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { PageTransition } from "@/components/PageTransition";
+import { HelpTooltip } from "@/components/HelpTooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
 import { MotionCard } from "@/components/MotionCard";
 import { DeviceTrafficChart } from "@/components/DeviceTrafficChart";
@@ -299,102 +305,133 @@ export default function DevicesPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-white">Devices</h1>
         <div className="flex items-center gap-2">
-          <Button
-            variant="secondary"
-            onClick={() => setAddAssetOpen(true)}
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            Add Asset
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={identifying}
-            onClick={async () => {
-              setIdentifying(true);
-              try {
-                const result = await identifyDevices();
-                toast.success(`Checked ${result.devices_checked} devices`);
-                await load();
-              } catch {
-                toast.error("Device identification failed");
-              } finally {
-                setIdentifying(false);
-              }
-            }}
-          >
-            {identifying ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Identifying…
-              </>
-            ) : (
-              <>
-                <Search className="mr-2 h-4 w-4" />
-                Re-identify
-              </>
-            )}
-          </Button>
-          <Button
-            disabled={scanningNetwork}
-            onClick={async () => {
-              setScanningNetwork(true);
-              try {
-                await fetch("/api/v1/scanner/trigger", { method: "POST", credentials: "include" });
-                toast.success("Network scan complete");
-                await load();
-              } catch {
-                toast.error("Network scan failed");
-              } finally {
-                setTimeout(() => setScanningNetwork(false), 5000);
-              }
-            }}
-          >
-            {scanningNetwork ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Scanning…
-              </>
-            ) : (
-              <>
-                <Radar className="mr-2 h-4 w-4" />
-                Scan Now
-              </>
-            )}
-          </Button>
-          <Button
-            variant="secondary"
-            disabled={resolving}
-            onClick={async () => {
-              setResolving(true);
-              try {
-                const result = await resolveDevices();
-                if (result.resolved > 0) {
-                  toast.success(`Resolved ${result.resolved} device${result.resolved === 1 ? "" : "s"}`);
-                  await load();
-                } else {
-                  toast.info("No new hostnames found");
-                }
-              } catch {
-                toast.error("Device resolution failed");
-              } finally {
-                setResolving(false);
-              }
-            }}
-          >
-            {resolving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Resolving…
-              </>
-            ) : (
-              <>
-                <Search className="mr-2 h-4 w-4" />
-                Resolve Names
-              </>
-            )}
-          </Button>
+          <h1 className="text-2xl font-semibold text-white">Devices</h1>
+          <HelpTooltip text="All devices discovered on your network. Use Scan Now to discover new devices, Re-identify to fingerprint them, and Resolve Names to look up hostnames via DNS." />
+        </div>
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="secondary"
+                onClick={() => setAddAssetOpen(true)}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add Asset
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+              Manually register a device or service as a tracked asset
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="secondary"
+                disabled={identifying}
+                onClick={async () => {
+                  setIdentifying(true);
+                  try {
+                    const result = await identifyDevices();
+                    toast.success(`Checked ${result.devices_checked} devices`);
+                    await load();
+                  } catch {
+                    toast.error("Device identification failed");
+                  } finally {
+                    setIdentifying(false);
+                  }
+                }}
+              >
+                {identifying ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Identifying…
+                  </>
+                ) : (
+                  <>
+                    <Search className="mr-2 h-4 w-4" />
+                    Re-identify
+                  </>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+              Re-run device fingerprinting to detect device type, manufacturer, and OS
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                disabled={scanningNetwork}
+                onClick={async () => {
+                  setScanningNetwork(true);
+                  try {
+                    await fetch("/api/v1/scanner/trigger", { method: "POST", credentials: "include" });
+                    toast.success("Network scan complete");
+                    await load();
+                  } catch {
+                    toast.error("Network scan failed");
+                  } finally {
+                    setTimeout(() => setScanningNetwork(false), 5000);
+                  }
+                }}
+              >
+                {scanningNetwork ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Scanning…
+                  </>
+                ) : (
+                  <>
+                    <Radar className="mr-2 h-4 w-4" />
+                    Scan Now
+                  </>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+              Trigger an immediate network scan to discover new devices
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="secondary"
+                disabled={resolving}
+                onClick={async () => {
+                  setResolving(true);
+                  try {
+                    const result = await resolveDevices();
+                    if (result.resolved > 0) {
+                      toast.success(`Resolved ${result.resolved} device${result.resolved === 1 ? "" : "s"}`);
+                      await load();
+                    } else {
+                      toast.info("No new hostnames found");
+                    }
+                  } catch {
+                    toast.error("Device resolution failed");
+                  } finally {
+                    setResolving(false);
+                  }
+                }}
+              >
+                {resolving ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Resolving…
+                  </>
+                ) : (
+                  <>
+                    <Search className="mr-2 h-4 w-4" />
+                    Resolve Names
+                  </>
+                )}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+              Look up hostnames via reverse DNS for all discovered devices
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -548,9 +585,19 @@ export default function DevicesPage() {
         </div>
         )
       ) : sorted.length === 0 ? (
-        <p className="py-10 text-center text-slate-500">
-          No devices match your filters.
-        </p>
+        filter === "all" && !search.trim() ? (
+          <div className="flex flex-col items-center justify-center py-16 text-center">
+            <Monitor className="mb-4 h-12 w-12 text-slate-600" />
+            <p className="text-lg font-medium text-slate-400">No devices found yet</p>
+            <p className="mt-1 max-w-sm text-sm text-slate-600">
+              Make sure your router is configured in Settings, then click &quot;Scan Now&quot; to discover devices on your network.
+            </p>
+          </div>
+        ) : (
+          <p className="py-10 text-center text-slate-500">
+            No devices match your filters.
+          </p>
+        )
       ) : view === "grid" ? (
         <StaggerContainer className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
           {sorted.map((device) => (

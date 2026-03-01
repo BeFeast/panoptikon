@@ -50,6 +50,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageTransition } from "@/components/PageTransition";
+import { HelpTooltip } from "@/components/HelpTooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   fetchSettings,
   fetchNatSummary,
@@ -222,20 +228,28 @@ export default function NatPage() {
             <h1 className="text-2xl font-semibold text-white">
               NAT / Port Forwarding
             </h1>
+            <HelpTooltip text="View and manage DNAT (port forwarding) rules on your router. Supports VyOS and MikroTik." />
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              load();
-              if (activeTab === "vyos") loadVyos();
-              if (activeTab === "mikrotik") loadMt();
-            }}
-            className="border-slate-800 text-slate-300 hover:bg-slate-800"
-          >
-            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-            Refresh
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  load();
+                  if (activeTab === "vyos") loadVyos();
+                  if (activeTab === "mikrotik") loadMt();
+                }}
+                className="border-slate-800 text-slate-300 hover:bg-slate-800"
+              >
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                Refresh
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+              Reload NAT rules from the router
+            </TooltipContent>
+          </Tooltip>
         </div>
 
         {/* Summary Cards */}
