@@ -95,6 +95,29 @@ test.describe('Dashboard', () => {
     await page.screenshot({ path: 'tests/screenshots/dashboard-card-heights.png', fullPage: true });
   });
 
+  test('dashboard stats API responds within 2 seconds (#494)', async ({ page }) => {
+    // Bug #494: /api/v1/dashboard/stats used to block 3-5s because check_vyos()
+    // always ran with a 5s timeout even when MikroTik was the active router.
+    // After the fix, the endpoint should respond in <2s.
+    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+
+    const start = Date.now();
+    const response = await page.request.get('/api/v1/dashboard/stats');
+    const elapsed = Date.now() - start;
+
+    expect(response.ok()).toBeTruthy();
+    const body = await response.json();
+    expect(body).toHaveProperty('router_status');
+    expect(body).toHaveProperty('devices_online');
+    expect(body).toHaveProperty('devices_total');
+    expect(body).toHaveProperty('alerts_unread');
+
+    // Must respond in under 2 seconds (was 3-5s before fix)
+    expect(elapsed).toBeLessThan(2000);
+
+    await page.screenshot({ path: 'tests/screenshots/dashboard-stats-perf.png', fullPage: true });
+  });
+
   test('dashboard displays loading state or content', async ({ page }) => {
     // Dashboard should either show content or be in loading state
     // Check that we're on the dashboard and it's responsive

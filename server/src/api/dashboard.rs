@@ -71,7 +71,7 @@ async fn check_mikrotik(state: &AppState) -> Option<bool> {
     }
 }
 
-/// Check VyOS router connectivity with a 5-second timeout.
+/// Check VyOS router connectivity with a 500ms timeout.
 async fn check_vyos(state: &AppState) -> Option<bool> {
     let db_url = get_setting(state, "vyos_url").await;
     let db_key = get_setting(state, "vyos_api_key").await;
@@ -82,8 +82,11 @@ async fn check_vyos(state: &AppState) -> Option<bool> {
     match (url, key) {
         (Some(u), Some(k)) if !u.is_empty() && !k.is_empty() => {
             let client = crate::vyos::client::VyosClient::new(&u, &k);
-            match tokio::time::timeout(Duration::from_secs(5), client.show(&["system", "uptime"]))
-                .await
+            match tokio::time::timeout(
+                Duration::from_millis(500),
+                client.show(&["system", "uptime"]),
+            )
+            .await
             {
                 Ok(Ok(_)) => Some(true), // connected
                 _ => Some(false),        // configured but unreachable
