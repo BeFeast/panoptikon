@@ -69,6 +69,32 @@ test.describe('Dashboard', () => {
     await page.screenshot({ path: 'tests/screenshots/dashboard-devices.png', fullPage: true });
   });
 
+  test('top row cards have consistent heights', async ({ page }) => {
+    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+
+    // Wait for stat cards to resolve so we measure final rendered heights
+    await expect(page.getByText('System Health')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
+
+    // The System Health card and the stat-cards wrapper are direct children
+    // of the top bento grid. Grab all top-level grid children and compare heights.
+    const systemHealthCard = page.getByText('System Health').locator('xpath=ancestor::div[contains(@class,"border-slate-800")]').first();
+    const routerStatusCard = page.getByText('Router Status').locator('xpath=ancestor::div[contains(@class,"border-slate-800")]').first();
+
+    const healthBox = await systemHealthCard.boundingBox();
+    const routerBox = await routerStatusCard.boundingBox();
+
+    expect(healthBox).toBeTruthy();
+    expect(routerBox).toBeTruthy();
+
+    // Both cards should have h-full, so the stat cards should stretch to match
+    // the System Health card. Allow a small tolerance (5px) for sub-pixel rounding.
+    const heightDiff = Math.abs(healthBox!.height - routerBox!.height);
+    expect(heightDiff).toBeLessThanOrEqual(5);
+
+    await page.screenshot({ path: 'tests/screenshots/dashboard-card-heights.png', fullPage: true });
+  });
+
   test('dashboard displays loading state or content', async ({ page }) => {
     // Dashboard should either show content or be in loading state
     // Check that we're on the dashboard and it's responsive
