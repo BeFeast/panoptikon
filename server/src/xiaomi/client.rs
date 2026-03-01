@@ -448,6 +448,8 @@ fn extract_js_var(html: &str, var_name: &str) -> Option<String> {
 mod tests {
     use super::*;
 
+    // ── extract_js_var tests ───────────────────────────────────
+
     #[test]
     fn extract_key_from_html() {
         let html = r#"var key = "a2ffa5c9be07488bbb04a3a47d3c5f6a";"#;
@@ -467,16 +469,75 @@ mod tests {
     }
 
     #[test]
-    fn hash_password_produces_correct_sha256() {
-        let password = "admin";
-        let key = "a2ffa5c9be07488bbb04a3a47d3c5f6a";
-        let nonce = "0_AA:BB:CC:DD:EE:FF_1700000000_305419896";
-
-        let hash = XiaomiClient::hash_password(password, key, nonce);
-        // Should be a 64-char hex string
-        assert_eq!(hash.len(), 64);
-        assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
+    fn extract_js_var_single_quotes() {
+        let html = "var key = 'abc123';";
+        assert_eq!(extract_js_var(html, "key"), Some("abc123".to_string()));
     }
+
+    #[test]
+    fn extract_js_var_no_var_prefix() {
+        let html = r#"key = "deadbeef";"#;
+        assert_eq!(extract_js_var(html, "key"), Some("deadbeef".to_string()));
+    }
+
+    #[test]
+    fn extract_js_var_no_space_around_equals() {
+        let html = r#"key="no_spaces";"#;
+        assert_eq!(extract_js_var(html, "key"), Some("no_spaces".to_string()));
+    }
+
+    #[test]
+    fn extract_js_var_colon_syntax() {
+        let html = r#"key: "json_style""#;
+        assert_eq!(extract_js_var(html, "key"), Some("json_style".to_string()));
+    }
+
+    #[test]
+    fn extract_js_var_colon_no_space() {
+        let html = r#"key:"compact_json""#;
+        assert_eq!(
+            extract_js_var(html, "key"),
+            Some("compact_json".to_string())
+        );
+    }
+
+    #[test]
+    fn extract_js_var_returns_none_for_missing() {
+        let html = r#"var other = "value";"#;
+        assert_eq!(extract_js_var(html, "key"), None);
+    }
+
+    #[test]
+    fn extract_js_var_returns_none_for_empty_value() {
+        let html = r#"var key = "";"#;
+        assert_eq!(extract_js_var(html, "key"), None);
+    }
+
+    #[test]
+    fn extract_js_var_in_realistic_html_page() {
+        let html = r#"
+<!DOCTYPE html>
+<html>
+<head><title>MiWiFi</title></head>
+<body>
+<script>
+    var key = "a2ffa5c9be07488bbb04a3a47d3c5f6a";
+    var deviceId = "28:D1:27:AB:CD:EF";
+    var newEncryptMode = 1;
+</script>
+</body>
+</html>"#;
+        assert_eq!(
+            extract_js_var(html, "key"),
+            Some("a2ffa5c9be07488bbb04a3a47d3c5f6a".to_string())
+        );
+        assert_eq!(
+            extract_js_var(html, "deviceId"),
+            Some("28:D1:27:AB:CD:EF".to_string())
+        );
+    }
+
+    // ── Nonce generation tests ────────────────────────────────
 
     #[test]
     fn nonce_format() {
@@ -484,5 +545,201 @@ mod tests {
         assert!(nonce.starts_with("0_AA:BB:CC:DD:EE:FF_"));
         let parts: Vec<&str> = nonce.split('_').collect();
         assert_eq!(parts.len(), 4);
+    }
+
+    #[test]
+    fn nonce_deterministic_random_from_timestamp() {
+        let nonce = XiaomiClient::generate_nonce("28:D1:27:AB:CD:EF");
+        let parts: Vec<&str> = nonce.split('_').collect();
+        assert_eq!(parts[0], "0");
+        assert_eq!(parts[1], "28:D1:27:AB:CD:EF");
+
+        let timestamp: u64 = parts[2].parse().expect("timestamp should be a u64");
+        let random: u32 = parts[3].parse().expect("random should be a u32");
+
+        // The random component is derived as (timestamp as u32) ^ 0x1234_5678
+        assert_eq!(random, (timestamp as u32) ^ 0x1234_5678);
+    }
+
+    #[test]
+    fn nonce_same_device_id_produces_consistent_structure() {
+        let n1 = XiaomiClient::generate_nonce("AA:BB:CC:DD:EE:FF");
+        let n2 = XiaomiClient::generate_nonce("AA:BB:CC:DD:EE:FF");
+
+        // Both should have the same prefix (type and device_id)
+        assert!(n1.starts_with("0_AA:BB:CC:DD:EE:FF_"));
+        assert!(n2.starts_with("0_AA:BB:CC:DD:EE:FF_"));
+
+        // Both should have 4 parts
+        assert_eq!(n1.split('_').count(), 4);
+        assert_eq!(n2.split('_').count(), 4);
+    }
+
+    // ── Password hashing tests ────────────────────────────────
+
+    #[test]
+    fn hash_password_produces_correct_sha256() {
+        let password = "admin";
+        let key = "a2ffa5c9be07488bbb04a3a47d3c5f6a";
+        let nonce = "0_AA:BB:CC:DD:EE:FF_1700000000_305419896";
+
+        let hash = XiaomiClient::hash_password(password, key, nonce);
+
+        // Verify exact expected value:
+        // Step 1: SHA256("admin" + "a2ffa5c9be07488bbb04a3a47d3c5f6a")
+        //       = 73a1d6d01003067844cd148b1502a24bb8a305c93dfef55f983da80fa8cdfa24
+        // Step 2: SHA256(nonce + step1_hex)
+        //       = 7266fe03192cf5bb2f2cdc40e70fc58680140e4a200e85bef8232d7b863be30c
+        assert_eq!(
+            hash,
+            "7266fe03192cf5bb2f2cdc40e70fc58680140e4a200e85bef8232d7b863be30c"
+        );
+    }
+
+    #[test]
+    fn hash_password_different_inputs_produce_different_hashes() {
+        let nonce = "0_AA:BB:CC:DD:EE:FF_1700000000_305419896";
+        let key = "a2ffa5c9be07488bbb04a3a47d3c5f6a";
+
+        let h1 = XiaomiClient::hash_password("admin", key, nonce);
+        let h2 = XiaomiClient::hash_password("password123", key, nonce);
+        assert_ne!(h1, h2);
+
+        let h3 = XiaomiClient::hash_password("admin", "different_key", nonce);
+        assert_ne!(h1, h3);
+
+        let h4 = XiaomiClient::hash_password("admin", key, "different_nonce");
+        assert_ne!(h1, h4);
+    }
+
+    #[test]
+    fn hash_password_output_is_lowercase_hex_64_chars() {
+        let hash = XiaomiClient::hash_password("test", "key", "nonce");
+        assert_eq!(hash.len(), 64);
+        assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
+        // SHA256 hex output should be lowercase
+        assert_eq!(hash, hash.to_lowercase());
+    }
+
+    // ── topo_graph response parsing test ──────────────────────
+
+    #[test]
+    fn topo_graph_parses_be3600_fixture() {
+        // Real-world fixture from Xiaomi BE3600 2.5G mesh router
+        let payload = serde_json::json!({
+            "code": 0,
+            "graph": {
+                "nodes": [
+                    {
+                        "mac": "28:D1:27:AB:CD:EF",
+                        "name": "Xiaomi_BE3600",
+                        "locale": "master",
+                        "ip": "192.168.31.1",
+                        "online": 1,
+                        "hardware": "RB03",
+                        "model": "xiaomi.router.rb03"
+                    },
+                    {
+                        "mac": "28:D1:27:AB:CD:F0",
+                        "name": "Xiaomi_BE3600_node",
+                        "locale": "slave",
+                        "ip": "192.168.31.2",
+                        "online": 1,
+                        "hardware": "RB03",
+                        "model": "xiaomi.router.rb03"
+                    }
+                ],
+                "leafs": [
+                    {
+                        "mac": "BC:24:11:BF:35:FB",
+                        "ip": "192.168.31.100",
+                        "name": "iPhone",
+                        "online": 1,
+                        "parentId": "28:D1:27:AB:CD:EF"
+                    },
+                    {
+                        "mac": "AA:BB:CC:11:22:33",
+                        "ip": "192.168.31.101",
+                        "name": "Laptop",
+                        "online": 1,
+                        "parentId": "28:D1:27:AB:CD:EF"
+                    },
+                    {
+                        "mac": "DD:EE:FF:44:55:66",
+                        "ip": "192.168.31.102",
+                        "name": "Smart-TV",
+                        "online": 0,
+                        "parentId": "28:D1:27:AB:CD:F0"
+                    }
+                ]
+            }
+        });
+
+        let parsed: MiWiFiResponse<TopoGraph> =
+            serde_json::from_value(payload).expect("topo_graph should parse");
+
+        assert_eq!(parsed.code, 0);
+        let graph = parsed.data.graph.expect("graph field should be present");
+
+        // Verify mesh nodes
+        assert_eq!(graph.nodes.len(), 2);
+        assert_eq!(graph.nodes[0].mac.as_deref(), Some("28:D1:27:AB:CD:EF"));
+        assert_eq!(graph.nodes[0].locale.as_deref(), Some("master"));
+        assert_eq!(graph.nodes[0].hardware.as_deref(), Some("RB03"));
+        assert_eq!(graph.nodes[1].locale.as_deref(), Some("slave"));
+        assert_eq!(graph.nodes[1].ip.as_deref(), Some("192.168.31.2"));
+
+        // Verify leaf devices
+        assert_eq!(graph.leafs.len(), 3);
+        assert_eq!(graph.leafs[0].name.as_deref(), Some("iPhone"));
+        assert_eq!(
+            graph.leafs[0].parent_id.as_deref(),
+            Some("28:D1:27:AB:CD:EF")
+        );
+        assert_eq!(graph.leafs[2].online, Some(0));
+        assert_eq!(
+            graph.leafs[2].parent_id.as_deref(),
+            Some("28:D1:27:AB:CD:F0")
+        );
+    }
+
+    #[test]
+    fn topo_graph_handles_empty_graph() {
+        let payload = serde_json::json!({
+            "code": 0,
+            "graph": {
+                "nodes": [],
+                "leafs": []
+            }
+        });
+
+        let parsed: MiWiFiResponse<TopoGraph> =
+            serde_json::from_value(payload).expect("empty topo_graph should parse");
+        let graph = parsed.data.graph.expect("graph field should be present");
+        assert!(graph.nodes.is_empty());
+        assert!(graph.leafs.is_empty());
+    }
+
+    #[test]
+    fn topo_graph_handles_missing_optional_fields() {
+        let payload = serde_json::json!({
+            "code": 0,
+            "graph": {
+                "nodes": [{
+                    "mac": "28:D1:27:AB:CD:EF"
+                }],
+                "leafs": [{
+                    "mac": "BC:24:11:BF:35:FB"
+                }]
+            }
+        });
+
+        let parsed: MiWiFiResponse<TopoGraph> =
+            serde_json::from_value(payload).expect("sparse topo_graph should parse");
+        let graph = parsed.data.graph.unwrap();
+        assert_eq!(graph.nodes[0].mac.as_deref(), Some("28:D1:27:AB:CD:EF"));
+        assert!(graph.nodes[0].name.is_none());
+        assert!(graph.nodes[0].locale.is_none());
+        assert!(graph.leafs[0].parent_id.is_none());
     }
 }
