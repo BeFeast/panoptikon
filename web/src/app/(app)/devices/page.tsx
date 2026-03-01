@@ -33,7 +33,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDevice, resetDeviceCustom, fetchDeviceSysinfo, createAsset, fetchXiaomiWifiDevices, fetchXiaomiDevices, fetchXiaomiStatus, identifyDevices } from "@/lib/api";
+import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDevice, resetDeviceCustom, fetchDeviceSysinfo, createAsset, fetchXiaomiWifiDevices, fetchXiaomiDevices, fetchXiaomiStatus, identifyDevices, resolveDevices } from "@/lib/api";
 import type { DeviceEvent, UptimeStats, PortScanResult, DeviceCustomFields, CreateAssetRequest } from "@/lib/api";
 import type { Device, DeviceSysinfo, DeviceWifiInfo, XiaomiWifiDevice, XiaomiDevice } from "@/lib/types";
 import { formatPercent, timeAgo } from "@/lib/format";
@@ -66,6 +66,7 @@ export default function DevicesPage() {
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [scanningNetwork, setScanningNetwork] = useState(false);
   const [identifying, setIdentifying] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
@@ -359,6 +360,38 @@ export default function DevicesPage() {
               <>
                 <Radar className="mr-2 h-4 w-4" />
                 Scan Now
+              </>
+            )}
+          </Button>
+          <Button
+            variant="secondary"
+            disabled={resolving}
+            onClick={async () => {
+              setResolving(true);
+              try {
+                const result = await resolveDevices();
+                if (result.resolved > 0) {
+                  toast.success(`Resolved ${result.resolved} device${result.resolved === 1 ? "" : "s"}`);
+                  await load();
+                } else {
+                  toast.info("No new hostnames found");
+                }
+              } catch {
+                toast.error("Device resolution failed");
+              } finally {
+                setResolving(false);
+              }
+            }}
+          >
+            {resolving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Resolving…
+              </>
+            ) : (
+              <>
+                <Search className="mr-2 h-4 w-4" />
+                Resolve Names
               </>
             )}
           </Button>

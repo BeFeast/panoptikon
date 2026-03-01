@@ -25,6 +25,7 @@ pub mod cloudflare_tunnel;
 pub mod config_backups;
 pub mod dashboard;
 pub mod ddns;
+pub mod device_resolve;
 pub mod devices;
 pub mod dns_blocklists;
 pub mod dns_logs;
@@ -158,6 +159,7 @@ pub fn router(state: AppState) -> Router {
         .route("/devices/:id/custom", delete(devices::reset_custom))
         .route("/devices/:id/sysinfo", get(devices::get_sysinfo))
         .route("/devices/identify", post(devices::identify_all))
+        .route("/devices/resolve", post(device_resolve::resolve))
         // Agents
         .route("/agents", get(agents::list))
         .route("/agents", post(agents::register))

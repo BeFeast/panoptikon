@@ -2109,3 +2109,14 @@ export function fetchTailscaleStatus(): Promise<
     "/api/v1/tailscale/status"
   );
 }
+
+// ─── Device Resolution ──────────────────────────────────────
+
+/** Trigger device identity resolution from DHCP/router sources. */
+export function resolveDevices(): Promise<
+  import("./types").ResolveResult
+> {
+  return apiPost<import("./types").ResolveResult>(
+    "/api/v1/devices/resolve"
+  );
+}
