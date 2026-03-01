@@ -131,23 +131,15 @@ impl XiaomiClient {
         format!("{:x}", hasher.finalize())
     }
 
-    /// Perform the login flow and obtain a stok token.
-    async fn login(&self) -> Result<String> {
-        let (key, device_id) = self.extract_credentials().await?;
-        let nonce = Self::generate_nonce(&device_id);
-        let password_hash = Self::hash_password(&self.password, &key, &nonce);
-
+    /// POST login form and extract the stok token from the response.
+    /// Returns `Ok(token)` on success or an error describing the failure.
+    async fn post_login(&self, form: &[(&str, &str)]) -> Result<String> {
         let login_url = format!("{}/cgi-bin/luci/api/xqsystem/login", self.base_url);
 
         let resp = self
             .http
             .post(&login_url)
-            .form(&[
-                ("username", "admin"),
-                ("password", password_hash.as_str()),
-                ("logtype", "2"),
-                ("nonce", nonce.as_str()),
-            ])
+            .form(form)
             .send()
             .await
             .context("MiWiFi login request failed")?;
@@ -158,13 +150,13 @@ impl XiaomiClient {
             .await
             .context("failed to parse MiWiFi login response")?;
 
+        let code = body.get("code").and_then(|v| v.as_i64()).unwrap_or(-1);
+
         tracing::debug!(
             http_status = %status,
-            code = body.get("code").and_then(|v| v.as_i64()).unwrap_or(-1),
+            code,
             "MiWiFi login response"
         );
-
-        let code = body.get("code").and_then(|v| v.as_i64()).unwrap_or(-1);
 
         if code != 0 {
             let msg = body
@@ -181,6 +173,60 @@ impl XiaomiClient {
             .to_string();
 
         Ok(token)
+    }
+
+    /// Login using SHA256 nonce-based auth (newEncryptMode=1).
+    async fn login_sha256(&self) -> Result<String> {
+        let (key, device_id) = self.extract_credentials().await?;
+        let nonce = Self::generate_nonce(&device_id);
+        let password_hash = Self::hash_password(&self.password, &key, &nonce);
+
+        self.post_login(&[
+            ("username", "admin"),
+            ("password", password_hash.as_str()),
+            ("logtype", "2"),
+            ("nonce", nonce.as_str()),
+        ])
+        .await
+    }
+
+    /// Login using plain password (no nonce, no hashing).
+    async fn login_plain(&self) -> Result<String> {
+        self.post_login(&[("username", "admin"), ("password", self.password.as_str())])
+            .await
+    }
+
+    /// Perform the login flow and obtain a stok token.
+    ///
+    /// Tries SHA256 nonce-based auth first. If the router does not support it
+    /// (returns code 401 — common on BE3600 and similar models), falls back
+    /// to plain password auth.
+    async fn login(&self) -> Result<String> {
+        match self.login_sha256().await {
+            Ok(token) => {
+                tracing::debug!("MiWiFi SHA256 login succeeded");
+                Ok(token)
+            }
+            Err(sha256_err) => {
+                tracing::info!(
+                    error = %sha256_err,
+                    "MiWiFi SHA256 login failed, falling back to plain password"
+                );
+                match self.login_plain().await {
+                    Ok(token) => {
+                        tracing::debug!("MiWiFi plain password login succeeded");
+                        Ok(token)
+                    }
+                    Err(plain_err) => {
+                        // Both methods failed — report both errors for debugging.
+                        anyhow::bail!(
+                            "MiWiFi login failed with both methods. \
+                             SHA256: {sha256_err}; plain: {plain_err}"
+                        )
+                    }
+                }
+            }
+        }
     }
 
     /// Get a valid stok token, logging in if necessary.
