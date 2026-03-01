@@ -138,6 +138,7 @@ pub async fn persist_enrichment(
             device_model = COALESCE(?, device_model),
             device_brand = COALESCE(?, device_brand),
             enrichment_source = COALESCE(?, enrichment_source),
+            is_known = 1,
             updated_at = datetime('now')
         WHERE id = ?"#,
     )

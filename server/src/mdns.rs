@@ -183,12 +183,14 @@ pub async fn upsert_mdns_info(
 
     // Update hostname if device doesn't have one yet
     if current_hostname.is_none() && !hostname.is_empty() {
-        let result =
-            sqlx::query(r#"UPDATE devices SET hostname = ? WHERE id = ? AND hostname IS NULL"#)
-                .bind(hostname)
-                .bind(&device_id)
-                .execute(pool)
-                .await?;
+        let result = sqlx::query(
+            r#"UPDATE devices SET hostname = ?, name = COALESCE(name, ?), is_known = 1 WHERE id = ? AND hostname IS NULL"#,
+        )
+        .bind(hostname)
+        .bind(hostname)
+        .bind(&device_id)
+        .execute(pool)
+        .await?;
         if result.rows_affected() > 0 {
             info!("mDNS: set hostname '{hostname}' for device {device_id} (IP: {ip})");
             changed = true;
