@@ -6,6 +6,8 @@ test.describe("Router Settings — MikroTik", () => {
     await page.goto("/settings/router/");
     // MikroTik tab is active by default
     await expect(page.locator("#mt-url")).toBeVisible({ timeout: 15000 });
+    // Wait for the settings API call to complete so toggle state is loaded
+    await page.waitForLoadState("networkidle");
   });
 
   test("default URL placeholder shows 10.10.0.125", async ({ page }) => {
@@ -85,6 +87,8 @@ test.describe("Router Settings — VyOS", () => {
     // Switch to VyOS tab
     await page.getByRole("tab", { name: /VyOS/ }).click();
     await expect(page.locator("#vyos-url")).toBeVisible({ timeout: 15000 });
+    // Wait for the settings API call to complete
+    await page.waitForLoadState("networkidle");
   });
 
   test("save and reload persists URL and API key", async ({ page }) => {
