@@ -125,8 +125,8 @@ export default function SettingsPage() {
 
           return (
             <section key={group.label} className="space-y-3">
-              <div>
-                <h2 className="text-xs font-medium uppercase tracking-wider text-slate-500">
+              <div className="static">
+                <h2 className="static text-xs font-medium uppercase tracking-wider text-slate-500">
                   {group.label}
                 </h2>
                 {group.subtitle && (
