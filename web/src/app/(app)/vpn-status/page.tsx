@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -65,6 +65,7 @@ export default function VpnStatusPage() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
   const vyosVisible = legacyRoutersEnabled && !!data?.vyos_available;
+  const defaultTabSet = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -96,6 +97,17 @@ export default function VpnStatusPage() {
       setActiveTab("overview");
     }
   }, [activeTab, vyosVisible]);
+
+  // Default to MikroTik tab when available (once, on first data load)
+  useEffect(() => {
+    if (!data || defaultTabSet.current) return;
+    defaultTabSet.current = true;
+    if (data.mikrotik_available) {
+      setActiveTab("mikrotik");
+    } else if (data.vyos_available) {
+      setActiveTab("vyos");
+    }
+  }, [data]);
 
   const filteredInterfaces = useMemo(() => {
     if (!data) return null;
@@ -198,20 +210,21 @@ export default function VpnStatusPage() {
             >
               Overview
             </TabsTrigger>
-            {vyosVisible && (
-              <TabsTrigger
-                value="vyos"
-                className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
-              >
-                VyOS
-              </TabsTrigger>
-            )}
+
             {data?.mikrotik_available && (
               <TabsTrigger
                 value="mikrotik"
                 className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
               >
                 MikroTik
+              </TabsTrigger>
+            )}
+            {vyosVisible && (
+              <TabsTrigger
+                value="vyos"
+                className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+              >
+                VyOS
               </TabsTrigger>
             )}
           </TabsList>
