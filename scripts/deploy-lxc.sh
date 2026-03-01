@@ -32,9 +32,27 @@ cd "$REPO_ROOT"
 echo "=== Step 3/4: Building Rust server ==="
 "$CARGO" build --release -p panoptikon-server
 
-echo "=== Step 4/4: Deploying to LXC $LXC_ID ==="
+echo "=== Step 4/5: Deploying to LXC $LXC_ID ==="
 scp target/release/panoptikon-server "$DEVBOX":/tmp/panoptikon-server
 ssh "$DEVBOX" "pct exec $LXC_ID -- systemctl stop panoptikon; pct push $LXC_ID /tmp/panoptikon-server /usr/local/bin/panoptikon-server; pct exec $LXC_ID -- systemctl start panoptikon"
 
 echo ""
-echo "Deploy complete — panoptikon is running on LXC $LXC_ID"
+echo "=== Step 5/5: Running smoke tests ==="
+if "$REPO_ROOT/scripts/smoke-test.sh" "http://10.10.0.22:8080"; then
+  echo ""
+  echo "Deploy complete — panoptikon is running on LXC $LXC_ID (smoke tests passed)"
+else
+  SMOKE_EXIT=$?
+  echo ""
+  echo "DEPLOY WARNING: Smoke tests FAILED (exit code $SMOKE_EXIT)"
+  echo "Server is running but may not be fully functional."
+  echo "Alerting Oleg..."
+  # Send webhook/notification if configured
+  if command -v curl &> /dev/null; then
+    curl -sf "http://10.10.0.22:8080/api/v1/webhooks/notify" \
+      -H 'Content-Type: application/json' \
+      -d "{\"event\":\"deploy_smoke_failed\",\"message\":\"Smoke tests failed after deploy to LXC $LXC_ID (exit $SMOKE_EXIT)\"}" \
+      2>/dev/null || true
+  fi
+  exit 1
+fi

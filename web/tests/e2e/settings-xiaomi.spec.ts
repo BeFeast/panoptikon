@@ -78,4 +78,61 @@ test.describe("Xiaomi Mesh Settings", () => {
       path: "tests/screenshots/settings-xiaomi-enabled.png",
     });
   });
+
+  test("password persists after save and reload (shows saved badge)", async ({
+    page,
+  }) => {
+    // Enable integration so password field is relevant
+    const toggle = page.locator("#xiaomi-enabled");
+    const currentState = await toggle.getAttribute("aria-checked");
+    if (currentState !== "true") {
+      await toggle.click();
+    }
+
+    // Fill and save password
+    await page.locator("#xiaomi-password").fill("e2e-password-roundtrip");
+
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(
+      page.getByText("Xiaomi Mesh settings saved."),
+    ).toBeVisible({ timeout: 10000 });
+
+    // Reload and verify password was stored
+    await page.reload();
+    await expect(page.locator("#xiaomi-password")).toBeVisible({
+      timeout: 15000,
+    });
+
+    // The "(saved)" badge next to the password label confirms it was stored
+    await expect(
+      page.locator('label[for="xiaomi-password"]'),
+    ).toContainText("(saved)");
+
+    // Password field should be empty (not echoed back) with a placeholder hint
+    await expect(page.locator("#xiaomi-password")).toHaveValue("");
+
+    await page.screenshot({
+      path: "tests/screenshots/settings-xiaomi-password-saved.png",
+    });
+  });
+
+  test("poll interval persists after save and reload", async ({ page }) => {
+    await page.locator("#xiaomi-poll-interval").fill("120");
+
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(
+      page.getByText("Xiaomi Mesh settings saved."),
+    ).toBeVisible({ timeout: 10000 });
+
+    await page.reload();
+    await expect(page.locator("#xiaomi-poll-interval")).toBeVisible({
+      timeout: 15000,
+    });
+
+    await expect(page.locator("#xiaomi-poll-interval")).toHaveValue("120");
+
+    await page.screenshot({
+      path: "tests/screenshots/settings-xiaomi-poll-interval.png",
+    });
+  });
 });
