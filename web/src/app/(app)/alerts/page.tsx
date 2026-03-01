@@ -52,6 +52,12 @@ import { timeAgo } from "@/lib/format";
 import { downloadExport } from "@/lib/export";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/PageTransition";
+import { HelpTooltip } from "@/components/HelpTooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 function alertIcon(type: Alert["type"]) {
   switch (type) {
@@ -265,6 +271,7 @@ export default function AlertsPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold text-white">Alerts</h1>
+          <HelpTooltip text="Notifications about network events — new devices, devices going offline, and security alerts. Configure rules in Settings → Alert Rules." />
           {activeCount > 0 && (
             <Badge variant="secondary" className="gap-1">
               <Bell className="h-3 w-3" />
@@ -316,25 +323,39 @@ export default function AlertsPage() {
               </DropdownMenuContent>
             </DropdownMenu>
             {(alerts ?? []).some((a) => !a.is_read) && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-gray-700 text-slate-400 hover:text-gray-200 gap-1.5"
-                onClick={handleMarkAllRead}
-              >
-                <CheckCheck className="h-3.5 w-3.5" />
-                Mark all read
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="border-gray-700 text-slate-400 hover:text-gray-200 gap-1.5"
+                    onClick={handleMarkAllRead}
+                  >
+                    <CheckCheck className="h-3.5 w-3.5" />
+                    Mark all read
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+                  Mark every unread alert as read
+                </TooltipContent>
+              </Tooltip>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-gray-700 text-slate-400 hover:text-rose-400 gap-1.5"
-              onClick={() => setClearAllDialogOpen(true)}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Clear all
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-gray-700 text-slate-400 hover:text-rose-400 gap-1.5"
+                  onClick={() => setClearAllDialogOpen(true)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Clear all
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+                Permanently delete all alerts
+              </TooltipContent>
+            </Tooltip>
           </div>
         )}
       </div>
@@ -401,8 +422,11 @@ export default function AlertsPage() {
       ) : alerts.length === 0 ? (
         <Card className="border-slate-800 bg-slate-900">
           <CardContent className="flex flex-col items-center gap-3 py-16">
-            <BellOff className="h-10 w-10 text-slate-600" />
-            <p className="text-sm text-slate-500">No alerts yet — all quiet.</p>
+            <BellOff className="h-12 w-12 text-slate-600" />
+            <p className="text-lg font-medium text-slate-400">No alerts yet — all quiet</p>
+            <p className="max-w-sm text-sm text-slate-600">
+              Alerts appear here when new devices join the network, devices go offline, or configured rules are triggered. Set up rules in Settings → Alert Rules.
+            </p>
           </CardContent>
         </Card>
       ) : (

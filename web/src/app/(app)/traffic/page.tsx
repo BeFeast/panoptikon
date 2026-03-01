@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/PageTransition";
+import { HelpTooltip } from "@/components/HelpTooltip";
 import { downloadExport } from "@/lib/export";
 import { DeviceTrafficChart } from "@/components/DeviceTrafficChart";
 
@@ -80,7 +81,10 @@ export default function TrafficPage() {
     <PageTransition>
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-white">Traffic</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold text-white">Traffic</h1>
+          <HelpTooltip text="Network bandwidth usage over time. Requires NetFlow/sFlow export from your router to be configured in Settings." />
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="secondary" size="sm">

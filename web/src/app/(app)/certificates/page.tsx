@@ -61,6 +61,12 @@ import {
   deleteNpmCertificate,
 } from "@/lib/api";
 import type { NpmCertificate, NpmConnectionStatus } from "@/lib/types";
+import { HelpTooltip } from "@/components/HelpTooltip";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // ─── Status badge helpers ──────────────────────────────────
 
@@ -297,30 +303,47 @@ export default function CertificatesPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-white">
-            SSL Certificates
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-white">
+              SSL Certificates
+            </h1>
+            <HelpTooltip text="View and manage SSL/TLS certificates provisioned through Nginx Proxy Manager. Request free Let's Encrypt certs or upload your own." />
+          </div>
           <p className="text-sm text-slate-400">
             Manage SSL certificates via Nginx Proxy Manager
           </p>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setLeDialogOpen(true)}
-            className="border-slate-700 text-slate-300 hover:bg-slate-800"
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Let&apos;s Encrypt
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setCustomDialogOpen(true)}
-            className="border-slate-700 text-slate-300 hover:bg-slate-800"
-          >
-            <Upload className="mr-1.5 h-3.5 w-3.5" />
-            Upload Custom
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                onClick={() => setLeDialogOpen(true)}
+                className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Let&apos;s Encrypt
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+              Request a free SSL certificate from Let&apos;s Encrypt via DNS challenge
+            </TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant="outline"
+                onClick={() => setCustomDialogOpen(true)}
+                className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              >
+                <Upload className="mr-1.5 h-3.5 w-3.5" />
+                Upload Custom
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+              Upload your own SSL certificate and private key
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -354,9 +377,13 @@ export default function CertificatesPage() {
         </CardHeader>
         <CardContent>
           {certs.length === 0 ? (
-            <p className="py-8 text-center text-sm text-slate-500">
-              No certificates found. Create one using the buttons above.
-            </p>
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <Shield className="mb-4 h-12 w-12 text-slate-600" />
+              <p className="text-lg font-medium text-slate-400">No certificates yet</p>
+              <p className="mt-1 max-w-sm text-sm text-slate-600">
+                Request a free Let&apos;s Encrypt certificate or upload your own using the buttons above. Make sure NPM is configured in Settings first.
+              </p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>

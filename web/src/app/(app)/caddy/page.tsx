@@ -51,6 +51,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { PageTransition } from "@/components/PageTransition";
+import { HelpTooltip } from "@/components/HelpTooltip";
+import { EmptyState } from "@/components/EmptyState";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   fetchCaddyStatus,
   fetchCaddyProxyHosts,
@@ -203,6 +210,7 @@ export default function CaddyPage() {
             <h1 className="text-2xl font-semibold text-white">
               Caddy Reverse Proxy
             </h1>
+            <HelpTooltip text="Manage reverse-proxy hosts that Caddy serves. Add domains, point them to internal services, and enable automatic HTTPS." />
           </div>
           <div className="flex items-center gap-2">
             {caddyStatus && (
@@ -222,34 +230,48 @@ export default function CaddyPage() {
                 {caddyStatus.reachable ? "Connected" : "Unreachable"}
               </Badge>
             )}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTestConnection}
-              disabled={testing}
-              className="border-slate-800 text-slate-300 hover:bg-slate-800"
-            >
-              {testing ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Zap className="mr-1.5 h-3.5 w-3.5" />
-              )}
-              Test Connection
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleSync}
-              disabled={syncing}
-              className="border-slate-800 text-slate-300 hover:bg-slate-800"
-            >
-              {syncing ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-              )}
-              Sync to Caddy
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTestConnection}
+                  disabled={testing}
+                  className="border-slate-800 text-slate-300 hover:bg-slate-800"
+                >
+                  {testing ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Zap className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  Test Connection
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+                Verify that Panoptikon can reach the Caddy admin API
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSync}
+                  disabled={syncing}
+                  className="border-slate-800 text-slate-300 hover:bg-slate-800"
+                >
+                  {syncing ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  Sync to Caddy
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+                Push current proxy host configuration to the Caddy reverse proxy
+              </TooltipContent>
+            </Tooltip>
             <Button
               size="sm"
               onClick={() => setShowAdd(true)}
@@ -352,11 +374,17 @@ export default function CaddyPage() {
                   <TableRow className="border-slate-800 hover:bg-transparent">
                     <TableCell
                       colSpan={5}
-                      className="py-12 text-center text-slate-500"
+                      className="py-12 text-center"
                     >
-                      {search
-                        ? "No hosts match your filter."
-                        : "No proxy hosts configured yet."}
+                      {search ? (
+                        <span className="text-slate-500">No hosts match your filter.</span>
+                      ) : (
+                        <EmptyState
+                          icon={Globe}
+                          title="No proxy hosts configured yet"
+                          description="Click &quot;Add Host&quot; to create your first reverse-proxy entry. Make sure the Caddy admin URL is set above."
+                        />
+                      )}
                     </TableCell>
                   </TableRow>
                 ) : (

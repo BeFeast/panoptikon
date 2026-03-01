@@ -42,6 +42,7 @@ import type { Agent, AgentCreateResponse, AgentReport } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
 import { PageTransition } from "@/components/PageTransition";
+import { HelpTooltip } from "@/components/HelpTooltip";
 import { copyToClipboard } from "@/lib/utils";
 
 export default function AgentsPage() {
@@ -120,7 +121,10 @@ export default function AgentsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-white">Agents</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-semibold text-white">Agents</h1>
+          <HelpTooltip text="Lightweight agents installed on your machines that report system info (CPU, memory, disk, OS) back to Panoptikon." />
+        </div>
         <AddAgentDialog
           onCreated={() => {
             fetchAgents().then(setAgents).catch(() => {});
