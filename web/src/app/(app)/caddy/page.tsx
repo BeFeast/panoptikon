@@ -366,7 +366,14 @@ export default function CaddyPage() {
                       className="border-slate-800 hover:bg-slate-800/30"
                     >
                       <TableCell className="font-medium text-white">
-                        {host.domain}
+                        <a
+                          href={`https://${host.domain}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline text-blue-400"
+                        >
+                          {host.domain}
+                        </a>
                       </TableCell>
                       <TableCell className="text-slate-400">
                         {host.forward_scheme}://{host.forward_host}:
