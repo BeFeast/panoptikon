@@ -857,4 +857,644 @@ mod tests {
         .expect("query state log");
         assert_eq!(states, vec!["online", "offline", "online"]);
     }
+
+    // ---------------------------------------------------------------
+    // Integration tests for device discovery pipeline
+    // ---------------------------------------------------------------
+
+    /// ARP output fixture simulating a realistic network scan with multiple
+    /// devices across a subnet, including incomplete entries that should be
+    /// skipped.
+    const ARP_FIXTURE: &str = "\
+? (10.10.0.1) at bc:24:11:d6:6b:01 [ether] on eth0
+? (10.10.0.2) at bc:24:11:d6:6b:02 [ether] on eth0
+? (10.10.0.3) at bc:24:11:d6:6b:03 [ether] on eth0
+? (10.10.0.10) at 60:be:b4:28:ec:64 [ether] on eth0
+? (10.10.0.25) at <incomplete> on eth0
+? (10.10.0.50) at aa:bb:cc:dd:ee:ff [ether] on wlan0
+? (10.10.0.99) at <incomplete> on eth0";
+
+    #[tokio::test]
+    async fn test_full_scan_cycle_with_arp_fixture() {
+        // Integration test: simulate a full scan cycle by parsing a realistic
+        // ARP output fixture and processing the results through the pipeline.
+        let pool = test_pool().await;
+        let ws_hub = Arc::new(WsHub::new());
+
+        // Phase 0 substitute: parse ARP fixture instead of reading /proc/net/arp.
+        let discovered = arp::parse_arp_output(ARP_FIXTURE);
+        assert_eq!(
+            discovered.len(),
+            5,
+            "Fixture should yield 5 devices (2 incomplete entries skipped)"
+        );
+
+        // Phase 1–2: process scan results (upsert devices, detect state changes).
+        process_scan_results(&pool, &discovered, 300, &ws_hub)
+            .await
+            .expect("process_scan_results should succeed");
+
+        // Verify all 5 devices were inserted and are online.
+        let device_count: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE is_online = 1")
+                .fetch_one(&pool)
+                .await
+                .expect("count devices");
+        assert_eq!(device_count, 5, "All 5 discovered devices should be online");
+
+        // Verify each device has a device_ips entry.
+        let ip_count: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM device_ips WHERE is_current = 1")
+                .fetch_one(&pool)
+                .await
+                .expect("count device_ips");
+        assert_eq!(ip_count, 5, "Each device should have a current IP mapping");
+
+        // Verify specific device data from the fixture.
+        let router: Option<(String, String, i32)> = sqlx::query_as(
+            "SELECT d.mac, di.ip, d.is_online FROM devices d JOIN device_ips di ON d.id = di.device_id WHERE d.mac = 'bc:24:11:d6:6b:01'",
+        )
+        .fetch_optional(&pool)
+        .await
+        .expect("query router device");
+        assert!(router.is_some(), "Router device should exist");
+        let (mac, ip, online) = router.unwrap();
+        assert_eq!(mac, "bc:24:11:d6:6b:01");
+        assert_eq!(ip, "10.10.0.1");
+        assert_eq!(online, 1);
+
+        // Verify state log was created for each device (initial online state).
+        let state_log_count: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM device_state_log WHERE state = 'online'")
+                .fetch_one(&pool)
+                .await
+                .expect("count state_log");
+        assert_eq!(
+            state_log_count, 5,
+            "Each device should have an initial online state log entry"
+        );
+
+        // Verify device_events were recorded for each device.
+        let event_count: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM device_events WHERE event_type = 'online'")
+                .fetch_one(&pool)
+                .await
+                .expect("count device_events");
+        assert_eq!(
+            event_count, 5,
+            "Each device should have an initial online event"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_device_deduplication_across_scans() {
+        // Integration test: running multiple scans with the same devices should
+        // not create duplicate entries — devices are identified by MAC address.
+        let pool = test_pool().await;
+        let ws_hub = Arc::new(WsHub::new());
+
+        let devices = vec![
+            DiscoveredDevice {
+                ip: "10.0.0.1".to_string(),
+                mac: "aa:bb:cc:00:11:22".to_string(),
+            },
+            DiscoveredDevice {
+                ip: "10.0.0.2".to_string(),
+                mac: "aa:bb:cc:00:11:33".to_string(),
+            },
+        ];
+
+        // Run the same scan 3 times.
+        for i in 0..3 {
+            process_scan_results(&pool, &devices, 300, &ws_hub)
+                .await
+                .unwrap_or_else(|e| panic!("scan {i} failed: {e}"));
+        }
+
+        // Only 2 device rows should exist (no duplicates).
+        let device_count: i32 = sqlx::query_scalar("SELECT COUNT(*) FROM devices")
+            .fetch_one(&pool)
+            .await
+            .expect("count devices");
+        assert_eq!(
+            device_count, 2,
+            "Repeated scans must not create duplicate devices"
+        );
+
+        // Only 1 new_device alert per device (deduplication).
+        let alert_count: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM alerts WHERE type = 'new_device'")
+                .fetch_one(&pool)
+                .await
+                .expect("count new_device alerts");
+        assert_eq!(
+            alert_count, 2,
+            "Only the first scan should create new_device alerts"
+        );
+
+        // Verify last_seen_at was updated (not first_seen_at).
+        let row: (String, String) = sqlx::query_as(
+            "SELECT first_seen_at, last_seen_at FROM devices WHERE mac = 'aa:bb:cc:00:11:22'",
+        )
+        .fetch_one(&pool)
+        .await
+        .expect("query timestamps");
+        let (first_seen, last_seen) = row;
+        // last_seen_at should be >= first_seen_at (updated by later scans).
+        assert!(
+            last_seen >= first_seen,
+            "last_seen_at should be updated on subsequent scans"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_device_deduplication_ip_change() {
+        // Integration test: a device changing IP between scans should update
+        // its IP mapping without creating a new device.
+        let pool = test_pool().await;
+        let ws_hub = Arc::new(WsHub::new());
+        let mac = "aa:bb:cc:00:22:33";
+
+        // Scan 1: device at IP 10.0.0.50.
+        let scan1 = vec![DiscoveredDevice {
+            ip: "10.0.0.50".to_string(),
+            mac: mac.to_string(),
+        }];
+        process_scan_results(&pool, &scan1, 300, &ws_hub)
+            .await
+            .expect("scan 1");
+
+        // Scan 2: same device at a different IP.
+        let scan2 = vec![DiscoveredDevice {
+            ip: "10.0.0.60".to_string(),
+            mac: mac.to_string(),
+        }];
+        process_scan_results(&pool, &scan2, 300, &ws_hub)
+            .await
+            .expect("scan 2");
+
+        // Still only 1 device.
+        let device_count: i32 = sqlx::query_scalar("SELECT COUNT(*) FROM devices")
+            .fetch_one(&pool)
+            .await
+            .expect("count devices");
+        assert_eq!(device_count, 1, "IP change must not create a new device");
+
+        // Both IPs should be recorded in device_ips.
+        let ip_count: i32 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM device_ips WHERE device_id = (SELECT id FROM devices WHERE mac = ?)",
+        )
+        .bind(mac)
+        .fetch_one(&pool)
+        .await
+        .expect("count IPs");
+        assert_eq!(ip_count, 2, "Both IPs should be tracked in device_ips");
+
+        // The new IP should be marked as current.
+        let current_ip: String = sqlx::query_scalar(
+            "SELECT ip FROM device_ips WHERE device_id = (SELECT id FROM devices WHERE mac = ?) AND is_current = 1 ORDER BY seen_at DESC LIMIT 1",
+        )
+        .bind(mac)
+        .fetch_one(&pool)
+        .await
+        .expect("query current IP");
+        assert_eq!(current_ip, "10.0.0.60", "Latest IP should be current");
+    }
+
+    #[tokio::test]
+    async fn test_new_device_detection_triggers_notification() {
+        // Integration test: discovering new devices should create alerts with
+        // correct type, severity, and message content.
+        let pool = test_pool().await;
+        let ws_hub = Arc::new(WsHub::new());
+
+        // Discover 3 new devices in a single scan.
+        let devices = vec![
+            DiscoveredDevice {
+                ip: "10.0.0.1".to_string(),
+                mac: "aa:bb:cc:11:22:01".to_string(),
+            },
+            DiscoveredDevice {
+                ip: "10.0.0.2".to_string(),
+                mac: "aa:bb:cc:11:22:02".to_string(),
+            },
+            DiscoveredDevice {
+                ip: "10.0.0.3".to_string(),
+                mac: "aa:bb:cc:11:22:03".to_string(),
+            },
+        ];
+
+        process_scan_results(&pool, &devices, 300, &ws_hub)
+            .await
+            .expect("process_scan_results");
+
+        // Verify 3 new_device alerts were created (one per device).
+        let alerts: Vec<(String, String, String, String)> = sqlx::query_as(
+            "SELECT a.type, a.severity, a.message, a.device_id FROM alerts a WHERE a.type = 'new_device' ORDER BY a.created_at",
+        )
+        .fetch_all(&pool)
+        .await
+        .expect("query alerts");
+        assert_eq!(alerts.len(), 3, "Each new device should trigger an alert");
+
+        for (alert_type, severity, message, device_id) in &alerts {
+            assert_eq!(alert_type, "new_device");
+            assert_eq!(severity, severity_for_alert_type("new_device"));
+            assert!(
+                message.contains("New device discovered"),
+                "Alert message should describe the discovery: {message}"
+            );
+            assert!(
+                !device_id.is_empty(),
+                "Alert must reference the discovered device"
+            );
+        }
+
+        // Verify the alerts have detail JSON with MAC and IP.
+        let detail_rows: Vec<(String,)> = sqlx::query_as(
+            "SELECT details FROM alerts WHERE type = 'new_device' AND details IS NOT NULL",
+        )
+        .fetch_all(&pool)
+        .await
+        .expect("query alert details");
+        assert_eq!(
+            detail_rows.len(),
+            3,
+            "Each new_device alert should have details JSON"
+        );
+        for (details,) in &detail_rows {
+            let parsed: serde_json::Value =
+                serde_json::from_str(details).expect("details should be valid JSON");
+            assert!(parsed.get("mac").is_some(), "Details should contain MAC");
+            assert!(parsed.get("ip").is_some(), "Details should contain IP");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_new_device_alert_not_created_when_muted() {
+        // Integration test: a muted device coming back online should not
+        // generate a device_online alert.
+        let pool = test_pool().await;
+        let ws_hub = Arc::new(WsHub::new());
+        let mac = "aa:bb:cc:33:44:55";
+
+        // Step 1: Discover the device.
+        let devices = vec![DiscoveredDevice {
+            ip: "10.0.0.5".to_string(),
+            mac: mac.to_string(),
+        }];
+        process_scan_results(&pool, &devices, 300, &ws_hub)
+            .await
+            .expect("initial scan");
+
+        // Step 2: Mute the device.
+        sqlx::query("UPDATE devices SET muted_until = datetime('now', '+1 hour') WHERE mac = ?")
+            .bind(mac)
+            .execute(&pool)
+            .await
+            .expect("mute device");
+
+        // Step 3: Force offline.
+        sqlx::query("UPDATE devices SET last_seen_at = datetime('now', '-1 hour'), is_online = 0 WHERE mac = ?")
+            .bind(mac)
+            .execute(&pool)
+            .await
+            .expect("force offline");
+
+        // Clear existing alerts to isolate the test.
+        sqlx::query("DELETE FROM alerts")
+            .execute(&pool)
+            .await
+            .expect("clear alerts");
+
+        // Step 4: Device reappears — should not create device_online alert (muted).
+        process_scan_results(&pool, &devices, 300, &ws_hub)
+            .await
+            .expect("re-discovery scan");
+
+        let alert_count: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM alerts WHERE type = 'device_online'")
+                .fetch_one(&pool)
+                .await
+                .expect("count device_online alerts");
+        assert_eq!(
+            alert_count, 0,
+            "Muted device should not generate device_online alert"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_stale_device_removal_after_missed_scans() {
+        // Integration test: devices that have not been seen for longer than the
+        // offline grace period should be marked offline with proper state
+        // tracking and alerts.
+        let pool = test_pool().await;
+        let ws_hub = Arc::new(WsHub::new());
+
+        // Step 1: Discover 3 devices.
+        let all_devices = vec![
+            DiscoveredDevice {
+                ip: "10.0.0.10".to_string(),
+                mac: "aa:bb:cc:44:55:01".to_string(),
+            },
+            DiscoveredDevice {
+                ip: "10.0.0.11".to_string(),
+                mac: "aa:bb:cc:44:55:02".to_string(),
+            },
+            DiscoveredDevice {
+                ip: "10.0.0.12".to_string(),
+                mac: "aa:bb:cc:44:55:03".to_string(),
+            },
+        ];
+        process_scan_results(&pool, &all_devices, 300, &ws_hub)
+            .await
+            .expect("initial scan");
+
+        let online_count: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE is_online = 1")
+                .fetch_one(&pool)
+                .await
+                .expect("count online");
+        assert_eq!(online_count, 3, "All 3 devices should be online");
+
+        // Step 2: Backdate 2 devices to simulate them missing several scans.
+        sqlx::query(
+            "UPDATE devices SET last_seen_at = datetime('now', '-1 hour') WHERE mac IN ('aa:bb:cc:44:55:01', 'aa:bb:cc:44:55:02')",
+        )
+        .execute(&pool)
+        .await
+        .expect("backdate stale devices");
+
+        // Step 3: Run scan with only the 3rd device present.
+        let remaining = vec![DiscoveredDevice {
+            ip: "10.0.0.12".to_string(),
+            mac: "aa:bb:cc:44:55:03".to_string(),
+        }];
+        process_scan_results(&pool, &remaining, 60, &ws_hub)
+            .await
+            .expect("scan with missing devices");
+
+        // Step 4: Verify 2 devices went offline, 1 remains online.
+        let online_count: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE is_online = 1")
+                .fetch_one(&pool)
+                .await
+                .expect("count online after stale removal");
+        assert_eq!(online_count, 1, "Only 1 device should remain online");
+
+        let offline_count: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE is_online = 0")
+                .fetch_one(&pool)
+                .await
+                .expect("count offline");
+        assert_eq!(offline_count, 2, "2 devices should be offline");
+
+        // The surviving device should be the one still being scanned.
+        let surviving: String = sqlx::query_scalar("SELECT mac FROM devices WHERE is_online = 1")
+            .fetch_one(&pool)
+            .await
+            .expect("query surviving device");
+        assert_eq!(surviving, "aa:bb:cc:44:55:03");
+
+        // Verify device_offline alerts were created for the stale devices.
+        let offline_alerts: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM alerts WHERE type = 'device_offline'")
+                .fetch_one(&pool)
+                .await
+                .expect("count device_offline alerts");
+        assert_eq!(
+            offline_alerts, 2,
+            "Each stale device should have a device_offline alert"
+        );
+
+        // Verify state log records: each stale device should have online → offline.
+        for mac in &["aa:bb:cc:44:55:01", "aa:bb:cc:44:55:02"] {
+            let states: Vec<String> = sqlx::query_scalar(
+                "SELECT state FROM device_state_log WHERE device_id = (SELECT id FROM devices WHERE mac = ?) ORDER BY changed_at",
+            )
+            .bind(mac)
+            .fetch_all(&pool)
+            .await
+            .expect("query state log for stale device");
+            assert_eq!(
+                states,
+                vec!["online", "offline"],
+                "Stale device {mac} should transition from online to offline"
+            );
+        }
+
+        // Verify IPs were marked as not current for offline devices.
+        let stale_current_ips: i32 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM device_ips WHERE is_current = 1 AND device_id IN (SELECT id FROM devices WHERE is_online = 0)",
+        )
+        .fetch_one(&pool)
+        .await
+        .expect("count current IPs for offline devices");
+        assert_eq!(
+            stale_current_ips, 0,
+            "Offline devices should have no current IP mappings"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_stale_device_comes_back_online() {
+        // Integration test: a device that went offline due to missed scans
+        // should come back online when rediscovered, with proper alerts and
+        // state transitions.
+        let pool = test_pool().await;
+        let ws_hub = Arc::new(WsHub::new());
+        let mac = "aa:bb:cc:55:66:77";
+
+        // Step 1: Discover device.
+        let devices = vec![DiscoveredDevice {
+            ip: "10.0.0.20".to_string(),
+            mac: mac.to_string(),
+        }];
+        process_scan_results(&pool, &devices, 300, &ws_hub)
+            .await
+            .expect("initial scan");
+
+        // Step 2: Device goes stale → offline.
+        sqlx::query("UPDATE devices SET last_seen_at = datetime('now', '-1 hour') WHERE mac = ?")
+            .bind(mac)
+            .execute(&pool)
+            .await
+            .expect("backdate");
+        process_scan_results(&pool, &[], 60, &ws_hub)
+            .await
+            .expect("offline scan");
+
+        let is_online: i32 = sqlx::query_scalar("SELECT is_online FROM devices WHERE mac = ?")
+            .bind(mac)
+            .fetch_one(&pool)
+            .await
+            .expect("check offline");
+        assert_eq!(is_online, 0);
+
+        // Step 3: Device reappears.
+        process_scan_results(&pool, &devices, 300, &ws_hub)
+            .await
+            .expect("re-discovery scan");
+
+        let is_online: i32 = sqlx::query_scalar("SELECT is_online FROM devices WHERE mac = ?")
+            .bind(mac)
+            .fetch_one(&pool)
+            .await
+            .expect("check back online");
+        assert_eq!(is_online, 1, "Device should be back online");
+
+        // Verify full state transition log: online → offline → online.
+        let states: Vec<String> = sqlx::query_scalar(
+            "SELECT state FROM device_state_log WHERE device_id = (SELECT id FROM devices WHERE mac = ?) ORDER BY changed_at",
+        )
+        .bind(mac)
+        .fetch_all(&pool)
+        .await
+        .expect("query state log");
+        assert_eq!(states, vec!["online", "offline", "online"]);
+
+        // Verify device_events trail matches state log.
+        let events: Vec<String> = sqlx::query_scalar(
+            "SELECT event_type FROM device_events WHERE device_id = (SELECT id FROM devices WHERE mac = ?) ORDER BY occurred_at",
+        )
+        .bind(mac)
+        .fetch_all(&pool)
+        .await
+        .expect("query events");
+        assert_eq!(events, vec!["online", "offline", "online"]);
+
+        // Verify a device_online alert was created for the re-discovery.
+        let online_alert_count: i32 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM alerts WHERE type = 'device_online' AND device_id = (SELECT id FROM devices WHERE mac = ?)",
+        )
+        .bind(mac)
+        .fetch_one(&pool)
+        .await
+        .expect("count device_online alerts");
+        assert_eq!(
+            online_alert_count, 1,
+            "Re-discovered device should have a device_online alert"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_full_scan_cycle_arp_fixture_to_pipeline() {
+        // Integration test: end-to-end from ARP text parsing through the full
+        // discovery pipeline, verifying the complete data flow.
+        let pool = test_pool().await;
+        let ws_hub = Arc::new(WsHub::new());
+
+        // Parse the ARP fixture (simulates what scan_subnets would return).
+        let scan1_devices = arp::parse_arp_output(ARP_FIXTURE);
+
+        // Scan 1: initial discovery.
+        process_scan_results(&pool, &scan1_devices, 300, &ws_hub)
+            .await
+            .expect("scan 1");
+
+        // Scan 2: same devices (deduplication check).
+        process_scan_results(&pool, &scan1_devices, 300, &ws_hub)
+            .await
+            .expect("scan 2");
+
+        // Still only 5 unique devices.
+        let count: i32 = sqlx::query_scalar("SELECT COUNT(*) FROM devices")
+            .fetch_one(&pool)
+            .await
+            .expect("count");
+        assert_eq!(count, 5, "Deduplication should prevent duplicate devices");
+
+        // Scan 3: 2 devices disappear (simulate network change).
+        let scan3_arp = "\
+? (10.10.0.1) at bc:24:11:d6:6b:01 [ether] on eth0
+? (10.10.0.50) at aa:bb:cc:dd:ee:ff [ether] on wlan0";
+        let scan3_devices = arp::parse_arp_output(scan3_arp);
+        assert_eq!(scan3_devices.len(), 2);
+
+        // Backdate the 3 devices that will "disappear" so they exceed grace period.
+        sqlx::query(
+            "UPDATE devices SET last_seen_at = datetime('now', '-1 hour') WHERE mac IN ('bc:24:11:d6:6b:02', 'bc:24:11:d6:6b:03', '60:be:b4:28:ec:64')",
+        )
+        .execute(&pool)
+        .await
+        .expect("backdate missing devices");
+
+        process_scan_results(&pool, &scan3_devices, 60, &ws_hub)
+            .await
+            .expect("scan 3 - partial network");
+
+        // 2 online, 3 offline.
+        let online: i32 = sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE is_online = 1")
+            .fetch_one(&pool)
+            .await
+            .expect("count online");
+        assert_eq!(online, 2, "2 devices should remain online");
+
+        let offline: i32 = sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE is_online = 0")
+            .fetch_one(&pool)
+            .await
+            .expect("count offline");
+        assert_eq!(offline, 3, "3 devices should be offline");
+
+        // Scan 4: one offline device returns.
+        let scan4_arp = "\
+? (10.10.0.1) at bc:24:11:d6:6b:01 [ether] on eth0
+? (10.10.0.10) at 60:be:b4:28:ec:64 [ether] on eth0
+? (10.10.0.50) at aa:bb:cc:dd:ee:ff [ether] on wlan0";
+        let scan4_devices = arp::parse_arp_output(scan4_arp);
+
+        process_scan_results(&pool, &scan4_devices, 300, &ws_hub)
+            .await
+            .expect("scan 4 - device returns");
+
+        let online: i32 = sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE is_online = 1")
+            .fetch_one(&pool)
+            .await
+            .expect("count online after return");
+        assert_eq!(
+            online, 3,
+            "3 devices should be online (2 stayed + 1 returned)"
+        );
+
+        // Verify the returning device has the full state log.
+        let returning_states: Vec<String> = sqlx::query_scalar(
+            "SELECT state FROM device_state_log WHERE device_id = (SELECT id FROM devices WHERE mac = '60:be:b4:28:ec:64') ORDER BY changed_at",
+        )
+        .fetch_all(&pool)
+        .await
+        .expect("state log for returning device");
+        assert_eq!(
+            returning_states,
+            vec!["online", "offline", "online"],
+            "Returning device should have full state lifecycle"
+        );
+
+        // Verify total alerts: 5 new_device + 3 device_offline + 1 device_online.
+        let new_alerts: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM alerts WHERE type = 'new_device'")
+                .fetch_one(&pool)
+                .await
+                .expect("count new_device");
+        assert_eq!(new_alerts, 5);
+
+        let offline_alerts: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM alerts WHERE type = 'device_offline'")
+                .fetch_one(&pool)
+                .await
+                .expect("count device_offline");
+        assert_eq!(
+            offline_alerts, 3,
+            "3 stale devices should have device_offline alerts"
+        );
+
+        let online_alerts: i32 =
+            sqlx::query_scalar("SELECT COUNT(*) FROM alerts WHERE type = 'device_online'")
+                .fetch_one(&pool)
+                .await
+                .expect("count device_online");
+        assert!(
+            online_alerts >= 1,
+            "At least 1 device_online alert expected for returning device, got {online_alerts}"
+        );
+    }
 }
