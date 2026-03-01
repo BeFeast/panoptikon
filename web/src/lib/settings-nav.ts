@@ -51,6 +51,11 @@ export const settingsNav: SettingsNavGroup[] = [
         description:
           "Configure rules for device offline, bandwidth, and new devices.",
       },
+      {
+        href: "/settings/cloudflare-tunnel",
+        title: "Cloudflare Tunnel",
+        description: "Configure Cloudflare Tunnel API token and tunnel ID.",
+      },
     ],
   },
   {
@@ -108,11 +113,6 @@ export const settingsNav: SettingsNavGroup[] = [
         href: "/settings/advanced",
         title: "Advanced",
         description: "Toggle legacy router visibility and other advanced options.",
-      },
-      {
-        href: "/settings/npm",
-        title: "Nginx Proxy Manager",
-        description: "Legacy reverse proxy — consider migrating to Caddy.",
       },
     ],
   },
