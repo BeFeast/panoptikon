@@ -37,6 +37,8 @@ export default function XiaomiMeshSettingsPage() {
   const [savedPollInterval, setSavedPollInterval] = useState<string | null>(
     null
   );
+  const [proxyHost, setProxyHost] = useState("");
+  const [savedProxyHost, setSavedProxyHost] = useState<string | null>(null);
 
   const [saveStatus, setSaveStatus] = useState<Status>("idle");
   const [saveMsg, setSaveMsg] = useState("");
@@ -61,6 +63,7 @@ export default function XiaomiMeshSettingsPage() {
           xiaomi_mesh_ip: string | null;
           xiaomi_mesh_password_set: boolean;
           xiaomi_mesh_poll_interval: number | null;
+          xiaomi_mesh_proxy_host: string | null;
         }) => {
           if (loadToken !== loadTokenRef.current) return;
           setEnabled(data.xiaomi_mesh_enabled);
@@ -74,6 +77,10 @@ export default function XiaomiMeshSettingsPage() {
             setPollInterval(String(data.xiaomi_mesh_poll_interval));
             setSavedPollInterval(String(data.xiaomi_mesh_poll_interval));
           }
+          if (data.xiaomi_mesh_proxy_host) {
+            setProxyHost(data.xiaomi_mesh_proxy_host);
+            setSavedProxyHost(data.xiaomi_mesh_proxy_host);
+          }
         }
       )
       .catch(() => {});
@@ -83,7 +90,8 @@ export default function XiaomiMeshSettingsPage() {
     enabled !== savedEnabled ||
     ip !== (savedIp ?? "10.10.0.199") ||
     password.length > 0 ||
-    pollInterval !== (savedPollInterval ?? "30");
+    pollInterval !== (savedPollInterval ?? "30") ||
+    proxyHost !== (savedProxyHost ?? "");
 
   // Validate IPv4
   function isValidIpv4(value: string): boolean {
@@ -130,6 +138,8 @@ export default function XiaomiMeshSettingsPage() {
       if (password.length > 0) body.xiaomi_mesh_password = password;
       if (pollInterval !== (savedPollInterval ?? "30"))
         body.xiaomi_mesh_poll_interval = intervalNum;
+      if (proxyHost !== (savedProxyHost ?? ""))
+        body.xiaomi_mesh_proxy_host = proxyHost;
 
       // Always send all changed fields
       if (Object.keys(body).length === 0 && dirty) {
@@ -137,6 +147,7 @@ export default function XiaomiMeshSettingsPage() {
         body.xiaomi_mesh_enabled = enabled;
         body.xiaomi_mesh_ip = ip;
         body.xiaomi_mesh_poll_interval = intervalNum;
+        body.xiaomi_mesh_proxy_host = proxyHost;
       }
 
       const res = await fetch("/api/v1/settings", {
@@ -159,6 +170,8 @@ export default function XiaomiMeshSettingsPage() {
           setSavedPollInterval(String(data.xiaomi_mesh_poll_interval));
           setPollInterval(String(data.xiaomi_mesh_poll_interval));
         }
+        setSavedProxyHost(data.xiaomi_mesh_proxy_host ?? "");
+        setProxyHost(data.xiaomi_mesh_proxy_host ?? "");
         setSaveStatus("success");
         setSaveMsg("Xiaomi Mesh settings saved.");
         setTimeout(() => setSaveStatus("idle"), 3000);
@@ -264,6 +277,34 @@ export default function XiaomiMeshSettingsPage() {
                   Enter a valid IPv4 address.
                 </p>
               )}
+            </div>
+
+            {/* Proxy Host */}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="xiaomi-proxy-host"
+                className="text-xs text-slate-400"
+              >
+                Proxy Host{" "}
+                <span className="text-slate-600">(optional)</span>
+                {savedProxyHost && (
+                  <span className="text-emerald-500"> (saved)</span>
+                )}
+              </Label>
+              <Input
+                id="xiaomi-proxy-host"
+                type="text"
+                value={proxyHost}
+                onChange={(e) => setProxyHost(e.target.value)}
+                autoComplete="one-time-code"
+                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                placeholder="e.g. 10.10.0.14:9199"
+              />
+              <p className="text-xs text-slate-600">
+                If the router blocks direct access, enter a proxy host (IP:port)
+                that forwards TCP to the router. Leave empty for direct
+                connection.
+              </p>
             </div>
 
             {/* Password */}

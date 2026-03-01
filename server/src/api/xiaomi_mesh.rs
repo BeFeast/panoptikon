@@ -58,7 +58,10 @@ pub async fn test_connection(
         },
     };
 
-    let url = format!("http://{ip}/cgi-bin/luci/api/xqsystem/init_info");
+    // Use proxy host if configured, otherwise connect directly to the router IP.
+    let proxy_host = get_setting(&state, "xiaomi_mesh_proxy_host").await;
+    let target = proxy_host.as_deref().unwrap_or(&ip);
+    let url = format!("http://{target}/cgi-bin/luci/api/xqsystem/init_info");
 
     match state.xiaomi_mesh_http.get(&url).send().await {
         Ok(resp) if resp.status().is_success() => {

@@ -58,8 +58,20 @@ pub struct XiaomiClient {
 
 impl XiaomiClient {
     /// Create a new Xiaomi client reusing an existing `reqwest::Client`.
-    pub fn new(router_ip: &str, password: &str, http: reqwest::Client) -> Self {
-        let base_url = format!("http://{}", router_ip.trim_end_matches('/'));
+    ///
+    /// When `proxy_host` is `Some`, all HTTP requests are sent to
+    /// `http://<proxy_host>` instead of `http://<router_ip>`.
+    /// This is used when the router filters port 80 from non-DHCP clients
+    /// and a TCP proxy (e.g. socat) on a reachable host forwards traffic
+    /// to the router.
+    pub fn new(
+        router_ip: &str,
+        password: &str,
+        http: reqwest::Client,
+        proxy_host: Option<&str>,
+    ) -> Self {
+        let target = proxy_host.unwrap_or(router_ip);
+        let base_url = format!("http://{}", target.trim_end_matches('/'));
         Self {
             base_url,
             password: password.to_string(),
