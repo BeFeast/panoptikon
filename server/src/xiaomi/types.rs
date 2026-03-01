@@ -96,10 +96,20 @@ pub struct TopoLeaf {
     pub ip: Option<String>,
     #[serde(default)]
     pub name: Option<String>,
-    #[serde(default)]
+    /// Number of online devices. The BE3600 (RD15) sends `"onlines"` while
+    /// other models send `"online"`.
+    #[serde(default, alias = "onlines")]
     pub online: Option<i32>,
     #[serde(default, rename = "parentId")]
     pub parent_id: Option<String>,
+    /// Connection type for satellite nodes (e.g. "wired", "wireless").
+    /// Only present on leafs that represent satellite mesh routers (BE3600).
+    #[serde(default)]
+    pub link_type: Option<String>,
+    #[serde(default)]
+    pub locale: Option<String>,
+    #[serde(default)]
+    pub hardware: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -114,6 +124,20 @@ pub struct TopoGraphInner {
     pub nodes: Vec<TopoNode>,
     #[serde(default)]
     pub leafs: Vec<TopoLeaf>,
+    /// Root node fields — represent the main router.
+    /// These are present in the BE3600 response where the graph object itself
+    /// acts as the main router node.
+    #[serde(default)]
+    pub ip: Option<String>,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub locale: Option<String>,
+    #[serde(default)]
+    pub hardware: Option<String>,
+    /// Number of online devices on the main router. May be a string or number.
+    #[serde(default, alias = "onlines")]
+    pub online: Option<serde_json::Value>,
 }
 
 // ── System status ───────────────────────────────────────────
@@ -445,5 +469,91 @@ mod tests {
         assert_eq!(parsed.list.len(), 1);
         assert_eq!(parsed.list[0].online, Some("1".to_string()));
         assert_eq!(parsed.list[0].ip[0].online, Some("400346".to_string()));
+    }
+
+    #[test]
+    fn topo_graph_parses_be3600_rd15_satellite_leafs() {
+        // BE3600 (RD15) sends satellite routers in `leafs` with `onlines`
+        // instead of `nodes`. The graph root IS the main router.
+        let payload = serde_json::json!({
+            "code": 0,
+            "graph": {
+                "ip": "10.10.0.199",
+                "name": "OK Home",
+                "mode": 2,
+                "onlines": 8,
+                "leafs": [
+                    {
+                        "ip": "10.10.0.52",
+                        "name": "Basement",
+                        "link_type": "wired",
+                        "onlines": 5
+                    },
+                    {
+                        "ip": "10.10.0.54",
+                        "name": "Network Enclosure",
+                        "link_type": "wired",
+                        "onlines": 4
+                    },
+                    {
+                        "ip": "10.10.0.53",
+                        "name": "Floor 2",
+                        "link_type": "wired",
+                        "onlines": 8
+                    }
+                ]
+            }
+        });
+
+        let parsed: MiWiFiResponse<TopoGraph> =
+            serde_json::from_value(payload).expect("BE3600 topo_graph should parse");
+        assert_eq!(parsed.code, 0);
+
+        let graph = parsed.data.graph.expect("graph should be present");
+
+        // No nodes in BE3600 response
+        assert!(graph.nodes.is_empty());
+
+        // Graph root fields represent the main router
+        assert_eq!(graph.ip.as_deref(), Some("10.10.0.199"));
+        assert_eq!(graph.name.as_deref(), Some("OK Home"));
+
+        // Satellite leafs with `onlines` field parsed via alias
+        assert_eq!(graph.leafs.len(), 3);
+        assert_eq!(graph.leafs[0].name.as_deref(), Some("Basement"));
+        assert_eq!(graph.leafs[0].online, Some(5));
+        assert_eq!(graph.leafs[0].link_type.as_deref(), Some("wired"));
+        assert_eq!(graph.leafs[1].online, Some(4));
+        assert_eq!(graph.leafs[2].online, Some(8));
+
+        // Total online devices = 5 + 4 + 8 = 17
+        let total: i32 = graph.leafs.iter().filter_map(|l| l.online).sum();
+        assert_eq!(total, 17);
+    }
+
+    #[test]
+    fn topo_leaf_accepts_both_online_and_onlines() {
+        // `online` (standard models)
+        let leaf_online = serde_json::json!({
+            "mac": "AA:BB:CC:DD:EE:FF",
+            "ip": "192.168.1.100",
+            "online": 1,
+            "parentId": "11:22:33:44:55:66"
+        });
+        let parsed: TopoLeaf =
+            serde_json::from_value(leaf_online).expect("leaf with online should parse");
+        assert_eq!(parsed.online, Some(1));
+
+        // `onlines` (BE3600)
+        let leaf_onlines = serde_json::json!({
+            "ip": "10.10.0.52",
+            "name": "Basement",
+            "link_type": "wired",
+            "onlines": 5
+        });
+        let parsed: TopoLeaf =
+            serde_json::from_value(leaf_onlines).expect("leaf with onlines should parse");
+        assert_eq!(parsed.online, Some(5));
+        assert_eq!(parsed.link_type.as_deref(), Some("wired"));
     }
 }
