@@ -1,4 +1,5 @@
 pub mod arp;
+pub mod device_identify;
 
 use anyhow::Result;
 use chrono::Utc;
@@ -590,6 +591,34 @@ pub async fn process_scan_results(
                 }
             }
         } // end if let Some(resolver)
+    }
+
+    // --- Phase 3.5: External device identification (MikroTik DHCP, Xiaomi) ---
+    // Query configured routers for DHCP hostnames and device names.
+    // This fills in hostnames for devices with randomized MACs that reverse DNS
+    // cannot resolve. Runs after DNS so it only targets devices still missing hostnames.
+    {
+        let device_macs: Vec<(String, String)> = enrichment_targets
+            .iter()
+            .map(|(id, _ip, mac, _hostname, _vendor, _mdns)| (id.clone(), mac.clone()))
+            .collect();
+        device_identify::identify_from_external_sources(db, &device_macs).await;
+    }
+
+    // Re-read hostnames for enrichment targets after external identification,
+    // so the enrichment engine can use newly discovered hostnames.
+    for target in enrichment_targets.iter_mut() {
+        let fresh_hostname: Option<String> =
+            sqlx::query_scalar("SELECT hostname FROM devices WHERE id = ?")
+                .bind(&target.0)
+                .fetch_optional(db)
+                .await
+                .ok()
+                .flatten()
+                .flatten();
+        if fresh_hostname.is_some() {
+            target.3 = fresh_hostname;
+        }
     }
 
     // --- Phase 4: Device enrichment (OS, type, model) ---
