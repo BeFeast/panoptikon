@@ -322,8 +322,9 @@ test.describe("Xiaomi Topology Page — BE3600 satellite nodes (#473)", () => {
     // Switch to the Mesh Topology tab where XiaomiMeshTopology is rendered
     await page.getByRole("tab", { name: "Mesh Topology" }).click();
 
-    // "Mesh Nodes" stat card should show 4 (1 main + 3 satellites)
-    const meshNodesCard = page.locator("text=Mesh Nodes").locator("..");
+    // "Mesh Nodes" stat card should show 4 (1 main + 3 satellites).
+    // Use getByText with exact:true to avoid matching the "Network mesh nodes from..." subtitle.
+    const meshNodesCard = page.getByText("Mesh Nodes", { exact: true }).locator("..");
     await expect(meshNodesCard).toBeVisible({ timeout: 15000 });
     await expect(meshNodesCard.getByText("4")).toBeVisible();
 
