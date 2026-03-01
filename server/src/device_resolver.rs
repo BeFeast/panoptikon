@@ -281,6 +281,44 @@ pub async fn resolve_devices(db: &SqlitePool) -> ResolveResult {
 mod tests {
     use super::*;
 
+    async fn setup_test_db() -> SqlitePool {
+        crate::db::init(":memory:").await.expect("DB init failed")
+    }
+
+    /// Insert a device into the test database, returning its ID.
+    async fn insert_device(pool: &SqlitePool, mac: &str, hostname: Option<&str>) -> String {
+        let id = uuid::Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().to_rfc3339();
+        sqlx::query(
+            "INSERT INTO devices (id, mac, hostname, first_seen_at, last_seen_at) \
+             VALUES (?, ?, ?, ?, ?)",
+        )
+        .bind(&id)
+        .bind(mac)
+        .bind(hostname)
+        .bind(&now)
+        .bind(&now)
+        .execute(pool)
+        .await
+        .expect("failed to insert device");
+        id
+    }
+
+    /// Insert a setting key-value pair.
+    async fn insert_setting(pool: &SqlitePool, key: &str, value: &str) {
+        sqlx::query(
+            "INSERT INTO settings (key, value) VALUES (?, ?) \
+             ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        )
+        .bind(key)
+        .bind(value)
+        .execute(pool)
+        .await
+        .expect("failed to insert setting");
+    }
+
+    // ── ResolveResult struct tests ──────────────────────────────────
+
     #[tokio::test]
     async fn test_resolve_result_default() {
         let result = ResolveResult::default();
@@ -290,11 +328,275 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn test_resolve_result_serializes_to_json() {
+        let result = ResolveResult {
+            resolved: 3,
+            candidates: 10,
+            sources_queried: vec!["mikrotik".to_string(), "xiaomi".to_string()],
+        };
+        let json = serde_json::to_value(&result).unwrap();
+        assert_eq!(json["resolved"], 3);
+        assert_eq!(json["candidates"], 10);
+        assert_eq!(json["sources_queried"][0], "mikrotik");
+        assert_eq!(json["sources_queried"][1], "xiaomi");
+    }
+
+    // ── get_setting tests ───────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_get_setting_returns_none_for_missing_key() {
+        let pool = setup_test_db().await;
+        let val = get_setting(&pool, "nonexistent_key").await;
+        assert!(val.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_get_setting_returns_value_for_existing_key() {
+        let pool = setup_test_db().await;
+        insert_setting(&pool, "mikrotik_url", "http://192.168.1.1").await;
+        let val = get_setting(&pool, "mikrotik_url").await;
+        assert_eq!(val.as_deref(), Some("http://192.168.1.1"));
+    }
+
+    #[tokio::test]
+    async fn test_get_setting_returns_none_for_empty_value() {
+        let pool = setup_test_db().await;
+        insert_setting(&pool, "mikrotik_password", "").await;
+        let val = get_setting(&pool, "mikrotik_password").await;
+        assert!(val.is_none(), "empty string should be treated as None");
+    }
+
+    // ── resolve_devices — no sources configured ─────────────────────
+
+    #[tokio::test]
     async fn test_resolve_no_sources_configured() {
-        let pool = crate::db::init(":memory:").await.unwrap();
+        let pool = setup_test_db().await;
         let result = resolve_devices(&pool).await;
-        // With no settings configured, no sources should be queried
+        assert_eq!(result.resolved, 0);
+        assert_eq!(result.candidates, 0);
+        assert!(result.sources_queried.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_resolve_no_sources_does_not_modify_devices() {
+        let pool = setup_test_db().await;
+        let _id = insert_device(&pool, "aa:bb:cc:dd:ee:ff", None).await;
+
+        let result = resolve_devices(&pool).await;
+        assert_eq!(result.resolved, 0);
+        // No sources → mac_to_hostname is empty → candidates never counted
+        assert!(result.sources_queried.is_empty());
+
+        // Device should still have no hostname
+        let hostname: Option<String> =
+            sqlx::query_scalar("SELECT hostname FROM devices WHERE mac = 'aa:bb:cc:dd:ee:ff'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert!(hostname.is_none());
+    }
+
+    // ── resolve_devices — candidate counting ────────────────────────
+
+    #[tokio::test]
+    async fn test_resolve_devices_unreachable_source_returns_early() {
+        let pool = setup_test_db().await;
+        // Device WITH hostname should not be a candidate
+        insert_device(&pool, "aa:bb:cc:dd:ee:01", Some("my-laptop")).await;
+        // Device WITHOUT hostname is a candidate
+        insert_device(&pool, "aa:bb:cc:dd:ee:02", None).await;
+
+        // Enable MikroTik with an unreachable URL — connection fails,
+        // so fetch_mikrotik_hostnames returns None (not added to sources_queried).
+        // With no mappings collected, resolve_devices returns early before
+        // counting candidates.
+        insert_setting(&pool, "mikrotik_enabled", "true").await;
+        insert_setting(&pool, "mikrotik_url", "http://192.0.2.1").await;
+
+        let result = resolve_devices(&pool).await;
+        // Connection failure means source is NOT recorded as queried
+        assert!(result.sources_queried.is_empty());
+        // Early return before candidate counting
+        assert_eq!(result.candidates, 0);
+        assert_eq!(result.resolved, 0);
+    }
+
+    #[tokio::test]
+    async fn test_candidate_count_query_excludes_devices_with_hostname() {
+        // Directly test the candidate counting SQL logic used by resolve_devices.
+        let pool = setup_test_db().await;
+        insert_device(&pool, "aa:bb:cc:dd:ee:01", Some("my-laptop")).await;
+        insert_device(&pool, "aa:bb:cc:dd:ee:02", None).await;
+        insert_device(&pool, "aa:bb:cc:dd:ee:03", None).await;
+
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE hostname IS NULL")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        // Only devices without hostname are candidates
+        assert_eq!(count, 2);
+    }
+
+    // ── resolve_devices — source enabled but unreachable ────────────
+
+    #[tokio::test]
+    async fn test_resolve_mikrotik_enabled_but_unreachable() {
+        let pool = setup_test_db().await;
+        insert_setting(&pool, "mikrotik_enabled", "1").await;
+        insert_setting(&pool, "mikrotik_url", "http://192.0.2.1:9999").await;
+        insert_setting(&pool, "mikrotik_user", "admin").await;
+        insert_setting(&pool, "mikrotik_password", "pass").await;
+
+        insert_device(&pool, "aa:bb:cc:dd:ee:ff", None).await;
+
+        let result = resolve_devices(&pool).await;
+        // Source was attempted; it should still appear in sources_queried
+        // because we enter the branch, even though it returns None from error
+        // Actually the MikroTik branch adds to sources_queried only on Ok.
+        // On connection failure, fetch_mikrotik_hostnames returns None,
+        // so "mikrotik" is NOT added to sources_queried.
+        assert_eq!(result.resolved, 0);
+    }
+
+    #[tokio::test]
+    async fn test_resolve_xiaomi_enabled_but_no_password() {
+        let pool = setup_test_db().await;
+        insert_setting(&pool, "xiaomi_mesh_enabled", "true").await;
+        // No password set → fetch_xiaomi_hostnames returns None early
+        let result = resolve_devices(&pool).await;
         assert_eq!(result.resolved, 0);
         assert!(result.sources_queried.is_empty());
+    }
+
+    // ── resolve_devices — disabled sources are skipped ──────────────
+
+    #[tokio::test]
+    async fn test_resolve_mikrotik_disabled_is_skipped() {
+        let pool = setup_test_db().await;
+        insert_setting(&pool, "mikrotik_enabled", "0").await;
+        insert_setting(&pool, "mikrotik_url", "http://192.168.1.1").await;
+
+        let result = resolve_devices(&pool).await;
+        assert!(!result.sources_queried.contains(&"mikrotik".to_string()));
+    }
+
+    #[tokio::test]
+    async fn test_resolve_xiaomi_disabled_is_skipped() {
+        let pool = setup_test_db().await;
+        insert_setting(&pool, "xiaomi_mesh_enabled", "false").await;
+
+        let result = resolve_devices(&pool).await;
+        assert!(!result.sources_queried.contains(&"xiaomi".to_string()));
+    }
+
+    // ── Edge cases ──────────────────────────────────────────────────
+
+    #[tokio::test]
+    async fn test_resolve_with_empty_database() {
+        let pool = setup_test_db().await;
+        // No devices, no settings at all
+        let result = resolve_devices(&pool).await;
+        assert_eq!(result.resolved, 0);
+        assert_eq!(result.candidates, 0);
+        assert!(result.sources_queried.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_resolve_all_devices_already_have_hostnames() {
+        let pool = setup_test_db().await;
+        insert_device(&pool, "aa:bb:cc:dd:ee:01", Some("device-a")).await;
+        insert_device(&pool, "aa:bb:cc:dd:ee:02", Some("device-b")).await;
+        insert_device(&pool, "aa:bb:cc:dd:ee:03", Some("device-c")).await;
+
+        // Enable MikroTik with unreachable URL
+        insert_setting(&pool, "mikrotik_enabled", "true").await;
+        insert_setting(&pool, "mikrotik_url", "http://192.0.2.1").await;
+
+        let result = resolve_devices(&pool).await;
+        // All devices have hostnames, so 0 candidates
+        assert_eq!(result.candidates, 0);
+        assert_eq!(result.resolved, 0);
+    }
+
+    #[tokio::test]
+    async fn test_get_setting_enabled_check_variations() {
+        let pool = setup_test_db().await;
+
+        // "1" should mean enabled
+        insert_setting(&pool, "mikrotik_enabled", "1").await;
+        let val = get_setting(&pool, "mikrotik_enabled").await;
+        assert_eq!(val.as_deref(), Some("1"));
+
+        // "true" should mean enabled
+        insert_setting(&pool, "mikrotik_enabled", "true").await;
+        let val = get_setting(&pool, "mikrotik_enabled").await;
+        assert_eq!(val.as_deref(), Some("true"));
+
+        // "0" is returned as-is (caller decides meaning)
+        insert_setting(&pool, "mikrotik_enabled", "0").await;
+        let val = get_setting(&pool, "mikrotik_enabled").await;
+        assert_eq!(val.as_deref(), Some("0"));
+
+        // "false" is returned as-is
+        insert_setting(&pool, "mikrotik_enabled", "false").await;
+        let val = get_setting(&pool, "mikrotik_enabled").await;
+        assert_eq!(val.as_deref(), Some("false"));
+    }
+
+    #[tokio::test]
+    async fn test_resolve_with_malformed_mac_in_database() {
+        let pool = setup_test_db().await;
+        // Insert a device with a non-standard MAC format
+        insert_device(&pool, "not-a-mac", None).await;
+
+        let result = resolve_devices(&pool).await;
+        // Should not panic, just return normally
+        assert_eq!(result.resolved, 0);
+    }
+
+    #[tokio::test]
+    async fn test_resolve_preserves_existing_hostname() {
+        let pool = setup_test_db().await;
+        // Device already has hostname
+        insert_device(&pool, "aa:bb:cc:dd:ee:ff", Some("my-server")).await;
+
+        let result = resolve_devices(&pool).await;
+        assert_eq!(result.resolved, 0);
+
+        // Original hostname should be intact
+        let hostname: Option<String> =
+            sqlx::query_scalar("SELECT hostname FROM devices WHERE mac = 'aa:bb:cc:dd:ee:ff'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(hostname.as_deref(), Some("my-server"));
+    }
+
+    #[tokio::test]
+    async fn test_hostname_mapping_struct() {
+        let mapping = HostnameMapping {
+            hostname: "living-room-tv".to_string(),
+            source: "mikrotik_dhcp".to_string(),
+        };
+        assert_eq!(mapping.hostname, "living-room-tv");
+        assert_eq!(mapping.source, "mikrotik_dhcp");
+    }
+
+    #[tokio::test]
+    async fn test_candidate_count_query_mixed_devices() {
+        // Verify the candidate-counting SQL with a larger mixed dataset.
+        let pool = setup_test_db().await;
+        insert_device(&pool, "aa:bb:cc:dd:ee:01", None).await;
+        insert_device(&pool, "aa:bb:cc:dd:ee:02", Some("known-device")).await;
+        insert_device(&pool, "aa:bb:cc:dd:ee:03", None).await;
+        insert_device(&pool, "aa:bb:cc:dd:ee:04", None).await;
+        insert_device(&pool, "aa:bb:cc:dd:ee:05", Some("another-known")).await;
+
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE hostname IS NULL")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        // 3 out of 5 devices have no hostname
+        assert_eq!(count, 3);
     }
 }
