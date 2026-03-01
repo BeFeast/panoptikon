@@ -188,7 +188,7 @@ pub struct MiWiFiDevice {
     pub name: Option<String>,
     #[serde(default, rename = "type")]
     pub device_type: Option<i32>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "de_opt_string_from_any")]
     pub online: Option<String>,
     #[serde(default)]
     pub authority: Option<serde_json::Value>,
@@ -427,5 +427,23 @@ mod tests {
         let payload = serde_json::json!({ "upTime": 123 });
         let parsed: UptimeResponse = serde_json::from_value(payload).expect("uptime should parse");
         assert_eq!(parsed.uptime, Some("123".to_string()));
+    }
+
+    #[test]
+    fn device_list_deserializes_online_as_integer() {
+        let payload = serde_json::json!({
+            "list": [{
+                "mac": "BC:24:11:BF:35:FB",
+                "online": 1,
+                "name": "BC:24:11:BF:35:FB",
+                "ip": [{"online": "400346", "ip": "192.168.1.100"}]
+            }]
+        });
+
+        let parsed: DeviceListResponse =
+            serde_json::from_value(payload).expect("device list should parse");
+        assert_eq!(parsed.list.len(), 1);
+        assert_eq!(parsed.list[0].online, Some("1".to_string()));
+        assert_eq!(parsed.list[0].ip[0].online, Some("400346".to_string()));
     }
 }
