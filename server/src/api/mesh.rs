@@ -27,52 +27,77 @@ async fn mesh_router_ip(state: &AppState) -> String {
 }
 
 // ── Raw Xiaomi topo_graph response shapes ───────────────────
+//
+// On RD15 firmware (BE3600) the `api/misystem/topo_graph` endpoint returns
+// the main router info *directly* in the `graph` object (no separate `nodes`
+// array), with satellite mesh nodes listed under `graph.leafs`.
 
-/// Inner graph object containing nodes (and optionally leafs).
-#[derive(Debug, Deserialize)]
-struct XiaomiTopoGraph {
-    #[serde(default)]
-    nodes: Vec<XiaomiTopoNode>,
+/// Deserialize an `i32` from either a JSON number or a JSON string.
+/// Returns 0 for any other type.
+fn de_i32_from_string_or_number<'de, D>(deserializer: D) -> Result<i32, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    match &value {
+        serde_json::Value::Number(n) => Ok(n.as_i64().unwrap_or(0) as i32),
+        serde_json::Value::String(s) => Ok(s.trim().parse::<i32>().unwrap_or(0)),
+        _ => Ok(0),
+    }
 }
 
 /// Root response from `api/misystem/topo_graph`.
-///
-/// The actual Xiaomi response nests the node list inside `graph.nodes`,
-/// **not** at the top-level `list` key.
 #[derive(Debug, Deserialize)]
 struct XiaomiTopoResponse {
     code: i32,
     #[serde(default)]
-    graph: Option<XiaomiTopoGraph>,
+    graph: Option<XiaomiTopoGraphRoot>,
 }
 
-/// A single node in the Xiaomi mesh topology.
+/// The `graph` object from `api/misystem/topo_graph`.
+///
+/// On RD15 firmware this object contains the main router's own fields
+/// (ip, name, hardware, etc.) and a `leafs` array of satellite nodes.
 #[derive(Debug, Deserialize)]
-struct XiaomiTopoNode {
+struct XiaomiTopoGraphRoot {
     #[serde(default)]
     ip: String,
     #[serde(default)]
-    mac: String,
-    #[serde(default)]
     name: String,
-    #[serde(default)]
-    model: String,
     #[serde(default)]
     hardware: String,
     #[serde(default)]
     locale: String,
-    /// 1 = main/CAP node, 0 = satellite
+    /// Network mode: 2 = AP (main node), 1 = satellite repeater.
     #[serde(default)]
-    is_ap: i32,
-    /// Number of online devices connected to this node.
+    mode: i32,
+    /// Number of online devices (may be a number or a string).
+    #[serde(default, deserialize_with = "de_i32_from_string_or_number")]
+    onlines: i32,
+    /// Satellite mesh nodes.
     #[serde(default)]
-    online: i32,
-    /// Connection type: "wire" or "wifi", etc.
-    #[serde(default, rename = "type")]
-    connection_type: String,
-    /// Parent node MAC address (empty for the main/CAP node).
+    leafs: Vec<XiaomiTopoLeaf>,
+}
+
+/// A satellite mesh node in the `graph.leafs` array.
+#[derive(Debug, Deserialize)]
+struct XiaomiTopoLeaf {
     #[serde(default)]
-    parent_mac: String,
+    ip: String,
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    hardware: String,
+    #[serde(default)]
+    locale: String,
+    #[serde(default)]
+    mode: i32,
+    /// Number of online devices connected to this satellite.
+    #[serde(default)]
+    onlines: i32,
+    /// Connection type: "wired" or "wifi".
+    #[serde(default)]
+    link_type: String,
     /// Signal strength (for wireless backhaul, otherwise 0).
     #[serde(default)]
     signal: i32,
@@ -154,39 +179,67 @@ pub async fn topology(
         )));
     }
 
-    let topo_nodes = raw.graph.map(|g| g.nodes).unwrap_or_default();
+    let graph = match raw.graph {
+        Some(g) => g,
+        None => {
+            return Ok(Json(MeshTopologyResponse {
+                main_ip: router_ip,
+                total_devices: 0,
+                nodes: vec![],
+            }));
+        }
+    };
 
-    let mut total_devices = 0i32;
-    let nodes: Vec<MeshNode> = topo_nodes
-        .into_iter()
-        .map(|n| {
-            total_devices += n.online;
-            let backhaul_type = if n.is_ap == 1 {
-                "main".to_string()
-            } else if n.connection_type == "wire" {
-                "wired".to_string()
+    let mut total_devices = graph.onlines;
+    let mut nodes = Vec::with_capacity(1 + graph.leafs.len());
+
+    // Main router node (the graph root itself).
+    nodes.push(MeshNode {
+        ip: graph.ip,
+        mac: String::new(),
+        name: if graph.name.is_empty() {
+            graph.locale.clone()
+        } else {
+            graph.name
+        },
+        model: String::new(),
+        hardware: graph.hardware,
+        is_main: true,
+        online_devices: graph.onlines,
+        backhaul_type: "main".to_string(),
+        parent_mac: String::new(),
+        signal: 0,
+        is_online: true,
+    });
+
+    // Satellite mesh nodes from leafs.
+    for leaf in graph.leafs {
+        total_devices += leaf.onlines;
+        let backhaul_type = if leaf.link_type == "wired" || leaf.link_type == "wire" {
+            "wired".to_string()
+        } else if leaf.link_type.is_empty() {
+            "unknown".to_string()
+        } else {
+            leaf.link_type
+        };
+        nodes.push(MeshNode {
+            ip: leaf.ip.clone(),
+            mac: String::new(),
+            name: if leaf.name.is_empty() {
+                leaf.locale.clone()
             } else {
-                n.connection_type.clone()
-            };
-            MeshNode {
-                ip: n.ip.clone(),
-                mac: n.mac,
-                name: if n.name.is_empty() {
-                    n.locale.clone()
-                } else {
-                    n.name
-                },
-                model: n.model,
-                hardware: n.hardware,
-                is_main: n.is_ap == 1,
-                online_devices: n.online,
-                backhaul_type,
-                parent_mac: n.parent_mac,
-                signal: n.signal,
-                is_online: !n.ip.is_empty(),
-            }
-        })
-        .collect();
+                leaf.name
+            },
+            model: String::new(),
+            hardware: leaf.hardware,
+            is_main: false,
+            online_devices: leaf.onlines,
+            backhaul_type,
+            parent_mac: String::new(),
+            signal: leaf.signal,
+            is_online: !leaf.ip.is_empty(),
+        });
+    }
 
     Ok(Json(MeshTopologyResponse {
         main_ip: router_ip,

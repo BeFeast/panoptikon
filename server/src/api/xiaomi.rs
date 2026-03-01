@@ -62,28 +62,20 @@ pub struct XiaomiStatusResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct XiaomiTopoNodeResponse {
-    pub mac: Option<String>,
+    pub ip: Option<String>,
     pub name: Option<String>,
     pub locale: Option<String>,
-    pub ip: Option<String>,
-    pub online: Option<i32>,
     pub hardware: Option<String>,
-    pub model: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct XiaomiTopoLeafResponse {
-    pub mac: Option<String>,
-    pub ip: Option<String>,
-    pub name: Option<String>,
+    pub mode: Option<i32>,
     pub online: Option<i32>,
-    pub parent_id: Option<String>,
+    pub link_type: Option<String>,
+    pub signal: Option<i32>,
+    pub is_main: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct XiaomiTopoResponse {
     pub nodes: Vec<XiaomiTopoNodeResponse>,
-    pub leafs: Vec<XiaomiTopoLeafResponse>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -255,38 +247,44 @@ pub async fn topology(
 
     match client.topo_graph().await {
         Ok(topo) => {
-            let graph = topo
-                .graph
-                .unwrap_or_else(|| crate::xiaomi::types::TopoGraphInner {
-                    nodes: vec![],
-                    leafs: vec![],
+            let graph = match topo.graph {
+                Some(g) => g,
+                None => {
+                    return Ok(Json(XiaomiTopoResponse { nodes: vec![] }));
+                }
+            };
+
+            let mut nodes = Vec::with_capacity(1 + graph.leafs.len());
+
+            // Main router node (the graph root itself).
+            nodes.push(XiaomiTopoNodeResponse {
+                ip: graph.ip,
+                name: graph.name,
+                locale: graph.locale,
+                hardware: graph.hardware,
+                mode: graph.mode,
+                online: graph.onlines,
+                link_type: None,
+                signal: None,
+                is_main: true,
+            });
+
+            // Satellite mesh nodes from leafs.
+            for leaf in graph.leafs {
+                nodes.push(XiaomiTopoNodeResponse {
+                    ip: leaf.ip,
+                    name: leaf.name,
+                    locale: leaf.locale,
+                    hardware: leaf.hardware,
+                    mode: leaf.mode,
+                    online: leaf.onlines,
+                    link_type: leaf.link_type,
+                    signal: leaf.signal,
+                    is_main: false,
                 });
-            Ok(Json(XiaomiTopoResponse {
-                nodes: graph
-                    .nodes
-                    .into_iter()
-                    .map(|n| XiaomiTopoNodeResponse {
-                        mac: n.mac,
-                        name: n.name,
-                        locale: n.locale,
-                        ip: n.ip,
-                        online: n.online,
-                        hardware: n.hardware,
-                        model: n.model,
-                    })
-                    .collect(),
-                leafs: graph
-                    .leafs
-                    .into_iter()
-                    .map(|l| XiaomiTopoLeafResponse {
-                        mac: l.mac,
-                        ip: l.ip,
-                        name: l.name,
-                        online: l.online,
-                        parent_id: l.parent_id,
-                    })
-                    .collect(),
-            }))
+            }
+
+            Ok(Json(XiaomiTopoResponse { nodes }))
         }
         Err(e) => {
             tracing::error!(error = %e, "MiWiFi topology request failed");

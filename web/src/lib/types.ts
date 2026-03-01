@@ -1870,26 +1870,19 @@ export interface XiaomiStatus {
 }
 
 export interface XiaomiTopoNode {
-  mac: string | null;
+  ip: string | null;
   name: string | null;
   locale: string | null;
-  ip: string | null;
-  online: number | null;
   hardware: string | null;
-  model: string | null;
-}
-
-export interface XiaomiTopoLeaf {
-  mac: string | null;
-  ip: string | null;
-  name: string | null;
+  mode: number | null;
   online: number | null;
-  parent_id: string | null;
+  link_type: string | null;
+  signal: number | null;
+  is_main: boolean;
 }
 
 export interface XiaomiTopology {
   nodes: XiaomiTopoNode[];
-  leafs: XiaomiTopoLeaf[];
 }
 
 export interface XiaomiDevice {

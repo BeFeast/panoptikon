@@ -69,37 +69,29 @@ pub struct LoginResponse {
 }
 
 // ── Topology (topo_graph) ───────────────────────────────────
+//
+// On RD15 firmware (BE3600) the `api/misystem/topo_graph` response has the
+// main router info directly in the `graph` object, with satellite mesh nodes
+// in `graph.leafs`. There is no separate `nodes` array.
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TopoNode {
+pub struct TopoLeaf {
     #[serde(default)]
-    pub mac: Option<String>,
+    pub ip: Option<String>,
     #[serde(default)]
     pub name: Option<String>,
     #[serde(default)]
     pub locale: Option<String>,
     #[serde(default)]
-    pub ip: Option<String>,
-    #[serde(default)]
-    pub online: Option<i32>,
-    #[serde(default)]
     pub hardware: Option<String>,
     #[serde(default)]
-    pub model: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TopoLeaf {
+    pub mode: Option<i32>,
+    #[serde(default, deserialize_with = "de_opt_i32_from_any")]
+    pub onlines: Option<i32>,
     #[serde(default)]
-    pub mac: Option<String>,
+    pub link_type: Option<String>,
     #[serde(default)]
-    pub ip: Option<String>,
-    #[serde(default)]
-    pub name: Option<String>,
-    #[serde(default)]
-    pub online: Option<i32>,
-    #[serde(default, rename = "parentId")]
-    pub parent_id: Option<String>,
+    pub signal: Option<i32>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -108,10 +100,22 @@ pub struct TopoGraph {
     pub graph: Option<TopoGraphInner>,
 }
 
+/// The `graph` object — on RD15 firmware this contains the main router's own
+/// fields (ip, name, hardware, etc.) and a `leafs` array of satellite nodes.
 #[derive(Debug, Clone, Deserialize)]
 pub struct TopoGraphInner {
     #[serde(default)]
-    pub nodes: Vec<TopoNode>,
+    pub ip: Option<String>,
+    #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
+    pub locale: Option<String>,
+    #[serde(default)]
+    pub hardware: Option<String>,
+    #[serde(default)]
+    pub mode: Option<i32>,
+    #[serde(default, deserialize_with = "de_opt_i32_from_any")]
+    pub onlines: Option<i32>,
     #[serde(default)]
     pub leafs: Vec<TopoLeaf>,
 }

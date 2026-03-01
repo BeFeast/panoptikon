@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Cable,
   Crown,
-  Loader2,
   MonitorSmartphone,
   RefreshCw,
   Router,
@@ -21,40 +20,12 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { fetchXiaomiTopology } from "@/lib/api";
-import type { XiaomiTopology, XiaomiTopoNode, XiaomiTopoLeaf } from "@/lib/types";
-
-// ─── Helpers ─────────────────────────────────────────────
-
-/** Count leafs attached to a given node MAC. */
-function leafCountForNode(
-  nodeMac: string | null,
-  leafs: XiaomiTopoLeaf[],
-): number {
-  if (!nodeMac) return 0;
-  return leafs.filter((l) => l.parent_id === nodeMac).length;
-}
-
-/** Get leafs attached to a given node MAC. */
-function leafsForNode(
-  nodeMac: string | null,
-  leafs: XiaomiTopoLeaf[],
-): XiaomiTopoLeaf[] {
-  if (!nodeMac) return [];
-  return leafs.filter((l) => l.parent_id === nodeMac);
-}
+import type { XiaomiTopology, XiaomiTopoNode } from "@/lib/types";
 
 // ─── Node Card ───────────────────────────────────────────
 
-function NodeCard({
-  node,
-  leafs,
-  isMain,
-}: {
-  node: XiaomiTopoNode;
-  leafs: XiaomiTopoLeaf[];
-  isMain: boolean;
-}) {
-  const connectedLeafs = leafsForNode(node.mac, leafs);
+function NodeCard({ node }: { node: XiaomiTopoNode }) {
+  const isMain = node.is_main;
   const onlineDevices = node.online ?? 0;
 
   return (
@@ -80,7 +51,7 @@ function NodeCard({
           </div>
           <div className="min-w-0 flex-1">
             <CardTitle className="truncate text-sm font-semibold text-white">
-              {node.locale || node.name || "Mesh Node"}
+              {node.name || node.locale || "Mesh Node"}
             </CardTitle>
             <p className="truncate font-mono text-xs text-slate-400">
               {node.ip || "No IP"}
@@ -102,25 +73,27 @@ function NodeCard({
             <MonitorSmartphone className="h-3.5 w-3.5" />
             {onlineDevices} device{onlineDevices !== 1 ? "s" : ""} online
           </span>
-          {connectedLeafs.length > 0 && (
+          {node.link_type && (
+            <span className="flex items-center gap-1.5">
+              {node.link_type === "wired" ? (
+                <Cable className="h-3.5 w-3.5" />
+              ) : (
+                <Wifi className="h-3.5 w-3.5" />
+              )}
+              {node.link_type}
+            </span>
+          )}
+          {node.signal != null && node.signal > 0 && (
             <span className="flex items-center gap-1.5">
               <Wifi className="h-3.5 w-3.5" />
-              {connectedLeafs.length} connected
+              Signal: {node.signal}
             </span>
           )}
         </div>
 
         {/* Badges */}
         <div className="flex flex-wrap items-center gap-1.5">
-          {node.model && (
-            <Badge
-              variant="outline"
-              className="border-slate-700 text-[10px] text-slate-500"
-            >
-              {node.model}
-            </Badge>
-          )}
-          {node.hardware && node.hardware !== node.model && (
+          {node.hardware && (
             <Badge
               variant="outline"
               className="border-slate-700 text-[10px] text-slate-500"
@@ -134,37 +107,6 @@ function NodeCard({
             </Badge>
           )}
         </div>
-
-        {/* MAC address */}
-        {node.mac && (
-          <p className="font-mono text-[10px] text-slate-600">
-            MAC: {node.mac}
-          </p>
-        )}
-
-        {/* Connected devices list */}
-        {connectedLeafs.length > 0 && (
-          <div className="mt-2 space-y-1 border-t border-slate-800 pt-2">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
-              Connected Devices
-            </p>
-            <div className="max-h-32 space-y-0.5 overflow-y-auto">
-              {connectedLeafs.map((leaf) => (
-                <div
-                  key={leaf.mac || leaf.ip}
-                  className="flex items-center justify-between rounded px-1.5 py-0.5 text-[11px] hover:bg-slate-800/50"
-                >
-                  <span className="truncate text-slate-300">
-                    {leaf.name || leaf.mac || "Unknown"}
-                  </span>
-                  <span className="shrink-0 font-mono text-slate-500">
-                    {leaf.ip || "—"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </CardContent>
     </Card>
   );
@@ -229,24 +171,19 @@ export default function XiaomiMeshPage() {
     return () => clearInterval(interval);
   }, [load]);
 
-  // Determine which node is "main" (first node, typically the primary router)
-  const { sortedNodes, mainMac } = useMemo(() => {
-    if (!data) return { sortedNodes: [], mainMac: null };
-    // The first node in the list is usually the main router
-    const main = data.nodes[0] ?? null;
-    const mainMac = main?.mac ?? null;
-    // Sort: main first, then by online device count descending
-    const sorted = [...data.nodes].sort((a, b) => {
-      if (a.mac === mainMac) return -1;
-      if (b.mac === mainMac) return 1;
+  // Sort: main node first, then by online device count descending
+  const sortedNodes = useMemo(() => {
+    if (!data) return [];
+    return [...data.nodes].sort((a, b) => {
+      if (a.is_main && !b.is_main) return -1;
+      if (!a.is_main && b.is_main) return 1;
       return (b.online ?? 0) - (a.online ?? 0);
     });
-    return { sortedNodes: sorted, mainMac };
   }, [data]);
 
   // Stats
   const stats = useMemo(() => {
-    if (!data) return { nodeCount: 0, totalDevices: 0, totalLeafs: 0 };
+    if (!data) return { nodeCount: 0, totalDevices: 0 };
     const totalDevices = data.nodes.reduce(
       (sum, n) => sum + (n.online ?? 0),
       0,
@@ -254,7 +191,6 @@ export default function XiaomiMeshPage() {
     return {
       nodeCount: data.nodes.length,
       totalDevices,
-      totalLeafs: data.leafs.length,
     };
   }, [data]);
 
@@ -291,7 +227,7 @@ export default function XiaomiMeshPage() {
 
         {/* Summary stats */}
         {!loading && data && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Card className="border-slate-800 bg-slate-900/50">
               <CardContent className="flex items-center gap-3 p-4">
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/20">
@@ -315,19 +251,6 @@ export default function XiaomiMeshPage() {
                     {stats.totalDevices}
                   </p>
                   <p className="text-xs text-slate-400">Online Devices</p>
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-slate-800 bg-slate-900/50">
-              <CardContent className="flex items-center gap-3 p-4">
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-500/20">
-                  <Wifi className="h-4.5 w-4.5 text-purple-400" />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold text-white">
-                    {stats.totalLeafs}
-                  </p>
-                  <p className="text-xs text-slate-400">Connected Clients</p>
                 </div>
               </CardContent>
             </Card>
@@ -365,12 +288,7 @@ export default function XiaomiMeshPage() {
         {!loading && data && sortedNodes.length > 0 && (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {sortedNodes.map((node) => (
-              <NodeCard
-                key={node.mac || node.ip}
-                node={node}
-                leafs={data.leafs}
-                isMain={node.mac === mainMac}
-              />
+              <NodeCard key={node.ip || node.name} node={node} />
             ))}
           </div>
         )}
