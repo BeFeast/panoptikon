@@ -4,10 +4,11 @@
 //! endpoint which requires **no authentication**. The router IP is read from the
 //! `xiaomi_mesh_ip` setting (defaults to `10.10.0.199`).
 
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 
+use super::error::AppError;
 use super::AppState;
 
 // ── Settings helper ─────────────────────────────────────────
@@ -108,7 +109,7 @@ pub struct MeshTopologyResponse {
 /// GET /api/v1/mesh/topology
 pub async fn topology(
     State(state): State<AppState>,
-) -> Result<Json<MeshTopologyResponse>, StatusCode> {
+) -> Result<Json<MeshTopologyResponse>, AppError> {
     let router_ip = mesh_router_ip(&state).await;
     let url = format!("http://{router_ip}/cgi-bin/luci/api/misystem/topo_graph");
 
@@ -117,12 +118,14 @@ pub async fn topology(
         .build()
         .map_err(|e| {
             warn!("failed to build HTTP client for mesh: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal("Failed to initialize HTTP client".to_string())
         })?;
 
     let resp = client.get(&url).send().await.map_err(|e| {
         warn!("failed to fetch mesh topology from {url}: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(format!(
+            "Could not reach Xiaomi mesh router at {router_ip}. Check the router IP in Settings \u{2192} Xiaomi Mesh."
+        ))
     })?;
 
     if !resp.status().is_success() {
@@ -130,17 +133,24 @@ pub async fn topology(
             "mesh topology endpoint returned HTTP {}",
             resp.status().as_u16()
         );
-        return Err(StatusCode::BAD_GATEWAY);
+        return Err(AppError::BadGateway(format!(
+            "Xiaomi mesh router at {router_ip} returned an error. Verify the router is a Xiaomi mesh device."
+        )));
     }
 
     let raw: XiaomiTopoResponse = resp.json().await.map_err(|e| {
         warn!("failed to parse mesh topology response: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(format!(
+            "Invalid response from Xiaomi mesh router at {router_ip}. The device may not be a supported Xiaomi mesh router."
+        ))
     })?;
 
     if raw.code != 0 {
         warn!("mesh topology returned error code {}", raw.code);
-        return Err(StatusCode::BAD_GATEWAY);
+        return Err(AppError::BadGateway(format!(
+            "Xiaomi mesh router at {router_ip} returned error code {}.",
+            raw.code
+        )));
     }
 
     let topo_nodes = raw.graph.map(|g| g.nodes).unwrap_or_default();

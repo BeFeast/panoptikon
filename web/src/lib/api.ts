@@ -136,6 +136,7 @@ async function request<T>(
       try {
         const body = await res.json();
         if (body?.error) detail = body.error;
+        else if (body?.message) detail = body.message;
       } catch {
         // body wasn't JSON — keep statusText
       }
