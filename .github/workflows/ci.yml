@@ -77,6 +77,57 @@ jobs:
       - name: Build
         run: bun run build
 
+  e2e-coverage-check:
+    name: E2E Test Coverage Check
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for E2E tests in feature/fix PRs
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+
+          # Only enforce on feat/fix PRs (not chore, docs, ci, refactor)
+          TITLE_LOWER=$(echo "$PR_TITLE" | tr '[:upper:]' '[:lower:]')
+          if ! echo "$TITLE_LOWER" | grep -qE '^(feat|fix)'; then
+            echo "PR is not a feat/fix — skipping E2E test requirement"
+            exit 0
+          fi
+
+          echo "This is a feat/fix PR — checking for E2E test changes..."
+
+          # Check if PR body contains explicit justification for no tests
+          if echo "$PR_BODY" | grep -qiE '## Why no E2E test'; then
+            echo "PR body contains 'Why no E2E test' justification — OK"
+            exit 0
+          fi
+
+          # Check if any E2E test files were added or modified
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
+          E2E_CHANGES=$(echo "$CHANGED_FILES" | grep -E 'web/tests/e2e/.*\.spec\.ts$' || true)
+
+          if [ -z "$E2E_CHANGES" ]; then
+            echo "::error::Feature/fix PR must include Playwright E2E tests in web/tests/e2e/"
+            echo ""
+            echo "This PR changes feature code but does not add or modify any E2E tests."
+            echo "Either:"
+            echo "  1. Add a Playwright test in web/tests/e2e/ that verifies the feature works"
+            echo "  2. Add a '## Why no E2E test' section to the PR description explaining why"
+            echo ""
+            echo "See CLAUDE.md for test patterns and examples."
+            exit 1
+          fi
+
+          echo "Found E2E test changes:"
+          echo "$E2E_CHANGES"
+          echo "E2E coverage check passed!"
+
   e2e:
     name: E2E Tests (Playwright)
     runs-on: ubuntu-latest

@@ -11,3 +11,36 @@ jobs:
     steps:
       - name: Run deploy script
         run: /home/shtrudel/src/panoptikon/scripts/deploy-lxc.sh
+
+  smoke-test:
+    name: Post-Deploy Smoke Test
+    runs-on: self-hosted
+    needs: [deploy]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        working-directory: web
+        run: bun install
+
+      - name: Install Playwright browsers
+        working-directory: web
+        run: bunx playwright install chromium --with-deps
+
+      - name: Run smoke tests
+        env:
+          PANOPTIKON_URL: http://10.10.0.22:8080
+          PANOPTIKON_PASSWORD: ${{ secrets.PANOPTIKON_PASSWORD }}
+        run: ./scripts/smoke-test.sh
+
+      - name: Alert on failure
+        if: failure()
+        run: |
+          echo "::error::Smoke test FAILED after deploy to LXC 115. Panoptikon may not be working correctly."
+          echo "Deploy completed but the application is not responding correctly."
+          echo "Check http://10.10.0.22:8080 manually."
