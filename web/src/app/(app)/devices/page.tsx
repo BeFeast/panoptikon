@@ -554,8 +554,8 @@ export default function DevicesPage() {
       ) : view === "grid" ? (
         <StaggerContainer className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
           {sorted.map((device) => (
-            <StaggerItem key={device.id}>
-              <MotionCard>
+            <StaggerItem key={device.id} className="h-full">
+              <MotionCard className="h-full">
                 <DeviceCard
                   device={device}
                   onClick={() => setSelectedDevice(device)}
@@ -639,7 +639,7 @@ function DeviceCard({
 
   return (
     <Card
-      className="cursor-pointer border-slate-800 bg-slate-900 transition-colors hover:bg-slate-800/60 hover:border-blue-500/50"
+      className="h-full cursor-pointer border-slate-800 bg-slate-900 transition-colors hover:bg-slate-800/60 hover:border-blue-500/50"
       onClick={onClick}
     >
       <CardContent className="p-5">
