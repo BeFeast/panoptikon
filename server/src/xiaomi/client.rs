@@ -374,6 +374,16 @@ impl XiaomiClient {
         Ok(res)
     }
 
+    /// Fetch init info without authentication (for reachability probes).
+    ///
+    /// The `xqsystem/init_info` endpoint on Xiaomi routers does not require
+    /// a stok token, so this can succeed even when login/auth is broken.
+    pub async fn init_info_no_auth(&self) -> Result<InitInfo> {
+        let val = self.get_no_auth("xqsystem/init_info").await?;
+        let res: InitInfo = serde_json::from_value(val).context("failed to parse init info")?;
+        Ok(res)
+    }
+
     /// Check for ROM/firmware updates.
     pub async fn check_rom_update(&self) -> Result<Option<RomUpdateInfo>> {
         let val = self.get_authed("xqsystem/check_rom_update").await?;

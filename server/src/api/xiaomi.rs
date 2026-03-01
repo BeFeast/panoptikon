@@ -216,7 +216,11 @@ pub async fn status(
                 error = %e,
                 "MiWiFi status request failed, probing connectivity via init_info"
             );
-            let reachable = client.init_info().await.is_ok();
+            // Use unauthenticated init_info for the reachability probe.
+            // The xqsystem/init_info endpoint does not require a stok token,
+            // so this succeeds even when login/auth is broken — matching the
+            // behaviour of the settings-page test-connection check.
+            let reachable = client.init_info_no_auth().await.is_ok();
             if !reachable {
                 tracing::error!("MiWiFi status and init_info probes both failed");
             }
