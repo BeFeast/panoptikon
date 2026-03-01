@@ -24,7 +24,10 @@ import {
   Cable,
   MonitorSmartphone,
   Crown,
+  WifiOff,
+  Settings,
 } from 'lucide-react'
+import Link from 'next/link'
 import { fetchMeshTopology } from '@/lib/api'
 import type { MeshNode, MeshTopologyResponse } from '@/lib/types'
 import { PageTransition } from '@/components/PageTransition'
@@ -401,17 +404,39 @@ export default function MeshPage() {
     return (
       <PageTransition>
         <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-          <div className="text-center">
-            <p className="text-sm text-rose-400">{error}</p>
-            <button
-              onClick={() => {
-                setLoading(true)
-                buildGraph(true)
-              }}
-              className="mt-3 text-xs text-blue-400 hover:underline"
-            >
-              Retry
-            </button>
+          <div className="mx-4 flex max-w-md flex-col items-center gap-4 rounded-xl border border-slate-800 bg-slate-900/80 p-8 text-center shadow-lg">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-500/10">
+              <WifiOff className="h-6 w-6 text-rose-400" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-base font-semibold text-white">
+                Mesh router unreachable
+              </h2>
+              <p className="text-sm leading-relaxed text-slate-400">
+                Could not connect to the Xiaomi mesh router. Make sure the
+                router IP is correct and the device is reachable on your
+                network.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/settings/xiaomi-mesh"
+                className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-500"
+              >
+                <Settings className="h-3.5 w-3.5" />
+                Xiaomi Mesh Settings
+              </Link>
+              <button
+                onClick={() => {
+                  setLoading(true)
+                  buildGraph(true)
+                }}
+                className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-slate-800"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Retry
+              </button>
+            </div>
           </div>
         </div>
       </PageTransition>
