@@ -293,7 +293,7 @@ export default function DnsLogsPage() {
                 }}
                 className="w-48"
               />
-              <div className="flex gap-1">
+              <div className="static flex gap-1">
                 <Button
                   variant={blockedFilter === undefined ? "default" : "outline"}
                   size="sm"

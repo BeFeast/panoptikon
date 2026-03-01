@@ -436,7 +436,7 @@ export default function DevicesPage() {
       </div>
 
       {/* Filter bar */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="static flex flex-wrap items-center gap-3">
         {(["all", "online", "offline", "unknown"] as Filter[]).map((f) => (
           <Button
             key={f}
