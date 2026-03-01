@@ -224,6 +224,112 @@ test.describe("Mesh Page", () => {
   });
 });
 
+// ── Xiaomi Mesh Topology Page (/xiaomi) ─────────────────────
+//
+// The /xiaomi page displays mesh nodes from the /api/v1/xiaomi/topology
+// endpoint. The BE3600 (RD15) sends satellite routers in `leafs` with
+// `link_type` and `onlines`. The backend normalizes these into `nodes`.
+
+/** Mock data simulating BE3600 response after backend normalization. */
+const MOCK_XIAOMI_TOPOLOGY_BE3600 = {
+  nodes: [
+    {
+      mac: null,
+      name: "OK Home",
+      locale: null,
+      ip: "10.10.0.199",
+      online: 8,
+      hardware: "RD15",
+      model: null,
+    },
+    {
+      mac: null,
+      name: "Basement",
+      locale: null,
+      ip: "10.10.0.52",
+      online: 5,
+      hardware: null,
+      model: null,
+    },
+    {
+      mac: null,
+      name: "Network Enclosure",
+      locale: null,
+      ip: "10.10.0.54",
+      online: 4,
+      hardware: null,
+      model: null,
+    },
+    {
+      mac: null,
+      name: "Floor 2",
+      locale: null,
+      ip: "10.10.0.53",
+      online: 8,
+      hardware: null,
+      model: null,
+    },
+  ],
+  leafs: [],
+};
+
+async function mockXiaomiTopology(page: Page, data: unknown) {
+  await page.route("**/api/v1/xiaomi/topology", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(data),
+    }),
+  );
+}
+
+test.describe("Xiaomi Topology Page — BE3600 satellite nodes (#473)", () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test("shows correct mesh node count for BE3600 with leafs promoted to nodes", async ({
+    page,
+  }) => {
+    await mockXiaomiTopology(page, MOCK_XIAOMI_TOPOLOGY_BE3600);
+    await page.goto("/xiaomi/");
+
+    // "Mesh Nodes" stat card should show 4 (1 main + 3 satellites)
+    const meshNodesCard = page.locator("text=Mesh Nodes").locator("..");
+    await expect(meshNodesCard).toBeVisible({ timeout: 15000 });
+    await expect(meshNodesCard.getByText("4")).toBeVisible();
+
+    // "Online Devices" stat card should show 25 (8+5+4+8)
+    const onlineDevicesCard = page.locator("text=Online Devices").locator("..");
+    await expect(onlineDevicesCard).toBeVisible();
+    await expect(onlineDevicesCard.getByText("25")).toBeVisible();
+
+    // All node names should be visible as cards
+    await expect(page.getByText("OK Home")).toBeVisible();
+    await expect(page.getByText("Basement")).toBeVisible();
+    await expect(page.getByText("Network Enclosure")).toBeVisible();
+    await expect(page.getByText("Floor 2")).toBeVisible();
+
+    await page.screenshot({
+      path: "tests/screenshots/xiaomi-be3600-mesh-nodes.png",
+    });
+  });
+
+  test("empty state when no mesh nodes or leafs", async ({ page }) => {
+    await mockXiaomiTopology(page, { nodes: [], leafs: [] });
+    await page.goto("/xiaomi/");
+
+    // Should show empty state message
+    await expect(
+      page.getByText("No mesh nodes found"),
+    ).toBeVisible({ timeout: 15000 });
+
+    await page.screenshot({
+      path: "tests/screenshots/xiaomi-empty-state.png",
+    });
+  });
+});
+
 // ── Settings Page: IP + Password Autofill Tests ──────────────
 
 test.describe("Xiaomi Mesh Settings — IP and Password autofill", () => {

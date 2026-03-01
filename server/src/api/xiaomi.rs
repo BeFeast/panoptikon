@@ -250,6 +250,15 @@ pub async fn status(
     }
 }
 
+/// Parse `online`/`onlines` which may be a JSON number or string.
+fn parse_online_value(v: &serde_json::Value) -> Option<i32> {
+    match v {
+        serde_json::Value::Number(n) => n.as_i64().map(|v| v as i32),
+        serde_json::Value::String(s) => s.trim().parse::<i32>().ok(),
+        _ => None,
+    }
+}
+
 /// GET /xiaomi/topology — mesh topology graph (no auth required).
 pub async fn topology(
     State(state): State<AppState>,
@@ -266,22 +275,72 @@ pub async fn topology(
                 .unwrap_or_else(|| crate::xiaomi::types::TopoGraphInner {
                     nodes: vec![],
                     leafs: vec![],
+                    ip: None,
+                    name: None,
+                    locale: None,
+                    hardware: None,
+                    online: None,
                 });
-            Ok(Json(XiaomiTopoResponse {
-                nodes: graph
-                    .nodes
-                    .into_iter()
-                    .map(|n| XiaomiTopoNodeResponse {
-                        mac: n.mac,
-                        name: n.name,
-                        locale: n.locale,
-                        ip: n.ip,
-                        online: n.online,
-                        hardware: n.hardware,
-                        model: n.model,
-                    })
-                    .collect(),
-                leafs: graph
+
+            let mut nodes: Vec<XiaomiTopoNodeResponse> = graph
+                .nodes
+                .into_iter()
+                .map(|n| XiaomiTopoNodeResponse {
+                    mac: n.mac,
+                    name: n.name,
+                    locale: n.locale,
+                    ip: n.ip,
+                    online: n.online,
+                    hardware: n.hardware,
+                    model: n.model,
+                })
+                .collect();
+
+            let mut leafs_out = Vec::new();
+
+            // BE3600 (RD15) puts satellite mesh routers in `leafs` with
+            // `link_type` and `onlines` instead of using `nodes`.
+            // When `nodes` is empty, promote satellite leafs into nodes
+            // and add the graph root as the main router node.
+            if nodes.is_empty() && !graph.leafs.is_empty() {
+                // Add the graph root (main router) as the first node.
+                if graph.ip.is_some() {
+                    let main_online = graph.online.as_ref().and_then(parse_online_value);
+                    nodes.push(XiaomiTopoNodeResponse {
+                        mac: None,
+                        name: graph.name,
+                        locale: graph.locale,
+                        ip: graph.ip,
+                        online: main_online,
+                        hardware: graph.hardware,
+                        model: None,
+                    });
+                }
+
+                // Promote satellite leafs (those with link_type) to nodes.
+                for leaf in graph.leafs {
+                    if leaf.link_type.is_some() {
+                        nodes.push(XiaomiTopoNodeResponse {
+                            mac: leaf.mac,
+                            name: leaf.name,
+                            locale: leaf.locale,
+                            ip: leaf.ip,
+                            online: leaf.online,
+                            hardware: leaf.hardware,
+                            model: None,
+                        });
+                    } else {
+                        leafs_out.push(XiaomiTopoLeafResponse {
+                            mac: leaf.mac,
+                            ip: leaf.ip,
+                            name: leaf.name,
+                            online: leaf.online,
+                            parent_id: leaf.parent_id,
+                        });
+                    }
+                }
+            } else {
+                leafs_out = graph
                     .leafs
                     .into_iter()
                     .map(|l| XiaomiTopoLeafResponse {
@@ -291,7 +350,12 @@ pub async fn topology(
                         online: l.online,
                         parent_id: l.parent_id,
                     })
-                    .collect(),
+                    .collect();
+            }
+
+            Ok(Json(XiaomiTopoResponse {
+                nodes,
+                leafs: leafs_out,
             }))
         }
         Err(e) => {
