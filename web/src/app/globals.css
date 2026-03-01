@@ -87,3 +87,12 @@
 .status-glow-offline-pulse {
   animation: glow-pulse-rose 2s ease-in-out infinite;
 }
+
+/* Hide scrollbar while preserving scroll behavior */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

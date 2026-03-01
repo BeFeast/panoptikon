@@ -37,7 +37,7 @@ export function RouterSelector({ active }: RouterSelectorProps) {
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button
           variant={active === "mikrotik" ? "default" : "outline"}
           size="sm"

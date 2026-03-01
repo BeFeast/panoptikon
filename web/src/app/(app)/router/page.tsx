@@ -220,7 +220,7 @@ function StatusHeader({ status }: { status: RouterStatus }) {
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Badge
           variant="outline"
           className="border-amber-500/30 bg-amber-500/10 text-amber-400"
@@ -6092,66 +6092,66 @@ function RouterTabs({ summary }: { summary: RouterSummary }) {
   }, [interfaces, configIfaces]);
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 space-y-6">
       <StatusHeader status={status} />
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={tab} onValueChange={setTab} className="min-w-0">
         <TabsList className="border-slate-800 bg-slate-950">
           <TabsTrigger
             value="system"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Activity className="mr-1.5 h-3.5 w-3.5" />
-            System
+            <Activity className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">System</span>
           </TabsTrigger>
           <TabsTrigger
             value="interfaces"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Network className="mr-1.5 h-3.5 w-3.5" />
-            Interfaces
+            <Network className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Interfaces</span>
           </TabsTrigger>
           <TabsTrigger
             value="routes"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Globe className="mr-1.5 h-3.5 w-3.5" />
-            Routes
+            <Globe className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Routes</span>
           </TabsTrigger>
           <TabsTrigger
             value="dhcp"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Server className="mr-1.5 h-3.5 w-3.5" />
-            DHCP
+            <Server className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">DHCP</span>
           </TabsTrigger>
           <TabsTrigger
             value="dns"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Search className="mr-1.5 h-3.5 w-3.5" />
-            DNS
+            <Search className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">DNS</span>
           </TabsTrigger>
           <TabsTrigger
             value="firewall"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Shield className="mr-1.5 h-3.5 w-3.5" />
-            Firewall
+            <Shield className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Firewall</span>
           </TabsTrigger>
           <TabsTrigger
             value="vpn"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Lock className="mr-1.5 h-3.5 w-3.5" />
-            VPN
+            <Lock className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">VPN</span>
           </TabsTrigger>
           <TabsTrigger
             value="speedtest"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
           >
-            <Gauge className="mr-1.5 h-3.5 w-3.5" />
-            Speed Test
+            <Gauge className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Speed Test</span>
           </TabsTrigger>
         </TabsList>
 
