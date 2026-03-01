@@ -77,6 +77,59 @@ jobs:
       - name: Build
         run: bun run build
 
+  e2e-check:
+    name: E2E Test Coverage Check
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for E2E test changes or justification
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Get list of changed files in this PR
+          CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+
+          # Check if any source files changed (not just docs/config)
+          HAS_SRC_CHANGES=false
+          for f in $CHANGED; do
+            case "$f" in
+              server/src/*|web/src/*) HAS_SRC_CHANGES=true; break ;;
+            esac
+          done
+
+          if [ "$HAS_SRC_CHANGES" = "false" ]; then
+            echo "No source changes detected — E2E test not required"
+            exit 0
+          fi
+
+          # Check if E2E tests were added or modified
+          HAS_E2E=false
+          for f in $CHANGED; do
+            case "$f" in
+              web/tests/e2e/*|web/e2e/*) HAS_E2E=true; break ;;
+            esac
+          done
+
+          if [ "$HAS_E2E" = "true" ]; then
+            echo "E2E test changes detected — check passed"
+            exit 0
+          fi
+
+          # Check PR body for justification
+          PR_BODY=$(gh pr view ${{ github.event.pull_request.number }} --repo ${{ github.repository }} --json body -q .body 2>/dev/null || echo "")
+          if echo "$PR_BODY" | grep -qi "why no e2e test"; then
+            echo "PR contains 'Why no E2E test' justification — check passed"
+            exit 0
+          fi
+
+          echo "::error::This PR changes source code but does not include E2E tests."
+          echo "::error::Either add Playwright tests in web/tests/e2e/ or add a '## Why no E2E test' section to the PR description."
+          exit 1
+
   e2e:
     name: E2E Tests (Playwright)
     runs-on: ubuntu-latest

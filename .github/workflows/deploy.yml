@@ -9,5 +9,11 @@ jobs:
     name: Build & Deploy to LXC 115
     runs-on: self-hosted
     steps:
-      - name: Run deploy script
+      - name: Run deploy script (includes smoke test)
         run: /home/shtrudel/src/panoptikon/scripts/deploy-lxc.sh
+
+      - name: Alert on failure
+        if: failure()
+        run: |
+          echo "::error::Deploy or smoke test failed — panoptikon on LXC 115 may be unhealthy"
+          wall "PANOPTIKON: Deploy failed smoke test — check GitHub Actions" 2>/dev/null || true
