@@ -1091,4 +1091,956 @@ mod tests {
             .unwrap();
         assert_eq!(os.as_deref(), Some("Windows"));
     }
+
+    // ─── Brand detection from MAC OUI ────────────────────────
+
+    #[test]
+    fn test_vendor_apple_brand() {
+        let input = EnrichmentInput {
+            vendor: Some("Apple, Inc.".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_brand.as_deref(), Some("Apple"));
+    }
+
+    #[test]
+    fn test_vendor_samsung_brand() {
+        let input = EnrichmentInput {
+            vendor: Some("Samsung Electronics Co.,Ltd".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_brand.as_deref(), Some("Samsung"));
+    }
+
+    #[test]
+    fn test_vendor_cisco_brand_and_type() {
+        let input = EnrichmentInput {
+            vendor: Some("Cisco Systems, Inc.".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("router"));
+        assert_eq!(result.device_brand.as_deref(), Some("Cisco"));
+    }
+
+    #[test]
+    fn test_vendor_netgear() {
+        let input = EnrichmentInput {
+            vendor: Some("NETGEAR".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("router"));
+        assert_eq!(result.device_brand.as_deref(), Some("NETGEAR"));
+    }
+
+    #[test]
+    fn test_vendor_tplink() {
+        let input = EnrichmentInput {
+            vendor: Some("TP-Link Technologies Co.,Ltd.".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("router"));
+        assert_eq!(result.device_brand.as_deref(), Some("TP-Link"));
+    }
+
+    #[test]
+    fn test_vendor_mikrotik() {
+        let input = EnrichmentInput {
+            vendor: Some("MikroTik".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("router"));
+    }
+
+    #[test]
+    fn test_vendor_synology_nas() {
+        let input = EnrichmentInput {
+            vendor: Some("Synology Incorporated".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("server"));
+        assert_eq!(result.device_brand.as_deref(), Some("Synology"));
+    }
+
+    #[test]
+    fn test_vendor_qnap_nas() {
+        let input = EnrichmentInput {
+            vendor: Some("QNAP Systems, Inc.".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("server"));
+        assert_eq!(result.device_brand.as_deref(), Some("QNAP"));
+    }
+
+    #[test]
+    fn test_vendor_roku_tv() {
+        let input = EnrichmentInput {
+            vendor: Some("Roku, Inc.".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("tv"));
+        assert_eq!(result.device_brand.as_deref(), Some("Roku"));
+    }
+
+    #[test]
+    fn test_vendor_nintendo_gaming() {
+        let input = EnrichmentInput {
+            vendor: Some("Nintendo Co.,Ltd".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("gaming"));
+        assert_eq!(result.device_brand.as_deref(), Some("Nintendo"));
+    }
+
+    #[test]
+    fn test_vendor_tuya_iot() {
+        let input = EnrichmentInput {
+            vendor: Some("Tuya Smart Inc.".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("iot"));
+    }
+
+    #[test]
+    fn test_vendor_sonos_iot() {
+        let input = EnrichmentInput {
+            vendor: Some("Sonos, Inc.".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("iot"));
+        assert_eq!(result.device_brand.as_deref(), Some("Sonos"));
+    }
+
+    #[test]
+    fn test_vendor_canon_printer() {
+        let input = EnrichmentInput {
+            vendor: Some("Canon Inc.".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("printer"));
+        assert_eq!(result.device_brand.as_deref(), Some("Canon"));
+    }
+
+    #[test]
+    fn test_vendor_epson_printer() {
+        let input = EnrichmentInput {
+            vendor: Some("Seiko Epson Corporation".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("printer"));
+        assert_eq!(result.device_brand.as_deref(), Some("Epson"));
+    }
+
+    #[test]
+    fn test_vendor_brother_printer() {
+        let input = EnrichmentInput {
+            vendor: Some("Brother Industries, Ltd.".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("printer"));
+        assert_eq!(result.device_brand.as_deref(), Some("Brother"));
+    }
+
+    #[test]
+    fn test_vendor_hp_no_type_inference() {
+        // HP could be anything (laptop, printer, server) so no type should be inferred
+        let input = EnrichmentInput {
+            vendor: Some("HP Inc.".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert!(
+            result.device_type.is_none(),
+            "HP vendor should not assume device type"
+        );
+        assert_eq!(result.device_brand.as_deref(), Some("HP"));
+    }
+
+    #[test]
+    fn test_vendor_valve_gaming() {
+        let input = EnrichmentInput {
+            vendor: Some("Valve Corporation".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("gaming"));
+    }
+
+    #[test]
+    fn test_vendor_unknown_no_brand() {
+        let input = EnrichmentInput {
+            vendor: Some("Some Random OEM Corp.".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert!(result.device_brand.is_none());
+    }
+
+    // ─── Brand inference from vendor string ──────────────────
+
+    #[test]
+    fn test_brand_inference_google() {
+        assert_eq!(
+            infer_brand_from_vendor("Google LLC"),
+            Some("Google".to_string())
+        );
+    }
+
+    #[test]
+    fn test_brand_inference_huawei() {
+        assert_eq!(
+            infer_brand_from_vendor("Huawei Technologies"),
+            Some("Huawei".to_string())
+        );
+    }
+
+    #[test]
+    fn test_brand_inference_xiaomi() {
+        assert_eq!(
+            infer_brand_from_vendor("Xiaomi Communications Co Ltd"),
+            Some("Xiaomi".to_string())
+        );
+    }
+
+    #[test]
+    fn test_brand_inference_sony() {
+        assert_eq!(
+            infer_brand_from_vendor("Sony Corporation"),
+            Some("Sony".to_string())
+        );
+    }
+
+    #[test]
+    fn test_brand_inference_lg() {
+        assert_eq!(
+            infer_brand_from_vendor("LG Electronics"),
+            Some("LG".to_string())
+        );
+    }
+
+    #[test]
+    fn test_brand_inference_dell() {
+        assert_eq!(
+            infer_brand_from_vendor("Dell Inc."),
+            Some("Dell".to_string())
+        );
+    }
+
+    #[test]
+    fn test_brand_inference_lenovo() {
+        assert_eq!(
+            infer_brand_from_vendor("Lenovo Group Limited"),
+            Some("Lenovo".to_string())
+        );
+    }
+
+    #[test]
+    fn test_brand_inference_asus() {
+        assert_eq!(
+            infer_brand_from_vendor("ASUSTek COMPUTER INC."),
+            Some("ASUS".to_string())
+        );
+    }
+
+    #[test]
+    fn test_brand_inference_intel() {
+        assert_eq!(
+            infer_brand_from_vendor("Intel Corporate"),
+            Some("Intel".to_string())
+        );
+    }
+
+    #[test]
+    fn test_brand_inference_microsoft() {
+        assert_eq!(
+            infer_brand_from_vendor("Microsoft Corporation"),
+            Some("Microsoft".to_string())
+        );
+    }
+
+    #[test]
+    fn test_brand_inference_amazon() {
+        assert_eq!(
+            infer_brand_from_vendor("Amazon Technologies Inc."),
+            Some("Amazon".to_string())
+        );
+    }
+
+    #[test]
+    fn test_brand_inference_tplink_variant() {
+        assert_eq!(
+            infer_brand_from_vendor("TPLink Technologies"),
+            Some("TP-Link".to_string())
+        );
+    }
+
+    // ─── OS detection from hostname heuristics ───────────────
+
+    #[test]
+    fn test_hostname_ipad() {
+        let input = EnrichmentInput {
+            hostname: Some("Johns-iPad".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("iPadOS"));
+        assert_eq!(result.device_type.as_deref(), Some("tablet"));
+        assert_eq!(result.device_brand.as_deref(), Some("Apple"));
+        assert_eq!(result.source, "hostname");
+    }
+
+    #[test]
+    fn test_hostname_imac() {
+        let input = EnrichmentInput {
+            hostname: Some("Office-iMac".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("macOS"));
+        assert_eq!(result.device_type.as_deref(), Some("desktop"));
+        assert_eq!(result.device_brand.as_deref(), Some("Apple"));
+    }
+
+    #[test]
+    fn test_hostname_apple_tv() {
+        let input = EnrichmentInput {
+            hostname: Some("Living-Room-Apple-TV".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("tvOS"));
+        assert_eq!(result.device_type.as_deref(), Some("tv"));
+        assert_eq!(result.device_brand.as_deref(), Some("Apple"));
+    }
+
+    #[test]
+    fn test_hostname_homepod() {
+        let input = EnrichmentInput {
+            hostname: Some("Kitchen-HomePod".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("audioOS"));
+        assert_eq!(result.device_type.as_deref(), Some("iot"));
+        assert_eq!(result.device_brand.as_deref(), Some("Apple"));
+    }
+
+    #[test]
+    fn test_hostname_pixel() {
+        let input = EnrichmentInput {
+            hostname: Some("Pixel-8-Pro".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("Android"));
+        assert_eq!(result.device_brand.as_deref(), Some("Google"));
+    }
+
+    #[test]
+    fn test_hostname_oneplus() {
+        let input = EnrichmentInput {
+            hostname: Some("OnePlus-12".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("Android"));
+        assert_eq!(result.device_brand.as_deref(), Some("OnePlus"));
+    }
+
+    #[test]
+    fn test_hostname_xiaomi() {
+        let input = EnrichmentInput {
+            hostname: Some("Xiaomi-14-Ultra".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("Android"));
+        assert_eq!(result.device_brand.as_deref(), Some("Xiaomi"));
+    }
+
+    #[test]
+    fn test_hostname_redmi() {
+        let input = EnrichmentInput {
+            hostname: Some("Redmi-Note-13".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("Android"));
+        assert_eq!(result.device_brand.as_deref(), Some("Xiaomi"));
+    }
+
+    #[test]
+    fn test_hostname_windows_laptop() {
+        let input = EnrichmentInput {
+            hostname: Some("LAPTOP-XYZ789".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("Windows"));
+        assert_eq!(result.device_type.as_deref(), Some("laptop"));
+    }
+
+    #[test]
+    fn test_hostname_nas_server() {
+        let input = EnrichmentInput {
+            hostname: Some("home-nas".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("server"));
+        assert_eq!(result.os_family.as_deref(), Some("Linux"));
+    }
+
+    #[test]
+    fn test_hostname_proxmox() {
+        let input = EnrichmentInput {
+            hostname: Some("proxmox-node1".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("server"));
+        assert_eq!(result.os_family.as_deref(), Some("Linux"));
+    }
+
+    #[test]
+    fn test_hostname_docker() {
+        let input = EnrichmentInput {
+            hostname: Some("docker-host".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("server"));
+        assert_eq!(result.os_family.as_deref(), Some("Linux"));
+    }
+
+    #[test]
+    fn test_hostname_printer_laserjet() {
+        let input = EnrichmentInput {
+            hostname: Some("HP-LaserJet-Pro".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("printer"));
+        assert_eq!(result.source, "hostname");
+    }
+
+    #[test]
+    fn test_hostname_network_router() {
+        let input = EnrichmentInput {
+            hostname: Some("home-router".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("router"));
+    }
+
+    #[test]
+    fn test_hostname_unifi_device() {
+        let input = EnrichmentInput {
+            hostname: Some("UniFi-AP-Pro".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("router"));
+    }
+
+    #[test]
+    fn test_hostname_playstation() {
+        let input = EnrichmentInput {
+            hostname: Some("PlayStation-5".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("gaming"));
+    }
+
+    #[test]
+    fn test_hostname_xbox() {
+        let input = EnrichmentInput {
+            hostname: Some("Xbox-Series-X".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("gaming"));
+    }
+
+    #[test]
+    fn test_hostname_raspberrypi() {
+        let input = EnrichmentInput {
+            hostname: Some("raspberrypi".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("Linux"));
+        assert_eq!(result.device_type.as_deref(), Some("server"));
+    }
+
+    #[test]
+    fn test_hostname_pihole() {
+        let input = EnrichmentInput {
+            hostname: Some("pi-hole".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("Linux"));
+        assert_eq!(result.device_type.as_deref(), Some("server"));
+    }
+
+    // ─── Device type classification from mDNS ───────────────
+
+    #[test]
+    fn test_mdns_airplay() {
+        let input = EnrichmentInput {
+            mdns_services: Some("_airplay._tcp".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("tv"));
+    }
+
+    #[test]
+    fn test_mdns_raop() {
+        let input = EnrichmentInput {
+            mdns_services: Some("_raop._tcp".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("tv"));
+    }
+
+    #[test]
+    fn test_mdns_spotify_connect() {
+        let input = EnrichmentInput {
+            mdns_services: Some("_spotify-connect._tcp".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("iot"));
+    }
+
+    #[test]
+    fn test_mdns_ssh_server() {
+        let input = EnrichmentInput {
+            mdns_services: Some("_ssh._tcp".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("server"));
+    }
+
+    #[test]
+    fn test_mdns_smb_server() {
+        let input = EnrichmentInput {
+            mdns_services: Some("_smb._tcp".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("server"));
+    }
+
+    #[test]
+    fn test_mdns_homekit() {
+        let input = EnrichmentInput {
+            mdns_services: Some("_hap._tcp".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("iot"));
+    }
+
+    #[test]
+    fn test_mdns_companion_link_apple() {
+        let input = EnrichmentInput {
+            mdns_services: Some("_companion-link._tcp".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_brand.as_deref(), Some("Apple"));
+        assert_eq!(result.os_family.as_deref(), Some("macOS"));
+    }
+
+    #[test]
+    fn test_mdns_printer_pdl() {
+        let input = EnrichmentInput {
+            mdns_services: Some("_pdl-datastream._tcp".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("printer"));
+    }
+
+    // ─── DHCP additional cases ───────────────────────────────
+
+    #[test]
+    fn test_dhcp_ipad() {
+        let input = EnrichmentInput {
+            dhcp_vendor_class: Some("iPad".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("iPadOS"));
+        assert_eq!(result.device_type.as_deref(), Some("tablet"));
+        assert_eq!(result.device_brand.as_deref(), Some("Apple"));
+    }
+
+    #[test]
+    fn test_dhcp_generic_linux() {
+        let input = EnrichmentInput {
+            dhcp_vendor_class: Some("Linux 5.10".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("Linux"));
+    }
+
+    #[test]
+    fn test_dhcp_msft_bare() {
+        let input = EnrichmentInput {
+            dhcp_vendor_class: Some("MSFT".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("Windows"));
+    }
+
+    #[test]
+    fn test_dhcp_udhcpc_with_version() {
+        let input = EnrichmentInput {
+            dhcp_vendor_class: Some("udhcpc 1.35.0".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("Linux"));
+        assert_eq!(result.device_type.as_deref(), Some("iot"));
+    }
+
+    #[test]
+    fn test_dhcp_android_short_prefix() {
+        let input = EnrichmentInput {
+            dhcp_vendor_class: Some("android-11".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("Android"));
+    }
+
+    // ─── TTL edge cases ─────────────────────────────────────
+
+    #[test]
+    fn test_ttl_unix_like_64() {
+        let input = EnrichmentInput {
+            ttl: Some(64),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        // TTL 64 is ambiguous (Linux/macOS/iOS) — should set source but not os_family
+        assert!(result.os_family.is_none());
+        assert_eq!(result.source, "ttl");
+    }
+
+    #[test]
+    fn test_ttl_one_hop_from_128() {
+        let input = EnrichmentInput {
+            ttl: Some(127),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("Windows"));
+    }
+
+    #[test]
+    fn test_ttl_network_equipment_248() {
+        let input = EnrichmentInput {
+            ttl: Some(248),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("router"));
+    }
+
+    #[test]
+    fn test_ttl_out_of_range_no_match() {
+        let input = EnrichmentInput {
+            ttl: Some(30),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert!(result.os_family.is_none());
+        assert!(result.device_type.is_none());
+    }
+
+    // ─── Apple model lookup ──────────────────────────────────
+
+    #[test]
+    fn test_apple_model_ipad() {
+        let input = EnrichmentInput {
+            hostname: Some("iPad14,6".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(
+            result.device_model.as_deref(),
+            Some("iPad Pro 12.9-inch (6th gen)")
+        );
+        assert_eq!(result.os_family.as_deref(), Some("iPadOS"));
+        assert_eq!(result.device_type.as_deref(), Some("tablet"));
+        assert_eq!(result.device_brand.as_deref(), Some("Apple"));
+    }
+
+    #[test]
+    fn test_apple_model_apple_tv() {
+        let input = EnrichmentInput {
+            hostname: Some("AppleTV11,1".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(
+            result.device_model.as_deref(),
+            Some("Apple TV 4K (3rd gen)")
+        );
+        assert_eq!(result.os_family.as_deref(), Some("tvOS"));
+        assert_eq!(result.device_type.as_deref(), Some("tv"));
+    }
+
+    #[test]
+    fn test_apple_model_homepod_mini() {
+        let input = EnrichmentInput {
+            hostname: Some("AudioAccessory5,1".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_model.as_deref(), Some("HomePod mini"));
+        assert_eq!(result.os_family.as_deref(), Some("audioOS"));
+        assert_eq!(result.device_type.as_deref(), Some("iot"));
+    }
+
+    #[test]
+    fn test_apple_model_macbook_air() {
+        let input = EnrichmentInput {
+            hostname: Some("Mac14,2".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_model.as_deref(), Some("MacBook Air M2"));
+        assert_eq!(result.device_type.as_deref(), Some("laptop"));
+    }
+
+    #[test]
+    fn test_apple_model_mac_mini() {
+        let input = EnrichmentInput {
+            hostname: Some("Mac14,3".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_model.as_deref(), Some("Mac mini M2"));
+        assert_eq!(result.device_type.as_deref(), Some("desktop"));
+    }
+
+    // ─── Enrichment merging (multiple sources) ──────────────
+
+    #[test]
+    fn test_merge_vendor_plus_hostname() {
+        // Vendor sets brand, hostname overrides with more specific info
+        let input = EnrichmentInput {
+            vendor: Some("Apple, Inc.".to_string()),
+            hostname: Some("Johns-MacBook-Pro".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_brand.as_deref(), Some("Apple"));
+        assert_eq!(result.os_family.as_deref(), Some("macOS"));
+        assert_eq!(result.device_type.as_deref(), Some("laptop"));
+        assert_eq!(result.source, "hostname");
+    }
+
+    #[test]
+    fn test_merge_ttl_plus_hostname() {
+        // TTL says Windows, hostname says Galaxy (Android) — hostname wins
+        let input = EnrichmentInput {
+            ttl: Some(64),
+            hostname: Some("Galaxy-S24".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("Android"));
+        assert_eq!(result.device_brand.as_deref(), Some("Samsung"));
+        assert_eq!(result.source, "hostname");
+    }
+
+    #[test]
+    fn test_merge_mdns_plus_hostname() {
+        // mDNS indicates printer, hostname confirms
+        let input = EnrichmentInput {
+            mdns_services: Some("_ipp._tcp,_printer._tcp".to_string()),
+            hostname: Some("Office-Printer".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("printer"));
+    }
+
+    #[test]
+    fn test_merge_all_layers_apple_device() {
+        // Full Apple device with all data sources
+        let input = EnrichmentInput {
+            vendor: Some("Apple, Inc.".to_string()),
+            hostname: Some("iPhone15,4".to_string()),
+            mdns_services: Some("_apple-mobdev2._tcp,_companion-link._tcp".to_string()),
+            ttl: Some(64),
+            mac: "AC:DE:48:00:11:22".to_string(), // non-randomized
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_model.as_deref(), Some("iPhone 15"));
+        assert_eq!(result.os_family.as_deref(), Some("iOS"));
+        assert_eq!(result.device_type.as_deref(), Some("phone"));
+        assert_eq!(result.device_brand.as_deref(), Some("Apple"));
+        assert_eq!(result.source, "model_db");
+    }
+
+    #[test]
+    fn test_merge_dhcp_overrides_hostname_for_os() {
+        // DHCP says Android, hostname is generic — DHCP wins for OS
+        let input = EnrichmentInput {
+            dhcp_vendor_class: Some("android-dhcp-14".to_string()),
+            hostname: Some("my-device".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("Android"));
+        assert_eq!(result.source, "dhcp");
+    }
+
+    #[test]
+    fn test_merge_vendor_brand_fallback() {
+        // When no other source sets brand, vendor OUI sets it
+        let input = EnrichmentInput {
+            vendor: Some("Dell Inc.".to_string()),
+            ttl: Some(128),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("Windows"));
+        assert_eq!(result.device_brand.as_deref(), Some("Dell"));
+    }
+
+    #[test]
+    fn test_merge_randomized_mac_ignores_vendor() {
+        // Randomized MAC should skip vendor hints and brand from OUI
+        let input = EnrichmentInput {
+            vendor: Some("Apple, Inc.".to_string()),
+            hostname: Some("generic-host".to_string()),
+            mac: "02:00:00:00:00:00".to_string(), // randomized
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert!(
+            result.device_brand.is_none(),
+            "Brand should not be inferred from vendor for randomized MAC"
+        );
+    }
+
+    #[test]
+    fn test_merge_randomized_mac_with_hostname() {
+        // Randomized MAC skips vendor, but hostname still works
+        let input = EnrichmentInput {
+            vendor: Some("Apple, Inc.".to_string()),
+            hostname: Some("Johns-MacBook-Pro".to_string()),
+            mac: "DA:A1:19:00:00:00".to_string(), // randomized
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        // Hostname still identifies the device despite randomized MAC
+        assert_eq!(result.os_family.as_deref(), Some("macOS"));
+        assert_eq!(result.device_type.as_deref(), Some("laptop"));
+        assert_eq!(result.device_brand.as_deref(), Some("Apple"));
+    }
+
+    // ─── Edge cases ─────────────────────────────────────────
+
+    #[test]
+    fn test_empty_input_returns_default() {
+        let input = EnrichmentInput::default();
+        let result = enrich(&input);
+        assert!(result.os_family.is_none());
+        assert!(result.os_version.is_none());
+        assert!(result.device_type.is_none());
+        assert!(result.device_model.is_none());
+        assert!(result.device_brand.is_none());
+        assert_eq!(result.source, "heuristic");
+    }
+
+    #[test]
+    fn test_randomized_mac_empty_string() {
+        assert!(!is_randomized_mac(""));
+    }
+
+    #[test]
+    fn test_randomized_mac_short_input() {
+        assert!(!is_randomized_mac("A"));
+    }
+
+    #[test]
+    fn test_randomized_mac_no_separators() {
+        // MAC without colons — 020000000000
+        assert!(is_randomized_mac("020000000000"));
+    }
+
+    #[test]
+    fn test_randomized_mac_dash_separator() {
+        assert!(is_randomized_mac("02-00-00-00-00-00"));
+    }
+
+    #[test]
+    fn test_mdns_does_not_override_existing_type() {
+        // If hostname already set device_type, mDNS should not override for _airplay
+        let input = EnrichmentInput {
+            hostname: Some("Bernadettes-iPhone".to_string()),
+            mdns_services: Some("_airplay._tcp".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        // Hostname sets phone first (layer 4), mDNS airplay checks device_type.is_none()
+        assert_eq!(result.device_type.as_deref(), Some("phone"));
+    }
+
+    #[test]
+    fn test_ttl_does_not_override_existing_os() {
+        // If hostname sets os_family, TTL should not override
+        let input = EnrichmentInput {
+            hostname: Some("Bernadettes-iPhone".to_string()),
+            ttl: Some(128), // would suggest Windows
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.os_family.as_deref(), Some("iOS"));
+    }
+
+    #[test]
+    fn test_hostname_server_respects_existing_type() {
+        // Vendor sets router (layer 1), hostname "server" pattern uses is_none() guard
+        // so the vendor's router classification persists
+        let input = EnrichmentInput {
+            vendor: Some("Ubiquiti Inc".to_string()),
+            hostname: Some("nas-server".to_string()),
+            ..Default::default()
+        };
+        let result = enrich(&input);
+        assert_eq!(result.device_type.as_deref(), Some("router"));
+        assert_eq!(result.device_brand.as_deref(), Some("Ubiquiti"));
+    }
 }
