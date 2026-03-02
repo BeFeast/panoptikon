@@ -7,7 +7,7 @@ use panoptikon_server::{
 use std::net::SocketAddr;
 use tracing::info;
 
-/// Panoptikon — VyOS router management & network monitoring server.
+/// Panoptikon — Router management & network monitoring server.
 #[derive(Parser, Debug)]
 #[command(name = "panoptikon-server", version, about)]
 struct Cli {
@@ -125,7 +125,7 @@ async fn main() -> Result<()> {
         info!("NetFlow collector disabled (set netflow_enabled = true in [scanner])");
     }
 
-    // Start DHCP hostname enrichment (pulls hostnames from VyOS DHCP leases).
+    // Start DHCP hostname enrichment.
     dhcp::start_dhcp_enrichment_task(state.db.clone(), app_config.clone());
 
     // Start UPnP/SSDP discovery (device type + manufacturer from multicast).

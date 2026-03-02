@@ -14,11 +14,9 @@ use super::AppState;
 #[derive(Debug, Deserialize)]
 pub struct SetupRequest {
     pub password: String,
-    pub vyos_url: Option<String>,
-    pub vyos_api_key: Option<String>,
 }
 
-/// POST /api/v1/setup — first-run setup: set admin password and optional VyOS config.
+/// POST /api/v1/setup — first-run setup: set admin password.
 ///
 /// This endpoint only works once. If the admin password has already been set,
 /// it returns 409 Conflict.
@@ -64,18 +62,6 @@ pub async fn setup(
             tracing::error!("Failed to store password: {e}");
             StatusCode::INTERNAL_SERVER_ERROR.into_response()
         })?;
-
-    // Store optional VyOS settings.
-    if let Some(ref url) = body.vyos_url {
-        if !url.is_empty() {
-            upsert_setting(&state, "vyos_url", url).await?;
-        }
-    }
-    if let Some(ref key) = body.vyos_api_key {
-        if !key.is_empty() {
-            upsert_setting(&state, "vyos_api_key", key).await?;
-        }
-    }
 
     // Mark setup as complete.
     upsert_setting(&state, "setup_complete", "true").await?;

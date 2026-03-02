@@ -27,12 +27,6 @@ import type {
   Device,
   DeviceSysinfo,
   DeviceTrafficPoint,
-  DhcpServerConfig,
-  DhcpStaticMapping,
-  DnsForwardingConfig,
-  FirewallConfig,
-  FirewallRuleRequest,
-  FirewallGroups,
   LoginResponse,
   NetflowStatus,
   NpmAccessList,
@@ -45,26 +39,15 @@ import type {
   NpmRedirectionHost,
   NpmStream,
   PendingChangesResponse,
-  RouterStatus,
-  RouterSummary,
   SearchResponse,
   SettingsData,
   SpeedTestResult,
   SpeedTestHistoryResponse,
-  SystemInfo,
-  SyslogResponse,
   TopDevice,
   TrafficHistoryPoint,
   UnboundDnsRecord,
   UnboundDnsRecordRequest,
   UnboundTestConnectionResponse,
-  VyosDhcpLease,
-  VyosInterface,
-  VyosRoute,
-  VyosWriteResponse,
-  WireguardInterface,
-  WireguardKeyPair,
-  ClientConfigResponse,
   AddServiceRequest,
   AddServiceResponse,
   RemoveServiceRequest,
@@ -440,54 +423,11 @@ export function logout(): Promise<void> {
 
 export function runSetup(body: {
   password: string;
-  vyos_url?: string;
-  vyos_api_key?: string;
 }): Promise<LoginResponse> {
   return apiPost<LoginResponse>("/api/v1/setup", body);
 }
 
-// ─── Router / VyOS ──────────────────────────────────────
-
-export function fetchRouterStatus(): Promise<RouterStatus> {
-  return apiGet<RouterStatus>("/api/v1/vyos/status");
-}
-
-export function fetchRouterSummary(): Promise<RouterSummary> {
-  return apiGet<RouterSummary>("/api/v1/vyos/router-summary");
-}
-
-export function fetchSystemInfo(): Promise<SystemInfo> {
-  return apiGet<SystemInfo>("/api/v1/vyos/system-info");
-}
-
-export function fetchSyslog(
-  lines = 50,
-  filter?: string
-): Promise<SyslogResponse> {
-  const params = new URLSearchParams({ lines: String(lines) });
-  if (filter) params.set("filter", filter);
-  return apiGet<SyslogResponse>(`/api/v1/vyos/syslog?${params}`);
-}
-
-export function fetchRouterInterfaces(): Promise<VyosInterface[]> {
-  return apiGet<VyosInterface[]>("/api/v1/vyos/interfaces");
-}
-
-export function fetchRouterConfigInterfaces(): Promise<Record<string, unknown>> {
-  return apiGet<Record<string, unknown>>("/api/v1/vyos/config-interfaces");
-}
-
-export function fetchRouterRoutes(): Promise<VyosRoute[]> {
-  return apiGet<VyosRoute[]>("/api/v1/vyos/routes");
-}
-
-export function fetchRouterDhcpLeases(): Promise<VyosDhcpLease[]> {
-  return apiGet<VyosDhcpLease[]>("/api/v1/vyos/dhcp-leases");
-}
-
-export function fetchRouterFirewall(): Promise<FirewallConfig> {
-  return apiGet<FirewallConfig>("/api/v1/vyos/firewall");
-}
+// ─── Speed Test ─────────────────────────────────────────
 
 export function runSpeedTest(): Promise<SpeedTestResult> {
   return apiPost<SpeedTestResult>("/api/v1/router/speedtest");
@@ -502,345 +442,16 @@ export function fetchSpeedTestHistory(
   );
 }
 
-// ─── DNS Forwarding ─────────────────────────────────────
+// ─── Search ─────────────────────────────────────────────
 
-export function fetchDnsForwarding(): Promise<DnsForwardingConfig> {
-  return apiGet<DnsForwardingConfig>("/api/v1/vyos/dns/forwarding");
-}
-
-export function addDnsNameServer(server: string): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>("/api/v1/vyos/dns/forwarding/name-servers", {
-    server,
-  });
-}
-
-export function deleteDnsNameServer(
-  server: string
-): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/dns/forwarding/name-servers/${encodeURIComponent(server)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function addDnsDomainOverride(body: {
-  domain: string;
-  server: string;
-}): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>(
-    "/api/v1/vyos/dns/forwarding/domain-overrides",
-    body
-  );
-}
-
-export function editDnsDomainOverride(
-  domain: string,
-  body: { domain: string; server: string }
-): Promise<VyosWriteResponse> {
-  return apiPut<VyosWriteResponse>(
-    `/api/v1/vyos/dns/forwarding/domain-overrides/${encodeURIComponent(domain)}`,
-    body
-  );
-}
-
-export function deleteDnsDomainOverride(
-  domain: string
-): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/dns/forwarding/domain-overrides/${encodeURIComponent(domain)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-// ─── Firewall Groups ─────────────────────────────────────
-
-export function fetchFirewallGroups(): Promise<FirewallGroups> {
-  return apiGet<FirewallGroups>("/api/v1/vyos/firewall/groups");
-}
-
-export function createAddressGroup(body: {
-  name: string;
-  description?: string;
-  addresses?: string[];
-}): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>("/api/v1/vyos/firewall/groups/address-group", body);
-}
-
-export function deleteAddressGroup(name: string): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/firewall/groups/address-group/${encodeURIComponent(name)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function addAddressGroupMember(
-  name: string,
-  value: string
-): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>(
-    `/api/v1/vyos/firewall/groups/address-group/${encodeURIComponent(name)}/members`,
-    { value }
-  );
-}
-
-export function removeAddressGroupMember(
-  name: string,
-  value: string
-): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/firewall/groups/address-group/${encodeURIComponent(name)}/members/${encodeURIComponent(value)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function createNetworkGroup(body: {
-  name: string;
-  description?: string;
-  networks?: string[];
-}): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>("/api/v1/vyos/firewall/groups/network-group", body);
-}
-
-export function deleteNetworkGroup(name: string): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/firewall/groups/network-group/${encodeURIComponent(name)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function addNetworkGroupMember(
-  name: string,
-  value: string
-): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>(
-    `/api/v1/vyos/firewall/groups/network-group/${encodeURIComponent(name)}/members`,
-    { value }
-  );
-}
-
-export function removeNetworkGroupMember(
-  name: string,
-  value: string
-): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/firewall/groups/network-group/${encodeURIComponent(name)}/members/${encodeURIComponent(value)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function createPortGroup(body: {
-  name: string;
-  description?: string;
-  ports?: string[];
-}): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>("/api/v1/vyos/firewall/groups/port-group", body);
-}
-
-export function deletePortGroup(name: string): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/firewall/groups/port-group/${encodeURIComponent(name)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function addPortGroupMember(
-  name: string,
-  value: string
-): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>(
-    `/api/v1/vyos/firewall/groups/port-group/${encodeURIComponent(name)}/members`,
-    { value }
-  );
-}
-
-export function removePortGroupMember(
-  name: string,
-  value: string
-): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/firewall/groups/port-group/${encodeURIComponent(name)}/members/${encodeURIComponent(value)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function toggleInterface(
-  name: string,
-  disable: boolean
-): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>(`/api/v1/vyos/interfaces/${name}/toggle`, {
-    disable,
-  });
-}
-
-export function fetchDhcpStaticMappings(): Promise<DhcpStaticMapping[]> {
-  return apiGet<DhcpStaticMapping[]>("/api/v1/vyos/dhcp/static-mappings");
-}
-
-export function createDhcpStaticMapping(body: {
-  network: string;
-  subnet: string;
-  name: string;
-  mac: string;
-  ip: string;
-}): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>("/api/v1/vyos/dhcp/static-mappings", body);
-}
-
-export function updateDhcpStaticMapping(
-  network: string,
-  subnet: string,
-  name: string,
-  body: { network: string; subnet: string; name: string; mac: string; ip: string }
-): Promise<VyosWriteResponse> {
-  return apiPut<VyosWriteResponse>(
-    `/api/v1/vyos/dhcp/static-mappings/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}/${encodeURIComponent(name)}`,
-    body
-  );
-}
-
-export function deleteDhcpStaticMapping(
-  network: string,
-  subnet: string,
-  name: string
-): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/dhcp/static-mappings/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}/${encodeURIComponent(name)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function fetchDhcpServerConfig(): Promise<DhcpServerConfig> {
-  return apiGet<DhcpServerConfig>("/api/v1/vyos/dhcp/config");
-}
-
-export function toggleDhcpSubnet(
-  network: string,
-  subnet: string,
-  disable: boolean
-): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>(
-    `/api/v1/vyos/dhcp/subnets/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}/toggle`,
-    { disable }
-  );
-}
-
-export function createDhcpSubnet(
-  body: import("./types").CreateDhcpSubnetRequest
-): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>("/api/v1/vyos/dhcp/subnets", body);
-}
-
-export function updateDhcpSubnet(
-  network: string,
-  subnet: string,
-  body: import("./types").UpdateDhcpSubnetRequest
-): Promise<VyosWriteResponse> {
-  return apiPut<VyosWriteResponse>(
-    `/api/v1/vyos/dhcp/subnets/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}`,
-    body
-  );
-}
-
-export function deleteDhcpSubnet(
-  network: string,
-  subnet: string
-): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/dhcp/subnets/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function createDhcpPoolRange(
-  network: string,
-  subnet: string,
-  rangeName: string,
-  body: import("./types").DhcpPoolRangeRequest
-): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>(
-    `/api/v1/vyos/dhcp/subnets/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}/ranges/${encodeURIComponent(rangeName)}`,
-    body
-  );
-}
-
-export function deleteDhcpPoolRange(
-  network: string,
-  subnet: string,
-  rangeName: string
-): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/dhcp/subnets/${encodeURIComponent(network)}/${encodeURIComponent(subnet)}/ranges/${encodeURIComponent(rangeName)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-// ─── Static Routes ──────────────────────────────────────
-
-export function createStaticRoute(body: {
-  destination: string;
-  next_hop?: string;
-  distance?: number;
-  description?: string;
-  blackhole?: boolean;
-}): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>("/api/v1/vyos/routes/static", body);
-}
-
-export function deleteStaticRoute(
-  destination: string
-): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/routes/static/${encodeURIComponent(destination)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-// ─── Firewall CRUD ───────────────────────────────────────
-
-/** Chain path is dot-separated: "ipv4.forward.filter" */
-function chainPath(chain: { path: string[] }): string {
-  return chain.path.join(".");
-}
-
-export function createFirewallRule(
-  chain: { path: string[] },
-  body: FirewallRuleRequest
-): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>(
-    `/api/v1/vyos/firewall/${encodeURIComponent(chainPath(chain))}/rules`,
-    body
-  );
-}
-
-export function updateFirewallRule(
-  chain: { path: string[] },
-  number: number,
-  body: FirewallRuleRequest
-): Promise<VyosWriteResponse> {
-  return apiPut<VyosWriteResponse>(
-    `/api/v1/vyos/firewall/${encodeURIComponent(chainPath(chain))}/rules/${number}`,
-    body
-  );
-}
-
-export function deleteFirewallRule(
-  chain: { path: string[] },
-  number: number
-): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/firewall/${encodeURIComponent(chainPath(chain))}/rules/${number}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function toggleFirewallRule(
-  chain: { path: string[] },
-  number: number,
-  disabled: boolean
-): Promise<VyosWriteResponse> {
-  return apiPatch<VyosWriteResponse>(
-    `/api/v1/vyos/firewall/${encodeURIComponent(chainPath(chain))}/rules/${number}/enabled`,
-    { disabled }
-  );
+export function searchAll(q: string): Promise<SearchResponse> {
+  return apiGet<SearchResponse>(`/api/v1/search?q=${encodeURIComponent(q)}`);
 }
 
 // ─── NetFlow ────────────────────────────────────────────
 
 export function fetchNetflowStatus(): Promise<NetflowStatus> {
   return apiGet<NetflowStatus>("/api/v1/settings/netflow-status");
-}
-
-// ─── Search ─────────────────────────────────────────────
-
-export function searchAll(q: string): Promise<SearchResponse> {
-  return apiGet<SearchResponse>(`/api/v1/search?q=${encodeURIComponent(q)}`);
 }
 
 // ─── Settings ───────────────────────────────────────────
@@ -851,8 +462,6 @@ export function fetchSettings(): Promise<SettingsData> {
 
 export function updateSettings(body: {
   webhook_url?: string;
-  vyos_url?: string;
-  vyos_api_key?: string;
   scan_interval_seconds?: number;
   scan_subnets?: string;
   ping_sweep_enabled?: boolean;
@@ -877,7 +486,6 @@ export function updateSettings(body: {
   cloudflare_api_token?: string;
   cloudflare_account_id?: string;
   cloudflare_tunnel_id?: string;
-  show_legacy_routers?: boolean;
 }): Promise<SettingsData> {
   return apiPatch<SettingsData>("/api/v1/settings", body);
 }
@@ -904,112 +512,6 @@ export function fetchAuditLog(
 
 export function fetchAuditLogActions(): Promise<string[]> {
   return apiGet<string[]>("/api/v1/audit-log/actions");
-}
-
-// ─── WireGuard VPN ───────────────────────────────────────
-
-export function fetchWireguardInterfaces(): Promise<WireguardInterface[]> {
-  return apiGet<WireguardInterface[]>("/api/v1/vyos/wireguard");
-}
-
-export function createWireguardInterface(body: {
-  name: string;
-  port: number;
-  address: string;
-}): Promise<WireguardKeyPair> {
-  return apiPost<WireguardKeyPair>("/api/v1/vyos/wireguard", body);
-}
-
-export function deleteWireguardInterface(
-  name: string
-): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/wireguard/${encodeURIComponent(name)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function addWireguardPeer(
-  iface: string,
-  body: {
-    name: string;
-    public_key: string;
-    allowed_ips: string;
-    persistent_keepalive?: number;
-  }
-): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>(
-    `/api/v1/vyos/wireguard/${encodeURIComponent(iface)}/peers`,
-    body
-  );
-}
-
-export function deleteWireguardPeer(
-  iface: string,
-  peer: string
-): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/wireguard/${encodeURIComponent(iface)}/peers/${encodeURIComponent(peer)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function generateWireguardKeypair(): Promise<WireguardKeyPair> {
-  return apiPost<WireguardKeyPair>("/api/v1/vyos/wireguard/generate-keypair");
-}
-
-export function generateWireguardClientConfig(
-  iface: string,
-  peer: string,
-  body: {
-    client_address: string;
-    dns?: string;
-    endpoint?: string;
-    allowed_ips?: string;
-  }
-): Promise<ClientConfigResponse> {
-  return apiPost<ClientConfigResponse>(
-    `/api/v1/vyos/wireguard/${encodeURIComponent(iface)}/peers/${encodeURIComponent(peer)}/generate-config`,
-    body
-  );
-}
-
-// ─── OpenVPN ─────────────────────────────────────────────
-
-export function fetchOpenVpnInterfaces(): Promise<
-  import("./types").OpenVpnInterface[]
-> {
-  return apiGet<import("./types").OpenVpnInterface[]>("/api/v1/vyos/openvpn");
-}
-
-export function createOpenVpnInterface(
-  body: import("./types").CreateOpenVpnInterfaceRequest
-): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>("/api/v1/vyos/openvpn", body);
-}
-
-export function deleteOpenVpnInterface(
-  name: string
-): Promise<VyosWriteResponse> {
-  return apiDelete(
-    `/api/v1/vyos/openvpn/${encodeURIComponent(name)}`
-  ) as unknown as Promise<VyosWriteResponse>;
-}
-
-export function toggleOpenVpnInterface(
-  name: string,
-  disable: boolean
-): Promise<VyosWriteResponse> {
-  return apiPost<VyosWriteResponse>(
-    `/api/v1/vyos/openvpn/${encodeURIComponent(name)}/toggle`,
-    { disable }
-  );
-}
-
-export function fetchOpenVpnClients(
-  name: string
-): Promise<import("./types").OpenVpnConnectedClient[]> {
-  return apiGet<import("./types").OpenVpnConnectedClient[]>(
-    `/api/v1/vyos/openvpn/${encodeURIComponent(name)}/clients`
-  );
 }
 
 // ─── Topology ───────────────────────────────────────────
@@ -1808,32 +1310,6 @@ export function fetchQosSummary(): Promise<
   return apiGet<import("./types").QosSummary>("/api/v1/qos/summary");
 }
 
-export function fetchVyosTrafficPolicies(): Promise<
-  import("./types").VyosTrafficPoliciesResponse
-> {
-  return apiGet<import("./types").VyosTrafficPoliciesResponse>(
-    "/api/v1/qos/vyos/policies"
-  );
-}
-
-export function createVyosTrafficPolicy(
-  body: import("./types").CreateVyosTrafficPolicyRequest
-): Promise<import("./types").VyosQosWriteResponse> {
-  return apiPost<import("./types").VyosQosWriteResponse>(
-    "/api/v1/qos/vyos/policies",
-    body
-  );
-}
-
-export function deleteVyosTrafficPolicy(
-  policyType: string,
-  name: string
-): Promise<import("./types").VyosQosWriteResponse> {
-  return apiDelete(
-    `/api/v1/qos/vyos/policies/${encodeURIComponent(policyType)}/${encodeURIComponent(name)}`
-  ) as unknown as Promise<import("./types").VyosQosWriteResponse>;
-}
-
 export function fetchMikrotikSimpleQueues(): Promise<
   import("./types").MikrotikSimpleQueue[]
 > {
@@ -1908,51 +1384,10 @@ export function fetchDdnsStatus(): Promise<import("./types").DdnsStatus> {
   return apiGet<import("./types").DdnsStatus>("/api/v1/ddns/status");
 }
 
-export function fetchVyosDdnsConfig(): Promise<
-  import("./types").VyosDdnsConfig
-> {
-  return apiGet<import("./types").VyosDdnsConfig>("/api/v1/ddns/vyos");
-}
-
 // ─── NAT / Port Forwarding ───────────────────────────────────
 
 export function fetchNatSummary(): Promise<import("./types").NatSummary> {
   return apiGet<import("./types").NatSummary>("/api/v1/nat/summary");
-}
-
-export function fetchVyosNatRules(): Promise<
-  import("./types").NatDestinationRule[]
-> {
-  return apiGet<import("./types").NatDestinationRule[]>(
-    "/api/v1/nat/vyos/rules"
-  );
-}
-
-export function createVyosNatRule(
-  body: import("./types").CreateVyosNatRuleRequest
-): Promise<import("./types").NatRuleResponse> {
-  return apiPost<import("./types").NatRuleResponse>(
-    "/api/v1/nat/vyos/rules",
-    body
-  );
-}
-
-export function updateVyosNatRule(
-  ruleNumber: number,
-  body: import("./types").UpdateVyosNatRuleRequest
-): Promise<import("./types").NatRuleResponse> {
-  return apiPut<import("./types").NatRuleResponse>(
-    `/api/v1/nat/vyos/rules/${ruleNumber}`,
-    body
-  );
-}
-
-export function deleteVyosNatRule(
-  ruleNumber: number
-): Promise<import("./types").NatRuleResponse> {
-  return apiDelete(
-    `/api/v1/nat/vyos/rules/${ruleNumber}`
-  ) as unknown as Promise<import("./types").NatRuleResponse>;
 }
 
 export function fetchMikrotikNatRules(): Promise<

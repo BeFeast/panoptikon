@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Router,
@@ -20,7 +19,6 @@ import {
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageTransition } from "@/components/PageTransition";
-import { fetchSettings } from "@/lib/api";
 import { settingsNav } from "@/lib/settings-nav";
 
 /** Map href → icon + iconBg for each settings item. */
@@ -87,39 +85,14 @@ const iconMap: Record<string, { icon: React.ReactNode; iconBg: string }> = {
   },
 };
 
-const VYOS_ONLY_SETTINGS = new Set([
-  "/settings/audit-log",
-  "/settings/config-backup",
-]);
-
 export default function SettingsPage() {
-  const [vyosConfigured, setVyosConfigured] = useState(false);
-  const [legacyRoutersEnabled, setLegacyRoutersEnabled] = useState(false);
-  const [loaded, setLoaded] = useState(false);
-
-  useEffect(() => {
-    fetchSettings()
-      .then((settings) => {
-        setVyosConfigured(!!settings.vyos_url && settings.vyos_api_key_set);
-        setLegacyRoutersEnabled(settings.show_legacy_routers);
-      })
-      .catch(() => {})
-      .finally(() => setLoaded(true));
-  }, []);
-
   return (
     <PageTransition>
       <div className="mx-auto max-w-5xl space-y-8 py-8">
         <h1 className="text-2xl font-semibold text-white">Settings</h1>
 
         {settingsNav.map((group) => {
-          const visibleItems = loaded
-            ? group.items.filter(
-                (item) =>
-                  (legacyRoutersEnabled && vyosConfigured) ||
-                  !VYOS_ONLY_SETTINGS.has(item.href)
-              )
-            : group.items;
+          const visibleItems = group.items;
 
           if (visibleItems.length === 0) return null;
 
@@ -138,11 +111,6 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {visibleItems.map((item) => {
                   const visual = iconMap[item.href];
-                  const description =
-                    item.href === "/settings/router" &&
-                    (!legacyRoutersEnabled || !vyosConfigured)
-                      ? "Configure MikroTik router integration."
-                      : item.description;
 
                   return (
                     <Link key={item.href} href={item.href} className="group">
@@ -160,7 +128,7 @@ export default function SettingsPage() {
                               {item.title}
                             </p>
                             <p className="truncate text-xs text-slate-500">
-                              {description}
+                              {item.description}
                             </p>
                           </div>
                           <ChevronRight className="h-4 w-4 shrink-0 text-slate-600 transition-colors group-hover:text-slate-400" />

@@ -240,9 +240,7 @@ function RouterNode({ data }: NodeProps<RouterNodeType>) {
   const routerLabel =
     data.routerType === 'mikrotik'
       ? 'MikroTik'
-      : data.routerType === 'vyos'
-        ? 'VyOS'
-        : 'Router'
+      : 'Router'
 
   return (
     <div

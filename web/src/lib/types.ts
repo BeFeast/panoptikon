@@ -707,7 +707,7 @@ export interface AuditLogEntry {
   created_at: string;
   action: string;
   description: string;
-  vyos_commands: string;
+  commands: string;
   success: boolean;
   error_msg: string | null;
 }

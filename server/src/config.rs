@@ -13,10 +13,6 @@ pub struct AppConfig {
     #[serde(default)]
     pub db_path: Option<String>,
 
-    /// VyOS section.
-    #[serde(default)]
-    pub vyos: VyosConfig,
-
     /// Scanner section.
     #[serde(default)]
     pub scanner: ScannerConfig,
@@ -41,21 +37,6 @@ pub struct AppConfig {
 
 fn default_listen() -> Option<String> {
     Some("0.0.0.0:8080".to_string())
-}
-
-/// VyOS router connection settings.
-#[derive(Debug, Clone, Default, Deserialize)]
-#[allow(dead_code)]
-pub struct VyosConfig {
-    /// VyOS HTTP API URL (e.g., "https://192.168.1.1").
-    pub url: Option<String>,
-
-    /// VyOS HTTP API key.
-    pub api_key: Option<String>,
-
-    /// Accept self-signed TLS certificates.
-    #[serde(default)]
-    pub insecure_tls: bool,
 }
 
 /// ARP scanner settings.
@@ -204,7 +185,6 @@ impl Default for AppConfig {
         Self {
             listen: default_listen(),
             db_path: None,
-            vyos: VyosConfig::default(),
             scanner: ScannerConfig::default(),
             auth: AuthConfig::default(),
             retention: RetentionConfig::default(),

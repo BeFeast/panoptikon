@@ -9,15 +9,13 @@ describe("ROUTER_TYPES", () => {
     expect(ROUTER_TYPES[0]).toBe("mikrotik");
   });
 
-  it("contains both mikrotik and vyos", () => {
+  it("contains only mikrotik", () => {
     expect(ROUTER_TYPES).toContain("mikrotik");
-    expect(ROUTER_TYPES).toContain("vyos");
+    expect(ROUTER_TYPES).toHaveLength(1);
   });
 
-  it("lists mikrotik before vyos", () => {
-    const mikrotikIdx = ROUTER_TYPES.indexOf("mikrotik");
-    const vyosIdx = ROUTER_TYPES.indexOf("vyos");
-    expect(mikrotikIdx).toBeLessThan(vyosIdx);
+  it("does not contain vyos", () => {
+    expect(ROUTER_TYPES).not.toContain("vyos");
   });
 });
 
@@ -26,64 +24,14 @@ describe("getDefaultRouterType", () => {
     expect(
       getDefaultRouterType({
         mikrotik_enabled: true,
-        vyos_url: null,
-        vyos_api_key_set: false,
-        show_legacy_routers: false,
       }),
     ).toBe("mikrotik");
   });
 
-  it("returns mikrotik when both mikrotik and vyos are configured", () => {
-    expect(
-      getDefaultRouterType({
-        mikrotik_enabled: true,
-        vyos_url: "https://vyos.local",
-        vyos_api_key_set: true,
-        show_legacy_routers: true,
-      }),
-    ).toBe("mikrotik");
-  });
-
-  it("returns mikrotik when only vyos is configured and legacy is enabled", () => {
+  it("returns mikrotik when mikrotik is disabled", () => {
     expect(
       getDefaultRouterType({
         mikrotik_enabled: false,
-        vyos_url: "https://vyos.local",
-        vyos_api_key_set: true,
-        show_legacy_routers: true,
-      }),
-    ).toBe("mikrotik");
-  });
-
-  it("returns mikrotik when vyos is configured but legacy is disabled", () => {
-    expect(
-      getDefaultRouterType({
-        mikrotik_enabled: false,
-        vyos_url: "https://vyos.local",
-        vyos_api_key_set: true,
-        show_legacy_routers: false,
-      }),
-    ).toBe("mikrotik");
-  });
-
-  it("returns mikrotik when vyos_url is set but api key is not", () => {
-    expect(
-      getDefaultRouterType({
-        mikrotik_enabled: false,
-        vyos_url: "https://vyos.local",
-        vyos_api_key_set: false,
-        show_legacy_routers: true,
-      }),
-    ).toBe("mikrotik");
-  });
-
-  it("returns mikrotik when nothing is configured", () => {
-    expect(
-      getDefaultRouterType({
-        mikrotik_enabled: false,
-        vyos_url: null,
-        vyos_api_key_set: false,
-        show_legacy_routers: false,
       }),
     ).toBe("mikrotik");
   });

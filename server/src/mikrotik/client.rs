@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 
 use super::types::*;
 
-/// Default TTL for cached responses (30 seconds, matching VyOS cache).
+/// Default TTL for cached responses (30 seconds).
 const CACHE_TTL: Duration = Duration::from_secs(30);
 
 /// Build the shared `reqwest::Client` for MikroTik API calls.

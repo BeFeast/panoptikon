@@ -1,6 +1,6 @@
 //! VPN Status Dashboard API endpoints.
 //!
-//! Provides a unified view of VPN tunnel status across VyOS and MikroTik
+//! Provides a unified view of VPN tunnel status from MikroTik
 //! routers — WireGuard peer connectivity, handshake recency, and transfer stats.
 
 use axum::{extract::State, http::StatusCode, Json};
@@ -8,7 +8,6 @@ use serde::Serialize;
 
 use super::AppState;
 use crate::mikrotik::client::MikrotikClient;
-use crate::vyos::client::VyosClient;
 
 // ── Helpers ─────────────────────────────────────────────────
 
@@ -20,10 +19,6 @@ async fn get_setting(state: &AppState, key: &str) -> Option<String> {
         .ok()
         .flatten()
         .filter(|v| !v.is_empty())
-}
-
-async fn vyos_client(state: &AppState) -> Option<VyosClient> {
-    super::vyos::get_vyos_client_from_db(&state.db, &state.config, &state.vyos_http).await
 }
 
 async fn mikrotik_client(state: &AppState) -> Option<MikrotikClient> {
@@ -78,14 +73,13 @@ pub struct VpnInterfaceStatus {
     pub peers: Vec<VpnPeerStatus>,
     pub peers_online: usize,
     pub peers_total: usize,
-    /// "vyos" or "mikrotik"
+    /// "mikrotik"
     pub source: String,
 }
 
 /// Overall VPN status summary.
 #[derive(Debug, Serialize)]
 pub struct VpnStatusResponse {
-    pub vyos_available: bool,
     pub mikrotik_available: bool,
     pub interfaces: Vec<VpnInterfaceStatus>,
     pub total_peers: usize,
@@ -100,9 +94,7 @@ pub struct VpnStatusResponse {
 pub async fn vpn_status(
     State(state): State<AppState>,
 ) -> Result<Json<VpnStatusResponse>, StatusCode> {
-    let vyos = vyos_client(&state).await;
     let mikrotik = mikrotik_client(&state).await;
-    let vyos_available = vyos.is_some();
     // mikrotik_available is determined after we check for WireGuard interfaces
     let mut mikrotik_available = false;
 
@@ -111,75 +103,6 @@ pub async fn vpn_status(
     const HANDSHAKE_ONLINE_THRESHOLD_SECS: i64 = 180;
 
     let mut interfaces: Vec<VpnInterfaceStatus> = Vec::new();
-
-    // ── VyOS WireGuard ──
-    if let Some(client) = vyos {
-        if let Ok(config) = client.retrieve(&["interfaces", "wireguard"]).await {
-            let mut wg_ifaces = super::vyos::parse_wireguard_config(&config);
-
-            // Fetch interface link status
-            if let Ok(iface_raw) = client.show(&["interfaces"]).await {
-                let iface_text = iface_raw.as_str().unwrap_or("");
-                let iface_list = super::vyos::parse_interfaces_text(iface_text);
-                for wg in &mut wg_ifaces {
-                    if let Some(sys_iface) = iface_list.iter().find(|i| i.name == wg.name) {
-                        wg.status = Some(sys_iface.link_state.clone());
-                    }
-                }
-            }
-
-            // Fetch runtime stats per interface
-            for wg in &mut wg_ifaces {
-                if let Ok(raw) = client.show(&["interfaces", "wireguard", &wg.name]).await {
-                    let text = raw.as_str().unwrap_or("");
-                    super::vyos::merge_wireguard_runtime_stats(wg, text);
-                }
-            }
-
-            for wg in wg_ifaces {
-                let peers: Vec<VpnPeerStatus> = wg
-                    .peers
-                    .into_iter()
-                    .map(|p| {
-                        let connectivity = if let Some(hs) = p.last_handshake {
-                            if now - hs < HANDSHAKE_ONLINE_THRESHOLD_SECS {
-                                "online".to_string()
-                            } else {
-                                "offline".to_string()
-                            }
-                        } else {
-                            "offline".to_string()
-                        };
-                        VpnPeerStatus {
-                            name: p.name,
-                            public_key: p.public_key,
-                            endpoint: p.endpoint,
-                            allowed_ips: p.allowed_ips,
-                            last_handshake: p.last_handshake,
-                            rx_bytes: p.rx_bytes,
-                            tx_bytes: p.tx_bytes,
-                            connectivity,
-                        }
-                    })
-                    .collect();
-
-                let peers_online = peers.iter().filter(|p| p.connectivity == "online").count();
-                let peers_total = peers.len();
-
-                interfaces.push(VpnInterfaceStatus {
-                    name: wg.name,
-                    address: wg.address,
-                    port: wg.port,
-                    public_key: wg.public_key,
-                    status: wg.status,
-                    peers,
-                    peers_online,
-                    peers_total,
-                    source: "vyos".to_string(),
-                });
-            }
-        }
-    }
 
     // ── MikroTik WireGuard ──
     if let Some(client) = mikrotik {
@@ -269,7 +192,6 @@ pub async fn vpn_status(
         .sum();
 
     Ok(Json(VpnStatusResponse {
-        vyos_available,
         mikrotik_available,
         interfaces,
         total_peers,

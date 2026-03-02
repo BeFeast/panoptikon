@@ -138,7 +138,7 @@ pub struct TopologyDevice {
 /// Router info for the topology hub node.
 #[derive(Debug, Serialize)]
 pub struct TopologyRouter {
-    pub router_type: String, // "vyos" | "mikrotik" | "unknown"
+    pub router_type: String, // "mikrotik" | "unknown"
     pub is_online: bool,
     pub wan_ip: Option<String>,
     pub hostname: Option<String>,
@@ -194,7 +194,7 @@ async fn mikrotik_client(state: &AppState) -> Option<MikrotikClient> {
 /// GET /api/v1/topology/graph — return the complete topology graph in a single call.
 ///
 /// Aggregates devices (from DB), traffic data, DHCP leases and bridge hosts
-/// (from MikroTik/VyOS, if configured), router interfaces, and saved positions.
+/// (from MikroTik, if configured), router interfaces, and saved positions.
 pub async fn graph(State(state): State<AppState>) -> Result<Json<TopologyGraph>, StatusCode> {
     // 1. Fetch devices with traffic data from the database
     let rows = sqlx::query(
@@ -306,7 +306,7 @@ pub async fn graph(State(state): State<AppState>) -> Result<Json<TopologyGraph>,
     })
     .collect();
 
-    // 3. Build router info and enrich with DHCP/bridge data from MikroTik or VyOS
+    // 3. Build router info and enrich with DHCP/bridge data from MikroTik
     let mut router = TopologyRouter {
         router_type: "unknown".to_string(),
         is_online: false,
@@ -364,69 +364,6 @@ pub async fn graph(State(state): State<AppState>) -> Result<Json<TopologyGraph>,
                     if let Some(&idx) = mac_to_idx.get(&mac_lower) {
                         devices[idx].bridge_port = host.on_interface.or(host.interface);
                         devices[idx].bridge_name = host.bridge;
-                    }
-                }
-            }
-        }
-    }
-
-    // Fall back to VyOS if MikroTik didn't provide router info
-    if router.router_type == "unknown" {
-        if let Some(vyos_client) =
-            super::vyos::get_vyos_client_from_db(&state.db, &state.config, &state.vyos_http).await
-        {
-            // Check VyOS reachability
-            if vyos_client.show(&["system", "uptime"]).await.is_ok() {
-                router.router_type = "vyos".to_string();
-                router.is_online = true;
-
-                // Try to get hostname
-                if let Ok(val) = vyos_client.show(&["system", "host-name"]).await {
-                    if let Some(s) = val.as_str() {
-                        let trimmed = s.trim();
-                        if !trimmed.is_empty() {
-                            router.hostname = Some(trimmed.to_string());
-                        }
-                    }
-                }
-
-                // Try to get interfaces for WAN IP
-                if let Ok(val) = vyos_client.show(&["interfaces"]).await {
-                    let text = val.as_str().unwrap_or("");
-                    let ifaces = super::vyos::parse_interfaces_text(text);
-                    // Find WAN interface
-                    let wan = ifaces.iter().find(|i| {
-                        i.name == "eth0"
-                            || i.name.starts_with("pppoe")
-                            || i.description
-                                .as_ref()
-                                .map(|d| d.to_lowercase().contains("wan"))
-                                .unwrap_or(false)
-                    });
-                    if let Some(iface) = wan {
-                        router.wan_ip = iface
-                            .ip_address
-                            .as_ref()
-                            .map(|ip| ip.split('/').next().unwrap_or(ip).to_string());
-                    }
-                }
-
-                // Enrich with VyOS DHCP leases
-                if let Ok(val) = vyos_client.show(&["dhcp", "server", "leases"]).await {
-                    let text = val.as_str().unwrap_or("");
-                    let leases = super::vyos::parse_dhcp_leases_text(text);
-                    for lease in leases {
-                        let mac_lower = lease.mac.to_lowercase();
-                        if let Some(&idx) = mac_to_idx.get(&mac_lower) {
-                            devices[idx].dhcp_lease_status = Some(lease.state);
-                            devices[idx].dhcp_server = lease.pool;
-                            devices[idx].dhcp_expires = lease.remaining;
-                            if let Some(h) = lease.hostname {
-                                if h != "-" {
-                                    devices[idx].dhcp_hostname = Some(h);
-                                }
-                            }
-                        }
                     }
                 }
             }

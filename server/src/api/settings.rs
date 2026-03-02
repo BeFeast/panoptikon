@@ -9,10 +9,6 @@ use crate::{netflow, webhook};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SettingsResponse {
     pub webhook_url: Option<String>,
-    pub vyos_url: Option<String>,
-    /// Masked API key — never return the full key to the frontend.
-    pub vyos_api_key_set: bool,
-    pub vyos_enabled: bool,
     // --- Network Scanner ---
     pub scan_interval_seconds: Option<u64>,
     pub scan_subnets: Option<String>,
@@ -60,9 +56,6 @@ pub struct SettingsResponse {
 #[derive(Debug, Deserialize)]
 pub struct UpdateSettingsRequest {
     pub webhook_url: Option<String>,
-    pub vyos_url: Option<String>,
-    pub vyos_api_key: Option<String>,
-    pub vyos_enabled: Option<bool>,
     // --- Network Scanner ---
     pub scan_interval_seconds: Option<u64>,
     pub scan_subnets: Option<String>,
@@ -117,34 +110,6 @@ pub async fn get_settings(
     State(state): State<AppState>,
 ) -> Result<Json<SettingsResponse>, StatusCode> {
     let webhook_url = webhook::get_webhook_url(&state.db).await;
-
-    // Keep legacy compatibility: if DB settings are absent, fall back to
-    // values from panoptikon.toml so existing VyOS setups remain detected.
-    let vyos_url = get_setting(&state, "vyos_url").await.or_else(|| {
-        state
-            .config
-            .vyos
-            .url
-            .clone()
-            .filter(|v| !v.trim().is_empty())
-    });
-
-    let vyos_api_key_set = get_setting(&state, "vyos_api_key")
-        .await
-        .or_else(|| {
-            state
-                .config
-                .vyos
-                .api_key
-                .clone()
-                .filter(|v| !v.trim().is_empty())
-        })
-        .is_some();
-
-    let vyos_enabled = get_setting(&state, "vyos_enabled")
-        .await
-        .map(|v| v == "1" || v == "true")
-        .unwrap_or(false);
 
     // Network Scanner settings (fall back to config defaults).
     let scan_interval_seconds = get_setting(&state, "scan_interval_seconds")
@@ -234,9 +199,6 @@ pub async fn get_settings(
 
     Ok(Json(SettingsResponse {
         webhook_url,
-        vyos_url,
-        vyos_api_key_set,
-        vyos_enabled,
         scan_interval_seconds,
         scan_subnets,
         ping_sweep_enabled,
@@ -274,28 +236,6 @@ pub async fn update_settings(
     if let Some(ref url) = body.webhook_url {
         upsert_setting(&state, "webhook_url", url).await?;
         info!(webhook_url = %url, "Webhook URL updated");
-    }
-
-    if let Some(ref url) = body.vyos_url {
-        upsert_setting(&state, "vyos_url", url).await?;
-        info!(vyos_url = %url, "VyOS URL updated");
-    }
-
-    if let Some(ref key) = body.vyos_api_key {
-        // NOTE: The VyOS API key is stored unencrypted in SQLite.
-        // This is intentional for a single-user self-hosted deployment where
-        // the database file is protected by OS filesystem permissions and the
-        // server requires authentication to read or modify settings.
-        // TODO: Add at-rest encryption (e.g. AES-GCM with a server-generated
-        // key stored outside the database) if multi-user or remote DB support
-        // is added in the future.
-        upsert_setting(&state, "vyos_api_key", key).await?;
-        info!("VyOS API key updated");
-    }
-
-    if let Some(enabled) = body.vyos_enabled {
-        upsert_setting(&state, "vyos_enabled", if enabled { "1" } else { "0" }).await?;
-        info!(vyos_enabled = enabled, "VyOS enabled toggle updated");
     }
 
     // --- Network Scanner settings ---

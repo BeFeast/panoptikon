@@ -9,7 +9,6 @@ import {
   Pencil,
   Plus,
   RefreshCw,
-  Router,
   Search,
   Trash2,
 } from "lucide-react";
@@ -52,11 +51,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageTransition } from "@/components/PageTransition";
 import {
-  fetchSettings,
   fetchQosSummary,
-  fetchVyosTrafficPolicies,
-  createVyosTrafficPolicy,
-  deleteVyosTrafficPolicy,
   fetchMikrotikSimpleQueues,
   createMikrotikSimpleQueue,
   updateMikrotikSimpleQueue,
@@ -65,7 +60,6 @@ import {
 } from "@/lib/api";
 import type {
   QosSummary,
-  VyosTrafficPolicy,
   MikrotikSimpleQueue,
   MikrotikQueueTree,
 } from "@/lib/types";
@@ -73,24 +67,16 @@ import { toast } from "sonner";
 
 export default function QosPage() {
   const [summary, setSummary] = useState<QosSummary | null>(null);
-  const [legacyRoutersEnabled, setLegacyRoutersEnabled] = useState(false);
-  const [vyosPolicies, setVyosPolicies] = useState<
-    VyosTrafficPolicy[] | null
-  >(null);
   const [mtQueues, setMtQueues] = useState<MikrotikSimpleQueue[] | null>(null);
   const [mtTree, setMtTree] = useState<MikrotikQueueTree[] | null>(null);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
-  const vyosVisible = legacyRoutersEnabled && !!summary?.vyos_available;
 
   // Dialogs
-  const [showAddVyos, setShowAddVyos] = useState(false);
   const [showAddMtQueue, setShowAddMtQueue] = useState(false);
   const [editMtQueue, setEditMtQueue] = useState<MikrotikSimpleQueue | null>(
     null
   );
-  const [pendingDeleteVyos, setPendingDeleteVyos] =
-    useState<VyosTrafficPolicy | null>(null);
   const [pendingDeleteMtQueue, setPendingDeleteMtQueue] =
     useState<MikrotikSimpleQueue | null>(null);
 
@@ -100,15 +86,6 @@ export default function QosPage() {
       setSummary(s);
     } catch {
       // summary is best-effort
-    }
-  }, []);
-
-  const loadVyos = useCallback(async () => {
-    try {
-      const data = await fetchVyosTrafficPolicies();
-      setVyosPolicies(data.policies);
-    } catch {
-      setVyosPolicies([]);
     }
   }, []);
 
@@ -135,40 +112,14 @@ export default function QosPage() {
     if (!summary) return;
     if (summary.mikrotik_available) {
       setActiveTab("mikrotik");
-    } else if (summary.vyos_available) {
-      setActiveTab("vyos");
     }
   }, [summary]);
 
   useEffect(() => {
-    fetchSettings()
-      .then((settings) => setLegacyRoutersEnabled(settings.show_legacy_routers))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === "vyos") loadVyos();
     if (activeTab === "mikrotik") loadMtQueues();
-  }, [activeTab, loadVyos, loadMtQueues]);
-
-  useEffect(() => {
-    if (!vyosVisible && activeTab === "vyos") {
-      setActiveTab("overview");
-    }
-  }, [activeTab, vyosVisible]);
+  }, [activeTab, loadMtQueues]);
 
   // -- Filter helpers --
-  const filteredVyos = useMemo(() => {
-    if (!vyosPolicies) return null;
-    if (!search.trim()) return vyosPolicies;
-    const q = search.toLowerCase();
-    return vyosPolicies.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.policy_type.toLowerCase().includes(q)
-    );
-  }, [vyosPolicies, search]);
-
   const filteredMtQueues = useMemo(() => {
     if (!mtQueues) return null;
     if (!search.trim()) return mtQueues;
@@ -193,26 +144,6 @@ export default function QosPage() {
   }, [mtTree, search]);
 
   // -- Handlers --
-  async function handleDeleteVyosPolicy() {
-    if (!pendingDeleteVyos) return;
-    try {
-      await deleteVyosTrafficPolicy(
-        pendingDeleteVyos.policy_type,
-        pendingDeleteVyos.name
-      );
-      setVyosPolicies(
-        (prev) =>
-          prev?.filter((p) => p.name !== pendingDeleteVyos.name) ?? null
-      );
-      toast.success(`Deleted policy '${pendingDeleteVyos.name}'`);
-      load();
-    } catch {
-      toast.error("Failed to delete traffic policy");
-    } finally {
-      setPendingDeleteVyos(null);
-    }
-  }
-
   async function handleDeleteMtQueue() {
     if (!pendingDeleteMtQueue || !pendingDeleteMtQueue.id) return;
     try {
@@ -246,7 +177,6 @@ export default function QosPage() {
             size="sm"
             onClick={() => {
               load();
-              if (activeTab === "vyos") loadVyos();
               if (activeTab === "mikrotik") loadMtQueues();
             }}
             className="border-slate-800 text-slate-300 hover:bg-slate-800"
@@ -257,15 +187,7 @@ export default function QosPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className={`grid gap-4 ${vyosVisible ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
-          {vyosVisible && (
-            <SummaryCard
-              title="VyOS Policies"
-              value={summary?.vyos_policy_count ?? null}
-              available={vyosVisible}
-              icon={<Router className="h-4 w-4 text-blue-400" />}
-            />
-          )}
+        <div className="grid gap-4 sm:grid-cols-2">
           <SummaryCard
             title="MikroTik Simple Queues"
             value={summary?.mikrotik_simple_queue_count ?? null}
@@ -297,17 +219,6 @@ export default function QosPage() {
                 MikroTik Queues
               </TabsTrigger>
             )}
-            {vyosVisible && (
-              <TabsTrigger
-                value="vyos"
-                className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
-              >
-                VyOS Policies
-                <span className="ml-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0 text-[10px] text-amber-400">
-                  Legacy
-                </span>
-              </TabsTrigger>
-            )}
           </TabsList>
 
           {/* Overview Tab */}
@@ -318,22 +229,12 @@ export default function QosPage() {
                   Traffic Shaping Overview
                 </CardTitle>
                 <CardDescription className="text-slate-400">
-                  Manage bandwidth queues and traffic policies across your
-                  routers.{vyosVisible ? " Use VyOS traffic policies for HTB/HFSC shaping, or MikroTik" : " Use MikroTik"} simple queues for per-device bandwidth limits.
+                  Manage bandwidth queues and traffic policies on your
+                  router. Use MikroTik simple queues for per-device bandwidth limits.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 text-sm text-slate-400">
-                  {vyosVisible && (
-                    <p>
-                      VyOS router configured with{" "}
-                      <span className="font-medium text-white">
-                        {summary.vyos_policy_count}
-                      </span>{" "}
-                      traffic{" "}
-                      {summary.vyos_policy_count === 1 ? "policy" : "policies"}.
-                    </p>
-                  )}
                   {summary?.mikrotik_available && (
                     <p>
                       MikroTik router configured with{" "}
@@ -355,7 +256,7 @@ export default function QosPage() {
                       .
                     </p>
                   )}
-                  {!vyosVisible && !summary?.mikrotik_available && (
+                  {!summary?.mikrotik_available && (
                     <p>
                       No router is configured. Go to{" "}
                       <span className="font-medium text-white">Settings</span>{" "}
@@ -363,108 +264,6 @@ export default function QosPage() {
                     </p>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* VyOS Policies Tab */}
-          <TabsContent value="vyos" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <Input
-                  placeholder="Filter policies..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="border-slate-800 bg-slate-950 pl-10 text-white placeholder:text-slate-600"
-                />
-              </div>
-              <Button
-                size="sm"
-                onClick={() => setShowAddVyos(true)}
-                className="bg-blue-600 text-white hover:bg-blue-500"
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                Add Policy
-              </Button>
-            </div>
-
-            <Card className="border-slate-800 bg-slate-900">
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="border-slate-800 hover:bg-transparent">
-                      <TableHead className="text-slate-400">Name</TableHead>
-                      <TableHead className="text-slate-400">Type</TableHead>
-                      <TableHead className="text-slate-400">
-                        Bandwidth
-                      </TableHead>
-                      <TableHead className="text-slate-400">Classes</TableHead>
-                      <TableHead className="text-right text-slate-400">
-                        Actions
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredVyos === null ? (
-                      Array.from({ length: 3 }).map((_, i) => (
-                        <TableRow key={i} className="border-slate-800">
-                          {Array.from({ length: 5 }).map((_, j) => (
-                            <TableCell key={j}>
-                              <Skeleton className="h-4 w-24 bg-slate-800" />
-                            </TableCell>
-                          ))}
-                        </TableRow>
-                      ))
-                    ) : filteredVyos.length === 0 ? (
-                      <TableRow className="border-slate-800 hover:bg-transparent">
-                        <TableCell
-                          colSpan={5}
-                          className="py-12 text-center text-slate-500"
-                        >
-                          {search
-                            ? "No policies match your filter."
-                            : "No traffic policies configured."}
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredVyos.map((policy) => (
-                        <TableRow
-                          key={`${policy.policy_type}-${policy.name}`}
-                          className="border-slate-800 hover:bg-slate-800/30"
-                        >
-                          <TableCell className="font-medium text-white">
-                            {policy.name}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="outline"
-                              className="border-blue-500/30 text-blue-400"
-                            >
-                              {policy.policy_type}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-slate-400">
-                            {policy.bandwidth ?? "—"}
-                          </TableCell>
-                          <TableCell className="text-slate-400">
-                            {policy.classes.length}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setPendingDeleteVyos(policy)}
-                              className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
               </CardContent>
             </Card>
           </TabsContent>
@@ -712,17 +511,6 @@ export default function QosPage() {
           </TabsContent>
         </Tabs>
 
-        {/* VyOS Add Policy Dialog */}
-        <VyosPolicyFormDialog
-          open={showAddVyos}
-          onOpenChange={setShowAddVyos}
-          onSaved={() => {
-            setShowAddVyos(false);
-            loadVyos();
-            load();
-          }}
-        />
-
         {/* MikroTik Add/Edit Queue Dialog */}
         <MikrotikQueueFormDialog
           open={showAddMtQueue || editMtQueue !== null}
@@ -740,44 +528,6 @@ export default function QosPage() {
             load();
           }}
         />
-
-        {/* VyOS Delete Confirmation */}
-        <AlertDialog
-          open={pendingDeleteVyos !== null}
-          onOpenChange={(open) => {
-            if (!open) setPendingDeleteVyos(null);
-          }}
-        >
-          <AlertDialogContent className="border-slate-800 bg-slate-900">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-white">
-                Delete Traffic Policy
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-slate-400">
-                Are you sure you want to delete the{" "}
-                <span className="font-medium text-white">
-                  {pendingDeleteVyos?.policy_type}
-                </span>{" "}
-                policy{" "}
-                <span className="font-medium text-white">
-                  {pendingDeleteVyos?.name}
-                </span>
-                ? This will commit the change to VyOS immediately.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="border-slate-800 text-slate-300 hover:bg-slate-800">
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDeleteVyosPolicy}
-                className="bg-rose-600 text-white hover:bg-rose-500"
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
 
         {/* MikroTik Delete Confirmation */}
         <AlertDialog
@@ -848,201 +598,6 @@ function SummaryCard({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-// ─── VyOS Policy Form ──────────────────────────────────────
-
-function VyosPolicyFormDialog({
-  open,
-  onOpenChange,
-  onSaved,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onSaved: () => void;
-}) {
-  const [name, setName] = useState("");
-  const [policyType, setPolicyType] = useState("shaper");
-  const [bandwidth, setBandwidth] = useState("");
-  const [defaultBandwidth, setDefaultBandwidth] = useState("");
-  const [defaultCeiling, setDefaultCeiling] = useState("");
-  const [description, setDescription] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (open) {
-      setName("");
-      setPolicyType("shaper");
-      setBandwidth("");
-      setDefaultBandwidth("");
-      setDefaultCeiling("");
-      setDescription("");
-      setFormError(null);
-    }
-  }, [open]);
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setFormError(null);
-
-    if (!name.trim()) {
-      setFormError("Name is required");
-      return;
-    }
-    if (!bandwidth.trim()) {
-      setFormError("Bandwidth is required (e.g. 100mbit)");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await createVyosTrafficPolicy({
-        name: name.trim(),
-        policy_type: policyType,
-        bandwidth: bandwidth.trim(),
-        default_bandwidth: defaultBandwidth.trim() || undefined,
-        default_ceiling: defaultCeiling.trim() || undefined,
-        description: description.trim() || undefined,
-      });
-      toast.success(`Created traffic policy '${name.trim()}'`);
-      onSaved();
-    } catch (err) {
-      setFormError(
-        err instanceof Error ? err.message : "Failed to create policy"
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-white">
-            Add VyOS Traffic Policy
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label htmlFor="policy-name" className="text-xs text-slate-400">
-              Policy Name
-            </Label>
-            <Input
-              id="policy-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-              placeholder="my-shaper"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="policy-type"
-                className="text-xs text-slate-400"
-              >
-                Type
-              </Label>
-              <select
-                id="policy-type"
-                value={policyType}
-                onChange={(e) => setPolicyType(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-1 text-sm text-white"
-              >
-                <option value="shaper">shaper</option>
-                <option value="limiter">limiter</option>
-                <option value="round-robin">round-robin</option>
-                <option value="priority-queue">priority-queue</option>
-                <option value="rate-control">rate-control</option>
-                <option value="shaper-hfsc">shaper-hfsc</option>
-              </select>
-            </div>
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="policy-bandwidth"
-                className="text-xs text-slate-400"
-              >
-                Bandwidth
-              </Label>
-              <Input
-                id="policy-bandwidth"
-                value={bandwidth}
-                onChange={(e) => setBandwidth(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-                placeholder="100mbit"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">
-                Default Bandwidth
-              </Label>
-              <Input
-                value={defaultBandwidth}
-                onChange={(e) => setDefaultBandwidth(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-                placeholder="10mbit"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">
-                Default Ceiling
-              </Label>
-              <Input
-                value={defaultCeiling}
-                onChange={(e) => setDefaultCeiling(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-                placeholder="50mbit"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs text-slate-400">Description</Label>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-              placeholder="Optional description"
-            />
-          </div>
-
-          {formError && (
-            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-              <p className="text-xs text-rose-400">{formError}</p>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="border-slate-800 text-slate-300 hover:bg-slate-800"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-blue-600 text-white hover:bg-blue-500"
-            >
-              {loading && (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              )}
-              Create
-            </Button>
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }
 

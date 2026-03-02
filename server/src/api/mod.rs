@@ -11,7 +11,6 @@ use axum::{
 };
 use sqlx::SqlitePool;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 use tower_http::cors::CorsLayer;
 
 pub mod agents;
@@ -50,7 +49,6 @@ pub mod topology;
 pub mod traffic;
 pub mod unbound;
 pub mod vpn_status;
-pub mod vyos;
 pub mod xiaomi;
 pub mod xiaomi_mesh;
 
@@ -63,11 +61,6 @@ pub struct AppState {
     pub config: AppConfig,
     pub ws_hub: Arc<WsHub>,
     pub rate_limiter: auth::LoginRateLimiter,
-    pub last_speedtest: Arc<Mutex<Option<vyos::SpeedTestResult>>>,
-    /// Shared reqwest::Client for VyOS API — reuses connection pool & TLS sessions.
-    pub vyos_http: reqwest::Client,
-    /// TTL cache for VyOS read operations (show / retrieve).
-    pub vyos_cache: Arc<crate::vyos::cache::VyosCache>,
     /// Shared reqwest::Client for Nginx Proxy Manager API.
     pub npm_http: reqwest::Client,
     /// Shared reqwest::Client for MikroTik REST API.
@@ -90,9 +83,6 @@ impl AppState {
             config,
             ws_hub: WsHub::new(),
             rate_limiter: auth::LoginRateLimiter::new(),
-            last_speedtest: Arc::new(Mutex::new(None)),
-            vyos_http: crate::vyos::client::shared_http_client(),
-            vyos_cache: Arc::new(crate::vyos::cache::VyosCache::new()),
             npm_http: crate::npm::client::shared_http_client(),
             mikrotik_http: crate::mikrotik::client::shared_http_client(),
             mikrotik_cache: Arc::new(crate::mikrotik::client::MikrotikCache::new()),
@@ -195,180 +185,6 @@ pub fn router(state: AppState) -> Router {
         .route("/settings/netflow-status", get(settings::netflow_status))
         .route("/settings/db-size", get(settings::db_size))
         .route("/settings/vacuum", post(settings::vacuum))
-        // VyOS router proxy
-        .route("/vyos/router-summary", get(vyos::router_summary))
-        .route("/vyos/status", get(vyos::status))
-        .route("/vyos/system-info", get(vyos::system_info))
-        .route("/vyos/syslog", get(vyos::syslog))
-        .route("/vyos/interfaces", get(vyos::interfaces))
-        .route("/vyos/config-interfaces", get(vyos::config_interfaces))
-        .route("/vyos/routes", get(vyos::routes))
-        .route("/vyos/routes/static", post(vyos::create_static_route))
-        .route(
-            "/vyos/routes/static/:destination",
-            delete(vyos::delete_static_route),
-        )
-        .route("/vyos/dhcp-leases", get(vyos::dhcp_leases))
-        .route("/vyos/firewall", get(vyos::firewall))
-        // VyOS write operations
-        .route(
-            "/vyos/interfaces/:name/toggle",
-            post(vyos::interface_toggle),
-        )
-        .route("/vyos/dhcp/config", get(vyos::dhcp_server_config))
-        .route(
-            "/vyos/dhcp/static-mappings",
-            get(vyos::dhcp_static_mappings),
-        )
-        .route(
-            "/vyos/dhcp/static-mappings",
-            post(vyos::create_dhcp_static_mapping),
-        )
-        .route(
-            "/vyos/dhcp/static-mappings/:network/:subnet/:name",
-            put(vyos::update_dhcp_static_mapping),
-        )
-        .route(
-            "/vyos/dhcp/static-mappings/:network/:subnet/:name",
-            delete(vyos::delete_dhcp_static_mapping),
-        )
-        .route(
-            "/vyos/dhcp/subnets/:network/:subnet/toggle",
-            post(vyos::dhcp_subnet_toggle),
-        )
-        // DHCP server pool configuration
-        .route("/vyos/dhcp/subnets", post(vyos::create_dhcp_subnet))
-        .route(
-            "/vyos/dhcp/subnets/:network/:subnet",
-            put(vyos::update_dhcp_subnet),
-        )
-        .route(
-            "/vyos/dhcp/subnets/:network/:subnet",
-            delete(vyos::delete_dhcp_subnet),
-        )
-        .route(
-            "/vyos/dhcp/subnets/:network/:subnet/ranges/:range_name",
-            post(vyos::create_dhcp_pool_range),
-        )
-        .route(
-            "/vyos/dhcp/subnets/:network/:subnet/ranges/:range_name",
-            delete(vyos::delete_dhcp_pool_range),
-        )
-        // Firewall write operations
-        .route(
-            "/vyos/firewall/:chain/rules",
-            post(vyos::create_firewall_rule),
-        )
-        .route(
-            "/vyos/firewall/:chain/rules/:number",
-            put(vyos::update_firewall_rule),
-        )
-        .route(
-            "/vyos/firewall/:chain/rules/:number",
-            delete(vyos::delete_firewall_rule),
-        )
-        .route(
-            "/vyos/firewall/:chain/rules/:number/enabled",
-            patch(vyos::toggle_firewall_rule),
-        )
-        // Firewall groups
-        .route("/vyos/firewall/groups", get(vyos::firewall_groups))
-        .route(
-            "/vyos/firewall/groups/address-group",
-            post(vyos::create_address_group),
-        )
-        .route(
-            "/vyos/firewall/groups/address-group/:name",
-            delete(vyos::delete_address_group),
-        )
-        .route(
-            "/vyos/firewall/groups/address-group/:name/members",
-            post(vyos::add_address_group_member),
-        )
-        .route(
-            "/vyos/firewall/groups/address-group/:name/members/:value",
-            delete(vyos::remove_address_group_member),
-        )
-        .route(
-            "/vyos/firewall/groups/network-group",
-            post(vyos::create_network_group),
-        )
-        .route(
-            "/vyos/firewall/groups/network-group/:name",
-            delete(vyos::delete_network_group),
-        )
-        .route(
-            "/vyos/firewall/groups/network-group/:name/members",
-            post(vyos::add_network_group_member),
-        )
-        .route(
-            "/vyos/firewall/groups/network-group/:name/members/:value",
-            delete(vyos::remove_network_group_member),
-        )
-        .route(
-            "/vyos/firewall/groups/port-group",
-            post(vyos::create_port_group),
-        )
-        .route(
-            "/vyos/firewall/groups/port-group/:name",
-            delete(vyos::delete_port_group),
-        )
-        .route(
-            "/vyos/firewall/groups/port-group/:name/members",
-            post(vyos::add_port_group_member),
-        )
-        .route(
-            "/vyos/firewall/groups/port-group/:name/members/:value",
-            delete(vyos::remove_port_group_member),
-        )
-        // DNS Forwarding
-        .route("/vyos/dns/forwarding", get(vyos::dns_forwarding))
-        .route(
-            "/vyos/dns/forwarding/name-servers",
-            post(vyos::add_dns_name_server),
-        )
-        .route(
-            "/vyos/dns/forwarding/name-servers/:server",
-            delete(vyos::delete_dns_name_server),
-        )
-        .route(
-            "/vyos/dns/forwarding/domain-overrides",
-            post(vyos::add_dns_domain_override),
-        )
-        .route(
-            "/vyos/dns/forwarding/domain-overrides/:domain",
-            put(vyos::edit_dns_domain_override),
-        )
-        .route(
-            "/vyos/dns/forwarding/domain-overrides/:domain",
-            delete(vyos::delete_dns_domain_override),
-        )
-        // WireGuard VPN
-        .route("/vyos/wireguard", get(vyos::wireguard_list))
-        .route("/vyos/wireguard", post(vyos::wireguard_create))
-        .route("/vyos/wireguard/:name", delete(vyos::wireguard_delete))
-        .route(
-            "/vyos/wireguard/:name/peers",
-            post(vyos::wireguard_add_peer),
-        )
-        .route(
-            "/vyos/wireguard/:name/peers/:peer",
-            delete(vyos::wireguard_delete_peer),
-        )
-        .route(
-            "/vyos/wireguard/generate-keypair",
-            post(vyos::wireguard_generate_keypair),
-        )
-        .route(
-            "/vyos/wireguard/:name/peers/:peer/generate-config",
-            post(vyos::wireguard_generate_client_config),
-        )
-        // OpenVPN
-        .route("/vyos/openvpn", get(vyos::openvpn_list))
-        .route("/vyos/openvpn", post(vyos::openvpn_create))
-        .route("/vyos/openvpn/:name", delete(vyos::openvpn_delete))
-        .route("/vyos/openvpn/:name/toggle", post(vyos::openvpn_toggle))
-        .route("/vyos/openvpn/:name/clients", get(vyos::openvpn_clients))
         // Mesh topology (Xiaomi)
         .route("/mesh/topology", get(mesh::topology))
         // Topology
@@ -379,7 +195,6 @@ pub fn router(state: AppState) -> Router {
         // Scanner
         .route("/scanner/trigger", post(scanner::trigger))
         // Speed test
-        .route("/router/speedtest", post(vyos::speedtest))
         .route("/router/speedtest/history", get(speedtest::history))
         // Traffic
         .route("/traffic/history", get(traffic::history))
@@ -537,12 +352,6 @@ pub fn router(state: AppState) -> Router {
         .route("/xiaomi/firmware", get(xiaomi::firmware))
         // QoS / Traffic Shaping
         .route("/qos/summary", get(qos::qos_summary))
-        .route("/qos/vyos/policies", get(qos::vyos_traffic_policies))
-        .route("/qos/vyos/policies", post(qos::create_vyos_traffic_policy))
-        .route(
-            "/qos/vyos/policies/:policy_type/:name",
-            delete(qos::delete_vyos_traffic_policy),
-        )
         .route(
             "/qos/mikrotik/simple-queues",
             get(qos::mikrotik_simple_queues),
@@ -566,10 +375,6 @@ pub fn router(state: AppState) -> Router {
         .route("/tailscale/status", get(tailscale::status))
         // NAT / Port Forwarding
         .route("/nat/summary", get(nat::summary))
-        .route("/nat/vyos/rules", get(nat::vyos_list))
-        .route("/nat/vyos/rules", post(nat::vyos_create))
-        .route("/nat/vyos/rules/:rule_number", put(nat::vyos_update))
-        .route("/nat/vyos/rules/:rule_number", delete(nat::vyos_delete))
         .route("/nat/mikrotik/rules", get(nat::mikrotik_list))
         .route("/nat/mikrotik/rules", post(nat::mikrotik_create))
         .route("/nat/mikrotik/rules/:id", put(nat::mikrotik_update))
@@ -632,7 +437,6 @@ pub fn router(state: AppState) -> Router {
         .route("/ddns", get(ddns::list))
         .route("/ddns", post(ddns::create))
         .route("/ddns/status", get(ddns::status))
-        .route("/ddns/vyos", get(ddns::vyos_config))
         .route("/ddns/:id", put(ddns::update))
         .route("/ddns/:id", delete(ddns::delete))
         .route("/ddns/:id/toggle", post(ddns::toggle))
@@ -655,7 +459,7 @@ pub fn router(state: AppState) -> Router {
         .route("/ws", get(agents::ui_ws_handler))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
-            vyos_cache_invalidation,
+            cache_invalidation,
         ))
         .route_layer(middleware::from_fn_with_state(
             state.clone(),
@@ -676,9 +480,9 @@ pub fn router(state: AppState) -> Router {
         .with_state(state)
 }
 
-/// Middleware that clears the VyOS / MikroTik response cache after any
+/// Middleware that clears the MikroTik response cache after any
 /// successful mutating request (POST / PUT / PATCH / DELETE).
-async fn vyos_cache_invalidation(
+async fn cache_invalidation(
     State(state): State<AppState>,
     request: axum::extract::Request,
     next: Next,
@@ -686,13 +490,8 @@ async fn vyos_cache_invalidation(
     let path = request.uri().path().to_string();
     let is_mutating = !matches!(*request.method(), Method::GET);
     let response = next.run(request).await;
-    if is_mutating && response.status().is_success() {
-        if path.contains("/vyos/") {
-            state.vyos_cache.clear();
-        }
-        if path.contains("/mikrotik/") {
-            state.mikrotik_cache.clear();
-        }
+    if is_mutating && response.status().is_success() && path.contains("/mikrotik/") {
+        state.mikrotik_cache.clear();
     }
     response
 }

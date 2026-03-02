@@ -120,10 +120,10 @@ export default function AuditLogPage() {
               </div>
               <div className="flex-1">
                 <CardTitle className="text-base text-white">
-                  VyOS Configuration Changes
+                  Configuration Changes
                 </CardTitle>
                 <CardDescription className="text-xs text-slate-500">
-                  All write operations executed against the VyOS router.
+                  All write operations executed against the router.
                 </CardDescription>
               </div>
 
@@ -160,7 +160,7 @@ export default function AuditLogPage() {
               <div className="divide-y divide-slate-800/50">
                 {items.map((entry) => {
                   const expanded = expandedId === entry.id;
-                  const commands = parseCommands(entry.vyos_commands);
+                  const commands = parseCommands(entry.commands);
                   return (
                     <div key={entry.id}>
                       {/* Row */}
@@ -214,7 +214,7 @@ export default function AuditLogPage() {
                           <div className="flex items-center gap-2 mb-2">
                             <Terminal className="h-3.5 w-3.5 text-slate-500" />
                             <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
-                              VyOS Commands
+                              Commands
                             </span>
                           </div>
                           <div className="space-y-1">

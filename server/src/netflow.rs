@@ -1,7 +1,7 @@
 //! NetFlow v5 UDP collector.
 //!
 //! Listens on a configurable UDP port (default 9995), parses NetFlow v5 packets
-//! from pfSense/VyOS/softflowd, aggregates per-device bytes over 60-second
+//! from pfSense/softflowd, aggregates per-device bytes over 60-second
 //! windows, and batch-inserts into `traffic_samples` with `source = 'netflow'`.
 
 use std::collections::HashMap;

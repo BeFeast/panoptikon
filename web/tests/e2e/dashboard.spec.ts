@@ -127,13 +127,13 @@ test.describe('Dashboard', () => {
 
   test('dashboard stats API returns router_type field', async ({ page }) => {
     // The /api/v1/dashboard/stats endpoint must include router_type
-    // so the UI knows which router is active (mikrotik, vyos, or none).
+    // so the UI knows which router is active (mikrotik or none).
     const response = await page.request.get('/api/v1/dashboard/stats');
     expect(response.ok()).toBeTruthy();
     const data = await response.json();
 
     // router_type must be one of the known values
-    expect(['mikrotik', 'vyos', 'none']).toContain(data.router_type);
+    expect(['mikrotik', 'none']).toContain(data.router_type);
     // router_status must still be present
     expect(['connected', 'disconnected', 'unconfigured']).toContain(data.router_status);
 
@@ -188,7 +188,7 @@ test.describe('Dashboard', () => {
     // depending on what's configured. In a test environment with no router
     // configured, we expect "Router not configured".
     const subtitle = page.getByText(
-      /Connected to (MikroTik|VyOS|router)|Cannot reach (MikroTik|VyOS|router)|Router not configured/
+      /Connected to (MikroTik|router)|Cannot reach (MikroTik|router)|Router not configured/
     );
     await expect(subtitle.first()).toBeVisible({ timeout: 10000 });
 

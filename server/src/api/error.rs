@@ -141,7 +141,7 @@ mod tests {
     #[tokio::test]
     async fn test_app_error_service_unavailable_response() {
         let response =
-            AppError::ServiceUnavailable("VyOS not configured".to_string()).into_response();
+            AppError::ServiceUnavailable("Router not configured".to_string()).into_response();
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
     }
 

@@ -39,19 +39,16 @@ describe("settingsNav visibility gating", () => {
     expect(routerItem!.description).toMatch(/MikroTik/);
   });
 
-  it("VyOS appears only in the Router integration description", () => {
-    // VyOS should be mentioned in the router settings description
-    // but should NOT have its own top-level settings card
-    const routerItem = integrationsGroup!.items.find(
-      (i) => i.href === "/settings/router",
-    );
-    expect(routerItem!.description).toMatch(/VyOS/);
-
-    // No standalone VyOS settings item anywhere
+  it("VyOS does not appear anywhere in settings nav", () => {
     const allItems = settingsNav.flatMap((g) => g.items);
-    const vyosOnlyItem = allItems.find(
-      (i) => i.title.toLowerCase() === "vyos",
+    const vyosInTitle = allItems.find(
+      (i) => i.title.toLowerCase().includes("vyos"),
     );
-    expect(vyosOnlyItem).toBeUndefined();
+    expect(vyosInTitle).toBeUndefined();
+
+    const vyosInDescription = allItems.find(
+      (i) => i.description.toLowerCase().includes("vyos"),
+    );
+    expect(vyosInDescription).toBeUndefined();
   });
 });

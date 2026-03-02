@@ -247,39 +247,22 @@ async fn test_setup_only_works_once() {
     );
 }
 
-// ── Test 6: Setup with optional VyOS settings ───────────────────────
+// ── Test 6: Setup stores settings ────────────────────────────────────
 
 #[tokio::test]
-async fn test_setup_with_vyos_settings() {
+async fn test_setup_stores_settings() {
     let (base_url, pool) = spawn_test_server().await;
     let client = http_client();
 
     let resp = client
         .post(format!("{base_url}/api/v1/setup"))
         .json(&serde_json::json!({
-            "password": "my_admin_password",
-            "vyos_url": "https://192.168.1.1",
-            "vyos_api_key": "secret_key_123"
+            "password": "my_admin_password"
         }))
         .send()
         .await
         .expect("setup request failed");
     assert_eq!(resp.status(), StatusCode::OK);
-
-    // Verify VyOS settings were stored.
-    let vyos_url: Option<String> =
-        sqlx::query_scalar("SELECT value FROM settings WHERE key = 'vyos_url'")
-            .fetch_optional(&pool)
-            .await
-            .expect("query failed");
-    assert_eq!(vyos_url.as_deref(), Some("https://192.168.1.1"));
-
-    let vyos_key: Option<String> =
-        sqlx::query_scalar("SELECT value FROM settings WHERE key = 'vyos_api_key'")
-            .fetch_optional(&pool)
-            .await
-            .expect("query failed");
-    assert_eq!(vyos_key.as_deref(), Some("secret_key_123"));
 
     // Verify setup_complete was set.
     let setup_complete: Option<String> =
@@ -291,64 +274,6 @@ async fn test_setup_with_vyos_settings() {
 }
 
 // ── Test 7: Login before setup returns 428 ──────────────────────────
-
-#[tokio::test]
-async fn test_settings_vyos_falls_back_to_config_when_db_empty() {
-    let mut app_config = config::AppConfig::default();
-    app_config.vyos.url = Some("http://127.0.0.1:9".to_string());
-    app_config.vyos.api_key = Some("legacy-config-key".to_string());
-
-    let (client, base_url) = setup_fresh_with_config("settings_fallback_pw", app_config).await;
-
-    let resp = client
-        .get(format!("{base_url}/api/v1/settings"))
-        .send()
-        .await
-        .expect("settings request failed");
-    assert_eq!(resp.status(), StatusCode::OK);
-
-    let body: Value = resp.json().await.expect("settings json parse failed");
-    assert_eq!(body["vyos_url"].as_str(), Some("http://127.0.0.1:9"));
-    assert_eq!(body["vyos_api_key_set"].as_bool(), Some(true));
-}
-
-#[tokio::test]
-async fn test_qos_summary_vyos_available_from_config_fallback() {
-    let mut app_config = config::AppConfig::default();
-    app_config.vyos.url = Some("http://127.0.0.1:9".to_string());
-    app_config.vyos.api_key = Some("legacy-config-key".to_string());
-
-    let (client, base_url) = setup_fresh_with_config("qos_fallback_pw", app_config).await;
-
-    let resp = client
-        .get(format!("{base_url}/api/v1/qos/summary"))
-        .send()
-        .await
-        .expect("qos summary request failed");
-    assert_eq!(resp.status(), StatusCode::OK);
-
-    let body: Value = resp.json().await.expect("qos summary json parse failed");
-    assert_eq!(body["vyos_available"].as_bool(), Some(true));
-}
-
-#[tokio::test]
-async fn test_vpn_status_vyos_available_from_config_fallback() {
-    let mut app_config = config::AppConfig::default();
-    app_config.vyos.url = Some("http://127.0.0.1:9".to_string());
-    app_config.vyos.api_key = Some("legacy-config-key".to_string());
-
-    let (client, base_url) = setup_fresh_with_config("vpn_fallback_pw", app_config).await;
-
-    let resp = client
-        .get(format!("{base_url}/api/v1/vpn-status"))
-        .send()
-        .await
-        .expect("vpn status request failed");
-    assert_eq!(resp.status(), StatusCode::OK);
-
-    let body: Value = resp.json().await.expect("vpn status json parse failed");
-    assert_eq!(body["vyos_available"].as_bool(), Some(true));
-}
 
 #[tokio::test]
 async fn test_login_before_setup_returns_precondition() {

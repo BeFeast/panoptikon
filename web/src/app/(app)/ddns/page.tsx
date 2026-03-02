@@ -55,10 +55,8 @@ import {
   deleteDdnsEntry,
   toggleDdnsEntry,
   fetchDdnsStatus,
-  fetchSettings,
 } from "@/lib/api";
 import type { DdnsEntry, DdnsEntryRequest, DdnsStatus } from "@/lib/types";
-import { ROUTER_TYPES } from "@/lib/router-config";
 import { toast } from "sonner";
 
 const PROVIDERS = [
@@ -227,15 +225,10 @@ function DdnsFormDialog({
                 >
                   {routerTypes.map((t) => (
                     <option key={t} value={t}>
-                      {t === "vyos" ? "VyOS (Legacy)" : "MikroTik"}
+                      MikroTik
                     </option>
                   ))}
                 </select>
-                {routerType === "vyos" && (
-                  <p className="text-[11px] text-amber-400">
-                    VyOS is legacy — MikroTik is recommended for new deployments.
-                  </p>
-                )}
               </div>
             )}
           </div>
@@ -377,23 +370,7 @@ export default function DdnsPage() {
   const [pendingDelete, setPendingDelete] = useState<DdnsEntry | null>(null);
   const [search, setSearch] = useState("");
   const defaultRouterType = "mikrotik";
-  const [routerTypes, setRouterTypes] = useState<string[]>(["mikrotik"]);
-
-  // Default router type is always MikroTik (#330).
-  // We still fetch settings to determine available router types for the selector.
-  useEffect(() => {
-    fetchSettings()
-      .then((settings) => {
-        const vyosConfigured = !!settings.vyos_url && settings.vyos_api_key_set;
-        const legacyRoutersEnabled = settings.show_legacy_routers;
-        const types: string[] = ["mikrotik"];
-        if (legacyRoutersEnabled && vyosConfigured) types.push("vyos");
-        setRouterTypes(types);
-      })
-      .catch(() => {
-        // Keep mikrotik only on error
-      });
-  }, []);
+  const [routerTypes] = useState<string[]>(["mikrotik"]);
 
   const loadData = useCallback(async () => {
     try {
@@ -673,7 +650,7 @@ export default function DdnsPage() {
                         variant="outline"
                         className="border-slate-600 text-slate-400 text-xs"
                       >
-                        {entry.router_type === "vyos" ? "VyOS" : "MikroTik"}
+                        MikroTik
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">

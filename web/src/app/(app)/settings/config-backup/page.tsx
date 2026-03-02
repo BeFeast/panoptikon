@@ -144,7 +144,7 @@ export default function ConfigBackupPage() {
         m.fetchCurrentConfig()
       );
       const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-      downloadTextFile(config_text, `vyos-config-${ts}.conf`);
+      downloadTextFile(config_text, `router-config-${ts}.conf`);
     } catch {
       // ignore
     } finally {
@@ -179,7 +179,7 @@ export default function ConfigBackupPage() {
       const label = backup.label
         ? `-${backup.label.replace(/\s+/g, "_")}`
         : "";
-      downloadTextFile(backup.config_text, `vyos-backup-${ts}${label}.conf`);
+      downloadTextFile(backup.config_text, `router-backup-${ts}${label}.conf`);
     } catch {
       // ignore
     }
@@ -297,7 +297,7 @@ export default function ConfigBackupPage() {
               Config Backup & Rollback
             </h1>
             <p className="text-sm text-slate-500">
-              Preview changes, commit, rollback, and manage VyOS config
+              Preview changes, commit, rollback, and manage router config
               snapshots.
             </p>
           </div>
@@ -692,7 +692,7 @@ function DiffDialog({
       ? `-${data.backup_label.replace(/\s+/g, "_")}`
       : "";
     const ts = data.backup_created_at.replace(/[: ]/g, "-");
-    downloadTextFile(data.backup, `vyos-backup-${ts}${label}.conf`);
+    downloadTextFile(data.backup, `router-backup-${ts}${label}.conf`);
   }
 
   return (

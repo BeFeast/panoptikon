@@ -10,7 +10,7 @@ use std::time::Duration;
 #[derive(Serialize)]
 pub struct DashboardStats {
     pub router_status: String, // "connected" | "disconnected" | "unconfigured"
-    pub router_type: String,   // "mikrotik" | "vyos" | "none"
+    pub router_type: String,   // "mikrotik" | "none"
     pub devices_online: i64,
     pub devices_total: i64,
     pub alerts_unread: i64,
@@ -74,30 +74,8 @@ async fn check_mikrotik(state: &AppState) -> Option<bool> {
     }
 }
 
-/// Check VyOS router connectivity with a short timeout for the dashboard.
-async fn check_vyos(state: &AppState) -> Option<bool> {
-    let db_url = get_setting(state, "vyos_url").await;
-    let db_key = get_setting(state, "vyos_api_key").await;
-
-    let url = db_url.or_else(|| state.config.vyos.url.clone());
-    let key = db_key.or_else(|| state.config.vyos.api_key.clone());
-
-    match (url, key) {
-        (Some(u), Some(k)) if !u.is_empty() && !k.is_empty() => {
-            let client = crate::vyos::client::VyosClient::new(&u, &k);
-            match tokio::time::timeout(DASHBOARD_ROUTER_TIMEOUT, client.show(&["system", "uptime"]))
-                .await
-            {
-                Ok(Ok(_)) => Some(true), // connected
-                _ => Some(false),        // configured but unreachable
-            }
-        }
-        _ => None, // not configured
-    }
-}
-
 /// Determine which router is the "active" one based on settings.
-/// Returns `("mikrotik" | "vyos" | "none", Option<bool>)` — router type and
+/// Returns `("mikrotik" | "none", Option<bool>)` — router type and
 /// connectivity result (None = unconfigured, Some(true) = connected, Some(false) = unreachable).
 async fn active_router(state: &AppState) -> (&'static str, Option<bool>) {
     // MikroTik takes priority when explicitly enabled.
@@ -108,16 +86,6 @@ async fn active_router(state: &AppState) -> (&'static str, Option<bool>) {
 
     if mikrotik_enabled {
         return ("mikrotik", check_mikrotik(state).await);
-    }
-
-    // Fall back to VyOS only when explicitly enabled.
-    let vyos_enabled = get_setting(state, "vyos_enabled")
-        .await
-        .map(|v| v == "1" || v == "true")
-        .unwrap_or(false);
-
-    if vyos_enabled {
-        return ("vyos", check_vyos(state).await);
     }
 
     ("none", None)
