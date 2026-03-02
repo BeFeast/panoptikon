@@ -638,7 +638,7 @@ export default function DevicesPage() {
       >
         <SheetContent
           side="right"
-          className="w-full border-slate-800 bg-slate-950 sm:max-w-md"
+          className="flex w-full flex-col overflow-hidden border-slate-800 bg-slate-950 sm:max-w-md"
         >
           {selectedDevice && <DeviceDetail device={selectedDevice} onUpdate={load} />}
         </SheetContent>
@@ -660,7 +660,7 @@ function DeviceCard({
   const [waking, setWaking] = useState(false);
   const ips = device.ips ?? [];
   const primaryIp = ips[0] ?? "—";
-  const displayName = device.hostname ?? device.custom_name ?? device.name ?? device.vendor ?? device.mac;
+  const displayName = device.custom_name ?? device.hostname ?? device.name ?? device.vendor ?? device.mac;
   const effectiveType = device.custom_type ?? device.device_type;
   const { icon: DevIcon } = getDeviceIcon(device.custom_vendor ?? device.vendor, device.hostname, device.mdns_services, effectiveType);
   const vendorDisplay = (device.custom_vendor ?? device.vendor)
@@ -1048,8 +1048,17 @@ function DevicesTable({
 function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => void }) {
   const ips = device.ips ?? [];
   const primaryIp = ips[0] ?? "—";
-  const displayName = device.hostname ?? device.custom_name ?? device.name ?? device.vendor ?? device.mac;
+  const displayName = device.custom_name ?? device.hostname ?? device.name ?? device.vendor ?? device.mac;
   const [waking, setWaking] = useState(false);
+  const [sysinfo, setSysinfo] = useState<DeviceSysinfo | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchDeviceSysinfo(device.id).then((data) => {
+      if (!cancelled) setSysinfo(data);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [device.id]);
   const effectiveType = device.custom_type ?? device.device_type;
   const { icon: DetailIcon, label: deviceTypeLabel } = getDeviceIcon(
     device.custom_vendor ?? device.vendor,
@@ -1077,7 +1086,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
 
   return (
     <>
-      <SheetHeader>
+      <SheetHeader className="shrink-0">
         <div className="flex items-center gap-3">
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-800 ${
@@ -1103,6 +1112,9 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
               )}
             </div>
             <div className="flex items-center gap-2">
+              {device.custom_name && device.hostname && (
+                <span className="text-xs text-slate-500">{device.hostname}</span>
+              )}
               {vendorDisplay && (
                 <span className="text-xs text-slate-400">{vendorDisplay}</span>
               )}
@@ -1121,6 +1133,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
         </SheetDescription>
       </SheetHeader>
 
+      <div className="flex-1 overflow-y-auto -mx-6 px-6 min-h-0">
       {/* Wake-on-LAN button — only active when device is offline */}
       {!device.is_online && (
         <div className="mt-4 space-y-1">
@@ -1185,7 +1198,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
         </TabsList>
 
         <TabsContent value="info">
-          <DeviceInfoTab device={device} ips={ips} primaryIp={primaryIp} />
+          <DeviceInfoTab device={device} ips={ips} primaryIp={primaryIp} sysinfo={sysinfo} />
         </TabsContent>
 
         <TabsContent value="edit">
@@ -1212,6 +1225,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
           <DeviceWifiTab mac={device.mac} />
         </TabsContent>
       </Tabs>
+      </div>
     </>
   );
 }
@@ -1238,15 +1252,34 @@ function DeviceInfoTab({
   device,
   ips,
   primaryIp,
+  sysinfo,
 }: {
   device: Device;
   ips: string[];
   primaryIp: string;
+  sysinfo: DeviceSysinfo | null;
 }) {
   const effectiveOs = device.custom_os ?? device.os_family;
   const effectiveType = device.custom_type ?? device.device_type;
   const effectiveVendor = device.custom_vendor ?? device.device_brand;
   const effectiveModel = device.custom_model ?? device.device_model;
+
+  // Build the most specific OS display string available.
+  // Prefer sysinfo os_name (e.g. "Ubuntu 24.04") over broad os_family ("Linux").
+  const osDisplayString = (() => {
+    if (device.custom_os) {
+      return device.os_version ? `${device.custom_os} ${device.os_version}` : device.custom_os;
+    }
+    // Sysinfo os_name has the distribution detail (e.g., "Ubuntu 24.04", "Debian 12")
+    if (sysinfo?.os_name) {
+      const parts = [sysinfo.os_name, sysinfo.os_version].filter(Boolean);
+      return parts.join(" ");
+    }
+    if (effectiveOs) {
+      return device.os_version ? `${effectiveOs} ${device.os_version}` : effectiveOs;
+    }
+    return null;
+  })();
 
   return (
     <div className="space-y-4">
@@ -1272,18 +1305,18 @@ function DeviceInfoTab({
       <InfoRow label="Health Role" value={device.is_critical === true ? "Pinned (critical)" : device.is_critical === false ? "Excluded" : "Auto-detect"} />
 
       {/* Device identity — merged auto-detected + custom */}
-      {(effectiveOs || effectiveType || effectiveVendor || effectiveModel) && (
+      {(osDisplayString || effectiveType || effectiveVendor || effectiveModel) && (
         <>
           <Separator className="bg-slate-800" />
           <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
             Device Identity
           </p>
-          {effectiveOs && (
+          {osDisplayString && (
             <div className="flex items-baseline justify-between gap-4">
               <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">OS</span>
               <span className="flex items-center text-sm text-slate-300">
-                {device.os_version ? `${effectiveOs} ${device.os_version}` : effectiveOs}
-                {device.custom_os ? <CustomBadge /> : device.os_family ? <DetectedBadge /> : null}
+                {osDisplayString}
+                {device.custom_os ? <CustomBadge /> : (device.os_family || sysinfo?.os_name) ? <DetectedBadge /> : null}
               </span>
             </div>
           )}
@@ -2052,176 +2085,181 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Pencil className="h-4 w-4 text-slate-400" />
-        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
-          Edit Device
-        </p>
+    <div className="flex flex-col -mb-6">
+      <div className="space-y-4 pb-4">
+        <div className="flex items-center gap-2">
+          <Pencil className="h-4 w-4 text-slate-400" />
+          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+            Edit Device
+          </p>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <label className="text-[11px] text-slate-500">Custom Name</label>
+            <Input
+              value={customName}
+              onChange={(e) => setCustomName(e.target.value)}
+              placeholder={device.hostname ?? device.name ?? "e.g. Oleg's iPhone"}
+              className="h-8 text-sm"
+            />
+            {device.hostname && (
+              <p className="mt-0.5 text-[10px] text-slate-600">Auto-detected: {device.hostname}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="text-[11px] text-slate-500">Device Type</label>
+            <select
+              value={customType}
+              onChange={(e) => setCustomType(e.target.value)}
+              className="flex h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+            >
+              <option value="">{device.device_type ? `Auto: ${device.device_type}` : "Select type…"}</option>
+              {DEVICE_TYPE_OPTIONS.filter(Boolean).map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[11px] text-slate-500">OS</label>
+            <select
+              value={customOs}
+              onChange={(e) => setCustomOs(e.target.value)}
+              className="flex h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+            >
+              <option value="">{device.os_family ? `Auto: ${device.os_family}` : "Select OS…"}</option>
+              {OS_OPTIONS.filter(Boolean).map((os) => (
+                <option key={os} value={os}>{os}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-[11px] text-slate-500">Vendor / Manufacturer</label>
+            <Input
+              value={customVendor}
+              onChange={(e) => setCustomVendor(e.target.value)}
+              placeholder={device.vendor ?? device.device_brand ?? "e.g. Apple, Samsung"}
+              className="h-8 text-sm"
+            />
+            {device.vendor && (
+              <p className="mt-0.5 text-[10px] text-slate-600">Auto-detected: {device.vendor}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="text-[11px] text-slate-500">Model</label>
+            <Input
+              value={customModel}
+              onChange={(e) => setCustomModel(e.target.value)}
+              placeholder={device.device_model ?? "e.g. iPhone 15 Pro, QNAP TS-253"}
+              className="h-8 text-sm"
+            />
+            {device.device_model && (
+              <p className="mt-0.5 text-[10px] text-slate-600">Auto-detected: {device.device_model}</p>
+            )}
+          </div>
+
+          <div>
+            <label className="text-[11px] text-slate-500">Icon Override</label>
+            <select
+              value={iconOverride}
+              onChange={(e) => setIconOverride(e.target.value)}
+              className="flex h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+            >
+              <option value="">Auto (based on type)</option>
+              {DEVICE_TYPE_OPTIONS.filter(Boolean).map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+
+          <Separator className="bg-slate-800" />
+          <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">Asset Inventory</p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[10px] text-slate-500">Location</label>
+              <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Server Room" className="h-8 text-sm" />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-500">Owner</label>
+              <Input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="e.g. IT Dept" className="h-8 text-sm" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] text-slate-500">Tags (comma-separated)</label>
+            <Input value={editTags} onChange={(e) => setEditTags(e.target.value)} placeholder="e.g. production, critical" className="h-8 text-sm" />
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-[10px] text-slate-500">CPU</label>
+              <Input value={cpuManual} onChange={(e) => setCpuManual(e.target.value)} placeholder="e.g. i5-12400" className="h-8 text-sm" />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-500">RAM</label>
+              <Input value={ramManual} onChange={(e) => setRamManual(e.target.value)} placeholder="e.g. 16 GB" className="h-8 text-sm" />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-500">Disk</label>
+              <Input value={diskManual} onChange={(e) => setDiskManual(e.target.value)} placeholder="e.g. 512 GB" className="h-8 text-sm" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-[10px] text-slate-500">Purchase Date</label>
+              <Input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className="h-8 text-sm" />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-500">Serial #</label>
+              <Input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="SN123" className="h-8 text-sm" />
+            </div>
+            <div>
+              <label className="text-[10px] text-slate-500">Warranty</label>
+              <Input type="date" value={warrantyExpiry} onChange={(e) => setWarrantyExpiry(e.target.value)} className="h-8 text-sm" />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[11px] text-slate-500">Notes</label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Freeform notes about this device…"
+              rows={3}
+              className="flex w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-600"
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="space-y-3">
-        <div>
-          <label className="text-[11px] text-slate-500">Custom Name</label>
-          <Input
-            value={customName}
-            onChange={(e) => setCustomName(e.target.value)}
-            placeholder={device.hostname ?? device.name ?? "e.g. Oleg's iPhone"}
-            className="h-8 text-sm"
-          />
-          {device.hostname && (
-            <p className="mt-0.5 text-[10px] text-slate-600">Auto-detected: {device.hostname}</p>
-          )}
+      {/* Sticky footer for Save / Reset actions */}
+      <div className="sticky bottom-0 -mx-6 border-t border-slate-800 bg-slate-950 px-6 py-3 space-y-2">
+        <div className="flex gap-2">
+          <Button size="sm" className="flex-1 gap-1" disabled={saving} onClick={handleSave}>
+            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Pencil className="h-3 w-3" />}
+            {saving ? "Saving…" : "Save Changes"}
+          </Button>
         </div>
 
-        <div>
-          <label className="text-[11px] text-slate-500">Device Type</label>
-          <select
-            value={customType}
-            onChange={(e) => setCustomType(e.target.value)}
-            className="flex h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+        {hasCustomFields && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full gap-1 text-xs text-slate-500 hover:text-rose-400"
+            disabled={resetting}
+            onClick={handleReset}
           >
-            <option value="">{device.device_type ? `Auto: ${device.device_type}` : "Select type…"}</option>
-            {DEVICE_TYPE_OPTIONS.filter(Boolean).map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="text-[11px] text-slate-500">OS</label>
-          <select
-            value={customOs}
-            onChange={(e) => setCustomOs(e.target.value)}
-            className="flex h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
-          >
-            <option value="">{device.os_family ? `Auto: ${device.os_family}` : "Select OS…"}</option>
-            {OS_OPTIONS.filter(Boolean).map((os) => (
-              <option key={os} value={os}>{os}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="text-[11px] text-slate-500">Vendor / Manufacturer</label>
-          <Input
-            value={customVendor}
-            onChange={(e) => setCustomVendor(e.target.value)}
-            placeholder={device.vendor ?? device.device_brand ?? "e.g. Apple, Samsung"}
-            className="h-8 text-sm"
-          />
-          {device.vendor && (
-            <p className="mt-0.5 text-[10px] text-slate-600">Auto-detected: {device.vendor}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="text-[11px] text-slate-500">Model</label>
-          <Input
-            value={customModel}
-            onChange={(e) => setCustomModel(e.target.value)}
-            placeholder={device.device_model ?? "e.g. iPhone 15 Pro, QNAP TS-253"}
-            className="h-8 text-sm"
-          />
-          {device.device_model && (
-            <p className="mt-0.5 text-[10px] text-slate-600">Auto-detected: {device.device_model}</p>
-          )}
-        </div>
-
-        <div>
-          <label className="text-[11px] text-slate-500">Icon Override</label>
-          <select
-            value={iconOverride}
-            onChange={(e) => setIconOverride(e.target.value)}
-            className="flex h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
-          >
-            <option value="">Auto (based on type)</option>
-            {DEVICE_TYPE_OPTIONS.filter(Boolean).map((t) => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
-        </div>
-
-        <Separator className="bg-slate-800" />
-        <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">Asset Inventory</p>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] text-slate-500">Location</label>
-            <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Server Room" className="h-8 text-sm" />
-          </div>
-          <div>
-            <label className="text-[10px] text-slate-500">Owner</label>
-            <Input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="e.g. IT Dept" className="h-8 text-sm" />
-          </div>
-        </div>
-
-        <div>
-          <label className="text-[10px] text-slate-500">Tags (comma-separated)</label>
-          <Input value={editTags} onChange={(e) => setEditTags(e.target.value)} placeholder="e.g. production, critical" className="h-8 text-sm" />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="text-[10px] text-slate-500">CPU</label>
-            <Input value={cpuManual} onChange={(e) => setCpuManual(e.target.value)} placeholder="e.g. i5-12400" className="h-8 text-sm" />
-          </div>
-          <div>
-            <label className="text-[10px] text-slate-500">RAM</label>
-            <Input value={ramManual} onChange={(e) => setRamManual(e.target.value)} placeholder="e.g. 16 GB" className="h-8 text-sm" />
-          </div>
-          <div>
-            <label className="text-[10px] text-slate-500">Disk</label>
-            <Input value={diskManual} onChange={(e) => setDiskManual(e.target.value)} placeholder="e.g. 512 GB" className="h-8 text-sm" />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="text-[10px] text-slate-500">Purchase Date</label>
-            <Input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className="h-8 text-sm" />
-          </div>
-          <div>
-            <label className="text-[10px] text-slate-500">Serial #</label>
-            <Input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="SN123" className="h-8 text-sm" />
-          </div>
-          <div>
-            <label className="text-[10px] text-slate-500">Warranty</label>
-            <Input type="date" value={warrantyExpiry} onChange={(e) => setWarrantyExpiry(e.target.value)} className="h-8 text-sm" />
-          </div>
-        </div>
-
-        <div>
-          <label className="text-[11px] text-slate-500">Notes</label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Freeform notes about this device…"
-            rows={3}
-            className="flex w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-600"
-          />
-        </div>
+            <RotateCcw className="h-3 w-3" />
+            {resetting ? "Resetting…" : "Reset to Auto-Detected"}
+          </Button>
+        )}
       </div>
-
-      <div className="flex gap-2">
-        <Button size="sm" className="flex-1 gap-1" disabled={saving} onClick={handleSave}>
-          {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Pencil className="h-3 w-3" />}
-          {saving ? "Saving…" : "Save Changes"}
-        </Button>
-      </div>
-
-      {hasCustomFields && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full gap-1 text-xs text-slate-500 hover:text-rose-400"
-          disabled={resetting}
-          onClick={handleReset}
-        >
-          <RotateCcw className="h-3 w-3" />
-          {resetting ? "Resetting…" : "Reset to Auto-Detected"}
-        </Button>
-      )}
     </div>
   );
 }
