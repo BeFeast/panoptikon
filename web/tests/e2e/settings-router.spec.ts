@@ -91,6 +91,28 @@ test.describe("Router Settings — VyOS", () => {
     await page.waitForLoadState("networkidle");
   });
 
+  test("toggle enabled persists after reload", async ({ page }) => {
+    const toggle = page.locator("#vyos-enabled");
+    const before = await toggle.getAttribute("aria-checked");
+    const expected = before === "true" ? "false" : "true";
+
+    await toggle.click();
+
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(
+      page.getByText("VyOS settings saved."),
+    ).toBeVisible({ timeout: 10000 });
+
+    await page.reload();
+    await page.getByRole("tab", { name: /VyOS/ }).click();
+    await expect(toggle).toBeVisible({ timeout: 15000 });
+    await expect(toggle).toHaveAttribute("aria-checked", expected);
+
+    await page.screenshot({
+      path: "tests/screenshots/settings-vyos-toggle-persisted.png",
+    });
+  });
+
   test("save and reload persists URL and API key", async ({ page }) => {
     const testUrl = "https://10.10.0.50";
 
