@@ -56,6 +56,15 @@ pub struct AddRouteRequest {
     pub path: Option<String>,
 }
 
+/// Request body for updating an existing tunnel route.
+#[derive(Debug, Deserialize)]
+pub struct UpdateRouteRequest {
+    pub hostname: String,
+    pub service: String,
+    #[serde(default)]
+    pub path: Option<String>,
+}
+
 /// Generic write response.
 #[derive(Debug, Serialize)]
 pub struct TunnelWriteResponse {
@@ -305,6 +314,75 @@ pub async fn delete_route(
     Ok(Json(TunnelWriteResponse {
         success: true,
         message: format!("Route for '{hostname}' removed successfully"),
+    }))
+}
+
+/// PUT /api/v1/cloudflare-tunnel/routes/:hostname
+///
+/// Update an existing hostname route in the tunnel configuration.
+pub async fn update_route(
+    State(state): State<AppState>,
+    Path(old_hostname): Path<String>,
+    Json(body): Json<UpdateRouteRequest>,
+) -> Result<Json<TunnelWriteResponse>, StatusCode> {
+    let config = load_cf_config(&state).await.ok_or_else(|| {
+        warn!("Cloudflare tunnel not configured");
+        StatusCode::BAD_REQUEST
+    })?;
+
+    // Fetch current configuration.
+    let mut routes = fetch_ingress_routes(&config).await.map_err(|e| {
+        error!("Failed to fetch tunnel config: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    // Find the route to update.
+    let route_idx = routes
+        .iter()
+        .position(|r| r.hostname.eq_ignore_ascii_case(&old_hostname));
+
+    let Some(idx) = route_idx else {
+        return Ok(Json(TunnelWriteResponse {
+            success: false,
+            message: format!("No route found for hostname '{old_hostname}'"),
+        }));
+    };
+
+    // If hostname is being changed, check the new hostname isn't already taken.
+    if !body.hostname.eq_ignore_ascii_case(&old_hostname)
+        && routes
+            .iter()
+            .any(|r| r.hostname.eq_ignore_ascii_case(&body.hostname))
+    {
+        return Ok(Json(TunnelWriteResponse {
+            success: false,
+            message: format!("Route for hostname '{}' already exists", body.hostname),
+        }));
+    }
+
+    // Update the route in place.
+    routes[idx] = TunnelRoute {
+        hostname: body.hostname.clone(),
+        service: body.service.clone(),
+        path: body.path.clone(),
+    };
+
+    // Write back to Cloudflare.
+    write_ingress_routes(&config, &routes).await.map_err(|e| {
+        error!("Failed to update tunnel config: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    info!(
+        old_hostname = %old_hostname,
+        hostname = %body.hostname,
+        service = %body.service,
+        "Updated Cloudflare Tunnel route"
+    );
+
+    Ok(Json(TunnelWriteResponse {
+        success: true,
+        message: format!("Route for '{}' updated successfully", body.hostname),
     }))
 }
 

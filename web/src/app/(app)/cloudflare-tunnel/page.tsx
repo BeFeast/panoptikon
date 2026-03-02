@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Cloud,
+  Pencil,
   Plus,
   RefreshCw,
   Trash2,
@@ -53,11 +54,13 @@ import {
   fetchCloudflareTunnelRoutes,
   addCloudflareTunnelRoute,
   deleteCloudflareTunnelRoute,
+  updateCloudflareTunnelRoute,
 } from "@/lib/api";
 import type {
   CloudflareTunnelStatus,
   CloudflareTunnelRoute,
   AddCloudflareRouteRequest,
+  UpdateCloudflareRouteRequest,
 } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -102,6 +105,13 @@ export default function CloudflareTunnelPage() {
   const [formHostname, setFormHostname] = useState("");
   const [formService, setFormService] = useState("");
   const [formPath, setFormPath] = useState("");
+
+  // Edit dialog state.
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editOriginalHostname, setEditOriginalHostname] = useState("");
+  const [editHostname, setEditHostname] = useState("");
+  const [editService, setEditService] = useState("");
+  const [editPath, setEditPath] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -173,6 +183,43 @@ export default function CloudflareTunnelPage() {
     },
     [load]
   );
+
+  const openEditDialog = useCallback((route: CloudflareTunnelRoute) => {
+    setEditOriginalHostname(route.hostname);
+    setEditHostname(route.hostname);
+    setEditService(route.service);
+    setEditPath(route.path || "");
+    setEditDialogOpen(true);
+  }, []);
+
+  const handleEditRoute = useCallback(async () => {
+    if (!editHostname || !editService) return;
+    setSaving(true);
+    try {
+      const body: UpdateCloudflareRouteRequest = {
+        hostname: editHostname,
+        service: editService,
+      };
+      if (editPath) body.path = editPath;
+      const result = await updateCloudflareTunnelRoute(
+        editOriginalHostname,
+        body
+      );
+      if (result.success) {
+        toast.success(result.message);
+        setEditDialogOpen(false);
+        await load();
+      } else {
+        toast.error(result.message);
+      }
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Failed to update route"
+      );
+    } finally {
+      setSaving(false);
+    }
+  }, [editHostname, editService, editPath, editOriginalHostname, load]);
 
   if (loading && !status) {
     return (
@@ -422,7 +469,7 @@ export default function CloudflareTunnelPage() {
                         Backend Service
                       </TableHead>
                       <TableHead className="text-slate-400">Path</TableHead>
-                      <TableHead className="w-[80px] text-slate-400">
+                      <TableHead className="w-[100px] text-slate-400">
                         Actions
                       </TableHead>
                     </TableRow>
@@ -440,14 +487,24 @@ export default function CloudflareTunnelPage() {
                           {route.path || "/"}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-slate-400 hover:text-rose-400"
-                            onClick={() => setDeleteTarget(route.hostname)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-slate-400 hover:text-blue-400"
+                              onClick={() => openEditDialog(route)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-slate-400 hover:text-rose-400"
+                              onClick={() => setDeleteTarget(route.hostname)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -517,6 +574,71 @@ export default function CloudflareTunnelPage() {
                   className="bg-blue-600 hover:bg-blue-700"
                 >
                   {saving ? "Adding..." : "Add Route"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Route Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="border-slate-800 bg-slate-900">
+            <DialogHeader>
+              <DialogTitle className="text-slate-100">
+                Edit Tunnel Route
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-hostname" className="text-slate-300">
+                  Hostname
+                </Label>
+                <Input
+                  id="edit-hostname"
+                  placeholder="app.example.com"
+                  value={editHostname}
+                  onChange={(e) => setEditHostname(e.target.value)}
+                  className="border-slate-700 bg-slate-800 text-slate-100"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-service" className="text-slate-300">
+                  Backend Service
+                </Label>
+                <Input
+                  id="edit-service"
+                  placeholder="http://localhost:8080"
+                  value={editService}
+                  onChange={(e) => setEditService(e.target.value)}
+                  className="border-slate-700 bg-slate-800 text-slate-100"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-path" className="text-slate-300">
+                  Path (optional)
+                </Label>
+                <Input
+                  id="edit-path"
+                  placeholder="/"
+                  value={editPath}
+                  onChange={(e) => setEditPath(e.target.value)}
+                  className="border-slate-700 bg-slate-800 text-slate-100"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setEditDialogOpen(false)}
+                  className="border-slate-700 text-slate-300"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleEditRoute}
+                  disabled={saving || !editHostname || !editService}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  {saving ? "Saving..." : "Save Changes"}
                 </Button>
               </div>
             </div>

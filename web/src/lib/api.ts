@@ -1537,6 +1537,16 @@ export function deleteCloudflareTunnelRoute(
   ) as unknown as Promise<import("./types").CloudflareTunnelWriteResponse>;
 }
 
+export function updateCloudflareTunnelRoute(
+  oldHostname: string,
+  body: import("./types").UpdateCloudflareRouteRequest
+): Promise<import("./types").CloudflareTunnelWriteResponse> {
+  return apiPut<import("./types").CloudflareTunnelWriteResponse>(
+    `/api/v1/cloudflare-tunnel/routes/${encodeURIComponent(oldHostname)}`,
+    body
+  );
+}
+
 // ─── Tailscale ──────────────────────────────────────────────
 
 export function fetchTailscaleStatus(): Promise<
