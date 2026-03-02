@@ -73,6 +73,8 @@ export interface Device {
   warranty_expiry?: string | null;
   /** Serial number (manual entry). */
   serial_number?: string | null;
+  /** Critical/pinned flag for infrastructure health. null=auto, true=pinned, false=excluded. */
+  is_critical?: boolean | null;
   /** 24-hour online/offline timeline (one boolean per hour, oldest first). */
   status_timeline?: boolean[] | null;
 }
@@ -171,6 +173,10 @@ export interface DashboardStats {
   alerts_unread: number;
   wan_rx_bps: number;
   wan_tx_bps: number;
+  /** Number of critical (infra) devices currently online. */
+  critical_online: number;
+  /** Total number of critical (infra) devices. */
+  critical_total: number;
 }
 
 export interface TopDevice {

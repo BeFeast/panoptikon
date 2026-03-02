@@ -86,6 +86,9 @@ const DDNS_ENTRIES_MIGRATION: &str = include_str!("migrations/025_ddns_entries.s
 const REMOVE_VYOS_SETTINGS_MIGRATION: &str =
     include_str!("migrations/026_remove_vyos_settings.sql");
 
+/// Migration 027: Add is_critical flag for infrastructure health tracking.
+const DEVICE_CRITICAL_MIGRATION: &str = include_str!("migrations/027_device_critical.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -635,6 +638,36 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
             .await?;
 
         info!("Applied migration 026_remove_vyos_settings.sql");
+    }
+
+    // Migration 027: Add is_critical flag for infrastructure health.
+    let applied_27: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 27")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_27 {
+        for statement in DEVICE_CRITICAL_MIGRATION.split(';') {
+            let code = statement
+                .lines()
+                .skip_while(|l| {
+                    let t = l.trim();
+                    t.is_empty() || t.starts_with("--")
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let stmt = code.trim();
+            if stmt.is_empty() {
+                continue;
+            }
+            sqlx::query(stmt).execute(pool).await?;
+        }
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (27)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 027_device_critical.sql");
     }
 
     // Purge expired sessions on startup.

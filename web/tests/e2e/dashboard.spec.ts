@@ -48,13 +48,14 @@ test.describe('Dashboard', () => {
     await page.screenshot({ path: 'tests/screenshots/dashboard-stat-values.png', fullPage: true });
   });
 
-  test('system health ring loads', async ({ page }) => {
+  test('infrastructure health ring loads', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
-    // System Health card should show the health ring (percentage text)
-    await expect(page.getByText('System Health')).toBeVisible({ timeout: 10000 });
-    // The ring shows "X%" and "N/N online" — wait for the percentage
-    await expect(page.getByText(/\d+%/)).toBeVisible({ timeout: 10000 });
+    // Infrastructure Health card should show the health ring or "No critical devices"
+    await expect(page.getByText('Infrastructure Health')).toBeVisible({ timeout: 10000 });
+    // The ring shows "X%" and "N/N critical online" or "No critical devices" when empty
+    const healthContent = page.getByText(/\d+%|No critical devices|N\/A/);
+    await expect(healthContent.first()).toBeVisible({ timeout: 10000 });
 
     await page.screenshot({ path: 'tests/screenshots/dashboard-health-ring.png', fullPage: true });
   });
@@ -73,12 +74,12 @@ test.describe('Dashboard', () => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
     // Wait for stat cards to resolve so we measure final rendered heights
-    await expect(page.getByText('System Health')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Infrastructure Health')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
 
-    // The System Health card and the stat-cards wrapper are direct children
+    // The Infrastructure Health card and the stat-cards wrapper are direct children
     // of the top bento grid. Grab all top-level grid children and compare heights.
-    const systemHealthCard = page.getByText('System Health').locator('xpath=ancestor::div[contains(@class,"border-slate-800")]').first();
+    const systemHealthCard = page.getByText('Infrastructure Health').locator('xpath=ancestor::div[contains(@class,"border-slate-800")]').first();
     const routerStatusCard = page.getByText('Router Status').locator('xpath=ancestor::div[contains(@class,"border-slate-800")]').first();
 
     const healthBox = await systemHealthCard.boundingBox();
@@ -138,6 +139,24 @@ test.describe('Dashboard', () => {
     expect(['connected', 'disconnected', 'unconfigured']).toContain(data.router_status);
 
     await page.screenshot({ path: 'tests/screenshots/dashboard-router-type-api.png' });
+  });
+
+  test('dashboard stats API returns critical device counts (#518)', async ({ page }) => {
+    // The /api/v1/dashboard/stats endpoint must include critical_online and critical_total
+    // for the infrastructure health ring.
+    const response = await page.request.get('/api/v1/dashboard/stats');
+    expect(response.ok()).toBeTruthy();
+    const data = await response.json();
+
+    expect(data).toHaveProperty('critical_online');
+    expect(data).toHaveProperty('critical_total');
+    expect(typeof data.critical_online).toBe('number');
+    expect(typeof data.critical_total).toBe('number');
+    expect(data.critical_online).toBeGreaterThanOrEqual(0);
+    expect(data.critical_total).toBeGreaterThanOrEqual(0);
+    expect(data.critical_online).toBeLessThanOrEqual(data.critical_total);
+
+    await page.screenshot({ path: 'tests/screenshots/dashboard-critical-stats-api.png' });
   });
 
   test('dashboard stats API responds within 2 seconds', async ({ page }) => {

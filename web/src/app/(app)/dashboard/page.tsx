@@ -73,6 +73,31 @@ function HealthRing({ online, total }: { online: number; total: number }) {
   const textColor =
     pct >= 90 ? "text-emerald-400" : pct >= 70 ? "text-amber-400" : "text-rose-400";
 
+  if (total === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-1">
+        <div className="relative aspect-square w-full max-w-[7rem]">
+          <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+            <circle
+              cx="50"
+              cy="50"
+              r="40"
+              fill="none"
+              strokeWidth="8"
+              className="text-slate-500/10 stroke-current"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center">
+            <span className="text-sm font-medium text-slate-500">N/A</span>
+          </div>
+        </div>
+        <span className="text-xs text-slate-500 text-center">
+          No critical devices
+        </span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center gap-1">
       <div className="relative aspect-square w-full max-w-[7rem]">
@@ -104,7 +129,7 @@ function HealthRing({ online, total }: { online: number; total: number }) {
         </div>
       </div>
       <span className="text-xs text-slate-500">
-        {online}/{total} online
+        {online}/{total} critical online
       </span>
     </div>
   );
@@ -349,14 +374,14 @@ export default function DashboardPage() {
         <StaggerItem className="h-full"><Card className="h-full border-slate-800 bg-slate-900 lg:col-span-1">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-slate-400">
-              System Health
+              Infrastructure Health
             </CardTitle>
           </CardHeader>
           <CardContent className="flex items-center justify-center pb-4">
             {statsError ? (
               <SectionError message="Failed to load" />
             ) : stats ? (
-              <HealthRing online={stats.devices_online} total={stats.devices_total} />
+              <HealthRing online={stats.critical_online} total={stats.critical_total} />
             ) : (
               <Skeleton className="aspect-square w-full max-w-[7rem] rounded-full" />
             )}

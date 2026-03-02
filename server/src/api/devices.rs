@@ -118,6 +118,10 @@ pub struct Device {
     /// Serial number (manual entry)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub serial_number: Option<String>,
+    /// Critical/pinned flag for infrastructure health calculation.
+    /// NULL = auto-detect, true = manually pinned, false = manually excluded.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_critical: Option<bool>,
     /// 24-hour online/offline status timeline (one boolean per hour, oldest first).
     /// Only populated on the list endpoint.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -158,6 +162,7 @@ pub struct UpdateDevice {
     pub notes: Option<String>,
     pub is_known: Option<bool>,
     pub is_favorite: Option<bool>,
+    pub is_critical: Option<bool>,
     pub custom_name: Option<String>,
     pub custom_type: Option<String>,
     pub custom_os: Option<String>,
@@ -237,6 +242,10 @@ impl Device {
             purchase_date: row.try_get("purchase_date").unwrap_or(None),
             warranty_expiry: row.try_get("warranty_expiry").unwrap_or(None),
             serial_number: row.try_get("serial_number").unwrap_or(None),
+            is_critical: row
+                .try_get::<Option<i32>, _>("is_critical")
+                .unwrap_or(None)
+                .map(|v| v != 0),
             status_timeline: None,
         })
     }
@@ -254,6 +263,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Device>>, St
                d.custom_name, d.custom_type, d.custom_os, d.custom_vendor, d.custom_model, d.icon_override,
                d.is_manual, d.location, d.owner, d.tags, d.cpu_manual, d.ram_manual, d.disk_manual,
                d.purchase_date, d.warranty_expiry, d.serial_number,
+               d.is_critical,
                a.id AS agent_id,
                a.name AS agent_name,
                r.cpu_percent AS agent_cpu_percent,
@@ -406,6 +416,7 @@ pub async fn get_one(
                d.custom_name, d.custom_type, d.custom_os, d.custom_vendor, d.custom_model, d.icon_override,
                d.is_manual, d.location, d.owner, d.tags, d.cpu_manual, d.ram_manual, d.disk_manual,
                d.purchase_date, d.warranty_expiry, d.serial_number,
+               d.is_critical,
                a.id AS agent_id,
                a.name AS agent_name,
                r.cpu_percent AS agent_cpu_percent,
@@ -577,6 +588,7 @@ pub async fn create(
         purchase_date: body.purchase_date,
         warranty_expiry: body.warranty_expiry,
         serial_number: body.serial_number,
+        is_critical: None,
         status_timeline: None,
     };
 
@@ -598,6 +610,7 @@ pub async fn update(
          notes = COALESCE(?, notes), \
          is_known = COALESCE(?, is_known), \
          is_favorite = COALESCE(?, is_favorite), \
+         is_critical = COALESCE(?, is_critical), \
          custom_name = COALESCE(?, custom_name), \
          custom_type = COALESCE(?, custom_type), \
          custom_os = COALESCE(?, custom_os), \
@@ -621,6 +634,7 @@ pub async fn update(
     .bind(&body.notes)
     .bind(body.is_known.map(|v| v as i32))
     .bind(body.is_favorite.map(|v| v as i32))
+    .bind(body.is_critical.map(|v| v as i32))
     .bind(&body.custom_name)
     .bind(&body.custom_type)
     .bind(&body.custom_os)
@@ -677,6 +691,7 @@ pub async fn reset_custom(
          purchase_date = NULL, \
          warranty_expiry = NULL, \
          serial_number = NULL, \
+         is_critical = NULL, \
          updated_at = ? \
          WHERE id = ?",
     )
@@ -1463,6 +1478,7 @@ mod tests {
                    d.custom_name, d.custom_type, d.custom_os, d.custom_vendor, d.custom_model, d.icon_override,
                d.is_manual, d.location, d.owner, d.tags, d.cpu_manual, d.ram_manual, d.disk_manual,
                d.purchase_date, d.warranty_expiry, d.serial_number,
+               d.is_critical,
                    a.id AS agent_id,
                    a.name AS agent_name,
                    r.cpu_percent AS agent_cpu_percent,
