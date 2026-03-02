@@ -252,16 +252,32 @@ export function Sidebar() {
           sidebarCollapsed ? "w-16" : "w-60",
         )}
       >
-        {/* Logo */}
-        <div className="flex h-14 items-center border-b border-slate-800 px-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-500 text-sm font-bold text-white">
-            P
-          </div>
-          {!sidebarCollapsed && (
-            <span className="ml-2 text-lg font-semibold text-white">
-              Panoptikon
-            </span>
-          )}
+        {/* Logo + collapse toggle */}
+        <div className="flex h-14 items-center justify-between border-b border-slate-800 px-3">
+          <Link
+            href="/dashboard"
+            className="flex items-center min-w-0"
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-500 text-sm font-bold text-white">
+              P
+            </div>
+            {!sidebarCollapsed && (
+              <span className="ml-2 text-lg font-semibold text-white">
+                Panoptikon
+              </span>
+            )}
+          </Link>
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-800/60 hover:text-slate-300"
+            aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {sidebarCollapsed ? (
+              <ChevronRight className="h-4 w-4" />
+            ) : (
+              <ChevronLeft className="h-4 w-4" />
+            )}
+          </button>
         </div>
 
         {/* Navigation */}
@@ -324,23 +340,10 @@ export function Sidebar() {
           </div>
         </nav>
 
-        {/* Collapse toggle + version */}
+        {/* Version + connection status */}
         <div className="border-t border-slate-800 p-2">
-          <button
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="flex w-full items-center justify-center gap-2 rounded-md px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-slate-800/60 hover:text-slate-400"
-          >
-            {sidebarCollapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <>
-                <ChevronLeft className="h-4 w-4" />
-                <span>Collapse</span>
-              </>
-            )}
-          </button>
           {!sidebarCollapsed ? (
-            <div className="mt-1 flex items-center gap-1.5 px-3">
+            <div className="flex items-center gap-1.5 px-3 py-1">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span
@@ -364,7 +367,7 @@ export function Sidebar() {
               </p>
             </div>
           ) : (
-            <div className="mt-1 flex flex-col items-center gap-1">
+            <div className="flex flex-col items-center gap-1 py-1">
               <Tooltip>
                 <TooltipTrigger asChild>
                   <span
