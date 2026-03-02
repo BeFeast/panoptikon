@@ -161,6 +161,10 @@ pub fn router(state: AppState) -> Router {
         .route("/agents/bulk-delete", post(agents::bulk_delete))
         // Dashboard
         .route("/dashboard/stats", get(dashboard::stats))
+        .route(
+            "/dashboard/critical-devices",
+            get(dashboard::critical_devices),
+        )
         .route("/dashboard/top-devices", get(dashboard::top_devices))
         // Alerts
         .route("/alerts", get(alerts::list))
