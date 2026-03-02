@@ -99,12 +99,6 @@ export const navGroups: NavGroup[] = [
       { href: "/cloudflare-tunnel", label: "CF Tunnel", icon: Cloud },
     ],
   },
-  {
-    key: "legacy",
-    label: "Legacy",
-    defaultCollapsed: true,
-    items: [{ href: "/npm", label: "NPM", icon: Globe }],
-  },
 ];
 
 /** Flat list of all nav items — used by MobileSidebar. */
@@ -198,35 +192,6 @@ export function useServerVersion(): string | null {
   return version;
 }
 
-/** NPM connectivity state: null = not configured, true = reachable, false = unreachable. */
-function useNpmStatus(): null | boolean {
-  const [status, setStatus] = useState<null | boolean>(null);
-
-  const poll = useCallback(() => {
-    fetch("/api/v1/npm/status", { credentials: "include" })
-      .then((res) => {
-        if (!res.ok) return null;
-        return res.json();
-      })
-      .then((data) => {
-        if (!data || !data.configured) {
-          setStatus(null);
-        } else {
-          setStatus(data.reachable === true);
-        }
-      })
-      .catch(() => setStatus(null));
-  }, []);
-
-  useEffect(() => {
-    poll();
-    const id = setInterval(poll, 60_000);
-    return () => clearInterval(id);
-  }, [poll]);
-
-  return status;
-}
-
 /* -------------------------------------------------------------------------- */
 /*  Component                                                                 */
 /* -------------------------------------------------------------------------- */
@@ -235,7 +200,6 @@ export function Sidebar() {
   const pathname = usePathname();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const wsConnected = useWsConnected();
-  const npmStatus = useNpmStatus();
   const serverVersion = useServerVersion();
   const { collapsed: groupCollapsed, toggle: toggleGroup } = useGroupCollapse(
     navGroups,
@@ -395,28 +359,6 @@ export function Sidebar() {
                   <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
                 </TooltipContent>
               </Tooltip>
-              {npmStatus !== null && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span
-                      className={cn(
-                        "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
-                        npmStatus
-                          ? "bg-orange-400 ring-2 ring-orange-400/30"
-                          : "bg-rose-500 ring-2 ring-rose-500/30",
-                      )}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="top"
-                    className="border-slate-800 bg-slate-900"
-                  >
-                    <p>
-                      {npmStatus ? "NPM — connected" : "NPM — unreachable"}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
               <p className="text-[10px] text-slate-700">
                 Panoptikon {serverVersion ?? "..."}
               </p>
@@ -441,28 +383,6 @@ export function Sidebar() {
                   <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
                 </TooltipContent>
               </Tooltip>
-              {npmStatus !== null && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span
-                      className={cn(
-                        "inline-block h-1.5 w-1.5 rounded-full",
-                        npmStatus
-                          ? "bg-orange-400 ring-2 ring-orange-400/30"
-                          : "bg-rose-500 ring-2 ring-rose-500/30",
-                      )}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent
-                    side="right"
-                    className="border-slate-800 bg-slate-900"
-                  >
-                    <p>
-                      {npmStatus ? "NPM — connected" : "NPM — unreachable"}
-                    </p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
             </div>
           )}
         </div>

@@ -915,7 +915,7 @@ export interface LoginResponse {
   message: string;
 }
 
-// ─── Services Wizard ───────────────────────────────────
+// ─── Services Wizard (Caddy + MikroTik) ────────────────
 
 export interface AddServiceRequest {
   name: string;
@@ -923,23 +923,18 @@ export interface AddServiceRequest {
   internal_ip: string;
   internal_port: number;
   forward_scheme?: string;
-  domain_names?: string[];
-  ssl_mode?: string;
-  letsencrypt_email?: string;
-  ssl_forced?: boolean;
-  http2_support?: boolean;
-  block_exploits?: boolean;
-  allow_websocket_upgrade?: boolean;
-  create_firewall_rule?: boolean;
-  firewall_chain?: string;
-  firewall_rule_number?: number;
-  firewall_protocol?: string;
-  firewall_source_address?: string;
-  create_dnat_rule?: boolean;
-  dnat_rule_number?: number;
-  dnat_external_port?: number;
-  dnat_inbound_interface?: string;
-  dnat_protocol?: string;
+  /** Domain for Caddy reverse proxy entry. */
+  domain?: string;
+  /** Enable automatic TLS via Caddy. */
+  tls_enabled?: boolean;
+  /** If true, create a MikroTik dst-nat rule for port forwarding. */
+  create_port_forward?: boolean;
+  /** External port for port-forward rule. */
+  external_port?: number;
+  /** Protocol for port-forward rule (default: "tcp"). */
+  protocol?: string;
+  /** Comment for MikroTik rule. */
+  mikrotik_comment?: string;
 }
 
 export interface StepResult {
@@ -955,9 +950,9 @@ export interface AddServiceResponse {
 }
 
 export interface RemoveResource {
+  /** "caddy_proxy_host" or "mikrotik_port_forward" */
   resource_type: string;
   resource_id: string;
-  chain?: string;
 }
 
 export interface RemoveServiceRequest {
