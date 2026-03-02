@@ -1,7 +1,119 @@
 import { test, expect, login } from '../../e2e/fixtures';
+import type { Page } from '@playwright/test';
+
+/**
+ * E2E tests for the Topology page (/topology) — auto-layout feature.
+ *
+ * In a test environment no real router is available, and prior settings tests
+ * may leave MikroTik enabled with an unreachable URL, causing the topology API
+ * to time out (>15 s) before the canvas renders.
+ *
+ * We follow the same pattern as mesh.spec.ts: intercept the topology API at
+ * the Playwright network level and return deterministic mock data so the tests
+ * are fast, isolated, and independent of router availability.
+ */
+
+// ── Mock data ────────────────────────────────────────────────
+
+const MOCK_GRAPH = {
+  router: {
+    router_type: 'mikrotik',
+    is_online: true,
+    wan_ip: '1.2.3.4',
+    hostname: 'MikroTik-E2E',
+    version: '7.x',
+  },
+  devices: [
+    {
+      id: 'dev-aaa',
+      mac: 'AA:BB:CC:DD:EE:01',
+      name: 'Desktop',
+      hostname: 'desktop.local',
+      vendor: 'Dell',
+      is_online: true,
+      ips: ['192.168.1.10'],
+      custom_name: null,
+      custom_type: null,
+      custom_vendor: null,
+      device_type: 'computer',
+      device_model: null,
+      device_brand: null,
+      mdns_services: null,
+      icon: 'computer',
+      first_seen_at: new Date(Date.now() - 86400000).toISOString(),
+      last_seen_at: new Date().toISOString(),
+      os_family: null,
+      os_version: null,
+      location: null,
+      owner: null,
+      tags: null,
+      rx_bps: 0,
+      tx_bps: 0,
+    },
+    {
+      id: 'dev-bbb',
+      mac: 'AA:BB:CC:DD:EE:02',
+      name: 'Phone',
+      hostname: null,
+      vendor: 'Apple',
+      is_online: false,
+      ips: ['192.168.1.20'],
+      custom_name: null,
+      custom_type: null,
+      custom_vendor: null,
+      device_type: 'mobile',
+      device_model: null,
+      device_brand: null,
+      mdns_services: null,
+      icon: 'mobile',
+      first_seen_at: new Date(Date.now() - 86400000).toISOString(),
+      last_seen_at: new Date(Date.now() - 3600000).toISOString(),
+      os_family: null,
+      os_version: null,
+      location: null,
+      owner: null,
+      tags: null,
+      rx_bps: 0,
+      tx_bps: 0,
+    },
+  ],
+  positions: [],
+};
+
+// ── Helpers ──────────────────────────────────────────────────
+
+/** Mock the topology graph API to return deterministic data. */
+async function mockTopologyGraph(page: Page, data = MOCK_GRAPH) {
+  await page.route('**/api/v1/topology/graph', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(data),
+    }),
+  );
+}
+
+/** Mock topology position endpoints (save + delete) to be no-ops. */
+async function mockTopologyPositions(page: Page) {
+  await page.route('**/api/v1/topology/positions', (route) => {
+    if (route.request().method() === 'GET') {
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify([]),
+      });
+    }
+    // PUT / DELETE → 204 No Content
+    return route.fulfill({ status: 204 });
+  });
+}
+
+// ── Tests ────────────────────────────────────────────────────
 
 test.describe('Topology Page — Auto Layout', () => {
   test.beforeEach(async ({ page }) => {
+    await mockTopologyGraph(page);
+    await mockTopologyPositions(page);
     await login(page);
     await page.goto('/topology');
   });
