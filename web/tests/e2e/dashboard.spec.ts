@@ -101,4 +101,37 @@ test.describe('Dashboard', () => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
     await page.screenshot({ path: 'tests/screenshots/dashboard-full.png', fullPage: true });
   });
+
+  test('dashboard stats API returns router_type field', async ({ page }) => {
+    // The /api/v1/dashboard/stats endpoint must include router_type
+    // so the UI knows which router is active (mikrotik, vyos, or none).
+    const response = await page.request.get('/api/v1/dashboard/stats');
+    expect(response.ok()).toBeTruthy();
+    const data = await response.json();
+
+    // router_type must be one of the known values
+    expect(['mikrotik', 'vyos', 'none']).toContain(data.router_type);
+    // router_status must still be present
+    expect(['connected', 'disconnected', 'unconfigured']).toContain(data.router_status);
+
+    await page.screenshot({ path: 'tests/screenshots/dashboard-router-type-api.png' });
+  });
+
+  test('router status subtitle reflects active router type', async ({ page }) => {
+    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+
+    // Wait for stat cards to resolve
+    const routerCard = page.getByText('Router Status');
+    await expect(routerCard).toBeVisible({ timeout: 10000 });
+
+    // The subtitle should mention the specific router type or show generic text
+    // depending on what's configured. In a test environment with no router
+    // configured, we expect "Router not configured".
+    const subtitle = page.getByText(
+      /Connected to (MikroTik|VyOS|router)|Cannot reach (MikroTik|VyOS|router)|Router not configured/
+    );
+    await expect(subtitle.first()).toBeVisible({ timeout: 10000 });
+
+    await page.screenshot({ path: 'tests/screenshots/dashboard-router-subtitle.png', fullPage: true });
+  });
 });

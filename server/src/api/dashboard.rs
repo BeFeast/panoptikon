@@ -10,6 +10,7 @@ use std::time::Duration;
 #[derive(Serialize)]
 pub struct DashboardStats {
     pub router_status: String, // "connected" | "disconnected" | "unconfigured"
+    pub router_type: String,   // "mikrotik" | "vyos" | "none"
     pub devices_online: i64,
     pub devices_total: i64,
     pub alerts_unread: i64,
@@ -92,6 +93,31 @@ async fn check_vyos(state: &AppState) -> Option<bool> {
     }
 }
 
+/// Determine which router is the "active" one based on settings.
+/// Returns `("mikrotik" | "vyos" | "none", Option<bool>)` — router type and
+/// connectivity result (None = unconfigured, Some(true) = connected, Some(false) = unreachable).
+async fn active_router(state: &AppState) -> (&'static str, Option<bool>) {
+    // MikroTik takes priority when explicitly enabled.
+    let mikrotik_enabled = get_setting(state, "mikrotik_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+
+    if mikrotik_enabled {
+        return ("mikrotik", check_mikrotik(state).await);
+    }
+
+    // Fall back to VyOS if it has a URL configured.
+    let vyos_url = get_setting(state, "vyos_url").await;
+    let has_vyos = vyos_url.is_some() || state.config.vyos.url.is_some();
+
+    if has_vyos {
+        return ("vyos", check_vyos(state).await);
+    }
+
+    ("none", None)
+}
+
 /// GET /api/v1/dashboard/stats
 pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
     let devices_online: i64 =
@@ -110,32 +136,44 @@ pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
         .await
         .unwrap_or(0);
 
-    // Check both MikroTik and VyOS router connectivity in parallel.
-    let (mikrotik_result, vyos_result) = tokio::join!(check_mikrotik(&state), check_vyos(&state));
+    // Determine and ping only the active router.
+    let (router_type, ping_result) = active_router(&state).await;
 
-    let router_status = match (mikrotik_result, vyos_result) {
-        // Either router is connected → "connected"
-        (Some(true), _) | (_, Some(true)) => "connected".to_string(),
-        // At least one is configured but not reachable → "disconnected"
-        (Some(false), _) | (_, Some(false)) => "disconnected".to_string(),
-        // Neither is configured
-        _ => "unconfigured".to_string(),
+    let router_status = match ping_result {
+        Some(true) => "connected".to_string(),
+        Some(false) => "disconnected".to_string(),
+        None => "unconfigured".to_string(),
     };
 
-    // Latest WAN traffic — check all sources (mikrotik, netflow, agent),
-    // not just 'vyos' which is never inserted.
-    let (wan_rx_bps, wan_tx_bps): (i64, i64) = sqlx::query_as(
-        "SELECT COALESCE(rx_bps, 0), COALESCE(tx_bps, 0)
-         FROM traffic_samples
-         ORDER BY sampled_at DESC LIMIT 1",
-    )
-    .fetch_optional(&state.db)
-    .await
-    .unwrap_or(None)
-    .unwrap_or((0, 0));
+    // Latest WAN traffic — filter by active router source when configured,
+    // otherwise fall back to the most recent sample from any source.
+    let (wan_rx_bps, wan_tx_bps): (i64, i64) = if router_type != "none" {
+        sqlx::query_as(
+            "SELECT COALESCE(rx_bps, 0), COALESCE(tx_bps, 0)
+             FROM traffic_samples
+             WHERE source = ?
+             ORDER BY sampled_at DESC LIMIT 1",
+        )
+        .bind(router_type)
+        .fetch_optional(&state.db)
+        .await
+        .unwrap_or(None)
+        .unwrap_or((0, 0))
+    } else {
+        sqlx::query_as(
+            "SELECT COALESCE(rx_bps, 0), COALESCE(tx_bps, 0)
+             FROM traffic_samples
+             ORDER BY sampled_at DESC LIMIT 1",
+        )
+        .fetch_optional(&state.db)
+        .await
+        .unwrap_or(None)
+        .unwrap_or((0, 0))
+    };
 
     Json(DashboardStats {
         router_status,
+        router_type: router_type.to_string(),
         devices_online,
         devices_total,
         alerts_unread,

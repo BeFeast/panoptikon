@@ -165,6 +165,7 @@ export interface Alert {
 /** Shape returned by the /api/v1/dashboard/stats endpoint. */
 export interface DashboardStats {
   router_status: string;
+  router_type: string; // "mikrotik" | "vyos" | "none"
   devices_online: number;
   devices_total: number;
   alerts_unread: number;

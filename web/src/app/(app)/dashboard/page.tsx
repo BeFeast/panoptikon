@@ -408,10 +408,10 @@ export default function DashboardPage() {
                 value={routerStatusLabel(stats).label}
                 subtitle={
                   stats.router_status === "connected" || stats.router_status === "online"
-                    ? "Connected to router"
+                    ? `Connected to ${stats.router_type === "mikrotik" ? "MikroTik" : stats.router_type === "vyos" ? "VyOS" : "router"}`
                     : stats.router_status === "unconfigured"
                       ? "Router not configured"
-                      : "Cannot reach router"
+                      : `Cannot reach ${stats.router_type === "mikrotik" ? "MikroTik" : stats.router_type === "vyos" ? "VyOS" : "router"}`
                 }
                 icon={<Router className="h-4 w-4" />}
                 status={routerStatusLabel(stats).status}
