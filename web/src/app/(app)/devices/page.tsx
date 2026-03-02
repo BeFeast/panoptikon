@@ -663,11 +663,7 @@ function DeviceCard({
   const displayName = device.custom_name ?? device.hostname ?? device.name ?? device.vendor ?? device.mac;
   const effectiveType = device.custom_type ?? device.device_type;
   const { icon: DevIcon } = getDeviceIcon(device.custom_vendor ?? device.vendor, device.hostname, device.mdns_services, effectiveType);
-  const vendorDisplay = (device.custom_vendor ?? device.vendor)
-    ? (device.custom_vendor ?? device.vendor)!.length > 20
-      ? (device.custom_vendor ?? device.vendor)!.slice(0, 20) + "…"
-      : (device.custom_vendor ?? device.vendor)
-    : null;
+  const vendorDisplay = device.custom_vendor ?? device.vendor ?? null;
 
   const canWake = !device.is_online && device.mac && !device.is_randomized_mac;
 
@@ -706,7 +702,7 @@ function DeviceCard({
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <span
                 className={`h-2 w-2 shrink-0 rounded-full ${
                   device.is_online
@@ -714,23 +710,23 @@ function DeviceCard({
                     : "bg-slate-500"
                 }`}
               />
-              <span className="truncate font-medium text-white">{displayName}</span>
+              <span className="min-w-0 flex-1 truncate font-medium text-white">{displayName}</span>
               {device.is_critical && (
                 <Pin className="h-3 w-3 shrink-0 text-amber-400" />
               )}
               {device.agent?.is_online && (
-                <span className="ml-auto shrink-0 rounded border border-blue-500/30 bg-blue-500/20 px-1.5 py-0.5 text-xs text-blue-400">
+                <span className="shrink-0 rounded border border-blue-500/30 bg-blue-500/20 px-1.5 py-0.5 text-xs text-blue-400">
                   Agent
                 </span>
               )}
               {!device.is_known && (
-                <Badge variant="outline" className="ml-auto shrink-0 border-amber-500/50 text-amber-400 text-[10px]">
+                <Badge variant="outline" className="shrink-0 border-amber-500/50 text-amber-400 text-[10px]">
                   NEW
                 </Badge>
               )}
             </div>
             {vendorDisplay && (
-              <p className="mt-0.5 text-xs text-slate-400">{vendorDisplay}</p>
+              <p className="mt-0.5 truncate text-xs text-slate-400" title={vendorDisplay}>{vendorDisplay}</p>
             )}
           </div>
         </div>
@@ -909,11 +905,7 @@ function DevicesTable({
           {devices.map((device, index) => {
             const primaryIp = (device.ips ?? [])[0] ?? "—";
             const { icon: RowIcon } = getDeviceIcon(device.vendor, device.hostname, device.mdns_services, device.device_type);
-            const vendorDisplay = device.vendor
-              ? device.vendor.length > 20
-                ? device.vendor.slice(0, 20) + "…"
-                : device.vendor
-              : "—";
+            const vendorDisplay = device.vendor ?? "—";
             const canWake = !device.is_online && device.mac && !device.is_randomized_mac;
 
             return (
@@ -969,8 +961,8 @@ function DevicesTable({
                 <TableCell className="tabular-nums font-mono text-xs text-slate-500">
                   {device.mac}
                 </TableCell>
-                <TableCell className="text-xs text-slate-400">
-                  {vendorDisplay}
+                <TableCell className="max-w-[160px] text-xs text-slate-400">
+                  <span className="block truncate" title={vendorDisplay}>{vendorDisplay}</span>
                 </TableCell>
                 <TableCell className="text-xs text-slate-400">
                   {device.agent && device.agent.cpu_percent != null && device.agent.memory_percent != null
@@ -1066,11 +1058,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
     device.mdns_services,
     effectiveType
   );
-  const vendorDisplay = (device.custom_vendor ?? device.vendor)
-    ? (device.custom_vendor ?? device.vendor)!.length > 20
-      ? (device.custom_vendor ?? device.vendor)!.slice(0, 20) + "…"
-      : (device.custom_vendor ?? device.vendor)
-    : null;
+  const vendorDisplay = device.custom_vendor ?? device.vendor ?? null;
 
   const handleWake = async () => {
     setWaking(true);
@@ -1111,14 +1099,14 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               {device.custom_name && device.hostname && (
-                <span className="text-xs text-slate-500">{device.hostname}</span>
+                <span className="truncate text-xs text-slate-500" title={device.hostname}>{device.hostname}</span>
               )}
               {vendorDisplay && (
-                <span className="text-xs text-slate-400">{vendorDisplay}</span>
+                <span className="truncate text-xs text-slate-400" title={vendorDisplay}>{vendorDisplay}</span>
               )}
-              <span className="text-xs text-slate-500">{deviceTypeLabel}</span>
+              <span className="shrink-0 text-xs text-slate-500">{deviceTypeLabel}</span>
             </div>
           </div>
         </div>
@@ -1288,10 +1276,10 @@ function DeviceInfoTab({
         <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
           MAC Address
         </span>
-        <span className="flex items-center gap-1.5 font-mono tabular-nums text-sm text-slate-300">
-          {device.mac}
+        <span className="flex min-w-0 items-center gap-1.5 font-mono tabular-nums text-sm text-slate-300">
+          <span className="truncate">{device.mac}</span>
           {device.is_randomized_mac && (
-            <span className="rounded bg-amber-500/20 px-1 py-0.5 text-[10px] font-medium text-amber-400">
+            <span className="shrink-0 rounded bg-amber-500/20 px-1 py-0.5 text-[10px] font-medium text-amber-400">
               Random
             </span>
           )}
@@ -1314,8 +1302,8 @@ function DeviceInfoTab({
           {osDisplayString && (
             <div className="flex items-baseline justify-between gap-4">
               <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">OS</span>
-              <span className="flex items-center text-sm text-slate-300">
-                {osDisplayString}
+              <span className="flex min-w-0 items-center gap-1 text-sm text-slate-300">
+                <span className="truncate" title={osDisplayString}>{osDisplayString}</span>
                 {device.custom_os ? <CustomBadge /> : (device.os_family || sysinfo?.os_name) ? <DetectedBadge /> : null}
               </span>
             </div>
@@ -1323,8 +1311,8 @@ function DeviceInfoTab({
           {effectiveType && (
             <div className="flex items-baseline justify-between gap-4">
               <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">Type</span>
-              <span className="flex items-center text-sm text-slate-300">
-                {effectiveType}
+              <span className="flex min-w-0 items-center gap-1 text-sm text-slate-300">
+                <span className="truncate" title={effectiveType}>{effectiveType}</span>
                 {device.custom_type ? <CustomBadge /> : device.device_type ? <DetectedBadge /> : null}
               </span>
             </div>
@@ -1332,8 +1320,8 @@ function DeviceInfoTab({
           {effectiveVendor && (
             <div className="flex items-baseline justify-between gap-4">
               <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">Brand</span>
-              <span className="flex items-center text-sm text-slate-300">
-                {effectiveVendor}
+              <span className="flex min-w-0 items-center gap-1 text-sm text-slate-300">
+                <span className="truncate" title={effectiveVendor}>{effectiveVendor}</span>
                 {device.custom_vendor ? <CustomBadge /> : (device.device_brand || device.vendor) ? <DetectedBadge /> : null}
               </span>
             </div>
@@ -1341,8 +1329,8 @@ function DeviceInfoTab({
           {effectiveModel && (
             <div className="flex items-baseline justify-between gap-4">
               <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">Model</span>
-              <span className="flex items-center text-sm text-slate-300">
-                {effectiveModel}
+              <span className="flex min-w-0 items-center gap-1 text-sm text-slate-300">
+                <span className="truncate" title={effectiveModel}>{effectiveModel}</span>
                 {device.custom_model ? <CustomBadge /> : device.device_model ? <DetectedBadge /> : null}
               </span>
             </div>
@@ -2810,7 +2798,8 @@ function InfoRow({
         {label}
       </span>
       <span
-        className={`text-sm text-slate-300 ${mono ? "font-mono tabular-nums" : ""}`}
+        className={`min-w-0 truncate text-right text-sm text-slate-300 ${mono ? "font-mono tabular-nums" : ""}`}
+        title={value}
       >
         {value}
       </span>

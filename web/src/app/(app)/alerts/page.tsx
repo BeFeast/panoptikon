@@ -474,18 +474,19 @@ export default function AlertsPage() {
                     )}
                   </div>
                   <p
-                    className={`mt-0.5 text-sm ${
+                    className={`mt-0.5 line-clamp-2 text-sm ${
                       alert.acknowledged_at
                         ? "text-slate-500"
                         : !alert.is_read
                           ? "text-gray-200"
                           : "text-slate-400"
                     }`}
+                    title={alert.message}
                   >
                     {alert.message}
                   </p>
                   {alert.acknowledged_by && (
-                    <p className="mt-0.5 text-xs text-slate-600 italic">
+                    <p className="mt-0.5 truncate text-xs italic text-slate-600" title={alert.acknowledged_by}>
                       Note: {alert.acknowledged_by}
                     </p>
                   )}
