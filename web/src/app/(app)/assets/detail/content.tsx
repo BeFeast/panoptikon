@@ -38,9 +38,10 @@ import {
   fetchAgentReports,
   fetchSshTargetReports,
   fetchSshTargets,
+  fetchPortScan,
   updateDevice,
 } from "@/lib/api";
-import type { DeviceCustomFields } from "@/lib/api";
+import type { DeviceCustomFields, PortScanResult } from "@/lib/api";
 import type { Device, DeviceSysinfo, AgentReport, SshTarget, SshReport } from "@/lib/types";
 import { formatBytes, formatPercent, timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
@@ -73,6 +74,7 @@ export default function AssetDetailContent() {
   const [agentReports, setAgentReports] = useState<AgentReport[] | null>(null);
   const [sshReports, setSshReports] = useState<SshReport[] | null>(null);
   const [linkedSshTarget, setLinkedSshTarget] = useState<SshTarget | null>(null);
+  const [portScan, setPortScan] = useState<PortScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [edit, setEdit] = useState<EditState>({ field: null, value: "" });
   const [saving, setSaving] = useState(false);
@@ -95,6 +97,14 @@ export default function AssetDetailContent() {
         } catch {
           setAgentReports(null);
         }
+      }
+
+      // Load cached port scan results
+      try {
+        const scan = await fetchPortScan(id);
+        setPortScan(scan);
+      } catch {
+        setPortScan(null);
       }
 
       // Find SSH target linked by matching IP
@@ -183,7 +193,7 @@ export default function AssetDetailContent() {
 
   // ─── Derived values ─────────────────────────────────
 
-  const effectiveName = device.custom_name || device.name || device.hostname || device.mac;
+  const effectiveName = device.hostname || device.custom_name || device.name || device.vendor || device.mac;
   const effectiveType = device.custom_type || device.device_type || null;
   const effectiveOs = device.custom_os || device.os_family || sysinfo?.os_name || null;
   const effectiveOsVersion = device.os_version || sysinfo?.os_version || null;
@@ -242,6 +252,7 @@ export default function AssetDetailContent() {
       <InfoGrid
         device={device}
         sysinfo={sysinfo ?? null}
+        portScan={portScan}
         effectiveOs={effectiveOs}
         effectiveOsVersion={effectiveOsVersion}
         effectiveVendor={effectiveVendor}
@@ -468,6 +479,7 @@ function AssetHeader({
 function InfoGrid({
   device,
   sysinfo,
+  portScan,
   effectiveOs,
   effectiveOsVersion,
   effectiveVendor,
@@ -489,6 +501,7 @@ function InfoGrid({
 }: {
   device: Device;
   sysinfo: DeviceSysinfo | null;
+  portScan: PortScanResult | null;
   effectiveOs: string | null;
   effectiveOsVersion: string | null;
   effectiveVendor: string | null;
@@ -533,7 +546,16 @@ function InfoGrid({
           Hardware
         </h3>
         <div className="space-y-2">
-          <InfoRow label="Model" value={effectiveModel} />
+          <InfoRow
+            label="Vendor / Brand"
+            value={effectiveVendor}
+            detected={!device.custom_vendor && !!(device.device_brand || device.vendor)}
+          />
+          <InfoRow
+            label="Model"
+            value={effectiveModel}
+            detected={!device.custom_model && !!device.device_model}
+          />
           <EditableInfoRow
             label="CPU"
             value={cpuDetail || null}
@@ -581,15 +603,42 @@ function InfoGrid({
           Software
         </h3>
         <div className="space-y-2">
-          <InfoRow label="OS" value={effectiveOs} />
-          <InfoRow label="OS Version" value={effectiveOsVersion} />
+          <InfoRow
+            label="OS"
+            value={effectiveOs}
+            detected={!device.custom_os && !!device.os_family}
+          />
+          <InfoRow label="OS Version" value={effectiveOsVersion} detected={!!device.os_version} />
+          <InfoRow label="Hostname" value={device.hostname} detected={!!device.hostname} />
           <InfoRow
             label="Uptime"
             value={effectiveUptime != null ? formatUptime(effectiveUptime) : null}
           />
-          {device.agent && (
-            <InfoRow label="Agent Version" value={null} />
+          {portScan && portScan.ports.length > 0 && (
+            <div>
+              <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                Open Ports
+              </span>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {portScan.ports
+                  .filter((p) => p.state === "open")
+                  .map((p) => (
+                    <Badge
+                      key={`${p.port}/${p.protocol}`}
+                      variant="outline"
+                      className="border-slate-600 text-slate-300 text-[10px]"
+                    >
+                      {p.port}/{p.protocol}
+                      {p.service ? ` (${p.service})` : ""}
+                    </Badge>
+                  ))}
+              </div>
+            </div>
           )}
+          <InfoRow
+            label="Last Seen"
+            value={device.last_seen_at ? timeAgo(device.last_seen_at) : null}
+          />
           <EditableInfoRow
             label="Serial #"
             value={effectiveSerial}
@@ -951,14 +1000,24 @@ function NotesSection({
 
 // ─── Shared Components ──────────────────────────────────
 
+function DetectedBadge() {
+  return (
+    <Badge variant="outline" className="ml-1 border-teal-500/50 text-teal-400 text-[9px] px-1 py-0">
+      detected
+    </Badge>
+  );
+}
+
 function InfoRow({
   label,
   value,
   mono,
+  detected,
 }: {
   label: string;
   value: string | null | undefined;
   mono?: boolean;
+  detected?: boolean;
 }) {
   if (!value) return null;
   return (
@@ -966,8 +1025,9 @@ function InfoRow({
       <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
         {label}
       </span>
-      <p className={`text-sm text-white ${mono ? "font-mono tabular-nums" : ""}`}>
+      <p className={`text-sm text-white flex items-center ${mono ? "font-mono tabular-nums" : ""}`}>
         {value}
+        {detected && <DetectedBadge />}
       </p>
     </div>
   );
