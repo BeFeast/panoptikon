@@ -201,7 +201,7 @@ test.describe("Mesh Page", () => {
 
     // With zero nodes the ReactFlow canvas renders but the stats show 0
     // The toolbar stats line should show "0 nodes"
-    await expect(page.getByText("0 nodes")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("0 nodes", { exact: true })).toBeVisible({ timeout: 15000 });
 
     await page.screenshot({
       path: "tests/screenshots/mesh-empty-state.png",
@@ -215,9 +215,9 @@ test.describe("Mesh Page", () => {
     await page.goto("/mesh/");
 
     // Stats toolbar should show correct counts
-    await expect(page.getByText("3 nodes")).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText("3 online")).toBeVisible();
-    await expect(page.getByText("13 devices")).toBeVisible();
+    await expect(page.getByText("3 nodes", { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("3 online", { exact: true })).toBeVisible();
+    await expect(page.getByText("13 devices", { exact: true })).toBeVisible();
 
     // All three node names should be rendered
     await expect(page.getByText("Main Router")).toBeVisible();
@@ -236,9 +236,9 @@ test.describe("Mesh Page", () => {
     await page.goto("/mesh/");
 
     // Stats toolbar should show correct counts
-    await expect(page.getByText("4 nodes")).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText("4 online")).toBeVisible();
-    await expect(page.getByText("25 devices")).toBeVisible();
+    await expect(page.getByText("4 nodes", { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("4 online", { exact: true })).toBeVisible();
+    await expect(page.getByText("25 devices", { exact: true })).toBeVisible();
 
     // All four node names should be rendered as separate cards
     await expect(page.getByText("OK Home")).toBeVisible();
