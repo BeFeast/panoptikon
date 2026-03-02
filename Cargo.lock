@@ -1598,7 +1598,7 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "panoptikon-agent"
-version = "0.6.51"
+version = "0.6.52"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1617,7 +1617,7 @@ dependencies = [
 
 [[package]]
 name = "panoptikon-server"
-version = "0.6.51"
+version = "0.6.52"
 dependencies = [
  "anyhow",
  "axum",
@@ -2920,9 +2920,9 @@ dependencies = [
 
 [[package]]
 name = "tokio-macros"
-version = "2.6.0"
+version = "2.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af407857209536a95c8e56f8231ef2c2e2aff839b22e07a1ffcbc617e9db9fa5"
+checksum = "5c55a2eff8b69ce66c84f85e1da1c233edc36ceb85a2058d11b0d6a3c7e7569c"
 dependencies = [
  "proc-macro2",
  "quote",
