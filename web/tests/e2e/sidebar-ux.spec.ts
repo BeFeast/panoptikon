@@ -49,7 +49,7 @@ test.describe('Sidebar UX — collapse button in header + logo link', () => {
     await page.waitForURL('**/devices**', { timeout: 10000 });
 
     // Click the Panoptikon logo link in the sidebar header
-    const logoLink = page.locator('aside a[href="/dashboard"]');
+    const logoLink = page.locator('aside a[href="/dashboard/"]');
     await expect(logoLink).toBeVisible();
     await logoLink.click();
 
