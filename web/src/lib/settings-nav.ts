@@ -23,7 +23,7 @@ export const settingsNav: SettingsNavGroup[] = [
       {
         href: "/settings/router",
         title: "Router",
-        description: "Configure MikroTik or VyOS router integration.",
+        description: "Configure MikroTik router integration.",
       },
       {
         href: "/settings/xiaomi-mesh",
@@ -90,13 +90,13 @@ export const settingsNav: SettingsNavGroup[] = [
         href: "/settings/audit-log",
         title: "Audit Log",
         description:
-          "View all VyOS configuration changes made via Panoptikon.",
+          "View all configuration changes made via Panoptikon.",
       },
       {
         href: "/settings/config-backup",
         title: "Config Backup",
         description:
-          "Download, snapshot, and restore VyOS router configurations.",
+          "Download, snapshot, and restore router configurations.",
       },
       {
         href: "/settings/password",

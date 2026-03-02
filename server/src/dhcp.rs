@@ -1,15 +1,18 @@
 //! DHCP hostname enrichment — reads DHCP lease hostnames and populates device records.
 //!
-//! Periodically queries the VyOS DHCP leases API and updates devices that have
-//! no hostname with the hostname from their DHCP lease.
+//! This module previously queried DHCP leases from the router and updated devices
+//! that had no hostname. It is currently disabled because no supported router is
+//! configured for DHCP lease queries. The parse logic is retained for future use
+//! when router-agnostic DHCP enrichment is implemented.
 
 use sqlx::SqlitePool;
-use tracing::{debug, info, warn};
+use tracing::info;
 
 use crate::config::AppConfig;
 
-/// DHCP lease entry as returned by the VyOS API proxy.
+/// DHCP lease entry as returned by a router's DHCP API.
 #[derive(Debug, serde::Deserialize)]
+#[cfg_attr(not(test), allow(dead_code))]
 struct DhcpLease {
     _ip: String,
     mac: String,
@@ -18,133 +21,20 @@ struct DhcpLease {
 
 /// Run a single DHCP hostname enrichment pass.
 ///
-/// Fetches DHCP leases from the VyOS router and updates device hostnames
-/// for devices that don't already have one.
-pub async fn enrich_from_dhcp_leases(pool: &SqlitePool, config: &AppConfig) {
-    let vyos_url = match config.vyos.url {
-        Some(ref url) if !url.is_empty() => url.clone(),
-        _ => return, // No VyOS configured
-    };
-    let api_key = match config.vyos.api_key {
-        Some(ref key) if !key.is_empty() => key.clone(),
-        _ => return,
-    };
-
-    // Fetch DHCP leases directly from VyOS API.
-    let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(config.vyos.insecure_tls)
-        .timeout(std::time::Duration::from_secs(10))
-        .build()
-        .unwrap_or_default();
-
-    let response = client
-        .post(format!("{}/retrieve", vyos_url))
-        .multipart(
-            reqwest::multipart::Form::new()
-                .text(
-                    "data",
-                    serde_json::json!({"op": "showConfig", "path": []}).to_string(),
-                )
-                .text("key", api_key.clone()),
-        )
-        .send()
-        .await;
-
-    // Fall back: query the server's own DHCP leases endpoint if VyOS direct access fails.
-    // Instead, we'll query our own database for device_ips + leases.
-    // Actually, the simplest approach: query VyOS show dhcp server leases.
-    let leases_result = client
-        .post(format!("{}/show", vyos_url))
-        .multipart(
-            reqwest::multipart::Form::new()
-                .text(
-                    "data",
-                    serde_json::json!({"op": "show", "path": ["dhcp", "server", "leases"]})
-                        .to_string(),
-                )
-                .text("key", api_key),
-        )
-        .send()
-        .await;
-
-    // Ignore the showConfig response if it errors
-    drop(response);
-
-    let leases_text = match leases_result {
-        Ok(resp) if resp.status().is_success() => match resp.text().await {
-            Ok(t) => t,
-            Err(e) => {
-                debug!("DHCP enrichment: failed to read response body: {e}");
-                return;
-            }
-        },
-        Ok(resp) => {
-            debug!("DHCP enrichment: VyOS returned status {}", resp.status());
-            return;
-        }
-        Err(e) => {
-            debug!("DHCP enrichment: VyOS request failed: {e}");
-            return;
-        }
-    };
-
-    // Parse VyOS DHCP lease output (text format).
-    // VyOS returns text output, not JSON for show commands. Parse IP/MAC/hostname.
-    let leases = parse_dhcp_leases(&leases_text);
-    if leases.is_empty() {
-        debug!("DHCP enrichment: no leases found");
-        return;
-    }
-
-    let mut updated = 0u32;
-    for lease in &leases {
-        let hostname = match lease.hostname {
-            Some(ref h) if !h.is_empty() && h != "*" => h,
-            _ => continue,
-        };
-
-        let mac_normalized = lease.mac.to_lowercase();
-
-        // Update hostname for devices that don't already have one.
-        let result = sqlx::query(
-            r#"UPDATE devices SET hostname = ?, name = COALESCE(name, ?), is_known = 1, updated_at = datetime('now')
-               WHERE mac = ? AND (hostname IS NULL OR hostname = '')"#,
-        )
-        .bind(hostname)
-        .bind(hostname)
-        .bind(&mac_normalized)
-        .execute(pool)
-        .await;
-
-        match result {
-            Ok(r) if r.rows_affected() > 0 => {
-                info!(mac = %mac_normalized, hostname = %hostname, "DHCP hostname set");
-                updated += 1;
-            }
-            Ok(_) => {}
-            Err(e) => {
-                warn!(mac = %mac_normalized, error = %e, "Failed to set DHCP hostname");
-            }
-        }
-    }
-
-    if updated > 0 {
-        info!(updated, "DHCP hostname enrichment complete");
-    }
+/// Currently a no-op — no supported router is configured for DHCP lease queries.
+pub async fn enrich_from_dhcp_leases(_pool: &SqlitePool, _config: &AppConfig) {
+    info!("DHCP enrichment disabled (no supported router configured)");
 }
 
-/// Parse VyOS DHCP lease text output into structured entries.
+/// Parse DHCP lease text output into structured entries.
 ///
-/// VyOS `show dhcp server leases` output format:
-/// ```text
-/// IP Address      MAC Address         Hostname     ...
-/// ----------      -----------         --------     ...
-/// 10.10.0.100     aa:bb:cc:dd:ee:ff   mydevice     ...
-/// ```
+/// Supports both JSON format and text table format.
+/// Retained for future use when router-agnostic DHCP enrichment is added.
+#[cfg_attr(not(test), allow(dead_code))]
 fn parse_dhcp_leases(text: &str) -> Vec<DhcpLease> {
     let mut leases = Vec::new();
 
-    // Try JSON parse first (some VyOS versions return JSON).
+    // Try JSON parse first (some router versions return JSON).
     if let Ok(json_val) = serde_json::from_str::<serde_json::Value>(text) {
         if let Some(data) = json_val.get("data").and_then(|d| d.as_object()) {
             for (_subnet, subnet_val) in data {
@@ -229,24 +119,9 @@ fn parse_dhcp_leases(text: &str) -> Vec<DhcpLease> {
 
 /// Start the periodic DHCP hostname enrichment task.
 ///
-/// Runs every 5 minutes to pick up new DHCP leases and populate hostnames.
-pub fn start_dhcp_enrichment_task(pool: SqlitePool, config: AppConfig) {
-    if config.vyos.url.is_none() || config.vyos.api_key.is_none() {
-        info!("DHCP enrichment disabled (VyOS not configured)");
-        return;
-    }
-
-    info!("Starting DHCP hostname enrichment (every 5 min)");
-    tokio::spawn(async move {
-        // Initial delay to let the server start up.
-        tokio::time::sleep(std::time::Duration::from_secs(30)).await;
-
-        let mut interval = tokio::time::interval(std::time::Duration::from_secs(300));
-        loop {
-            interval.tick().await;
-            enrich_from_dhcp_leases(&pool, &config).await;
-        }
-    });
+/// Currently a no-op — no supported router is configured for DHCP lease queries.
+pub fn start_dhcp_enrichment_task(_pool: SqlitePool, _config: AppConfig) {
+    info!("DHCP enrichment disabled (no supported router configured)");
 }
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
 //! Dynamic DNS (DDNS) client management endpoints.
 //!
 //! Manages DDNS entries stored in SQLite with CRUD operations,
-//! plus router-side configuration via VyOS / MikroTik APIs.
+//! plus router-side configuration via MikroTik APIs.
 
 use axum::{
     extract::{Path, State},
@@ -77,7 +77,7 @@ fn default_true() -> bool {
 }
 
 fn default_router_type() -> String {
-    "vyos".to_string()
+    "mikrotik".to_string()
 }
 
 /// Toggle request body.
@@ -93,24 +93,7 @@ pub struct DdnsStatus {
     pub enabled: i64,
     pub healthy: i64,
     pub failing: i64,
-    pub vyos_configured: bool,
     pub mikrotik_configured: bool,
-}
-
-/// VyOS DDNS configuration read from the router.
-#[derive(Debug, Serialize)]
-pub struct VyosDdnsConfig {
-    pub services: Vec<VyosDdnsService>,
-}
-
-/// A single VyOS DDNS service entry.
-#[derive(Debug, Serialize)]
-pub struct VyosDdnsService {
-    pub name: String,
-    pub provider: Option<String>,
-    pub host_name: Option<String>,
-    pub zone: Option<String>,
-    pub ip_version: Option<String>,
 }
 
 // ─── Handlers: DDNS CRUD ─────────────────────────────────
@@ -356,9 +339,6 @@ pub async fn status(State(state): State<AppState>) -> Result<Json<DdnsStatus>, S
         StatusCode::INTERNAL_SERVER_ERROR
     })?;
 
-    // Check if VyOS is configured
-    let vyos_configured = super::vyos::get_vyos_client_or_503(&state).await.is_ok();
-
     // Check if MikroTik is configured
     let mikrotik_enabled: Option<String> =
         sqlx::query_scalar("SELECT value FROM settings WHERE key = 'mikrotik_enabled'")
@@ -375,50 +355,8 @@ pub async fn status(State(state): State<AppState>) -> Result<Json<DdnsStatus>, S
         enabled,
         healthy,
         failing,
-        vyos_configured,
         mikrotik_configured,
     }))
-}
-
-/// GET /api/v1/ddns/vyos — read VyOS dynamic DNS config from router.
-pub async fn vyos_config(
-    State(state): State<AppState>,
-) -> Result<Json<VyosDdnsConfig>, StatusCode> {
-    let client = super::vyos::get_vyos_client_or_503(&state).await?;
-
-    let data = client
-        .retrieve(&["service", "dns", "dynamic"])
-        .await
-        .map_err(|e| {
-            error!("Failed to retrieve VyOS DDNS config: {e}");
-            StatusCode::BAD_GATEWAY
-        })?;
-
-    let mut services = Vec::new();
-
-    // VyOS 1.4+ uses "name" sub-tree under service dns dynamic
-    if let Some(name_map) = data.get("name").and_then(|v| v.as_object()) {
-        for (name, val) in name_map {
-            services.push(VyosDdnsService {
-                name: name.clone(),
-                provider: val
-                    .get("protocol")
-                    .and_then(|v| v.as_str())
-                    .map(String::from),
-                host_name: val
-                    .get("host-name")
-                    .and_then(|v| v.as_str())
-                    .map(String::from),
-                zone: val.get("zone").and_then(|v| v.as_str()).map(String::from),
-                ip_version: val
-                    .get("ip-version")
-                    .and_then(|v| v.as_str())
-                    .map(String::from),
-            });
-        }
-    }
-
-    Ok(Json(VyosDdnsConfig { services }))
 }
 
 // ─── Helpers ──────────────────────────────────────────────

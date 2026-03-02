@@ -1,20 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Eye, EyeOff, Lock, Shield, Server } from "lucide-react";
+import { Eye, EyeOff, Lock, Shield } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchAuthStatus, runSetup } from "@/lib/api";
 
 export default function SetupPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [vyosUrl, setVyosUrl] = useState("");
-  const [vyosApiKey, setVyosApiKey] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -54,8 +51,6 @@ export default function SetupPage() {
     try {
       await runSetup({
         password,
-        vyos_url: vyosUrl || undefined,
-        vyos_api_key: vyosApiKey || undefined,
       });
       window.location.href = "/dashboard";
     } catch {
@@ -129,42 +124,6 @@ export default function SetupPage() {
                     className="pl-9"
                     placeholder="Repeat password"
                     required
-                  />
-                </div>
-              </div>
-
-              <Separator className="my-4 bg-slate-800" />
-
-              {/* Optional VyOS section */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Server className="h-4 w-4 text-slate-400" />
-                  <span className="text-sm font-medium text-slate-300">
-                    VyOS Router
-                  </span>
-                  <span className="text-xs text-slate-600">(optional)</span>
-                </div>
-                <p className="text-xs text-slate-500">
-                  You can configure your VyOS router later in Settings.
-                </p>
-                <div className="space-y-2">
-                  <Label htmlFor="vyos-url">VyOS URL</Label>
-                  <Input
-                    id="vyos-url"
-                    type="url"
-                    value={vyosUrl}
-                    onChange={(e) => setVyosUrl(e.target.value)}
-                    placeholder="https://192.168.1.1"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="vyos-key">API Key</Label>
-                  <Input
-                    id="vyos-key"
-                    type="password"
-                    value={vyosApiKey}
-                    onChange={(e) => setVyosApiKey(e.target.value)}
-                    placeholder="VyOS HTTP API key"
                   />
                 </div>
               </div>

@@ -6,7 +6,6 @@ import { test, expect, login } from "../../e2e/fixtures";
  * These tests verify page load, connection status display, interface list
  * rendering, and mobile layout (regression for #416).
  *
- * VyOS has been removed from the RouterSelector (#491).
  * Xiaomi is now only under Router tabs (not a separate nav item).
  *
  * The tests run against a dev environment where no real router is connected,
@@ -246,7 +245,6 @@ test.describe("Router Page — /router redirects to MikroTik", () => {
   });
 
   test("/router redirects to /router/mikrotik", async ({ page }) => {
-    // /router always redirects to /router/mikrotik (VyOS removed in #491)
     await page.goto("/router/");
     await page.waitForURL(/\/router\/mikrotik/, { timeout: 15000 });
 
@@ -257,24 +255,6 @@ test.describe("Router Page — /router redirects to MikroTik", () => {
 
     await page.screenshot({
       path: "tests/screenshots/router-redirect.png",
-    });
-  });
-
-  test("VyOS button is NOT shown in RouterSelector (#491)", async ({
-    page,
-  }) => {
-    await page.goto("/router/mikrotik/");
-    await expect(
-      page.getByRole("link", { name: /MikroTik/ }),
-    ).toBeVisible({ timeout: 15000 });
-
-    // VyOS button should NOT be present — it was removed in #491
-    await expect(
-      page.getByRole("link", { name: /VyOS/ }),
-    ).not.toBeVisible();
-
-    await page.screenshot({
-      path: "tests/screenshots/router-no-vyos.png",
     });
   });
 });

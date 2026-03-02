@@ -3,7 +3,7 @@ name = "panoptikon-server"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "Panoptikon server — VyOS router management & network monitoring backend"
+description = "Panoptikon server — router management & network monitoring backend"
 
 [[bin]]
 name = "panoptikon-server"

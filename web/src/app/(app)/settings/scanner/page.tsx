@@ -169,7 +169,7 @@ export default function ScannerSettingsPage() {
                 placeholder="10.0.0.0/24, 192.168.1.0/24"
               />
               <p className="text-[10px] text-slate-600">
-                Leave empty to auto-detect from VyOS interfaces.
+                Leave empty to auto-detect from router interfaces.
               </p>
             </div>
 

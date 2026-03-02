@@ -31,7 +31,7 @@ test.describe("Settings page — legacy section visibility", () => {
     ).toBeVisible({ timeout: 10000 });
   });
 
-  test("Router description adapts when VyOS is not configured", async ({
+  test("Router description shows MikroTik integration", async ({
     page,
   }) => {
     const integrationsHeading = page.getByText("Integrations", { exact: true });
@@ -65,7 +65,7 @@ test.describe("DDNS page — MikroTik default selection", () => {
     ).toBeVisible({ timeout: 15000 });
   });
 
-  test("Add Entry dialog hides Router Type selector when VyOS is unavailable", async ({
+  test("Add Entry dialog does not show Router Type selector", async ({
     page,
   }) => {
     await expect(
@@ -80,24 +80,6 @@ test.describe("DDNS page — MikroTik default selection", () => {
     await expect(
       page.locator('[role="dialog"]').getByText("Router Type", { exact: true }),
     ).toHaveCount(0);
-  });
-
-  test("VyOS option is not shown in Add Entry dialog when not configured", async ({
-    page,
-  }) => {
-    await expect(
-      page.getByRole("heading", { name: "Dynamic DNS", level: 1 }),
-    ).toBeVisible({ timeout: 15000 });
-
-    await page.getByRole("button", { name: "Add Entry" }).click();
-    await expect(page.locator('[role="dialog"]')).toBeVisible({
-      timeout: 5000,
-    });
-
-    const vyosOption = page
-      .locator('[role="dialog"]')
-      .locator('option[value="vyos"]');
-    await expect(vyosOption).toHaveCount(0);
 
     await page.screenshot({
       path: "tests/screenshots/ddns-router-type-options.png",

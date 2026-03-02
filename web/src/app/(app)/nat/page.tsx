@@ -8,7 +8,6 @@ import {
   Pencil,
   Plus,
   RefreshCw,
-  Router,
   Search,
   Trash2,
 } from "lucide-react";
@@ -48,7 +47,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageTransition } from "@/components/PageTransition";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import {
@@ -57,12 +55,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  fetchSettings,
   fetchNatSummary,
-  fetchVyosNatRules,
-  createVyosNatRule,
-  updateVyosNatRule,
-  deleteVyosNatRule,
   fetchMikrotikNatRules,
   createMikrotikNatRule,
   updateMikrotikNatRule,
@@ -70,27 +63,17 @@ import {
 } from "@/lib/api";
 import type {
   NatSummary,
-  NatDestinationRule,
   MikrotikNatRuleWithId,
 } from "@/lib/types";
 import { toast } from "sonner";
 
 export default function NatPage() {
   const [summary, setSummary] = useState<NatSummary | null>(null);
-  const [legacyRoutersEnabled, setLegacyRoutersEnabled] = useState(false);
-  const [vyosRules, setVyosRules] = useState<NatDestinationRule[] | null>(null);
   const [mtRules, setMtRules] = useState<MikrotikNatRuleWithId[] | null>(null);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("overview");
-  const vyosVisible = legacyRoutersEnabled && !!summary?.vyos_available;
+  const [activeTab, setActiveTab] = useState("mikrotik");
 
   // Dialogs
-  const [showAddVyos, setShowAddVyos] = useState(false);
-  const [editVyosRule, setEditVyosRule] = useState<NatDestinationRule | null>(
-    null
-  );
-  const [pendingDeleteVyos, setPendingDeleteVyos] =
-    useState<NatDestinationRule | null>(null);
   const [showAddMt, setShowAddMt] = useState(false);
   const [editMtRule, setEditMtRule] = useState<MikrotikNatRuleWithId | null>(
     null
@@ -107,15 +90,6 @@ export default function NatPage() {
     }
   }, []);
 
-  const loadVyos = useCallback(async () => {
-    try {
-      const data = await fetchVyosNatRules();
-      setVyosRules(data);
-    } catch {
-      setVyosRules([]);
-    }
-  }, []);
-
   const loadMt = useCallback(async () => {
     try {
       const data = await fetchMikrotikNatRules();
@@ -129,47 +103,11 @@ export default function NatPage() {
     load();
   }, [load]);
 
-  // Default to MikroTik tab when available
   useEffect(() => {
-    if (!summary) return;
-    if (summary.mikrotik_available) {
-      setActiveTab("mikrotik");
-    } else if (summary.vyos_available) {
-      setActiveTab("vyos");
-    }
-  }, [summary]);
-
-  useEffect(() => {
-    fetchSettings()
-      .then((settings) => setLegacyRoutersEnabled(settings.show_legacy_routers))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (activeTab === "vyos") loadVyos();
     if (activeTab === "mikrotik") loadMt();
-  }, [activeTab, loadVyos, loadMt]);
-
-  useEffect(() => {
-    if (!vyosVisible && activeTab === "vyos") {
-      setActiveTab("overview");
-    }
-  }, [activeTab, vyosVisible]);
+  }, [activeTab, loadMt]);
 
   // -- Filter helpers --
-  const filteredVyos = useMemo(() => {
-    if (!vyosRules) return null;
-    if (!search.trim()) return vyosRules;
-    const q = search.toLowerCase();
-    return vyosRules.filter(
-      (r) =>
-        (r.description ?? "").toLowerCase().includes(q) ||
-        (r.internal_ip ?? "").toLowerCase().includes(q) ||
-        (r.external_port ?? "").toLowerCase().includes(q) ||
-        (r.protocol ?? "").toLowerCase().includes(q)
-    );
-  }, [vyosRules, search]);
-
   const filteredMt = useMemo(() => {
     if (!mtRules) return null;
     if (!search.trim()) return mtRules;
@@ -182,24 +120,6 @@ export default function NatPage() {
         (r.action ?? "").toLowerCase().includes(q)
     );
   }, [mtRules, search]);
-
-  // -- VyOS Handlers --
-  async function handleDeleteVyos() {
-    if (!pendingDeleteVyos) return;
-    try {
-      await deleteVyosNatRule(pendingDeleteVyos.rule);
-      setVyosRules(
-        (prev) =>
-          prev?.filter((r) => r.rule !== pendingDeleteVyos.rule) ?? null
-      );
-      toast.success(`Deleted DNAT rule ${pendingDeleteVyos.rule}`);
-      load();
-    } catch {
-      toast.error("Failed to delete DNAT rule");
-    } finally {
-      setPendingDeleteVyos(null);
-    }
-  }
 
   // -- MikroTik Handlers --
   async function handleDeleteMt() {
@@ -228,7 +148,7 @@ export default function NatPage() {
             <h1 className="text-2xl font-semibold text-white">
               NAT / Port Forwarding
             </h1>
-            <HelpTooltip text="View and manage DNAT (port forwarding) rules on your router. Supports VyOS and MikroTik." />
+            <HelpTooltip text="View and manage NAT (port forwarding) rules on your MikroTik router." />
           </div>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -237,7 +157,6 @@ export default function NatPage() {
                 size="sm"
                 onClick={() => {
                   load();
-                  if (activeTab === "vyos") loadVyos();
                   if (activeTab === "mikrotik") loadMt();
                 }}
                 className="border-slate-800 text-slate-300 hover:bg-slate-800"
@@ -253,15 +172,7 @@ export default function NatPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          {vyosVisible && (
-            <SummaryCard
-              title="VyOS DNAT Rules"
-              value={summary?.vyos_rule_count ?? null}
-              available={vyosVisible}
-              icon={<Router className="h-4 w-4 text-blue-400" />}
-            />
-          )}
+        <div className="grid gap-4 sm:grid-cols-1">
           <SummaryCard
             title="MikroTik NAT Rules"
             value={summary?.mikrotik_rule_count ?? null}
@@ -270,184 +181,139 @@ export default function NatPage() {
           />
         </div>
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-slate-900 border border-slate-800">
-            <TabsTrigger
-              value="overview"
-              className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
-            >
-              Overview
-            </TabsTrigger>
+        {/* Search */}
+        <div className="relative max-w-sm">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+          <Input
+            placeholder="Filter rules..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 bg-slate-900 border-slate-800 text-slate-300"
+          />
+        </div>
 
-            {summary?.mikrotik_available && (
-              <TabsTrigger
-                value="mikrotik"
-                className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
-              >
-                MikroTik NAT
-              </TabsTrigger>
-            )}
-            {vyosVisible && (
-              <TabsTrigger
-                value="vyos"
-                className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
-              >
-                VyOS DNAT
-              </TabsTrigger>
-            )}
-          </TabsList>
-
-          {/* Search */}
-          {activeTab !== "overview" && (
-            <div className="relative mt-4 max-w-sm">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
-              <Input
-                placeholder="Filter rules..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9 bg-slate-900 border-slate-800 text-slate-300"
-              />
+        {/* MikroTik NAT Rules */}
+        <Card className="bg-slate-900/50 border-slate-800">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-white">
+                MikroTik NAT Rules
+              </CardTitle>
+              <CardDescription className="text-slate-400">
+                Firewall NAT rules on the MikroTik router.
+              </CardDescription>
             </div>
-          )}
-
-          {/* Overview Tab */}
-          <TabsContent value="overview">
-            <Card className="bg-slate-900/50 border-slate-800">
-              <CardHeader>
-                <CardTitle className="text-white">
-                  NAT / Port Forwarding Overview
-                </CardTitle>
-                <CardDescription className="text-slate-400">
-                  Manage destination NAT (port forwarding) rules on your
-                  {vyosVisible ? " VyOS and MikroTik routers" : " MikroTik router"}.
-                  Select a tab above to view and manage rules for each router type.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {summary === null ? (
-                  <div className="space-y-3">
-                    <Skeleton className="h-4 w-64 bg-slate-800" />
-                    <Skeleton className="h-4 w-48 bg-slate-800" />
-                  </div>
-                ) : (
-                  <div className="text-sm text-slate-400 space-y-2">
-                    {vyosVisible && (
-                      <p>
-                        VyOS router connected with {summary.vyos_rule_count} DNAT rule(s).
-                      </p>
-                    )}
-                    <p>
-                      {summary.mikrotik_available
-                        ? `MikroTik router connected with ${summary.mikrotik_rule_count} NAT rule(s).`
-                        : "MikroTik router not configured."}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* VyOS Tab */}
-          <TabsContent value="vyos">
-            <Card className="bg-slate-900/50 border-slate-800">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-white">
-                    VyOS Destination NAT Rules
-                  </CardTitle>
-                  <CardDescription className="text-slate-400">
-                    Port forwarding rules on the VyOS router.
-                  </CardDescription>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => setShowAddVyos(true)}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  Add Rule
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {filteredVyos === null ? (
-                  <div className="space-y-2">
-                    {[...Array(3)].map((_, i) => (
-                      <Skeleton key={i} className="h-10 bg-slate-800" />
-                    ))}
-                  </div>
-                ) : filteredVyos.length === 0 ? (
-                  <p className="text-sm text-slate-500 py-8 text-center">
-                    {search
-                      ? "No matching rules."
-                      : "No DNAT rules configured."}
-                  </p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-slate-800">
-                        <TableHead className="text-slate-400">Rule</TableHead>
-                        <TableHead className="text-slate-400">
-                          Description
-                        </TableHead>
-                        <TableHead className="text-slate-400">
-                          Protocol
-                        </TableHead>
-                        <TableHead className="text-slate-400">
-                          Ext. Port
-                        </TableHead>
-                        <TableHead className="text-slate-400">
-                          Internal IP
-                        </TableHead>
-                        <TableHead className="text-slate-400">
-                          Int. Port
-                        </TableHead>
-                        <TableHead className="text-slate-400">
-                          Interface
-                        </TableHead>
-                        <TableHead className="text-slate-400 text-right">
-                          Actions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredVyos.map((rule) => (
-                        <TableRow
-                          key={rule.rule}
-                          className="border-slate-800 hover:bg-slate-800/50"
+            <Button
+              size="sm"
+              onClick={() => setShowAddMt(true)}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add Rule
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {filteredMt === null ? (
+              <div className="space-y-2">
+                {[...Array(3)].map((_, i) => (
+                  <Skeleton key={i} className="h-10 bg-slate-800" />
+                ))}
+              </div>
+            ) : filteredMt.length === 0 ? (
+              <p className="text-sm text-slate-500 py-8 text-center">
+                {search
+                  ? "No matching rules."
+                  : "No NAT rules configured."}
+              </p>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-slate-800">
+                    <TableHead className="text-slate-400">Chain</TableHead>
+                    <TableHead className="text-slate-400">
+                      Action
+                    </TableHead>
+                    <TableHead className="text-slate-400">
+                      Protocol
+                    </TableHead>
+                    <TableHead className="text-slate-400">
+                      Dst Port
+                    </TableHead>
+                    <TableHead className="text-slate-400">
+                      To Address
+                    </TableHead>
+                    <TableHead className="text-slate-400">
+                      To Port
+                    </TableHead>
+                    <TableHead className="text-slate-400">
+                      Comment
+                    </TableHead>
+                    <TableHead className="text-slate-400">
+                      Status
+                    </TableHead>
+                    <TableHead className="text-slate-400 text-right">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredMt.map((rule, idx) => (
+                    <TableRow
+                      key={rule.id ?? idx}
+                      className="border-slate-800 hover:bg-slate-800/50"
+                    >
+                      <TableCell className="text-slate-300">
+                        {rule.chain ?? "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={
+                            rule.action === "dst-nat"
+                              ? "bg-blue-900/50 text-blue-300"
+                              : rule.action === "masquerade"
+                                ? "bg-green-900/50 text-green-300"
+                                : "bg-slate-800 text-slate-300"
+                          }
                         >
-                          <TableCell className="text-slate-200 font-mono">
-                            {rule.rule}
-                          </TableCell>
-                          <TableCell className="text-slate-300">
-                            {rule.description || "-"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="secondary"
-                              className="bg-slate-800 text-slate-300"
-                            >
-                              {rule.protocol ?? "any"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-slate-300 font-mono">
-                            {rule.external_port ?? "-"}
-                          </TableCell>
-                          <TableCell className="text-slate-300 font-mono">
-                            {rule.internal_ip ?? "-"}
-                          </TableCell>
-                          <TableCell className="text-slate-300 font-mono">
-                            {rule.internal_port ?? "-"}
-                          </TableCell>
-                          <TableCell className="text-slate-400">
-                            {rule.inbound_interface ?? "any"}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
+                          {rule.action ?? "-"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-slate-300">
+                        {rule.protocol ?? "any"}
+                      </TableCell>
+                      <TableCell className="text-slate-300 font-mono">
+                        {rule.dst_port ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-slate-300 font-mono">
+                        {rule.to_addresses ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-slate-300 font-mono">
+                        {rule.to_ports ?? "-"}
+                      </TableCell>
+                      <TableCell className="text-slate-400 max-w-[200px] truncate">
+                        {rule.comment ?? "-"}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={
+                            rule.disabled
+                              ? "bg-slate-800 text-slate-500"
+                              : "bg-green-900/50 text-green-300"
+                          }
+                        >
+                          {rule.disabled ? "Disabled" : "Active"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          {rule.id && (
+                            <>
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setEditVyosRule(rule)}
+                                onClick={() => setEditMtRule(rule)}
                                 className="h-7 w-7 p-0 text-slate-400 hover:text-white"
                               >
                                 <Pencil className="h-3.5 w-3.5" />
@@ -455,251 +321,22 @@ export default function NatPage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => setPendingDeleteVyos(rule)}
+                                onClick={() => setPendingDeleteMt(rule)}
                                 className="h-7 w-7 p-0 text-slate-400 hover:text-red-400"
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* MikroTik Tab */}
-          <TabsContent value="mikrotik">
-            <Card className="bg-slate-900/50 border-slate-800">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-white">
-                    MikroTik NAT Rules
-                  </CardTitle>
-                  <CardDescription className="text-slate-400">
-                    Firewall NAT rules on the MikroTik router.
-                  </CardDescription>
-                </div>
-                <Button
-                  size="sm"
-                  onClick={() => setShowAddMt(true)}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  Add Rule
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {filteredMt === null ? (
-                  <div className="space-y-2">
-                    {[...Array(3)].map((_, i) => (
-                      <Skeleton key={i} className="h-10 bg-slate-800" />
-                    ))}
-                  </div>
-                ) : filteredMt.length === 0 ? (
-                  <p className="text-sm text-slate-500 py-8 text-center">
-                    {search
-                      ? "No matching rules."
-                      : "No NAT rules configured."}
-                  </p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="border-slate-800">
-                        <TableHead className="text-slate-400">Chain</TableHead>
-                        <TableHead className="text-slate-400">
-                          Action
-                        </TableHead>
-                        <TableHead className="text-slate-400">
-                          Protocol
-                        </TableHead>
-                        <TableHead className="text-slate-400">
-                          Dst Port
-                        </TableHead>
-                        <TableHead className="text-slate-400">
-                          To Address
-                        </TableHead>
-                        <TableHead className="text-slate-400">
-                          To Port
-                        </TableHead>
-                        <TableHead className="text-slate-400">
-                          Comment
-                        </TableHead>
-                        <TableHead className="text-slate-400">
-                          Status
-                        </TableHead>
-                        <TableHead className="text-slate-400 text-right">
-                          Actions
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredMt.map((rule, idx) => (
-                        <TableRow
-                          key={rule.id ?? idx}
-                          className="border-slate-800 hover:bg-slate-800/50"
-                        >
-                          <TableCell className="text-slate-300">
-                            {rule.chain ?? "-"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="secondary"
-                              className={
-                                rule.action === "dst-nat"
-                                  ? "bg-blue-900/50 text-blue-300"
-                                  : rule.action === "masquerade"
-                                    ? "bg-green-900/50 text-green-300"
-                                    : "bg-slate-800 text-slate-300"
-                              }
-                            >
-                              {rule.action ?? "-"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-slate-300">
-                            {rule.protocol ?? "any"}
-                          </TableCell>
-                          <TableCell className="text-slate-300 font-mono">
-                            {rule.dst_port ?? "-"}
-                          </TableCell>
-                          <TableCell className="text-slate-300 font-mono">
-                            {rule.to_addresses ?? "-"}
-                          </TableCell>
-                          <TableCell className="text-slate-300 font-mono">
-                            {rule.to_ports ?? "-"}
-                          </TableCell>
-                          <TableCell className="text-slate-400 max-w-[200px] truncate">
-                            {rule.comment ?? "-"}
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant="secondary"
-                              className={
-                                rule.disabled
-                                  ? "bg-slate-800 text-slate-500"
-                                  : "bg-green-900/50 text-green-300"
-                              }
-                            >
-                              {rule.disabled ? "Disabled" : "Active"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex justify-end gap-1">
-                              {rule.id && (
-                                <>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setEditMtRule(rule)}
-                                    className="h-7 w-7 p-0 text-slate-400 hover:text-white"
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </Button>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setPendingDeleteMt(rule)}
-                                    className="h-7 w-7 p-0 text-slate-400 hover:text-red-400"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* VyOS Add Dialog */}
-        <VyosNatDialog
-          open={showAddVyos}
-          onOpenChange={setShowAddVyos}
-          onSave={async (data) => {
-            try {
-              await createVyosNatRule(data);
-              toast.success(`DNAT rule ${data.rule} created`);
-              loadVyos();
-              load();
-              setShowAddVyos(false);
-            } catch (err) {
-              toast.error(
-                err instanceof Error ? err.message : "Failed to create rule"
-              );
-            }
-          }}
-        />
-
-        {/* VyOS Edit Dialog */}
-        <VyosNatDialog
-          open={!!editVyosRule}
-          onOpenChange={(open) => {
-            if (!open) setEditVyosRule(null);
-          }}
-          existing={editVyosRule}
-          onSave={async (data) => {
-            if (!editVyosRule) return;
-            try {
-              await updateVyosNatRule(editVyosRule.rule, {
-                description: data.description,
-                protocol: data.protocol,
-                inbound_interface: data.inbound_interface,
-                external_port: data.external_port,
-                internal_ip: data.internal_ip,
-                internal_port: data.internal_port,
-              });
-              toast.success(`DNAT rule ${editVyosRule.rule} updated`);
-              loadVyos();
-              load();
-              setEditVyosRule(null);
-            } catch (err) {
-              toast.error(
-                err instanceof Error ? err.message : "Failed to update rule"
-              );
-            }
-          }}
-        />
-
-        {/* VyOS Delete Confirm */}
-        <AlertDialog
-          open={!!pendingDeleteVyos}
-          onOpenChange={(open) => {
-            if (!open) setPendingDeleteVyos(null);
-          }}
-        >
-          <AlertDialogContent className="bg-slate-900 border-slate-800">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-white">
-                Delete DNAT Rule
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-slate-400">
-                Are you sure you want to delete DNAT rule{" "}
-                {pendingDeleteVyos?.rule}? This will remove the port forwarding
-                from the VyOS router.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel className="border-slate-700 text-slate-300">
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDeleteVyos}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                Delete
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
 
         {/* MikroTik Add Dialog */}
         <MikrotikNatDialog
@@ -810,179 +447,6 @@ function SummaryCard({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-// ─── VyOS NAT Dialog ─────────────────────────────────────────
-
-function VyosNatDialog({
-  open,
-  onOpenChange,
-  existing,
-  onSave,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  existing?: NatDestinationRule | null;
-  onSave: (data: {
-    rule: number;
-    description?: string;
-    protocol?: string;
-    inbound_interface?: string;
-    external_port: string;
-    internal_ip: string;
-    internal_port: string;
-  }) => Promise<void>;
-}) {
-  const [saving, setSaving] = useState(false);
-  const [rule, setRule] = useState("");
-  const [description, setDescription] = useState("");
-  const [protocol, setProtocol] = useState("tcp");
-  const [externalPort, setExternalPort] = useState("");
-  const [internalIp, setInternalIp] = useState("");
-  const [internalPort, setInternalPort] = useState("");
-  const [inboundInterface, setInboundInterface] = useState("");
-
-  useEffect(() => {
-    if (open) {
-      if (existing) {
-        setRule(String(existing.rule));
-        setDescription(existing.description ?? "");
-        setProtocol(existing.protocol ?? "tcp");
-        setExternalPort(existing.external_port ?? "");
-        setInternalIp(existing.internal_ip ?? "");
-        setInternalPort(existing.internal_port ?? "");
-        setInboundInterface(existing.inbound_interface ?? "");
-      } else {
-        setRule("");
-        setDescription("");
-        setProtocol("tcp");
-        setExternalPort("");
-        setInternalIp("");
-        setInternalPort("");
-        setInboundInterface("");
-      }
-    }
-  }, [open, existing]);
-
-  const handleSubmit = async () => {
-    if (!rule || !externalPort || !internalIp || !internalPort) return;
-    setSaving(true);
-    try {
-      await onSave({
-        rule: Number(rule),
-        description: description || undefined,
-        protocol: protocol || undefined,
-        inbound_interface: inboundInterface || undefined,
-        external_port: externalPort,
-        internal_ip: internalIp,
-        internal_port: internalPort,
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-slate-900 border-slate-800 sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle className="text-white">
-            {existing ? "Edit DNAT Rule" : "Add DNAT Rule"}
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-slate-400">Rule Number</Label>
-              <Input
-                type="number"
-                value={rule}
-                onChange={(e) => setRule(e.target.value)}
-                disabled={!!existing}
-                placeholder="e.g. 100"
-                className="bg-slate-800 border-slate-700 text-slate-200"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-slate-400">Protocol</Label>
-              <Input
-                value={protocol}
-                onChange={(e) => setProtocol(e.target.value)}
-                placeholder="tcp, udp, tcp_udp"
-                className="bg-slate-800 border-slate-700 text-slate-200"
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-slate-400">Description</Label>
-            <Input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Web server port forward"
-              className="bg-slate-800 border-slate-700 text-slate-200"
-            />
-          </div>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-slate-400">External Port</Label>
-              <Input
-                value={externalPort}
-                onChange={(e) => setExternalPort(e.target.value)}
-                placeholder="8080"
-                className="bg-slate-800 border-slate-700 text-slate-200"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-slate-400">Internal IP</Label>
-              <Input
-                value={internalIp}
-                onChange={(e) => setInternalIp(e.target.value)}
-                placeholder="192.168.1.100"
-                className="bg-slate-800 border-slate-700 text-slate-200"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-slate-400">Internal Port</Label>
-              <Input
-                value={internalPort}
-                onChange={(e) => setInternalPort(e.target.value)}
-                placeholder="80"
-                className="bg-slate-800 border-slate-700 text-slate-200"
-              />
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-slate-400">Inbound Interface (optional)</Label>
-            <Input
-              value={inboundInterface}
-              onChange={(e) => setInboundInterface(e.target.value)}
-              placeholder="eth0"
-              className="bg-slate-800 border-slate-700 text-slate-200"
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              className="border-slate-700 text-slate-300"
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={
-                saving || !rule || !externalPort || !internalIp || !internalPort
-              }
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-              {existing ? "Update" : "Create"}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }
 

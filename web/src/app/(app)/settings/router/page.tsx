@@ -7,7 +7,6 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
-  AlertTriangle,
   ArrowLeft,
 } from "lucide-react";
 import {
@@ -21,199 +20,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  fetchRouterStatus,
   testMikrotikConnection,
 } from "@/lib/api";
 import { PageTransition } from "@/components/PageTransition";
 import Link from "next/link";
 
 type Status = "idle" | "loading" | "success" | "error";
-
-// ── VyOS settings panel ──────────────────────────────────
-
-function VyosPanel() {
-  const [url, setUrl] = useState("");
-  const [savedUrl, setSavedUrl] = useState<string | null>(null);
-  const [apiKey, setApiKey] = useState("");
-  const [apiKeySet, setApiKeySet] = useState(false);
-  const [enabled, setEnabled] = useState(false);
-  const [savedEnabled, setSavedEnabled] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<Status>("idle");
-  const [saveMsg, setSaveMsg] = useState("");
-  const [testStatus, setTestStatus] = useState<Status>("idle");
-  const [testMsg, setTestMsg] = useState("");
-  const loadTokenRef = useRef(0);
-
-  useEffect(() => {
-    const loadToken = ++loadTokenRef.current;
-    fetch("/api/v1/settings", { credentials: "include" })
-      .then((res) => res.json())
-      .then(
-        (data: { vyos_url: string | null; vyos_api_key_set: boolean; vyos_enabled: boolean }) => {
-          if (loadToken !== loadTokenRef.current) return;
-          setUrl(data.vyos_url ?? "");
-          setSavedUrl(data.vyos_url ?? null);
-          setApiKeySet(data.vyos_api_key_set);
-          setEnabled(data.vyos_enabled);
-          setSavedEnabled(data.vyos_enabled);
-        }
-      )
-      .catch(() => {});
-  }, []);
-
-  const dirty = url !== (savedUrl ?? "") || apiKey.length > 0 || enabled !== savedEnabled;
-
-  async function handleSave() {
-    loadTokenRef.current++;
-    setSaveStatus("loading");
-    setSaveMsg("");
-    try {
-      const body: Record<string, string | boolean> = {};
-      if (url !== (savedUrl ?? "")) body.vyos_url = url;
-      if (apiKey.length > 0) body.vyos_api_key = apiKey;
-      if (enabled !== savedEnabled) body.vyos_enabled = enabled;
-
-      const res = await fetch("/api/v1/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        credentials: "include",
-      });
-      if (res.ok) {
-        const data: { vyos_url: string | null; vyos_api_key_set: boolean; vyos_enabled: boolean } =
-          await res.json();
-        setSavedUrl(data.vyos_url ?? null);
-        setUrl(data.vyos_url ?? "");
-        setApiKeySet(data.vyos_api_key_set);
-        setEnabled(data.vyos_enabled);
-        setSavedEnabled(data.vyos_enabled);
-        setApiKey("");
-        setSaveStatus("success");
-        setSaveMsg("VyOS settings saved.");
-        setTimeout(() => setSaveStatus("idle"), 3000);
-      } else {
-        setSaveStatus("error");
-        setSaveMsg(`Failed to save (${res.status}).`);
-      }
-    } catch {
-      setSaveStatus("error");
-      setSaveMsg("Network error.");
-    }
-  }
-
-  async function handleTest() {
-    setTestStatus("loading");
-    setTestMsg("");
-    try {
-      const data = await fetchRouterStatus();
-      if (data.reachable) {
-        setTestStatus("success");
-        setTestMsg(
-          `Connected! ${data.version ? `Version: ${data.version}` : ""} ${data.uptime ? `· Uptime: ${data.uptime}` : ""}`
-        );
-        setTimeout(() => setTestStatus("idle"), 5000);
-      } else if (data.configured) {
-        setTestStatus("error");
-        setTestMsg("Router configured but unreachable. Check URL and network.");
-      } else {
-        setTestStatus("error");
-        setTestMsg("Router not configured. Save URL and API key first.");
-      }
-    } catch {
-      setTestStatus("error");
-      setTestMsg("Failed to test connection.");
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <Label htmlFor="vyos-enabled" className="text-xs text-slate-400">
-          Enable VyOS integration
-        </Label>
-        <Switch
-          id="vyos-enabled"
-          checked={enabled}
-          onCheckedChange={setEnabled}
-        />
-      </div>
-
-      <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-        <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
-        <p className="text-xs text-amber-400">
-          Legacy — MikroTik is the recommended router platform for new deployments.
-        </p>
-      </div>
-      <div className="space-y-1.5">
-        <Label htmlFor="vyos-url" className="text-xs text-slate-400">
-          Router URL
-        </Label>
-        <Input
-          id="vyos-url"
-          type="url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-          placeholder="https://10.10.0.50"
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="vyos-key" className="text-xs text-slate-400">
-          API Key{" "}
-          {apiKeySet && <span className="text-emerald-500">(saved)</span>}
-        </Label>
-        <Input
-          id="vyos-key"
-          type="password"
-          value={apiKey}
-          onChange={(e) => setApiKey(e.target.value)}
-          className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-          placeholder={
-            apiKeySet
-              ? "••••••••  (leave blank to keep current)"
-              : "Enter VyOS API key"
-          }
-        />
-      </div>
-
-      <StatusMessages
-        saveStatus={saveStatus}
-        saveMsg={saveMsg}
-        testStatus={testStatus}
-        testMsg={testMsg}
-      />
-
-      <div className="flex gap-2">
-        <Button
-          onClick={handleSave}
-          disabled={!dirty || saveStatus === "loading"}
-          className="bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
-        >
-          {saveStatus === "loading" && (
-            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-          )}
-          Save
-        </Button>
-        <Button
-          variant="outline"
-          onClick={handleTest}
-          disabled={(!savedUrl && !url) || testStatus === "loading"}
-          className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
-        >
-          {testStatus === "loading" ? (
-            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-          ) : (
-            <Plug className="mr-1.5 h-3.5 w-3.5" />
-          )}
-          Test Connection
-        </Button>
-      </div>
-    </div>
-  );
-}
 
 // ── MikroTik settings panel ──────────────────────────────
 
@@ -505,36 +318,13 @@ export default function RouterSettingsPage() {
                   Router Connection
                 </CardTitle>
                 <CardDescription className="text-xs text-slate-500">
-                  Configure VyOS or MikroTik router integration.
+                  Configure MikroTik router integration.
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="mikrotik">
-              <TabsList className="mb-4 w-full border-slate-800 bg-slate-950">
-                <TabsTrigger
-                  value="mikrotik"
-                  className="flex-1 data-[state=active]:bg-pink-600 data-[state=active]:text-white"
-                >
-                  <Router className="mr-1.5 h-3.5 w-3.5" />
-                  MikroTik
-                </TabsTrigger>
-                <TabsTrigger
-                  value="vyos"
-                  className="flex-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
-                >
-                  <Router className="mr-1.5 h-3.5 w-3.5" />
-                  VyOS (Legacy)
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="mikrotik">
-                <MikrotikPanel />
-              </TabsContent>
-              <TabsContent value="vyos">
-                <VyosPanel />
-              </TabsContent>
-            </Tabs>
+            <MikrotikPanel />
           </CardContent>
         </Card>
       </div>

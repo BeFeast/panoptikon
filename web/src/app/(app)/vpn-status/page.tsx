@@ -31,7 +31,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageTransition } from "@/components/PageTransition";
-import { fetchSettings, fetchVpnStatus } from "@/lib/api";
+import { fetchVpnStatus } from "@/lib/api";
 import type { VpnStatusResponse, VpnInterfaceStatus } from "@/lib/types";
 
 /** Format bytes into a human-readable string. */
@@ -60,11 +60,9 @@ function timeAgo(ts: number | null): string {
 
 export default function VpnStatusPage() {
   const [data, setData] = useState<VpnStatusResponse | null>(null);
-  const [legacyRoutersEnabled, setLegacyRoutersEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
-  const vyosVisible = legacyRoutersEnabled && !!data?.vyos_available;
   const defaultTabSet = useRef(false);
 
   const load = useCallback(async () => {
@@ -86,29 +84,12 @@ export default function VpnStatusPage() {
     return () => clearInterval(id);
   }, [load]);
 
-  useEffect(() => {
-    fetchSettings()
-      .then((settings) => setLegacyRoutersEnabled(settings.show_legacy_routers))
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!vyosVisible && activeTab === "vyos") {
-      setActiveTab("overview");
-    }
-    if (!data?.mikrotik_available && activeTab === "mikrotik") {
-      setActiveTab("overview");
-    }
-  }, [activeTab, vyosVisible, data?.mikrotik_available]);
-
   // Default to MikroTik tab when available (once, on first data load)
   useEffect(() => {
     if (!data || defaultTabSet.current) return;
     defaultTabSet.current = true;
     if (data.mikrotik_available) {
       setActiveTab("mikrotik");
-    } else if (data.vyos_available) {
-      setActiveTab("vyos");
     }
   }, [data]);
 
@@ -134,20 +115,14 @@ export default function VpnStatusPage() {
   }, [data, search]);
 
   // Group interfaces by source
-  const vyosInterfaces = useMemo(
-    () => filteredInterfaces?.filter((i) => i.source === "vyos") ?? [],
-    [filteredInterfaces],
-  );
   const mikrotikInterfaces = useMemo(
     () => filteredInterfaces?.filter((i) => i.source === "mikrotik") ?? [],
     [filteredInterfaces],
   );
   const overviewInterfaces = useMemo(() => {
     if (!data) return [];
-    return vyosVisible
-      ? data.interfaces
-      : data.interfaces.filter((i) => i.source !== "vyos");
-  }, [data, vyosVisible]);
+    return data.interfaces;
+  }, [data]);
 
   return (
     <PageTransition>
@@ -222,14 +197,6 @@ export default function VpnStatusPage() {
                 MikroTik
               </TabsTrigger>
             )}
-            {vyosVisible && (
-              <TabsTrigger
-                value="vyos"
-                className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
-              >
-                VyOS
-              </TabsTrigger>
-            )}
           </TabsList>
 
           {/* Overview Tab */}
@@ -247,33 +214,6 @@ export default function VpnStatusPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 text-sm text-slate-400">
-                  {vyosVisible && (
-                    <p>
-                      VyOS:{" "}
-                      <span className="font-medium text-white">
-                        {vyosInterfaces.length}
-                      </span>{" "}
-                      {vyosInterfaces.length === 1
-                        ? "interface"
-                        : "interfaces"}
-                      {" with "}
-                      <span className="font-medium text-white">
-                        {vyosInterfaces.reduce(
-                          (sum, i) => sum + i.peers_total,
-                          0,
-                        )}
-                      </span>{" "}
-                      peers (
-                      <span className="text-emerald-400">
-                        {vyosInterfaces.reduce(
-                          (sum, i) => sum + i.peers_online,
-                          0,
-                        )}{" "}
-                        online
-                      </span>
-                      )
-                    </p>
-                  )}
                   {data?.mikrotik_available && (
                     <p>
                       MikroTik:{" "}
@@ -301,7 +241,7 @@ export default function VpnStatusPage() {
                       )
                     </p>
                   )}
-                  {!vyosVisible && !data?.mikrotik_available && !loading && (
+                  {!data?.mikrotik_available && !loading && (
                     <p>
                       No router is configured. Go to{" "}
                       <span className="font-medium text-white">Settings</span>{" "}
@@ -319,32 +259,6 @@ export default function VpnStatusPage() {
                   <InterfaceCard key={`${iface.source}-${iface.name}`} iface={iface} />
                 ))}
               </div>
-            )}
-          </TabsContent>
-
-          {/* VyOS Tab */}
-          <TabsContent value="vyos" className="space-y-4">
-            <div className="relative max-w-md">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-              <Input
-                placeholder="Filter peers..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="border-slate-800 bg-slate-950 pl-10 text-white placeholder:text-slate-600"
-              />
-            </div>
-            {vyosInterfaces.length === 0 ? (
-              <Card className="border-slate-800 bg-slate-900">
-                <CardContent className="py-12 text-center text-slate-500">
-                  {search
-                    ? "No interfaces or peers match your filter."
-                    : "No VyOS WireGuard interfaces found."}
-                </CardContent>
-              </Card>
-            ) : (
-              vyosInterfaces.map((iface) => (
-                <InterfaceCard key={iface.name} iface={iface} />
-              ))
             )}
           </TabsContent>
 

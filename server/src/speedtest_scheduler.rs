@@ -7,6 +7,58 @@ use sqlx::SqlitePool;
 use std::time::Duration;
 use tracing::{error, info};
 
+/// Ookla speedtest CLI JSON output structures.
+#[derive(Debug, serde::Deserialize)]
+struct SpeedtestResult {
+    download: SpeedtestBandwidth,
+    upload: SpeedtestBandwidth,
+    ping: SpeedtestPing,
+    isp: String,
+    server: SpeedtestServer,
+    result: SpeedtestResultUrl,
+    #[serde(default, rename = "packetLoss")]
+    packet_loss: f64,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct SpeedtestBandwidth {
+    bandwidth: u64,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct SpeedtestPing {
+    latency: f64,
+    jitter: f64,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct SpeedtestServer {
+    name: String,
+    location: String,
+    country: String,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct SpeedtestResultUrl {
+    url: Option<String>,
+}
+
+/// Run the Ookla speedtest CLI and parse the JSON output.
+async fn run_speedtest_cli() -> Result<SpeedtestResult, anyhow::Error> {
+    let output = tokio::process::Command::new("/usr/local/bin/speedtest")
+        .args(["--accept-license", "--format=json"])
+        .output()
+        .await?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("speedtest CLI failed (exit {}): {}", output.status, stderr);
+    }
+
+    let result: SpeedtestResult = serde_json::from_slice(&output.stdout)?;
+    Ok(result)
+}
+
 /// Start the background speedtest scheduler.
 ///
 /// Checks every 5 minutes whether it's time to run a speedtest.
@@ -48,7 +100,7 @@ pub fn start_speedtest_scheduler(pool: SqlitePool) {
 
             info!("speedtest scheduler: starting scheduled speed test");
 
-            match crate::vyos::speedtest_ookla::run_speedtest_ookla().await {
+            match run_speedtest_cli().await {
                 Ok(ookla) => {
                     let download_mbps =
                         (ookla.download.bandwidth as f64 * 8.0 / 1_000_000.0 * 100.0).round()

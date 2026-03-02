@@ -1,7 +1,7 @@
 //! QoS / Traffic Shaping API endpoints.
 //!
-//! Provides queue management for VyOS traffic policies and MikroTik simple
-//! queues / queue trees. All endpoints proxy to the respective router APIs.
+//! Provides queue management for MikroTik simple queues / queue trees.
+//! All endpoints proxy to the respective router APIs.
 
 use axum::{
     extract::{Path, State},
@@ -13,7 +13,6 @@ use serde::{Deserialize, Serialize};
 use super::AppState;
 use crate::mikrotik::client::MikrotikClient;
 use crate::mikrotik::types::SimpleQueueWriteRequest;
-use crate::vyos::client::VyosClient;
 
 // ── Helpers ─────────────────────────────────────────────────
 
@@ -52,75 +51,11 @@ async fn mikrotik_client(state: &AppState) -> Option<MikrotikClient> {
     ))
 }
 
-async fn vyos_client(state: &AppState) -> Option<VyosClient> {
-    super::vyos::get_vyos_client_from_db(&state.db, &state.config, &state.vyos_http).await
-}
-
 fn is_true(val: &Option<String>) -> bool {
     val.as_deref() == Some("true")
 }
 
 // ── Response types ──────────────────────────────────────────
-
-// --- VyOS Traffic Policies ---
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct VyosTrafficPolicyClass {
-    pub id: String,
-    pub bandwidth: Option<String>,
-    pub ceiling: Option<String>,
-    pub priority: Option<String>,
-    pub queue_type: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct VyosTrafficPolicy {
-    pub name: String,
-    pub policy_type: String,
-    pub bandwidth: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub default_bandwidth: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub default_ceiling: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub description: Option<String>,
-    pub classes: Vec<VyosTrafficPolicyClass>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct VyosTrafficPoliciesResponse {
-    pub policies: Vec<VyosTrafficPolicy>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct CreateVyosTrafficPolicyRequest {
-    pub name: String,
-    pub policy_type: String,
-    pub bandwidth: String,
-    pub default_bandwidth: Option<String>,
-    pub default_ceiling: Option<String>,
-    pub description: Option<String>,
-    #[serde(default)]
-    pub classes: Vec<CreateVyosTrafficPolicyClassRequest>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct CreateVyosTrafficPolicyClassRequest {
-    pub id: String,
-    pub bandwidth: Option<String>,
-    pub ceiling: Option<String>,
-    pub priority: Option<String>,
-    pub queue_type: Option<String>,
-    pub description: Option<String>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct VyosQosWriteResponse {
-    pub success: bool,
-    pub message: String,
-}
 
 // --- MikroTik Simple Queues ---
 
@@ -184,218 +119,9 @@ pub struct MikrotikQueueTreeResponse {
 
 #[derive(Debug, Serialize)]
 pub struct QosSummaryResponse {
-    pub vyos_available: bool,
     pub mikrotik_available: bool,
-    pub vyos_policy_count: usize,
     pub mikrotik_simple_queue_count: usize,
     pub mikrotik_queue_tree_count: usize,
-}
-
-// ── VyOS Endpoints ──────────────────────────────────────────
-
-/// GET /api/v1/qos/vyos/policies
-pub async fn vyos_traffic_policies(
-    State(state): State<AppState>,
-) -> Result<Json<VyosTrafficPoliciesResponse>, StatusCode> {
-    let client = vyos_client(&state)
-        .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
-
-    if let Some(cached) = state.vyos_cache.get("qos-traffic-policies") {
-        if let Ok(resp) = serde_json::from_value(cached) {
-            return Ok(Json(resp));
-        }
-    }
-
-    let config = client.retrieve(&["traffic-policy"]).await.map_err(|e| {
-        tracing::warn!("VyOS traffic-policy retrieve failed: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
-
-    let policies = parse_vyos_traffic_policies(&config);
-
-    let resp = VyosTrafficPoliciesResponse { policies };
-    if let Ok(val) = serde_json::to_value(&resp) {
-        state.vyos_cache.set("qos-traffic-policies".into(), val);
-    }
-    Ok(Json(resp))
-}
-
-/// POST /api/v1/qos/vyos/policies
-pub async fn create_vyos_traffic_policy(
-    State(state): State<AppState>,
-    Json(body): Json<CreateVyosTrafficPolicyRequest>,
-) -> Result<Json<VyosQosWriteResponse>, StatusCode> {
-    let client = vyos_client(&state)
-        .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
-
-    if body.name.trim().is_empty() || body.bandwidth.trim().is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
-    }
-
-    let policy_type = &body.policy_type;
-    let name = body.name.trim();
-
-    // Set the main bandwidth
-    client
-        .configure_set(&[
-            "traffic-policy",
-            policy_type,
-            name,
-            "bandwidth",
-            &body.bandwidth,
-        ])
-        .await
-        .map_err(|e| {
-            tracing::error!("VyOS QoS create error: {e}");
-            StatusCode::BAD_GATEWAY
-        })?;
-
-    // Set optional description
-    if let Some(desc) = &body.description {
-        let _ = client
-            .configure_set(&["traffic-policy", policy_type, name, "description", desc])
-            .await;
-    }
-
-    // Set default bandwidth/ceiling for shaper policies
-    if let Some(db) = &body.default_bandwidth {
-        let _ = client
-            .configure_set(&[
-                "traffic-policy",
-                policy_type,
-                name,
-                "default",
-                "bandwidth",
-                db,
-            ])
-            .await;
-    }
-    if let Some(dc) = &body.default_ceiling {
-        let _ = client
-            .configure_set(&[
-                "traffic-policy",
-                policy_type,
-                name,
-                "default",
-                "ceiling",
-                dc,
-            ])
-            .await;
-    }
-
-    // Create classes
-    for cls in &body.classes {
-        let class_id = cls.id.trim();
-        if class_id.is_empty() {
-            continue;
-        }
-        if let Some(bw) = &cls.bandwidth {
-            let _ = client
-                .configure_set(&[
-                    "traffic-policy",
-                    policy_type,
-                    name,
-                    "class",
-                    class_id,
-                    "bandwidth",
-                    bw,
-                ])
-                .await;
-        }
-        if let Some(ceil) = &cls.ceiling {
-            let _ = client
-                .configure_set(&[
-                    "traffic-policy",
-                    policy_type,
-                    name,
-                    "class",
-                    class_id,
-                    "ceiling",
-                    ceil,
-                ])
-                .await;
-        }
-        if let Some(pri) = &cls.priority {
-            let _ = client
-                .configure_set(&[
-                    "traffic-policy",
-                    policy_type,
-                    name,
-                    "class",
-                    class_id,
-                    "priority",
-                    pri,
-                ])
-                .await;
-        }
-        if let Some(qt) = &cls.queue_type {
-            let _ = client
-                .configure_set(&[
-                    "traffic-policy",
-                    policy_type,
-                    name,
-                    "class",
-                    class_id,
-                    "queue-type",
-                    qt,
-                ])
-                .await;
-        }
-        if let Some(desc) = &cls.description {
-            let _ = client
-                .configure_set(&[
-                    "traffic-policy",
-                    policy_type,
-                    name,
-                    "class",
-                    class_id,
-                    "description",
-                    desc,
-                ])
-                .await;
-        }
-    }
-
-    // Commit
-    client.configure_commit().await.map_err(|e| {
-        tracing::error!("VyOS QoS commit error: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
-
-    Ok(Json(VyosQosWriteResponse {
-        success: true,
-        message: format!("Traffic policy '{name}' created"),
-    }))
-}
-
-/// DELETE /api/v1/qos/vyos/policies/:policy_type/:name
-pub async fn delete_vyos_traffic_policy(
-    Path((policy_type, name)): Path<(String, String)>,
-    State(state): State<AppState>,
-) -> Result<Json<VyosQosWriteResponse>, StatusCode> {
-    let client = vyos_client(&state)
-        .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
-
-    client
-        .configure_delete(&["traffic-policy", &policy_type, &name])
-        .await
-        .map_err(|e| {
-            tracing::error!("VyOS QoS delete error: {e}");
-            StatusCode::BAD_GATEWAY
-        })?;
-
-    client.configure_commit().await.map_err(|e| {
-        tracing::error!("VyOS QoS commit error: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
-
-    Ok(Json(VyosQosWriteResponse {
-        success: true,
-        message: format!("Traffic policy '{name}' deleted"),
-    }))
 }
 
 // ── MikroTik Endpoints ──────────────────────────────────────
@@ -596,20 +322,10 @@ pub async fn mikrotik_queue_tree(
 pub async fn qos_summary(
     State(state): State<AppState>,
 ) -> Result<Json<QosSummaryResponse>, StatusCode> {
-    let vyos_available = vyos_client(&state).await.is_some();
     let mikrotik_available = mikrotik_client(&state).await.is_some();
 
-    let mut vyos_policy_count = 0;
     let mut mikrotik_simple_queue_count = 0;
     let mut mikrotik_queue_tree_count = 0;
-
-    if vyos_available {
-        if let Some(client) = vyos_client(&state).await {
-            if let Ok(config) = client.retrieve(&["traffic-policy"]).await {
-                vyos_policy_count = parse_vyos_traffic_policies(&config).len();
-            }
-        }
-    }
 
     if mikrotik_available {
         if let Some(client) = mikrotik_client(&state).await {
@@ -620,93 +336,8 @@ pub async fn qos_summary(
     }
 
     Ok(Json(QosSummaryResponse {
-        vyos_available,
         mikrotik_available,
-        vyos_policy_count,
         mikrotik_simple_queue_count,
         mikrotik_queue_tree_count,
     }))
-}
-
-// ── VyOS Config Parsing ─────────────────────────────────────
-
-fn parse_vyos_traffic_policies(config: &serde_json::Value) -> Vec<VyosTrafficPolicy> {
-    let mut policies = Vec::new();
-
-    let obj = match config.as_object() {
-        Some(o) => o,
-        None => return policies,
-    };
-
-    // VyOS traffic-policy config is structured as:
-    // { "shaper": { "policy-name": { ... } }, "limiter": { ... }, ... }
-    for (policy_type, type_obj) in obj {
-        let type_map = match type_obj.as_object() {
-            Some(m) => m,
-            None => continue,
-        };
-
-        for (name, policy_config) in type_map {
-            let bandwidth = policy_config
-                .get("bandwidth")
-                .and_then(|v| v.as_str())
-                .map(String::from);
-            let description = policy_config
-                .get("description")
-                .and_then(|v| v.as_str())
-                .map(String::from);
-
-            let default_bandwidth = policy_config
-                .get("default")
-                .and_then(|d| d.get("bandwidth"))
-                .and_then(|v| v.as_str())
-                .map(String::from);
-            let default_ceiling = policy_config
-                .get("default")
-                .and_then(|d| d.get("ceiling"))
-                .and_then(|v| v.as_str())
-                .map(String::from);
-
-            let mut classes = Vec::new();
-            if let Some(class_map) = policy_config.get("class").and_then(|v| v.as_object()) {
-                for (class_id, class_config) in class_map {
-                    classes.push(VyosTrafficPolicyClass {
-                        id: class_id.clone(),
-                        bandwidth: class_config
-                            .get("bandwidth")
-                            .and_then(|v| v.as_str())
-                            .map(String::from),
-                        ceiling: class_config
-                            .get("ceiling")
-                            .and_then(|v| v.as_str())
-                            .map(String::from),
-                        priority: class_config
-                            .get("priority")
-                            .and_then(|v| v.as_str())
-                            .map(String::from),
-                        queue_type: class_config
-                            .get("queue-type")
-                            .and_then(|v| v.as_str())
-                            .map(String::from),
-                        description: class_config
-                            .get("description")
-                            .and_then(|v| v.as_str())
-                            .map(String::from),
-                    });
-                }
-            }
-
-            policies.push(VyosTrafficPolicy {
-                name: name.clone(),
-                policy_type: policy_type.clone(),
-                bandwidth,
-                default_bandwidth,
-                default_ceiling,
-                description,
-                classes,
-            });
-        }
-    }
-
-    policies
 }
