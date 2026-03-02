@@ -670,15 +670,30 @@ async fn handle_agent_ws(mut socket: WebSocket, state: AppState, api_key: Option
         .await;
 
     // Create alert for agent going offline.
-    // Check if agent has a linked device that is muted.
-    let agent_device_id: Option<String> =
-        sqlx::query_scalar(r#"SELECT device_id FROM agents WHERE id = ?"#)
-            .bind(&agent_id)
-            .fetch_optional(&state.db)
-            .await
-            .unwrap_or(None)
-            .flatten();
+    // Fetch agent name and linked device_id in one query.
+    let agent_row = sqlx::query(r#"SELECT name, device_id FROM agents WHERE id = ?"#)
+        .bind(&agent_id)
+        .fetch_optional(&state.db)
+        .await
+        .unwrap_or(None);
 
+    let agent_name: Option<String> = agent_row
+        .as_ref()
+        .and_then(|r| r.try_get::<Option<String>, _>("name").unwrap_or(None));
+    let agent_device_id: Option<String> = agent_row
+        .as_ref()
+        .and_then(|r| r.try_get::<Option<String>, _>("device_id").unwrap_or(None));
+
+    // Use agent name for display, fall back to short UUID suffix.
+    let display_name = agent_name.unwrap_or_else(|| {
+        let short = agent_id
+            .rfind('-')
+            .map(|i| &agent_id[i + 1..])
+            .unwrap_or(&agent_id);
+        format!("...{short}")
+    });
+
+    // Check if agent has a linked device that is muted.
     let device_muted = match agent_device_id {
         Some(ref did) => alerts::is_device_muted(&state.db, did).await,
         None => false,
@@ -692,7 +707,7 @@ async fn handle_agent_ws(mut socket: WebSocket, state: AppState, api_key: Option
         )
         .bind(&alert_id)
         .bind(&agent_id)
-        .bind(format!("Agent {} disconnected", &agent_id))
+        .bind(format!("Agent {display_name} disconnected"))
         .bind(severity)
         .bind(&now)
         .execute(&state.db)
@@ -704,7 +719,11 @@ async fn handle_agent_ws(mut socket: WebSocket, state: AppState, api_key: Option
         .ws_hub
         .broadcast("agent_offline", json!({"agent_id": &agent_id}));
 
-    webhook::dispatch_webhook(&state.db, "agent_offline", json!({"agent_id": &agent_id}));
+    webhook::dispatch_webhook(
+        &state.db,
+        "agent_offline",
+        json!({"agent_id": &agent_id, "name": &display_name}),
+    );
 }
 
 /// Wait for the agent's first message (containing its agent_id) and verify the API key
@@ -2218,6 +2237,95 @@ mod tests {
         assert!(
             device_id.is_none(),
             "Agent should have no device_id without MAC"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_agent_offline_alert_uses_name_not_uuid() {
+        // Simulate the agent-offline alert generation logic and verify
+        // the message uses the agent name, not the raw UUID.
+        let pool = test_db().await;
+        let agent_id = insert_test_agent(&pool).await; // name = "test-agent"
+
+        // Look up agent name + device_id (same query as disconnect handler).
+        let agent_row = sqlx::query(r#"SELECT name, device_id FROM agents WHERE id = ?"#)
+            .bind(&agent_id)
+            .fetch_optional(&pool)
+            .await
+            .unwrap();
+
+        let agent_name: Option<String> = agent_row
+            .as_ref()
+            .and_then(|r| sqlx::Row::try_get::<Option<String>, _>(r, "name").unwrap_or(None));
+
+        let display_name = agent_name.unwrap_or_else(|| {
+            let short = agent_id
+                .rfind('-')
+                .map(|i| &agent_id[i + 1..])
+                .unwrap_or(&agent_id);
+            format!("...{short}")
+        });
+
+        let message = format!("Agent {display_name} disconnected");
+
+        // Must use the agent name, not the raw UUID.
+        assert_eq!(
+            message, "Agent test-agent disconnected",
+            "Alert message should use agent name, not UUID"
+        );
+        assert!(
+            !message.contains(&agent_id),
+            "Alert message must not contain raw UUID"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_agent_offline_alert_falls_back_to_short_uuid() {
+        // When an agent has no name, the alert should show a short UUID suffix.
+        let pool = test_db().await;
+        let agent_id = uuid::Uuid::new_v4().to_string();
+        let hash = bcrypt::hash("test_key", 4).unwrap();
+        sqlx::query("INSERT INTO agents (id, api_key_hash) VALUES (?, ?)")
+            .bind(&agent_id)
+            .bind(&hash)
+            .execute(&pool)
+            .await
+            .unwrap();
+
+        let agent_row = sqlx::query(r#"SELECT name, device_id FROM agents WHERE id = ?"#)
+            .bind(&agent_id)
+            .fetch_optional(&pool)
+            .await
+            .unwrap();
+
+        let agent_name: Option<String> = agent_row
+            .as_ref()
+            .and_then(|r| sqlx::Row::try_get::<Option<String>, _>(r, "name").unwrap_or(None));
+
+        let display_name = agent_name.unwrap_or_else(|| {
+            let short = agent_id
+                .rfind('-')
+                .map(|i| &agent_id[i + 1..])
+                .unwrap_or(&agent_id);
+            format!("...{short}")
+        });
+
+        let message = format!("Agent {display_name} disconnected");
+
+        // Should NOT contain the full UUID.
+        assert!(
+            !message.contains(&agent_id),
+            "Alert message must not contain full UUID"
+        );
+        // Should contain the short suffix from the UUID.
+        let expected_suffix = agent_id.rsplit('-').next().unwrap();
+        assert!(
+            message.contains(expected_suffix),
+            "Alert message should contain short UUID suffix: {expected_suffix}"
+        );
+        assert!(
+            message.starts_with("Agent ..."),
+            "Fallback display name should start with '...'"
         );
     }
 }
