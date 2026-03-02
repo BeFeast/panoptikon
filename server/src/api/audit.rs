@@ -15,6 +15,7 @@ pub struct AuditLogEntry {
     pub created_at: String,
     pub action: String,
     pub description: String,
+    #[serde(rename = "commands")]
     pub vyos_commands: String,
     pub success: bool,
     pub error_msg: Option<String>,
