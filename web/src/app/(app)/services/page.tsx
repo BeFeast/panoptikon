@@ -397,17 +397,19 @@ export default function ServicesPage() {
                     key={host.id}
                     className="border-slate-800 hover:bg-slate-800/50"
                   >
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Globe className="h-4 w-4 text-slate-500" />
-                        <span className="font-medium text-white">
+                    <TableCell className="max-w-[250px]">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Globe className="h-4 w-4 shrink-0 text-slate-500" />
+                        <span className="truncate font-medium text-white">
                           {host.domain}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-slate-300">
-                      {host.forward_scheme}://{host.forward_host}:
-                      {host.forward_port}
+                    <TableCell className="max-w-[200px] text-slate-300">
+                      <span className="block truncate">
+                        {host.forward_scheme}://{host.forward_host}:
+                        {host.forward_port}
+                      </span>
                     </TableCell>
                     <TableCell>
                       {host.tls_enabled ? (

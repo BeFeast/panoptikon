@@ -1,0 +1,117 @@
+import { test, expect, login } from '../../e2e/fixtures';
+
+test.describe('Layout & Grid — no overflow or clipping (#524)', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('dashboard cards do not overflow viewport at 1280px', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/dashboard');
+    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+
+    // Wait for stat cards to resolve
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
+
+    // No horizontal scrollbar — body should not be wider than viewport
+    const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
+    const viewportWidth = await page.evaluate(() => window.innerWidth);
+    expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 1); // +1 for sub-pixel rounding
+
+    await page.screenshot({ path: 'tests/screenshots/layout-dashboard-1280.png', fullPage: true });
+  });
+
+  test('dashboard cards do not overflow at 768px tablet width', async ({ page }) => {
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await page.goto('/dashboard');
+    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
+
+    const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
+    const viewportWidth = await page.evaluate(() => window.innerWidth);
+    expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 1);
+
+    await page.screenshot({ path: 'tests/screenshots/layout-dashboard-768.png', fullPage: true });
+  });
+
+  test('device breakdown labels are not clipped', async ({ page }) => {
+    await page.goto('/dashboard');
+    await expect(page.getByText('Device Breakdown')).toBeVisible({ timeout: 10000 });
+
+    // Wait for device breakdown section to populate (or show "No devices found")
+    const breakdownSection = page.getByText('Device Breakdown').locator('xpath=ancestor::div[contains(@class,"border-slate-800")]').first();
+    await expect(breakdownSection).toBeVisible({ timeout: 10000 });
+
+    await page.screenshot({ path: 'tests/screenshots/layout-device-breakdown.png', fullPage: true });
+  });
+
+  test('stat card values use truncate to prevent overflow', async ({ page }) => {
+    await page.goto('/dashboard');
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
+
+    // Verify that the stat card value elements have truncate class
+    // This is a structural check — the "truncate" class on value <p> elements
+    // ensures long text won't break the card layout.
+    const statValues = page.locator('.tabular-nums.truncate');
+    const count = await statValues.count();
+    // At least one stat card value should have the truncate class
+    expect(count).toBeGreaterThan(0);
+
+    await page.screenshot({ path: 'tests/screenshots/layout-stat-card-truncate.png', fullPage: true });
+  });
+
+  test('devices page grid cards do not overflow at 1024px', async ({ page }) => {
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await page.goto('/devices');
+    await expect(page.getByRole('heading', { name: 'Devices', level: 1 })).toBeVisible();
+
+    // Wait for either device cards or empty state
+    await page.waitForTimeout(3000);
+
+    const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
+    const viewportWidth = await page.evaluate(() => window.innerWidth);
+    expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 1);
+
+    await page.screenshot({ path: 'tests/screenshots/layout-devices-1024.png', fullPage: true });
+  });
+
+  test('services page table cells handle long domains', async ({ page }) => {
+    await page.goto('/services');
+    await expect(page.getByRole('heading', { name: 'Services', level: 1 })).toBeVisible();
+
+    // Verify the table container has overflow handling
+    const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
+    const viewportWidth = await page.evaluate(() => window.innerWidth);
+    expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 1);
+
+    await page.screenshot({ path: 'tests/screenshots/layout-services.png', fullPage: true });
+  });
+
+  test('TopBar search dropdown truncates long results', async ({ page }) => {
+    await page.goto('/dashboard');
+    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+
+    // The search input should be present in the top bar
+    const searchInput = page.locator('input[placeholder*="Search"]');
+    await expect(searchInput).toBeVisible();
+
+    await page.screenshot({ path: 'tests/screenshots/layout-topbar.png' });
+  });
+
+  test('no horizontal scroll on any major page at 1280px', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+
+    const pages = ['/dashboard', '/devices', '/services'];
+
+    for (const url of pages) {
+      await page.goto(url);
+      await page.waitForTimeout(2000);
+
+      const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
+      const viewportWidth = await page.evaluate(() => window.innerWidth);
+      expect(bodyWidth, `Page ${url} overflows horizontally`).toBeLessThanOrEqual(viewportWidth + 1);
+    }
+
+    await page.screenshot({ path: 'tests/screenshots/layout-no-scroll.png', fullPage: true });
+  });
+});

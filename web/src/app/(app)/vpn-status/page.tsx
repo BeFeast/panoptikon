@@ -436,13 +436,15 @@ function InterfaceCard({ iface }: { iface: VpnInterfaceStatus }) {
                       </span>
                     )}
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-400">
-                    {peer.endpoint ?? "—"}
+                  <TableCell className="max-w-[180px] font-mono text-xs text-slate-400">
+                    <span className="block truncate">{peer.endpoint ?? "—"}</span>
                   </TableCell>
-                  <TableCell className="font-mono text-xs text-slate-400">
-                    {peer.allowed_ips.length > 0
-                      ? peer.allowed_ips.join(", ")
-                      : "—"}
+                  <TableCell className="max-w-[200px] font-mono text-xs text-slate-400">
+                    <span className="block truncate">
+                      {peer.allowed_ips.length > 0
+                        ? peer.allowed_ips.join(", ")
+                        : "—"}
+                    </span>
                   </TableCell>
                   <TableCell className="text-slate-400">
                     {timeAgo(peer.last_handshake)}

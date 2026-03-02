@@ -617,15 +617,15 @@ function InfoRow({
         {label}
       </span>
       <span
-        className={`flex items-center gap-1 text-sm text-slate-300 ${
+        className={`flex min-w-0 items-center gap-1 text-sm text-slate-300 ${
           mono ? 'font-mono tabular-nums' : ''
         }`}
       >
-        {value}
+        <span className="truncate">{value}</span>
         {onCopy && (
           <button
             onClick={onCopy}
-            className="ml-1 text-slate-600 transition-colors hover:text-slate-400"
+            className="ml-1 shrink-0 text-slate-600 transition-colors hover:text-slate-400"
           >
             {copied ? (
               <Check className="h-3 w-3 text-emerald-400" />
