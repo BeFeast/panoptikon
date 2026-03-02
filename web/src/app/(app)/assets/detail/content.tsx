@@ -99,7 +99,7 @@ export default function AssetDetailContent() {
         }
       }
 
-      // Load cached port scan results
+      // Load cached port scan results (null means no scan yet)
       try {
         const scan = await fetchPortScan(id);
         setPortScan(scan);

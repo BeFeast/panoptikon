@@ -1154,10 +1154,11 @@ pub async fn trigger_scan(
 }
 
 /// GET /api/v1/devices/:id/scan — get the latest cached port scan result.
+/// Returns `null` (200 OK) when no scan has been performed yet.
 pub async fn get_scan(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<PortScanResult>, StatusCode> {
+) -> Result<Json<Option<PortScanResult>>, StatusCode> {
     let row = sqlx::query(
         r#"SELECT scanned_at, result_json FROM port_scans WHERE device_id = ? ORDER BY scanned_at DESC LIMIT 1"#,
     )
@@ -1175,13 +1176,13 @@ pub async fn get_scan(
             let result_json: String = row.try_get("result_json").unwrap_or_default();
             let ports: Vec<PortEntry> = serde_json::from_str(&result_json).unwrap_or_default();
 
-            Ok(Json(PortScanResult {
+            Ok(Json(Some(PortScanResult {
                 device_id: id,
                 scanned_at,
                 ports,
-            }))
+            })))
         }
-        None => Err(StatusCode::NOT_FOUND),
+        None => Ok(Json(None)),
     }
 }
 
