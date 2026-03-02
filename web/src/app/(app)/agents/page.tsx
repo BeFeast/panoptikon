@@ -263,7 +263,7 @@ export default function AgentsPage() {
                             </button>
                           </span>
                           {agent.cpu_name && (
-                            <span className="text-xs text-slate-500 font-normal truncate max-w-[200px]" title={agent.cpu_name}>
+                            <span className="w-full min-w-0 truncate text-xs font-normal text-slate-500" title={agent.cpu_name}>
                               {agent.cpu_name}
                             </span>
                           )}
