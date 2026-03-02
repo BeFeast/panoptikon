@@ -55,6 +55,8 @@ struct XiaomiTopoGraph {
     #[serde(default)]
     ip: String,
     #[serde(default)]
+    mac: String,
+    #[serde(default)]
     name: String,
     #[serde(default)]
     locale: String,
@@ -76,6 +78,8 @@ struct XiaomiTopoGraph {
 struct XiaomiTopoLeaf {
     #[serde(default)]
     ip: String,
+    #[serde(default)]
+    mac: String,
     #[serde(default)]
     name: String,
     #[serde(default)]
@@ -199,9 +203,15 @@ pub async fn topology(
     // Main router node (the graph root).
     let main_onlines = parse_onlines(&graph.onlines);
     total_devices += main_onlines;
+    // Use MAC from API if available, otherwise fall back to IP for a unique ID.
+    let main_mac = if !graph.mac.is_empty() {
+        graph.mac.clone()
+    } else {
+        graph.ip.clone()
+    };
     nodes.push(MeshNode {
         ip: graph.ip.clone(),
-        mac: String::new(),
+        mac: main_mac.clone(),
         name: if graph.name.is_empty() {
             graph.locale.clone()
         } else {
@@ -228,9 +238,14 @@ pub async fn topology(
         } else {
             leaf.link_type
         };
+        let leaf_mac = if !leaf.mac.is_empty() {
+            leaf.mac.clone()
+        } else {
+            leaf.ip.clone()
+        };
         nodes.push(MeshNode {
             ip: leaf.ip.clone(),
-            mac: String::new(),
+            mac: leaf_mac,
             name: if leaf.name.is_empty() {
                 leaf.locale.clone()
             } else {
@@ -241,7 +256,7 @@ pub async fn topology(
             is_main: false,
             online_devices: leaf_onlines,
             backhaul_type,
-            parent_mac: String::new(),
+            parent_mac: main_mac.clone(),
             signal: leaf.signal,
             is_online: !leaf.ip.is_empty(),
         });

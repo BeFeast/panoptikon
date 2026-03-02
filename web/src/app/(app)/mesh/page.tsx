@@ -56,22 +56,30 @@ type MeshNodeType = Node<MeshNodeData, 'meshNode'>
 const NODE_WIDTH = 240
 const NODE_HEIGHT = 120
 
+/** Derive a stable unique key for a mesh node. */
+function nodeKey(node: MeshNode, index: number): string {
+  return node.mac || node.ip || `node-${index}`
+}
+
 /** Simple radial layout: main node center, satellites in a circle around it. */
 function computeLayout(nodes: MeshNode[]): Map<string, { x: number; y: number }> {
   const positions = new Map<string, { x: number; y: number }>()
-  const main = nodes.find((n) => n.is_main)
-  const satellites = nodes.filter((n) => !n.is_main)
+  const mainIdx = nodes.findIndex((n) => n.is_main)
+  const main = mainIdx >= 0 ? nodes[mainIdx] : undefined
+  const satellites = nodes
+    .map((n, i) => ({ node: n, originalIndex: i }))
+    .filter((entry) => !entry.node.is_main)
 
   // Center the main node
   if (main) {
-    positions.set(main.mac, { x: 0, y: 0 })
+    positions.set(nodeKey(main, mainIdx), { x: 0, y: 0 })
   }
 
   // Place satellites in a circle
   const radius = 300
-  satellites.forEach((sat, i) => {
+  satellites.forEach(({ node: sat, originalIndex }, i) => {
     const angle = (2 * Math.PI * i) / Math.max(satellites.length, 1) - Math.PI / 2
-    positions.set(sat.mac, {
+    positions.set(nodeKey(sat, originalIndex), {
       x: Math.cos(angle) * radius,
       y: Math.sin(angle) * radius,
     })
@@ -287,10 +295,11 @@ export default function MeshPage() {
           positionMap = new Map()
         }
 
-        const flowNodes: MeshNodeType[] = meshNodes.map((mn) => {
-          const pos = positionMap.get(mn.mac)
+        const flowNodes: MeshNodeType[] = meshNodes.map((mn, idx) => {
+          const id = nodeKey(mn, idx)
+          const pos = positionMap.get(id)
           return {
-            id: mn.mac,
+            id,
             type: 'meshNode' as const,
             position: pos
               ? { x: pos.x - NODE_WIDTH / 2, y: pos.y - NODE_HEIGHT / 2 }
@@ -301,16 +310,19 @@ export default function MeshPage() {
         })
 
         // Edges: each satellite connects to the main node (or its parent)
-        const mainNode = meshNodes.find((n) => n.is_main)
+        const mainIdx = meshNodes.findIndex((n) => n.is_main)
+        const mainId = mainIdx >= 0 ? nodeKey(meshNodes[mainIdx], mainIdx) : ''
         const allEdges: Edge[] = meshNodes
-          .filter((n) => !n.is_main)
-          .map((satellite) => {
-            const parentMac = satellite.parent_mac || mainNode?.mac || ''
+          .map((n, i) => ({ node: n, idx: i }))
+          .filter((entry) => !entry.node.is_main)
+          .map(({ node: satellite, idx }) => {
+            const targetId = nodeKey(satellite, idx)
+            const sourceId = satellite.parent_mac || mainId
             const isWired = satellite.backhaul_type === 'wired'
             return {
-              id: `${parentMac}-${satellite.mac}`,
-              source: parentMac,
-              target: satellite.mac,
+              id: `${sourceId}-${targetId}`,
+              source: sourceId,
+              target: targetId,
               type: 'default',
               animated: !isWired,
               label: isWired ? 'Wired' : 'Wireless',
