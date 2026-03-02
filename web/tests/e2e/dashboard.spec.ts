@@ -77,9 +77,9 @@ test.describe('Dashboard', () => {
     await expect(page.getByText('Infrastructure Health')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
 
-    // The System Health card and the stat-cards wrapper are direct children
+    // The Infrastructure Health card and the stat-cards wrapper are direct children
     // of the top bento grid. Grab all top-level grid children and compare heights.
-    const systemHealthCard = page.getByText('System Health').locator('xpath=ancestor::div[contains(@class,"border-slate-800")]').first();
+    const systemHealthCard = page.getByText('Infrastructure Health').locator('xpath=ancestor::div[contains(@class,"border-slate-800")]').first();
     const routerStatusCard = page.getByText('Router Status').locator('xpath=ancestor::div[contains(@class,"border-slate-800")]').first();
 
     const healthBox = await systemHealthCard.boundingBox();
