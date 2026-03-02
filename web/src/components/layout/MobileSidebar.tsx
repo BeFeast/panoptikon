@@ -59,23 +59,31 @@ export function MobileSidebar() {
 
               return (
                 <div key={group.key} className="mb-1">
-                  <button
-                    onClick={() => toggleGroup(group.key)}
-                    className={cn(
-                      "flex w-full items-center gap-2 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider transition-colors",
-                      hasActive
-                        ? "text-blue-400"
-                        : "text-slate-500 hover:text-slate-300",
-                    )}
+                  <div
+                    className="flex w-full items-center gap-1 px-3 py-1.5"
                   >
-                    <ChevronDown
+                    <button
+                      onClick={() => toggleGroup(group.key)}
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors text-slate-500 hover:bg-slate-800/60 hover:text-slate-300"
+                      aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.label}`}
+                      aria-expanded={!isCollapsed}
+                    >
+                      <ChevronDown
+                        className={cn(
+                          "h-3 w-3 transition-transform duration-200",
+                          isCollapsed && "-rotate-90",
+                        )}
+                      />
+                    </button>
+                    <span
                       className={cn(
-                        "h-3 w-3 shrink-0 transition-transform duration-200",
-                        isCollapsed && "-rotate-90",
+                        "cursor-default select-none text-[11px] font-semibold uppercase tracking-wider",
+                        hasActive ? "text-blue-400" : "text-slate-500",
                       )}
-                    />
-                    <span>{group.label}</span>
-                  </button>
+                    >
+                      {group.label}
+                    </span>
+                  </div>
                   <div
                     className={cn(
                       "grid transition-all duration-200",
