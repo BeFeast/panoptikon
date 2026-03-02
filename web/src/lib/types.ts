@@ -203,6 +203,20 @@ export interface TopDevice {
   tx_bps: number;
 }
 
+/** Shape returned by /api/v1/dashboard/critical-devices. */
+export interface CriticalDevice {
+  id: string;
+  name: string | null;
+  hostname: string | null;
+  ip: string | null;
+  vendor: string | null;
+  device_type: string | null;
+  is_online: boolean;
+  last_seen_at: string | null;
+  /** How the device was classified: "pinned" or "auto". */
+  classification: string;
+}
+
 // ─── Topology Graph ─────────────────────────────────────
 
 /** A device node in the topology graph (lighter than full Device). */

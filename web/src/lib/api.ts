@@ -22,6 +22,7 @@ import type {
   ConfigBackup,
   ConfigBackupListResponse,
   ConfigDiffResponse,
+  CriticalDevice,
   DashboardStats,
   DbSizeData,
   Device,
@@ -184,14 +185,14 @@ export function fetchRecentAlerts(limit = 5): Promise<Alert[]> {
   });
 }
 
-export function fetchCriticalDevices(): Promise<import("./types").CriticalDevice[]> {
-  return apiGet<import("./types").CriticalDevice[]>("/api/v1/dashboard/critical-devices", {
+export function fetchTopDevices(limit = 5): Promise<TopDevice[]> {
+  return apiGet<TopDevice[]>(`/api/v1/dashboard/top-devices?limit=${limit}`, {
     timeoutMs: DASHBOARD_TIMEOUT_MS,
   });
 }
 
-export function fetchTopDevices(limit = 5): Promise<TopDevice[]> {
-  return apiGet<TopDevice[]>(`/api/v1/dashboard/top-devices?limit=${limit}`, {
+export function fetchCriticalDevices(): Promise<CriticalDevice[]> {
+  return apiGet<CriticalDevice[]>("/api/v1/dashboard/critical-devices", {
     timeoutMs: DASHBOARD_TIMEOUT_MS,
   });
 }

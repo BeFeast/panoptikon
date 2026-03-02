@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   ArrowRight,
   ExternalLink,
+  Info,
   MonitorSmartphone,
   Pin,
   Router,
@@ -18,7 +19,6 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -26,6 +26,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   fetchDashboardStats,
   fetchRecentAlerts,
@@ -377,6 +378,7 @@ export default function DashboardPage() {
 
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [devicesError, setDevicesError] = useState(false);
+
   const [criticalDialogOpen, setCriticalDialogOpen] = useState(false);
 
   // ── Independent loaders — each resolves on its own ────
@@ -484,8 +486,7 @@ export default function DashboardPage() {
       <StaggerContainer className="grid grid-cols-1 gap-4 lg:grid-cols-5 items-stretch">
         {/* ── Health Score Ring ─────────────────────────── */}
         <StaggerItem className="h-full"><Card
-          className="h-full border-slate-800 bg-slate-900 lg:col-span-1 cursor-pointer transition-all hover:border-blue-500/50 hover:bg-slate-800/60 hover:shadow-lg hover:shadow-blue-500/5"
-          onClick={() => stats && stats.critical_total > 0 && setCriticalDialogOpen(true)}
+          className="h-full border-slate-800 bg-slate-900 lg:col-span-1 transition-all hover:border-blue-500/50 hover:bg-slate-800/60 hover:shadow-lg hover:shadow-blue-500/5"
           data-testid="infra-health-card"
         >
           <CardHeader className="pb-2">
@@ -497,20 +498,21 @@ export default function DashboardPage() {
             {statsError ? (
               <SectionError message="Failed to load" />
             ) : stats ? (
-              <>
+              <button
+                type="button"
+                className="group cursor-pointer rounded-lg p-1 transition-all hover:bg-slate-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+                onClick={() => setCriticalDialogOpen(true)}
+                aria-label="View critical devices"
+              >
                 <HealthRing online={stats.critical_online} total={stats.critical_total} />
-              </>
+                <span className="mt-1 flex items-center justify-center gap-1 text-[10px] text-slate-600 opacity-0 transition-opacity group-hover:opacity-100">
+                  <Info className="h-3 w-3" /> View details
+                </span>
+              </button>
             ) : (
               <Skeleton className="aspect-square w-full max-w-[7rem] rounded-full" />
             )}
           </CardContent>
-          {stats && stats.critical_total > 0 && (
-            <div className="px-6 pb-3 -mt-2">
-              <p className="text-center text-[10px] text-slate-600">
-                Click for details
-              </p>
-            </div>
-          )}
         </Card></StaggerItem>
         <CriticalDevicesDialog
           open={criticalDialogOpen}
