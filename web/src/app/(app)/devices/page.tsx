@@ -759,8 +759,8 @@ function DeviceCard({
 
         {/* Technical info */}
         <div className="mt-3 space-y-1">
-          <p className="font-mono tabular-nums text-sm text-slate-400">{primaryIp}</p>
-          <p className="font-mono tabular-nums text-xs text-slate-600">{device.mac}</p>
+          <p className="truncate font-mono tabular-nums text-sm text-slate-400">{primaryIp}</p>
+          <p className="truncate font-mono tabular-nums text-xs text-slate-600">{device.mac}</p>
         </div>
 
         {/* 24-hour status sparkline */}
@@ -954,13 +954,13 @@ function DevicesTable({
                 <TableCell className="tabular-nums font-mono text-sm text-slate-300">
                   {primaryIp}
                 </TableCell>
-                <TableCell>
-                  <div>
-                    <span className="text-sm text-slate-300">
+                <TableCell className="max-w-[200px]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="truncate text-sm text-slate-300">
                       {device.hostname ?? "—"}
                     </span>
                     {device.agent?.is_online && (
-                      <span className="ml-2 rounded border border-blue-500/30 bg-blue-500/20 px-1.5 py-0.5 text-xs text-blue-400">
+                      <span className="shrink-0 rounded border border-blue-500/30 bg-blue-500/20 px-1.5 py-0.5 text-xs text-blue-400">
                         Agent
                       </span>
                     )}

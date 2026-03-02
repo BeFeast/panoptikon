@@ -262,7 +262,7 @@ function InfoRow({
         {label}
       </span>
       <span
-        className={`text-sm text-slate-300 ${mono ? 'font-mono tabular-nums' : ''}`}
+        className={`min-w-0 truncate text-sm text-slate-300 ${mono ? 'font-mono tabular-nums' : ''}`}
       >
         {value}
       </span>

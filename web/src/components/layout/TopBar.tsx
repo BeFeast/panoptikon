@@ -279,14 +279,14 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                                 : "bg-slate-500"
                             }`}
                           />
-                          <span className="font-mono tabular-nums text-white">
+                          <span className="min-w-0 truncate font-mono tabular-nums text-white">
                             {d.name || d.ip_address || d.mac_address}
                           </span>
                           {d.hostname && (
-                            <span className="text-slate-500">({d.hostname})</span>
+                            <span className="min-w-0 truncate text-slate-500">({d.hostname})</span>
                           )}
                           {d.vendor && (
-                            <span className="ml-auto text-xs text-slate-600">{d.vendor}</span>
+                            <span className="ml-auto shrink-0 truncate text-xs text-slate-600 max-w-[120px]">{d.vendor}</span>
                           )}
                         </button>
                       );
@@ -319,9 +319,9 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                                 : "bg-slate-500"
                             }`}
                           />
-                          <span className="text-white">{a.name || a.id}</span>
+                          <span className="min-w-0 truncate text-white">{a.name || a.id}</span>
                           {a.hostname && (
-                            <span className="text-slate-500">({a.hostname})</span>
+                            <span className="min-w-0 truncate text-slate-500">({a.hostname})</span>
                           )}
                         </button>
                       );
@@ -354,8 +354,8 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                                 : "bg-slate-500"
                             }`}
                           />
-                          <span className="text-white">{st.name}</span>
-                          <span className="text-slate-500 font-mono text-xs">
+                          <span className="min-w-0 truncate text-white">{st.name}</span>
+                          <span className="min-w-0 truncate text-slate-500 font-mono text-xs">
                             {st.username}@{st.host}
                           </span>
                         </button>
@@ -382,10 +382,10 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                           onMouseEnter={() => setActiveIndex(idx)}
                         >
                           <Package className="h-4 w-4 shrink-0 text-slate-400" />
-                          <span className="text-white">{asset.name}</span>
-                          <span className="text-slate-500 text-xs">{asset.asset_type}</span>
+                          <span className="min-w-0 truncate text-white">{asset.name}</span>
+                          <span className="shrink-0 text-slate-500 text-xs">{asset.asset_type}</span>
                           {asset.location && (
-                            <span className="ml-auto text-xs text-slate-600">{asset.location}</span>
+                            <span className="ml-auto shrink-0 truncate text-xs text-slate-600 max-w-[120px]">{asset.location}</span>
                           )}
                         </button>
                       );
@@ -494,7 +494,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                           {timeAgo(alert.created_at)}
                         </span>
                       </div>
-                      <span className="text-sm text-slate-300 truncate">
+                      <span className="block text-sm text-slate-300 truncate">
                         {alert.message}
                       </span>
                     </button>

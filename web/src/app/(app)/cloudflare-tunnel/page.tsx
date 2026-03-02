@@ -484,7 +484,7 @@ export default function CloudflareTunnelPage() {
                   <TableBody>
                     {routes.map((route) => (
                       <TableRow key={route.hostname} className="border-slate-800">
-                        <TableCell className="font-medium text-slate-200">
+                        <TableCell className="max-w-[200px] font-medium text-slate-200">
                           {route.service.startsWith("http") ? (
                             <TooltipProvider>
                               <Tooltip>
@@ -493,7 +493,7 @@ export default function CloudflareTunnelPage() {
                                     href={`https://${route.hostname}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex max-w-[260px] items-center gap-1.5 text-blue-400 hover:text-blue-300 hover:underline"
+                                    className="inline-flex max-w-full items-center gap-1.5 text-blue-400 hover:text-blue-300 hover:underline"
                                   >
                                     <span className="truncate">
                                       {route.hostname}
@@ -507,11 +507,11 @@ export default function CloudflareTunnelPage() {
                               </Tooltip>
                             </TooltipProvider>
                           ) : (
-                            route.hostname
+                            <span className="block truncate">{route.hostname}</span>
                           )}
                         </TableCell>
-                        <TableCell className="font-mono text-sm text-slate-300">
-                          {route.service}
+                        <TableCell className="max-w-[250px] font-mono text-sm text-slate-300">
+                          <span className="block truncate">{route.service}</span>
                         </TableCell>
                         <TableCell className="text-slate-400">
                           {route.path || "/"}

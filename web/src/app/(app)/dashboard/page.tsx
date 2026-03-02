@@ -179,8 +179,8 @@ function StatCard({
         </div>
       </CardHeader>
       <CardContent>
-        <p className="text-2xl font-bold tabular-nums text-white">{value}</p>
-        <p className="mt-1 text-xs text-slate-500">{subtitle}</p>
+        <p className="truncate text-2xl font-bold tabular-nums text-white">{value}</p>
+        <p className="mt-1 truncate text-xs text-slate-500">{subtitle}</p>
       </CardContent>
     </Card>
   );
@@ -389,7 +389,7 @@ export default function DashboardPage() {
         </Card></StaggerItem>
 
         {/* ── Stat Cards Row ───────────────────────────── */}
-        <StaggerItem className="h-full lg:col-span-4"><div className="grid h-full grid-cols-2 gap-4 lg:grid-cols-4">
+        <StaggerItem className="h-full lg:col-span-4"><div className="grid h-full grid-cols-2 gap-3 lg:grid-cols-4">
           {statsError ? (
             <>
               <StatCard
@@ -659,16 +659,16 @@ export default function DashboardPage() {
             ) : deviceBreakdown.length === 0 ? (
               <p className="text-sm text-slate-600">No devices found.</p>
             ) : (
-              <div className="grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
                 {deviceBreakdown.map((item) => {
                   const Icon = getDeviceIcon(item.type, null, null).icon;
                   return (
                     <div key={item.type} className="flex items-center gap-3">
                       <Icon className="h-4 w-4 shrink-0 text-slate-400" />
-                      <span className="w-16 shrink-0 text-sm text-slate-300">
+                      <span className="w-24 shrink-0 truncate text-sm text-slate-300">
                         {item.label}
                       </span>
-                      <div className="flex flex-1 items-center gap-2">
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
                         <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
                           <div
                             className={`h-full rounded-full ${TYPE_COLORS[item.type] ?? "bg-slate-500"} transition-all duration-500`}
