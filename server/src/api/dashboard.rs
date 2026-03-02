@@ -246,14 +246,14 @@ const AUTO_INFRA_CONDITION: &str = r#"
 /// Returns the list of devices that make up the Infrastructure Health metric.
 pub async fn critical_devices(State(state): State<AppState>) -> Json<Vec<CriticalDevice>> {
     let q = format!(
-        "SELECT d.id, d.name, d.hostname, di.ip,
-                COALESCE(d.custom_vendor, d.vendor) as vendor,
-                COALESCE(d.custom_type, d.device_type) as device_type,
-                d.is_online, d.last_seen_at, d.is_critical
-         FROM devices d
-         LEFT JOIN device_ips di ON di.device_id = d.id AND di.is_current = 1
-         WHERE ({AUTO_INFRA_CONDITION})
-         ORDER BY d.is_online DESC, COALESCE(d.name, d.hostname, '') ASC"
+        r#"SELECT d.id, COALESCE(d.custom_name, d.name) AS name, d.hostname,
+                  di.ip, COALESCE(d.custom_vendor, d.vendor) AS vendor,
+                  COALESCE(d.custom_type, d.device_type) AS device_type,
+                  d.is_online, d.last_seen_at, d.is_critical
+           FROM devices d
+           LEFT JOIN device_ips di ON di.device_id = d.id AND di.is_current = 1
+           WHERE ({AUTO_INFRA_CONDITION})
+           ORDER BY d.is_online DESC, COALESCE(d.custom_name, d.name, d.hostname, d.id)"#
     );
 
     #[allow(clippy::type_complexity)]

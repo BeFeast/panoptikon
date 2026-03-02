@@ -166,6 +166,10 @@ pub fn router(state: AppState) -> Router {
             get(dashboard::critical_devices),
         )
         .route("/dashboard/top-devices", get(dashboard::top_devices))
+        .route(
+            "/dashboard/critical-devices",
+            get(dashboard::critical_devices),
+        )
         // Alerts
         .route("/alerts", get(alerts::list))
         .route("/alerts", delete(alerts::delete_all))
