@@ -187,7 +187,7 @@ export async function apiDelete(path: string): Promise<void> {
 
 // ─── Dashboard ──────────────────────────────────────────
 
-const DASHBOARD_TIMEOUT_MS = 8_000;
+const DASHBOARD_TIMEOUT_MS = 3_000;
 
 export function fetchDashboardStats(): Promise<DashboardStats> {
   return apiGet<DashboardStats>("/api/v1/dashboard/stats", {

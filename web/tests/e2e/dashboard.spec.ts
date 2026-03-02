@@ -140,6 +140,43 @@ test.describe('Dashboard', () => {
     await page.screenshot({ path: 'tests/screenshots/dashboard-router-type-api.png' });
   });
 
+  test('dashboard stats API responds within 2 seconds', async ({ page }) => {
+    // The /api/v1/dashboard/stats endpoint should respond quickly even when
+    // a router is offline. With the concurrent fetch + 500ms router timeout,
+    // the API should never take more than ~1s. We allow 2s for CI slack.
+    const start = Date.now();
+    const response = await page.request.get('/api/v1/dashboard/stats');
+    const elapsed = Date.now() - start;
+
+    expect(response.ok()).toBeTruthy();
+    expect(elapsed).toBeLessThan(2000);
+
+    const data = await response.json();
+    // Sanity-check the response shape
+    expect(data).toHaveProperty('router_status');
+    expect(data).toHaveProperty('devices_online');
+    expect(data).toHaveProperty('wan_rx_bps');
+
+    await page.screenshot({ path: 'tests/screenshots/dashboard-fast-api.png' });
+  });
+
+  test('dashboard renders stat cards within 3 seconds', async ({ page }) => {
+    // Navigate to dashboard and measure how long it takes for stat cards
+    // to appear. With the performance fix, this should be < 3s even if
+    // a router integration is offline or slow.
+    await page.goto('/dashboard');
+    const start = Date.now();
+
+    // Wait for the stat cards to fully render (not skeletons)
+    const routerValue = page.getByText(/^(Online|Offline|Unconfigured|Unreachable)$/);
+    await expect(routerValue.first()).toBeVisible({ timeout: 5000 });
+    const elapsed = Date.now() - start;
+
+    expect(elapsed).toBeLessThan(3000);
+
+    await page.screenshot({ path: 'tests/screenshots/dashboard-fast-render.png', fullPage: true });
+  });
+
   test('router status subtitle reflects active router type', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
