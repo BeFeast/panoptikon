@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   Cloud,
+  ExternalLink,
   Pencil,
   Plus,
   RefreshCw,
@@ -48,6 +49,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { PageTransition } from "@/components/PageTransition";
 import {
   fetchCloudflareTunnelStatus,
@@ -478,7 +485,30 @@ export default function CloudflareTunnelPage() {
                     {routes.map((route) => (
                       <TableRow key={route.hostname} className="border-slate-800">
                         <TableCell className="font-medium text-slate-200">
-                          {route.hostname}
+                          {route.service.startsWith("http") ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <a
+                                    href={`https://${route.hostname}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex max-w-[260px] items-center gap-1.5 text-blue-400 hover:text-blue-300 hover:underline"
+                                  >
+                                    <span className="truncate">
+                                      {route.hostname}
+                                    </span>
+                                    <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                                  </a>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p>{route.hostname}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          ) : (
+                            route.hostname
+                          )}
                         </TableCell>
                         <TableCell className="font-mono text-sm text-slate-300">
                           {route.service}
