@@ -660,7 +660,7 @@ function DeviceCard({
   const [waking, setWaking] = useState(false);
   const ips = device.ips ?? [];
   const primaryIp = ips[0] ?? "—";
-  const displayName = device.custom_name ?? device.name ?? device.hostname ?? "Unknown Device";
+  const displayName = device.hostname ?? device.custom_name ?? device.name ?? device.vendor ?? device.mac;
   const effectiveType = device.custom_type ?? device.device_type;
   const { icon: DevIcon } = getDeviceIcon(device.custom_vendor ?? device.vendor, device.hostname, device.mdns_services, effectiveType);
   const vendorDisplay = (device.custom_vendor ?? device.vendor)
@@ -1045,7 +1045,7 @@ function DevicesTable({
 function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => void }) {
   const ips = device.ips ?? [];
   const primaryIp = ips[0] ?? "—";
-  const displayName = device.custom_name ?? device.name ?? device.hostname ?? "Unknown Device";
+  const displayName = device.hostname ?? device.custom_name ?? device.name ?? device.vendor ?? device.mac;
   const [waking, setWaking] = useState(false);
   const effectiveType = device.custom_type ?? device.device_type;
   const { icon: DetailIcon, label: deviceTypeLabel } = getDeviceIcon(
@@ -1202,6 +1202,14 @@ function CustomBadge() {
   );
 }
 
+function DetectedBadge() {
+  return (
+    <Badge variant="outline" className="ml-1 border-teal-500/50 text-teal-400 text-[9px] px-1 py-0">
+      detected
+    </Badge>
+  );
+}
+
 function DeviceInfoTab({
   device,
   ips,
@@ -1250,7 +1258,7 @@ function DeviceInfoTab({
               <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">OS</span>
               <span className="flex items-center text-sm text-slate-300">
                 {device.os_version ? `${effectiveOs} ${device.os_version}` : effectiveOs}
-                {device.custom_os && <CustomBadge />}
+                {device.custom_os ? <CustomBadge /> : device.os_family ? <DetectedBadge /> : null}
               </span>
             </div>
           )}
@@ -1259,7 +1267,7 @@ function DeviceInfoTab({
               <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">Type</span>
               <span className="flex items-center text-sm text-slate-300">
                 {effectiveType}
-                {device.custom_type && <CustomBadge />}
+                {device.custom_type ? <CustomBadge /> : device.device_type ? <DetectedBadge /> : null}
               </span>
             </div>
           )}
@@ -1268,7 +1276,7 @@ function DeviceInfoTab({
               <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">Brand</span>
               <span className="flex items-center text-sm text-slate-300">
                 {effectiveVendor}
-                {device.custom_vendor && <CustomBadge />}
+                {device.custom_vendor ? <CustomBadge /> : (device.device_brand || device.vendor) ? <DetectedBadge /> : null}
               </span>
             </div>
           )}
@@ -1277,7 +1285,7 @@ function DeviceInfoTab({
               <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">Model</span>
               <span className="flex items-center text-sm text-slate-300">
                 {effectiveModel}
-                {device.custom_model && <CustomBadge />}
+                {device.custom_model ? <CustomBadge /> : device.device_model ? <DetectedBadge /> : null}
               </span>
             </div>
           )}
