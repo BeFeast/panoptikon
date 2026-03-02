@@ -433,6 +433,10 @@ pub fn router(state: AppState) -> Router {
             "/cloudflare-tunnel/routes/:hostname",
             delete(cloudflare_tunnel::delete_route),
         )
+        .route(
+            "/cloudflare-tunnel/routes/:hostname",
+            put(cloudflare_tunnel::update_route),
+        )
         // Dynamic DNS (DDNS) client management
         .route("/ddns", get(ddns::list))
         .route("/ddns", post(ddns::create))

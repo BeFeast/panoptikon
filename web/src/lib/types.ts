@@ -2031,6 +2031,12 @@ export interface AddCloudflareRouteRequest {
   path?: string;
 }
 
+export interface UpdateCloudflareRouteRequest {
+  hostname: string;
+  service: string;
+  path?: string;
+}
+
 // ─── Tailscale ──────────────────────────────────────────────
 
 export interface TailscalePeer {
