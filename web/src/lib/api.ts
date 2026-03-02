@@ -290,8 +290,8 @@ export function triggerPortScan(id: string): Promise<PortScanResult> {
   return apiPost<PortScanResult>(`/api/v1/devices/${id}/scan`);
 }
 
-export function fetchPortScan(id: string): Promise<PortScanResult> {
-  return apiGet<PortScanResult>(`/api/v1/devices/${id}/scan`);
+export function fetchPortScan(id: string): Promise<PortScanResult | null> {
+  return apiGet<PortScanResult | null>(`/api/v1/devices/${id}/scan`);
 }
 
 export interface EnrichmentCorrection {

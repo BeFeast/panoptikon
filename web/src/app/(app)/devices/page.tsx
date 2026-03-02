@@ -1857,7 +1857,7 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
         const result = await fetchPortScan(deviceId);
         if (!cancelled) setScanResult(result);
       } catch {
-        // 404 means no scan yet — that's fine
+        // ignore fetch errors
       } finally {
         if (!cancelled) setLoading(false);
       }
