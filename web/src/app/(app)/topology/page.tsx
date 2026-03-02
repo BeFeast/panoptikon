@@ -3,12 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow,
+  ReactFlowProvider,
   Controls,
   MiniMap,
   Background,
   BackgroundVariant,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   Handle,
   Position,
   type Node,
@@ -33,6 +35,8 @@ import {
   Loader2,
   RefreshCw,
   RotateCcw,
+  LayoutGrid,
+  Maximize2,
   ExternalLink,
   Copy,
   Check,
@@ -133,6 +137,7 @@ function timeAgo(dateStr: string): string {
 interface ForceNode extends SimulationNodeDatum {
   id: string
   isRouter?: boolean
+  isOnline?: boolean
   subnet?: string
   fx?: number | null
   fy?: number | null
@@ -149,11 +154,13 @@ const DEVICE_WIDTH = 180
 const DEVICE_HEIGHT = 68
 
 function computeForceLayout(
-  nodeIds: { id: string; isRouter?: boolean; subnet?: string }[],
+  nodeIds: { id: string; isRouter?: boolean; isOnline?: boolean; subnet?: string }[],
   links: { source: string; target: string }[],
   pinnedPositions?: Map<string, { x: number; y: number }>,
 ): Map<string, { x: number; y: number }> {
   const positions = new Map<string, { x: number; y: number }>()
+
+  const deviceCount = nodeIds.filter((n) => !n.isRouter).length
 
   // Collect unique subnets (excluding router) for subnet clustering
   const subnets = new Map<string, string[]>()
@@ -177,6 +184,7 @@ function computeForceLayout(
     return {
       id: n.id,
       isRouter: n.isRouter,
+      isOnline: n.isOnline,
       subnet: n.subnet,
       x: pinned?.x ?? (n.isRouter ? 0 : undefined),
       y: pinned?.y ?? (n.isRouter ? 0 : undefined),
@@ -190,39 +198,47 @@ function computeForceLayout(
     target: l.target,
   }))
 
-  const clusterRadius = 250
+  // Scale layout parameters based on device count for large networks
+  const clusterRadius = Math.max(250, 150 + deviceCount * 4)
+  const collideRadius = Math.max(DEVICE_WIDTH, DEVICE_HEIGHT) / 2 + 20
+  const chargeStrength = deviceCount > 40 ? -600 : deviceCount > 20 ? -450 : -300
+  const linkDistance = deviceCount > 40 ? 220 : deviceCount > 20 ? 180 : 150
+
   const simulation = forceSimulation<ForceNode>(forceNodes)
     .force(
       'link',
       forceLink<ForceNode, ForceLink>(forceLinks)
         .id((d) => d.id)
-        .distance(150)
+        .distance(linkDistance)
         .strength(0.3),
     )
-    .force('charge', forceManyBody<ForceNode>().strength(-300))
+    .force('charge', forceManyBody<ForceNode>().strength(chargeStrength))
     .force('center', forceCenter(0, 0).strength(0.05))
-    .force('collide', forceCollide<ForceNode>(60))
+    .force('collide', forceCollide<ForceNode>(collideRadius))
     // Pull devices toward their subnet cluster center
+    // Online devices cluster closer to center; offline drift to periphery
     .force(
       'x',
       forceX<ForceNode>((d) => {
         if (d.isRouter) return 0
         const angle = subnetAngle.get(d.subnet ?? '') ?? 0
-        return Math.cos(angle) * clusterRadius
-      }).strength(0.15),
+        const radius = d.isOnline ? clusterRadius : clusterRadius * 1.4
+        return Math.cos(angle) * radius
+      }).strength((d) => (d.isRouter ? 0 : d.isOnline ? 0.2 : 0.1)),
     )
     .force(
       'y',
       forceY<ForceNode>((d) => {
         if (d.isRouter) return 0
         const angle = subnetAngle.get(d.subnet ?? '') ?? 0
-        return Math.sin(angle) * clusterRadius
-      }).strength(0.15),
+        const radius = d.isOnline ? clusterRadius : clusterRadius * 1.4
+        return Math.sin(angle) * radius
+      }).strength((d) => (d.isRouter ? 0 : d.isOnline ? 0.2 : 0.1)),
     )
     .stop()
 
-  // Run simulation synchronously
-  const iterations = 300
+  // More iterations for larger graphs to ensure convergence
+  const iterations = deviceCount > 40 ? 500 : 300
   for (let i = 0; i < iterations; i++) {
     simulation.tick()
   }
@@ -626,17 +642,31 @@ function InfoRow({
 // ─── Main Page ──────────────────────────────────────────
 
 export default function TopologyPage() {
+  return (
+    <ReactFlowProvider>
+      <TopologyPageInner />
+    </ReactFlowProvider>
+  )
+}
+
+function TopologyPageInner() {
   const [nodes, setNodes, onNodesChange] = useNodesState<TopologyNode>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null)
   const [selectedDevice, setSelectedDevice] = useState<TopologyDevice | null>(null)
+  const { fitView } = useReactFlow()
 
   // Track pinned positions locally so refreshes preserve them
   const pinnedRef = useRef<Map<string, { x: number; y: number }>>(new Map())
   // Store the latest router info for display
   const routerInfoRef = useRef<TopologyRouter | null>(null)
+  // Store last layout inputs for re-running auto-layout
+  const lastLayoutInputsRef = useRef<{
+    layoutNodes: { id: string; isRouter?: boolean; isOnline?: boolean; subnet?: string }[]
+    layoutLinks: { source: string; target: string }[]
+  } | null>(null)
 
   const buildGraph = useCallback(
     async (isInitial: boolean) => {
@@ -674,10 +704,11 @@ export default function TopologyPage() {
 
         // Build force layout node descriptors
         const layoutNodes = [
-          { id: 'router', isRouter: true, subnet: undefined },
+          { id: 'router', isRouter: true, isOnline: true, subnet: undefined },
           ...devices.map((d) => ({
             id: d.id,
             isRouter: false,
+            isOnline: d.is_online,
             subnet: deviceSubnets.get(d.id),
           })),
         ]
@@ -686,6 +717,9 @@ export default function TopologyPage() {
           source: 'router',
           target: d.id,
         }))
+
+        // Store layout inputs so auto-layout can re-run
+        lastLayoutInputsRef.current = { layoutNodes, layoutLinks }
 
         // Compute positions using d3-force (on initial load)
         // On refresh, reuse existing positions
@@ -899,6 +933,89 @@ export default function TopologyPage() {
     [],
   )
 
+  // Auto-layout — re-run force simulation without clearing saved positions
+  const autoLayout = useCallback(() => {
+    const inputs = lastLayoutInputsRef.current
+    if (!inputs) return
+    // Clear pinned so simulation can freely position all nodes
+    pinnedRef.current.clear()
+    const positionMap = computeForceLayout(
+      inputs.layoutNodes,
+      inputs.layoutLinks,
+    )
+    setNodes((prev) => {
+      // Rebuild subnet groups from new positions
+      const subnetDevicePositions = new Map<string, { x: number; y: number }[]>()
+      const newNodes: TopologyNode[] = []
+
+      prev.forEach((node) => {
+        if (node.type === 'subnetGroup') return // rebuilt below
+        const pos = positionMap.get(node.id)
+        if (pos) {
+          const updated = {
+            ...node,
+            position:
+              node.type === 'routerNode'
+                ? { x: pos.x - ROUTER_WIDTH / 2, y: pos.y - ROUTER_HEIGHT / 2 }
+                : { x: pos.x - DEVICE_WIDTH / 2, y: pos.y - DEVICE_HEIGHT / 2 },
+          }
+          newNodes.push(updated)
+
+          if (node.type === 'deviceNode') {
+            const subnet = (node.data as DeviceNodeData).subnet
+            const existing = subnetDevicePositions.get(subnet) || []
+            existing.push(pos)
+            subnetDevicePositions.set(subnet, existing)
+          }
+        } else {
+          newNodes.push(node)
+        }
+      })
+
+      // Rebuild subnet group nodes from new device positions
+      const subnetGroups: TopologyNode[] = []
+      subnetDevicePositions.forEach((devicePositions, subnet) => {
+        if (subnet === 'unknown' || devicePositions.length === 0) return
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+        devicePositions.forEach((pos) => {
+          minX = Math.min(minX, pos.x)
+          minY = Math.min(minY, pos.y)
+          maxX = Math.max(maxX, pos.x)
+          maxY = Math.max(maxY, pos.y)
+        })
+        if (!isFinite(minX)) return
+        const padding = 60
+        const width = maxX - minX + DEVICE_WIDTH + padding * 2
+        const height = maxY - minY + DEVICE_HEIGHT + padding * 2
+        const existing = prev.find((n) => n.id === `subnet-${subnet}`)
+        const existingData = existing?.type === 'subnetGroup' ? existing.data as SubnetGroupData : null
+        subnetGroups.push({
+          id: `subnet-${subnet}`,
+          type: 'subnetGroup',
+          position: {
+            x: minX - DEVICE_WIDTH / 2 - padding,
+            y: minY - DEVICE_HEIGHT / 2 - padding - 10,
+          },
+          data: {
+            label: subnet,
+            subnet,
+            deviceCount: existingData?.deviceCount ?? devicePositions.length,
+            onlineCount: existingData?.onlineCount ?? 0,
+            width: Math.max(width, 200),
+            height: Math.max(height, 120),
+          },
+          draggable: false,
+          selectable: false,
+          zIndex: 0,
+        })
+      })
+
+      return [...subnetGroups, ...newNodes]
+    })
+    // Re-center view after layout
+    setTimeout(() => fitView({ padding: 0.15, duration: 300 }), 50)
+  }, [setNodes, fitView])
+
   // Reset layout — clear all saved positions and re-run force simulation
   const resetLayout = useCallback(async () => {
     // Reset subnet color assignments
@@ -909,6 +1026,11 @@ export default function TopologyPage() {
     setLoading(true)
     buildGraph(true)
   }, [buildGraph])
+
+  // Fit view — re-center and zoom to show all nodes
+  const handleFitView = useCallback(() => {
+    fitView({ padding: 0.15, duration: 300 })
+  }, [fitView])
 
   // Click handler — show device detail panel
   const onNodeClick = useCallback(
@@ -1018,9 +1140,26 @@ export default function TopologyPage() {
             </span>
             <div className="h-3 w-px bg-slate-700" />
             <button
+              onClick={autoLayout}
+              className="text-slate-400 transition-colors hover:text-white"
+              title="Auto-layout"
+              data-testid="topology-auto-layout"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={handleFitView}
+              className="text-slate-400 transition-colors hover:text-white"
+              title="Fit view"
+              data-testid="topology-fit-view"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+            <button
               onClick={resetLayout}
               className="text-slate-400 transition-colors hover:text-white"
               title="Reset layout"
+              data-testid="topology-reset-layout"
             >
               <RotateCcw className="h-3.5 w-3.5" />
             </button>
@@ -1028,6 +1167,7 @@ export default function TopologyPage() {
               onClick={() => buildGraph(false)}
               className="text-slate-400 transition-colors hover:text-white"
               title="Refresh now"
+              data-testid="topology-refresh"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </button>
