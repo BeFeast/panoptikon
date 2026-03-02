@@ -148,6 +148,66 @@ test.describe("Router Page — MikroTik", () => {
     });
   });
 
+  test("System tab info cards have uniform widths (#480)", async ({ page }) => {
+    test.setTimeout(60_000);
+    // Enable MikroTik so System tab may render (if router is reachable)
+    await page.goto("/settings/router/");
+    await expect(page.locator("#mt-url")).toBeVisible({ timeout: 15000 });
+    await page.waitForLoadState("load");
+
+    const toggle = page.locator("#mt-enabled");
+    await expect(toggle).toBeVisible();
+    const checked = await toggle.getAttribute("aria-checked");
+    if (checked !== "true") {
+      await toggle.click();
+      await expect(toggle).toHaveAttribute("aria-checked", "true");
+    }
+    await page.locator("#mt-url").fill("http://10.10.0.125");
+    await page.locator("#mt-user").fill("admin");
+    await page.locator("#mt-password").fill("admin");
+    await page.getByRole("button", { name: "Save" }).click();
+    await expect(
+      page.getByText("MikroTik settings saved."),
+    ).toBeVisible({ timeout: 10000 });
+
+    await page.goto("/router/mikrotik/");
+
+    // Wait for the page to resolve — either System tab (connected) or unreachable msg
+    const systemTab = page.getByRole("tab", { name: "System" });
+    const fallback = page.getByText(/unreachable|Unreachable|Not Configured/);
+    await expect(systemTab.or(fallback)).toBeVisible({ timeout: 25000 });
+
+    // If System tab is visible, verify info card widths are uniform
+    if (await systemTab.isVisible()) {
+      await systemTab.click();
+
+      // All info cards (Version, Uptime, CPU Load, Memory, Platform, Board)
+      // are inside a single grid with col-span-1 — their widths should match.
+      const cards = page.locator('[class*="col-span-1"][class*="border-slate-800"]');
+      const cardCount = await cards.count();
+      expect(cardCount).toBeGreaterThanOrEqual(4);
+
+      const widths: number[] = [];
+      for (let i = 0; i < cardCount; i++) {
+        const box = await cards.nth(i).boundingBox();
+        expect(box).toBeTruthy();
+        widths.push(box!.width);
+      }
+
+      // All cards in the same row should have equal width (within 2px tolerance)
+      // Cards wrap at breakpoints, so compare cards in groups that share a row
+      const firstWidth = widths[0];
+      for (const w of widths) {
+        expect(Math.abs(w - firstWidth)).toBeLessThanOrEqual(2);
+      }
+    }
+
+    await page.screenshot({
+      path: "tests/screenshots/router-mikrotik-card-widths.png",
+      fullPage: true,
+    });
+  });
+
   test("MikroTik page mobile layout does not overflow (#416)", async ({
     page,
   }) => {
