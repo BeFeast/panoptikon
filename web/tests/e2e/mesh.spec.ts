@@ -66,6 +66,70 @@ const MOCK_EMPTY_TOPOLOGY = {
   total_devices: 0,
 };
 
+/**
+ * Mock data reproducing #474: all nodes have unique IPs but MAC is used as
+ * fallback identifier. Before the fix, empty MACs caused ReactFlow to
+ * deduplicate all nodes into a single card.
+ */
+const MOCK_TOPOLOGY_4_NODES = {
+  nodes: [
+    {
+      ip: "10.10.0.199",
+      mac: "10.10.0.199",
+      name: "OK Home",
+      model: "",
+      hardware: "RD15",
+      is_main: true,
+      online_devices: 8,
+      backhaul_type: "main",
+      parent_mac: "",
+      signal: 0,
+      is_online: true,
+    },
+    {
+      ip: "10.10.0.52",
+      mac: "10.10.0.52",
+      name: "Basement",
+      model: "",
+      hardware: "",
+      is_main: false,
+      online_devices: 5,
+      backhaul_type: "wired",
+      parent_mac: "10.10.0.199",
+      signal: 0,
+      is_online: true,
+    },
+    {
+      ip: "10.10.0.54",
+      mac: "10.10.0.54",
+      name: "Network Enclosure",
+      model: "",
+      hardware: "",
+      is_main: false,
+      online_devices: 4,
+      backhaul_type: "wired",
+      parent_mac: "10.10.0.199",
+      signal: 0,
+      is_online: true,
+    },
+    {
+      ip: "10.10.0.53",
+      mac: "10.10.0.53",
+      name: "Floor 2",
+      model: "",
+      hardware: "",
+      is_main: false,
+      online_devices: 8,
+      backhaul_type: "wifi",
+      parent_mac: "10.10.0.199",
+      signal: 1,
+      is_online: true,
+    },
+  ],
+  main_ip: "10.10.0.199",
+  total_devices: 25,
+};
+
 // ── Helpers ──────────────────────────────────────────────────
 
 /** Intercept the mesh topology API and return mock data. */
@@ -137,7 +201,7 @@ test.describe("Mesh Page", () => {
 
     // With zero nodes the ReactFlow canvas renders but the stats show 0
     // The toolbar stats line should show "0 nodes"
-    await expect(page.getByText("0 nodes")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("0 nodes", { exact: true })).toBeVisible({ timeout: 15000 });
 
     await page.screenshot({
       path: "tests/screenshots/mesh-empty-state.png",
@@ -151,9 +215,9 @@ test.describe("Mesh Page", () => {
     await page.goto("/mesh/");
 
     // Stats toolbar should show correct counts
-    await expect(page.getByText("3 nodes")).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText("3 online")).toBeVisible();
-    await expect(page.getByText("13 devices")).toBeVisible();
+    await expect(page.getByText("3 nodes", { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("3 online", { exact: true })).toBeVisible();
+    await expect(page.getByText("13 devices", { exact: true })).toBeVisible();
 
     // All three node names should be rendered
     await expect(page.getByText("Main Router")).toBeVisible();
@@ -162,6 +226,28 @@ test.describe("Mesh Page", () => {
 
     await page.screenshot({
       path: "tests/screenshots/mesh-with-nodes.png",
+    });
+  });
+
+  test("renders all 4 nodes when MAC falls back to IP (#474)", async ({
+    page,
+  }) => {
+    await mockMeshTopology(page, MOCK_TOPOLOGY_4_NODES);
+    await page.goto("/mesh/");
+
+    // Stats toolbar should show correct counts
+    await expect(page.getByText("4 nodes", { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText("4 online", { exact: true })).toBeVisible();
+    await expect(page.getByText("25 devices", { exact: true })).toBeVisible();
+
+    // All four node names should be rendered as separate cards
+    await expect(page.getByText("OK Home")).toBeVisible();
+    await expect(page.getByText("Basement")).toBeVisible();
+    await expect(page.getByText("Network Enclosure")).toBeVisible();
+    await expect(page.getByText("Floor 2")).toBeVisible();
+
+    await page.screenshot({
+      path: "tests/screenshots/mesh-4-nodes-ip-fallback.png",
     });
   });
 
