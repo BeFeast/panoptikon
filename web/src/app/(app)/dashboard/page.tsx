@@ -282,7 +282,7 @@ function StatCard({
   const inner = (
     <Card className="h-full border-slate-800 bg-slate-900 transition-all hover:border-blue-500/50 hover:bg-slate-800/60 hover:shadow-lg hover:shadow-blue-500/5">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-sm font-medium text-slate-400">
+        <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
           {title}
         </CardTitle>
         <div className="flex items-center gap-2">
@@ -292,7 +292,7 @@ function StatCard({
       </CardHeader>
       <CardContent>
         <p className="truncate text-2xl font-bold tabular-nums text-white">{value}</p>
-        <p className="mt-1 truncate text-xs text-slate-500">{subtitle}</p>
+        <p className="mt-1.5 truncate text-xs text-slate-400">{subtitle}</p>
       </CardContent>
     </Card>
   );
@@ -490,7 +490,7 @@ export default function DashboardPage() {
           data-testid="infra-health-card"
         >
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-slate-400">
+            <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
               Infrastructure Health
             </CardTitle>
           </CardHeader>
@@ -613,7 +613,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-blue-400" />
-                <CardTitle className="text-sm font-medium text-slate-400">
+                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                   WAN Traffic
                 </CardTitle>
               </div>
@@ -710,7 +710,7 @@ export default function DashboardPage() {
         <StaggerItem className="lg:col-span-2"><Card className="border-slate-800 bg-slate-900">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-400">
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Recent Alerts
               </CardTitle>
               <Link
@@ -767,7 +767,7 @@ export default function DashboardPage() {
         <StaggerItem className="lg:col-span-5"><Card className="border-slate-800 bg-slate-900">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-slate-400">
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Device Breakdown
               </CardTitle>
               <Link
