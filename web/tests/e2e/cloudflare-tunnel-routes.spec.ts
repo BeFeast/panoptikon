@@ -5,7 +5,7 @@ test.describe("Cloudflare Tunnel Routes — Edit functionality", () => {
     await login(page);
     await page.goto("/cloudflare-tunnel/");
     await expect(
-      page.getByText("Cloudflare Tunnel"),
+      page.getByRole("heading", { name: "Cloudflare Tunnel", exact: true }),
     ).toBeVisible({ timeout: 15000 });
     await page.waitForLoadState("networkidle");
   });
@@ -13,7 +13,7 @@ test.describe("Cloudflare Tunnel Routes — Edit functionality", () => {
   test("page renders with Tunnel Routes section", async ({ page }) => {
     // The page should show the heading
     await expect(
-      page.getByRole("heading", { name: "Cloudflare Tunnel" }),
+      page.getByRole("heading", { name: "Cloudflare Tunnel", exact: true }),
     ).toBeVisible();
 
     await page.screenshot({
