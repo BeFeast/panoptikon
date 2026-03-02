@@ -498,7 +498,11 @@ export default function MeshPage() {
           {/* Floating toolbar */}
           <div className="absolute right-4 top-4 z-10 flex items-center gap-3 rounded-lg border border-slate-700/50 bg-slate-900/80 px-4 py-2 backdrop-blur-sm">
             <span className="text-[11px] text-slate-400">
-              {stats.total} node{stats.total !== 1 ? 's' : ''} · {stats.online} online · {stats.totalDevices} device{stats.totalDevices !== 1 ? 's' : ''}
+              <span>{stats.total} node{stats.total !== 1 ? 's' : ''}</span>
+              {' · '}
+              <span>{stats.online} online</span>
+              {' · '}
+              <span>{stats.totalDevices} device{stats.totalDevices !== 1 ? 's' : ''}</span>
             </span>
             <div className="h-3 w-px bg-slate-700" />
             <button
