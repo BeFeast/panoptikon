@@ -329,7 +329,7 @@ export function Sidebar() {
                           : "grid-rows-[1fr] opacity-100",
                       )}
                     >
-                      <div className="overflow-hidden">
+                      <div className={cn("overflow-hidden", isCollapsed && "invisible")}>
                         {group.items.map((item) => renderNavLink(item))}
                       </div>
                     </div>
