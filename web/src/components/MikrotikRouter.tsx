@@ -204,97 +204,93 @@ function SystemTab({ status }: { status: MikrotikStatus }) {
       : null;
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-slate-800 bg-slate-900">
-          <CardContent className="flex items-center gap-3 py-4">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pink-500/10">
-              <Monitor className="h-4.5 w-4.5 text-pink-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-slate-500">Version</p>
-              <p className="truncate text-sm font-medium text-white">
-                {status.version ?? "\u2014"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+      <Card className="col-span-1 border-slate-800 bg-slate-900">
+        <CardContent className="flex h-16 items-center gap-3 py-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pink-500/10">
+            <Monitor className="h-4.5 w-4.5 text-pink-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-slate-500">Version</p>
+            <p className="truncate text-sm font-medium text-white">
+              {status.version ?? "\u2014"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card className="border-slate-800 bg-slate-900">
-          <CardContent className="flex items-center gap-3 py-4">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10">
-              <Clock className="h-4.5 w-4.5 text-emerald-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-slate-500">Uptime</p>
-              <p className="truncate text-sm font-medium text-white">
-                {status.uptime ?? "\u2014"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      <Card className="col-span-1 border-slate-800 bg-slate-900">
+        <CardContent className="flex h-16 items-center gap-3 py-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10">
+            <Clock className="h-4.5 w-4.5 text-emerald-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-slate-500">Uptime</p>
+            <p className="truncate text-sm font-medium text-white">
+              {status.uptime ?? "\u2014"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card className="border-slate-800 bg-slate-900">
-          <CardContent className="flex items-center gap-3 py-4">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
-              <Cpu className="h-4.5 w-4.5 text-amber-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-slate-500">CPU Load</p>
-              <p className="text-sm font-medium text-white">
-                {status.cpu_load ? `${status.cpu_load}%` : "\u2014"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      <Card className="col-span-1 border-slate-800 bg-slate-900">
+        <CardContent className="flex h-16 items-center gap-3 py-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10">
+            <Cpu className="h-4.5 w-4.5 text-amber-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-slate-500">CPU Load</p>
+            <p className="text-sm font-medium text-white">
+              {status.cpu_load ? `${status.cpu_load}%` : "\u2014"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card className="border-slate-800 bg-slate-900">
-          <CardContent className="flex items-center gap-3 py-4">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10">
-              <MemoryStick className="h-4.5 w-4.5 text-purple-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-slate-500">Memory</p>
-              <p className="text-sm font-medium text-white">
-                {memUsed
-                  ? `${formatMemory(memUsed)} / ${formatMemory(status.total_memory)}`
-                  : "\u2014"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="col-span-1 border-slate-800 bg-slate-900">
+        <CardContent className="flex h-16 items-center gap-3 py-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-purple-500/10">
+            <MemoryStick className="h-4.5 w-4.5 text-purple-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-slate-500">Memory</p>
+            <p className="text-sm font-medium text-white">
+              {memUsed
+                ? `${formatMemory(memUsed)} / ${formatMemory(status.total_memory)}`
+                : "\u2014"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <Card className="border-slate-800 bg-slate-900">
-          <CardContent className="flex items-center gap-3 py-4">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10">
-              <HardDrive className="h-4.5 w-4.5 text-cyan-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-slate-500">Platform</p>
-              <p className="truncate text-sm font-medium text-white">
-                {status.platform ?? "\u2014"}{" "}
-                {status.architecture ? `(${status.architecture})` : ""}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      <Card className="col-span-1 border-slate-800 bg-slate-900">
+        <CardContent className="flex h-16 items-center gap-3 py-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-cyan-500/10">
+            <HardDrive className="h-4.5 w-4.5 text-cyan-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-slate-500">Platform</p>
+            <p className="truncate text-sm font-medium text-white">
+              {status.platform ?? "\u2014"}{" "}
+              {status.architecture ? `(${status.architecture})` : ""}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card className="border-slate-800 bg-slate-900">
-          <CardContent className="flex items-center gap-3 py-4">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
-              <Server className="h-4.5 w-4.5 text-blue-400" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs text-slate-500">Board</p>
-              <p className="truncate text-sm font-medium text-white">
-                {status.board_name ?? "\u2014"}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="col-span-1 border-slate-800 bg-slate-900">
+        <CardContent className="flex h-16 items-center gap-3 py-4">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+            <Server className="h-4.5 w-4.5 text-blue-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs text-slate-500">Board</p>
+            <p className="truncate text-sm font-medium text-white">
+              {status.board_name ?? "\u2014"}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
