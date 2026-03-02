@@ -151,6 +151,15 @@ export default function CloudflareTunnelSettingsPage() {
                     : "Enter Cloudflare API token"
                 }
               />
+              <p className="text-[10px] text-slate-600">
+                Create at: dash.cloudflare.com → My Profile → API Tokens →
+                Create Token. Required permissions:{" "}
+                <code className="text-slate-500">
+                  Account:Cloudflare Tunnel:Edit
+                </code>
+                ,{" "}
+                <code className="text-slate-500">Zone:DNS:Edit</code>
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -165,6 +174,10 @@ export default function CloudflareTunnelSettingsPage() {
                 className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
                 placeholder="e.g. 1a2b3c4d5e6f..."
               />
+              <p className="text-[10px] text-slate-600">
+                Found at: dash.cloudflare.com → any domain → right sidebar →
+                Account ID. Format: 32-character hex string.
+              </p>
             </div>
 
             <div className="space-y-1.5">
@@ -179,6 +192,10 @@ export default function CloudflareTunnelSettingsPage() {
                 className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
                 placeholder="e.g. a1b2c3d4-e5f6-..."
               />
+              <p className="text-[10px] text-slate-600">
+                Found at: dash.cloudflare.com → Zero Trust → Networks →
+                Tunnels → your tunnel → Overview. Format: UUID.
+              </p>
             </div>
 
             {status === "success" && msg && (
