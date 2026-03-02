@@ -314,6 +314,7 @@ export interface DeviceCustomFields {
   custom_model?: string;
   notes?: string;
   icon_override?: string;
+  is_critical?: boolean;
   location?: string;
   owner?: string;
   tags?: string;

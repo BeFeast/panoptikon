@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowDown, ArrowUp, Battery, Box, ChevronDown, CircuitBoard, Container, Cpu, Download, ExternalLink, Gamepad2, HardDrive, HelpCircle, Laptop, Loader2, LayoutGrid, List, MemoryStick, Monitor, Network, Pencil, Plus, Power, Printer, Radar, RotateCcw, Router, Search, Server, Smartphone, Tablet, Tv, VolumeX, Wifi, WifiOff } from "lucide-react";
+import { ArrowDown, ArrowUp, Battery, Box, ChevronDown, CircuitBoard, Container, Cpu, Download, ExternalLink, Gamepad2, HardDrive, HelpCircle, Laptop, Loader2, LayoutGrid, List, MemoryStick, Monitor, Network, Pencil, Pin, PinOff, Plus, Power, Printer, Radar, RotateCcw, Router, Search, Server, Smartphone, Tablet, Tv, VolumeX, Wifi, WifiOff } from "lucide-react";
 import { getDeviceIcon } from "@/lib/device-icons";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
@@ -715,6 +715,9 @@ function DeviceCard({
                 }`}
               />
               <span className="truncate font-medium text-white">{displayName}</span>
+              {device.is_critical && (
+                <Pin className="h-3 w-3 shrink-0 text-amber-400" />
+              )}
               {device.agent?.is_online && (
                 <span className="ml-auto shrink-0 rounded border border-blue-500/30 bg-blue-500/20 px-1.5 py-0.5 text-xs text-blue-400">
                   Agent
@@ -1137,12 +1140,33 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
         </div>
       )}
 
-      {/* Asset Detail link */}
-      <div className="mt-3">
-        <Link href={`/assets?id=${device.id}`}>
+      {/* Critical/Pinned toggle + Asset Detail link */}
+      <div className="mt-3 flex gap-2">
+        <Button
+          variant={device.is_critical ? "default" : "outline"}
+          size="sm"
+          className={`gap-2 ${
+            device.is_critical
+              ? "bg-amber-600 hover:bg-amber-700 text-white"
+              : "border-slate-700 text-slate-300 hover:text-white"
+          }`}
+          onClick={async () => {
+            try {
+              await updateDevice(device.id, { is_critical: !device.is_critical });
+              toast.success(device.is_critical ? "Removed from critical devices" : "Marked as critical for health tracking");
+              onUpdate();
+            } catch {
+              toast.error("Failed to update critical status");
+            }
+          }}
+        >
+          {device.is_critical ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+          {device.is_critical ? "Unpin" : "Pin Critical"}
+        </Button>
+        <Link href={`/assets?id=${device.id}`} className="flex-1">
           <Button variant="outline" size="sm" className="w-full gap-2 border-slate-700 text-slate-300 hover:text-white">
             <ExternalLink className="h-4 w-4" />
-            Open Asset Detail
+            Asset Detail
           </Button>
         </Link>
       </div>
@@ -1245,6 +1269,7 @@ function DeviceInfoTab({
       <InfoRow label="First Seen" value={timeAgo(device.first_seen_at)} />
       <InfoRow label="Last Seen" value={timeAgo(device.last_seen_at)} />
       <InfoRow label="Status" value={device.is_known ? "Known" : "Unacknowledged"} />
+      <InfoRow label="Health Role" value={device.is_critical === true ? "Pinned (critical)" : device.is_critical === false ? "Excluded" : "Auto-detect"} />
 
       {/* Device identity — merged auto-detected + custom */}
       {(effectiveOs || effectiveType || effectiveVendor || effectiveModel) && (

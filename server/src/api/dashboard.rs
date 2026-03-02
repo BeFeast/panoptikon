@@ -16,6 +16,10 @@ pub struct DashboardStats {
     pub alerts_unread: i64,
     pub wan_rx_bps: i64,
     pub wan_tx_bps: i64,
+    /// Number of critical (infra) devices currently online.
+    pub critical_online: i64,
+    /// Total number of critical (infra) devices.
+    pub critical_total: i64,
 }
 
 #[derive(Serialize)]
@@ -97,8 +101,54 @@ async fn active_router(state: &AppState) -> (&'static str, Option<bool>) {
 /// by a slow or offline router.  DB queries and router connectivity check
 /// run in parallel via `tokio::join!`.
 pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
+    // SQL condition for auto-detected infrastructure devices (when is_critical IS NULL).
+    // Matches routers, switches, APs, servers, NAS by device_type or vendor/hostname patterns.
+    const AUTO_INFRA_CONDITION: &str = r#"
+        (is_critical = 1)
+        OR (
+            is_critical IS NULL
+            AND (
+                -- By device_type (from enrichment or custom_type)
+                COALESCE(custom_type, device_type) IN ('router', 'switch', 'access_point', 'server', 'nas', 'ups', 'workstation')
+                -- By vendor pattern (infrastructure vendors)
+                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*synology*'
+                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*qnap*'
+                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*supermicro*'
+                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*ubiquiti*'
+                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*unifi*'
+                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*mikrotik*'
+                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*cisco*'
+                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*juniper*'
+                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*aruba*'
+                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*fortinet*'
+                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*truenas*'
+                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*freenas*'
+                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*ixsystems*'
+                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*asustor*'
+                -- By hostname pattern (common infra names)
+                OR LOWER(COALESCE(hostname, '')) GLOB '*server*'
+                OR LOWER(COALESCE(hostname, '')) GLOB '*nas*'
+                OR LOWER(COALESCE(hostname, '')) GLOB '*proxmox*'
+                OR LOWER(COALESCE(hostname, '')) GLOB '*pve*'
+                OR LOWER(COALESCE(hostname, '')) GLOB '*truenas*'
+                OR LOWER(COALESCE(hostname, '')) GLOB '*docker*'
+                OR LOWER(COALESCE(hostname, '')) GLOB '*router*'
+                OR LOWER(COALESCE(hostname, '')) GLOB '*gateway*'
+                OR LOWER(COALESCE(hostname, '')) GLOB '*switch*'
+                OR LOWER(COALESCE(hostname, '')) GLOB '*firewall*'
+            )
+        )
+    "#;
+
     // Phase 1: run DB counts and the router check concurrently.
-    let (devices_online, devices_total, alerts_unread, (router_type, ping_result)) = tokio::join!(
+    let (
+        devices_online,
+        devices_total,
+        alerts_unread,
+        critical_online,
+        critical_total,
+        (router_type, ping_result),
+    ) = tokio::join!(
         async {
             sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM devices WHERE is_online = 1")
                 .fetch_one(&state.db)
@@ -113,6 +163,22 @@ pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
         },
         async {
             sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM alerts WHERE is_read = 0")
+                .fetch_one(&state.db)
+                .await
+                .unwrap_or(0)
+        },
+        async {
+            let q = format!(
+                "SELECT COUNT(*) FROM devices WHERE is_online = 1 AND ({AUTO_INFRA_CONDITION})"
+            );
+            sqlx::query_scalar::<_, i64>(&q)
+                .fetch_one(&state.db)
+                .await
+                .unwrap_or(0)
+        },
+        async {
+            let q = format!("SELECT COUNT(*) FROM devices WHERE ({AUTO_INFRA_CONDITION})");
+            sqlx::query_scalar::<_, i64>(&q)
                 .fetch_one(&state.db)
                 .await
                 .unwrap_or(0)
@@ -159,6 +225,8 @@ pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
         alerts_unread,
         wan_rx_bps,
         wan_tx_bps,
+        critical_online,
+        critical_total,
     })
 }
 
