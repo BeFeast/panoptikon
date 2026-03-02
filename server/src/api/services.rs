@@ -1,7 +1,8 @@
 //! Unified "Add Service" and "Remove Service" wizard API.
 //!
-//! Orchestrates creating/removing NPM proxy hosts, VyOS firewall rules,
-//! and VyOS DNAT rules in a single API call with per-step status reporting.
+//! Orchestrates creating/removing Caddy proxy hosts and MikroTik
+//! port-forward (dst-nat) rules in a single API call with per-step
+//! status reporting.
 
 use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
@@ -9,7 +10,6 @@ use tracing::{error, info};
 
 use super::audit;
 use super::AppState;
-use crate::npm::client::{NpmClient, NpmProxyHostPayload};
 
 // ─── Add Service ────────────────────────────────────────────────
 
@@ -30,60 +30,27 @@ pub struct AddServiceRequest {
     #[serde(default = "default_scheme")]
     pub forward_scheme: String,
 
-    // ── NPM Proxy Host (optional) ──
-    /// If set, create an NPM proxy host with these domain names.
-    pub domain_names: Option<Vec<String>>,
-    /// SSL mode: "none", "letsencrypt", or a numeric certificate ID.
-    #[serde(default = "default_ssl_mode")]
-    pub ssl_mode: String,
-    /// Email for Let's Encrypt (required if ssl_mode = "letsencrypt").
-    pub letsencrypt_email: Option<String>,
-    /// Force SSL redirect.
+    // ── Caddy Proxy Host ──
+    /// Domain name for the Caddy reverse proxy entry.
+    pub domain: Option<String>,
+    /// Enable automatic TLS (HTTPS) via Caddy.
     #[serde(default)]
-    pub ssl_forced: bool,
-    /// Enable HTTP/2.
-    #[serde(default)]
-    pub http2_support: bool,
-    /// Block common exploits.
-    #[serde(default)]
-    pub block_exploits: bool,
-    /// Allow WebSocket upgrade.
-    #[serde(default)]
-    pub allow_websocket_upgrade: bool,
+    pub tls_enabled: bool,
 
-    // ── VyOS Firewall Rule (optional) ──
-    /// If true, create a VyOS firewall allow rule.
+    // ── MikroTik Port-Forward (dst-nat) Rule (optional) ──
+    /// If true, create a MikroTik dst-nat rule for port forwarding.
     #[serde(default)]
-    pub create_firewall_rule: bool,
-    /// Firewall chain path (e.g. "ipv4.forward.filter"). Required if create_firewall_rule.
-    pub firewall_chain: Option<String>,
-    /// Firewall rule number. Required if create_firewall_rule.
-    pub firewall_rule_number: Option<u32>,
-    /// Protocol for the firewall rule (default: "tcp").
-    pub firewall_protocol: Option<String>,
-    /// Source address for the firewall rule (optional).
-    pub firewall_source_address: Option<String>,
-
-    // ── VyOS DNAT Rule (optional) ──
-    /// If true, create a VyOS destination NAT rule for direct port access.
-    #[serde(default)]
-    pub create_dnat_rule: bool,
-    /// DNAT rule number. Required if create_dnat_rule.
-    pub dnat_rule_number: Option<u32>,
-    /// External (public) port for DNAT.
-    pub dnat_external_port: Option<u16>,
-    /// Inbound interface for DNAT (e.g. "eth0").
-    pub dnat_inbound_interface: Option<String>,
-    /// DNAT protocol (default: "tcp").
-    pub dnat_protocol: Option<String>,
+    pub create_port_forward: bool,
+    /// External (public) port for the port-forward rule.
+    pub external_port: Option<u16>,
+    /// Protocol for the port-forward rule (default: "tcp").
+    pub protocol: Option<String>,
+    /// Comment for the MikroTik rule.
+    pub mikrotik_comment: Option<String>,
 }
 
 fn default_scheme() -> String {
     "http".to_string()
-}
-
-fn default_ssl_mode() -> String {
-    "none".to_string()
 }
 
 /// Per-step result in the wizard response.
@@ -92,7 +59,7 @@ pub struct StepResult {
     pub step: String,
     pub success: bool,
     pub message: String,
-    /// Resource ID created (e.g. NPM proxy host ID, firewall rule number).
+    /// Resource ID created (e.g. Caddy proxy host UUID, MikroTik rule ID).
     pub resource_id: Option<String>,
 }
 
@@ -140,14 +107,13 @@ pub async fn add_service(
     }
 
     // Check that at least one operation is requested
-    let has_npm = body.domain_names.as_ref().is_some_and(|d| !d.is_empty());
-    let has_fw = body.create_firewall_rule;
-    let has_dnat = body.create_dnat_rule;
+    let has_caddy = body.domain.as_ref().is_some_and(|d| !d.is_empty());
+    let has_pf = body.create_port_forward;
 
-    if !has_npm && !has_fw && !has_dnat {
+    if !has_caddy && !has_pf {
         return Err(error_response(
             StatusCode::BAD_REQUEST,
-            "At least one operation must be requested (NPM proxy, firewall rule, or DNAT rule)"
+            "At least one operation must be requested (Caddy proxy host or MikroTik port-forward)"
                 .into(),
         ));
     }
@@ -161,27 +127,18 @@ pub async fn add_service(
         .filter(|d| !d.is_empty())
         .map_or(body.name.clone(), |d| format!("{} — {}", body.name, d));
 
-    // ── Step 1: Create NPM Proxy Host ──
-    if has_npm {
-        let result = create_npm_proxy_step(&state, &body, &desc_prefix).await;
+    // ── Step 1: Create Caddy Proxy Host ──
+    if has_caddy {
+        let result = create_caddy_proxy_step(&state, &body).await;
         if !result.success {
             all_ok = false;
         }
         steps.push(result);
     }
 
-    // ── Step 2: Create VyOS Firewall Rule ──
-    if has_fw {
-        let result = create_firewall_step(&state, &body, &desc_prefix).await;
-        if !result.success {
-            all_ok = false;
-        }
-        steps.push(result);
-    }
-
-    // ── Step 3: Create VyOS DNAT Rule ──
-    if has_dnat {
-        let result = create_dnat_step(&state, &body, &desc_prefix).await;
+    // ── Step 2: Create MikroTik Port-Forward (dst-nat) Rule ──
+    if has_pf {
+        let result = create_mikrotik_nat_step(&state, &body).await;
         if !result.success {
             all_ok = false;
         }
@@ -226,115 +183,58 @@ pub async fn add_service(
     }))
 }
 
-/// Create NPM proxy host (and optionally request a Let's Encrypt cert first).
-async fn create_npm_proxy_step(
-    state: &AppState,
-    body: &AddServiceRequest,
-    _desc: &str,
-) -> StepResult {
-    let domain_names = match &body.domain_names {
-        Some(d) => d.clone(),
-        None => {
+/// Create a Caddy proxy host in SQLite, then sync to Caddy.
+async fn create_caddy_proxy_step(state: &AppState, body: &AddServiceRequest) -> StepResult {
+    let domain = match &body.domain {
+        Some(d) if !d.is_empty() => d.clone(),
+        _ => {
             return StepResult {
-                step: "npm_proxy_host".into(),
+                step: "caddy_proxy_host".into(),
                 success: false,
-                message: "No domain names provided".into(),
+                message: "No domain provided".into(),
                 resource_id: None,
             };
         }
     };
 
-    // Get NPM client
-    let client = match get_npm_client(state).await {
-        Some(c) => c,
-        None => {
-            return StepResult {
-                step: "npm_proxy_host".into(),
-                success: false,
-                message: "NPM not configured — check Settings".into(),
-                resource_id: None,
-            };
-        }
-    };
+    let id = uuid::Uuid::new_v4().to_string();
 
-    // Handle SSL: possibly request a Let's Encrypt cert first
-    let certificate_id: serde_json::Value = match body.ssl_mode.as_str() {
-        "letsencrypt" => {
-            let email = match &body.letsencrypt_email {
-                Some(e) if !e.is_empty() => e.clone(),
-                _ => {
-                    return StepResult {
-                        step: "npm_proxy_host".into(),
-                        success: false,
-                        message: "Let's Encrypt email is required for SSL".into(),
-                        resource_id: None,
-                    };
-                }
-            };
+    let insert_result = sqlx::query(
+        "INSERT INTO caddy_proxy_hosts (id, domain, forward_host, forward_port, forward_scheme, tls_enabled) \
+         VALUES (?, ?, ?, ?, ?, ?)",
+    )
+    .bind(&id)
+    .bind(&domain)
+    .bind(&body.internal_ip)
+    .bind(body.internal_port as i32)
+    .bind(&body.forward_scheme)
+    .bind(body.tls_enabled as i32)
+    .execute(&state.db)
+    .await;
 
-            let nice_name = domain_names.join(", ");
-            match client
-                .create_letsencrypt_cert(&nice_name, domain_names.clone(), &email, false)
-                .await
-            {
-                Ok(cert) => serde_json::json!(cert.id),
-                Err(e) => {
-                    error!("Let's Encrypt cert request failed: {e}");
-                    return StepResult {
-                        step: "npm_proxy_host".into(),
-                        success: false,
-                        message: format!("Let's Encrypt certificate request failed: {e}"),
-                        resource_id: None,
-                    };
-                }
-            }
-        }
-        "none" => serde_json::json!(0),
-        other => {
-            // Assume it's a numeric certificate ID
-            match other.parse::<i64>() {
-                Ok(id) => serde_json::json!(id),
-                Err(_) => serde_json::json!(0),
-            }
-        }
-    };
+    match insert_result {
+        Ok(_) => {
+            // Sync to Caddy after insert
+            super::caddy::sync_to_caddy(state).await;
 
-    let ssl_forced = body.ssl_forced || body.ssl_mode == "letsencrypt";
-
-    let payload = NpmProxyHostPayload {
-        domain_names,
-        forward_host: body.internal_ip.clone(),
-        forward_port: body.internal_port,
-        forward_scheme: body.forward_scheme.clone(),
-        certificate_id,
-        access_list_id: serde_json::json!(0),
-        ssl_forced,
-        hsts_enabled: ssl_forced,
-        http2_support: body.http2_support,
-        block_exploits: body.block_exploits,
-        allow_websocket_upgrade: body.allow_websocket_upgrade,
-        advanced_config: String::new(),
-    };
-
-    match client.create_proxy_host(&payload).await {
-        Ok(host) => {
-            info!("NPM proxy host created: id={}", host.id);
+            info!(
+                "Caddy proxy host created: {} → {}:{}",
+                domain, body.internal_ip, body.internal_port
+            );
             StepResult {
-                step: "npm_proxy_host".into(),
+                step: "caddy_proxy_host".into(),
                 success: true,
                 message: format!(
                     "Proxy host created — {} → {}:{}",
-                    host.domain_names.join(", "),
-                    body.internal_ip,
-                    body.internal_port
+                    domain, body.internal_ip, body.internal_port
                 ),
-                resource_id: Some(host.id.to_string()),
+                resource_id: Some(id),
             }
         }
         Err(e) => {
-            error!("NPM proxy host creation failed: {e}");
+            error!("Failed to create Caddy proxy host: {e}");
             StepResult {
-                step: "npm_proxy_host".into(),
+                step: "caddy_proxy_host".into(),
                 success: false,
                 message: format!("Failed to create proxy host: {e}"),
                 resource_id: None,
@@ -343,298 +243,110 @@ async fn create_npm_proxy_step(
     }
 }
 
-/// Create VyOS firewall allow rule.
-async fn create_firewall_step(
-    state: &AppState,
-    body: &AddServiceRequest,
-    _desc: &str,
-) -> StepResult {
-    let chain = match &body.firewall_chain {
-        Some(c) if !c.is_empty() => c.clone(),
-        _ => {
-            return StepResult {
-                step: "firewall_rule".into(),
-                success: false,
-                message: "Firewall chain path is required (e.g. 'ipv4.forward.filter')".into(),
-                resource_id: None,
-            };
-        }
-    };
-
-    let rule_number = match body.firewall_rule_number {
-        Some(n) if n > 0 && n <= 99999 => n,
-        _ => {
-            return StepResult {
-                step: "firewall_rule".into(),
-                success: false,
-                message: "Firewall rule number must be between 1 and 99999".into(),
-                resource_id: None,
-            };
-        }
-    };
-
-    let client = match super::vyos::get_vyos_client_or_503(state).await {
-        Ok(c) => c,
-        Err(_) => {
-            return StepResult {
-                step: "firewall_rule".into(),
-                success: false,
-                message: "VyOS router not configured — check Settings".into(),
-                resource_id: None,
-            };
-        }
-    };
-
-    let chain_parts: Vec<&str> = chain.split('.').collect();
-    if chain_parts.len() != 3 {
-        return StepResult {
-            step: "firewall_rule".into(),
-            success: false,
-            message: "Invalid chain path — expected 3 parts like 'ipv4.forward.filter'".into(),
-            resource_id: None,
-        };
-    }
-
-    let protocol = body.firewall_protocol.as_deref().unwrap_or("tcp");
-
-    let description = format!(
-        "Allow {} to {}:{} [{}]",
-        protocol, body.internal_ip, body.internal_port, body.name
-    );
-
-    // Build the VyOS config path for this rule
-    let base: Vec<String> = vec![
-        "firewall".into(),
-        chain_parts[0].into(),
-        chain_parts[1].into(),
-        chain_parts[2].into(),
-        "rule".into(),
-        rule_number.to_string(),
-    ];
-    let base_strs: Vec<&str> = base.iter().map(|s| s.as_str()).collect();
-
-    // Set action = accept
-    let mut path = base_strs.clone();
-    path.push("action");
-    path.push("accept");
-    if let Err(e) = client.configure_set(&path).await {
-        return step_fail("firewall_rule", &format!("Failed to set action: {e}"));
-    }
-
-    // Set protocol
-    let mut path = base_strs.clone();
-    path.push("protocol");
-    path.push(protocol);
-    if let Err(e) = client.configure_set(&path).await {
-        let _ = client.configure_delete(&base_strs).await;
-        return step_fail("firewall_rule", &format!("Failed to set protocol: {e}"));
-    }
-
-    // Set destination address
-    let mut path = base_strs.clone();
-    path.push("destination");
-    path.push("address");
-    path.push(&body.internal_ip);
-    if let Err(e) = client.configure_set(&path).await {
-        let _ = client.configure_delete(&base_strs).await;
-        return step_fail(
-            "firewall_rule",
-            &format!("Failed to set destination address: {e}"),
-        );
-    }
-
-    // Set destination port
-    let port_str = body.internal_port.to_string();
-    let mut path = base_strs.clone();
-    path.push("destination");
-    path.push("port");
-    path.push(&port_str);
-    if let Err(e) = client.configure_set(&path).await {
-        let _ = client.configure_delete(&base_strs).await;
-        return step_fail(
-            "firewall_rule",
-            &format!("Failed to set destination port: {e}"),
-        );
-    }
-
-    // Set source address (optional)
-    if let Some(ref src) = body.firewall_source_address {
-        if !src.is_empty() {
-            let mut path = base_strs.clone();
-            path.push("source");
-            path.push("address");
-            path.push(src);
-            if let Err(e) = client.configure_set(&path).await {
-                let _ = client.configure_delete(&base_strs).await;
-                return step_fail(
-                    "firewall_rule",
-                    &format!("Failed to set source address: {e}"),
-                );
-            }
-        }
-    }
-
-    // Set description
-    let mut path = base_strs.clone();
-    path.push("description");
-    path.push(&description);
-    if let Err(e) = client.configure_set(&path).await {
-        let _ = client.configure_delete(&base_strs).await;
-        return step_fail("firewall_rule", &format!("Failed to set description: {e}"));
-    }
-
-    if let Err(e) = client.config_save().await {
-        tracing::warn!("config-file save failed after service firewall rule create: {e}");
-    }
-
-    info!(
-        "VyOS firewall rule {} created in chain {}",
-        rule_number, chain
-    );
-
-    StepResult {
-        step: "firewall_rule".into(),
-        success: true,
-        message: format!(
-            "Firewall rule {} created in {} — allow {} to {}:{}",
-            rule_number, chain, protocol, body.internal_ip, body.internal_port
-        ),
-        resource_id: Some(rule_number.to_string()),
-    }
-}
-
-/// Create VyOS DNAT (destination NAT / port forwarding) rule.
-async fn create_dnat_step(state: &AppState, body: &AddServiceRequest, _desc: &str) -> StepResult {
-    let rule_number = match body.dnat_rule_number {
-        Some(n) if n > 0 && n <= 99999 => n,
-        _ => {
-            return StepResult {
-                step: "dnat_rule".into(),
-                success: false,
-                message: "DNAT rule number must be between 1 and 99999".into(),
-                resource_id: None,
-            };
-        }
-    };
-
-    let external_port = match body.dnat_external_port {
+/// Create a MikroTik dst-nat rule for port forwarding.
+async fn create_mikrotik_nat_step(state: &AppState, body: &AddServiceRequest) -> StepResult {
+    let external_port = match body.external_port {
         Some(p) if p > 0 => p,
         _ => {
-            return StepResult {
-                step: "dnat_rule".into(),
-                success: false,
-                message: "External port is required for DNAT".into(),
-                resource_id: None,
-            };
+            return step_fail(
+                "mikrotik_port_forward",
+                "External port is required for port forwarding",
+            );
         }
     };
 
-    let client = match super::vyos::get_vyos_client_or_503(state).await {
-        Ok(c) => c,
-        Err(_) => {
-            return StepResult {
-                step: "dnat_rule".into(),
-                success: false,
-                message: "VyOS router not configured — check Settings".into(),
-                resource_id: None,
-            };
-        }
+    let protocol = body.protocol.as_deref().unwrap_or("tcp");
+    let comment = body.mikrotik_comment.as_deref().unwrap_or("").to_string();
+    let comment = if comment.is_empty() {
+        format!(
+            "Panoptikon: {} port {} → {}:{}",
+            body.name, external_port, body.internal_ip, body.internal_port
+        )
+    } else {
+        comment
     };
 
-    let protocol = body.dnat_protocol.as_deref().unwrap_or("tcp");
-    let rule_str = rule_number.to_string();
-    let ext_port_str = external_port.to_string();
-    let int_port_str = body.internal_port.to_string();
+    // Get MikroTik credentials from settings
+    let mt_url = match get_setting(state, "mikrotik_url").await {
+        Some(u) => u,
+        None => {
+            return step_fail(
+                "mikrotik_port_forward",
+                "MikroTik not configured — check Settings",
+            );
+        }
+    };
+    let mt_user = get_setting(state, "mikrotik_user")
+        .await
+        .unwrap_or_else(|| "admin".to_string());
+    let mt_pass = get_setting(state, "mikrotik_password")
+        .await
+        .unwrap_or_default();
 
-    let description = format!(
-        "DNAT port {} → {}:{} [{}]",
-        external_port, body.internal_ip, body.internal_port, body.name
-    );
+    let url = format!("{}/rest/ip/firewall/nat/add", mt_url.trim_end_matches('/'));
 
-    // VyOS DNAT config path: nat destination rule <N>
-    let base_path = ["nat", "destination", "rule", &rule_str];
+    let nat_body = serde_json::json!({
+        "chain": "dstnat",
+        "action": "dst-nat",
+        "protocol": protocol,
+        "dst-port": external_port.to_string(),
+        "to-addresses": body.internal_ip,
+        "to-ports": body.internal_port.to_string(),
+        "comment": comment,
+    });
 
-    // Set description
-    let mut path: Vec<&str> = base_path.to_vec();
-    path.push("description");
-    path.push(&description);
-    if let Err(e) = client.configure_set(&path).await {
-        return step_fail("dnat_rule", &format!("Failed to set description: {e}"));
-    }
+    match state
+        .mikrotik_http
+        .put(&url)
+        .basic_auth(&mt_user, Some(&mt_pass))
+        .json(&nat_body)
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => {
+            // Try to get the created rule ID from the response
+            let rule_id = resp
+                .json::<serde_json::Value>()
+                .await
+                .ok()
+                .and_then(|v| v.get("ret").and_then(|r| r.as_str()).map(String::from))
+                .unwrap_or_default();
 
-    // Set protocol
-    let mut path: Vec<&str> = base_path.to_vec();
-    path.push("protocol");
-    path.push(protocol);
-    if let Err(e) = client.configure_set(&path).await {
-        let _ = client.configure_delete(&base_path).await;
-        return step_fail("dnat_rule", &format!("Failed to set protocol: {e}"));
-    }
+            info!(
+                "MikroTik dst-nat rule created: port {} → {}:{}",
+                external_port, body.internal_ip, body.internal_port
+            );
 
-    // Set inbound-interface (optional)
-    if let Some(ref iface) = body.dnat_inbound_interface {
-        if !iface.is_empty() {
-            let mut path: Vec<&str> = base_path.to_vec();
-            path.push("inbound-interface");
-            path.push("name");
-            path.push(iface);
-            if let Err(e) = client.configure_set(&path).await {
-                let _ = client.configure_delete(&base_path).await;
-                return step_fail(
-                    "dnat_rule",
-                    &format!("Failed to set inbound interface: {e}"),
-                );
+            StepResult {
+                step: "mikrotik_port_forward".into(),
+                success: true,
+                message: format!(
+                    "Port-forward created — {} port {} → {}:{}",
+                    protocol, external_port, body.internal_ip, body.internal_port
+                ),
+                resource_id: if rule_id.is_empty() {
+                    None
+                } else {
+                    Some(rule_id)
+                },
             }
         }
-    }
-
-    // Set destination port (external port that triggers the rule)
-    let mut path: Vec<&str> = base_path.to_vec();
-    path.push("destination");
-    path.push("port");
-    path.push(&ext_port_str);
-    if let Err(e) = client.configure_set(&path).await {
-        let _ = client.configure_delete(&base_path).await;
-        return step_fail("dnat_rule", &format!("Failed to set destination port: {e}"));
-    }
-
-    // Set translation address (internal IP)
-    let mut path: Vec<&str> = base_path.to_vec();
-    path.push("translation");
-    path.push("address");
-    path.push(&body.internal_ip);
-    if let Err(e) = client.configure_set(&path).await {
-        let _ = client.configure_delete(&base_path).await;
-        return step_fail(
-            "dnat_rule",
-            &format!("Failed to set translation address: {e}"),
-        );
-    }
-
-    // Set translation port (internal port)
-    let mut path: Vec<&str> = base_path.to_vec();
-    path.push("translation");
-    path.push("port");
-    path.push(&int_port_str);
-    if let Err(e) = client.configure_set(&path).await {
-        let _ = client.configure_delete(&base_path).await;
-        return step_fail("dnat_rule", &format!("Failed to set translation port: {e}"));
-    }
-
-    if let Err(e) = client.config_save().await {
-        tracing::warn!("config-file save failed after service DNAT rule create: {e}");
-    }
-
-    info!("VyOS DNAT rule {} created", rule_number);
-
-    StepResult {
-        step: "dnat_rule".into(),
-        success: true,
-        message: format!(
-            "DNAT rule {} created — port {} → {}:{}",
-            rule_number, external_port, body.internal_ip, body.internal_port
-        ),
-        resource_id: Some(rule_number.to_string()),
+        Ok(resp) => {
+            let status = resp.status();
+            let body_text = resp.text().await.unwrap_or_default();
+            error!("MikroTik dst-nat create failed: HTTP {status} — {body_text}");
+            step_fail(
+                "mikrotik_port_forward",
+                &format!("MikroTik API error: HTTP {status} — {body_text}"),
+            )
+        }
+        Err(e) => {
+            error!("MikroTik dst-nat request failed: {e}");
+            step_fail(
+                "mikrotik_port_forward",
+                &format!("Failed to reach MikroTik: {e}"),
+            )
+        }
     }
 }
 
@@ -652,14 +364,11 @@ fn step_fail(step: &str, msg: &str) -> StepResult {
 /// A single resource to remove.
 #[derive(Debug, Deserialize)]
 pub struct RemoveResource {
-    /// "npm_proxy_host", "firewall_rule", or "dnat_rule"
+    /// "caddy_proxy_host" or "mikrotik_port_forward"
     pub resource_type: String,
-    /// For npm_proxy_host: the NPM host ID.
-    /// For firewall_rule: the rule number.
-    /// For dnat_rule: the rule number.
+    /// For caddy_proxy_host: the UUID.
+    /// For mikrotik_port_forward: the MikroTik rule ID (e.g. "*A").
     pub resource_id: String,
-    /// For firewall_rule: the chain path (e.g. "ipv4.forward.filter").
-    pub chain: Option<String>,
 }
 
 /// Request body for the "Remove Service" wizard.
@@ -695,9 +404,8 @@ pub async fn remove_service(
 
     for resource in &body.resources {
         let result = match resource.resource_type.as_str() {
-            "npm_proxy_host" => remove_npm_proxy_host(&state, resource).await,
-            "firewall_rule" => remove_firewall_rule(&state, resource).await,
-            "dnat_rule" => remove_dnat_rule(&state, resource).await,
+            "caddy_proxy_host" => remove_caddy_proxy_host(&state, resource).await,
+            "mikrotik_port_forward" => remove_mikrotik_nat_rule(&state, resource).await,
             other => StepResult {
                 step: format!("remove_{}", other),
                 success: false,
@@ -749,153 +457,95 @@ pub async fn remove_service(
     }))
 }
 
-async fn remove_npm_proxy_host(state: &AppState, resource: &RemoveResource) -> StepResult {
-    let id: i64 = match resource.resource_id.parse() {
-        Ok(id) => id,
-        Err(_) => {
-            return step_fail(
-                "remove_npm_proxy_host",
-                &format!("Invalid NPM host ID: {}", resource.resource_id),
-            );
-        }
-    };
+async fn remove_caddy_proxy_host(state: &AppState, resource: &RemoveResource) -> StepResult {
+    let affected = sqlx::query("DELETE FROM caddy_proxy_hosts WHERE id = ?")
+        .bind(&resource.resource_id)
+        .execute(&state.db)
+        .await;
 
-    let client = match get_npm_client(state).await {
-        Some(c) => c,
-        None => {
-            return step_fail("remove_npm_proxy_host", "NPM not configured");
-        }
-    };
-
-    match client.delete_proxy_host(id).await {
-        Ok(_) => {
-            info!("NPM proxy host {} deleted", id);
+    match affected {
+        Ok(result) if result.rows_affected() > 0 => {
+            super::caddy::sync_to_caddy(state).await;
+            info!("Caddy proxy host {} deleted", resource.resource_id);
             StepResult {
-                step: "remove_npm_proxy_host".into(),
+                step: "remove_caddy_proxy_host".into(),
                 success: true,
-                message: format!("NPM proxy host {} deleted", id),
-                resource_id: Some(id.to_string()),
+                message: format!("Caddy proxy host {} deleted", resource.resource_id),
+                resource_id: Some(resource.resource_id.clone()),
             }
         }
+        Ok(_) => step_fail(
+            "remove_caddy_proxy_host",
+            &format!("Caddy proxy host {} not found", resource.resource_id),
+        ),
         Err(e) => {
-            error!("Failed to delete NPM proxy host {}: {e}", id);
+            error!("Failed to delete Caddy proxy host: {e}");
             step_fail(
-                "remove_npm_proxy_host",
-                &format!("Failed to delete proxy host {}: {e}", id),
+                "remove_caddy_proxy_host",
+                &format!("Failed to delete proxy host {}: {e}", resource.resource_id),
             )
         }
     }
 }
 
-async fn remove_firewall_rule(state: &AppState, resource: &RemoveResource) -> StepResult {
-    let chain = match &resource.chain {
-        Some(c) if !c.is_empty() => c.clone(),
-        _ => {
-            return step_fail("remove_firewall_rule", "Firewall chain path is required");
+async fn remove_mikrotik_nat_rule(state: &AppState, resource: &RemoveResource) -> StepResult {
+    let mt_url = match get_setting(state, "mikrotik_url").await {
+        Some(u) => u,
+        None => {
+            return step_fail("remove_mikrotik_port_forward", "MikroTik not configured");
         }
     };
+    let mt_user = get_setting(state, "mikrotik_user")
+        .await
+        .unwrap_or_else(|| "admin".to_string());
+    let mt_pass = get_setting(state, "mikrotik_password")
+        .await
+        .unwrap_or_default();
 
-    let chain_parts: Vec<&str> = chain.split('.').collect();
-    if chain_parts.len() != 3 {
-        return step_fail(
-            "remove_firewall_rule",
-            "Invalid chain path — expected 3 parts like 'ipv4.forward.filter'",
-        );
-    }
+    let url = format!(
+        "{}/rest/ip/firewall/nat/{}",
+        mt_url.trim_end_matches('/'),
+        resource.resource_id
+    );
 
-    let client = match super::vyos::get_vyos_client_or_503(state).await {
-        Ok(c) => c,
-        Err(_) => {
-            return step_fail("remove_firewall_rule", "VyOS router not configured");
-        }
-    };
-
-    let path: Vec<&str> = vec![
-        "firewall",
-        chain_parts[0],
-        chain_parts[1],
-        chain_parts[2],
-        "rule",
-        &resource.resource_id,
-    ];
-
-    match client.configure_delete(&path).await {
-        Ok(_) => {
-            if let Err(e) = client.config_save().await {
-                tracing::warn!("config-file save failed after service firewall rule delete: {e}");
-            }
-            info!(
-                "VyOS firewall rule {} deleted from chain {}",
-                resource.resource_id, chain
-            );
+    match state
+        .mikrotik_http
+        .delete(&url)
+        .basic_auth(&mt_user, Some(&mt_pass))
+        .send()
+        .await
+    {
+        Ok(resp) if resp.status().is_success() => {
+            info!("MikroTik NAT rule {} deleted", resource.resource_id);
             StepResult {
-                step: "remove_firewall_rule".into(),
+                step: "remove_mikrotik_port_forward".into(),
                 success: true,
-                message: format!(
-                    "Firewall rule {} deleted from {}",
-                    resource.resource_id, chain
-                ),
+                message: format!("MikroTik NAT rule {} deleted", resource.resource_id),
                 resource_id: Some(resource.resource_id.clone()),
             }
         }
-        Err(e) => {
-            error!("Failed to delete firewall rule: {e}");
+        Ok(resp) => {
+            let status = resp.status();
+            let body = resp.text().await.unwrap_or_default();
             step_fail(
-                "remove_firewall_rule",
+                "remove_mikrotik_port_forward",
                 &format!(
-                    "Failed to delete firewall rule {}: {e}",
+                    "Failed to delete MikroTik NAT rule {}: HTTP {status} — {body}",
+                    resource.resource_id
+                ),
+            )
+        }
+        Err(e) => {
+            error!("Failed to delete MikroTik NAT rule: {e}");
+            step_fail(
+                "remove_mikrotik_port_forward",
+                &format!(
+                    "Failed to reach MikroTik to delete rule {}: {e}",
                     resource.resource_id
                 ),
             )
         }
     }
-}
-
-async fn remove_dnat_rule(state: &AppState, resource: &RemoveResource) -> StepResult {
-    let client = match super::vyos::get_vyos_client_or_503(state).await {
-        Ok(c) => c,
-        Err(_) => {
-            return step_fail("remove_dnat_rule", "VyOS router not configured");
-        }
-    };
-
-    let path: Vec<&str> = vec!["nat", "destination", "rule", &resource.resource_id];
-
-    match client.configure_delete(&path).await {
-        Ok(_) => {
-            if let Err(e) = client.config_save().await {
-                tracing::warn!("config-file save failed after service DNAT rule delete: {e}");
-            }
-            info!("VyOS DNAT rule {} deleted", resource.resource_id);
-            StepResult {
-                step: "remove_dnat_rule".into(),
-                success: true,
-                message: format!("DNAT rule {} deleted", resource.resource_id),
-                resource_id: Some(resource.resource_id.clone()),
-            }
-        }
-        Err(e) => {
-            error!("Failed to delete DNAT rule: {e}");
-            step_fail(
-                "remove_dnat_rule",
-                &format!("Failed to delete DNAT rule {}: {e}", resource.resource_id),
-            )
-        }
-    }
-}
-
-/// Build an [`NpmClient`] from current settings, or `None` if not configured.
-async fn get_npm_client(state: &AppState) -> Option<NpmClient> {
-    let url = get_setting(state, "npm_url").await?;
-    let email = get_setting(state, "npm_email").await?;
-    let password = get_setting(state, "npm_password").await?;
-
-    Some(NpmClient::new(
-        &url,
-        &email,
-        &password,
-        state.npm_http.clone(),
-    ))
 }
 
 /// Helper: read a string setting from the settings table.
@@ -921,11 +571,6 @@ mod tests {
     }
 
     #[test]
-    fn test_default_ssl_mode() {
-        assert_eq!(default_ssl_mode(), "none");
-    }
-
-    #[test]
     fn test_step_fail() {
         let result = step_fail("test_step", "something went wrong");
         assert!(!result.success);
@@ -940,16 +585,11 @@ mod tests {
             "name": "Test Service",
             "internal_ip": "192.168.1.100",
             "internal_port": 8080,
-            "domain_names": ["test.example.com"],
-            "ssl_mode": "letsencrypt",
-            "letsencrypt_email": "admin@example.com",
-            "create_firewall_rule": true,
-            "firewall_chain": "ipv4.forward.filter",
-            "firewall_rule_number": 100,
-            "create_dnat_rule": true,
-            "dnat_rule_number": 10,
-            "dnat_external_port": 8080,
-            "dnat_inbound_interface": "eth0",
+            "domain": "test.oklabs.uk",
+            "tls_enabled": true,
+            "create_port_forward": true,
+            "external_port": 8080,
+            "protocol": "tcp",
         });
 
         let req: AddServiceRequest = serde_json::from_value(json).unwrap();
@@ -957,13 +597,10 @@ mod tests {
         assert_eq!(req.internal_ip, "192.168.1.100");
         assert_eq!(req.internal_port, 8080);
         assert_eq!(req.forward_scheme, "http"); // default
-        assert_eq!(req.ssl_mode, "letsencrypt");
-        assert!(req.create_firewall_rule);
-        assert_eq!(req.firewall_chain.as_deref(), Some("ipv4.forward.filter"));
-        assert_eq!(req.firewall_rule_number, Some(100));
-        assert!(req.create_dnat_rule);
-        assert_eq!(req.dnat_rule_number, Some(10));
-        assert_eq!(req.dnat_external_port, Some(8080));
+        assert_eq!(req.domain.as_deref(), Some("test.oklabs.uk"));
+        assert!(req.tls_enabled);
+        assert!(req.create_port_forward);
+        assert_eq!(req.external_port, Some(8080));
     }
 
     #[test]
@@ -972,31 +609,22 @@ mod tests {
             "name": "Test Service",
             "resources": [
                 {
-                    "resource_type": "npm_proxy_host",
-                    "resource_id": "42"
+                    "resource_type": "caddy_proxy_host",
+                    "resource_id": "abc-123-uuid"
                 },
                 {
-                    "resource_type": "firewall_rule",
-                    "resource_id": "100",
-                    "chain": "ipv4.forward.filter"
-                },
-                {
-                    "resource_type": "dnat_rule",
-                    "resource_id": "10"
+                    "resource_type": "mikrotik_port_forward",
+                    "resource_id": "*A"
                 }
             ]
         });
 
         let req: RemoveServiceRequest = serde_json::from_value(json).unwrap();
         assert_eq!(req.name, "Test Service");
-        assert_eq!(req.resources.len(), 3);
-        assert_eq!(req.resources[0].resource_type, "npm_proxy_host");
-        assert_eq!(req.resources[0].resource_id, "42");
-        assert_eq!(req.resources[1].resource_type, "firewall_rule");
-        assert_eq!(
-            req.resources[1].chain.as_deref(),
-            Some("ipv4.forward.filter")
-        );
-        assert_eq!(req.resources[2].resource_type, "dnat_rule");
+        assert_eq!(req.resources.len(), 2);
+        assert_eq!(req.resources[0].resource_type, "caddy_proxy_host");
+        assert_eq!(req.resources[0].resource_id, "abc-123-uuid");
+        assert_eq!(req.resources[1].resource_type, "mikrotik_port_forward");
+        assert_eq!(req.resources[1].resource_id, "*A");
     }
 }

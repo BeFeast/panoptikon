@@ -60,13 +60,21 @@ test.describe("Router Page — MikroTik", () => {
     // Navigate to the router page
     await page.goto("/router/mikrotik/");
 
-    // In test env (no real router), we expect "unreachable" message or
-    // the "Not Configured" card (both are valid states).
-    // The MikroTik component shows either the status header with
-    // Connected/Unreachable badge or the fallback "unreachable" text.
+    // In test env (no real router), we expect an "unreachable" or "not configured"
+    // message. Valid text states:
+    //   "Connected"              — status header (reachable=true)
+    //   "Unreachable"            — status header (reachable=false, but only rendered
+    //                              when component reaches the full render path)
+    //   "unreachable"            — inline error: "MikroTik router is unreachable."
+    //   "not configured"         — inline error: "MikroTik router is not configured."
+    //   "Not Configured"         — page-level card when mikrotik_enabled=false
+    // Timeout raised to 40 s: the backend has a 10 s TCP timeout to 10.10.0.125;
+    // under CI load (services tests run in parallel) the response can take >25 s.
     await expect(
-      page.getByText(/Connected|Unreachable|unreachable|Not Configured/),
-    ).toBeVisible({ timeout: 25000 });
+      page.getByText(
+        /Connected|Unreachable|unreachable|Not Configured|not configured/,
+      ),
+    ).toBeVisible({ timeout: 40000 });
 
     await page.screenshot({
       path: "tests/screenshots/router-mikrotik-status.png",
