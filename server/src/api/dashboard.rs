@@ -45,7 +45,10 @@ async fn get_setting(state: &AppState, key: &str) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
-/// Check MikroTik router connectivity with a 5-second timeout.
+/// Dashboard-specific timeout for router connectivity checks (500ms).
+const DASHBOARD_ROUTER_TIMEOUT: Duration = Duration::from_millis(500);
+
+/// Check MikroTik router connectivity with a short timeout for the dashboard.
 async fn check_mikrotik(state: &AppState) -> Option<bool> {
     let enabled = get_setting(state, "mikrotik_enabled")
         .await
@@ -64,14 +67,14 @@ async fn check_mikrotik(state: &AppState) -> Option<bool> {
         .unwrap_or_default();
 
     let client = MikrotikClient::with_http(&url, &user, &password, state.mikrotik_http.clone());
-    match tokio::time::timeout(Duration::from_secs(5), client.system_resource()).await {
+    match tokio::time::timeout(DASHBOARD_ROUTER_TIMEOUT, client.system_resource()).await {
         Ok(Ok(_)) => Some(true),   // connected
         Ok(Err(_)) => Some(false), // configured but unreachable
         Err(_) => Some(false),     // timeout
     }
 }
 
-/// Check VyOS router connectivity with a 500ms timeout.
+/// Check VyOS router connectivity with a short timeout for the dashboard.
 async fn check_vyos(state: &AppState) -> Option<bool> {
     let db_url = get_setting(state, "vyos_url").await;
     let db_key = get_setting(state, "vyos_api_key").await;
@@ -82,11 +85,8 @@ async fn check_vyos(state: &AppState) -> Option<bool> {
     match (url, key) {
         (Some(u), Some(k)) if !u.is_empty() && !k.is_empty() => {
             let client = crate::vyos::client::VyosClient::new(&u, &k);
-            match tokio::time::timeout(
-                Duration::from_millis(500),
-                client.show(&["system", "uptime"]),
-            )
-            .await
+            match tokio::time::timeout(DASHBOARD_ROUTER_TIMEOUT, client.show(&["system", "uptime"]))
+                .await
             {
                 Ok(Ok(_)) => Some(true), // connected
                 _ => Some(false),        // configured but unreachable
@@ -122,25 +122,33 @@ async fn active_router(state: &AppState) -> (&'static str, Option<bool>) {
 }
 
 /// GET /api/v1/dashboard/stats
+///
+/// Fetches all dashboard data concurrently so the response is never blocked
+/// by a slow or offline router.  DB queries and router connectivity check
+/// run in parallel via `tokio::join!`.
 pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
-    let devices_online: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE is_online = 1")
-            .fetch_one(&state.db)
-            .await
-            .unwrap_or(0);
-
-    let devices_total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM devices")
-        .fetch_one(&state.db)
-        .await
-        .unwrap_or(0);
-
-    let alerts_unread: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM alerts WHERE is_read = 0")
-        .fetch_one(&state.db)
-        .await
-        .unwrap_or(0);
-
-    // Determine and ping only the active router.
-    let (router_type, ping_result) = active_router(&state).await;
+    // Phase 1: run DB counts and the router check concurrently.
+    let (devices_online, devices_total, alerts_unread, (router_type, ping_result)) = tokio::join!(
+        async {
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM devices WHERE is_online = 1")
+                .fetch_one(&state.db)
+                .await
+                .unwrap_or(0)
+        },
+        async {
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM devices")
+                .fetch_one(&state.db)
+                .await
+                .unwrap_or(0)
+        },
+        async {
+            sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM alerts WHERE is_read = 0")
+                .fetch_one(&state.db)
+                .await
+                .unwrap_or(0)
+        },
+        active_router(&state),
+    );
 
     let router_status = match ping_result {
         Some(true) => "connected".to_string(),
@@ -148,8 +156,7 @@ pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
         None => "unconfigured".to_string(),
     };
 
-    // Latest WAN traffic — filter by active router source when configured,
-    // otherwise fall back to the most recent sample from any source.
+    // Phase 2: WAN traffic lookup (fast DB query, depends on router_type).
     let (wan_rx_bps, wan_tx_bps): (i64, i64) = if router_type != "none" {
         sqlx::query_as(
             "SELECT COALESCE(rx_bps, 0), COALESCE(tx_bps, 0)
