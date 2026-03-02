@@ -17,9 +17,9 @@ test.describe("Services page (Caddy + MikroTik)", () => {
       page.getByRole("heading", { name: "Services", level: 1 }),
     ).toBeVisible();
 
-    // Status indicators
-    await expect(page.getByText("Caddy")).toBeVisible();
-    await expect(page.getByText("MikroTik")).toBeVisible();
+    // Status indicators — scope to main to avoid strict mode conflict with sidebar links
+    await expect(page.getByRole("main").getByText("Caddy")).toBeVisible();
+    await expect(page.getByRole("main").getByText("MikroTik")).toBeVisible();
 
     // Action buttons
     await expect(
@@ -58,14 +58,16 @@ test.describe("Services page (Caddy + MikroTik)", () => {
       timeout: 3000,
     });
 
-    // Form fields should be visible
-    await expect(page.getByText("Service Name")).toBeVisible();
-    await expect(page.getByText("Internal IP")).toBeVisible();
-    await expect(page.getByText("Internal Port")).toBeVisible();
-    await expect(page.getByText("Domain")).toBeVisible();
-    await expect(page.getByText("Forward Scheme")).toBeVisible();
-    await expect(page.getByText("Auto TLS")).toBeVisible();
-    await expect(page.getByText("MikroTik Port-Forward")).toBeVisible();
+    // Form fields should be visible — scope to dialog to avoid strict mode conflict
+    // with table headers (e.g. "Domain" column header is also in the DOM)
+    const dialog = page.locator('[role="dialog"]');
+    await expect(dialog.getByText("Service Name")).toBeVisible();
+    await expect(dialog.getByText("Internal IP")).toBeVisible();
+    await expect(dialog.getByText("Internal Port")).toBeVisible();
+    await expect(dialog.getByText("Domain")).toBeVisible();
+    await expect(dialog.getByText("Forward Scheme")).toBeVisible();
+    await expect(dialog.getByText("Auto TLS")).toBeVisible();
+    await expect(dialog.getByText("MikroTik Port-Forward")).toBeVisible();
 
     // Deploy button should be present but may be disabled
     await expect(
@@ -117,11 +119,14 @@ test.describe("Services page (Caddy + MikroTik)", () => {
     // Port-forward fields should not be visible initially
     await expect(page.getByText("External Port")).not.toBeVisible();
 
-    // Toggle the MikroTik Port-Forward switch
-    // The switch is the second one in the dialog (first is TLS)
-    const switches = page.locator('[role="dialog"] button[role="switch"]');
-    // Find the switch near "MikroTik Port-Forward"
-    const pfSection = page.locator('[role="dialog"]').getByText("MikroTik Port-Forward").locator("..");
+    // Toggle the MikroTik Port-Forward switch.
+    // DOM structure: <label> is inside <div.flex.items-center.gap-2> (labelGroup),
+    // which is inside <div.flex.items-center.justify-between> (row) alongside the switch.
+    // We need to go up TWO levels from the label to reach the row that contains the switch.
+    const pfSection = page
+      .locator('[role="dialog"]')
+      .getByText("MikroTik Port-Forward")
+      .locator("../.."); // label → labelGroup → row (which contains the switch as sibling)
     const pfSwitch = pfSection.locator('button[role="switch"]');
     await pfSwitch.click();
 
