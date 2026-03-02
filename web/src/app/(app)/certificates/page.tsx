@@ -271,11 +271,11 @@ export default function CertificatesPage() {
       <div className="flex flex-col items-center justify-center gap-4 py-20">
         <Shield className="h-12 w-12 text-slate-600" />
         <h2 className="text-lg font-medium text-white">
-          NPM Not Configured
+          Caddy Not Configured
         </h2>
         <p className="max-w-md text-center text-sm text-slate-400">
-          Configure your Nginx Proxy Manager connection in Settings to manage
-          SSL certificates.
+          Configure your Caddy connection in Settings to manage SSL
+          certificates.
         </p>
       </div>
     );
@@ -285,10 +285,10 @@ export default function CertificatesPage() {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
         <AlertTriangle className="h-12 w-12 text-amber-500" />
-        <h2 className="text-lg font-medium text-white">NPM Unreachable</h2>
+        <h2 className="text-lg font-medium text-white">Caddy Unreachable</h2>
         <p className="max-w-md text-center text-sm text-slate-400">
-          Could not connect to your Nginx Proxy Manager instance. Check your
-          settings and ensure the service is running.
+          Could not connect to your Caddy instance. Check your settings and
+          ensure the service is running.
         </p>
       </div>
     );
@@ -307,10 +307,10 @@ export default function CertificatesPage() {
             <h1 className="text-xl font-semibold text-white">
               SSL Certificates
             </h1>
-            <HelpTooltip text="View and manage SSL/TLS certificates provisioned through Nginx Proxy Manager. Request free Let's Encrypt certs or upload your own." />
+            <HelpTooltip text="View and manage SSL/TLS certificates provisioned through Caddy. Request free Let's Encrypt certs or upload your own." />
           </div>
           <p className="text-sm text-slate-400">
-            Manage SSL certificates via Nginx Proxy Manager
+            Manage SSL certificates via Caddy
           </p>
         </div>
         <div className="flex gap-2">
@@ -370,7 +370,7 @@ export default function CertificatesPage() {
                 Certificates ({certs.length})
               </CardTitle>
               <CardDescription className="text-xs text-slate-500">
-                All SSL certificates managed by NPM
+                All SSL certificates managed by Caddy
               </CardDescription>
             </div>
           </div>
@@ -381,7 +381,7 @@ export default function CertificatesPage() {
               <Shield className="mb-4 h-12 w-12 text-slate-600" />
               <p className="text-lg font-medium text-slate-400">No certificates yet</p>
               <p className="mt-1 max-w-sm text-sm text-slate-600">
-                Request a free Let&apos;s Encrypt certificate or upload your own using the buttons above. Make sure NPM is configured in Settings first.
+                Request a free Let&apos;s Encrypt certificate or upload your own using the buttons above. Make sure Caddy is configured in Settings first.
               </p>
             </div>
           ) : (
