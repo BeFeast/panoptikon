@@ -96,7 +96,10 @@ export default function VpnStatusPage() {
     if (!vyosVisible && activeTab === "vyos") {
       setActiveTab("overview");
     }
-  }, [activeTab, vyosVisible]);
+    if (!data?.mikrotik_available && activeTab === "mikrotik") {
+      setActiveTab("overview");
+    }
+  }, [activeTab, vyosVisible, data?.mikrotik_available]);
 
   // Default to MikroTik tab when available (once, on first data load)
   useEffect(() => {

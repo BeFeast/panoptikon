@@ -103,7 +103,8 @@ pub async fn vpn_status(
     let vyos = vyos_client(&state).await;
     let mikrotik = mikrotik_client(&state).await;
     let vyos_available = vyos.is_some();
-    let mikrotik_available = mikrotik.is_some();
+    // mikrotik_available is determined after we check for WireGuard interfaces
+    let mut mikrotik_available = false;
 
     let now = chrono::Utc::now().timestamp();
     // 3 minutes = 180 seconds threshold for "online"
@@ -183,6 +184,8 @@ pub async fn vpn_status(
     // ── MikroTik WireGuard ──
     if let Some(client) = mikrotik {
         let wg_ifaces = client.wireguard_interfaces().await.unwrap_or_default();
+        // Only mark MikroTik as available if it has WireGuard interfaces
+        mikrotik_available = !wg_ifaces.is_empty();
         let wg_peers = client.wireguard_peers().await.unwrap_or_default();
 
         fn is_true(val: &Option<String>) -> bool {
