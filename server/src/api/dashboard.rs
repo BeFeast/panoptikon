@@ -110,11 +110,13 @@ async fn active_router(state: &AppState) -> (&'static str, Option<bool>) {
         return ("mikrotik", check_mikrotik(state).await);
     }
 
-    // Fall back to VyOS if it has a URL configured.
-    let vyos_url = get_setting(state, "vyos_url").await;
-    let has_vyos = vyos_url.is_some() || state.config.vyos.url.is_some();
+    // Fall back to VyOS only when explicitly enabled.
+    let vyos_enabled = get_setting(state, "vyos_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
 
-    if has_vyos {
+    if vyos_enabled {
         return ("vyos", check_vyos(state).await);
     }
 

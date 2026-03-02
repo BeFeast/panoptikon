@@ -12,6 +12,7 @@ pub struct SettingsResponse {
     pub vyos_url: Option<String>,
     /// Masked API key — never return the full key to the frontend.
     pub vyos_api_key_set: bool,
+    pub vyos_enabled: bool,
     // --- Network Scanner ---
     pub scan_interval_seconds: Option<u64>,
     pub scan_subnets: Option<String>,
@@ -61,6 +62,7 @@ pub struct UpdateSettingsRequest {
     pub webhook_url: Option<String>,
     pub vyos_url: Option<String>,
     pub vyos_api_key: Option<String>,
+    pub vyos_enabled: Option<bool>,
     // --- Network Scanner ---
     pub scan_interval_seconds: Option<u64>,
     pub scan_subnets: Option<String>,
@@ -138,6 +140,11 @@ pub async fn get_settings(
                 .filter(|v| !v.trim().is_empty())
         })
         .is_some();
+
+    let vyos_enabled = get_setting(&state, "vyos_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
 
     // Network Scanner settings (fall back to config defaults).
     let scan_interval_seconds = get_setting(&state, "scan_interval_seconds")
@@ -229,6 +236,7 @@ pub async fn get_settings(
         webhook_url,
         vyos_url,
         vyos_api_key_set,
+        vyos_enabled,
         scan_interval_seconds,
         scan_subnets,
         ping_sweep_enabled,
@@ -283,6 +291,11 @@ pub async fn update_settings(
         // is added in the future.
         upsert_setting(&state, "vyos_api_key", key).await?;
         info!("VyOS API key updated");
+    }
+
+    if let Some(enabled) = body.vyos_enabled {
+        upsert_setting(&state, "vyos_enabled", if enabled { "1" } else { "0" }).await?;
+        info!(vyos_enabled = enabled, "VyOS enabled toggle updated");
     }
 
     // --- Network Scanner settings ---

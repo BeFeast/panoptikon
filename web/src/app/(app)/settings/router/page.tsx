@@ -38,6 +38,8 @@ function VyosPanel() {
   const [savedUrl, setSavedUrl] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [apiKeySet, setApiKeySet] = useState(false);
+  const [enabled, setEnabled] = useState(false);
+  const [savedEnabled, setSavedEnabled] = useState(false);
   const [saveStatus, setSaveStatus] = useState<Status>("idle");
   const [saveMsg, setSaveMsg] = useState("");
   const [testStatus, setTestStatus] = useState<Status>("idle");
@@ -49,26 +51,29 @@ function VyosPanel() {
     fetch("/api/v1/settings", { credentials: "include" })
       .then((res) => res.json())
       .then(
-        (data: { vyos_url: string | null; vyos_api_key_set: boolean }) => {
+        (data: { vyos_url: string | null; vyos_api_key_set: boolean; vyos_enabled: boolean }) => {
           if (loadToken !== loadTokenRef.current) return;
           setUrl(data.vyos_url ?? "");
           setSavedUrl(data.vyos_url ?? null);
           setApiKeySet(data.vyos_api_key_set);
+          setEnabled(data.vyos_enabled);
+          setSavedEnabled(data.vyos_enabled);
         }
       )
       .catch(() => {});
   }, []);
 
-  const dirty = url !== (savedUrl ?? "") || apiKey.length > 0;
+  const dirty = url !== (savedUrl ?? "") || apiKey.length > 0 || enabled !== savedEnabled;
 
   async function handleSave() {
     loadTokenRef.current++;
     setSaveStatus("loading");
     setSaveMsg("");
     try {
-      const body: Record<string, string> = {};
+      const body: Record<string, string | boolean> = {};
       if (url !== (savedUrl ?? "")) body.vyos_url = url;
       if (apiKey.length > 0) body.vyos_api_key = apiKey;
+      if (enabled !== savedEnabled) body.vyos_enabled = enabled;
 
       const res = await fetch("/api/v1/settings", {
         method: "PATCH",
@@ -77,11 +82,13 @@ function VyosPanel() {
         credentials: "include",
       });
       if (res.ok) {
-        const data: { vyos_url: string | null; vyos_api_key_set: boolean } =
+        const data: { vyos_url: string | null; vyos_api_key_set: boolean; vyos_enabled: boolean } =
           await res.json();
         setSavedUrl(data.vyos_url ?? null);
         setUrl(data.vyos_url ?? "");
         setApiKeySet(data.vyos_api_key_set);
+        setEnabled(data.vyos_enabled);
+        setSavedEnabled(data.vyos_enabled);
         setApiKey("");
         setSaveStatus("success");
         setSaveMsg("VyOS settings saved.");
@@ -122,6 +129,17 @@ function VyosPanel() {
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <Label htmlFor="vyos-enabled" className="text-xs text-slate-400">
+          Enable VyOS integration
+        </Label>
+        <Switch
+          id="vyos-enabled"
+          checked={enabled}
+          onCheckedChange={setEnabled}
+        />
+      </div>
+
       <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
         <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
         <p className="text-xs text-amber-400">
