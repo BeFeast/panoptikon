@@ -361,8 +361,8 @@ export default function AlertsPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="space-y-2">
-        <div className="flex gap-2">
+      <div className="static space-y-2">
+        <div className="static flex gap-2">
           {(["all", "active", "acknowledged"] as StatusFilter[]).map((f) => (
             <Button
               key={f}
@@ -381,7 +381,7 @@ export default function AlertsPage() {
         </div>
 
         {/* Type filter */}
-        <div className="flex gap-2 flex-wrap">
+        <div className="static flex gap-2 flex-wrap">
           {ALERT_TYPES.map((t) => (
             <Button
               key={t.value}
