@@ -1,10 +1,15 @@
 use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
+use std::time::Duration;
 use tracing::error;
 
 use super::AppState;
 use crate::mikrotik::client::MikrotikClient;
+
+/// Short timeout for router reachability checks in the topology endpoint.
+/// Keeps the response snappy even when a router is configured but unreachable.
+const ROUTER_PROBE_TIMEOUT: Duration = Duration::from_secs(4);
 
 /// A single node's persisted position.
 #[derive(Debug, Serialize, Deserialize)]
@@ -315,10 +320,16 @@ pub async fn graph(State(state): State<AppState>) -> Result<Json<TopologyGraph>,
         version: None,
     };
 
-    // Try MikroTik first
+    // Try MikroTik first.
+    // Use a short per-call timeout so an unreachable router doesn't block the
+    // topology response (the frontend has a 15 s AbortController).
     if let Some(mt_client) = mikrotik_client(&state).await {
-        // Router status
-        if let Ok(res) = mt_client.system_resource().await {
+        // Router status — gate all other MikroTik calls on this succeeding so
+        // we don't stack up 4 × 10 s timeouts when the router is unreachable.
+        let resource_result =
+            tokio::time::timeout(ROUTER_PROBE_TIMEOUT, mt_client.system_resource()).await;
+
+        if let Ok(Ok(res)) = resource_result {
             router = TopologyRouter {
                 router_type: "mikrotik".to_string(),
                 is_online: true,
@@ -326,44 +337,50 @@ pub async fn graph(State(state): State<AppState>) -> Result<Json<TopologyGraph>,
                 hostname: res.board_name.clone(),
                 version: res.version,
             };
-        }
 
-        // MikroTik interfaces — find WAN IP
-        if let Ok(addrs) = mt_client.ip_addresses().await {
-            // Use the first non-loopback address, prefer one on ether1
-            for addr in &addrs {
-                if let Some(ip) = &addr.address {
-                    if router.wan_ip.is_none() || addr.interface.as_deref() == Some("ether1") {
-                        // Strip CIDR prefix if present (e.g. "10.0.0.1/24" → "10.0.0.1")
-                        router.wan_ip = Some(ip.split('/').next().unwrap_or(ip).to_string());
+            // MikroTik interfaces — find WAN IP
+            if let Ok(Ok(addrs)) =
+                tokio::time::timeout(ROUTER_PROBE_TIMEOUT, mt_client.ip_addresses()).await
+            {
+                // Use the first non-loopback address, prefer one on ether1
+                for addr in &addrs {
+                    if let Some(ip) = &addr.address {
+                        if router.wan_ip.is_none() || addr.interface.as_deref() == Some("ether1") {
+                            // Strip CIDR prefix if present (e.g. "10.0.0.1/24" → "10.0.0.1")
+                            router.wan_ip = Some(ip.split('/').next().unwrap_or(ip).to_string());
+                        }
                     }
                 }
             }
-        }
 
-        // Enrich with DHCP leases
-        if let Ok(leases) = mt_client.dhcp_leases().await {
-            for lease in leases {
-                if let Some(mac) = &lease.mac_address {
-                    let mac_lower = mac.to_lowercase();
-                    if let Some(&idx) = mac_to_idx.get(&mac_lower) {
-                        devices[idx].dhcp_lease_status = lease.status;
-                        devices[idx].dhcp_server = lease.server;
-                        devices[idx].dhcp_expires = lease.expires_after;
-                        devices[idx].dhcp_hostname = lease.host_name;
+            // Enrich with DHCP leases
+            if let Ok(Ok(leases)) =
+                tokio::time::timeout(ROUTER_PROBE_TIMEOUT, mt_client.dhcp_leases()).await
+            {
+                for lease in leases {
+                    if let Some(mac) = &lease.mac_address {
+                        let mac_lower = mac.to_lowercase();
+                        if let Some(&idx) = mac_to_idx.get(&mac_lower) {
+                            devices[idx].dhcp_lease_status = lease.status;
+                            devices[idx].dhcp_server = lease.server;
+                            devices[idx].dhcp_expires = lease.expires_after;
+                            devices[idx].dhcp_hostname = lease.host_name;
+                        }
                     }
                 }
             }
-        }
 
-        // Enrich with bridge hosts
-        if let Ok(hosts) = mt_client.bridge_hosts().await {
-            for host in hosts {
-                if let Some(mac) = &host.mac_address {
-                    let mac_lower = mac.to_lowercase();
-                    if let Some(&idx) = mac_to_idx.get(&mac_lower) {
-                        devices[idx].bridge_port = host.on_interface.or(host.interface);
-                        devices[idx].bridge_name = host.bridge;
+            // Enrich with bridge hosts
+            if let Ok(Ok(hosts)) =
+                tokio::time::timeout(ROUTER_PROBE_TIMEOUT, mt_client.bridge_hosts()).await
+            {
+                for host in hosts {
+                    if let Some(mac) = &host.mac_address {
+                        let mac_lower = mac.to_lowercase();
+                        if let Some(&idx) = mac_to_idx.get(&mac_lower) {
+                            devices[idx].bridge_port = host.on_interface.or(host.interface);
+                            devices[idx].bridge_name = host.bridge;
+                        }
                     }
                 }
             }
