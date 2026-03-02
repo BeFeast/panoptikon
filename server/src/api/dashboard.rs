@@ -101,45 +101,6 @@ async fn active_router(state: &AppState) -> (&'static str, Option<bool>) {
 /// by a slow or offline router.  DB queries and router connectivity check
 /// run in parallel via `tokio::join!`.
 pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
-    // SQL condition for auto-detected infrastructure devices (when is_critical IS NULL).
-    // Matches routers, switches, APs, servers, NAS by device_type or vendor/hostname patterns.
-    const AUTO_INFRA_CONDITION: &str = r#"
-        (is_critical = 1)
-        OR (
-            is_critical IS NULL
-            AND (
-                -- By device_type (from enrichment or custom_type)
-                COALESCE(custom_type, device_type) IN ('router', 'switch', 'access_point', 'server', 'nas', 'ups', 'workstation')
-                -- By vendor pattern (infrastructure vendors)
-                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*synology*'
-                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*qnap*'
-                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*supermicro*'
-                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*ubiquiti*'
-                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*unifi*'
-                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*mikrotik*'
-                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*cisco*'
-                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*juniper*'
-                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*aruba*'
-                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*fortinet*'
-                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*truenas*'
-                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*freenas*'
-                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*ixsystems*'
-                OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*asustor*'
-                -- By hostname pattern (common infra names)
-                OR LOWER(COALESCE(hostname, '')) GLOB '*server*'
-                OR LOWER(COALESCE(hostname, '')) GLOB '*nas*'
-                OR LOWER(COALESCE(hostname, '')) GLOB '*proxmox*'
-                OR LOWER(COALESCE(hostname, '')) GLOB '*pve*'
-                OR LOWER(COALESCE(hostname, '')) GLOB '*truenas*'
-                OR LOWER(COALESCE(hostname, '')) GLOB '*docker*'
-                OR LOWER(COALESCE(hostname, '')) GLOB '*router*'
-                OR LOWER(COALESCE(hostname, '')) GLOB '*gateway*'
-                OR LOWER(COALESCE(hostname, '')) GLOB '*switch*'
-                OR LOWER(COALESCE(hostname, '')) GLOB '*firewall*'
-            )
-        )
-    "#;
-
     // Phase 1: run DB counts and the router check concurrently.
     let (
         devices_online,
@@ -228,6 +189,122 @@ pub async fn stats(State(state): State<AppState>) -> Json<DashboardStats> {
         critical_online,
         critical_total,
     })
+}
+
+/// A single critical device returned by the critical-devices endpoint.
+#[derive(Serialize)]
+pub struct CriticalDevice {
+    pub id: String,
+    pub name: Option<String>,
+    pub hostname: Option<String>,
+    pub ip: Option<String>,
+    pub vendor: Option<String>,
+    pub device_type: Option<String>,
+    pub is_online: bool,
+    pub last_seen_at: Option<String>,
+    /// How the device was classified: "pinned" or "auto".
+    pub classification: String,
+}
+
+/// SQL condition for auto-detected infrastructure devices (when is_critical IS NULL).
+const AUTO_INFRA_CONDITION: &str = r#"
+    (is_critical = 1)
+    OR (
+        is_critical IS NULL
+        AND (
+            COALESCE(custom_type, device_type) IN ('router', 'switch', 'access_point', 'server', 'nas', 'ups', 'workstation')
+            OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*synology*'
+            OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*qnap*'
+            OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*supermicro*'
+            OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*ubiquiti*'
+            OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*unifi*'
+            OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*mikrotik*'
+            OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*cisco*'
+            OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*juniper*'
+            OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*aruba*'
+            OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*fortinet*'
+            OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*truenas*'
+            OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*freenas*'
+            OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*ixsystems*'
+            OR LOWER(COALESCE(custom_vendor, vendor, '')) GLOB '*asustor*'
+            OR LOWER(COALESCE(hostname, '')) GLOB '*server*'
+            OR LOWER(COALESCE(hostname, '')) GLOB '*nas*'
+            OR LOWER(COALESCE(hostname, '')) GLOB '*proxmox*'
+            OR LOWER(COALESCE(hostname, '')) GLOB '*pve*'
+            OR LOWER(COALESCE(hostname, '')) GLOB '*truenas*'
+            OR LOWER(COALESCE(hostname, '')) GLOB '*docker*'
+            OR LOWER(COALESCE(hostname, '')) GLOB '*router*'
+            OR LOWER(COALESCE(hostname, '')) GLOB '*gateway*'
+            OR LOWER(COALESCE(hostname, '')) GLOB '*switch*'
+            OR LOWER(COALESCE(hostname, '')) GLOB '*firewall*'
+        )
+    )
+"#;
+
+/// GET /api/v1/dashboard/critical-devices
+///
+/// Returns the list of devices that make up the Infrastructure Health metric.
+pub async fn critical_devices(State(state): State<AppState>) -> Json<Vec<CriticalDevice>> {
+    let q = format!(
+        "SELECT d.id, d.name, d.hostname, di.ip,
+                COALESCE(d.custom_vendor, d.vendor) as vendor,
+                COALESCE(d.custom_type, d.device_type) as device_type,
+                d.is_online, d.last_seen_at, d.is_critical
+         FROM devices d
+         LEFT JOIN device_ips di ON di.device_id = d.id AND di.is_current = 1
+         WHERE ({AUTO_INFRA_CONDITION})
+         ORDER BY d.is_online DESC, COALESCE(d.name, d.hostname, '') ASC"
+    );
+
+    #[allow(clippy::type_complexity)]
+    let rows: Vec<(
+        String,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        bool,
+        Option<String>,
+        Option<i32>,
+    )> = sqlx::query_as(&q)
+        .fetch_all(&state.db)
+        .await
+        .unwrap_or_default();
+
+    Json(
+        rows.into_iter()
+            .map(
+                |(
+                    id,
+                    name,
+                    hostname,
+                    ip,
+                    vendor,
+                    device_type,
+                    is_online,
+                    last_seen_at,
+                    is_critical,
+                )| {
+                    CriticalDevice {
+                        id,
+                        name,
+                        hostname,
+                        ip,
+                        vendor,
+                        device_type,
+                        is_online,
+                        last_seen_at,
+                        classification: if is_critical == Some(1) {
+                            "pinned".to_string()
+                        } else {
+                            "auto".to_string()
+                        },
+                    }
+                },
+            )
+            .collect(),
+    )
 }
 
 /// GET /api/v1/dashboard/top-devices?limit=5

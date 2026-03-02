@@ -5,7 +5,9 @@ import {
   Activity,
   AlertTriangle,
   ArrowRight,
+  ExternalLink,
   MonitorSmartphone,
+  Pin,
   Router,
   WifiOff,
 } from "lucide-react";
@@ -18,12 +20,20 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
   fetchDashboardStats,
   fetchRecentAlerts,
   fetchTrafficHistory,
   fetchDevices,
+  fetchCriticalDevices,
 } from "@/lib/api";
-import type { Alert, DashboardStats, TrafficHistoryPoint, Device } from "@/lib/types";
+import type { Alert, CriticalDevice, DashboardStats, TrafficHistoryPoint, Device } from "@/lib/types";
 import { formatBps, timeAgo } from "@/lib/format";
 import { PageTransition } from "@/components/PageTransition";
 import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
@@ -54,6 +64,107 @@ function severityDotColor(severity: Alert["severity"]): string {
     default:
       return "bg-blue-500";
   }
+}
+
+// ─── Critical Devices Dialog ──────────────────────────
+
+function CriticalDevicesDialog({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [devices, setDevices] = useState<CriticalDevice[] | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setDevices(null);
+    setError(false);
+    fetchCriticalDevices()
+      .then(setDevices)
+      .catch(() => setError(true));
+  }, [open]);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="border-slate-700 bg-slate-900 text-white sm:max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="text-white">Critical Devices</DialogTitle>
+          <DialogDescription className="text-slate-400">
+            Devices included in the Infrastructure Health metric.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="overflow-y-auto -mx-6 px-6">
+          {error ? (
+            <div className="flex items-center gap-2 py-4 text-sm text-rose-400">
+              <WifiOff className="h-4 w-4 shrink-0" />
+              <span>Failed to load critical devices</span>
+            </div>
+          ) : devices === null ? (
+            <div className="space-y-3 py-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          ) : devices.length === 0 ? (
+            <p className="py-6 text-center text-sm text-slate-500">
+              No critical devices found.
+            </p>
+          ) : (
+            <div className="space-y-1 py-2">
+              {devices.map((dev) => (
+                <Link
+                  key={dev.id}
+                  href={`/devices?id=${dev.id}`}
+                  className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-slate-800 transition-colors group"
+                  onClick={() => onOpenChange(false)}
+                >
+                  <span
+                    className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${
+                      dev.is_online
+                        ? "bg-emerald-400 ring-2 ring-emerald-400/30"
+                        : "bg-rose-400 ring-2 ring-rose-400/30"
+                    }`}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-sm font-medium text-slate-200">
+                        {dev.name || dev.hostname || dev.ip || "Unknown"}
+                      </span>
+                      {dev.classification === "pinned" && (
+                        <Pin className="h-3 w-3 shrink-0 text-amber-400" />
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                      {dev.device_type && (
+                        <span className="capitalize">{dev.device_type.replace(/_/g, " ")}</span>
+                      )}
+                      {dev.ip && <span>{dev.ip}</span>}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <span
+                      className={`text-xs font-medium ${
+                        dev.is_online ? "text-emerald-400" : "text-rose-400"
+                      }`}
+                    >
+                      {dev.is_online ? "Online" : "Offline"}
+                    </span>
+                    {dev.last_seen_at && (
+                      <p className="text-xs text-slate-600">{timeAgo(dev.last_seen_at)}</p>
+                    )}
+                  </div>
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // ─── Health Ring SVG ───────────────────────────────────
@@ -266,6 +377,7 @@ export default function DashboardPage() {
 
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [devicesError, setDevicesError] = useState(false);
+  const [criticalDialogOpen, setCriticalDialogOpen] = useState(false);
 
   // ── Independent loaders — each resolves on its own ────
 
@@ -371,7 +483,11 @@ export default function DashboardPage() {
       {/* ── Bento Grid ─────────────────────────────────── */}
       <StaggerContainer className="grid grid-cols-1 gap-4 lg:grid-cols-5 items-stretch">
         {/* ── Health Score Ring ─────────────────────────── */}
-        <StaggerItem className="h-full"><Card className="h-full border-slate-800 bg-slate-900 lg:col-span-1">
+        <StaggerItem className="h-full"><Card
+          className="h-full border-slate-800 bg-slate-900 lg:col-span-1 cursor-pointer transition-all hover:border-blue-500/50 hover:bg-slate-800/60 hover:shadow-lg hover:shadow-blue-500/5"
+          onClick={() => stats && stats.critical_total > 0 && setCriticalDialogOpen(true)}
+          data-testid="infra-health-card"
+        >
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-slate-400">
               Infrastructure Health
@@ -381,12 +497,25 @@ export default function DashboardPage() {
             {statsError ? (
               <SectionError message="Failed to load" />
             ) : stats ? (
-              <HealthRing online={stats.critical_online} total={stats.critical_total} />
+              <>
+                <HealthRing online={stats.critical_online} total={stats.critical_total} />
+              </>
             ) : (
               <Skeleton className="aspect-square w-full max-w-[7rem] rounded-full" />
             )}
           </CardContent>
+          {stats && stats.critical_total > 0 && (
+            <div className="px-6 pb-3 -mt-2">
+              <p className="text-center text-[10px] text-slate-600">
+                Click for details
+              </p>
+            </div>
+          )}
         </Card></StaggerItem>
+        <CriticalDevicesDialog
+          open={criticalDialogOpen}
+          onOpenChange={setCriticalDialogOpen}
+        />
 
         {/* ── Stat Cards Row ───────────────────────────── */}
         <StaggerItem className="h-full lg:col-span-4"><div className="grid h-full grid-cols-2 gap-3 lg:grid-cols-4">

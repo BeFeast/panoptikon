@@ -179,6 +179,20 @@ export interface DashboardStats {
   critical_total: number;
 }
 
+/** A single critical device returned by /api/v1/dashboard/critical-devices. */
+export interface CriticalDevice {
+  id: string;
+  name: string | null;
+  hostname: string | null;
+  ip: string | null;
+  vendor: string | null;
+  device_type: string | null;
+  is_online: boolean;
+  last_seen_at: string | null;
+  /** "pinned" or "auto" */
+  classification: string;
+}
+
 export interface TopDevice {
   id: string;
   name: string | null;
