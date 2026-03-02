@@ -146,22 +146,22 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
         {/* Temperature + Uptime row */}
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-lg bg-slate-800/50 p-3">
-            <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
               <Thermometer className="h-3.5 w-3.5" />
               Temperature
             </div>
             <p
-              className={`mt-1 text-lg font-semibold ${status.temperature != null ? tempColor(status.temperature) : "text-slate-400"}`}
+              className={`mt-1.5 text-lg font-semibold ${status.temperature != null ? tempColor(status.temperature) : "text-slate-400"}`}
             >
               {status.temperature != null ? `${status.temperature}\u00b0C` : "\u2014"}
             </p>
           </div>
           <div className="rounded-lg bg-slate-800/50 p-3">
-            <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
               <Clock className="h-3.5 w-3.5" />
               Uptime
             </div>
-            <p className="mt-1 text-lg font-semibold text-slate-200">
+            <p className="mt-1.5 text-lg font-semibold text-slate-200">
               {formatUptime(status.uptime)}
             </p>
           </div>
@@ -170,11 +170,11 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
         {/* Devices + Bandwidth row */}
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-lg bg-slate-800/50 p-3">
-            <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
               <Users className="h-3.5 w-3.5" />
               Devices Online
             </div>
-            <p className="mt-1 text-lg font-semibold text-slate-200">
+            <p className="mt-1.5 text-lg font-semibold text-slate-200">
               {status.devices_online ?? 0}
               <span className="ml-1 text-sm font-normal text-slate-500">
                 / {status.devices_total ?? 0}
@@ -182,7 +182,7 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
             </p>
           </div>
           <div className="rounded-lg bg-slate-800/50 p-3">
-            <div className="flex items-center gap-2 text-xs text-slate-500">
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
               WAN Speed
             </div>
             <div className="mt-1 flex items-center gap-3 text-sm">
