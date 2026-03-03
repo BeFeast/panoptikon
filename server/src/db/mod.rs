@@ -89,6 +89,10 @@ const REMOVE_VYOS_SETTINGS_MIGRATION: &str =
 /// Migration 027: Add is_critical flag for infrastructure health tracking.
 const DEVICE_CRITICAL_MIGRATION: &str = include_str!("migrations/027_device_critical.sql");
 
+/// Migration 028: Rename VyOS artifacts (table + column) now that VyOS is fully removed.
+const RENAME_VYOS_ARTIFACTS_MIGRATION: &str =
+    include_str!("migrations/028_rename_vyos_artifacts.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -302,7 +306,7 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 010_device_enrichment.sql");
     }
 
-    // Migration 011: VyOS config backups table.
+    // Migration 011: config backups table.
     let applied_11: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 11")
         .fetch_optional(pool)
         .await?
@@ -670,6 +674,36 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 027_device_critical.sql");
     }
 
+    // Migration 028: Rename VyOS artifacts.
+    let applied_28: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 28")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_28 {
+        for statement in RENAME_VYOS_ARTIFACTS_MIGRATION.split(';') {
+            let code = statement
+                .lines()
+                .skip_while(|l| {
+                    let t = l.trim();
+                    t.is_empty() || t.starts_with("--")
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let stmt = code.trim();
+            if stmt.is_empty() {
+                continue;
+            }
+            sqlx::query(stmt).execute(pool).await?;
+        }
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (28)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 028_rename_vyos_artifacts.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -716,7 +750,7 @@ mod tests {
             "device_events",
             "topology_positions",
             "audit_log",
-            "vyos_config_backups",
+            "config_backups",
             "device_sysinfo",
             "speedtest_history",
             "ssh_targets",

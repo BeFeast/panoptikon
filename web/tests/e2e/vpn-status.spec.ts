@@ -12,7 +12,6 @@ import type { Page } from "@playwright/test";
 
 /** VPN status response with no MikroTik WireGuard interfaces. */
 const MOCK_VPN_NO_MIKROTIK_WG = {
-  vyos_available: false,
   mikrotik_available: false,
   interfaces: [],
   total_peers: 0,
@@ -23,7 +22,6 @@ const MOCK_VPN_NO_MIKROTIK_WG = {
 
 /** VPN status response with MikroTik WireGuard interfaces. */
 const MOCK_VPN_WITH_MIKROTIK_WG = {
-  vyos_available: false,
   mikrotik_available: true,
   interfaces: [
     {

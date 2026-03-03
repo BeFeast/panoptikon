@@ -133,7 +133,7 @@ pub async fn list(
     let per_page = params.per_page.unwrap_or(25).clamp(1, 100);
     let offset = (page - 1) * per_page;
 
-    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM vyos_config_backups")
+    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM config_backups")
         .fetch_one(&state.db)
         .await
         .map_err(|e| {
@@ -143,7 +143,7 @@ pub async fn list(
 
     let rows = sqlx::query_as::<_, BackupSummaryRow>(
         "SELECT id, created_at, label, size_bytes, created_by \
-         FROM vyos_config_backups ORDER BY id DESC LIMIT ? OFFSET ?",
+         FROM config_backups ORDER BY id DESC LIMIT ? OFFSET ?",
     )
     .bind(per_page)
     .bind(offset)
@@ -175,7 +175,7 @@ pub async fn get_one(
 ) -> Result<Json<ConfigBackup>, StatusCode> {
     let row = sqlx::query_as::<_, BackupRow>(
         "SELECT id, created_at, label, config_text, size_bytes, created_by \
-         FROM vyos_config_backups WHERE id = ?",
+         FROM config_backups WHERE id = ?",
     )
     .bind(id)
     .fetch_optional(&state.db)
@@ -203,7 +203,7 @@ pub async fn create(
     State(_state): State<AppState>,
     Json(_body): Json<CreateBackupRequest>,
 ) -> Result<(StatusCode, Json<ConfigBackup>), StatusCode> {
-    // Config backup creation requires a router connection (previously VyOS).
+    // Config backup creation requires a router connection.
     // This feature is currently disabled until router-agnostic config
     // backup support is implemented.
     Err(StatusCode::SERVICE_UNAVAILABLE)
@@ -214,7 +214,7 @@ pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> Result<StatusCode, StatusCode> {
-    let result = sqlx::query("DELETE FROM vyos_config_backups WHERE id = ?")
+    let result = sqlx::query("DELETE FROM config_backups WHERE id = ?")
         .bind(id)
         .execute(&state.db)
         .await
