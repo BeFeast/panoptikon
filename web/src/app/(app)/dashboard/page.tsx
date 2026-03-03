@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import { useWsEvent } from "@/lib/ws";
 import { getDeviceIcon } from "@/lib/device-icons";
 import type { DeviceType } from "@/lib/device-type";
+import { cn } from "@/lib/utils";
 
 // ─── Format ISO minute string to HH:mm ─────────────────
 
@@ -280,8 +281,14 @@ function StatCard({
   href?: string;
 }) {
   const inner = (
-    <Card className="h-full border-slate-800 bg-slate-900 transition-all hover:border-blue-500/50 hover:bg-slate-800/60 hover:shadow-lg hover:shadow-blue-500/5">
-      <CardHeader className="flex flex-row items-center justify-between pb-2 sm:pb-2">
+    <Card
+      className={cn(
+        "h-full border-slate-800/80 bg-slate-900/70",
+        href &&
+          "transition-[border-color,background-color,box-shadow] hover:border-blue-500/40 hover:bg-slate-900/90 hover:shadow-[0_10px_28px_-16px_rgba(59,130,246,0.45)]",
+      )}
+    >
+      <CardHeader className="flex flex-row items-start justify-between pb-1.5 sm:pb-1.5">
         <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
           {title}
         </CardTitle>
@@ -290,14 +297,14 @@ function StatCard({
           <span className="text-slate-500">{icon}</span>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-1.5">
         <p className="truncate text-2xl font-bold tabular-nums text-white">{value}</p>
-        <p className="mt-1.5 truncate text-xs text-slate-400">{subtitle}</p>
+        <p className="truncate text-xs text-slate-400">{subtitle}</p>
       </CardContent>
     </Card>
   );
   return href ? (
-    <Link href={href} className="block">
+    <Link href={href} className="block h-full">
       {inner}
     </Link>
   ) : (
@@ -309,7 +316,7 @@ function StatCard({
 
 function StatCardSkeleton() {
   return (
-    <Card className="h-full border-slate-800 bg-slate-900">
+    <Card className="h-full border-slate-800/80 bg-slate-900/70">
       <CardHeader className="pb-2">
         <Skeleton className="h-4 w-24" />
       </CardHeader>
@@ -479,17 +486,22 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-    <div className="space-y-4">
-      <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
+    <div className="space-y-6">
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
+        <p className="text-sm text-slate-400">
+          Network health, traffic, and alerts at a glance.
+        </p>
+      </div>
 
       {/* ── Bento Grid ─────────────────────────────────── */}
       <StaggerContainer className="grid grid-cols-1 gap-4 lg:grid-cols-5">
         {/* ── Health Score Ring ─────────────────────────── */}
         <StaggerItem><Card
-          className="h-full border-slate-800 bg-slate-900 lg:col-span-1 transition-all hover:border-blue-500/50 hover:bg-slate-800/60 hover:shadow-lg hover:shadow-blue-500/5"
+          className="h-full border-slate-800/80 bg-slate-900/70 lg:col-span-1"
           data-testid="infra-health-card"
         >
-          <CardHeader className="pb-2 sm:pb-2">
+          <CardHeader className="pb-3 sm:pb-3">
             <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
               Infrastructure Health
             </CardTitle>
@@ -608,8 +620,8 @@ export default function DashboardPage() {
         </div></StaggerItem>
 
         {/* ── WAN Traffic Card with Sparkline ─────────── */}
-        <StaggerItem className="lg:col-span-3"><Card className="border-slate-800 bg-slate-900">
-          <CardHeader className="pb-2 sm:pb-2">
+        <StaggerItem className="lg:col-span-3"><Card className="border-slate-800/80 bg-slate-900/70">
+          <CardHeader className="pb-3 sm:pb-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-blue-400" />
@@ -707,8 +719,8 @@ export default function DashboardPage() {
         </Card></StaggerItem>
 
         {/* ── Alert Feed ───────────────────────────────── */}
-        <StaggerItem className="lg:col-span-2"><Card className="border-slate-800 bg-slate-900">
-          <CardHeader className="pb-2 sm:pb-2">
+        <StaggerItem className="lg:col-span-2"><Card className="border-slate-800/80 bg-slate-900/70">
+          <CardHeader className="pb-3 sm:pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Recent Alerts
@@ -764,8 +776,8 @@ export default function DashboardPage() {
         </Card></StaggerItem>
 
         {/* ── Device Type Breakdown ────────────────────── */}
-        <StaggerItem className="lg:col-span-5"><Card className="border-slate-800 bg-slate-900">
-          <CardHeader className="pb-2 sm:pb-2">
+        <StaggerItem className="lg:col-span-5"><Card className="border-slate-800/80 bg-slate-900/70">
+          <CardHeader className="pb-3 sm:pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Device Breakdown
