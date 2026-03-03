@@ -550,7 +550,7 @@ pub(crate) fn infer_band_label(
     // Priority 1: channel number when non-zero.
     if let Some(ch) = channel {
         if let Ok(n) = ch.trim().parse::<u32>() {
-            if n >= 1 && n <= 14 {
+            if (1..=14).contains(&n) {
                 return "2.4GHz";
             }
             if n >= 36 {
