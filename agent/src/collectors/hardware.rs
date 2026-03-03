@@ -7,6 +7,8 @@
 use serde::Serialize;
 use sysinfo::System;
 
+use super::fastfetch::FastfetchData;
+
 /// Static hardware inventory sent alongside periodic reports.
 #[derive(Debug, Clone, Serialize)]
 pub struct HardwareInfo {
@@ -19,6 +21,24 @@ pub struct HardwareInfo {
     pub disk_name: Option<String>,
     pub disk_size_bytes: Option<u64>,
     pub serial_number: Option<String>,
+    // Extended fields from fastfetch:
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub motherboard_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bios_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bios_vendor: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ram_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ram_speed: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gpu_vram: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gpu_type: Option<String>,
+    /// Source of hardware data: "sysinfo" or "fastfetch".
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub collector_source: Option<String>,
 }
 
 /// Collect hardware inventory (called once at startup).
@@ -43,6 +63,14 @@ pub fn collect(sys: &System) -> HardwareInfo {
         disk_name,
         disk_size_bytes,
         serial_number,
+        motherboard_name: None,
+        bios_version: None,
+        bios_vendor: None,
+        ram_type: None,
+        ram_speed: None,
+        gpu_vram: None,
+        gpu_type: None,
+        collector_source: Some("sysinfo".to_string()),
     }
 }
 
@@ -183,4 +211,101 @@ fn detect_serial_number() -> Option<String> {
     }
 
     None
+}
+
+/// Format bytes into a human-readable string (e.g. "16.0 GB").
+fn format_bytes_human(bytes: u64) -> String {
+    const GB: f64 = 1_073_741_824.0;
+    const MB: f64 = 1_048_576.0;
+    let b = bytes as f64;
+    if b >= GB {
+        format!("{:.1} GB", b / GB)
+    } else {
+        format!("{:.0} MB", b / MB)
+    }
+}
+
+/// Enrich a sysinfo-based `HardwareInfo` with data from fastfetch.
+///
+/// Fastfetch data takes precedence for fields it provides, since
+/// it typically has richer information (GPU VRAM, RAM type/speed,
+/// motherboard, BIOS, etc.).
+pub fn enrich_with_fastfetch(hw: &mut HardwareInfo, ff: &FastfetchData) {
+    // CPU — prefer fastfetch's more detailed CPU name.
+    if ff.cpu_name.is_some() {
+        hw.cpu_name = ff.cpu_name.clone();
+    }
+    if let Some(cores) = ff.cpu_cores_physical {
+        hw.cpu_cores = Some(cores);
+    }
+    if let Some(freq) = ff.cpu_freq_base_mhz {
+        hw.cpu_speed_mhz = Some(freq);
+    }
+
+    // Memory — prefer fastfetch total if available.
+    if let Some(total) = ff.memory_total {
+        hw.ram_total_bytes = Some(total);
+    }
+
+    // GPU — use first GPU from fastfetch.
+    if let Some(gpu) = ff.gpu.first() {
+        if let Some(ref name) = gpu.name {
+            hw.gpu_name = Some(name.clone());
+        }
+        if let Some(vram) = gpu.vram_bytes {
+            hw.gpu_vram = Some(format_bytes_human(vram));
+        }
+        if let Some(ref gt) = gpu.gpu_type {
+            hw.gpu_type = Some(gt.clone());
+        }
+    }
+
+    // Host/Model — prefer fastfetch.
+    if let Some(ref name) = ff.host_name {
+        hw.hardware_model = Some(name.clone());
+    }
+
+    // Serial number — prefer fastfetch if available.
+    if ff.host_serial.is_some() {
+        hw.serial_number = ff.host_serial.clone();
+    }
+
+    // Motherboard.
+    if let Some(ref board) = ff.board_name {
+        let board_str = match &ff.board_vendor {
+            Some(vendor) => format!("{} {}", vendor, board),
+            None => board.clone(),
+        };
+        hw.motherboard_name = Some(board_str);
+    }
+
+    // BIOS.
+    hw.bios_vendor = ff.bios_vendor.clone();
+    hw.bios_version = ff.bios_version.clone();
+
+    // Physical memory (RAM type/speed from first DIMM).
+    if let Some(dimm) = ff.physical_memory.first() {
+        if let Some(ref mt) = dimm.mem_type {
+            hw.ram_type = Some(mt.clone());
+        }
+        if let Some(speed) = dimm.speed_mts {
+            hw.ram_speed = Some(format!("{} MT/s", speed));
+        }
+    }
+
+    // Physical disk — prefer the largest non-removable disk from fastfetch.
+    if let Some(disk) = ff
+        .physical_disks
+        .iter()
+        .max_by_key(|d| d.size_bytes.unwrap_or(0))
+    {
+        if let Some(ref name) = disk.name {
+            hw.disk_name = Some(name.clone());
+        }
+        if let Some(size) = disk.size_bytes {
+            hw.disk_size_bytes = Some(size);
+        }
+    }
+
+    hw.collector_source = Some("fastfetch".to_string());
 }

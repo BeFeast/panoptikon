@@ -1285,6 +1285,23 @@ pub struct DeviceSysinfo {
     pub serial_number: Option<String>,
     pub hostname: Option<String>,
     pub uptime_seconds: Option<i64>,
+    // Extended fastfetch fields:
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub motherboard_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bios_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bios_vendor: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ram_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ram_speed: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gpu_vram: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gpu_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub collector_source: Option<String>,
 }
 
 /// GET /api/v1/devices/:id/sysinfo — hardware inventory from agent.
@@ -1296,7 +1313,9 @@ pub async fn get_sysinfo(
         r#"SELECT device_id, reported_at, os_name, os_version, os_build,
                   hardware_model, cpu_name, cpu_cores, cpu_speed, ram_total,
                   gpu_name, disk_name, disk_size, serial_number,
-                  hostname, uptime_seconds
+                  hostname, uptime_seconds,
+                  motherboard_name, bios_version, bios_vendor,
+                  ram_type, ram_speed, gpu_vram, gpu_type, collector_source
            FROM device_sysinfo
            WHERE device_id = ?"#,
     )
@@ -1322,6 +1341,14 @@ pub async fn get_sysinfo(
             serial_number: row.try_get("serial_number")?,
             hostname: row.try_get("hostname")?,
             uptime_seconds: row.try_get("uptime_seconds")?,
+            motherboard_name: row.try_get("motherboard_name")?,
+            bios_version: row.try_get("bios_version")?,
+            bios_vendor: row.try_get("bios_vendor")?,
+            ram_type: row.try_get("ram_type")?,
+            ram_speed: row.try_get("ram_speed")?,
+            gpu_vram: row.try_get("gpu_vram")?,
+            gpu_type: row.try_get("gpu_type")?,
+            collector_source: row.try_get("collector_source")?,
         }),
         None => None,
     };

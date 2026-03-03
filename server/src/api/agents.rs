@@ -115,6 +115,23 @@ pub struct Agent {
     pub serial_number: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub uptime_seconds: Option<i64>,
+    // Extended fastfetch fields:
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub motherboard_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bios_version: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub bios_vendor: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ram_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ram_speed: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gpu_vram: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gpu_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub collector_source: Option<String>,
 }
 
 /// Request body for registering a new agent.
@@ -166,6 +183,23 @@ pub struct AgentHardwareInfo {
     pub disk_name: Option<String>,
     pub disk_size_bytes: Option<i64>,
     pub serial_number: Option<String>,
+    // Extended fields from fastfetch:
+    #[serde(default)]
+    pub motherboard_name: Option<String>,
+    #[serde(default)]
+    pub bios_version: Option<String>,
+    #[serde(default)]
+    pub bios_vendor: Option<String>,
+    #[serde(default)]
+    pub ram_type: Option<String>,
+    #[serde(default)]
+    pub ram_speed: Option<String>,
+    #[serde(default)]
+    pub gpu_vram: Option<String>,
+    #[serde(default)]
+    pub gpu_type: Option<String>,
+    #[serde(default)]
+    pub collector_source: Option<String>,
 }
 
 /// Network interface info from agent report (used for MAC-based device linking and traffic tracking).
@@ -247,6 +281,14 @@ impl Agent {
             disk_size: row.try_get("disk_size").ok().flatten(),
             serial_number: row.try_get("serial_number").ok().flatten(),
             uptime_seconds: row.try_get("uptime_seconds").ok().flatten(),
+            motherboard_name: row.try_get("motherboard_name").ok().flatten(),
+            bios_version: row.try_get("bios_version").ok().flatten(),
+            bios_vendor: row.try_get("bios_vendor").ok().flatten(),
+            ram_type: row.try_get("ram_type").ok().flatten(),
+            ram_speed: row.try_get("ram_speed").ok().flatten(),
+            gpu_vram: row.try_get("gpu_vram").ok().flatten(),
+            gpu_type: row.try_get("gpu_type").ok().flatten(),
+            collector_source: row.try_get("collector_source").ok().flatten(),
         })
     }
 }
@@ -258,7 +300,9 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Agent>>, Sta
                 a.last_report_at, a.created_at, \
                 r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used, \
                 ds.hardware_model, ds.cpu_name, ds.cpu_cores, ds.cpu_speed, \
-                ds.gpu_name, ds.disk_name, ds.disk_size, ds.serial_number, ds.uptime_seconds \
+                ds.gpu_name, ds.disk_name, ds.disk_size, ds.serial_number, ds.uptime_seconds, \
+                ds.motherboard_name, ds.bios_version, ds.bios_vendor, \
+                ds.ram_type, ds.ram_speed, ds.gpu_vram, ds.gpu_type, ds.collector_source \
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
            AND r.id = ( \
@@ -299,7 +343,9 @@ pub async fn get_one(
                 a.last_report_at, a.created_at, \
                 r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used, \
                 ds.hardware_model, ds.cpu_name, ds.cpu_cores, ds.cpu_speed, \
-                ds.gpu_name, ds.disk_name, ds.disk_size, ds.serial_number, ds.uptime_seconds \
+                ds.gpu_name, ds.disk_name, ds.disk_size, ds.serial_number, ds.uptime_seconds, \
+                ds.motherboard_name, ds.bios_version, ds.bios_vendor, \
+                ds.ram_type, ds.ram_speed, ds.gpu_vram, ds.gpu_type, ds.collector_source \
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
            AND r.id = ( \
@@ -381,7 +427,9 @@ pub async fn update(
                 a.last_report_at, a.created_at, \
                 r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used, \
                 ds.hardware_model, ds.cpu_name, ds.cpu_cores, ds.cpu_speed, \
-                ds.gpu_name, ds.disk_name, ds.disk_size, ds.serial_number, ds.uptime_seconds \
+                ds.gpu_name, ds.disk_name, ds.disk_size, ds.serial_number, ds.uptime_seconds, \
+                ds.motherboard_name, ds.bios_version, ds.bios_vendor, \
+                ds.ram_type, ds.ram_speed, ds.gpu_vram, ds.gpu_type, ds.collector_source \
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
            AND r.id = ( \
@@ -1111,8 +1159,12 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
                (device_id, os_name, os_version, os_build, hardware_model,
                 cpu_name, cpu_cores, cpu_speed, ram_total,
                 gpu_name, disk_name, disk_size, serial_number,
-                hostname, uptime_seconds, reported_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                hostname, uptime_seconds,
+                motherboard_name, bios_version, bios_vendor,
+                ram_type, ram_speed, gpu_vram, gpu_type, collector_source,
+                reported_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                       ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
                ON CONFLICT(device_id) DO UPDATE SET
                    os_name = COALESCE(excluded.os_name, device_sysinfo.os_name),
                    os_version = COALESCE(excluded.os_version, device_sysinfo.os_version),
@@ -1128,6 +1180,14 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
                    serial_number = COALESCE(excluded.serial_number, device_sysinfo.serial_number),
                    hostname = COALESCE(excluded.hostname, device_sysinfo.hostname),
                    uptime_seconds = excluded.uptime_seconds,
+                   motherboard_name = COALESCE(excluded.motherboard_name, device_sysinfo.motherboard_name),
+                   bios_version = COALESCE(excluded.bios_version, device_sysinfo.bios_version),
+                   bios_vendor = COALESCE(excluded.bios_vendor, device_sysinfo.bios_vendor),
+                   ram_type = COALESCE(excluded.ram_type, device_sysinfo.ram_type),
+                   ram_speed = COALESCE(excluded.ram_speed, device_sysinfo.ram_speed),
+                   gpu_vram = COALESCE(excluded.gpu_vram, device_sysinfo.gpu_vram),
+                   gpu_type = COALESCE(excluded.gpu_type, device_sysinfo.gpu_type),
+                   collector_source = COALESCE(excluded.collector_source, device_sysinfo.collector_source),
                    reported_at = datetime('now')"#,
         )
         .bind(dev_id)
@@ -1145,6 +1205,14 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
         .bind(hw.serial_number.as_deref())
         .bind(&report.hostname)
         .bind(report.uptime_seconds)
+        .bind(hw.motherboard_name.as_deref())
+        .bind(hw.bios_version.as_deref())
+        .bind(hw.bios_vendor.as_deref())
+        .bind(hw.ram_type.as_deref())
+        .bind(hw.ram_speed.as_deref())
+        .bind(hw.gpu_vram.as_deref())
+        .bind(hw.gpu_type.as_deref())
+        .bind(hw.collector_source.as_deref())
         .execute(&state.db)
         .await
         {
