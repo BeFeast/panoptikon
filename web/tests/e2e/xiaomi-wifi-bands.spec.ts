@@ -171,6 +171,30 @@ test.describe("Xiaomi WiFi Bands display fixes (#548)", () => {
   test("channel=0 displays as 'Auto' instead of '0'", async ({ page }) => {
     await login(page);
 
+    // Mock the status API so the router appears configured+reachable in CI
+    await page.route("**/api/v1/xiaomi/status", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          configured: true,
+          reachable: true,
+          cpu_cores: null,
+          cpu_freq: null,
+          cpu_load: null,
+          mem_usage: null,
+          mem_total: null,
+          mem_type: null,
+          temperature: null,
+          wan_download: null,
+          wan_upload: null,
+          devices_online: null,
+          devices_total: null,
+          uptime: null,
+        }),
+      }),
+    );
+
     // Mock the wifi-bands API to return channel "0" (auto-channel mode)
     await page.route("**/api/v1/xiaomi/wifi-bands", (route) =>
       route.fulfill({
@@ -240,6 +264,30 @@ test.describe("Xiaomi WiFi Bands display fixes (#548)", () => {
   test("null channel also displays as 'Auto'", async ({ page }) => {
     await login(page);
 
+    // Mock the status API so the router appears configured+reachable in CI
+    await page.route("**/api/v1/xiaomi/status", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          configured: true,
+          reachable: true,
+          cpu_cores: null,
+          cpu_freq: null,
+          cpu_load: null,
+          mem_usage: null,
+          mem_total: null,
+          mem_type: null,
+          temperature: null,
+          wan_download: null,
+          wan_upload: null,
+          devices_online: null,
+          devices_total: null,
+          uptime: null,
+        }),
+      }),
+    );
+
     await page.route("**/api/v1/xiaomi/wifi-bands", (route) =>
       route.fulfill({
         status: 200,
@@ -290,6 +338,30 @@ test.describe("Xiaomi WiFi Bands display fixes (#548)", () => {
   }) => {
     await login(page);
 
+    // Mock the status API so the router appears configured+reachable in CI
+    await page.route("**/api/v1/xiaomi/status", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          configured: true,
+          reachable: true,
+          cpu_cores: null,
+          cpu_freq: null,
+          cpu_load: null,
+          mem_usage: null,
+          mem_total: null,
+          mem_type: null,
+          temperature: null,
+          wan_download: null,
+          wan_upload: null,
+          devices_online: null,
+          devices_total: null,
+          uptime: null,
+        }),
+      }),
+    );
+
     await page.route("**/api/v1/xiaomi/wifi-bands", (route) =>
       route.fulfill({
         status: 200,
@@ -339,6 +411,30 @@ test.describe("Xiaomi WiFi Bands display fixes (#548)", () => {
     page,
   }) => {
     await login(page);
+
+    // Mock the status API so the router appears configured+reachable in CI
+    await page.route("**/api/v1/xiaomi/status", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          configured: true,
+          reachable: true,
+          cpu_cores: null,
+          cpu_freq: null,
+          cpu_load: null,
+          mem_usage: null,
+          mem_total: null,
+          mem_type: null,
+          temperature: null,
+          wan_download: null,
+          wan_upload: null,
+          devices_online: null,
+          devices_total: null,
+          uptime: null,
+        }),
+      }),
+    );
 
     await page.route("**/api/v1/xiaomi/wifi-bands", (route) =>
       route.fulfill({
@@ -407,6 +503,30 @@ test.describe("Xiaomi WiFi Bands display fixes (#548)", () => {
     page,
   }) => {
     await login(page);
+
+    // Mock the status API so the router appears configured+reachable in CI
+    await page.route("**/api/v1/xiaomi/status", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          configured: true,
+          reachable: true,
+          cpu_cores: null,
+          cpu_freq: null,
+          cpu_load: null,
+          mem_usage: null,
+          mem_total: null,
+          mem_type: null,
+          temperature: null,
+          wan_download: null,
+          wan_upload: null,
+          devices_online: null,
+          devices_total: null,
+          uptime: null,
+        }),
+      }),
+    );
 
     await page.route("**/api/v1/xiaomi/wifi-bands", (route) =>
       route.fulfill({
