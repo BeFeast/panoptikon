@@ -1,4 +1,4 @@
--- Migration 029: external hostname mappings + pfSense ARP hotfix seed
+-- Migration 030: external hostname mappings + pfSense ARP hotfix seed
 --
 -- Purpose:
 -- - Provide a lightweight/mock hostname source for immediate production relief

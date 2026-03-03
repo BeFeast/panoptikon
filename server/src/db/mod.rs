@@ -93,9 +93,12 @@ const DEVICE_CRITICAL_MIGRATION: &str = include_str!("migrations/027_device_crit
 const RENAME_VYOS_ARTIFACTS_MIGRATION: &str =
     include_str!("migrations/028_rename_vyos_artifacts.sql");
 
-/// Migration 029: External hostname source seed + pfSense ARP hotfix application.
+/// Migration 029: Add fastfetch hardware fields (motherboard, BIOS, GPU type, collector source).
+const FASTFETCH_FIELDS_MIGRATION: &str = include_str!("migrations/029_fastfetch_fields.sql");
+
+/// Migration 030: External hostname source seed + pfSense ARP hotfix application.
 const PFSENSE_HOSTNAME_HOTFIX_MIGRATION: &str =
-    include_str!("migrations/029_pfsense_hostname_hotfix.sql");
+    include_str!("migrations/030_pfsense_hostname_hotfix.sql");
 
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
@@ -708,22 +711,52 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 028_rename_vyos_artifacts.sql");
     }
 
-    // Migration 029: external hostname seed + one-shot hotfix for missing names.
+    // Migration 029: Fastfetch hardware fields.
     let applied_29: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 29")
         .fetch_optional(pool)
         .await?
         .is_some();
 
     if !applied_29 {
-        sqlx::raw_sql(PFSENSE_HOSTNAME_HOTFIX_MIGRATION)
-            .execute(pool)
-            .await?;
+        for statement in FASTFETCH_FIELDS_MIGRATION.split(';') {
+            let code = statement
+                .lines()
+                .skip_while(|l| {
+                    let t = l.trim();
+                    t.is_empty() || t.starts_with("--")
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let stmt = code.trim();
+            if stmt.is_empty() {
+                continue;
+            }
+            sqlx::query(stmt).execute(pool).await?;
+        }
 
         sqlx::query("INSERT INTO _migrations (version) VALUES (29)")
             .execute(pool)
             .await?;
 
-        info!("Applied migration 029_pfsense_hostname_hotfix.sql");
+        info!("Applied migration 029_fastfetch_fields.sql");
+    }
+
+    // Migration 030: external hostname seed + one-shot hotfix for missing names.
+    let applied_30: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 30")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_30 {
+        sqlx::raw_sql(PFSENSE_HOSTNAME_HOTFIX_MIGRATION)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (30)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 030_pfsense_hostname_hotfix.sql");
     }
 
     // Purge expired sessions on startup.
