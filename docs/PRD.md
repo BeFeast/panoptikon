@@ -525,6 +525,78 @@ Compose:             docker-compose.yml → panoptikon + caddy + unbound + cloud
 
 **Message format:** JSON over WebSocket (text frames). Binary frames reserved for future file transfer (e.g., log tailing).
 
+### Hardware Inventory via fastfetch (issue #559)
+
+[fastfetch-cli](https://github.com/fastfetch-cli/fastfetch) is a system information tool (C) with structured JSON output: CPU model/cores/freq, GPU, RAM type/speed, storage, network interfaces, OS, display, battery, motherboard, BIOS.
+
+#### Phase 1 — Subprocess (quick start)
+
+Agent calls `fastfetch --format json` as subprocess, parses output.
+
+- Optional `fastfetch_path` config key (default: auto-detect)
+- Run at startup + periodic refresh
+- Graceful fallback to existing collectors if fastfetch not found
+
+**Pros:** Zero FFI complexity, immediate  
+**Cons:** Requires fastfetch installed on host
+
+#### Phase 2 — Native bindings (target)
+
+Compile fastfetch as C static lib, call via Rust FFI, bundle into agent binary.
+
+- fastfetch as git submodule
+- `build.rs` + `cc` crate + `bindgen` (~100 lines)
+- Zero install dependency, single self-contained binary
+
+**Feasibility:** Straightforward for Linux x86_64 + macOS arm64. CMake in CI is one-time setup. Not significantly more complex than subprocess approach.
+
+#### Data added to agent report
+
+```json
+{
+  "hardware_inventory": {
+    "source": "fastfetch",
+    "cpu": { "name": "Apple M1 Pro", "cores_physical": 8, "cores_logical": 10 },
+    "gpu": [{ "name": "Apple M1 Pro", "type": "integrated" }],
+    "memory": { "total_mb": 16384, "type": "LPDDR5", "speed_mhz": 6400 },
+    "storage": [{ "name": "APPLE SSD AP0512R", "size_gb": 512, "type": "NVMe" }],
+    "motherboard": { "name": "Mac14,5", "vendor": "Apple" }
+  }
+}
+```
+
+---
+
+### Network Asset Scanner (issue #558)
+
+Active scanning to discover and enrich device inventory. Manual trigger or scheduled.
+
+#### Sources (priority order)
+
+| Source | Method | Data |
+|--------|--------|------|
+| **Panoptikon agent** | Self-report via WebSocket | Hostname, OS, hardware, MAC — most accurate |
+| **arp-scan** | `arp-scan --localnet` | Fast MAC+IP |
+| **Router DHCP** | MikroTik / Xiaomi API | Hostname from lease |
+| **mDNS/Bonjour** | `avahi-browse -a` | Apple/Linux names + types |
+| **NetBIOS** | `nmblookup -A <ip>` | Windows names |
+| **nmap** | `-O --osscan-guess -sV` | OS, ports, banners |
+| **SNMP** | `snmpwalk sysName.0` | Switch/router names |
+| **HTTP fingerprint** | `curl -I http://<ip>/` | Server header → model |
+| **Reverse DNS** | PTR lookup | hostname |
+
+#### Agent → device enrichment
+
+On agent connect: upsert `devices` WHERE `mac = agent_mac` → set hostname, os, hardware_model, agent_id.
+
+#### UX
+
+- "Scan Network" button in Devices page header
+- Per-source progress, summary toast after scan
+- Optional scheduled interval (default: off)
+
+---
+
 ### Agent Authentication
 
 - On first install, the agent receives an **API key** (generated in the Panoptikon web UI under Agent Management).
