@@ -699,7 +699,9 @@ async fn handle_agent_ws(mut socket: WebSocket, state: AppState, api_key: Option
         None => false,
     };
 
-    if !device_muted {
+    if !device_muted
+        && !alerts::recent_agent_alert_exists(&state.db, &agent_id, "agent_offline", 600).await
+    {
         let alert_id = uuid::Uuid::new_v4().to_string();
         let severity = alerts::severity_for_alert_type("agent_offline");
         let _ = sqlx::query(
