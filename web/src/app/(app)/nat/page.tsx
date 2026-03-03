@@ -14,9 +14,9 @@ import {
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,43 +50,34 @@ import {
 import { PageTransition } from "@/components/PageTransition";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  fetchNatSummary,
-  fetchMikrotikNatRules,
   createMikrotikNatRule,
-  updateMikrotikNatRule,
   deleteMikrotikNatRule,
+  fetchMikrotikNatRules,
+  fetchNatSummary,
+  updateMikrotikNatRule,
 } from "@/lib/api";
-import type {
-  NatSummary,
-  MikrotikNatRuleWithId,
-} from "@/lib/types";
+import { cn } from "@/lib/utils";
+import type { MikrotikNatRuleWithId, NatSummary } from "@/lib/types";
 import { toast } from "sonner";
+
+const surfaceClass =
+  "border-slate-800/70 bg-gradient-to-b from-slate-900/80 to-slate-900/55 shadow-[0_12px_30px_rgba(2,6,23,0.35)]";
 
 export default function NatPage() {
   const [summary, setSummary] = useState<NatSummary | null>(null);
   const [mtRules, setMtRules] = useState<MikrotikNatRuleWithId[] | null>(null);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("mikrotik");
 
-  // Dialogs
   const [showAddMt, setShowAddMt] = useState(false);
-  const [editMtRule, setEditMtRule] = useState<MikrotikNatRuleWithId | null>(
-    null
-  );
-  const [pendingDeleteMt, setPendingDeleteMt] =
-    useState<MikrotikNatRuleWithId | null>(null);
+  const [editMtRule, setEditMtRule] = useState<MikrotikNatRuleWithId | null>(null);
+  const [pendingDeleteMt, setPendingDeleteMt] = useState<MikrotikNatRuleWithId | null>(null);
 
   const load = useCallback(async () => {
     try {
       const s = await fetchNatSummary();
       setSummary(s);
     } catch {
-      // summary is best-effort
+      // best-effort summary
     }
   }, []);
 
@@ -101,13 +92,9 @@ export default function NatPage() {
 
   useEffect(() => {
     load();
-  }, [load]);
+    loadMt();
+  }, [load, loadMt]);
 
-  useEffect(() => {
-    if (activeTab === "mikrotik") loadMt();
-  }, [activeTab, loadMt]);
-
-  // -- Filter helpers --
   const filteredMt = useMemo(() => {
     if (!mtRules) return null;
     if (!search.trim()) return mtRules;
@@ -117,18 +104,15 @@ export default function NatPage() {
         (r.comment ?? "").toLowerCase().includes(q) ||
         (r.to_addresses ?? "").toLowerCase().includes(q) ||
         (r.dst_port ?? "").toLowerCase().includes(q) ||
-        (r.action ?? "").toLowerCase().includes(q)
+        (r.action ?? "").toLowerCase().includes(q),
     );
   }, [mtRules, search]);
 
-  // -- MikroTik Handlers --
   async function handleDeleteMt() {
     if (!pendingDeleteMt || !pendingDeleteMt.id) return;
     try {
       await deleteMikrotikNatRule(pendingDeleteMt.id);
-      setMtRules(
-        (prev) => prev?.filter((r) => r.id !== pendingDeleteMt.id) ?? null
-      );
+      setMtRules((prev) => prev?.filter((r) => r.id !== pendingDeleteMt.id) ?? null);
       toast.success("Deleted MikroTik NAT rule");
       load();
     } catch {
@@ -140,205 +124,183 @@ export default function NatPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-6xl space-y-6 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <ArrowRightLeft className="h-6 w-6 text-blue-500" />
-            <h1 className="text-2xl font-semibold text-white">
-              NAT / Port Forwarding
-            </h1>
-            <HelpTooltip text="View and manage NAT (port forwarding) rules on your MikroTik router." />
+      <div className="space-y-6">
+        <section className="flex flex-col gap-4 rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/20 via-fuchsia-500/10 to-blue-500/10 text-violet-300">
+              <ArrowRightLeft className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-semibold tracking-tight text-white">NAT / Port Forwarding</h1>
+                <HelpTooltip text="Manage MikroTik NAT and port-forwarding rules from the same command-center style UI." />
+              </div>
+              <p className="text-sm text-slate-400">
+                Inspect rule chains, targets, and translation endpoints.
+              </p>
+            </div>
           </div>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  load();
-                  if (activeTab === "mikrotik") loadMt();
-                }}
-                className="border-slate-800 text-slate-300 hover:bg-slate-800"
-              >
-                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                Refresh
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
-              Reload NAT rules from the router
-            </TooltipContent>
-          </Tooltip>
-        </div>
 
-        {/* Summary Cards */}
-        <div className="grid gap-4 sm:grid-cols-1">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              load();
+              loadMt();
+            }}
+            className="border-slate-700 bg-slate-900/60 text-slate-200 hover:bg-slate-800"
+          >
+            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+            Refresh
+          </Button>
+        </section>
+
+        <section className="grid gap-4 sm:grid-cols-1 lg:max-w-md">
           <SummaryCard
             title="MikroTik NAT Rules"
             value={summary?.mikrotik_rule_count ?? null}
             available={summary?.mikrotik_available ?? null}
-            icon={<Network className="h-4 w-4 text-orange-400" />}
+            icon={<Network className="h-4 w-4 text-amber-300" />}
+            iconClass="border-amber-500/30 bg-amber-500/15"
           />
-        </div>
+        </section>
 
-        {/* Search */}
-        <div className="relative max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
-          <Input
-            placeholder="Filter rules..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-slate-900 border-slate-800 text-slate-300"
-          />
-        </div>
+        <section className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="relative max-w-md flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Input
+              placeholder="Filter by comment, action, destination port..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="border-slate-800 bg-slate-950/70 pl-10 text-white placeholder:text-slate-600"
+            />
+          </div>
 
-        {/* MikroTik NAT Rules */}
-        <Card className="bg-slate-900/50 border-slate-800">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-white">
-                MikroTik NAT Rules
-              </CardTitle>
-              <CardDescription className="text-slate-400">
-                Firewall NAT rules on the MikroTik router.
-              </CardDescription>
-            </div>
-            <Button
-              size="sm"
-              onClick={() => setShowAddMt(true)}
-              className="bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              Add Rule
-            </Button>
+          <Button
+            size="sm"
+            onClick={() => setShowAddMt(true)}
+            className="bg-blue-600 text-white hover:bg-blue-500"
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Add Rule
+          </Button>
+        </section>
+
+        <Card className={surfaceClass}>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base text-white">MikroTik NAT Rules</CardTitle>
+            <CardDescription className="text-xs text-slate-500">
+              Firewall NAT rules synchronized from the router.
+            </CardDescription>
           </CardHeader>
-          <CardContent>
-            {filteredMt === null ? (
-              <div className="space-y-2">
-                {[...Array(3)].map((_, i) => (
-                  <Skeleton key={i} className="h-10 bg-slate-800" />
-                ))}
-              </div>
-            ) : filteredMt.length === 0 ? (
-              <p className="text-sm text-slate-500 py-8 text-center">
-                {search
-                  ? "No matching rules."
-                  : "No NAT rules configured."}
-              </p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-slate-800">
-                    <TableHead className="text-slate-400">Chain</TableHead>
-                    <TableHead className="text-slate-400">
-                      Action
-                    </TableHead>
-                    <TableHead className="text-slate-400">
-                      Protocol
-                    </TableHead>
-                    <TableHead className="text-slate-400">
-                      Dst Port
-                    </TableHead>
-                    <TableHead className="text-slate-400">
-                      To Address
-                    </TableHead>
-                    <TableHead className="text-slate-400">
-                      To Port
-                    </TableHead>
-                    <TableHead className="text-slate-400">
-                      Comment
-                    </TableHead>
-                    <TableHead className="text-slate-400">
-                      Status
-                    </TableHead>
-                    <TableHead className="text-slate-400 text-right">
-                      Actions
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredMt.map((rule, idx) => (
-                    <TableRow
-                      key={rule.id ?? idx}
-                      className="border-slate-800 hover:bg-slate-800/50"
-                    >
-                      <TableCell className="text-slate-300">
-                        {rule.chain ?? "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className={
-                            rule.action === "dst-nat"
-                              ? "bg-blue-900/50 text-blue-300"
-                              : rule.action === "masquerade"
-                                ? "bg-green-900/50 text-green-300"
-                                : "bg-slate-800 text-slate-300"
-                          }
-                        >
-                          {rule.action ?? "-"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-slate-300">
-                        {rule.protocol ?? "any"}
-                      </TableCell>
-                      <TableCell className="text-slate-300 font-mono">
-                        {rule.dst_port ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-slate-300 font-mono">
-                        {rule.to_addresses ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-slate-300 font-mono">
-                        {rule.to_ports ?? "-"}
-                      </TableCell>
-                      <TableCell className="text-slate-400 max-w-[200px] truncate">
-                        {rule.comment ?? "-"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="secondary"
-                          className={
-                            rule.disabled
-                              ? "bg-slate-800 text-slate-500"
-                              : "bg-green-900/50 text-green-300"
-                          }
-                        >
-                          {rule.disabled ? "Disabled" : "Active"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          {rule.id && (
-                            <>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setEditMtRule(rule)}
-                                className="h-7 w-7 p-0 text-slate-400 hover:text-white"
-                              >
-                                <Pencil className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => setPendingDeleteMt(rule)}
-                                className="h-7 w-7 p-0 text-slate-400 hover:text-red-400"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
+
+          <CardContent className="p-0">
+            <div className="overflow-x-auto border-t border-slate-800/70">
+              {filteredMt === null ? (
+                <div className="space-y-2 p-4">
+                  {[...Array(4)].map((_, i) => (
+                    <Skeleton key={i} className="h-10 bg-slate-800" />
                   ))}
-                </TableBody>
-              </Table>
-            )}
+                </div>
+              ) : filteredMt.length === 0 ? (
+                <div className="py-12 text-center text-sm text-slate-500">
+                  {search ? "No matching rules." : "No NAT rules configured."}
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-slate-800/70 hover:bg-transparent">
+                      <TableHead className="text-xs uppercase tracking-wide text-slate-500">Chain</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wide text-slate-500">Action</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wide text-slate-500">Protocol</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wide text-slate-500">Dst Port</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wide text-slate-500">To Address</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wide text-slate-500">To Port</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wide text-slate-500">Comment</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wide text-slate-500">Status</TableHead>
+                      <TableHead className="text-right text-xs uppercase tracking-wide text-slate-500">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+
+                  <TableBody>
+                    {filteredMt.map((rule, idx) => (
+                      <TableRow
+                        key={rule.id ?? idx}
+                        className="border-slate-800/70 hover:bg-slate-800/35"
+                      >
+                        <TableCell className="text-slate-200">{rule.chain ?? "-"}</TableCell>
+
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "rounded-md border text-[11px] uppercase",
+                              rule.action === "dst-nat"
+                                ? "border-blue-500/30 bg-blue-500/10 text-blue-300"
+                                : rule.action === "masquerade"
+                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                                  : "border-slate-700 bg-slate-900/70 text-slate-400",
+                            )}
+                          >
+                            {rule.action ?? "-"}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell className="text-slate-300">{rule.protocol ?? "any"}</TableCell>
+                        <TableCell className="font-mono text-xs text-slate-300">{rule.dst_port ?? "-"}</TableCell>
+                        <TableCell className="font-mono text-xs text-slate-300">{rule.to_addresses ?? "-"}</TableCell>
+                        <TableCell className="font-mono text-xs text-slate-300">{rule.to_ports ?? "-"}</TableCell>
+                        <TableCell className="max-w-[220px] truncate text-slate-400" title={rule.comment ?? undefined}>
+                          {rule.comment ?? "-"}
+                        </TableCell>
+
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "rounded-md border text-[11px] uppercase",
+                              rule.disabled
+                                ? "border-slate-700 bg-slate-900/70 text-slate-500"
+                                : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+                            )}
+                          >
+                            {rule.disabled ? "disabled" : "active"}
+                          </Badge>
+                        </TableCell>
+
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            {rule.id && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setEditMtRule(rule)}
+                                  className="h-7 w-7 p-0 text-slate-400 hover:text-white"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setPendingDeleteMt(rule)}
+                                  className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
           </CardContent>
         </Card>
 
-        {/* MikroTik Add Dialog */}
         <MikrotikNatDialog
           open={showAddMt}
           onOpenChange={setShowAddMt}
@@ -350,14 +312,11 @@ export default function NatPage() {
               load();
               setShowAddMt(false);
             } catch (err) {
-              toast.error(
-                err instanceof Error ? err.message : "Failed to create rule"
-              );
+              toast.error(err instanceof Error ? err.message : "Failed to create rule");
             }
           }}
         />
 
-        {/* MikroTik Edit Dialog */}
         <MikrotikNatDialog
           open={!!editMtRule}
           onOpenChange={(open) => {
@@ -373,14 +332,11 @@ export default function NatPage() {
               load();
               setEditMtRule(null);
             } catch (err) {
-              toast.error(
-                err instanceof Error ? err.message : "Failed to update rule"
-              );
+              toast.error(err instanceof Error ? err.message : "Failed to update rule");
             }
           }}
         />
 
-        {/* MikroTik Delete Confirm */}
         <AlertDialog
           open={!!pendingDeleteMt}
           onOpenChange={(open) => {
@@ -389,24 +345,18 @@ export default function NatPage() {
         >
           <AlertDialogContent className="bg-slate-900 border-slate-800">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-white">
-                Delete MikroTik NAT Rule
-              </AlertDialogTitle>
+              <AlertDialogTitle className="text-white">Delete MikroTik NAT Rule</AlertDialogTitle>
               <AlertDialogDescription className="text-slate-400">
                 Are you sure you want to delete this NAT rule
-                {pendingDeleteMt?.comment
-                  ? ` (${pendingDeleteMt.comment})`
-                  : ""}
-                ? This will remove it from the MikroTik router.
+                {pendingDeleteMt?.comment ? ` (${pendingDeleteMt.comment})` : ""}?
+                This will remove it from the MikroTik router.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-slate-700 text-slate-300">
-                Cancel
-              </AlertDialogCancel>
+              <AlertDialogCancel className="border-slate-700 text-slate-300">Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeleteMt}
-                className="bg-red-600 hover:bg-red-700"
+                className="bg-rose-600 text-white hover:bg-rose-500"
               >
                 Delete
               </AlertDialogAction>
@@ -418,39 +368,40 @@ export default function NatPage() {
   );
 }
 
-// ─── Summary Card ────────────────────────────────────────────
-
 function SummaryCard({
   title,
   value,
   available,
   icon,
+  iconClass,
 }: {
   title: string;
   value: number | null;
   available: boolean | null;
   icon: React.ReactNode;
+  iconClass: string;
 }) {
   return (
-    <Card className="bg-slate-900/50 border-slate-800">
-      <CardContent className="flex items-center gap-3 pt-6">
-        {icon}
-        <div>
-          <p className="text-xs text-slate-500">{title}</p>
+    <Card className={surfaceClass}>
+      <CardContent className="flex min-h-[96px] items-center gap-4 p-4">
+        <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border", iconClass)}>
+          {icon}
+        </div>
+
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">{title}</p>
           {available === null ? (
-            <Skeleton className="h-5 w-10 mt-1 bg-slate-800" />
+            <Skeleton className="mt-2 h-6 w-14 bg-slate-800" />
           ) : available ? (
-            <p className="text-lg font-semibold text-white">{value ?? 0}</p>
+            <p className="mt-1 text-2xl font-semibold text-white">{value ?? 0}</p>
           ) : (
-            <p className="text-sm text-slate-500">Not configured</p>
+            <p className="mt-1 text-sm text-slate-500">Not configured</p>
           )}
         </div>
       </CardContent>
     </Card>
   );
 }
-
-// ─── MikroTik NAT Dialog ─────────────────────────────────────
 
 function MikrotikNatDialog({
   open,
@@ -533,6 +484,7 @@ function MikrotikNatDialog({
             {existing ? "Edit MikroTik NAT Rule" : "Add MikroTik NAT Rule"}
           </DialogTitle>
         </DialogHeader>
+
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
@@ -541,7 +493,7 @@ function MikrotikNatDialog({
                 value={chain}
                 onChange={(e) => setChain(e.target.value)}
                 placeholder="dstnat"
-                className="bg-slate-800 border-slate-700 text-slate-200"
+                className="bg-slate-950 border-slate-800 text-slate-200"
               />
             </div>
             <div className="space-y-1.5">
@@ -550,10 +502,11 @@ function MikrotikNatDialog({
                 value={action}
                 onChange={(e) => setAction(e.target.value)}
                 placeholder="dst-nat"
-                className="bg-slate-800 border-slate-700 text-slate-200"
+                className="bg-slate-950 border-slate-800 text-slate-200"
               />
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-slate-400">Protocol</Label>
@@ -561,7 +514,7 @@ function MikrotikNatDialog({
                 value={protocol}
                 onChange={(e) => setProtocol(e.target.value)}
                 placeholder="tcp"
-                className="bg-slate-800 border-slate-700 text-slate-200"
+                className="bg-slate-950 border-slate-800 text-slate-200"
               />
             </div>
             <div className="space-y-1.5">
@@ -570,10 +523,11 @@ function MikrotikNatDialog({
                 value={dstPort}
                 onChange={(e) => setDstPort(e.target.value)}
                 placeholder="8080"
-                className="bg-slate-800 border-slate-700 text-slate-200"
+                className="bg-slate-950 border-slate-800 text-slate-200"
               />
             </div>
           </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label className="text-slate-400">To Addresses</Label>
@@ -581,7 +535,7 @@ function MikrotikNatDialog({
                 value={toAddresses}
                 onChange={(e) => setToAddresses(e.target.value)}
                 placeholder="192.168.1.100"
-                className="bg-slate-800 border-slate-700 text-slate-200"
+                className="bg-slate-950 border-slate-800 text-slate-200"
               />
             </div>
             <div className="space-y-1.5">
@@ -590,19 +544,21 @@ function MikrotikNatDialog({
                 value={toPorts}
                 onChange={(e) => setToPorts(e.target.value)}
                 placeholder="80"
-                className="bg-slate-800 border-slate-700 text-slate-200"
+                className="bg-slate-950 border-slate-800 text-slate-200"
               />
             </div>
           </div>
+
           <div className="space-y-1.5">
             <Label className="text-slate-400">Comment</Label>
             <Input
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Web server"
-              className="bg-slate-800 border-slate-700 text-slate-200"
+              className="bg-slate-950 border-slate-800 text-slate-200"
             />
           </div>
+
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -615,6 +571,7 @@ function MikrotikNatDialog({
               Disabled
             </Label>
           </div>
+
           <div className="flex justify-end gap-2 pt-2">
             <Button
               variant="outline"
@@ -626,7 +583,7 @@ function MikrotikNatDialog({
             <Button
               onClick={handleSubmit}
               disabled={saving || !chain || !action}
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-blue-600 hover:bg-blue-500 text-white"
             >
               {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               {existing ? "Update" : "Create"}

@@ -13,9 +13,9 @@ import {
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,7 +32,11 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageTransition } from "@/components/PageTransition";
 import { fetchVpnStatus } from "@/lib/api";
-import type { VpnStatusResponse, VpnInterfaceStatus } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import type { VpnInterfaceStatus, VpnStatusResponse } from "@/lib/types";
+
+const surfaceClass =
+  "border-slate-800/70 bg-gradient-to-b from-slate-900/80 to-slate-900/55 shadow-[0_12px_30px_rgba(2,6,23,0.35)]";
 
 /** Format bytes into a human-readable string. */
 function formatBytes(bytes: number | null): string {
@@ -79,7 +83,6 @@ export default function VpnStatusPage() {
 
   useEffect(() => {
     load();
-    // Auto-refresh every 30 seconds
     const id = setInterval(load, 30_000);
     return () => clearInterval(id);
   }, [load]);
@@ -109,16 +112,15 @@ export default function VpnStatusPage() {
         ),
       }))
       .filter(
-        (iface) =>
-          iface.name.toLowerCase().includes(q) || iface.peers.length > 0,
+        (iface) => iface.name.toLowerCase().includes(q) || iface.peers.length > 0,
       );
   }, [data, search]);
 
-  // Group interfaces by source
   const mikrotikInterfaces = useMemo(
     () => filteredInterfaces?.filter((i) => i.source === "mikrotik") ?? [],
     [filteredInterfaces],
   );
+
   const overviewInterfaces = useMemo(() => {
     if (!data) return [];
     return data.interfaces;
@@ -126,134 +128,132 @@ export default function VpnStatusPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-6xl space-y-6 py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Shield className="h-6 w-6 text-blue-500" />
-            <h1 className="text-2xl font-semibold text-white">VPN Status</h1>
+      <div className="space-y-6">
+        <section className="flex flex-col gap-4 rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-indigo-500/30 bg-gradient-to-br from-indigo-500/20 via-blue-500/10 to-cyan-500/10 text-indigo-300">
+              <Shield className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-semibold tracking-tight text-white">VPN Status</h1>
+              <p className="text-sm text-slate-400">
+                WireGuard tunnels, peer connectivity, and transfer stats.
+              </p>
+            </div>
           </div>
+
           <Button
             variant="outline"
             size="sm"
             onClick={load}
-            className="border-slate-800 text-slate-300 hover:bg-slate-800"
+            className="border-slate-700 bg-slate-900/60 text-slate-200 hover:bg-slate-800"
           >
             <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
             Refresh
           </Button>
-        </div>
+        </section>
 
-        {/* Summary Cards */}
-        <div className="grid gap-4 sm:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
             title="Interfaces"
             value={data ? overviewInterfaces.length : null}
             loading={loading && !data}
-            icon={<Shield className="h-4 w-4 text-blue-400" />}
+            icon={<Shield className="h-4 w-4 text-indigo-300" />}
+            iconClass="border-indigo-500/30 bg-indigo-500/15"
           />
           <SummaryCard
             title="Peers Online"
             value={data?.online_peers ?? null}
             loading={loading && !data}
-            icon={<Wifi className="h-4 w-4 text-emerald-400" />}
-            subtitle={
-              data
-                ? `of ${data.total_peers} total`
-                : undefined
-            }
+            icon={<Wifi className="h-4 w-4 text-emerald-300" />}
+            iconClass="border-emerald-500/30 bg-emerald-500/15"
+            subtitle={data ? `of ${data.total_peers} total` : undefined}
           />
           <SummaryCard
             title="Total RX"
             value={data ? formatBytes(data.total_rx_bytes) : null}
             loading={loading && !data}
-            icon={<ArrowDownToLine className="h-4 w-4 text-cyan-400" />}
+            icon={<ArrowDownToLine className="h-4 w-4 text-cyan-300" />}
+            iconClass="border-cyan-500/30 bg-cyan-500/15"
             isText
           />
           <SummaryCard
             title="Total TX"
             value={data ? formatBytes(data.total_tx_bytes) : null}
             loading={loading && !data}
-            icon={<ArrowUpFromLine className="h-4 w-4 text-amber-400" />}
+            icon={<ArrowUpFromLine className="h-4 w-4 text-amber-300" />}
+            iconClass="border-amber-500/30 bg-amber-500/15"
             isText
           />
-        </div>
+        </section>
 
-        {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="bg-slate-900 border border-slate-800">
+          <TabsList className="h-auto rounded-xl border border-slate-800/80 bg-slate-900/70 p-1">
             <TabsTrigger
               value="overview"
-              className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+              className="rounded-lg px-4 data-[state=active]:bg-slate-800 data-[state=active]:text-white"
             >
               Overview
             </TabsTrigger>
-
             {data?.mikrotik_available && (
               <TabsTrigger
                 value="mikrotik"
-                className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+                className="rounded-lg px-4 data-[state=active]:bg-slate-800 data-[state=active]:text-white"
               >
                 MikroTik
               </TabsTrigger>
             )}
           </TabsList>
 
-          {/* Overview Tab */}
-          <TabsContent value="overview" className="space-y-4">
-            <Card className="border-slate-800 bg-slate-900">
-              <CardHeader>
-                <CardTitle className="text-white">
-                  VPN Tunnel Overview
-                </CardTitle>
-                <CardDescription className="text-slate-400">
-                  Real-time WireGuard peer status across all configured routers.
-                  Peers are considered online if their last handshake was within
-                  3 minutes. Data refreshes automatically every 30 seconds.
+          <TabsContent value="overview" className="space-y-4 pt-2">
+            <Card className={surfaceClass}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base text-white">Tunnel Overview</CardTitle>
+                <CardDescription className="text-sm text-slate-400">
+                  Peers are treated as online when the last handshake is within
+                  3 minutes. Data auto-refreshes every 30 seconds.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3 text-sm text-slate-400">
-                  {data?.mikrotik_available && (
-                    <p>
-                      MikroTik:{" "}
-                      <span className="font-medium text-white">
-                        {mikrotikInterfaces.length}
-                      </span>{" "}
-                      {mikrotikInterfaces.length === 1
-                        ? "interface"
-                        : "interfaces"}
-                      {" with "}
-                      <span className="font-medium text-white">
-                        {mikrotikInterfaces.reduce(
-                          (sum, i) => sum + i.peers_total,
-                          0,
-                        )}
-                      </span>{" "}
-                      peers (
-                      <span className="text-emerald-400">
-                        {mikrotikInterfaces.reduce(
-                          (sum, i) => sum + i.peers_online,
-                          0,
-                        )}{" "}
-                        online
-                      </span>
-                      )
-                    </p>
-                  )}
-                  {!data?.mikrotik_available && !loading && (
-                    <p>
-                      No router is configured. Go to{" "}
-                      <span className="font-medium text-white">Settings</span>{" "}
-                      to configure a router.
-                    </p>
+                <div className="grid gap-2 text-sm text-slate-300 md:grid-cols-2">
+                  {data?.mikrotik_available ? (
+                    <div className="rounded-lg border border-slate-800/80 bg-slate-950/50 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                        MikroTik coverage
+                      </p>
+                      <p className="mt-1 text-slate-200">
+                        <span className="font-semibold text-white">
+                          {mikrotikInterfaces.length}
+                        </span>{" "}
+                        interface{mikrotikInterfaces.length === 1 ? "" : "s"},{" "}
+                        <span className="font-semibold text-white">
+                          {mikrotikInterfaces.reduce((sum, i) => sum + i.peers_total, 0)}
+                        </span>{" "}
+                        peer{mikrotikInterfaces.reduce((sum, i) => sum + i.peers_total, 0) === 1 ? "" : "s"}
+                        ,{" "}
+                        <span className="font-semibold text-emerald-300">
+                          {mikrotikInterfaces.reduce((sum, i) => sum + i.peers_online, 0)} online
+                        </span>
+                      </p>
+                    </div>
+                  ) : (
+                    !loading && (
+                      <div className="rounded-lg border border-slate-800/80 bg-slate-950/50 p-3 text-slate-400">
+                        No router is configured. Configure router credentials in Settings.
+                      </div>
+                    )
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* All interfaces overview */}
-            {overviewInterfaces.length > 0 && (
+            {overviewInterfaces.length === 0 && !loading ? (
+              <Card className={surfaceClass}>
+                <CardContent className="py-12 text-center text-sm text-slate-500">
+                  No VPN interfaces found.
+                </CardContent>
+              </Card>
+            ) : (
               <div className="space-y-4">
                 {overviewInterfaces.map((iface) => (
                   <InterfaceCard key={`${iface.source}-${iface.name}`} iface={iface} />
@@ -262,19 +262,19 @@ export default function VpnStatusPage() {
             )}
           </TabsContent>
 
-          {/* MikroTik Tab */}
-          <TabsContent value="mikrotik" className="space-y-4">
+          <TabsContent value="mikrotik" className="space-y-4 pt-2">
             <div className="relative max-w-md">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <Input
-                placeholder="Filter peers..."
+                placeholder="Filter peers, endpoints, or allowed IPs..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="border-slate-800 bg-slate-950 pl-10 text-white placeholder:text-slate-600"
+                className="border-slate-800 bg-slate-950/70 pl-10 text-white placeholder:text-slate-600"
               />
             </div>
+
             {mikrotikInterfaces.length === 0 ? (
-              <Card className="border-slate-800 bg-slate-900">
+              <Card className={surfaceClass}>
                 <CardContent className="py-12 text-center text-slate-500">
                   {search
                     ? "No interfaces or peers match your filter."
@@ -283,7 +283,7 @@ export default function VpnStatusPage() {
               </Card>
             ) : (
               mikrotikInterfaces.map((iface) => (
-                <InterfaceCard key={iface.name} iface={iface} />
+                <InterfaceCard key={`${iface.source}-${iface.name}`} iface={iface} />
               ))
             )}
           </TabsContent>
@@ -293,13 +293,12 @@ export default function VpnStatusPage() {
   );
 }
 
-// ─── Summary Card ──────────────────────────────────────────
-
 function SummaryCard({
   title,
   value,
   loading,
   icon,
+  iconClass,
   subtitle,
   isText,
 }: {
@@ -307,159 +306,163 @@ function SummaryCard({
   value: number | string | null;
   loading: boolean;
   icon: React.ReactNode;
+  iconClass: string;
   subtitle?: string;
   isText?: boolean;
 }) {
   return (
-    <Card className="border-slate-800 bg-slate-900">
-      <CardContent className="flex items-center gap-4 p-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800">
+    <Card className={surfaceClass}>
+      <CardContent className="flex min-h-[96px] items-center gap-4 p-4">
+        <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border", iconClass)}>
           {icon}
         </div>
-        <div>
-          <p className="text-xs text-slate-500">{title}</p>
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+            {title}
+          </p>
           {loading ? (
-            <Skeleton className="mt-1 h-6 w-12 bg-slate-800" />
-          ) : isText ? (
-            <p className="text-lg font-bold text-white">{value ?? "—"}</p>
+            <Skeleton className="mt-2 h-6 w-20 bg-slate-800" />
           ) : (
-            <p className="text-2xl font-bold text-white">{value ?? 0}</p>
+            <p className={cn("mt-1 font-semibold text-white", isText ? "text-base" : "text-2xl")}>{value ?? "—"}</p>
           )}
-          {subtitle && (
-            <p className="text-xs text-slate-500">{subtitle}</p>
-          )}
+          {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}
         </div>
       </CardContent>
     </Card>
   );
 }
 
-// ─── Interface Card with Peer Table ─────────────────────────
-
 function InterfaceCard({ iface }: { iface: VpnInterfaceStatus }) {
   const isUp = iface.status === "up" || iface.status === "u/u";
 
   return (
-    <Card className="border-slate-800 bg-slate-900">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CardTitle className="text-sm font-medium text-white">
-              {iface.name}
-            </CardTitle>
+    <Card className={surfaceClass}>
+      <CardHeader className="space-y-3 pb-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <CardTitle className="text-base font-semibold text-white">{iface.name}</CardTitle>
             <Badge
               variant="outline"
-              className={
+              className={cn(
+                "rounded-md border text-[11px] uppercase",
                 isUp
-                  ? "border-emerald-500/30 text-emerald-400"
-                  : "border-rose-500/30 text-rose-400"
-              }
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                  : "border-rose-500/30 bg-rose-500/10 text-rose-300",
+              )}
             >
               {isUp ? "up" : "down"}
             </Badge>
-            <Badge
-              variant="outline"
-              className="border-slate-700 text-slate-400"
-            >
+            <Badge variant="outline" className="rounded-md border-slate-700 bg-slate-900/60 text-[11px] uppercase text-slate-400">
               {iface.source}
             </Badge>
           </div>
-          <div className="text-xs text-slate-500">
-            {iface.peers_online}/{iface.peers_total} peers online
+
+          <div className="rounded-md border border-slate-800/80 bg-slate-950/60 px-2 py-1 text-xs text-slate-400">
+            <span className="font-medium text-slate-200">{iface.peers_online}</span>
+            <span className="mx-1 text-slate-600">/</span>
+            <span>{iface.peers_total}</span> online
           </div>
         </div>
-        <CardDescription className="text-xs text-slate-500">
-          {[
-            iface.address && `Address: ${iface.address}`,
-            iface.port && `Port: ${iface.port}`,
-            iface.public_key &&
-              `Key: ${iface.public_key.substring(0, 12)}...`,
-          ]
-            .filter(Boolean)
-            .join(" | ")}
-        </CardDescription>
+
+        <div className="flex flex-wrap gap-2 text-[11px] text-slate-400">
+          {iface.address && (
+            <span className="rounded-md border border-slate-800/80 bg-slate-950/60 px-2 py-1 font-mono">
+              {iface.address}
+            </span>
+          )}
+          {iface.port && (
+            <span className="rounded-md border border-slate-800/80 bg-slate-950/60 px-2 py-1">
+              Port {iface.port}
+            </span>
+          )}
+          {iface.public_key && (
+            <span className="max-w-full truncate rounded-md border border-slate-800/80 bg-slate-950/60 px-2 py-1 font-mono">
+              Key {iface.public_key.substring(0, 12)}...
+            </span>
+          )}
+        </div>
       </CardHeader>
+
       <CardContent className="p-0">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-slate-800 hover:bg-transparent">
-              <TableHead className="text-slate-400">Status</TableHead>
-              <TableHead className="text-slate-400">Peer</TableHead>
-              <TableHead className="text-slate-400">Endpoint</TableHead>
-              <TableHead className="text-slate-400">Allowed IPs</TableHead>
-              <TableHead className="text-slate-400">Last Handshake</TableHead>
-              <TableHead className="text-right text-slate-400">RX</TableHead>
-              <TableHead className="text-right text-slate-400">TX</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {iface.peers.length === 0 ? (
-              <TableRow className="border-slate-800 hover:bg-transparent">
-                <TableCell
-                  colSpan={7}
-                  className="py-8 text-center text-slate-500"
-                >
-                  No peers configured.
-                </TableCell>
+        <div className="overflow-x-auto border-t border-slate-800/70">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-slate-800/70 hover:bg-transparent">
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500">Status</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500">Peer</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500">Endpoint</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500">Allowed IPs</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500">Last Handshake</TableHead>
+                <TableHead className="text-right text-xs uppercase tracking-wide text-slate-500">RX</TableHead>
+                <TableHead className="text-right text-xs uppercase tracking-wide text-slate-500">TX</TableHead>
               </TableRow>
-            ) : (
-              iface.peers.map((peer, idx) => (
-                <TableRow
-                  key={peer.public_key ?? idx}
-                  className="border-slate-800 hover:bg-slate-800/30"
-                >
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {peer.connectivity === "online" ? (
-                        <Wifi className="h-3.5 w-3.5 text-emerald-400" />
-                      ) : (
-                        <WifiOff className="h-3.5 w-3.5 text-slate-600" />
-                      )}
-                      <Badge
-                        variant="outline"
-                        className={
-                          peer.connectivity === "online"
-                            ? "border-emerald-500/30 text-emerald-400"
-                            : "border-slate-700 text-slate-500"
-                        }
-                      >
-                        {peer.connectivity}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium text-white">
-                    {peer.name || (
-                      <span className="text-slate-500">
-                        {peer.public_key
-                          ? `${peer.public_key.substring(0, 8)}...`
-                          : "Unknown"}
-                      </span>
-                    )}
-                  </TableCell>
-                  <TableCell className="max-w-[180px] font-mono text-xs text-slate-400">
-                    <span className="block truncate">{peer.endpoint ?? "—"}</span>
-                  </TableCell>
-                  <TableCell className="max-w-[200px] font-mono text-xs text-slate-400">
-                    <span className="block truncate">
-                      {peer.allowed_ips.length > 0
-                        ? peer.allowed_ips.join(", ")
-                        : "—"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-slate-400">
-                    {timeAgo(peer.last_handshake)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-xs text-slate-400">
-                    {formatBytes(peer.rx_bytes)}
-                  </TableCell>
-                  <TableCell className="text-right font-mono text-xs text-slate-400">
-                    {formatBytes(peer.tx_bytes)}
+            </TableHeader>
+
+            <TableBody>
+              {iface.peers.length === 0 ? (
+                <TableRow className="border-slate-800/70 hover:bg-transparent">
+                  <TableCell colSpan={7} className="py-9 text-center text-sm text-slate-500">
+                    No peers configured.
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                iface.peers.map((peer, idx) => (
+                  <TableRow
+                    key={peer.public_key ?? `${iface.name}-${idx}`}
+                    className="border-slate-800/70 hover:bg-slate-800/35"
+                  >
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {peer.connectivity === "online" ? (
+                          <Wifi className="h-3.5 w-3.5 text-emerald-400" />
+                        ) : (
+                          <WifiOff className="h-3.5 w-3.5 text-slate-600" />
+                        )}
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "rounded-md border text-[11px] uppercase",
+                            peer.connectivity === "online"
+                              ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                              : "border-slate-700 bg-slate-900/70 text-slate-500",
+                          )}
+                        >
+                          {peer.connectivity}
+                        </Badge>
+                      </div>
+                    </TableCell>
+
+                    <TableCell className="max-w-[220px]">
+                      <div className="truncate font-medium text-white" title={peer.name || undefined}>
+                        {peer.name || (
+                          <span className="font-mono text-slate-500">
+                            {peer.public_key ? `${peer.public_key.substring(0, 12)}...` : "Unknown"}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+
+                    <TableCell className="max-w-[220px] font-mono text-xs text-slate-400">
+                      <span className="block truncate" title={peer.endpoint ?? undefined}>
+                        {peer.endpoint ?? "—"}
+                      </span>
+                    </TableCell>
+
+                    <TableCell className="max-w-[260px] font-mono text-xs text-slate-400">
+                      <span className="block truncate" title={peer.allowed_ips.join(", ") || undefined}>
+                        {peer.allowed_ips.length > 0 ? peer.allowed_ips.join(", ") : "—"}
+                      </span>
+                    </TableCell>
+
+                    <TableCell className="text-slate-400">{timeAgo(peer.last_handshake)}</TableCell>
+                    <TableCell className="text-right font-mono text-xs text-slate-400">{formatBytes(peer.rx_bytes)}</TableCell>
+                    <TableCell className="text-right font-mono text-xs text-slate-400">{formatBytes(peer.tx_bytes)}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </CardContent>
     </Card>
   );
