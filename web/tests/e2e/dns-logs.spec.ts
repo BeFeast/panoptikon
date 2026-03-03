@@ -83,8 +83,9 @@ test.describe('DNS Query Log page — no 500 errors', () => {
     }
 
     // Stats cards should be visible (Total Queries, Blocked, etc.)
-    await expect(page.getByText('Total Queries')).toBeVisible();
-    await expect(page.getByText('Blocked')).toBeVisible();
+    // Use .tracking-tight to target CardTitle elements specifically (avoids matching the "Blocked" filter button)
+    await expect(page.locator('.tracking-tight', { hasText: 'Total Queries' })).toBeVisible();
+    await expect(page.locator('.tracking-tight', { hasText: 'Blocked' })).toBeVisible();
 
     await page.screenshot({ path: 'tests/screenshots/dns-logs-stats.png' });
   });
