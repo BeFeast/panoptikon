@@ -98,15 +98,13 @@ export interface DeviceSysinfo {
   serial_number: string | null;
   hostname: string | null;
   uptime_seconds: number | null;
-  // Extended fastfetch fields:
-  motherboard_name?: string | null;
-  bios_version?: string | null;
-  bios_vendor?: string | null;
-  ram_type?: string | null;
-  ram_speed?: string | null;
-  gpu_vram?: string | null;
-  gpu_type?: string | null;
-  collector_source?: string | null;
+  // Fastfetch-enriched fields
+  bios_vendor: string | null;
+  bios_version: string | null;
+  motherboard_name: string | null;
+  ram_type: string | null;
+  ram_speed: string | null;
+  gpu_vram: string | null;
 }
 
 export interface AgentSummary {
@@ -140,15 +138,78 @@ export interface Agent {
   disk_size?: string | null;
   serial_number?: string | null;
   uptime_seconds?: number | null;
-  // Extended fastfetch fields:
-  motherboard_name?: string | null;
-  bios_version?: string | null;
+  // Fastfetch-enriched fields
   bios_vendor?: string | null;
+  bios_version?: string | null;
+  motherboard_name?: string | null;
   ram_type?: string | null;
   ram_speed?: string | null;
   gpu_vram?: string | null;
-  gpu_type?: string | null;
-  collector_source?: string | null;
+}
+
+// Fastfetch rich hardware info (raw from agent)
+export interface FastfetchInfo {
+  cpu?: {
+    name?: string | null;
+    vendor?: string | null;
+    cores_physical?: number | null;
+    cores_logical?: number | null;
+    freq_base_mhz?: number | null;
+    freq_max_mhz?: number | null;
+    temperature?: number | null;
+  } | null;
+  gpu?: Array<{
+    name?: string | null;
+    vendor?: string | null;
+    driver?: string | null;
+    type?: string | null;
+    vram_mb?: number | null;
+    temperature?: number | null;
+  }> | null;
+  memory?: {
+    total_bytes?: number | null;
+    used_bytes?: number | null;
+  } | null;
+  storage?: Array<{
+    name?: string | null;
+    mountpoint?: string | null;
+    filesystem?: string | null;
+    total_bytes?: number | null;
+    used_bytes?: number | null;
+  }> | null;
+  os?: {
+    name?: string | null;
+    version?: string | null;
+    id?: string | null;
+    pretty_name?: string | null;
+  } | null;
+  host?: {
+    name?: string | null;
+    vendor?: string | null;
+    version?: string | null;
+    serial?: string | null;
+  } | null;
+  bios?: {
+    vendor?: string | null;
+    version?: string | null;
+    date?: string | null;
+    bios_type?: string | null;
+  } | null;
+  kernel?: {
+    name?: string | null;
+    release?: string | null;
+    architecture?: string | null;
+  } | null;
+  battery?: Array<{
+    capacity?: number | null;
+    status?: string | null;
+  }> | null;
+  physical_memory?: Array<{
+    size_bytes?: number | null;
+    speed_mts?: number | null;
+    mem_type?: string | null;
+    bank_locator?: string | null;
+  }> | null;
 }
 
 export interface AgentCreateResponse {

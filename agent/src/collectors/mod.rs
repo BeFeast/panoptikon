@@ -7,11 +7,9 @@ pub mod network;
 pub mod os;
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 
 use serde::Serialize;
 use sysinfo::{Disks, Networks, System};
-use tracing::{info, warn};
 
 use crate::config::AgentConfig;
 
@@ -31,6 +29,9 @@ pub struct AgentReport {
     /// Static hardware inventory (model, GPU, serial, etc.).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hardware: Option<hardware::HardwareInfo>,
+    /// Rich hardware/system info from fastfetch (if available).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fastfetch: Option<fastfetch::FastfetchInfo>,
 }
 
 /// Long-lived system metrics collector.
@@ -47,10 +48,8 @@ pub struct SystemCollector {
     prev_net_counters: HashMap<String, (u64, u64)>,
     /// Cached hardware inventory (collected once at startup).
     hardware_info: hardware::HardwareInfo,
-    /// Resolved path to the fastfetch binary (None if not available).
-    fastfetch_path: Option<PathBuf>,
-    /// Tick counter for periodic fastfetch refresh (every 10th cycle = ~5 min at 30s).
-    fastfetch_refresh_interval: u64,
+    /// Cached fastfetch info (collected once at startup, refreshed periodically).
+    fastfetch_info: Option<fastfetch::FastfetchInfo>,
 }
 
 impl SystemCollector {
@@ -70,6 +69,9 @@ impl SystemCollector {
         // Collect static hardware info once via sysinfo.
         let hardware_info = hardware::collect(&sys);
 
+        // Collect fastfetch info once at startup (graceful fallback if not available).
+        let fastfetch_info = fastfetch::collect(None);
+
         Self {
             sys,
             disks,
@@ -77,44 +79,7 @@ impl SystemCollector {
             report_count: 0,
             prev_net_counters: HashMap::new(),
             hardware_info,
-            fastfetch_path: None,
-            fastfetch_refresh_interval: 10, // ~5 min at 30s interval
-        }
-    }
-
-    /// Initialize fastfetch integration.
-    /// Should be called after construction with the agent config.
-    pub fn init_fastfetch(&mut self, config: &AgentConfig) {
-        // If config sets fastfetch_path to empty string, disable fastfetch.
-        if config.fastfetch_path.as_deref() == Some("") {
-            info!("Fastfetch integration disabled by config (empty path)");
-            return;
-        }
-
-        let ff_path = fastfetch::detect_path(config.fastfetch_path.as_deref());
-
-        match ff_path {
-            Some(ref path) => {
-                info!(path = %path.display(), "Fastfetch binary detected");
-                self.fastfetch_path = ff_path;
-                // Run initial fastfetch collection.
-                self.refresh_fastfetch();
-            }
-            None => {
-                warn!("Fastfetch not found — using sysinfo-only hardware collection");
-            }
-        }
-    }
-
-    /// Run fastfetch and merge results into cached hardware info.
-    fn refresh_fastfetch(&mut self) {
-        let Some(ref path) = self.fastfetch_path else {
-            return;
-        };
-
-        if let Some(ff_data) = fastfetch::collect(path) {
-            hardware::enrich_with_fastfetch(&mut self.hardware_info, &ff_data);
-            info!("Hardware info enriched with fastfetch data");
+            fastfetch_info,
         }
     }
 
@@ -134,14 +99,9 @@ impl SystemCollector {
             self.networks.refresh_list();
         }
 
-        // Periodic fastfetch refresh (every Nth cycle, ~5 min at 30s).
-        if self.fastfetch_path.is_some()
-            && self.report_count > 0
-            && self
-                .report_count
-                .is_multiple_of(self.fastfetch_refresh_interval)
-        {
-            self.refresh_fastfetch();
+        // Refresh fastfetch info every 10th cycle (~5 min at 30s interval).
+        if self.report_count > 0 && self.report_count.is_multiple_of(10) {
+            self.fastfetch_info = fastfetch::collect(config.fastfetch_path.as_deref());
         }
 
         let network_interfaces = network::collect_from(&self.networks, &mut self.prev_net_counters);
@@ -160,6 +120,7 @@ impl SystemCollector {
             disks: disk::collect_from(&self.disks),
             network_interfaces,
             hardware: Some(self.hardware_info.clone()),
+            fastfetch: self.fastfetch_info.clone(),
         }
     }
 

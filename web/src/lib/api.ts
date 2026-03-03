@@ -8,6 +8,7 @@ import type {
   Agent,
   AgentCreateResponse,
   AgentReport,
+  FastfetchInfo,
   Alert,
   SshTarget,
   SshTargetRequest,
@@ -395,6 +396,10 @@ export function fetchAgent(id: string): Promise<Agent> {
 
 export function fetchAgentReports(id: string, limit = 100): Promise<AgentReport[]> {
   return apiGet<AgentReport[]>(`/api/v1/agents/${id}/reports?limit=${limit}`);
+}
+
+export function fetchAgentFastfetch(id: string): Promise<FastfetchInfo | null> {
+  return apiGet<FastfetchInfo | null>(`/api/v1/agents/${id}/fastfetch`);
 }
 
 // ─── Traffic ────────────────────────────────────────────

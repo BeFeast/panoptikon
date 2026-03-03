@@ -61,7 +61,6 @@ async fn main() -> Result<()> {
     // Create the system collector once — it holds sysinfo structs across
     // reconnections, avoiding expensive re-enumeration on every cycle.
     let mut collector = collectors::SystemCollector::new();
-    collector.init_fastfetch(&cfg);
     info!("System collector initialised");
 
     // Main loop: connect, report, reconnect on failure.

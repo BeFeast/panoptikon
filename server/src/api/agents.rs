@@ -78,6 +78,37 @@ pub async fn list_reports(
     Ok(Json(reports))
 }
 
+/// GET /api/v1/agents/:id/fastfetch — return raw fastfetch data for an agent.
+pub async fn get_fastfetch(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    let row: Option<Option<String>> = sqlx::query_scalar(
+        "SELECT ds.fastfetch_json \
+         FROM agents a \
+         JOIN device_sysinfo ds ON ds.device_id = a.device_id \
+         WHERE a.id = ?",
+    )
+    .bind(&id)
+    .fetch_optional(&state.db)
+    .await
+    .map_err(|e| {
+        error!("Failed to fetch fastfetch data for agent {id}: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR
+    })?;
+
+    match row.flatten() {
+        Some(json_str) => {
+            let val: serde_json::Value = serde_json::from_str(&json_str).map_err(|e| {
+                error!("Failed to parse stored fastfetch JSON: {e}");
+                StatusCode::INTERNAL_SERVER_ERROR
+            })?;
+            Ok(Json(val))
+        }
+        None => Ok(Json(serde_json::json!(null))),
+    }
+}
+
 /// An agent as returned by the API.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Agent {
@@ -115,23 +146,19 @@ pub struct Agent {
     pub serial_number: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub uptime_seconds: Option<i64>,
-    // Extended fastfetch fields:
+    // Fastfetch-enriched fields:
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub motherboard_name: Option<String>,
+    pub bios_vendor: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub bios_version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub bios_vendor: Option<String>,
+    pub motherboard_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ram_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ram_speed: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gpu_vram: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub gpu_type: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub collector_source: Option<String>,
 }
 
 /// Request body for registering a new agent.
@@ -168,6 +195,9 @@ pub struct AgentReport {
     pub network_interfaces: Option<Vec<AgentNetworkInterface>>,
     #[serde(default)]
     pub hardware: Option<AgentHardwareInfo>,
+    /// Rich hardware/system info from fastfetch (if available on agent).
+    #[serde(default)]
+    pub fastfetch: Option<serde_json::Value>,
 }
 
 /// Hardware inventory from agent (static info collected at startup).
@@ -281,14 +311,12 @@ impl Agent {
             disk_size: row.try_get("disk_size").ok().flatten(),
             serial_number: row.try_get("serial_number").ok().flatten(),
             uptime_seconds: row.try_get("uptime_seconds").ok().flatten(),
-            motherboard_name: row.try_get("motherboard_name").ok().flatten(),
-            bios_version: row.try_get("bios_version").ok().flatten(),
             bios_vendor: row.try_get("bios_vendor").ok().flatten(),
+            bios_version: row.try_get("bios_version").ok().flatten(),
+            motherboard_name: row.try_get("motherboard_name").ok().flatten(),
             ram_type: row.try_get("ram_type").ok().flatten(),
             ram_speed: row.try_get("ram_speed").ok().flatten(),
             gpu_vram: row.try_get("gpu_vram").ok().flatten(),
-            gpu_type: row.try_get("gpu_type").ok().flatten(),
-            collector_source: row.try_get("collector_source").ok().flatten(),
         })
     }
 }
@@ -301,8 +329,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Agent>>, Sta
                 r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used, \
                 ds.hardware_model, ds.cpu_name, ds.cpu_cores, ds.cpu_speed, \
                 ds.gpu_name, ds.disk_name, ds.disk_size, ds.serial_number, ds.uptime_seconds, \
-                ds.motherboard_name, ds.bios_version, ds.bios_vendor, \
-                ds.ram_type, ds.ram_speed, ds.gpu_vram, ds.gpu_type, ds.collector_source \
+                ds.bios_vendor, ds.bios_version, ds.motherboard_name, ds.ram_type, ds.ram_speed, ds.gpu_vram \
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
            AND r.id = ( \
@@ -344,8 +371,7 @@ pub async fn get_one(
                 r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used, \
                 ds.hardware_model, ds.cpu_name, ds.cpu_cores, ds.cpu_speed, \
                 ds.gpu_name, ds.disk_name, ds.disk_size, ds.serial_number, ds.uptime_seconds, \
-                ds.motherboard_name, ds.bios_version, ds.bios_vendor, \
-                ds.ram_type, ds.ram_speed, ds.gpu_vram, ds.gpu_type, ds.collector_source \
+                ds.bios_vendor, ds.bios_version, ds.motherboard_name, ds.ram_type, ds.ram_speed, ds.gpu_vram \
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
            AND r.id = ( \
@@ -428,8 +454,7 @@ pub async fn update(
                 r.hostname, r.os_name, r.os_version, r.cpu_percent, r.mem_total, r.mem_used, \
                 ds.hardware_model, ds.cpu_name, ds.cpu_cores, ds.cpu_speed, \
                 ds.gpu_name, ds.disk_name, ds.disk_size, ds.serial_number, ds.uptime_seconds, \
-                ds.motherboard_name, ds.bios_version, ds.bios_vendor, \
-                ds.ram_type, ds.ram_speed, ds.gpu_vram, ds.gpu_type, ds.collector_source \
+                ds.bios_vendor, ds.bios_version, ds.motherboard_name, ds.ram_type, ds.ram_speed, ds.gpu_vram \
          FROM agents a \
          LEFT JOIN agent_reports r ON r.agent_id = a.id \
            AND r.id = ( \
@@ -1154,17 +1179,27 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
         let disk_size_str = hw.disk_size_bytes.map(format_bytes);
         let os_build = os.and_then(|o| o.kernel.as_deref());
 
+        // Extract fields from fastfetch data if available.
+        let ff = report.fastfetch.as_ref();
+        let fastfetch_json = ff.and_then(|v| serde_json::to_string(v).ok());
+        let bios_vendor = extract_fastfetch_str(ff, "bios", "vendor");
+        let bios_version = extract_fastfetch_str(ff, "bios", "version");
+        let motherboard_name = extract_fastfetch_str(ff, "host", "name");
+        let ram_type = extract_fastfetch_physical_mem_field(ff, "mem_type");
+        let ram_speed =
+            extract_fastfetch_physical_mem_field(ff, "speed_mts").map(|s| format!("{} MT/s", s));
+        let gpu_vram = extract_fastfetch_gpu_vram(ff);
+
         if let Err(e) = sqlx::query(
             r#"INSERT INTO device_sysinfo
                (device_id, os_name, os_version, os_build, hardware_model,
                 cpu_name, cpu_cores, cpu_speed, ram_total,
                 gpu_name, disk_name, disk_size, serial_number,
-                hostname, uptime_seconds,
-                motherboard_name, bios_version, bios_vendor,
-                ram_type, ram_speed, gpu_vram, gpu_type, collector_source,
+                hostname, uptime_seconds, fastfetch_json,
+                bios_vendor, bios_version, motherboard_name,
+                ram_type, ram_speed, gpu_vram,
                 reported_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                       ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
                ON CONFLICT(device_id) DO UPDATE SET
                    os_name = COALESCE(excluded.os_name, device_sysinfo.os_name),
                    os_version = COALESCE(excluded.os_version, device_sysinfo.os_version),
@@ -1180,14 +1215,13 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
                    serial_number = COALESCE(excluded.serial_number, device_sysinfo.serial_number),
                    hostname = COALESCE(excluded.hostname, device_sysinfo.hostname),
                    uptime_seconds = excluded.uptime_seconds,
-                   motherboard_name = COALESCE(excluded.motherboard_name, device_sysinfo.motherboard_name),
-                   bios_version = COALESCE(excluded.bios_version, device_sysinfo.bios_version),
+                   fastfetch_json = COALESCE(excluded.fastfetch_json, device_sysinfo.fastfetch_json),
                    bios_vendor = COALESCE(excluded.bios_vendor, device_sysinfo.bios_vendor),
+                   bios_version = COALESCE(excluded.bios_version, device_sysinfo.bios_version),
+                   motherboard_name = COALESCE(excluded.motherboard_name, device_sysinfo.motherboard_name),
                    ram_type = COALESCE(excluded.ram_type, device_sysinfo.ram_type),
                    ram_speed = COALESCE(excluded.ram_speed, device_sysinfo.ram_speed),
                    gpu_vram = COALESCE(excluded.gpu_vram, device_sysinfo.gpu_vram),
-                   gpu_type = COALESCE(excluded.gpu_type, device_sysinfo.gpu_type),
-                   collector_source = COALESCE(excluded.collector_source, device_sysinfo.collector_source),
                    reported_at = datetime('now')"#,
         )
         .bind(dev_id)
@@ -1205,14 +1239,13 @@ async fn handle_agent_report(text: &str, agent_id: &str, state: &AppState) -> an
         .bind(hw.serial_number.as_deref())
         .bind(&report.hostname)
         .bind(report.uptime_seconds)
-        .bind(hw.motherboard_name.as_deref())
-        .bind(hw.bios_version.as_deref())
-        .bind(hw.bios_vendor.as_deref())
-        .bind(hw.ram_type.as_deref())
-        .bind(hw.ram_speed.as_deref())
-        .bind(hw.gpu_vram.as_deref())
-        .bind(hw.gpu_type.as_deref())
-        .bind(hw.collector_source.as_deref())
+        .bind(fastfetch_json.as_deref())
+        .bind(bios_vendor.as_deref())
+        .bind(bios_version.as_deref())
+        .bind(motherboard_name.as_deref())
+        .bind(ram_type.as_deref())
+        .bind(ram_speed.as_deref())
+        .bind(gpu_vram.as_deref())
         .execute(&state.db)
         .await
         {
@@ -1300,6 +1333,53 @@ fn format_bytes(bytes: i64) -> String {
     } else {
         format!("{} B", bytes)
     }
+}
+
+/// Extract a string field from a fastfetch section.
+/// `section` matches the top-level key in our FastfetchInfo (e.g. "bios", "host").
+/// `field` is the nested field name.
+fn extract_fastfetch_str(
+    ff: Option<&serde_json::Value>,
+    section: &str,
+    field: &str,
+) -> Option<String> {
+    ff?.get(section)?
+        .get(field)?
+        .as_str()
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string())
+}
+
+/// Extract a field from the first physical memory module.
+fn extract_fastfetch_physical_mem_field(
+    ff: Option<&serde_json::Value>,
+    field: &str,
+) -> Option<String> {
+    let arr = ff?.get("physical_memory")?.as_array()?;
+    let first = arr.first()?;
+    let val = first.get(field)?;
+    if val.is_string() {
+        val.as_str()
+            .filter(|s| !s.is_empty())
+            .map(|s| s.to_string())
+    } else if val.is_u64() {
+        Some(val.as_u64()?.to_string())
+    } else {
+        None
+    }
+}
+
+/// Extract GPU VRAM from fastfetch GPU data (first GPU with non-null vram).
+fn extract_fastfetch_gpu_vram(ff: Option<&serde_json::Value>) -> Option<String> {
+    let arr = ff?.get("gpu")?.as_array()?;
+    for gpu in arr {
+        if let Some(vram_mb) = gpu.get("vram_mb").and_then(|v| v.as_u64()) {
+            if vram_mb > 0 {
+                return Some(format_bytes(vram_mb as i64 * 1024 * 1024));
+            }
+        }
+    }
+    None
 }
 
 /// Supported agent platforms with their metadata.

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft, Cpu, HardDrive, Monitor, Timer } from "lucide-react";
+import { ArrowLeft, CircuitBoard, Cpu, HardDrive, MemoryStick, Monitor, Timer } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -309,7 +309,9 @@ function HardwareInfoCard({ agent }: { agent: Agent }) {
     agent.gpu_name ||
     agent.disk_name ||
     agent.uptime_seconds != null ||
-    agent.serial_number;
+    agent.serial_number ||
+    agent.motherboard_name ||
+    agent.bios_version;
 
   if (!hasAny) return null;
 
@@ -329,19 +331,49 @@ function HardwareInfoCard({ agent }: { agent: Agent }) {
     .filter(Boolean)
     .join(" ");
 
+  const gpuDetail = [
+    agent.gpu_name,
+    agent.gpu_vram ? `(${agent.gpu_vram})` : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const ramDetail = [
+    agent.ram_type,
+    agent.ram_speed,
+  ]
+    .filter(Boolean)
+    .join(" @ ");
+
+  const biosDetail = [
+    agent.bios_vendor,
+    agent.bios_version,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   const items: { icon: React.ReactNode; label: string; value: string }[] = [];
 
   if (agent.hardware_model) {
     items.push({ icon: <Monitor size={14} />, label: "Model", value: agent.hardware_model });
   }
+  if (agent.motherboard_name) {
+    items.push({ icon: <CircuitBoard size={14} />, label: "Motherboard", value: agent.motherboard_name });
+  }
   if (cpuDetail) {
     items.push({ icon: <Cpu size={14} />, label: "CPU", value: cpuDetail });
   }
-  if (agent.gpu_name) {
-    items.push({ icon: <Monitor size={14} />, label: "GPU", value: agent.gpu_name });
+  if (gpuDetail) {
+    items.push({ icon: <Monitor size={14} />, label: "GPU", value: gpuDetail });
+  }
+  if (ramDetail) {
+    items.push({ icon: <MemoryStick size={14} />, label: "RAM Type", value: ramDetail });
   }
   if (diskDetail) {
     items.push({ icon: <HardDrive size={14} />, label: "Disk", value: diskDetail });
+  }
+  if (biosDetail) {
+    items.push({ icon: <CircuitBoard size={14} />, label: "BIOS", value: biosDetail });
   }
   if (agent.uptime_seconds != null) {
     items.push({ icon: <Timer size={14} />, label: "Uptime", value: formatUptime(agent.uptime_seconds) });

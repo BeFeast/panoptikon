@@ -28,8 +28,7 @@ pub struct AgentConfig {
     pub report_interval_secs: u64,
 
     /// Optional path to the fastfetch binary.
-    /// If not set, the agent auto-detects from common locations and PATH.
-    /// Set to empty string to disable fastfetch integration.
+    /// Auto-detected if not set.
     #[serde(default)]
     pub fastfetch_path: Option<String>,
 }

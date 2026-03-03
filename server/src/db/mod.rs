@@ -93,12 +93,15 @@ const DEVICE_CRITICAL_MIGRATION: &str = include_str!("migrations/027_device_crit
 const RENAME_VYOS_ARTIFACTS_MIGRATION: &str =
     include_str!("migrations/028_rename_vyos_artifacts.sql");
 
-/// Migration 029: Add fastfetch hardware fields (motherboard, BIOS, GPU type, collector source).
+/// Migration 029: Extend device sysinfo with extra fastfetch-derived fields.
 const FASTFETCH_FIELDS_MIGRATION: &str = include_str!("migrations/029_fastfetch_fields.sql");
 
 /// Migration 030: External hostname source seed + pfSense ARP hotfix application.
 const PFSENSE_HOSTNAME_HOTFIX_MIGRATION: &str =
     include_str!("migrations/030_pfsense_hostname_hotfix.sql");
+
+/// Migration 031: Store raw fastfetch payload.
+const FASTFETCH_DATA_MIGRATION: &str = include_str!("migrations/031_fastfetch_data.sql");
 
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
@@ -711,28 +714,16 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 028_rename_vyos_artifacts.sql");
     }
 
-    // Migration 029: Fastfetch hardware fields.
+    // Migration 029: extend device_sysinfo with fastfetch-derived helper fields.
     let applied_29: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 29")
         .fetch_optional(pool)
         .await?
         .is_some();
 
     if !applied_29 {
-        for statement in FASTFETCH_FIELDS_MIGRATION.split(';') {
-            let code = statement
-                .lines()
-                .skip_while(|l| {
-                    let t = l.trim();
-                    t.is_empty() || t.starts_with("--")
-                })
-                .collect::<Vec<_>>()
-                .join("\n");
-            let stmt = code.trim();
-            if stmt.is_empty() {
-                continue;
-            }
-            sqlx::query(stmt).execute(pool).await?;
-        }
+        sqlx::raw_sql(FASTFETCH_FIELDS_MIGRATION)
+            .execute(pool)
+            .await?;
 
         sqlx::query("INSERT INTO _migrations (version) VALUES (29)")
             .execute(pool)
@@ -757,6 +748,36 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
             .await?;
 
         info!("Applied migration 030_pfsense_hostname_hotfix.sql");
+    }
+
+    // Migration 031: raw fastfetch payload.
+    let applied_31: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 31")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_31 {
+        for statement in FASTFETCH_DATA_MIGRATION.split(';') {
+            let code = statement
+                .lines()
+                .skip_while(|l| {
+                    let t = l.trim();
+                    t.is_empty() || t.starts_with("--")
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let stmt = code.trim();
+            if stmt.is_empty() {
+                continue;
+            }
+            sqlx::query(stmt).execute(pool).await?;
+        }
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (31)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 031_fastfetch_data.sql");
     }
 
     // Purge expired sessions on startup.
