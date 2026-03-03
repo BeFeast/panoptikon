@@ -12,8 +12,7 @@ interface InfoStatCardProps {
 
 /**
  * Reusable card for displaying a single icon + label + value stat.
- * Used in Router/System tab, and anywhere a key-value stat needs
- * consistent typography hierarchy, spacing and truncation.
+ * Purely informational — no hover, shadow or interactive affordance.
  *
  * Layout tokens:
  *  - Icon block: 40×40 (h-10 w-10), centered, rounded-lg
@@ -31,7 +30,12 @@ export function InfoStatCard({
   className,
 }: InfoStatCardProps) {
   return (
-    <Card className={cn("border-slate-800 bg-slate-900", className)}>
+    <Card
+      className={cn(
+        "border-slate-800/50 bg-slate-900/60 shadow-none",
+        className,
+      )}
+    >
       <CardContent className="flex min-h-[5rem] items-center gap-4 p-4">
         <div
           className={cn(
@@ -41,7 +45,7 @@ export function InfoStatCard({
         >
           {icon}
         </div>
-        <div className="min-w-0 flex-1 space-y-1">
+        <div className="min-w-0 flex-1 space-y-0.5">
           <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
             {label}
           </p>
