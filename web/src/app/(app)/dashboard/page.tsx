@@ -289,7 +289,7 @@ function StatCard({
       )}
     >
       <CardHeader className="flex flex-row items-start justify-between pb-3">
-        <CardTitle className="text-[11px] font-medium uppercase tracking-[0.13em] text-slate-500">
+        <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
           {title}
         </CardTitle>
         <div className="flex items-center gap-2">
@@ -502,7 +502,7 @@ export default function DashboardPage() {
           data-testid="infra-health-card"
         >
           <CardHeader className="pb-4">
-            <CardTitle className="text-[11px] font-medium uppercase tracking-[0.13em] text-slate-500">
+            <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
               Infrastructure Health
             </CardTitle>
           </CardHeader>
@@ -625,7 +625,7 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-blue-400" />
-                <CardTitle className="text-[11px] font-medium uppercase tracking-[0.13em] text-slate-500">
+                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                   WAN Traffic
                 </CardTitle>
               </div>
@@ -722,7 +722,7 @@ export default function DashboardPage() {
         <StaggerItem className="xl:col-span-2"><Card className="border-slate-800/70 bg-slate-900/55">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-[11px] font-medium uppercase tracking-[0.13em] text-slate-500">
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Recent Alerts
               </CardTitle>
               <Link
@@ -779,7 +779,7 @@ export default function DashboardPage() {
         <StaggerItem className="xl:col-span-5"><Card className="border-slate-800/70 bg-slate-900/55">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-[11px] font-medium uppercase tracking-[0.13em] text-slate-500">
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Device Breakdown
               </CardTitle>
               <Link
