@@ -525,6 +525,55 @@ Compose:             docker-compose.yml → panoptikon + caddy + unbound + cloud
 
 **Message format:** JSON over WebSocket (text frames). Binary frames reserved for future file transfer (e.g., log tailing).
 
+### Hardware Inventory via fastfetch
+
+[fastfetch-cli](https://github.com/fastfetch-cli/fastfetch) is a system information tool (written in C) that provides structured JSON output covering: CPU model/cores/frequency, GPU, RAM type/speed, storage devices, network interfaces, OS details, display, battery, motherboard, BIOS serial, and more. Integrating it into the agent yields richer hardware data than the current sysinfo-based collectors.
+
+#### Phase 1 — Subprocess (current target, issue #559)
+
+Agent calls `fastfetch --format json` as a subprocess and parses the JSON output.
+
+**Approach:**
+- Optional `fastfetch_path` config key (default: auto-detect via `which fastfetch`)
+- On agent startup: if fastfetch available → run once, parse JSON → include as `hardware_inventory` field in first report
+- Refresh: on each periodic report (or only at startup — TBD)
+- Graceful fallback: if fastfetch not found → use existing collectors (cpu.rs, hardware.rs, os.rs)
+
+**Pros:** Zero C/FFI complexity, works immediately on all platforms, easy to test  
+**Cons:** Requires fastfetch installed on host (add to agent install instructions)
+
+#### Phase 2 — Native bindings (future)
+
+Compile fastfetch as a C static library and call via Rust FFI, bundling it into the agent binary.
+
+**Approach:**
+- Add fastfetch as git submodule
+- `build.rs` compiles fastfetch via CMake as static lib
+- Rust FFI bindings via `bindgen`
+- Zero external dependency — single self-contained binary
+
+**Pros:** No install dependency, single binary deployment  
+**Cons:** Complex cross-compilation (CMake + Rust toolchain), OS-specific build matrix (Linux/macOS/Windows)
+
+#### fastfetch data added to agent report
+
+```json
+{
+  "hardware_inventory": {
+    "source": "fastfetch",
+    "version": "2.x",
+    "cpu": { "name": "Apple M1 Pro", "cores_physical": 8, "cores_logical": 10 },
+    "gpu": [{ "name": "Apple M1 Pro", "type": "integrated" }],
+    "memory": { "total_mb": 16384, "type": "LPDDR5", "speed_mhz": 6400 },
+    "storage": [{ "name": "APPLE SSD AP0512R", "size_gb": 512, "type": "NVMe" }],
+    "motherboard": { "name": "Mac14,5", "vendor": "Apple" },
+    "bios": { "version": "10151.101.3", "date": "2024-01-15" }
+  }
+}
+```
+
+---
+
 ### Agent Authentication
 
 - On first install, the agent receives an **API key** (generated in the Panoptikon web UI under Agent Management).
@@ -641,6 +690,40 @@ The install script:
 2. Writes config to `/etc/panoptikon-agent/config.toml`
 3. Creates a systemd service (Linux) or launchd plist (macOS)
 4. Starts the service
+
+---
+
+### Network Asset Scanner (issue #558)
+
+Active network scanning to auto-discover and enrich device inventory. Triggered manually (button in UI) or on a configurable schedule.
+
+#### Data sources (in priority order)
+
+| Source | Method | Data provided |
+|--------|--------|---------------|
+| **Panoptikon agent** | Self-report via WebSocket | Hostname, OS, hardware, MAC — most accurate |
+| **arp-scan** | `arp-scan --localnet` | Fast MAC+IP discovery |
+| **Router DHCP** | MikroTik / Xiaomi API | Hostname from DHCP lease |
+| **mDNS/Bonjour** | `avahi-browse -a` | Apple/Linux device names + service types |
+| **NetBIOS** | `nmblookup -A <ip>` | Windows machine names |
+| **nmap** | `-O --osscan-guess -sV` | OS fingerprint, open ports, service banners |
+| **SNMP** | `snmpwalk sysName.0` | Managed switch/router names |
+| **HTTP fingerprint** | `curl -I http://<ip>/` | Server header → device model |
+| **Reverse DNS** | PTR record lookup | hostname from DNS |
+
+#### Agent self-report → device enrichment
+
+When a panoptikon agent connects, the server should upsert the devices table:
+- Match by: MAC address (from agent's network interfaces)
+- Update: `hostname`, `os_name`, `os_version`, `hardware_model`, `agent_id`, `last_seen`
+- This is the highest-quality source — prefer over external scan data
+
+#### UX
+
+- "Scan Network" button in Devices page header
+- Progress indicator during scan (source-by-source)
+- Summary toast: "Discovered 3 new devices, enriched 12 existing"
+- Optional: scheduled scan interval in Settings (default: off)
 
 ---
 
