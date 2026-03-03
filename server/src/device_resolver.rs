@@ -1,10 +1,12 @@
-//! Device identity resolver — resolves unknown devices via DHCP hostnames from routers.
+//! Device identity resolver — resolves unknown devices via external hostnames.
 //!
-//! Queries MikroTik DHCP leases and Xiaomi device list to discover
-//! hostnames for devices that currently show as "Unknown Device".
-//! This supplements the existing reverse DNS and enrichment pipeline
-//! by pulling names from router APIs that have direct visibility
-//! into DHCP hostname options.
+//! Sources (priority):
+//! 1) Seeded external hostnames (pfSense ARP hotfix table)
+//! 2) MikroTik DHCP leases
+//! 3) Xiaomi device list
+//!
+//! This supplements reverse DNS and enrichment pipeline for devices that
+//! currently render as unnamed/"Unknown Device".
 
 use serde::Serialize;
 use sqlx::SqlitePool;
@@ -37,6 +39,44 @@ async fn get_setting(db: &SqlitePool, key: &str) -> Option<String> {
         .ok()
         .flatten()
         .filter(|v| !v.is_empty())
+}
+
+/// Fetch seeded hostnames from the local `external_hostnames` table.
+async fn fetch_seeded_hostnames(db: &SqlitePool) -> Option<Vec<(String, HostnameMapping)>> {
+    let rows = sqlx::query_as::<_, (String, String)>(
+        "SELECT mac, hostname FROM external_hostnames WHERE hostname IS NOT NULL AND TRIM(hostname) != ''",
+    )
+    .fetch_all(db)
+    .await;
+
+    match rows {
+        Ok(rows) => {
+            let mappings = rows
+                .into_iter()
+                .map(|(mac, hostname)| {
+                    (
+                        mac.to_lowercase(),
+                        HostnameMapping {
+                            hostname,
+                            source: "external_seed".to_string(),
+                        },
+                    )
+                })
+                .collect::<Vec<_>>();
+
+            if !mappings.is_empty() {
+                info!(
+                    count = mappings.len(),
+                    "Fetched hostnames from external seed table"
+                );
+            }
+            Some(mappings)
+        }
+        Err(e) => {
+            debug!(error = %e, "external_hostnames table unavailable, skipping seeded source");
+            None
+        }
+    }
 }
 
 /// Fetch DHCP leases from MikroTik and return MAC→hostname mappings.
@@ -143,19 +183,27 @@ async fn fetch_xiaomi_hostnames(db: &SqlitePool) -> Option<Vec<(String, Hostname
 /// Resolve unknown/unnamed devices by querying external sources.
 ///
 /// Sources (in priority order):
-/// 1. MikroTik DHCP leases (hostname from DHCP option 12)
-/// 2. Xiaomi MiWiFi device list (name assigned by router)
+/// 1. Seeded external source (`external_hostnames`) — pfSense ARP hotfix
+/// 2. MikroTik DHCP leases (hostname from DHCP option 12)
+/// 3. Xiaomi MiWiFi device list (name assigned by router)
 ///
 /// Only updates devices that have no hostname set yet.
-/// Respects `enrichment_corrected` — never overwrites user corrections.
 pub async fn resolve_devices(db: &SqlitePool) -> ResolveResult {
     let mut result = ResolveResult::default();
 
     // Collect MAC→hostname mappings from all sources.
-    // First source wins (MikroTik DHCP is higher priority).
+    // First source wins according to priority above.
     let mut mac_to_hostname: HashMap<String, HostnameMapping> = HashMap::new();
 
-    // Source 1: MikroTik DHCP leases (priority 1)
+    // Source 1: seeded external hostnames (priority 1)
+    if let Some(mappings) = fetch_seeded_hostnames(db).await {
+        result.sources_queried.push("external_seed".to_string());
+        for (mac, mapping) in mappings {
+            mac_to_hostname.entry(mac).or_insert(mapping);
+        }
+    }
+
+    // Source 2: MikroTik DHCP leases (priority 2)
     if let Some(mappings) = fetch_mikrotik_hostnames(db).await {
         result.sources_queried.push("mikrotik".to_string());
         for (mac, mapping) in mappings {
@@ -163,7 +211,7 @@ pub async fn resolve_devices(db: &SqlitePool) -> ResolveResult {
         }
     }
 
-    // Source 2: Xiaomi device list (priority 2)
+    // Source 3: Xiaomi device list (priority 3)
     if let Some(mappings) = fetch_xiaomi_hostnames(db).await {
         result.sources_queried.push("xiaomi".to_string());
         for (mac, mapping) in mappings {
@@ -183,11 +231,12 @@ pub async fn resolve_devices(db: &SqlitePool) -> ResolveResult {
     );
 
     // Count candidates: devices with no hostname.
-    let candidate_count: i64 =
-        sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE hostname IS NULL")
-            .fetch_one(db)
-            .await
-            .unwrap_or(0);
+    let candidate_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM devices WHERE hostname IS NULL OR TRIM(hostname) = ''",
+    )
+    .fetch_one(db)
+    .await
+    .unwrap_or(0);
     result.candidates = candidate_count as u32;
 
     // Apply collected hostnames to devices missing names.
@@ -202,7 +251,7 @@ pub async fn resolve_devices(db: &SqlitePool) -> ResolveResult {
              name = COALESCE(name, ?), \
              is_known = 1, \
              updated_at = ? \
-             WHERE mac = ? AND hostname IS NULL",
+             WHERE LOWER(mac) = LOWER(?) AND (hostname IS NULL OR TRIM(hostname) = '')",
         )
         .bind(&mapping.hostname)
         .bind(&mapping.hostname)
@@ -317,6 +366,27 @@ mod tests {
         .expect("failed to insert setting");
     }
 
+    /// Insert an external hostname seed mapping.
+    async fn insert_external_hostname(
+        pool: &SqlitePool,
+        mac: &str,
+        ip: Option<&str>,
+        hostname: &str,
+        source: &str,
+    ) {
+        sqlx::query(
+            "INSERT INTO external_hostnames (mac, ip, hostname, source) VALUES (?, ?, ?, ?) \
+             ON CONFLICT(mac, source) DO UPDATE SET ip = excluded.ip, hostname = excluded.hostname, updated_at = datetime('now')",
+        )
+        .bind(mac)
+        .bind(ip)
+        .bind(hostname)
+        .bind(source)
+        .execute(pool)
+        .await
+        .expect("failed to insert external hostname");
+    }
+
     // ── ResolveResult struct tests ──────────────────────────────────
 
     #[tokio::test]
@@ -374,7 +444,10 @@ mod tests {
         let result = resolve_devices(&pool).await;
         assert_eq!(result.resolved, 0);
         assert_eq!(result.candidates, 0);
-        assert!(result.sources_queried.is_empty());
+        // Migration seed table is a built-in source for the hotfix.
+        assert!(result
+            .sources_queried
+            .contains(&"external_seed".to_string()));
     }
 
     #[tokio::test]
@@ -384,8 +457,10 @@ mod tests {
 
         let result = resolve_devices(&pool).await;
         assert_eq!(result.resolved, 0);
-        // No sources → mac_to_hostname is empty → candidates never counted
-        assert!(result.sources_queried.is_empty());
+        // Built-in hotfix source is available via migration seed.
+        assert!(result
+            .sources_queried
+            .contains(&"external_seed".to_string()));
 
         // Device should still have no hostname
         let hostname: Option<String> =
@@ -394,6 +469,63 @@ mod tests {
                 .await
                 .unwrap();
         assert!(hostname.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_resolve_uses_external_seed_source() {
+        let pool = setup_test_db().await;
+        insert_device(&pool, "aa:bb:cc:dd:ee:10", None).await;
+        insert_external_hostname(
+            &pool,
+            "aa:bb:cc:dd:ee:10",
+            Some("10.10.0.10"),
+            "proxmox.ok.labs",
+            "pfsense_arp_2026_03_03",
+        )
+        .await;
+
+        let result = resolve_devices(&pool).await;
+        assert_eq!(result.resolved, 1);
+        assert!(result
+            .sources_queried
+            .contains(&"external_seed".to_string()));
+
+        let row = sqlx::query("SELECT hostname, name, is_known FROM devices WHERE mac = ?")
+            .bind("aa:bb:cc:dd:ee:10")
+            .fetch_one(&pool)
+            .await
+            .unwrap();
+        let hostname: Option<String> = sqlx::Row::get(&row, "hostname");
+        let name: Option<String> = sqlx::Row::get(&row, "name");
+        let is_known: i64 = sqlx::Row::get(&row, "is_known");
+
+        assert_eq!(hostname.as_deref(), Some("proxmox.ok.labs"));
+        assert_eq!(name.as_deref(), Some("proxmox.ok.labs"));
+        assert_eq!(is_known, 1);
+    }
+
+    #[tokio::test]
+    async fn test_external_seed_does_not_override_existing_hostname() {
+        let pool = setup_test_db().await;
+        insert_device(&pool, "aa:bb:cc:dd:ee:11", Some("agent-self-report.local")).await;
+        insert_external_hostname(
+            &pool,
+            "aa:bb:cc:dd:ee:11",
+            Some("10.10.0.11"),
+            "seed-name.ok.labs",
+            "pfsense_arp_2026_03_03",
+        )
+        .await;
+
+        let result = resolve_devices(&pool).await;
+        assert_eq!(result.resolved, 0);
+
+        let hostname: Option<String> =
+            sqlx::query_scalar("SELECT hostname FROM devices WHERE mac = 'aa:bb:cc:dd:ee:11'")
+                .fetch_one(&pool)
+                .await
+                .unwrap();
+        assert_eq!(hostname.as_deref(), Some("agent-self-report.local"));
     }
 
     // ── resolve_devices — candidate counting ────────────────────────
@@ -414,10 +546,11 @@ mod tests {
         insert_setting(&pool, "mikrotik_url", "http://192.0.2.1").await;
 
         let result = resolve_devices(&pool).await;
-        // Connection failure means source is NOT recorded as queried
-        assert!(result.sources_queried.is_empty());
-        // Early return before candidate counting
-        assert_eq!(result.candidates, 0);
+        // MikroTik can fail, but built-in external seed source is still active.
+        assert!(result
+            .sources_queried
+            .contains(&"external_seed".to_string()));
+        // No external seed row for this MAC, so no resolution happens.
         assert_eq!(result.resolved, 0);
     }
 
@@ -429,10 +562,12 @@ mod tests {
         insert_device(&pool, "aa:bb:cc:dd:ee:02", None).await;
         insert_device(&pool, "aa:bb:cc:dd:ee:03", None).await;
 
-        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE hostname IS NULL")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM devices WHERE hostname IS NULL OR TRIM(hostname) = ''",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
         // Only devices without hostname are candidates
         assert_eq!(count, 2);
     }
@@ -465,7 +600,9 @@ mod tests {
         // No password set → fetch_xiaomi_hostnames returns None early
         let result = resolve_devices(&pool).await;
         assert_eq!(result.resolved, 0);
-        assert!(result.sources_queried.is_empty());
+        assert!(result
+            .sources_queried
+            .contains(&"external_seed".to_string()));
     }
 
     // ── resolve_devices — disabled sources are skipped ──────────────
@@ -498,7 +635,9 @@ mod tests {
         let result = resolve_devices(&pool).await;
         assert_eq!(result.resolved, 0);
         assert_eq!(result.candidates, 0);
-        assert!(result.sources_queried.is_empty());
+        assert!(result
+            .sources_queried
+            .contains(&"external_seed".to_string()));
     }
 
     #[tokio::test]
@@ -592,10 +731,12 @@ mod tests {
         insert_device(&pool, "aa:bb:cc:dd:ee:04", None).await;
         insert_device(&pool, "aa:bb:cc:dd:ee:05", Some("another-known")).await;
 
-        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM devices WHERE hostname IS NULL")
-            .fetch_one(&pool)
-            .await
-            .unwrap();
+        let count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM devices WHERE hostname IS NULL OR TRIM(hostname) = ''",
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap();
         // 3 out of 5 devices have no hostname
         assert_eq!(count, 3);
     }

@@ -673,6 +673,10 @@ function getDevicePrimaryTitle(device: Device): { title: string; isUnnamed: bool
   if (hostname) return { title: hostname, isUnnamed: false };
   if (discoveredName) return { title: discoveredName, isUnnamed: false };
 
+  // Use IP as primary title for unnamed devices — more informative than "Unknown Device"
+  const primaryIp = (device.ips ?? [])[0];
+  if (primaryIp) return { title: primaryIp, isUnnamed: true };
+
   return { title: "Unknown Device", isUnnamed: true };
 }
 
@@ -691,9 +695,11 @@ function DeviceCard({
   const { icon: DevIcon } = getDeviceIcon(device.custom_vendor ?? device.vendor, device.hostname, device.mdns_services, effectiveType);
   const vendorDisplay = device.custom_vendor ?? device.vendor ?? null;
   const canWake = !device.is_online && device.mac && !device.is_randomized_mac;
-  const hasAgentMetrics = device.agent?.is_online && (
-    device.agent.cpu_percent != null || device.agent.memory_percent != null
-  );
+  // Only show metrics bars when agent is actively connected AND has real data
+  const hasAgentMetrics =
+    device.agent != null &&
+    device.agent.is_online === true &&
+    (device.agent.cpu_percent != null || device.agent.memory_percent != null);
 
   const handleWake = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -713,7 +719,7 @@ function DeviceCard({
       className="group h-full cursor-pointer border-slate-800 bg-slate-900 transition-colors hover:bg-slate-800/50"
       onClick={onClick}
     >
-      <CardContent className="p-4">
+      <CardContent className="px-4 pb-4 pt-5">
 
         {/* ── Row 1: Icon + Identity + Badges ── */}
         <div className="flex items-start gap-3">
@@ -744,7 +750,7 @@ function DeviceCard({
               />
               <span
                 className={`min-w-0 flex-1 truncate text-sm font-semibold leading-snug ${
-                  isUnnamed ? "italic text-slate-500" : "text-white"
+                  isUnnamed ? "text-slate-400" : "text-white"
                 }`}
                 title={displayName}
               >
@@ -754,13 +760,11 @@ function DeviceCard({
                 <Pin className="h-3 w-3 shrink-0 text-amber-400" />
               )}
             </div>
-            {/* Vendor — one line, muted */}
-            {vendorDisplay ? (
+            {/* Vendor — one line, muted; hidden when null/empty */}
+            {vendorDisplay && (
               <p className="mt-0.5 truncate text-[11px] text-slate-500" title={vendorDisplay}>
                 {vendorDisplay}
               </p>
-            ) : (
-              <p className="mt-0.5 text-[11px] text-slate-700">—</p>
             )}
           </div>
 
