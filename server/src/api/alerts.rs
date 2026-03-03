@@ -341,6 +341,34 @@ where
     result.is_some()
 }
 
+/// Check if a recent alert of the same type already exists for an agent
+/// within the given cooldown window (in seconds). Used to deduplicate
+/// alerts from agent connection flapping (e.g. repeated connect/disconnect cycles).
+pub async fn recent_agent_alert_exists<'e, E>(
+    executor: E,
+    agent_id: &str,
+    alert_type: &str,
+    cooldown_secs: i64,
+) -> bool
+where
+    E: sqlx::Executor<'e, Database = sqlx::Sqlite>,
+{
+    let result: Option<i64> = sqlx::query_scalar(
+        r#"SELECT 1 FROM alerts
+           WHERE agent_id = ? AND type = ?
+             AND datetime(created_at) > datetime('now', '-' || ? || ' seconds')
+           LIMIT 1"#,
+    )
+    .bind(agent_id)
+    .bind(alert_type)
+    .bind(cooldown_secs)
+    .fetch_optional(executor)
+    .await
+    .unwrap_or(None);
+
+    result.is_some()
+}
+
 /// Determine the severity level for an alert type.
 pub fn severity_for_alert_type(alert_type: &str) -> &'static str {
     match alert_type {
@@ -643,6 +671,102 @@ mod tests {
             .unwrap();
 
         assert_eq!(rows.len(), 1, "Only one new_device alert should match");
+    }
+
+    /// Helper: insert a test agent and return its id.
+    async fn insert_test_agent(pool: &sqlx::SqlitePool, name: &str) -> String {
+        let id = uuid::Uuid::new_v4().to_string();
+        let key_hash = "$2b$12$dummyhashfortest000000000000000000000000000000000000";
+        sqlx::query(
+            r#"INSERT INTO agents (id, api_key_hash, name, created_at)
+               VALUES (?, ?, ?, datetime('now'))"#,
+        )
+        .bind(&id)
+        .bind(key_hash)
+        .bind(name)
+        .execute(pool)
+        .await
+        .unwrap();
+        id
+    }
+
+    #[tokio::test]
+    async fn test_recent_agent_alert_exists_within_cooldown() {
+        let pool = test_db().await;
+        let agent_id = insert_test_agent(&pool, "mac-mini").await;
+
+        // Insert a recent agent_offline alert using RFC 3339 format (as the production
+        // code does via chrono::Utc::now().to_rfc3339()).
+        let id = uuid::Uuid::new_v4().to_string();
+        let now = chrono::Utc::now().to_rfc3339();
+        sqlx::query(
+            r#"INSERT INTO alerts (id, type, agent_id, message, severity, created_at)
+               VALUES (?, 'agent_offline', ?, 'Test agent alert', 'WARNING', ?)"#,
+        )
+        .bind(&id)
+        .bind(&agent_id)
+        .bind(&now)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        // Should detect the recent alert within a 600-second cooldown.
+        let exists = recent_agent_alert_exists(&pool, &agent_id, "agent_offline", 600).await;
+        assert!(
+            exists,
+            "Should detect a recent agent_offline alert within the cooldown window"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_recent_agent_alert_not_exists_outside_cooldown() {
+        let pool = test_db().await;
+        let agent_id = insert_test_agent(&pool, "mac-mini-2").await;
+
+        // Insert an old agent_offline alert (20 minutes ago) using SQLite datetime.
+        let id = uuid::Uuid::new_v4().to_string();
+        sqlx::query(
+            r#"INSERT INTO alerts (id, type, agent_id, message, severity, created_at)
+               VALUES (?, 'agent_offline', ?, 'Test agent alert', 'WARNING', datetime('now', '-1200 seconds'))"#,
+        )
+        .bind(&id)
+        .bind(&agent_id)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        // Should NOT detect it within a 600-second cooldown.
+        let exists = recent_agent_alert_exists(&pool, &agent_id, "agent_offline", 600).await;
+        assert!(
+            !exists,
+            "Should NOT detect an agent_offline alert outside the cooldown window"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_recent_agent_alert_different_agent() {
+        let pool = test_db().await;
+        let agent_a = insert_test_agent(&pool, "agent-a").await;
+        let agent_b = insert_test_agent(&pool, "agent-b").await;
+
+        // Insert a recent alert for agent A using SQLite datetime.
+        let id = uuid::Uuid::new_v4().to_string();
+        sqlx::query(
+            r#"INSERT INTO alerts (id, type, agent_id, message, severity, created_at)
+               VALUES (?, 'agent_offline', ?, 'Test agent alert', 'WARNING', datetime('now'))"#,
+        )
+        .bind(&id)
+        .bind(&agent_a)
+        .execute(&pool)
+        .await
+        .unwrap();
+
+        // Should NOT find it when querying for agent B.
+        let exists = recent_agent_alert_exists(&pool, &agent_b, "agent_offline", 600).await;
+        assert!(
+            !exists,
+            "Alert for agent A should not affect dedup check for agent B"
+        );
     }
 
     #[tokio::test]
