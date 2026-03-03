@@ -1,7 +1,7 @@
 //! Device identity resolution endpoint.
 //!
 //! Allows manual triggering of device hostname resolution from
-//! external sources (MikroTik DHCP leases, Xiaomi device list).
+//! external sources (seeded hostnames, MikroTik DHCP leases, Xiaomi device list).
 
 use axum::{extract::State, Json};
 

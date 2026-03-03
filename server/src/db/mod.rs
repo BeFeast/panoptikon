@@ -93,6 +93,10 @@ const DEVICE_CRITICAL_MIGRATION: &str = include_str!("migrations/027_device_crit
 const RENAME_VYOS_ARTIFACTS_MIGRATION: &str =
     include_str!("migrations/028_rename_vyos_artifacts.sql");
 
+/// Migration 029: External hostname source seed + pfSense ARP hotfix application.
+const PFSENSE_HOSTNAME_HOTFIX_MIGRATION: &str =
+    include_str!("migrations/029_pfsense_hostname_hotfix.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -704,6 +708,24 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 028_rename_vyos_artifacts.sql");
     }
 
+    // Migration 029: external hostname seed + one-shot hotfix for missing names.
+    let applied_29: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 29")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_29 {
+        sqlx::raw_sql(PFSENSE_HOSTNAME_HOTFIX_MIGRATION)
+            .execute(pool)
+            .await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (29)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 029_pfsense_hostname_hotfix.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -764,6 +786,7 @@ mod tests {
             "dns_domain_overrides",
             "dns_blocked_domains",
             "ddns_entries",
+            "external_hostnames",
         ];
 
         for table in &expected_tables {

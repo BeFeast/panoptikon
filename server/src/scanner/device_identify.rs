@@ -1,10 +1,10 @@
-//! External device identification — resolve unknown devices via DHCP hostnames
-//! from MikroTik, Xiaomi MiWiFi device list, and reverse DNS.
+//! External device identification — resolve unknown devices via external
+//! hostname sources (seeded pfSense ARP map, MikroTik DHCP, Xiaomi MiWiFi).
 //!
-//! This module queries configured routers' DHCP/device APIs to find hostnames
-//! for devices with randomized MACs that OUI lookup cannot identify.
-//! Results are cached in the `devices` table as `hostname` (from DHCP) or
-//! `name` (user-assigned name from Xiaomi router).
+//! This module queries configured router/device APIs and local seeded mappings
+//! to find hostnames for devices with randomized MACs that OUI lookup cannot
+//! identify. Results are cached in the `devices` table as `hostname` and
+//! (when empty) `name`.
 
 use sqlx::SqlitePool;
 use std::collections::HashMap;
@@ -19,7 +19,7 @@ pub struct IdentifiedDevice {
     pub ip: Option<String>,
     /// Hostname from DHCP or device name from router.
     pub hostname: Option<String>,
-    /// Source of identification ("mikrotik_dhcp", "xiaomi").
+    /// Source of identification ("external_seed", "mikrotik_dhcp", "xiaomi").
     pub source: &'static str,
 }
 
@@ -32,6 +32,42 @@ async fn get_setting(db: &SqlitePool, key: &str) -> Option<String> {
         .ok()
         .flatten()
         .filter(|v| !v.is_empty())
+}
+
+/// Load hostnames from the local external_hostnames seed table.
+///
+/// This is used as a pragmatic hotfix source (pfSense ARP snapshot), so
+/// production devices can be named immediately even when router DHCP source
+/// is currently configured for a different gateway.
+async fn fetch_seeded_external_hostnames(db: &SqlitePool) -> HashMap<String, String> {
+    let mut result = HashMap::new();
+
+    let rows = sqlx::query_as::<_, (String, String)>(
+        "SELECT mac, hostname FROM external_hostnames WHERE hostname IS NOT NULL AND TRIM(hostname) != ''",
+    )
+    .fetch_all(db)
+    .await;
+
+    match rows {
+        Ok(rows) => {
+            for (mac, hostname) in rows {
+                let mac_lower = mac.to_lowercase();
+                result.entry(mac_lower).or_insert(hostname);
+            }
+            if !result.is_empty() {
+                info!(
+                    count = result.len(),
+                    "Seeded external hostnames loaded for device identification"
+                );
+            }
+        }
+        Err(e) => {
+            // Table may not exist on old DB versions before migration 029.
+            debug!(error = %e, "external_hostnames table unavailable, skipping seeded hostnames");
+        }
+    }
+
+    result
 }
 
 /// Query MikroTik DHCP leases for device hostnames.
@@ -153,37 +189,37 @@ async fn fetch_xiaomi_device_names(
     result
 }
 
-/// Identify devices using external sources (MikroTik DHCP, Xiaomi router).
+/// Identify devices using external sources (seeded pfSense ARP, MikroTik DHCP, Xiaomi router).
 ///
-/// For each discovered device, try to find a hostname from:
-/// 1. MikroTik DHCP leases (matches by MAC)
-/// 2. Xiaomi MiWiFi device list (matches by MAC)
+/// Priority (high → low):
+/// 1. Seeded external hostnames (`external_hostnames` table)
+/// 2. MikroTik DHCP leases
+/// 3. Xiaomi MiWiFi device list
 ///
-/// Updates the `hostname` column in the `devices` table if a match is found
-/// and the device doesn't already have a hostname from a higher-priority source.
+/// Never overwrites an existing hostname.
 pub async fn identify_from_external_sources(db: &SqlitePool, device_macs: &[(String, String)]) {
     if device_macs.is_empty() {
         return;
     }
 
     // Create dedicated HTTP clients for router queries.
-    // These are lightweight — the actual TCP connections are pooled per-host.
     let mikrotik_http = crate::mikrotik::client::shared_http_client();
     let xiaomi_http = crate::xiaomi::client::shared_http_client();
 
     // Fetch hostnames from all external sources concurrently.
-    let (mikrotik_hostnames, xiaomi_names) = tokio::join!(
+    let (seeded_hostnames, mikrotik_hostnames, xiaomi_names) = tokio::join!(
+        fetch_seeded_external_hostnames(db),
         fetch_mikrotik_dhcp_hostnames(db, &mikrotik_http),
         fetch_xiaomi_device_names(db, &xiaomi_http),
     );
 
-    let total_external = if mikrotik_hostnames.is_empty() && xiaomi_names.is_empty() {
+    let total_external = seeded_hostnames.len() + mikrotik_hostnames.len() + xiaomi_names.len();
+    if total_external == 0 {
         return;
-    } else {
-        mikrotik_hostnames.len() + xiaomi_names.len()
-    };
+    }
 
     debug!(
+        seeded = seeded_hostnames.len(),
         mikrotik = mikrotik_hostnames.len(),
         xiaomi = xiaomi_names.len(),
         "External hostname sources loaded"
@@ -195,57 +231,75 @@ pub async fn identify_from_external_sources(db: &SqlitePool, device_macs: &[(Str
         let mac_lower = mac.to_lowercase();
 
         // Check if device already has a hostname (don't overwrite reverse DNS or user-set names).
-        let existing: Option<(Option<String>, Option<String>)> =
-            sqlx::query_as("SELECT hostname, name FROM devices WHERE id = ?")
+        let current_hostname: Option<String> =
+            sqlx::query_scalar("SELECT hostname FROM devices WHERE id = ?")
                 .bind(device_id)
                 .fetch_optional(db)
                 .await
                 .ok()
+                .flatten()
                 .flatten();
 
-        let (current_hostname, _current_name) = match existing {
-            Some((h, n)) => (h, n),
-            None => continue,
-        };
+        if current_hostname
+            .as_deref()
+            .is_some_and(|h| !h.trim().is_empty())
+        {
+            continue;
+        }
 
-        // Priority 1: MikroTik DHCP hostname → sets `hostname` + `name` + marks known.
-        if current_hostname.is_none() || current_hostname.as_deref() == Some("") {
-            if let Some(dhcp_hostname) = mikrotik_hostnames.get(&mac_lower) {
-                if let Err(e) = sqlx::query(
-                    "UPDATE devices SET hostname = ?, name = COALESCE(name, ?), is_known = 1, updated_at = datetime('now') WHERE id = ? AND (hostname IS NULL OR hostname = '')",
-                )
-                .bind(dhcp_hostname)
-                .bind(dhcp_hostname)
-                .bind(device_id)
-                .execute(db)
-                .await
-                {
-                    warn!(device_id, error = %e, "Failed to update hostname from MikroTik DHCP");
-                } else {
-                    debug!(device_id, hostname = %dhcp_hostname, "Device identified via MikroTik DHCP");
-                    updated += 1;
-                    continue; // Don't overwrite with lower-priority source
-                }
+        // Priority 1: seeded external map (pfSense ARP hotfix).
+        if let Some(hostname) = seeded_hostnames.get(&mac_lower) {
+            if let Err(e) = sqlx::query(
+                "UPDATE devices SET hostname = ?, name = COALESCE(name, ?), is_known = 1, updated_at = datetime('now') WHERE id = ? AND (hostname IS NULL OR TRIM(hostname) = '')",
+            )
+            .bind(hostname)
+            .bind(hostname)
+            .bind(device_id)
+            .execute(db)
+            .await
+            {
+                warn!(device_id, error = %e, "Failed to update hostname from seeded external source");
+            } else {
+                debug!(device_id, hostname = %hostname, "Device identified via seeded external hostname source");
+                updated += 1;
+                continue;
             }
         }
 
-        // Priority 2: Xiaomi device name → sets `hostname` + `name` + marks known.
-        if current_hostname.is_none() || current_hostname.as_deref() == Some("") {
-            if let Some(xiaomi_name) = xiaomi_names.get(&mac_lower) {
-                if let Err(e) = sqlx::query(
-                    "UPDATE devices SET hostname = ?, name = COALESCE(name, ?), is_known = 1, updated_at = datetime('now') WHERE id = ? AND (hostname IS NULL OR hostname = '')",
-                )
-                .bind(xiaomi_name)
-                .bind(xiaomi_name)
-                .bind(device_id)
-                .execute(db)
-                .await
-                {
-                    warn!(device_id, error = %e, "Failed to update hostname from Xiaomi");
-                } else {
-                    debug!(device_id, hostname = %xiaomi_name, "Device identified via Xiaomi router");
-                    updated += 1;
-                }
+        // Priority 2: MikroTik DHCP hostname.
+        if let Some(dhcp_hostname) = mikrotik_hostnames.get(&mac_lower) {
+            if let Err(e) = sqlx::query(
+                "UPDATE devices SET hostname = ?, name = COALESCE(name, ?), is_known = 1, updated_at = datetime('now') WHERE id = ? AND (hostname IS NULL OR TRIM(hostname) = '')",
+            )
+            .bind(dhcp_hostname)
+            .bind(dhcp_hostname)
+            .bind(device_id)
+            .execute(db)
+            .await
+            {
+                warn!(device_id, error = %e, "Failed to update hostname from MikroTik DHCP");
+            } else {
+                debug!(device_id, hostname = %dhcp_hostname, "Device identified via MikroTik DHCP");
+                updated += 1;
+                continue;
+            }
+        }
+
+        // Priority 3: Xiaomi device name.
+        if let Some(xiaomi_name) = xiaomi_names.get(&mac_lower) {
+            if let Err(e) = sqlx::query(
+                "UPDATE devices SET hostname = ?, name = COALESCE(name, ?), is_known = 1, updated_at = datetime('now') WHERE id = ? AND (hostname IS NULL OR TRIM(hostname) = '')",
+            )
+            .bind(xiaomi_name)
+            .bind(xiaomi_name)
+            .bind(device_id)
+            .execute(db)
+            .await
+            {
+                warn!(device_id, error = %e, "Failed to update hostname from Xiaomi");
+            } else {
+                debug!(device_id, hostname = %xiaomi_name, "Device identified via Xiaomi router");
+                updated += 1;
             }
         }
     }
