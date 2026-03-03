@@ -85,62 +85,90 @@ const iconMap: Record<string, { icon: React.ReactNode; iconBg: string }> = {
   },
 };
 
+function getItemLayoutClass(index: number, total: number) {
+  const classes = ["group", "block", "h-full"];
+
+  // Tablet/medium widths (2 columns): avoid a left-floating orphan card.
+  if (total % 2 === 1 && index === total - 1) {
+    classes.push("sm:col-span-2", "xl:col-span-1");
+  }
+
+  // Wide desktop (3 columns): center a single orphan card in the last row.
+  if (total % 3 === 1 && index === total - 1) {
+    classes.push("xl:col-start-2");
+  }
+
+  return classes.join(" ");
+}
+
 export default function SettingsPage() {
   return (
     <PageTransition>
-      <div className="mx-auto max-w-5xl space-y-8 py-8">
+      <div className="mx-auto max-w-5xl py-8">
         <h1 className="text-2xl font-semibold text-white">Settings</h1>
 
-        {settingsNav.map((group) => {
-          const visibleItems = group.items;
+        <div className="mt-8 space-y-8">
+          {settingsNav.map((group) => {
+            const visibleItems = group.items;
 
-          if (visibleItems.length === 0) return null;
+            if (visibleItems.length === 0) return null;
 
-          return (
-            <section key={group.label} className="space-y-3">
-              <div className="static">
-                <h2 className="static text-xs font-medium uppercase tracking-wider text-slate-500">
-                  {group.label}
-                </h2>
-                {group.subtitle && (
-                  <p className="mt-1 text-xs text-slate-600">
-                    {group.subtitle}
+            return (
+              <section key={group.label} className="space-y-4">
+                <div className="min-h-[2.75rem] space-y-1">
+                  <h2 className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                    {group.label}
+                  </h2>
+                  <p
+                    className={`text-xs leading-5 text-slate-500 ${
+                      group.subtitle ? "" : "invisible"
+                    }`}
+                    aria-hidden={!group.subtitle}
+                  >
+                    {group.subtitle ?? "\u00A0"}
                   </p>
-                )}
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {visibleItems.map((item) => {
-                  const visual = iconMap[item.href];
+                </div>
 
-                  return (
-                    <Link key={item.href} href={item.href} className="group">
-                      <Card className="h-full border-slate-800 bg-slate-900 transition-colors group-hover:border-slate-700">
-                        <CardContent className="flex items-center gap-3 py-3">
-                          {visual && (
-                            <div
-                              className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${visual.iconBg}`}
-                            >
-                              {visual.icon}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                  {visibleItems.map((item, index) => {
+                    const visual = iconMap[item.href];
+
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={getItemLayoutClass(index, visibleItems.length)}
+                      >
+                        <Card className="h-full border-slate-800 bg-slate-900 transition-colors group-hover:border-slate-700">
+                          <CardContent className="flex h-full min-h-[5.75rem] items-start gap-3 p-4">
+                            {visual && (
+                              <div
+                                className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${visual.iconBg}`}
+                              >
+                                {visual.icon}
+                              </div>
+                            )}
+
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <p className="text-sm font-medium leading-5 text-white">
+                                {item.title}
+                              </p>
+                              <p className="line-clamp-2 text-xs leading-5 text-slate-500">
+                                {item.description}
+                              </p>
                             </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-white">
-                              {item.title}
-                            </p>
-                            <p className="truncate text-xs text-slate-500">
-                              {item.description}
-                            </p>
-                          </div>
-                          <ChevronRight className="h-4 w-4 shrink-0 text-slate-600 transition-colors group-hover:text-slate-400" />
-                        </CardContent>
-                      </Card>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          );
-        })}
+
+                            <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-600 transition-colors group-hover:text-slate-400" />
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })}
+        </div>
       </div>
     </PageTransition>
   );
