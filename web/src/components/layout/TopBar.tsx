@@ -224,7 +224,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
   let runningIndex = 0;
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-slate-800 bg-slate-950 px-3 md:px-6 gap-2">
+    <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b border-slate-800/80 bg-slate-950/70 px-3 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/55 md:px-6">
       {/* Mobile menu button */}
       {mobileMenu}
 
@@ -240,12 +240,12 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
             if (results && query.length >= 2) setIsOpen(true);
           }}
           placeholder="Search devices, IPs, MACs...  ⌘K"
-          className="w-full rounded-md border border-slate-800 bg-background px-3 py-1.5 text-sm text-white placeholder-slate-500 focus:border-accent focus:outline-none"
+          className="w-full rounded-lg border border-slate-800/80 bg-slate-900/70 px-3 py-1.5 text-sm text-white placeholder-slate-500 transition-colors focus:border-accent focus:outline-none"
         />
 
         {/* Search Results Dropdown */}
         {isOpen && (
-          <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-md border border-slate-800 bg-slate-950 shadow-xl">
+          <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-xl border border-slate-800/80 bg-slate-950/95 shadow-2xl backdrop-blur-md">
             {noResults && (
               <div className="px-4 py-3 text-sm text-slate-500">
                 No results for &ldquo;{query}&rdquo;
@@ -445,7 +445,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
           </button>
 
           {bellOpen && (
-            <div className="absolute right-0 top-full z-50 mt-1 w-80 rounded-md border border-slate-800 bg-slate-950 shadow-xl">
+            <div className="absolute right-0 top-full z-50 mt-1 w-80 rounded-xl border border-slate-800/80 bg-slate-950/95 shadow-2xl backdrop-blur-md">
               <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2.5">
                 <span className="text-sm font-semibold text-white">Notifications</span>
                 <div className="flex items-center gap-3">

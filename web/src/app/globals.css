@@ -37,7 +37,10 @@
   }
 
   body {
-    @apply bg-slate-950 text-foreground;
+    @apply text-foreground;
+    background-color: #030712;
+    background-image: linear-gradient(180deg, #030712 0%, #111827 50%, #030712 100%);
+    background-attachment: fixed;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 }

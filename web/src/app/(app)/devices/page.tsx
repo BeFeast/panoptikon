@@ -304,10 +304,15 @@ export default function DevicesPage() {
     <PageTransition>
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold text-white">Devices</h1>
-          <HelpTooltip text="All devices discovered on your network. Use Scan Now to discover new devices, Re-identify to fingerprint them, and Resolve Names to look up hostnames via DNS." />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-semibold text-white">Devices</h1>
+            <HelpTooltip text="All devices discovered on your network. Use Scan Now to discover new devices, Re-identify to fingerprint them, and Resolve Names to look up hostnames via DNS." />
+          </div>
+          <p className="text-sm text-slate-400">
+            Discover, classify, and monitor every device on your network.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Tooltip>
@@ -531,7 +536,7 @@ export default function DevicesPage() {
         view === "grid" ? (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Card key={i} className="border-slate-800 bg-slate-900">
+            <Card key={i} className="border-slate-800/80 bg-slate-900/70">
               <CardContent className="p-4">
                 {/* Header row — icon + name + badges */}
                 <div className="flex items-start gap-3">
@@ -565,7 +570,7 @@ export default function DevicesPage() {
           ))}
         </div>
         ) : (
-        <div className="rounded-md border border-slate-800 bg-slate-900">
+        <div className="rounded-2xl border border-slate-800/80 bg-slate-900/70 shadow-[0_10px_30px_-18px_rgba(2,6,23,1)]">
           <Table>
             <TableHeader>
               <TableRow className="border-slate-800 hover:bg-transparent">
@@ -716,7 +721,7 @@ function DeviceCard({
 
   return (
     <Card
-      className="group h-full cursor-pointer border-slate-800 bg-slate-900 transition-colors hover:bg-slate-800/50"
+      className="group h-full cursor-pointer border-slate-800/80 bg-slate-900/70 transition-[border-color,background-color] hover:border-slate-700 hover:bg-slate-900/90"
       onClick={onClick}
     >
       <CardContent className="px-4 pb-4 pt-5">
@@ -762,7 +767,7 @@ function DeviceCard({
             </div>
             {/* Vendor — one line, muted; hidden when null/empty */}
             {vendorDisplay && (
-              <p className="mt-0.5 truncate text-[11px] text-slate-500" title={vendorDisplay}>
+              <p className="mt-1 truncate text-[11px] text-slate-500" title={vendorDisplay}>
                 {vendorDisplay}
               </p>
             )}
@@ -850,7 +855,7 @@ function DeviceCard({
           if (!osDisplay && !modelDisplay) return null;
           const os = osDisplay ? getOsDisplay(osDisplay) : null;
           return (
-            <div className="mt-2 flex flex-wrap items-center gap-1">
+            <div className="mt-3 flex flex-wrap items-center gap-1">
               {os && (
                 <Badge variant="outline" className={`text-[10px] ${os.colorClass}`}>
                   {os.label}{device.os_version ? ` ${device.os_version}` : ""}
@@ -865,7 +870,7 @@ function DeviceCard({
 
         {/* ── Row 6: mDNS services ── */}
         {device.mdns_services && (
-          <div className="mt-2 flex flex-wrap gap-1">
+          <div className="mt-3 flex flex-wrap gap-1">
             {device.mdns_services.split(",").map((svc) => (
               <Badge
                 key={svc}
@@ -944,7 +949,7 @@ function DevicesTable({
   };
 
   return (
-    <div className="rounded-md border border-slate-800 bg-slate-900">
+    <div className="rounded-2xl border border-slate-800/80 bg-slate-900/70 shadow-[0_10px_30px_-18px_rgba(2,6,23,1)]">
       <Table>
         <TableHeader>
           <TableRow className="border-slate-800 hover:bg-transparent">
