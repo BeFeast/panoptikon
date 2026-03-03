@@ -601,7 +601,7 @@ export default function DevicesPage() {
       ) : view === "grid" ? (
         <StaggerContainer className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
           {sorted.map((device) => (
-            <StaggerItem key={device.id} className="h-full">
+            <StaggerItem key={device.id}>
               <MotionCard className="h-full">
                 <DeviceCard
                   device={device}

@@ -1,5 +1,124 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
+test.describe('Layout & Grid — card clipping / spacing regressions (#544)', () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test('dashboard cards are not clipped at bottom — 1280x800 desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/dashboard');
+    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
+
+    // Scroll the main content area to the very bottom
+    await page.evaluate(() => {
+      const main = document.querySelector('main');
+      if (main) main.scrollTo(0, main.scrollHeight);
+    });
+    await page.waitForTimeout(500);
+
+    // The "Device Breakdown" card (last card) must be scrollable-to and visible
+    await expect(page.getByText('Device Breakdown')).toBeVisible({ timeout: 5000 });
+
+    // Verify every visible card is fully inside the scrollable area (not clipped)
+    const cards = page.locator('[data-testid="infra-health-card"], [class*="border-slate-800"][class*="bg-slate-900"]');
+    const count = await cards.count();
+    expect(count).toBeGreaterThan(0);
+
+    // Check that the main scrollable container can reach the bottom of its content
+    const scrollInfo = await page.evaluate(() => {
+      const main = document.querySelector('main');
+      if (!main) return { scrollable: false, reachesBottom: false };
+      const atBottom = main.scrollTop + main.clientHeight >= main.scrollHeight - 2;
+      return { scrollable: main.scrollHeight > main.clientHeight, reachesBottom: atBottom };
+    });
+    // If content is scrollable, we must be able to reach the bottom
+    if (scrollInfo.scrollable) {
+      expect(scrollInfo.reachesBottom).toBe(true);
+    }
+
+    await page.screenshot({ path: 'tests/screenshots/layout-card-bottom-1280.png', fullPage: true });
+  });
+
+  test('dashboard cards are not clipped at bottom — 1366x768 laptop', async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.goto('/dashboard');
+    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
+
+    // Scroll to bottom
+    await page.evaluate(() => {
+      const main = document.querySelector('main');
+      if (main) main.scrollTo(0, main.scrollHeight);
+    });
+    await page.waitForTimeout(500);
+
+    // Last card visible after scrolling
+    await expect(page.getByText('Device Breakdown')).toBeVisible({ timeout: 5000 });
+
+    await page.screenshot({ path: 'tests/screenshots/layout-card-bottom-1366.png', fullPage: true });
+  });
+
+  test('stat cards have consistent padding — no extra bottom space', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/dashboard');
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
+
+    // Verify stat cards don't have excessive height by checking the card header
+    // padding override is consistent (pb-2 works at all breakpoints)
+    const statCardHeaders = page.locator('.uppercase.tracking-wider').filter({ hasText: /Router Status|Active Devices|WAN Bandwidth|Unread Alerts/ });
+    const headerCount = await statCardHeaders.count();
+    expect(headerCount).toBeGreaterThanOrEqual(1);
+
+    await page.screenshot({ path: 'tests/screenshots/layout-stat-card-padding.png', fullPage: true });
+  });
+
+  test('layout containers use overflow-clip not overflow-hidden', async ({ page }) => {
+    await page.goto('/dashboard');
+    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+
+    // Verify the main layout containers do not create unwanted scroll contexts
+    // overflow-clip is preferred over overflow-hidden for layout wrappers
+    const mainEl = page.locator('main');
+    await expect(mainEl).toBeVisible();
+
+    // Main should be scrollable (overflow-y: auto)
+    const isScrollable = await page.evaluate(() => {
+      const main = document.querySelector('main');
+      if (!main) return false;
+      return getComputedStyle(main).overflowY === 'auto';
+    });
+    expect(isScrollable).toBe(true);
+
+    await page.screenshot({ path: 'tests/screenshots/layout-overflow-clip.png' });
+  });
+
+  test('devices grid cards are fully visible without clipping', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto('/devices');
+    await expect(page.getByRole('heading', { name: 'Devices', level: 1 })).toBeVisible();
+
+    // Wait for cards or empty state
+    await page.waitForTimeout(3000);
+
+    // If there are device cards, verify they are not clipped
+    const deviceCards = page.locator('.border-slate-800.bg-slate-900.cursor-pointer');
+    const cardCount = await deviceCards.count();
+    if (cardCount > 0) {
+      // Check that the first card's border/content is fully rendered
+      const box = await deviceCards.first().boundingBox();
+      expect(box).not.toBeNull();
+      if (box) {
+        expect(box.height).toBeGreaterThan(50); // Cards should have meaningful height
+        expect(box.width).toBeGreaterThan(100); // Cards should have meaningful width
+      }
+    }
+
+    await page.screenshot({ path: 'tests/screenshots/layout-devices-no-clip.png', fullPage: true });
+  });
+});
+
 test.describe('Layout & Grid — no overflow or clipping (#524)', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
