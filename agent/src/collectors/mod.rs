@@ -1,14 +1,17 @@
 pub mod cpu;
 pub mod disk;
+pub mod fastfetch;
 pub mod hardware;
 pub mod memory;
 pub mod network;
 pub mod os;
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use serde::Serialize;
 use sysinfo::{Disks, Networks, System};
+use tracing::{info, warn};
 
 use crate::config::AgentConfig;
 
@@ -44,6 +47,10 @@ pub struct SystemCollector {
     prev_net_counters: HashMap<String, (u64, u64)>,
     /// Cached hardware inventory (collected once at startup).
     hardware_info: hardware::HardwareInfo,
+    /// Resolved path to the fastfetch binary (None if not available).
+    fastfetch_path: Option<PathBuf>,
+    /// Tick counter for periodic fastfetch refresh (every 10th cycle = ~5 min at 30s).
+    fastfetch_refresh_interval: u64,
 }
 
 impl SystemCollector {
@@ -60,7 +67,7 @@ impl SystemCollector {
         let disks = Disks::new_with_refreshed_list();
         let networks = Networks::new_with_refreshed_list();
 
-        // Collect static hardware info once.
+        // Collect static hardware info once via sysinfo.
         let hardware_info = hardware::collect(&sys);
 
         Self {
@@ -70,6 +77,44 @@ impl SystemCollector {
             report_count: 0,
             prev_net_counters: HashMap::new(),
             hardware_info,
+            fastfetch_path: None,
+            fastfetch_refresh_interval: 10, // ~5 min at 30s interval
+        }
+    }
+
+    /// Initialize fastfetch integration.
+    /// Should be called after construction with the agent config.
+    pub fn init_fastfetch(&mut self, config: &AgentConfig) {
+        // If config sets fastfetch_path to empty string, disable fastfetch.
+        if config.fastfetch_path.as_deref() == Some("") {
+            info!("Fastfetch integration disabled by config (empty path)");
+            return;
+        }
+
+        let ff_path = fastfetch::detect_path(config.fastfetch_path.as_deref());
+
+        match ff_path {
+            Some(ref path) => {
+                info!(path = %path.display(), "Fastfetch binary detected");
+                self.fastfetch_path = ff_path;
+                // Run initial fastfetch collection.
+                self.refresh_fastfetch();
+            }
+            None => {
+                warn!("Fastfetch not found — using sysinfo-only hardware collection");
+            }
+        }
+    }
+
+    /// Run fastfetch and merge results into cached hardware info.
+    fn refresh_fastfetch(&mut self) {
+        let Some(ref path) = self.fastfetch_path else {
+            return;
+        };
+
+        if let Some(ff_data) = fastfetch::collect(path) {
+            hardware::enrich_with_fastfetch(&mut self.hardware_info, &ff_data);
+            info!("Hardware info enriched with fastfetch data");
         }
     }
 
@@ -87,6 +132,16 @@ impl SystemCollector {
         if self.report_count.is_multiple_of(5) {
             self.disks.refresh_list();
             self.networks.refresh_list();
+        }
+
+        // Periodic fastfetch refresh (every Nth cycle, ~5 min at 30s).
+        if self.fastfetch_path.is_some()
+            && self.report_count > 0
+            && self
+                .report_count
+                .is_multiple_of(self.fastfetch_refresh_interval)
+        {
+            self.refresh_fastfetch();
         }
 
         let network_interfaces = network::collect_from(&self.networks, &mut self.prev_net_counters);
@@ -133,6 +188,7 @@ mod tests {
             api_key: "test-key".to_string(),
             agent_id: "test-agent".to_string(),
             report_interval_secs: 30,
+            fastfetch_path: None,
         };
         let report = collector.collect(&config);
         assert_eq!(collector.report_count(), 1);

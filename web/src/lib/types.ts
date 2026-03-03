@@ -98,6 +98,15 @@ export interface DeviceSysinfo {
   serial_number: string | null;
   hostname: string | null;
   uptime_seconds: number | null;
+  // Extended fastfetch fields:
+  motherboard_name?: string | null;
+  bios_version?: string | null;
+  bios_vendor?: string | null;
+  ram_type?: string | null;
+  ram_speed?: string | null;
+  gpu_vram?: string | null;
+  gpu_type?: string | null;
+  collector_source?: string | null;
 }
 
 export interface AgentSummary {
@@ -131,6 +140,15 @@ export interface Agent {
   disk_size?: string | null;
   serial_number?: string | null;
   uptime_seconds?: number | null;
+  // Extended fastfetch fields:
+  motherboard_name?: string | null;
+  bios_version?: string | null;
+  bios_vendor?: string | null;
+  ram_type?: string | null;
+  ram_speed?: string | null;
+  gpu_vram?: string | null;
+  gpu_type?: string | null;
+  collector_source?: string | null;
 }
 
 export interface AgentCreateResponse {
