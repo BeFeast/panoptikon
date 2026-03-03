@@ -527,24 +527,33 @@ export default function DevicesPage() {
         <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <Card key={i} className="border-slate-800 bg-slate-900">
-              <CardContent className="p-5">
-                {/* Icon + name row — matches DeviceCard layout */}
+              <CardContent className="p-4">
+                {/* Header row — icon + name + badges */}
                 <div className="flex items-start gap-3">
-                  <Skeleton className="h-10 w-10 shrink-0 rounded-xl" />
+                  <Skeleton className="mt-0.5 h-11 w-11 shrink-0 rounded-xl" />
                   <div className="min-w-0 flex-1 space-y-1.5">
                     <div className="flex items-center gap-2">
                       <Skeleton className="h-2 w-2 rounded-full" />
-                      <Skeleton className="h-4 w-[60%]" />
+                      <Skeleton className="h-4 w-[55%]" />
                     </div>
-                    <Skeleton className="h-3 w-[40%]" />
+                    <Skeleton className="h-3 w-[35%]" />
+                  </div>
+                  <Skeleton className="h-5 w-12 rounded" />
+                </div>
+                {/* Divider */}
+                <div className="my-3 border-t border-slate-800" />
+                {/* IP + MAC */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-2 w-7" />
+                    <Skeleton className="h-3 w-28" />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-2 w-7" />
+                    <Skeleton className="h-3 w-36" />
                   </div>
                 </div>
-                {/* Technical info */}
-                <div className="mt-3 space-y-1">
-                  <Skeleton className="h-4 w-28" />
-                  <Skeleton className="h-3 w-36" />
-                </div>
-                {/* Last seen */}
+                {/* Footer */}
                 <Skeleton className="mt-3 h-3 w-24" />
               </CardContent>
             </Card>
@@ -650,7 +659,7 @@ export default function DevicesPage() {
 
 // ─── Device Card ────────────────────────────────────────
 
-function getDevicePrimaryTitle(device: Device, primaryIp: string): { title: string; isUnnamed: boolean } {
+function getDevicePrimaryTitle(device: Device): { title: string; isUnnamed: boolean } {
   const customName = device.custom_name?.trim();
   const hostname = device.hostname?.trim();
   const discoveredName = device.name?.trim();
@@ -658,10 +667,6 @@ function getDevicePrimaryTitle(device: Device, primaryIp: string): { title: stri
   if (customName) return { title: customName, isUnnamed: false };
   if (hostname) return { title: hostname, isUnnamed: false };
   if (discoveredName) return { title: discoveredName, isUnnamed: false };
-
-  if (primaryIp && primaryIp !== "—") {
-    return { title: primaryIp, isUnnamed: true };
-  }
 
   return { title: "Unknown Device", isUnnamed: true };
 }
@@ -676,12 +681,14 @@ function DeviceCard({
   const [waking, setWaking] = useState(false);
   const ips = device.ips ?? [];
   const primaryIp = ips[0] ?? "—";
-  const { title: displayName, isUnnamed } = getDevicePrimaryTitle(device, primaryIp);
+  const { title: displayName, isUnnamed } = getDevicePrimaryTitle(device);
   const effectiveType = device.custom_type ?? device.device_type;
   const { icon: DevIcon } = getDeviceIcon(device.custom_vendor ?? device.vendor, device.hostname, device.mdns_services, effectiveType);
   const vendorDisplay = device.custom_vendor ?? device.vendor ?? null;
-
   const canWake = !device.is_online && device.mac && !device.is_randomized_mac;
+  const hasAgentMetrics = device.agent?.is_online && (
+    device.agent.cpu_percent != null || device.agent.memory_percent != null
+  );
 
   const handleWake = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -698,103 +705,163 @@ function DeviceCard({
 
   return (
     <Card
-      className="h-full cursor-pointer border-slate-800 bg-slate-900 transition-colors hover:bg-slate-800/60 hover:border-blue-500/50"
+      className="group h-full cursor-pointer border-slate-800 bg-slate-900 transition-colors hover:bg-slate-800/50"
       onClick={onClick}
     >
-      <CardContent className="p-5">
-        {/* Name row with icon */}
+      <CardContent className="p-4">
+
+        {/* ── Row 1: Icon + Identity + Badges ── */}
         <div className="flex items-start gap-3">
-          {/* Device type icon container */}
+
+          {/* Device icon — larger, color-coded by status */}
           <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-800 ${
-              device.is_online ? "ring-1 ring-emerald-500/20" : ""
+            className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+              device.is_online
+                ? "bg-emerald-500/10 ring-1 ring-emerald-500/25"
+                : "bg-slate-800 ring-1 ring-slate-700"
             }`}
           >
             <DevIcon
-              className={`h-5 w-5 ${
-                device.is_online ? "text-emerald-400" : "text-slate-500"
-              }`}
+              className={`h-6 w-6 ${device.is_online ? "text-emerald-400" : "text-slate-500"}`}
             />
           </div>
 
+          {/* Name block */}
           <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-center gap-2">
+            {/* Title row: status dot + name */}
+            <div className="flex min-w-0 items-center gap-1.5">
               <span
                 className={`h-2 w-2 shrink-0 rounded-full ${
                   device.is_online
-                    ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-                    : "bg-slate-500"
+                    ? "bg-emerald-400 ring-2 ring-emerald-400/25 status-glow-online"
+                    : "bg-slate-600"
                 }`}
               />
-              <span className="min-w-0 flex-1 truncate font-medium text-white">{displayName}</span>
-              {isUnnamed && (
-                <Badge variant="outline" className="shrink-0 border-slate-600 text-[10px] text-slate-400">
-                  Unknown
-                </Badge>
-              )}
+              <span
+                className={`min-w-0 flex-1 truncate text-sm font-semibold leading-snug ${
+                  isUnnamed ? "italic text-slate-500" : "text-white"
+                }`}
+                title={displayName}
+              >
+                {displayName}
+              </span>
               {device.is_critical && (
                 <Pin className="h-3 w-3 shrink-0 text-amber-400" />
               )}
+            </div>
+            {/* Vendor — one line, muted */}
+            {vendorDisplay ? (
+              <p className="mt-0.5 truncate text-[11px] text-slate-500" title={vendorDisplay}>
+                {vendorDisplay}
+              </p>
+            ) : (
+              <p className="mt-0.5 text-[11px] text-slate-700">—</p>
+            )}
+          </div>
+
+          {/* Badges — stacked top-right, never overlap title */}
+          {(device.agent?.is_online || !device.is_known) && (
+            <div className="flex shrink-0 flex-col items-end gap-1">
               {device.agent?.is_online && (
-                <span className="shrink-0 rounded border border-blue-500/30 bg-blue-500/20 px-1.5 py-0.5 text-xs text-blue-400">
+                <span className="rounded border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-400">
                   Agent
                 </span>
               )}
               {!device.is_known && (
-                <Badge variant="outline" className="shrink-0 border-amber-500/50 text-amber-400 text-[10px]">
+                <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
                   NEW
-                </Badge>
+                </span>
               )}
             </div>
-            {vendorDisplay && (
-              <p className="mt-0.5 truncate text-xs text-slate-400" title={vendorDisplay}>{vendorDisplay}</p>
-            )}
-          </div>
+          )}
         </div>
 
-        {/* Enrichment badges: OS + model */}
+        {/* ── Divider ── */}
+        <div className="my-3 border-t border-slate-800" />
+
+        {/* ── Row 2: Network info — IP + MAC, labeled, shown once each ── */}
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-2">
+            <span className="w-7 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-600">IP</span>
+            <span className="min-w-0 truncate font-mono text-xs tabular-nums text-slate-400">{primaryIp}</span>
+          </div>
+          {device.mac && (
+            <div className="flex items-center gap-2">
+              <span className="w-7 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-600">MAC</span>
+              <span className="min-w-0 truncate font-mono text-[11px] tabular-nums text-slate-600">{device.mac}</span>
+            </div>
+          )}
+        </div>
+
+        {/* ── Row 3: Agent metrics — CPU + RAM inline progress bars ── */}
+        {hasAgentMetrics && (
+          <div className="mt-3 space-y-1.5">
+            {device.agent!.cpu_percent != null && (
+              <div className="flex items-center gap-2">
+                <span className="w-7 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-600">CPU</span>
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className="h-full rounded-full bg-sky-500/80 transition-all"
+                    style={{ width: `${Math.min(device.agent!.cpu_percent, 100)}%` }}
+                  />
+                </div>
+                <span className="w-9 shrink-0 text-right font-mono text-[11px] tabular-nums text-slate-400">
+                  {formatPercent(device.agent!.cpu_percent)}
+                </span>
+              </div>
+            )}
+            {device.agent!.memory_percent != null && (
+              <div className="flex items-center gap-2">
+                <span className="w-7 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-600">RAM</span>
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    className="h-full rounded-full bg-violet-500/80 transition-all"
+                    style={{ width: `${Math.min(device.agent!.memory_percent, 100)}%` }}
+                  />
+                </div>
+                <span className="w-9 shrink-0 text-right font-mono text-[11px] tabular-nums text-slate-400">
+                  {formatPercent(device.agent!.memory_percent)}
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Row 4: 24h sparkline ── */}
+        {device.status_timeline && device.status_timeline.length > 0 && (
+          <div className="mt-3">
+            <StatusSparkline timeline={device.status_timeline} width={160} height={10} />
+          </div>
+        )}
+
+        {/* ── Row 5: OS badge + model ── */}
         {(() => {
           const osDisplay = device.custom_os ?? device.os_family;
           const modelDisplay = device.custom_model ?? device.device_model;
           if (!osDisplay && !modelDisplay) return null;
+          const os = osDisplay ? getOsDisplay(osDisplay) : null;
           return (
             <div className="mt-2 flex flex-wrap items-center gap-1">
-              {osDisplay && (() => {
-                const os = getOsDisplay(osDisplay);
-                return os ? (
-                  <Badge variant="outline" className={`text-[10px] ${os.colorClass}`}>
-                    {os.label}{device.os_version ? ` ${device.os_version}` : ""}
-                  </Badge>
-                ) : null;
-              })()}
+              {os && (
+                <Badge variant="outline" className={`text-[10px] ${os.colorClass}`}>
+                  {os.label}{device.os_version ? ` ${device.os_version}` : ""}
+                </Badge>
+              )}
               {modelDisplay && (
-                <span className="text-[10px] text-slate-500">{modelDisplay}</span>
+                <span className="text-[10px] text-slate-600">{modelDisplay}</span>
               )}
             </div>
           );
         })()}
 
-        {/* Technical info */}
-        <div className="mt-3 space-y-1">
-          <p className="truncate font-mono tabular-nums text-sm text-slate-400">{primaryIp}</p>
-          <p className="truncate font-mono tabular-nums text-xs text-slate-600">{device.mac}</p>
-        </div>
-
-        {/* 24-hour status sparkline */}
-        {device.status_timeline && device.status_timeline.length > 0 && (
-          <div className="mt-2">
-            <StatusSparkline timeline={device.status_timeline} width={160} height={12} />
-          </div>
-        )}
-
-        {/* mDNS service badges */}
+        {/* ── Row 6: mDNS services ── */}
         {device.mdns_services && (
           <div className="mt-2 flex flex-wrap gap-1">
             {device.mdns_services.split(",").map((svc) => (
               <Badge
                 key={svc}
                 variant="outline"
-                className="border-purple-500/50 text-purple-400 text-[10px]"
+                className="border-purple-500/40 text-purple-400 text-[10px]"
               >
                 {svc.trim()}
               </Badge>
@@ -802,37 +869,24 @@ function DeviceCard({
           </div>
         )}
 
-        {/* Agent badges or last seen */}
-        {device.agent && device.agent.is_online ? (
-          <div className="mt-3 flex items-center gap-2">
-            <Badge variant="secondary" className="gap-1 text-[10px]">
-              <Cpu className="h-3 w-3" />
-              {device.agent.cpu_percent != null ? formatPercent(device.agent.cpu_percent) : "—"}
-            </Badge>
-            <Badge variant="secondary" className="gap-1 text-[10px]">
-              <MemoryStick className="h-3 w-3" />
-              {device.agent.memory_percent != null ? formatPercent(device.agent.memory_percent) : "—"}
-            </Badge>
-          </div>
-        ) : (
-          <p className="mt-3 text-xs text-slate-600">
-            Last seen {timeAgo(device.last_seen_at)}
+        {/* ── Footer: last seen + optional Wake button ── */}
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <p className={`text-[11px] ${device.is_online ? "text-emerald-500/70" : "text-slate-600"}`}>
+            {device.is_online ? "Online now" : `Last seen ${timeAgo(device.last_seen_at)}`}
           </p>
-        )}
-
-        {/* Wake-on-LAN button — offline devices with known MAC */}
-        {canWake && (
-          <Button
-            variant="secondary"
-            size="sm"
-            className="mt-3 w-full gap-2"
-            disabled={waking}
-            onClick={handleWake}
-          >
-            <Power className="h-3.5 w-3.5" />
-            {waking ? "Sending…" : "Wake"}
-          </Button>
-        )}
+          {canWake && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 gap-1 px-2 text-[11px] text-slate-500 hover:text-emerald-400"
+              disabled={waking}
+              onClick={handleWake}
+            >
+              <Power className="h-3 w-3" />
+              {waking ? "Sending…" : "Wake"}
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   );
@@ -1061,7 +1115,7 @@ function DevicesTable({
 function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => void }) {
   const ips = device.ips ?? [];
   const primaryIp = ips[0] ?? "—";
-  const { title: displayName, isUnnamed } = getDevicePrimaryTitle(device, primaryIp);
+  const { title: displayName, isUnnamed } = getDevicePrimaryTitle(device);
   const [waking, setWaking] = useState(false);
   const [sysinfo, setSysinfo] = useState<DeviceSysinfo | null>(null);
 
