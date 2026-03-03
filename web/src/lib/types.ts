@@ -1836,6 +1836,10 @@ export interface XiaomiNewStatus {
 }
 
 export interface XiaomiWifiBand {
+  /** Explicit band label emitted by the server: "2.4GHz" | "5GHz" | "6GHz".
+   *  Added in #545 so the UI does not re-derive band from channel numbers
+   *  (which are "0" in auto-channel / band-steering mode on BE3600). */
+  band: string;
   ssid: string | null;
   channel: string | null;
   bandwidth: string | null;

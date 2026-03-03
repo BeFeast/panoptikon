@@ -279,6 +279,34 @@ function WanInfoSection({ wan }: { wan: XiaomiWanInfo }) {
 
 // ── WiFi Bands Section ───────────────────────────────────
 
+/**
+ * Convert the server's compact band token (e.g. "2.4GHz") to a display
+ * label with proper spacing.  Falls back to channel-based inference for
+ * any older API response that lacks the `band` field, and to a positional
+ * label as a last resort (#545).
+ */
+function toBandDisplayLabel(
+  serverBand: string | undefined,
+  channel: string | null,
+  index: number,
+): string {
+  // Server-provided band (canonical, added in #545)
+  if (serverBand) {
+    if (serverBand === "2.4GHz") return "2.4 GHz";
+    if (serverBand === "5GHz") return "5 GHz";
+    if (serverBand === "6GHz") return "6 GHz";
+    return serverBand; // future-proof pass-through
+  }
+  // Legacy fallback: channel-based (only reliable when channel ≠ 0)
+  if (channel) {
+    const n = parseInt(channel, 10);
+    if (n > 14) return "5 GHz";
+    if (n > 0) return "2.4 GHz";
+  }
+  // Positional fallback: MiWiFi emits bands in ascending-frequency order
+  return index === 0 ? "2.4 GHz" : "5 GHz";
+}
+
 function WifiBandsSection({
   bands,
   wifiDevices,
@@ -286,6 +314,20 @@ function WifiBandsSection({
   bands: XiaomiWifiBand[];
   wifiDevices: XiaomiWifiDevice[];
 }) {
+  // Deduplicate by (bandLabel, ssid) as a frontend safety net.
+  // The backend already deduplicates (#545), but guard against any old API
+  // response or unexpected duplicates reaching the UI.
+  const dedupedBands = (() => {
+    const seen = new Set<string>();
+    return bands.filter((b, i) => {
+      const label = toBandDisplayLabel(b.band, b.channel, i);
+      const key = `${label}|${b.ssid ?? ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  })();
+
   // Count connected clients per band
   const clientsByBand = wifiDevices.reduce<Record<string, number>>(
     (acc, d) => {
@@ -305,16 +347,12 @@ function WifiBandsSection({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {bands.length === 0 ? (
+        {dedupedBands.length === 0 ? (
           <p className="text-sm text-slate-500">No WiFi bands detected.</p>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
-            {bands.map((band, i) => {
-              const bandLabel = band.channel
-                ? parseInt(band.channel, 10) > 14
-                  ? "5 GHz"
-                  : "2.4 GHz"
-                : `Band ${i + 1}`;
+            {dedupedBands.map((band, i) => {
+              const bandLabel = toBandDisplayLabel(band.band, band.channel, i);
               const clientCount = Object.entries(clientsByBand).reduce(
                 (sum, [key, count]) => {
                   if (
@@ -331,7 +369,7 @@ function WifiBandsSection({
 
               return (
                 <div
-                  key={i}
+                  key={`${bandLabel}|${band.ssid ?? i}`}
                   className="rounded-lg border border-slate-800 bg-slate-800/30 p-4"
                 >
                   <div className="mb-3 flex items-center justify-between">
