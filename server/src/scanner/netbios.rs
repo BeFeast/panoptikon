@@ -121,13 +121,13 @@ fn parse_nmblookup_output(output: &str, ip: &str) -> NetbiosResult {
 
         // Parse: NAME  <type> - [<GROUP>] B <ACTIVE>
         let parts: Vec<&str> = trimmed.split_whitespace().collect();
-        if parts.len() >= 4 && parts.iter().any(|p| *p == "<ACTIVE>") {
+        if parts.len() >= 4 && parts.contains(&"<ACTIVE>") {
             let entry_name = parts[0];
             let type_code = parts[1];
 
             // <00> is the workstation/workgroup name
             if type_code == "<00>" {
-                if parts.iter().any(|p| *p == "<GROUP>") {
+                if parts.contains(&"<GROUP>") {
                     if workgroup.is_none() {
                         workgroup = Some(entry_name.to_string());
                     }

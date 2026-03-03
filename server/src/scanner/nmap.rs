@@ -148,8 +148,8 @@ fn parse_nmap_grepable(output: &str, ip: &str) -> NmapResult {
         }
 
         // Parse OS: line if present
-        if line.starts_with("OS: ") {
-            os_hint = Some(line[4..].to_string());
+        if let Some(stripped) = line.strip_prefix("OS: ") {
+            os_hint = Some(stripped.to_string());
         }
     }
 
