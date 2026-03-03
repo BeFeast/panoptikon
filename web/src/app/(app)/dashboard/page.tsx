@@ -281,7 +281,7 @@ function StatCard({
 }) {
   const inner = (
     <Card className="h-full border-slate-800 bg-slate-900 transition-all hover:border-blue-500/50 hover:bg-slate-800/60 hover:shadow-lg hover:shadow-blue-500/5">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
+      <CardHeader className="flex flex-row items-center justify-between pb-2 sm:pb-2">
         <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
           {title}
         </CardTitle>
@@ -483,18 +483,18 @@ export default function DashboardPage() {
       <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
 
       {/* ── Bento Grid ─────────────────────────────────── */}
-      <StaggerContainer className="grid grid-cols-1 gap-4 lg:grid-cols-5 items-stretch">
+      <StaggerContainer className="grid grid-cols-1 gap-4 lg:grid-cols-5">
         {/* ── Health Score Ring ─────────────────────────── */}
-        <StaggerItem className="h-full"><Card
+        <StaggerItem><Card
           className="h-full border-slate-800 bg-slate-900 lg:col-span-1 transition-all hover:border-blue-500/50 hover:bg-slate-800/60 hover:shadow-lg hover:shadow-blue-500/5"
           data-testid="infra-health-card"
         >
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 sm:pb-2">
             <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
               Infrastructure Health
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex items-center justify-center pb-4">
+          <CardContent className="flex items-center justify-center pb-4 sm:pb-4">
             {statsError ? (
               <SectionError message="Failed to load" />
             ) : stats ? (
@@ -520,7 +520,7 @@ export default function DashboardPage() {
         />
 
         {/* ── Stat Cards Row ───────────────────────────── */}
-        <StaggerItem className="h-full lg:col-span-4"><div className="grid h-full grid-cols-2 gap-3 lg:grid-cols-4">
+        <StaggerItem className="lg:col-span-4"><div className="grid h-full grid-cols-2 gap-3 lg:grid-cols-4">
           {statsError ? (
             <>
               <StatCard
@@ -609,7 +609,7 @@ export default function DashboardPage() {
 
         {/* ── WAN Traffic Card with Sparkline ─────────── */}
         <StaggerItem className="lg:col-span-3"><Card className="border-slate-800 bg-slate-900">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 sm:pb-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-blue-400" />
@@ -708,7 +708,7 @@ export default function DashboardPage() {
 
         {/* ── Alert Feed ───────────────────────────────── */}
         <StaggerItem className="lg:col-span-2"><Card className="border-slate-800 bg-slate-900">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 sm:pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Recent Alerts
@@ -765,7 +765,7 @@ export default function DashboardPage() {
 
         {/* ── Device Type Breakdown ────────────────────── */}
         <StaggerItem className="lg:col-span-5"><Card className="border-slate-800 bg-slate-900">
-          <CardHeader className="pb-2">
+          <CardHeader className="pb-2 sm:pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Device Breakdown
