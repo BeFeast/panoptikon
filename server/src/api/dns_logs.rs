@@ -149,7 +149,7 @@ pub async fn list(
     // Entries query with device name join.
     let entries_sql = format!(
         "SELECT q.id, q.device_id, q.client_ip, q.domain, q.query_type, \
-         q.result, q.blocked, q.response_time_ms, q.queried_at, \
+         q.response_code, q.blocked, q.response_time_ms, q.queried_at, \
          COALESCE(d.custom_name, d.name, d.hostname) as device_name \
          FROM dns_query_log q \
          LEFT JOIN devices d ON d.id = q.device_id \
@@ -163,10 +163,16 @@ pub async fn list(
         entries_query = entries_query.bind(v);
     }
 
-    let rows = entries_query.fetch_all(&state.db).await.map_err(|e| {
-        tracing::error!("DNS log list query failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
+    let rows = match entries_query.fetch_all(&state.db).await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!("DNS log list query failed: {e}");
+            return Ok(Json(DnsQueryLogResponse {
+                entries: vec![],
+                total: 0,
+            }));
+        }
+    };
 
     let entries = rows
         .into_iter()
@@ -176,7 +182,7 @@ pub async fn list(
             client_ip: r.client_ip,
             domain: r.domain,
             query_type: r.query_type,
-            result: r.result,
+            result: r.response_code,
             blocked: r.blocked != 0,
             response_time_ms: r.response_time_ms,
             queried_at: r.queried_at,
@@ -351,7 +357,7 @@ pub async fn ingest(
 
         let res = sqlx::query(
             "INSERT INTO dns_query_log \
-             (device_id, client_ip, domain, query_type, result, blocked, response_time_ms) \
+             (device_id, client_ip, domain, query_type, response_code, blocked, response_time_ms) \
              VALUES (?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&device_id)
@@ -410,7 +416,7 @@ struct DnsQueryLogRow {
     client_ip: String,
     domain: String,
     query_type: String,
-    result: String,
+    response_code: String,
     blocked: i64,
     response_time_ms: Option<i64>,
     queried_at: String,
