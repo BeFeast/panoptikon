@@ -283,12 +283,12 @@ function StatCard({
   const inner = (
     <Card
       className={cn(
-        "h-full border-slate-800/80 bg-slate-900/70",
+        "h-full min-h-[8.25rem] border-slate-800/70 bg-slate-900/55",
         href &&
-          "transition-[border-color,background-color,box-shadow] hover:border-blue-500/40 hover:bg-slate-900/90 hover:shadow-[0_10px_28px_-16px_rgba(59,130,246,0.45)]",
+          "transition-[border-color,background-color,box-shadow] hover:border-slate-700/90 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]",
       )}
     >
-      <CardHeader className="flex flex-row items-start justify-between pb-1.5 sm:pb-1.5">
+      <CardHeader className="flex flex-row items-start justify-between pb-3">
         <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
           {title}
         </CardTitle>
@@ -297,9 +297,9 @@ function StatCard({
           <span className="text-slate-500">{icon}</span>
         </div>
       </CardHeader>
-      <CardContent className="space-y-1.5">
-        <p className="truncate text-2xl font-bold tabular-nums text-white">{value}</p>
-        <p className="truncate text-xs text-slate-400">{subtitle}</p>
+      <CardContent className="space-y-2">
+        <p className="truncate text-[1.65rem] font-semibold leading-none tabular-nums text-white">{value}</p>
+        <p className="truncate text-xs leading-5 text-slate-400">{subtitle}</p>
       </CardContent>
     </Card>
   );
@@ -316,13 +316,13 @@ function StatCard({
 
 function StatCardSkeleton() {
   return (
-    <Card className="h-full border-slate-800/80 bg-slate-900/70">
-      <CardHeader className="pb-2">
-        <Skeleton className="h-4 w-24" />
+    <Card className="h-full min-h-[8.25rem] border-slate-800/70 bg-slate-900/55">
+      <CardHeader className="pb-3">
+        <Skeleton className="h-3.5 w-24" />
       </CardHeader>
-      <CardContent>
-        <Skeleton className="h-8 w-20" />
-        <Skeleton className="mt-2 h-3 w-32" />
+      <CardContent className="space-y-2">
+        <Skeleton className="h-8 w-24" />
+        <Skeleton className="h-3 w-32" />
       </CardContent>
     </Card>
   );
@@ -486,38 +486,38 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-    <div className="space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
-        <p className="text-sm text-slate-400">
+    <div className="space-y-7">
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight text-white">Dashboard</h1>
+        <p className="max-w-3xl text-sm leading-6 text-slate-400">
           Network health, traffic, and alerts at a glance.
         </p>
       </div>
 
       {/* ── Bento Grid ─────────────────────────────────── */}
-      <StaggerContainer className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+      <StaggerContainer className="grid grid-cols-1 gap-5 xl:grid-cols-5">
         {/* ── Health Score Ring ─────────────────────────── */}
         <StaggerItem><Card
-          className="h-full border-slate-800/80 bg-slate-900/70 lg:col-span-1"
+          className="h-full border-slate-800/70 bg-slate-900/55 xl:col-span-1"
           data-testid="infra-health-card"
         >
-          <CardHeader className="pb-3 sm:pb-3">
+          <CardHeader className="pb-4">
             <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
               Infrastructure Health
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex items-center justify-center pb-4 sm:pb-4">
+          <CardContent className="flex items-center justify-center pb-5">
             {statsError ? (
               <SectionError message="Failed to load" />
             ) : stats ? (
               <button
                 type="button"
-                className="group cursor-pointer rounded-lg p-1 transition-all hover:bg-slate-800/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+                className="group cursor-pointer rounded-xl border border-slate-800/80 p-2 transition-colors hover:border-slate-700 hover:bg-slate-800/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
                 onClick={() => setCriticalDialogOpen(true)}
                 aria-label="View critical devices"
               >
                 <HealthRing online={stats.critical_online} total={stats.critical_total} />
-                <span className="mt-1 flex items-center justify-center gap-1 text-[10px] text-slate-600 opacity-0 transition-opacity group-hover:opacity-100">
+                <span className="mt-1.5 flex items-center justify-center gap-1 text-[11px] text-slate-500 transition-colors group-hover:text-slate-300">
                   <Info className="h-3 w-3" /> View details
                 </span>
               </button>
@@ -532,7 +532,7 @@ export default function DashboardPage() {
         />
 
         {/* ── Stat Cards Row ───────────────────────────── */}
-        <StaggerItem className="lg:col-span-4"><div className="grid h-full grid-cols-2 gap-3 lg:grid-cols-4">
+        <StaggerItem className="xl:col-span-4"><div className="grid h-full grid-cols-2 gap-4 xl:grid-cols-4">
           {statsError ? (
             <>
               <StatCard
@@ -620,8 +620,8 @@ export default function DashboardPage() {
         </div></StaggerItem>
 
         {/* ── WAN Traffic Card with Sparkline ─────────── */}
-        <StaggerItem className="lg:col-span-3"><Card className="border-slate-800/80 bg-slate-900/70">
-          <CardHeader className="pb-3 sm:pb-3">
+        <StaggerItem className="xl:col-span-3"><Card className="border-slate-800/70 bg-slate-900/55">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Activity className="h-4 w-4 text-blue-400" />
@@ -631,7 +631,7 @@ export default function DashboardPage() {
               </div>
               <Link
                 href="/traffic"
-                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                className="flex items-center gap-1 text-xs text-blue-400 transition-colors hover:text-blue-300"
               >
                 Details <ArrowRight className="h-3 w-3" />
               </Link>
@@ -639,20 +639,20 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {/* Current aggregate speeds */}
-            <div className="mb-3 flex items-baseline gap-6">
-              <div>
-                <span className="text-xs text-emerald-400">↓ Download</span>
-                <p className="text-xl font-bold tabular-nums text-white">
+            <div className="mb-4 flex flex-wrap items-end gap-6 rounded-xl border border-slate-800/70 bg-slate-900/50 px-4 py-3">
+              <div className="min-w-[8rem]">
+                <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-emerald-400/85">Download</span>
+                <p className="mt-1 text-2xl font-semibold leading-none tabular-nums text-white">
                   {statsError ? "—" : stats ? formatBps(stats.wan_rx_bps) : "—"}
                 </p>
               </div>
-              <div>
-                <span className="text-xs text-blue-400">↑ Upload</span>
-                <p className="text-xl font-bold tabular-nums text-white">
+              <div className="min-w-[8rem]">
+                <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-blue-400/90">Upload</span>
+                <p className="mt-1 text-2xl font-semibold leading-none tabular-nums text-white">
                   {statsError ? "—" : stats ? formatBps(stats.wan_tx_bps) : "—"}
                 </p>
               </div>
-              <span className="ml-auto text-xs text-slate-600">Last 60 samples</span>
+              <span className="ml-auto text-[11px] uppercase tracking-[0.12em] text-slate-600">Last 60 samples</span>
             </div>
             {/* Sparkline */}
             {trafficError ? (
@@ -719,15 +719,15 @@ export default function DashboardPage() {
         </Card></StaggerItem>
 
         {/* ── Alert Feed ───────────────────────────────── */}
-        <StaggerItem className="lg:col-span-2"><Card className="border-slate-800/80 bg-slate-900/70">
-          <CardHeader className="pb-3 sm:pb-3">
+        <StaggerItem className="xl:col-span-2"><Card className="border-slate-800/70 bg-slate-900/55">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Recent Alerts
               </CardTitle>
               <Link
                 href="/alerts"
-                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                className="flex items-center gap-1 text-xs text-blue-400 transition-colors hover:text-blue-300"
               >
                 View all <ArrowRight className="h-3 w-3" />
               </Link>
@@ -755,17 +755,17 @@ export default function DashboardPage() {
                 {alerts.map((alert) => (
                   <div
                     key={alert.id}
-                    className={`flex items-start gap-2.5 rounded-md px-2 py-1.5 ${
-                      !alert.is_read ? "bg-blue-500/5" : ""
+                    className={`flex items-center gap-2.5 rounded-lg border border-transparent px-3 py-2 ${
+                      !alert.is_read ? "border-blue-500/15 bg-blue-500/6" : "hover:border-slate-800/70"
                     }`}
                   >
                     <span
-                      className={`mt-1.5 inline-block h-2 w-2 shrink-0 rounded-full ${severityDotColor(alert.severity)}`}
+                      className={`inline-block h-2 w-2 shrink-0 rounded-full ${severityDotColor(alert.severity)}`}
                     />
-                    <p className="min-w-0 flex-1 truncate text-sm text-slate-300">
+                    <p className="min-w-0 flex-1 truncate text-sm text-slate-300" title={alert.message}>
                       {alert.message}
                     </p>
-                    <span className="shrink-0 text-xs tabular-nums text-slate-600">
+                    <span className="w-14 shrink-0 text-right text-xs tabular-nums text-slate-600">
                       {timeAgo(alert.created_at)}
                     </span>
                   </div>
@@ -776,15 +776,15 @@ export default function DashboardPage() {
         </Card></StaggerItem>
 
         {/* ── Device Type Breakdown ────────────────────── */}
-        <StaggerItem className="lg:col-span-5"><Card className="border-slate-800/80 bg-slate-900/70">
-          <CardHeader className="pb-3 sm:pb-3">
+        <StaggerItem className="xl:col-span-5"><Card className="border-slate-800/70 bg-slate-900/55">
+          <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Device Breakdown
               </CardTitle>
               <Link
                 href="/devices"
-                className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                className="flex items-center gap-1 text-xs text-blue-400 transition-colors hover:text-blue-300"
               >
                 View all <ArrowRight className="h-3 w-3" />
               </Link>
@@ -802,17 +802,17 @@ export default function DashboardPage() {
             ) : deviceBreakdown.length === 0 ? (
               <p className="text-sm text-slate-600">No devices found.</p>
             ) : (
-              <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
                 {deviceBreakdown.map((item) => {
                   const Icon = getDeviceIcon(item.type, null, null).icon;
                   return (
                     <div key={item.type} className="flex items-center gap-3">
                       <Icon className="h-4 w-4 shrink-0 text-slate-400" />
-                      <span className="w-24 shrink-0 truncate text-sm text-slate-300">
+                      <span className="w-28 shrink-0 truncate text-sm text-slate-300">
                         {item.label}
                       </span>
                       <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
+                        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-800/90">
                           <div
                             className={`h-full rounded-full ${TYPE_COLORS[item.type] ?? "bg-slate-500"} transition-all duration-500`}
                             style={{

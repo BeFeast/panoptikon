@@ -224,12 +224,12 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
   let runningIndex = 0;
 
   return (
-    <header className="sticky top-0 z-40 flex h-14 items-center justify-between gap-2 border-b border-slate-800/80 bg-slate-950/70 px-3 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/55 md:px-6">
+    <header className="sticky top-0 z-40 flex h-[3.75rem] items-center justify-between gap-3 border-b border-slate-800/75 bg-slate-950/70 px-3 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/60 md:px-6">
       {/* Mobile menu button */}
       {mobileMenu}
 
       {/* Search */}
-      <div className="relative flex-1 max-w-md" ref={containerRef}>
+      <div className="relative max-w-lg flex-1" ref={containerRef}>
         <input
           ref={inputRef}
           type="text"
@@ -240,7 +240,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
             if (results && query.length >= 2) setIsOpen(true);
           }}
           placeholder="Search devices, IPs, MACs...  ⌘K"
-          className="w-full rounded-lg border border-slate-800/80 bg-slate-900/70 px-3 py-1.5 text-sm text-white placeholder-slate-500 transition-colors focus:border-accent focus:outline-none"
+          className="h-9 w-full rounded-xl border border-slate-800/80 bg-slate-900/68 px-3 text-sm text-white placeholder-slate-500 transition-colors focus:border-slate-600 focus:outline-none focus:ring-2 focus:ring-slate-600/35"
         />
 
         {/* Search Results Dropdown */}
@@ -433,7 +433,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
         <div className="relative" ref={bellRef}>
           <button
             onClick={() => setBellOpen((v) => !v)}
-            className="relative flex h-9 w-9 items-center justify-center rounded-md text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800/85 hover:text-white"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
