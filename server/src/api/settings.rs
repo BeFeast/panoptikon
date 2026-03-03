@@ -13,6 +13,10 @@ pub struct SettingsResponse {
     pub scan_interval_seconds: Option<u64>,
     pub scan_subnets: Option<String>,
     pub ping_sweep_enabled: Option<bool>,
+    pub nmap_scan_enabled: bool,
+    pub netbios_scan_enabled: bool,
+    pub snmp_scan_enabled: bool,
+    pub http_fingerprint_enabled: bool,
     // --- Data Retention ---
     pub retention_traffic_hours: Option<u64>,
     pub retention_alerts_days: Option<u64>,
@@ -60,6 +64,10 @@ pub struct UpdateSettingsRequest {
     pub scan_interval_seconds: Option<u64>,
     pub scan_subnets: Option<String>,
     pub ping_sweep_enabled: Option<bool>,
+    pub nmap_scan_enabled: Option<bool>,
+    pub netbios_scan_enabled: Option<bool>,
+    pub snmp_scan_enabled: Option<bool>,
+    pub http_fingerprint_enabled: Option<bool>,
     // --- Data Retention ---
     pub retention_traffic_hours: Option<u64>,
     pub retention_alerts_days: Option<u64>,
@@ -125,6 +133,24 @@ pub async fn get_settings(
         .await
         .map(|v| v == "true")
         .or(Some(true));
+
+    // Scanner source toggles (default: disabled for heavy scans).
+    let nmap_scan_enabled = get_setting(&state, "nmap_scan_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+    let netbios_scan_enabled = get_setting(&state, "netbios_scan_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+    let snmp_scan_enabled = get_setting(&state, "snmp_scan_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+    let http_fingerprint_enabled = get_setting(&state, "http_fingerprint_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
 
     // Data Retention settings (fall back to config defaults).
     let retention_traffic_hours = get_setting(&state, "retention_traffic_hours")
@@ -202,6 +228,10 @@ pub async fn get_settings(
         scan_interval_seconds,
         scan_subnets,
         ping_sweep_enabled,
+        nmap_scan_enabled,
+        netbios_scan_enabled,
+        snmp_scan_enabled,
+        http_fingerprint_enabled,
         retention_traffic_hours,
         retention_alerts_days,
         retention_agent_reports_days,
@@ -252,6 +282,42 @@ pub async fn update_settings(
     if let Some(enabled) = body.ping_sweep_enabled {
         upsert_setting(&state, "ping_sweep_enabled", &enabled.to_string()).await?;
         info!(ping_sweep_enabled = enabled, "Ping sweep toggle updated");
+    }
+
+    if let Some(enabled) = body.nmap_scan_enabled {
+        upsert_setting(&state, "nmap_scan_enabled", if enabled { "1" } else { "0" }).await?;
+        info!(nmap_scan_enabled = enabled, "nmap scan toggle updated");
+    }
+
+    if let Some(enabled) = body.netbios_scan_enabled {
+        upsert_setting(
+            &state,
+            "netbios_scan_enabled",
+            if enabled { "1" } else { "0" },
+        )
+        .await?;
+        info!(
+            netbios_scan_enabled = enabled,
+            "NetBIOS scan toggle updated"
+        );
+    }
+
+    if let Some(enabled) = body.snmp_scan_enabled {
+        upsert_setting(&state, "snmp_scan_enabled", if enabled { "1" } else { "0" }).await?;
+        info!(snmp_scan_enabled = enabled, "SNMP scan toggle updated");
+    }
+
+    if let Some(enabled) = body.http_fingerprint_enabled {
+        upsert_setting(
+            &state,
+            "http_fingerprint_enabled",
+            if enabled { "1" } else { "0" },
+        )
+        .await?;
+        info!(
+            http_fingerprint_enabled = enabled,
+            "HTTP fingerprint toggle updated"
+        );
     }
 
     // --- Data Retention settings ---

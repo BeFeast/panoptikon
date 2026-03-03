@@ -1,11 +1,15 @@
 use axum::{extract::State, http::StatusCode, Json};
 
 use super::AppState;
+use crate::scanner::ScanSummary;
 
-/// POST /api/v1/scanner/trigger — trigger an immediate ARP scan.
+/// POST /api/v1/scanner/trigger — trigger an immediate network scan.
+///
+/// Runs ARP discovery + all enabled enrichment sources (nmap, NetBIOS, SNMP,
+/// HTTP fingerprinting) and returns a summary of what changed.
 pub async fn trigger(
     State(state): State<AppState>,
-) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+) -> Result<Json<ScanSummary>, (StatusCode, Json<serde_json::Value>)> {
     let subnets = &state.config.scanner.subnets;
     let arp_settle = state.config.scanner.arp_settle_millis;
     let grace = state.config.scanner.offline_grace_seconds;
@@ -20,17 +24,25 @@ pub async fn trigger(
             )
         })?;
 
-    tracing::info!(count = discovered.len(), "Manual ARP scan completed");
+    tracing::info!(count = discovered.len(), "Manual network scan completed");
 
-    crate::scanner::process_scan_results(&state.db, &discovered, grace, &state.ws_hub)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to process manual scan results: {e}");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": format!("Failed to process results: {e}")})),
-            )
-        })?;
+    let summary =
+        crate::scanner::process_scan_results(&state.db, &discovered, grace, &state.ws_hub)
+            .await
+            .map_err(|e| {
+                tracing::error!("Failed to process manual scan results: {e}");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(serde_json::json!({"error": format!("Failed to process results: {e}")})),
+                )
+            })?;
 
-    Ok(StatusCode::NO_CONTENT)
+    tracing::info!(
+        new = summary.new_devices,
+        updated = summary.updated_devices,
+        offline = summary.offline_devices,
+        "Manual scan summary"
+    );
+
+    Ok(Json(summary))
 }

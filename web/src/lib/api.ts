@@ -473,6 +473,10 @@ export function updateSettings(body: {
   scan_interval_seconds?: number;
   scan_subnets?: string;
   ping_sweep_enabled?: boolean;
+  nmap_scan_enabled?: boolean;
+  netbios_scan_enabled?: boolean;
+  snmp_scan_enabled?: boolean;
+  http_fingerprint_enabled?: boolean;
   retention_traffic_hours?: number;
   retention_alerts_days?: number;
   retention_agent_reports_days?: number;
@@ -1572,5 +1576,16 @@ export function resolveDevices(): Promise<
 > {
   return apiPost<import("./types").ResolveResult>(
     "/api/v1/devices/resolve"
+  );
+}
+
+// ─── Network Scanner ────────────────────────────────────────
+
+/** Trigger a full network scan and return summary. */
+export function triggerNetworkScan(): Promise<
+  import("./types").ScanSummary
+> {
+  return apiPost<import("./types").ScanSummary>(
+    "/api/v1/scanner/trigger"
   );
 }

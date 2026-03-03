@@ -1,9 +1,14 @@
 pub mod arp;
 pub mod device_identify;
+pub mod http_fingerprint;
+pub mod netbios;
+pub mod nmap;
+pub mod snmp;
 
 use anyhow::Result;
 use chrono::Utc;
 use hickory_resolver::TokioAsyncResolver;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::SqlitePool;
 use std::net::IpAddr;
@@ -26,6 +31,17 @@ type EnrichmentTarget = (
 );
 use crate::webhook;
 use crate::ws::hub::WsHub;
+
+/// Summary of a network scan operation.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScanSummary {
+    pub new_devices: u32,
+    pub updated_devices: u32,
+    pub offline_devices: u32,
+    pub total_scanned: u32,
+    /// Which scanner sources were used.
+    pub sources: Vec<String>,
+}
 
 /// Discovered device from an ARP scan.
 #[derive(Debug, Clone)]
@@ -194,8 +210,12 @@ pub async fn process_scan_results(
     discovered: &[DiscoveredDevice],
     offline_grace_secs: u64,
     ws_hub: &WsHub,
-) -> Result<()> {
+) -> Result<ScanSummary> {
     let now = Utc::now().to_rfc3339();
+
+    // Scan summary counters.
+    let mut new_device_count: u32 = 0;
+    let mut updated_device_count: u32 = 0;
 
     // Pairs of (device_id, ip) collected during upsert for batch DNS resolution.
     let mut dns_targets: Vec<(String, String)> = Vec::new();
@@ -248,6 +268,8 @@ pub async fn process_scan_results(
                 .await?;
 
                 // State change: was offline → now online.
+                updated_device_count += 1;
+
                 if !was_online {
                     // Log state change.
                     sqlx::query(
@@ -315,6 +337,7 @@ pub async fn process_scan_results(
             }
             None => {
                 // New device discovered.
+                new_device_count += 1;
                 let device_id = uuid::Uuid::new_v4().to_string();
                 let mac_is_randomized = crate::enrichment::is_randomized_mac(&mac_normalized);
                 let vendor = if mac_is_randomized {
@@ -642,7 +665,187 @@ pub async fn process_scan_results(
         .await;
     }
 
-    Ok(())
+    // --- Phase 5: Additional scanner sources (best-effort) ---
+    let all_ips: Vec<String> = enrichment_targets.iter().map(|t| t.1.clone()).collect();
+    let mut sources = vec!["arp".to_string(), "reverse_dns".to_string()];
+
+    // Read per-source settings from DB (default: disabled for heavy scans).
+    let nmap_enabled = read_bool_setting(db, "nmap_scan_enabled").await;
+    let netbios_enabled = read_bool_setting(db, "netbios_scan_enabled").await;
+    let snmp_enabled = read_bool_setting(db, "snmp_scan_enabled").await;
+    let http_fp_enabled = read_bool_setting(db, "http_fingerprint_enabled").await;
+
+    // Phase 5a: nmap scan (OS fingerprinting, open ports, service banners)
+    if nmap_enabled {
+        sources.push("nmap".to_string());
+        let nmap_results = nmap::scan_hosts(&all_ips).await;
+        for nr in &nmap_results {
+            if let Some(target) = enrichment_targets.iter().find(|t| t.1 == nr.ip) {
+                let device_id = &target.0;
+                // Store OS hint from nmap
+                if let Some(ref os) = nr.os_hint {
+                    let _ = sqlx::query(
+                        "UPDATE devices SET os_family = COALESCE(os_family, ?), enrichment_source = COALESCE(enrichment_source, 'nmap'), updated_at = ? WHERE id = ? AND enrichment_corrected IS NOT 1",
+                    )
+                    .bind(os)
+                    .bind(&now)
+                    .bind(device_id)
+                    .execute(db)
+                    .await;
+                }
+                // Store open ports as JSON in port_scans table
+                if !nr.open_ports.is_empty() {
+                    let ports_json: Vec<serde_json::Value> = nr
+                        .open_ports
+                        .iter()
+                        .map(|p| {
+                            json!({
+                                "port": p.port,
+                                "protocol": p.protocol,
+                                "state": "open",
+                                "service": p.service,
+                                "version": p.version,
+                            })
+                        })
+                        .collect();
+                    let result_json =
+                        serde_json::to_string(&ports_json).unwrap_or_else(|_| "[]".to_string());
+                    let _ = sqlx::query(
+                        "INSERT INTO port_scans (device_id, result_json) VALUES (?, ?)",
+                    )
+                    .bind(device_id)
+                    .bind(&result_json)
+                    .execute(db)
+                    .await;
+                }
+            }
+        }
+    }
+
+    // Phase 5b: NetBIOS lookups (Windows machine names)
+    if netbios_enabled {
+        sources.push("netbios".to_string());
+        let netbios_results = netbios::lookup_hosts(&all_ips).await;
+        for nb in &netbios_results {
+            if let Some(ref name) = nb.name {
+                if let Some(target) = enrichment_targets.iter().find(|t| t.1 == nb.ip) {
+                    let device_id = &target.0;
+                    let _ = sqlx::query(
+                        "UPDATE devices SET hostname = COALESCE(hostname, ?), name = COALESCE(name, ?), os_family = COALESCE(os_family, 'Windows'), enrichment_source = COALESCE(enrichment_source, 'netbios'), updated_at = ? WHERE id = ?",
+                    )
+                    .bind(name)
+                    .bind(name)
+                    .bind(&now)
+                    .bind(device_id)
+                    .execute(db)
+                    .await;
+                }
+            }
+        }
+    }
+
+    // Phase 5c: SNMP discovery (managed switches/routers)
+    if snmp_enabled {
+        sources.push("snmp".to_string());
+        let snmp_results = snmp::query_hosts(&all_ips).await;
+        for sr in &snmp_results {
+            if sr.sys_name.is_some() || sr.sys_descr.is_some() {
+                if let Some(target) = enrichment_targets.iter().find(|t| t.1 == sr.ip) {
+                    let device_id = &target.0;
+                    if let Some(ref name) = sr.sys_name {
+                        let _ = sqlx::query(
+                            "UPDATE devices SET hostname = COALESCE(hostname, ?), name = COALESCE(name, ?), enrichment_source = COALESCE(enrichment_source, 'snmp'), updated_at = ? WHERE id = ?",
+                        )
+                        .bind(name)
+                        .bind(name)
+                        .bind(&now)
+                        .bind(device_id)
+                        .execute(db)
+                        .await;
+                    }
+                    if let Some(ref descr) = sr.sys_descr {
+                        // Try to infer device type from sysDescr
+                        let device_type = if descr.to_lowercase().contains("router") {
+                            Some("router")
+                        } else if descr.to_lowercase().contains("switch") {
+                            Some("switch")
+                        } else {
+                            None
+                        };
+                        if let Some(dt) = device_type {
+                            let _ = sqlx::query(
+                                "UPDATE devices SET device_type = COALESCE(device_type, ?), updated_at = ? WHERE id = ? AND enrichment_corrected IS NOT 1",
+                            )
+                            .bind(dt)
+                            .bind(&now)
+                            .bind(device_id)
+                            .execute(db)
+                            .await;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Phase 5d: HTTP fingerprinting (device model from Server header)
+    if http_fp_enabled {
+        sources.push("http_fingerprint".to_string());
+        let http_results = http_fingerprint::probe_hosts(&all_ips).await;
+        for hr in &http_results {
+            if let Some(ref server) = hr.server_header {
+                if let Some(target) = enrichment_targets.iter().find(|t| t.1 == hr.ip) {
+                    let device_id = &target.0;
+                    if let Some(device_type) = http_fingerprint::infer_device_from_server(server) {
+                        let _ = sqlx::query(
+                            "UPDATE devices SET device_type = COALESCE(device_type, ?), device_model = COALESCE(device_model, ?), enrichment_source = COALESCE(enrichment_source, 'http'), updated_at = ? WHERE id = ? AND enrichment_corrected IS NOT 1",
+                        )
+                        .bind(device_type)
+                        .bind(server)
+                        .bind(&now)
+                        .bind(device_id)
+                        .execute(db)
+                        .await;
+                    }
+                }
+            }
+        }
+    }
+
+    // Broadcast scan complete event with summary.
+    let offline_count = stale_devices.len() as u32;
+    let summary = ScanSummary {
+        new_devices: new_device_count,
+        updated_devices: updated_device_count,
+        offline_devices: offline_count,
+        total_scanned: discovered.len() as u32,
+        sources,
+    };
+
+    ws_hub.broadcast(
+        "scan_complete",
+        json!({
+            "new_devices": summary.new_devices,
+            "updated_devices": summary.updated_devices,
+            "offline_devices": summary.offline_devices,
+            "total_scanned": summary.total_scanned,
+            "sources": summary.sources,
+        }),
+    );
+
+    Ok(summary)
+}
+
+/// Helper to read a boolean setting from the DB settings table.
+async fn read_bool_setting(db: &SqlitePool, key: &str) -> bool {
+    sqlx::query_scalar::<_, String>("SELECT value FROM settings WHERE key = ?")
+        .bind(key)
+        .fetch_optional(db)
+        .await
+        .ok()
+        .flatten()
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false)
 }
 
 #[cfg(test)]
