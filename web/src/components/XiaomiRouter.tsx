@@ -338,6 +338,11 @@ function WifiBandsSection({
     {}
   );
 
+  // Mesh routers may not report per-band client info (all devices have band=null).
+  // In that case, per-band counts are meaningless — show "—" instead of 0.
+  const hasBandInfo =
+    wifiDevices.length > 0 && wifiDevices.some((d) => d.band != null);
+
   return (
     <Card className="border-slate-800 bg-slate-900">
       <CardHeader className="pb-3">
@@ -396,11 +401,17 @@ function WifiBandsSection({
                     </div>
                     <div>
                       <span className="text-slate-500">Channel</span>
-                      <p className="text-slate-200">{band.channel ?? "\u2014"}</p>
+                      <p className="text-slate-200">
+                        {!band.channel || band.channel === "0"
+                          ? "Auto"
+                          : band.channel}
+                      </p>
                     </div>
                     <div>
                       <span className="text-slate-500">Clients</span>
-                      <p className="text-slate-200">{clientCount}</p>
+                      <p className="text-slate-200">
+                        {hasBandInfo ? clientCount : "\u2014"}
+                      </p>
                     </div>
                     <div>
                       <span className="text-slate-500">Band Steering</span>
