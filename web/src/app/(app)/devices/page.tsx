@@ -650,6 +650,22 @@ export default function DevicesPage() {
 
 // ─── Device Card ────────────────────────────────────────
 
+function getDevicePrimaryTitle(device: Device, primaryIp: string): { title: string; isUnnamed: boolean } {
+  const customName = device.custom_name?.trim();
+  const hostname = device.hostname?.trim();
+  const discoveredName = device.name?.trim();
+
+  if (customName) return { title: customName, isUnnamed: false };
+  if (hostname) return { title: hostname, isUnnamed: false };
+  if (discoveredName) return { title: discoveredName, isUnnamed: false };
+
+  if (primaryIp && primaryIp !== "—") {
+    return { title: primaryIp, isUnnamed: true };
+  }
+
+  return { title: "Unknown Device", isUnnamed: true };
+}
+
 function DeviceCard({
   device,
   onClick,
@@ -660,7 +676,7 @@ function DeviceCard({
   const [waking, setWaking] = useState(false);
   const ips = device.ips ?? [];
   const primaryIp = ips[0] ?? "—";
-  const displayName = device.custom_name ?? device.hostname ?? device.name ?? device.vendor ?? device.mac;
+  const { title: displayName, isUnnamed } = getDevicePrimaryTitle(device, primaryIp);
   const effectiveType = device.custom_type ?? device.device_type;
   const { icon: DevIcon } = getDeviceIcon(device.custom_vendor ?? device.vendor, device.hostname, device.mdns_services, effectiveType);
   const vendorDisplay = device.custom_vendor ?? device.vendor ?? null;
@@ -711,6 +727,11 @@ function DeviceCard({
                 }`}
               />
               <span className="min-w-0 flex-1 truncate font-medium text-white">{displayName}</span>
+              {isUnnamed && (
+                <Badge variant="outline" className="shrink-0 border-slate-600 text-[10px] text-slate-400">
+                  Unknown
+                </Badge>
+              )}
               {device.is_critical && (
                 <Pin className="h-3 w-3 shrink-0 text-amber-400" />
               )}
@@ -1040,7 +1061,7 @@ function DevicesTable({
 function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => void }) {
   const ips = device.ips ?? [];
   const primaryIp = ips[0] ?? "—";
-  const displayName = device.custom_name ?? device.hostname ?? device.name ?? device.vendor ?? device.mac;
+  const { title: displayName, isUnnamed } = getDevicePrimaryTitle(device, primaryIp);
   const [waking, setWaking] = useState(false);
   const [sysinfo, setSysinfo] = useState<DeviceSysinfo | null>(null);
 
@@ -1090,6 +1111,9 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <SheetTitle className="text-white">{displayName}</SheetTitle>
+              {isUnnamed && (
+                <Badge variant="outline" className="border-slate-600 text-[10px] text-slate-400">Unknown</Badge>
+              )}
               {device.custom_name && (
                 <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 text-[10px]">custom</Badge>
               )}
