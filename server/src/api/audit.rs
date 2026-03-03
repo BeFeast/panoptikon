@@ -15,8 +15,7 @@ pub struct AuditLogEntry {
     pub created_at: String,
     pub action: String,
     pub description: String,
-    #[serde(rename = "commands")]
-    pub vyos_commands: String,
+    pub commands: String,
     pub success: bool,
     pub error_msg: Option<String>,
 }
@@ -58,7 +57,7 @@ pub async fn list(
             })?;
 
         let rows = sqlx::query_as::<_, AuditLogRow>(
-            "SELECT id, created_at, action, description, vyos_commands, success, error_msg \
+            "SELECT id, created_at, action, description, vyos_commands AS commands, success, error_msg \
              FROM audit_log WHERE action = ? ORDER BY id DESC LIMIT ? OFFSET ?",
         )
         .bind(action_filter)
@@ -82,7 +81,7 @@ pub async fn list(
             })?;
 
         let rows = sqlx::query_as::<_, AuditLogRow>(
-            "SELECT id, created_at, action, description, vyos_commands, success, error_msg \
+            "SELECT id, created_at, action, description, vyos_commands AS commands, success, error_msg \
              FROM audit_log ORDER BY id DESC LIMIT ? OFFSET ?",
         )
         .bind(per_page)
@@ -104,7 +103,7 @@ pub async fn list(
             created_at: row.created_at,
             action: row.action,
             description: row.description,
-            vyos_commands: row.vyos_commands,
+            commands: row.commands,
             success: row.success != 0,
             error_msg: row.error_msg,
         })
@@ -139,7 +138,7 @@ struct AuditLogRow {
     created_at: String,
     action: String,
     description: String,
-    vyos_commands: String,
+    commands: String,
     success: i32,
     error_msg: Option<String>,
 }
@@ -148,13 +147,8 @@ struct AuditLogRow {
 
 /// Record a successful audit log entry. Fire-and-forget — errors are logged but
 /// do not affect the caller.
-pub async fn log_success(
-    db: &SqlitePool,
-    action: &str,
-    description: &str,
-    vyos_commands: &[String],
-) {
-    let commands_json = serde_json::to_string(vyos_commands).unwrap_or_else(|_| "[]".to_string());
+pub async fn log_success(db: &SqlitePool, action: &str, description: &str, commands: &[String]) {
+    let commands_json = serde_json::to_string(commands).unwrap_or_else(|_| "[]".to_string());
 
     if let Err(e) = sqlx::query(
         "INSERT INTO audit_log (action, description, vyos_commands, success) VALUES (?, ?, ?, 1)",
@@ -174,10 +168,10 @@ pub async fn log_failure(
     db: &SqlitePool,
     action: &str,
     description: &str,
-    vyos_commands: &[String],
+    commands: &[String],
     error_msg: &str,
 ) {
-    let commands_json = serde_json::to_string(vyos_commands).unwrap_or_else(|_| "[]".to_string());
+    let commands_json = serde_json::to_string(commands).unwrap_or_else(|_| "[]".to_string());
 
     if let Err(e) = sqlx::query(
         "INSERT INTO audit_log (action, description, vyos_commands, success, error_msg) \

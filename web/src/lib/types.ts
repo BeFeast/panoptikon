@@ -167,7 +167,7 @@ export interface Alert {
 /** Shape returned by the /api/v1/dashboard/stats endpoint. */
 export interface DashboardStats {
   router_status: string;
-  router_type: string; // "mikrotik" | "vyos" | "none"
+  router_type: string; // "mikrotik" | "none"
   devices_online: number;
   devices_total: number;
   alerts_unread: number;
@@ -261,7 +261,7 @@ export interface TopologyDevice {
 
 /** Router hub node in the topology graph. */
 export interface TopologyRouter {
-  router_type: string; // "vyos" | "mikrotik" | "unknown"
+  router_type: string; // "mikrotik" | "unknown"
   is_online: boolean;
   wan_ip: string | null;
   hostname: string | null;
@@ -307,7 +307,7 @@ export interface NetflowStatus {
   flows_received: number;
 }
 
-// ─── Router / VyOS ──────────────────────────────────────
+// ─── Router ─────────────────────────────────────────────
 
 export interface RouterStatus {
   configured: boolean;
@@ -315,20 +315,6 @@ export interface RouterStatus {
   version: string | null;
   uptime: string | null;
   hostname: string | null;
-}
-
-export interface RouterSummary {
-  status: RouterStatus;
-  interfaces: VyosInterface[];
-  config_interfaces: Record<string, unknown>;
-  routes: VyosRoute[];
-  dhcp_leases: VyosDhcpLease[];
-  dhcp_static_mappings: DhcpStaticMapping[];
-  dhcp_server_config: DhcpServerConfig;
-  firewall: FirewallConfig;
-  firewall_groups: FirewallGroups;
-  dns_forwarding: DnsForwardingConfig;
-  wireguard: WireguardInterface[];
 }
 
 export interface SpeedTestResult {
@@ -344,37 +330,6 @@ export interface SpeedTestResult {
   error: string | null;
 }
 
-export interface VyosInterface {
-  name: string;
-  ip_address: string | null;
-  mac: string | null;
-  vrf: string | null;
-  mtu: number;
-  admin_state: string;
-  link_state: string;
-  description: string | null;
-}
-
-export interface VyosRoute {
-  protocol: string;
-  destination: string;
-  gateway: string | null;
-  interface: string | null;
-  metric: string | null;
-  uptime: string | null;
-  selected: boolean;
-}
-
-export interface VyosDhcpLease {
-  ip: string;
-  mac: string;
-  hostname: string | null;
-  state: string;
-  lease_start: string | null;
-  lease_expiry: string | null;
-  remaining: string | null;
-  pool: string | null;
-}
 
 // ─── DHCP Static Mappings ──────────────────────────────
 
@@ -439,11 +394,6 @@ export interface DhcpPoolRangeRequest {
   stop: string;
 }
 
-export interface VyosWriteResponse {
-  success: boolean;
-  message: string;
-}
-
 // ─── NAT Destination (Port Forwarding) ──────────────────
 
 export interface NatDestinationRule {
@@ -473,7 +423,7 @@ export interface FirewallChain {
   name: string;
   default_action: string;
   rules: FirewallRule[];
-  /** VyOS config path components: [ip_version, direction, filter_type] */
+  /** Config path components: [ip_version, direction, filter_type] */
   path: string[];
 }
 
@@ -538,8 +488,6 @@ export interface SpeedTestHistoryResponse {
 
 export interface SettingsData {
   webhook_url: string | null;
-  vyos_url: string | null;
-  vyos_api_key_set: boolean;
   // Network Scanner
   scan_interval_seconds: number | null;
   scan_subnets: string | null;
@@ -1598,53 +1546,6 @@ export interface DnsUnboundConfigResponse {
 
 // ─── QoS / Traffic Shaping ──────────────────────────────────
 
-export interface VyosTrafficPolicyClass {
-  id: string;
-  bandwidth: string | null;
-  ceiling: string | null;
-  priority: string | null;
-  queue_type: string | null;
-  description?: string | null;
-}
-
-export interface VyosTrafficPolicy {
-  name: string;
-  policy_type: string;
-  bandwidth: string | null;
-  default_bandwidth?: string | null;
-  default_ceiling?: string | null;
-  description?: string | null;
-  classes: VyosTrafficPolicyClass[];
-}
-
-export interface VyosTrafficPoliciesResponse {
-  policies: VyosTrafficPolicy[];
-}
-
-export interface CreateVyosTrafficPolicyRequest {
-  name: string;
-  policy_type: string;
-  bandwidth: string;
-  default_bandwidth?: string;
-  default_ceiling?: string;
-  description?: string;
-  classes?: CreateVyosTrafficPolicyClassRequest[];
-}
-
-export interface CreateVyosTrafficPolicyClassRequest {
-  id: string;
-  bandwidth?: string;
-  ceiling?: string;
-  priority?: string;
-  queue_type?: string;
-  description?: string;
-}
-
-export interface VyosQosWriteResponse {
-  success: boolean;
-  message: string;
-}
-
 export interface MikrotikSimpleQueue {
   id: string | null;
   name: string;
@@ -1719,12 +1620,11 @@ export interface VpnInterfaceStatus {
   peers: VpnPeerStatus[];
   peers_online: number;
   peers_total: number;
-  /** "vyos" or "mikrotik" */
+  /** "mikrotik" */
   source: string;
 }
 
 export interface VpnStatusResponse {
-  vyos_available: boolean;
   mikrotik_available: boolean;
   interfaces: VpnInterfaceStatus[];
   total_peers: number;
@@ -1734,9 +1634,7 @@ export interface VpnStatusResponse {
 }
 
 export interface QosSummary {
-  vyos_available: boolean;
   mikrotik_available: boolean;
-  vyos_policy_count: number;
   mikrotik_simple_queue_count: number;
   mikrotik_queue_tree_count: number;
 }
@@ -1783,48 +1681,14 @@ export interface DdnsStatus {
   enabled: number;
   healthy: number;
   failing: number;
-  vyos_configured: boolean;
   mikrotik_configured: boolean;
-}
-
-export interface VyosDdnsService {
-  name: string;
-  provider: string | null;
-  host_name: string | null;
-  zone: string | null;
-  ip_version: string | null;
-}
-
-export interface VyosDdnsConfig {
-  services: VyosDdnsService[];
 }
 
 // ─── NAT Management ─────────────────────────────────────────
 
 export interface NatSummary {
-  vyos_available: boolean;
   mikrotik_available: boolean;
-  vyos_rule_count: number;
   mikrotik_rule_count: number;
-}
-
-export interface CreateVyosNatRuleRequest {
-  rule: number;
-  description?: string;
-  protocol?: string;
-  inbound_interface?: string;
-  external_port: string;
-  internal_ip: string;
-  internal_port: string;
-}
-
-export interface UpdateVyosNatRuleRequest {
-  description?: string;
-  protocol?: string;
-  inbound_interface?: string;
-  external_port?: string;
-  internal_ip?: string;
-  internal_port?: string;
 }
 
 export interface NatRuleResponse {
