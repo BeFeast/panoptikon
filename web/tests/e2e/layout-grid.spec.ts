@@ -65,11 +65,12 @@ test.describe('Layout & Grid — card clipping / spacing regressions (#544)', ()
     await page.goto('/dashboard');
     await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
 
-    // Verify stat cards don't have excessive height by checking the card header
-    // padding override is consistent (pb-2 works at all breakpoints)
-    const statCardHeaders = page.locator('.uppercase.tracking-wider').filter({ hasText: /Router Status|Active Devices|WAN Bandwidth|Unread Alerts/ });
-    const headerCount = await statCardHeaders.count();
-    expect(headerCount).toBeGreaterThanOrEqual(1);
+    // Verify core stat card headers are present (style token may vary between
+    // tracking-wider and arbitrary tracking values after UI polish updates).
+    const statLabels = ['Router Status', 'Active Devices', 'WAN Bandwidth', 'Unread Alerts'];
+    for (const label of statLabels) {
+      await expect(page.getByText(label).first()).toBeVisible();
+    }
 
     await page.screenshot({ path: 'tests/screenshots/layout-stat-card-padding.png', fullPage: true });
   });
