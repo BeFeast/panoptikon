@@ -18,7 +18,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <TooltipProvider delayDuration={300}>
         <div className="flex h-screen overflow-clip">
           <Sidebar />
-          <div className="flex flex-1 flex-col overflow-clip">
+          <div className="flex flex-1 flex-col min-w-0 overflow-clip">
             <TopBar mobileMenu={<MobileSidebar />} />
             <main className="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-3 pb-8 md:p-6 md:pb-10">{children}</main>
           </div>
