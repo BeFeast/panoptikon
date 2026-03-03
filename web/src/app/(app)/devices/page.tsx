@@ -304,267 +304,303 @@ export default function DevicesPage() {
     <PageTransition>
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-semibold text-white">Devices</h1>
-            <HelpTooltip text="All devices discovered on your network. Use Scan Now to discover new devices, Re-identify to fingerprint them, and Resolve Names to look up hostnames via DNS." />
+      <div className="rounded-2xl border border-slate-800/70 bg-slate-900/40 px-4 py-4 sm:px-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-semibold tracking-tight text-white">Devices</h1>
+              <HelpTooltip text="All devices discovered on your network. Use Scan Now to discover new devices, Re-identify to fingerprint them, and Resolve Names to look up hostnames via DNS." />
+            </div>
+            <p className="max-w-2xl text-sm text-slate-300/80">
+              Discover, classify, and monitor every device on your network.
+            </p>
           </div>
-          <p className="text-sm text-slate-400">
-            Discover, classify, and monitor every device on your network.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="secondary"
-                onClick={() => setAddAssetOpen(true)}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                Add Asset
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
-              Manually register a device or service as a tracked asset
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="secondary"
-                disabled={identifying}
-                onClick={async () => {
-                  setIdentifying(true);
-                  try {
-                    const result = await identifyDevices();
-                    toast.success(`Checked ${result.devices_checked} devices`);
-                    await load();
-                  } catch {
-                    toast.error("Device identification failed");
-                  } finally {
-                    setIdentifying(false);
-                  }
-                }}
-              >
-                {identifying ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Identifying…
-                  </>
-                ) : (
-                  <>
-                    <Search className="mr-2 h-4 w-4" />
-                    Re-identify
-                  </>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
-              Re-run device fingerprinting to detect device type, manufacturer, and OS
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                disabled={scanningNetwork}
-                onClick={async () => {
-                  setScanningNetwork(true);
-                  try {
-                    const summary = await triggerNetworkScan();
-                    const parts: string[] = [];
-                    if (summary.new_devices > 0) parts.push(`${summary.new_devices} new`);
-                    if (summary.updated_devices > 0) parts.push(`${summary.updated_devices} updated`);
-                    if (summary.offline_devices > 0) parts.push(`${summary.offline_devices} offline`);
-                    const desc = parts.length > 0 ? parts.join(", ") : "No changes";
-                    toast.success("Network scan complete", { description: `${summary.total_scanned} scanned — ${desc}` });
-                    await load();
-                  } catch {
-                    toast.error("Network scan failed");
-                  } finally {
-                    setScanningNetwork(false);
-                  }
-                }}
-              >
-                {scanningNetwork ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Scanning…
-                  </>
-                ) : (
-                  <>
-                    <Radar className="mr-2 h-4 w-4" />
-                    Scan Now
-                  </>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
-              Trigger an immediate network scan to discover new devices
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="secondary"
-                disabled={resolving}
-                onClick={async () => {
-                  setResolving(true);
-                  try {
-                    const result = await resolveDevices();
-                    if (result.resolved > 0) {
-                      toast.success(`Resolved ${result.resolved} device${result.resolved === 1 ? "" : "s"}`);
+          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="border border-slate-700/70 bg-slate-800/60 text-slate-200 hover:bg-slate-800 hover:text-white"
+                  onClick={() => setAddAssetOpen(true)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Asset
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+                Manually register a device or service as a tracked asset
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="border border-slate-700/70 bg-slate-800/60 text-slate-200 hover:bg-slate-800 hover:text-white"
+                  disabled={identifying}
+                  onClick={async () => {
+                    setIdentifying(true);
+                    try {
+                      const result = await identifyDevices();
+                      toast.success(`Checked ${result.devices_checked} devices`);
                       await load();
-                    } else {
-                      toast.info("No new hostnames found");
+                    } catch {
+                      toast.error("Device identification failed");
+                    } finally {
+                      setIdentifying(false);
                     }
-                  } catch {
-                    toast.error("Device resolution failed");
-                  } finally {
-                    setResolving(false);
-                  }
-                }}
-              >
-                {resolving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Resolving…
-                  </>
-                ) : (
-                  <>
-                    <Search className="mr-2 h-4 w-4" />
-                    Resolve Names
-                  </>
-                )}
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
-              Look up hostnames via reverse DNS for all discovered devices
-            </TooltipContent>
-          </Tooltip>
+                  }}
+                >
+                  {identifying ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Identifying…
+                    </>
+                  ) : (
+                    <>
+                      <Search className="mr-2 h-4 w-4" />
+                      Re-identify
+                    </>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+                Re-run device fingerprinting to detect device type, manufacturer, and OS
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="border border-slate-600/70 bg-slate-800/70 text-slate-100 hover:bg-slate-800"
+                  disabled={scanningNetwork}
+                  onClick={async () => {
+                    setScanningNetwork(true);
+                    try {
+                      const summary = await triggerNetworkScan();
+                      const parts: string[] = [];
+                      if (summary.new_devices > 0) parts.push(`${summary.new_devices} new`);
+                      if (summary.updated_devices > 0) parts.push(`${summary.updated_devices} updated`);
+                      if (summary.offline_devices > 0) parts.push(`${summary.offline_devices} offline`);
+                      const desc = parts.length > 0 ? parts.join(", ") : "No changes";
+                      toast.success("Network scan complete", { description: `${summary.total_scanned} scanned — ${desc}` });
+                      await load();
+                    } catch {
+                      toast.error("Network scan failed");
+                    } finally {
+                      setScanningNetwork(false);
+                    }
+                  }}
+                >
+                  {scanningNetwork ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Scanning…
+                    </>
+                  ) : (
+                    <>
+                      <Radar className="mr-2 h-4 w-4" />
+                      Scan Now
+                    </>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+                Trigger an immediate network scan to discover new devices
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="border border-slate-700/70 bg-slate-800/60 text-slate-200 hover:bg-slate-800 hover:text-white"
+                  disabled={resolving}
+                  onClick={async () => {
+                    setResolving(true);
+                    try {
+                      const result = await resolveDevices();
+                      if (result.resolved > 0) {
+                        toast.success(`Resolved ${result.resolved} device${result.resolved === 1 ? "" : "s"}`);
+                        await load();
+                      } else {
+                        toast.info("No new hostnames found");
+                      }
+                    } catch {
+                      toast.error("Device resolution failed");
+                    } finally {
+                      setResolving(false);
+                    }
+                  }}
+                >
+                  {resolving ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Resolving…
+                    </>
+                  ) : (
+                    <>
+                      <Search className="mr-2 h-4 w-4" />
+                      Resolve Names
+                    </>
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+                Look up hostnames via reverse DNS for all discovered devices
+              </TooltipContent>
+            </Tooltip>
+          </div>
         </div>
       </div>
 
       {/* Filter bar */}
-      <div className="static flex flex-wrap items-center gap-3">
-        {(["all", "online", "offline", "unknown"] as Filter[]).map((f) => (
-          <Button
-            key={f}
-            variant={filter === f ? "default" : "secondary"}
-            size="sm"
-            onClick={() => setFilter(f)}
-          >
-            {f === "all" && "All"}
-            {f === "online" && "Online"}
-            {f === "offline" && "Offline"}
-            {f === "unknown" && "Unknown"}
-            {counts && (
-              <span className="ml-1.5 text-xs opacity-70">
-                {counts[f]}
-              </span>
-            )}
-          </Button>
-        ))}
+      <div className="rounded-2xl border border-slate-800/70 bg-slate-900/35 px-4 py-3 sm:px-6">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            {(["all", "online", "offline", "unknown"] as Filter[]).map((f) => (
+              <Button
+                key={f}
+                variant="secondary"
+                size="sm"
+                onClick={() => setFilter(f)}
+                className={`h-8 border text-xs ${
+                  filter === f
+                    ? "border-slate-600 bg-slate-700/80 text-slate-100 hover:bg-slate-700"
+                    : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                }`}
+              >
+                {f === "all" && "All"}
+                {f === "online" && "Online"}
+                {f === "offline" && "Offline"}
+                {f === "unknown" && "Unknown"}
+                {counts && (
+                  <span className="ml-1.5 text-xs opacity-70">
+                    {counts[f]}
+                  </span>
+                )}
+              </Button>
+            ))}
+          </div>
 
-        <div className="relative ml-auto w-full max-w-xs">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-          <Input
-            placeholder="Search name, IP, MAC, vendor…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:w-auto">
+            <div className="relative w-full sm:min-w-[18rem] lg:w-80">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Input
+                placeholder="Search name, IP, MAC, vendor…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-9 border-slate-700/70 bg-slate-900/70 pl-9 text-sm text-slate-200 placeholder:text-slate-500 focus-visible:ring-slate-500/60"
+              />
+            </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="secondary" size="sm" className="gap-1.5">
-              <Download className="h-4 w-4" />
-              Export
-              <ChevronDown className="h-3 w-3" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={async () => {
-                try {
-                  await downloadExport("/api/v1/devices/export?format=csv", "panoptikon-devices.csv");
-                  toast.success("Devices exported as CSV");
-                } catch { toast.error("Export failed"); }
-              }}
-            >
-              Export CSV
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={async () => {
-                try {
-                  await downloadExport("/api/v1/devices/export?format=json", "panoptikon-devices.json");
-                  toast.success("Devices exported as JSON");
-                } catch { toast.error("Export failed"); }
-              }}
-            >
-              Export JSON
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+            <div className="flex shrink-0 items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="secondary" size="sm" className="h-9 gap-1.5 border border-slate-700/70 bg-slate-800/60 text-slate-200 hover:bg-slate-800 hover:text-white">
+                    <Download className="h-4 w-4" />
+                    Export
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      try {
+                        await downloadExport("/api/v1/devices/export?format=csv", "panoptikon-devices.csv");
+                        toast.success("Devices exported as CSV");
+                      } catch { toast.error("Export failed"); }
+                    }}
+                  >
+                    Export CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      try {
+                        await downloadExport("/api/v1/devices/export?format=json", "panoptikon-devices.json");
+                        toast.success("Devices exported as JSON");
+                      } catch { toast.error("Export failed"); }
+                    }}
+                  >
+                    Export JSON
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
-        {/* View toggle */}
-        <div className="flex shrink-0 gap-1">
-          <Button
-            variant={view === "grid" ? "default" : "secondary"}
-            size="icon"
-            className="h-9 w-9"
-            onClick={() => toggleView("grid")}
-            title="Grid view"
-          >
-            <LayoutGrid className="h-4 w-4" />
-          </Button>
-          <Button
-            variant={view === "table" ? "default" : "secondary"}
-            size="icon"
-            className="h-9 w-9"
-            onClick={() => toggleView("table")}
-            title="Table view"
-          >
-            <List className="h-4 w-4" />
-          </Button>
+              {/* View toggle */}
+              <div className="flex shrink-0 gap-1">
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className={`h-9 w-9 border ${
+                    view === "grid"
+                      ? "border-slate-600 bg-slate-700/80 text-slate-100 hover:bg-slate-700"
+                      : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                  }`}
+                  onClick={() => toggleView("grid")}
+                  title="Grid view"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="icon"
+                  className={`h-9 w-9 border ${
+                    view === "table"
+                      ? "border-slate-600 bg-slate-700/80 text-slate-100 hover:bg-slate-700"
+                      : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                  }`}
+                  onClick={() => toggleView("table")}
+                  title="Table view"
+                >
+                  <List className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Device list */}
       {sorted === null ? (
         view === "grid" ? (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+        <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Card key={i} className="border-slate-800/80 bg-slate-900/70">
-              <CardContent className="p-4">
+            <Card key={i} className="h-full border-slate-800/70 bg-slate-900/55">
+              <CardContent className="flex h-full flex-col p-6">
                 {/* Header row — icon + name + badges */}
-                <div className="flex items-start gap-3">
-                  <Skeleton className="mt-0.5 h-11 w-11 shrink-0 rounded-xl" />
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <div className="flex items-center gap-2">
+                <div className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-start gap-3">
+                  <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
+                  <div className="min-w-0">
+                    <div className="flex min-h-6 items-center gap-2">
                       <Skeleton className="h-2 w-2 rounded-full" />
-                      <Skeleton className="h-4 w-[55%]" />
+                      <Skeleton className="h-5 w-[55%]" />
                     </div>
-                    <Skeleton className="h-3 w-[35%]" />
+                    <Skeleton className="mt-1.5 h-3.5 w-[35%]" />
                   </div>
-                  <Skeleton className="h-5 w-12 rounded" />
+                  <div className="flex min-h-6 min-w-[3.5rem] flex-col items-end gap-1">
+                    <Skeleton className="h-4 w-10 rounded" />
+                  </div>
                 </div>
                 {/* Divider */}
-                <div className="my-3 border-t border-slate-800" />
+                <div className="my-4 border-t border-slate-800/80" />
                 {/* IP + MAC */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
+                <div className="space-y-2">
+                  <div className="flex min-h-5 items-center gap-2">
                     <Skeleton className="h-2 w-7" />
                     <Skeleton className="h-3 w-28" />
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex min-h-5 items-center gap-2">
                     <Skeleton className="h-2 w-7" />
                     <Skeleton className="h-3 w-36" />
                   </div>
                 </div>
                 {/* Footer */}
-                <Skeleton className="mt-3 h-3 w-24" />
+                <div className="mt-auto pt-4">
+                  <Skeleton className="h-3 w-24" />
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -618,7 +654,7 @@ export default function DevicesPage() {
           </p>
         )
       ) : view === "grid" ? (
-        <StaggerContainer className="grid grid-cols-[repeat(auto-fill,minmax(280px,1fr))] gap-4">
+        <StaggerContainer className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
           {sorted.map((device) => (
             <StaggerItem key={device.id}>
               <MotionCard className="h-full">
@@ -721,41 +757,41 @@ function DeviceCard({
 
   return (
     <Card
-      className="group h-full cursor-pointer border-slate-800/80 bg-slate-900/70 transition-[border-color,background-color] hover:border-slate-700 hover:bg-slate-900/90"
+      className="h-full cursor-pointer border-slate-800/70 bg-slate-900/55 transition-colors hover:border-slate-700/80 hover:bg-slate-900/70"
       onClick={onClick}
     >
-      <CardContent className="px-4 pb-4 pt-5">
+      <CardContent className="flex h-full flex-col p-6">
 
         {/* ── Row 1: Icon + Identity + Badges ── */}
-        <div className="flex items-start gap-3">
+        <div className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-start gap-3">
 
           {/* Device icon — larger, color-coded by status */}
           <div
-            className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
               device.is_online
-                ? "bg-emerald-500/10 ring-1 ring-emerald-500/25"
-                : "bg-slate-800 ring-1 ring-slate-700"
+                ? "bg-slate-800/90 ring-1 ring-emerald-500/20"
+                : "bg-slate-800/90 ring-1 ring-slate-700/80"
             }`}
           >
             <DevIcon
-              className={`h-6 w-6 ${device.is_online ? "text-emerald-400" : "text-slate-500"}`}
+              className={`h-6 w-6 ${device.is_online ? "text-emerald-300" : "text-slate-500"}`}
             />
           </div>
 
           {/* Name block */}
           <div className="min-w-0 flex-1">
             {/* Title row: status dot + name */}
-            <div className="flex min-w-0 items-center gap-1.5">
+            <div className="flex min-h-6 min-w-0 items-center gap-2">
               <span
                 className={`h-2 w-2 shrink-0 rounded-full ${
                   device.is_online
-                    ? "bg-emerald-400 ring-2 ring-emerald-400/25 status-glow-online"
+                    ? "bg-emerald-400/90"
                     : "bg-slate-600"
                 }`}
               />
               <span
-                className={`min-w-0 flex-1 truncate text-sm font-semibold leading-snug ${
-                  isUnnamed ? "text-slate-400" : "text-white"
+                className={`min-w-0 flex-1 truncate text-base font-semibold leading-tight ${
+                  isUnnamed ? "text-slate-300" : "text-white"
                 }`}
                 title={displayName}
               >
@@ -765,57 +801,51 @@ function DeviceCard({
                 <Pin className="h-3 w-3 shrink-0 text-amber-400" />
               )}
             </div>
-            {/* Vendor — one line, muted; hidden when null/empty */}
-            {vendorDisplay && (
-              <p className="mt-1 truncate text-[11px] text-slate-500" title={vendorDisplay}>
-                {vendorDisplay}
-              </p>
-            )}
+            {/* Vendor row keeps a fixed line-height for stable card geometry */}
+            <p className="mt-1.5 h-4 truncate text-xs text-slate-500" title={vendorDisplay ?? undefined}>
+              {vendorDisplay ?? "\u00A0"}
+            </p>
           </div>
 
           {/* Badges — stacked top-right, never overlap title */}
-          {(device.agent?.is_online || !device.is_known) && (
-            <div className="flex shrink-0 flex-col items-end gap-1">
-              {device.agent?.is_online && (
-                <span className="rounded border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 text-[10px] font-medium text-blue-400">
-                  Agent
-                </span>
-              )}
-              {!device.is_known && (
-                <span className="rounded border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-400">
-                  NEW
-                </span>
-              )}
-            </div>
-          )}
+          <div className="flex min-h-6 min-w-[3.5rem] shrink-0 flex-col items-end gap-1">
+            {device.agent?.is_online && (
+              <span className="rounded border border-slate-700/80 bg-slate-800/80 px-1.5 py-0.5 text-[10px] font-medium text-slate-300">
+                Agent
+              </span>
+            )}
+            {!device.is_known && (
+              <span className="rounded border border-amber-500/25 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
+                NEW
+              </span>
+            )}
+          </div>
         </div>
 
         {/* ── Divider ── */}
-        <div className="my-3 border-t border-slate-800" />
+        <div className="my-4 border-t border-slate-800/80" />
 
         {/* ── Row 2: Network info — IP + MAC, labeled, shown once each ── */}
-        <div className="space-y-1.5">
-          <div className="flex items-center gap-2">
-            <span className="w-7 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-600">IP</span>
-            <span className="min-w-0 truncate font-mono text-xs tabular-nums text-slate-400">{primaryIp}</span>
+        <div className="space-y-2">
+          <div className="flex min-h-5 items-center gap-2">
+            <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">IP</span>
+            <span className="min-w-0 truncate font-mono text-[13px] tabular-nums text-slate-300">{primaryIp}</span>
           </div>
-          {device.mac && (
-            <div className="flex items-center gap-2">
-              <span className="w-7 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-600">MAC</span>
-              <span className="min-w-0 truncate font-mono text-[11px] tabular-nums text-slate-600">{device.mac}</span>
-            </div>
-          )}
+          <div className="flex min-h-5 items-center gap-2">
+            <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">MAC</span>
+            <span className="min-w-0 truncate font-mono text-xs tabular-nums text-slate-500">{device.mac ?? "—"}</span>
+          </div>
         </div>
 
         {/* ── Row 3: Agent metrics — CPU + RAM inline progress bars ── */}
         {hasAgentMetrics && (
-          <div className="mt-3 space-y-1.5">
+          <div className="mt-4 space-y-2.5">
             {device.agent!.cpu_percent != null && (
               <div className="flex items-center gap-2">
-                <span className="w-7 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-600">CPU</span>
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
+                <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">CPU</span>
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800/90">
                   <div
-                    className="h-full rounded-full bg-sky-500/80 transition-all"
+                    className="h-full rounded-full bg-sky-500/60 transition-all"
                     style={{ width: `${Math.min(device.agent!.cpu_percent, 100)}%` }}
                   />
                 </div>
@@ -826,10 +856,10 @@ function DeviceCard({
             )}
             {device.agent!.memory_percent != null && (
               <div className="flex items-center gap-2">
-                <span className="w-7 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-600">RAM</span>
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
+                <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">RAM</span>
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800/90">
                   <div
-                    className="h-full rounded-full bg-violet-500/80 transition-all"
+                    className="h-full rounded-full bg-violet-500/60 transition-all"
                     style={{ width: `${Math.min(device.agent!.memory_percent, 100)}%` }}
                   />
                 </div>
@@ -843,7 +873,7 @@ function DeviceCard({
 
         {/* ── Row 4: 24h sparkline ── */}
         {device.status_timeline && device.status_timeline.length > 0 && (
-          <div className="mt-3">
+          <div className="mt-4">
             <StatusSparkline timeline={device.status_timeline} width={160} height={10} />
           </div>
         )}
@@ -855,14 +885,14 @@ function DeviceCard({
           if (!osDisplay && !modelDisplay) return null;
           const os = osDisplay ? getOsDisplay(osDisplay) : null;
           return (
-            <div className="mt-3 flex flex-wrap items-center gap-1">
+            <div className="mt-4 flex flex-wrap items-center gap-1.5">
               {os && (
                 <Badge variant="outline" className={`text-[10px] ${os.colorClass}`}>
                   {os.label}{device.os_version ? ` ${device.os_version}` : ""}
                 </Badge>
               )}
               {modelDisplay && (
-                <span className="text-[10px] text-slate-600">{modelDisplay}</span>
+                <span className="text-[10px] text-slate-500">{modelDisplay}</span>
               )}
             </div>
           );
@@ -870,12 +900,12 @@ function DeviceCard({
 
         {/* ── Row 6: mDNS services ── */}
         {device.mdns_services && (
-          <div className="mt-3 flex flex-wrap gap-1">
+          <div className="mt-4 flex flex-wrap gap-1.5">
             {device.mdns_services.split(",").map((svc) => (
               <Badge
                 key={svc}
                 variant="outline"
-                className="border-purple-500/40 text-purple-400 text-[10px]"
+                className="border-slate-700/80 bg-slate-800/60 text-[10px] text-slate-400"
               >
                 {svc.trim()}
               </Badge>
@@ -884,15 +914,15 @@ function DeviceCard({
         )}
 
         {/* ── Footer: last seen + optional Wake button ── */}
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <p className={`text-[11px] ${device.is_online ? "text-emerald-500/70" : "text-slate-600"}`}>
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-800/80 pt-4">
+          <p className={`text-[11px] ${device.is_online ? "text-emerald-300/80" : "text-slate-500"}`}>
             {device.is_online ? "Online now" : `Last seen ${timeAgo(device.last_seen_at)}`}
           </p>
           {canWake && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 gap-1 px-2 text-[11px] text-slate-500 hover:text-emerald-400"
+              className="h-7 gap-1.5 px-2.5 text-[11px] text-slate-400 hover:bg-slate-800/70 hover:text-slate-200"
               disabled={waking}
               onClick={handleWake}
             >
@@ -1012,13 +1042,11 @@ function DevicesTable({
               >
                 <TableCell>
                   <div
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 ${
-                      device.is_online ? "ring-1 ring-emerald-500/20" : ""
-                    }`}
+                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800"
                   >
                     <RowIcon
                       className={`h-4 w-4 ${
-                        device.is_online ? "text-emerald-400" : "text-slate-500"
+                        device.is_online ? "text-emerald-300" : "text-slate-500"
                       }`}
                     />
                   </div>
@@ -1027,7 +1055,7 @@ function DevicesTable({
                   <span
                     className={`inline-block h-2.5 w-2.5 rounded-full ${
                       device.is_online
-                        ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
+                        ? "bg-emerald-400/90"
                         : "bg-slate-500"
                     }`}
                   />
@@ -1041,7 +1069,7 @@ function DevicesTable({
                       {device.hostname ?? "—"}
                     </span>
                     {device.agent?.is_online && (
-                      <span className="shrink-0 rounded border border-blue-500/30 bg-blue-500/20 px-1.5 py-0.5 text-xs text-blue-400">
+                      <span className="shrink-0 rounded border border-slate-700/80 bg-slate-800/80 px-1.5 py-0.5 text-xs text-slate-300">
                         Agent
                       </span>
                     )}
