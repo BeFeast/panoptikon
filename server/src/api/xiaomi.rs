@@ -149,6 +149,10 @@ pub struct XiaomiNewStatusResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct XiaomiWifiBandResponse {
+    /// Explicit band label: "2.4GHz", "5GHz", or "6GHz".
+    /// Inferred server-side from channel number, bandwidth string, or index
+    /// position (see [`infer_band_label`]).
+    pub band: String,
     pub ssid: Option<String>,
     pub channel: Option<String>,
     pub bandwidth: Option<String>,
@@ -522,7 +526,114 @@ pub async fn lan_info(
     }
 }
 
+// ── Band inference + deduplication helpers ─────────────────
+
+/// Infer WiFi band label from channel number, bandwidth string, or index.
+///
+/// **Why position fallback is needed:**  
+/// Xiaomi BE3600 (and similar mesh routers) report `channel: "0"` and
+/// `bandwidth: "0"` for all radios when in auto-channel mode.  Channel-based
+/// detection (`channel > 14 → 5 GHz`) therefore misclassifies every entry as
+/// "2.4 GHz".  MiWiFi's `wifi_detail_all` consistently emits radios in
+/// ascending-frequency order (2.4 GHz first, 5 GHz second), so the index
+/// position is a reliable last-resort discriminator.
+///
+/// Priority chain:
+/// 1. Channel number (1–14 → 2.4 GHz; ≥ 36 → 5 GHz)
+/// 2. Bandwidth string prefix (HT → 2.4 GHz; VHT/HE/EHT → 5 GHz)
+/// 3. Index position (0 → 2.4 GHz, 1+ → 5 GHz)
+pub(crate) fn infer_band_label(
+    channel: Option<&str>,
+    bandwidth: Option<&str>,
+    index: usize,
+) -> &'static str {
+    // Priority 1: channel number when non-zero.
+    if let Some(ch) = channel {
+        if let Ok(n) = ch.trim().parse::<u32>() {
+            if (1..=14).contains(&n) {
+                return "2.4GHz";
+            }
+            if n >= 36 {
+                return "5GHz";
+            }
+            // n == 0  → fall through (auto-channel, cannot determine band)
+        }
+    }
+
+    // Priority 2: bandwidth string prefix hints.
+    if let Some(bw) = bandwidth {
+        let bw_upper = bw.to_uppercase();
+        // VHT (802.11ac), HE (802.11ax Wi-Fi 6), EHT (802.11be Wi-Fi 7) → 5/6 GHz
+        if bw_upper.starts_with("VHT") || bw_upper.starts_with("HE") || bw_upper.starts_with("EHT")
+        {
+            return "5GHz";
+        }
+        // HT (802.11n) → 2.4 GHz (could also be 5 GHz, but 2.4 is more common
+        // when combined with the other tiers)
+        if bw_upper.starts_with("HT") {
+            return "2.4GHz";
+        }
+    }
+
+    // Priority 3: position-based fallback.
+    // MiWiFi firmware consistently returns bands in 2.4 → 5 → (6) order.
+    match index {
+        0 => "2.4GHz",
+        _ => "5GHz",
+    }
+}
+
+/// Deduplicate a list of `WifiBandDetail` entries by `(inferred_band, ssid)`.
+///
+/// Motivation: on mesh systems the router may emit one entry *per satellite
+/// node* for the same logical SSID+band, or emit the same 2.4 GHz entry
+/// twice because all channels are `"0"` (auto-channel mode).  We keep the
+/// entry with the strongest signal (closest to 0 dBm) from each group.
+pub(crate) fn deduplicate_wifi_bands(
+    bands: Vec<crate::xiaomi::types::WifiBandDetail>,
+) -> Vec<XiaomiWifiBandResponse> {
+    // Ordered map: dedup key → (slot index in `out`, stored response)
+    let mut seen: std::collections::HashMap<String, usize> = Default::default();
+    let mut out: Vec<XiaomiWifiBandResponse> = Vec::with_capacity(bands.len());
+
+    for (i, b) in bands.into_iter().enumerate() {
+        let band_label = infer_band_label(b.channel.as_deref(), b.bandwidth.as_deref(), i);
+        let dedup_key = format!("{}|{}", band_label, b.ssid.as_deref().unwrap_or(""));
+
+        let new_entry = XiaomiWifiBandResponse {
+            band: band_label.to_string(),
+            ssid: b.ssid,
+            channel: b.channel,
+            bandwidth: b.bandwidth,
+            encryption: b.encryption,
+            signal: b.signal,
+            status: b.status,
+            band_steering: b.band_steering,
+        };
+
+        if let Some(&slot) = seen.get(&dedup_key) {
+            // Keep the entry with the better signal (less negative = stronger).
+            let old_signal = out[slot].signal.unwrap_or(i32::MIN);
+            let new_signal = new_entry.signal.unwrap_or(i32::MIN);
+            if new_signal > old_signal {
+                out[slot] = new_entry;
+            }
+        } else {
+            seen.insert(dedup_key, out.len());
+            out.push(new_entry);
+        }
+    }
+
+    out
+}
+
 /// GET /xiaomi/wifi-bands — per-band WiFi details (SSID, channel, band steering).
+///
+/// Returns one entry per unique logical WiFi band+SSID pair.  The router may
+/// report the same band multiple times (once per mesh node, or all with
+/// `channel:"0"` in auto-channel mode); this handler deduplicates those
+/// entries and adds an explicit `band` field so the frontend does not need to
+/// re-infer it from channel numbers.
 pub async fn wifi_bands(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<XiaomiWifiBandResponse>>, StatusCode> {
@@ -532,20 +643,7 @@ pub async fn wifi_bands(
     };
 
     match client.wifi_detail_all().await {
-        Ok(bands) => Ok(Json(
-            bands
-                .into_iter()
-                .map(|b| XiaomiWifiBandResponse {
-                    ssid: b.ssid,
-                    channel: b.channel,
-                    bandwidth: b.bandwidth,
-                    encryption: b.encryption,
-                    signal: b.signal,
-                    status: b.status,
-                    band_steering: b.band_steering,
-                })
-                .collect(),
-        )),
+        Ok(bands) => Ok(Json(deduplicate_wifi_bands(bands))),
         Err(e) => {
             tracing::error!(error = %e, "MiWiFi wifi bands request failed");
             Err(StatusCode::BAD_GATEWAY)
@@ -618,4 +716,142 @@ pub async fn firmware(
         update_available,
         update_version,
     }))
+}
+
+// ── Tests ──────────────────────────────────────────────────
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::xiaomi::types::WifiBandDetail;
+
+    fn band(channel: &str, bandwidth: &str, signal: i32) -> WifiBandDetail {
+        WifiBandDetail {
+            ssid: Some("OK Home".to_string()),
+            channel: Some(channel.to_string()),
+            bandwidth: Some(bandwidth.to_string()),
+            encryption: Some("psk2".to_string()),
+            signal: Some(signal),
+            status: Some("1".to_string()),
+            band_steering: None,
+        }
+    }
+
+    // ── infer_band_label ──────────────────────────────────
+
+    #[test]
+    fn infer_band_explicit_24ghz_channel() {
+        assert_eq!(infer_band_label(Some("1"), None, 99), "2.4GHz");
+        assert_eq!(infer_band_label(Some("6"), None, 99), "2.4GHz");
+        assert_eq!(infer_band_label(Some("14"), None, 99), "2.4GHz");
+    }
+
+    #[test]
+    fn infer_band_explicit_5ghz_channel() {
+        assert_eq!(infer_band_label(Some("36"), None, 99), "5GHz");
+        assert_eq!(infer_band_label(Some("100"), None, 99), "5GHz");
+        assert_eq!(infer_band_label(Some("149"), None, 99), "5GHz");
+    }
+
+    #[test]
+    fn infer_band_zero_channel_falls_through_to_position() {
+        // Production root-cause case: channel="0", bandwidth="0"
+        assert_eq!(
+            infer_band_label(Some("0"), Some("0"), 0),
+            "2.4GHz",
+            "index 0 with channel=0 must be 2.4GHz"
+        );
+        assert_eq!(
+            infer_band_label(Some("0"), Some("0"), 1),
+            "5GHz",
+            "index 1 with channel=0 must be 5GHz"
+        );
+    }
+
+    #[test]
+    fn infer_band_bandwidth_fallback_vht() {
+        // channel=0 but bandwidth gives 5GHz hint
+        assert_eq!(infer_band_label(Some("0"), Some("VHT80"), 0), "5GHz");
+        assert_eq!(infer_band_label(Some("0"), Some("HE80"), 0), "5GHz");
+        assert_eq!(infer_band_label(Some("0"), Some("EHT160"), 0), "5GHz");
+    }
+
+    #[test]
+    fn infer_band_bandwidth_fallback_ht() {
+        assert_eq!(infer_band_label(Some("0"), Some("HT20"), 1), "2.4GHz");
+        assert_eq!(infer_band_label(Some("0"), Some("HT40"), 1), "2.4GHz");
+    }
+
+    #[test]
+    fn infer_band_none_channel_uses_position() {
+        assert_eq!(infer_band_label(None, None, 0), "2.4GHz");
+        assert_eq!(infer_band_label(None, None, 1), "5GHz");
+        assert_eq!(infer_band_label(None, None, 2), "5GHz");
+    }
+
+    // ── deduplicate_wifi_bands ────────────────────────────
+
+    #[test]
+    fn dedup_production_root_cause_two_channel_zero_entries() {
+        // This is the exact production payload that caused the bug:
+        // both entries have channel="0", bandwidth="0" → both inferred as "2.4GHz"
+        // before the fix.  After the fix, position-based inference gives
+        // entry[0]→"2.4GHz" and entry[1]→"5GHz", so they are DIFFERENT keys
+        // and both survive dedup.
+        let raw = vec![
+            band("0", "0", -93), // index 0 → 2.4GHz
+            band("0", "0", -94), // index 1 → 5GHz
+        ];
+        let result = deduplicate_wifi_bands(raw);
+        assert_eq!(result.len(), 2, "must have exactly 2 bands after dedup");
+        assert_eq!(result[0].band, "2.4GHz");
+        assert_eq!(result[1].band, "5GHz");
+    }
+
+    #[test]
+    fn dedup_removes_genuine_duplicates_same_band_same_ssid() {
+        // Mesh system emits the same SSID+channel combo for each satellite node.
+        // e.g. 4 nodes × 2.4GHz = 4 identical entries → should become 1.
+        let raw = vec![
+            band("6", "HT20", -70),
+            band("6", "HT20", -65), // better signal — should be kept
+            band("6", "HT20", -80),
+        ];
+        let result = deduplicate_wifi_bands(raw);
+        assert_eq!(
+            result.len(),
+            1,
+            "three identical 2.4GHz entries collapse to 1"
+        );
+        assert_eq!(result[0].band, "2.4GHz");
+        assert_eq!(result[0].signal, Some(-65), "keeps entry with best signal");
+    }
+
+    #[test]
+    fn dedup_keeps_distinct_bands_and_ssids() {
+        // Typical dual-band: 2.4 + 5, different channels → no dedup
+        let raw = vec![
+            band("6", "HT20", -70),   // 2.4GHz
+            band("36", "VHT80", -60), // 5GHz
+        ];
+        let result = deduplicate_wifi_bands(raw);
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].band, "2.4GHz");
+        assert_eq!(result[1].band, "5GHz");
+    }
+
+    #[test]
+    fn dedup_keeps_same_band_different_ssid() {
+        // Guest SSID on same band as main SSID — both should appear
+        let mut b1 = band("6", "HT20", -70);
+        b1.ssid = Some("OK Home".to_string());
+        let mut b2 = band("6", "HT20", -70);
+        b2.ssid = Some("OK Home_Guest".to_string());
+        let result = deduplicate_wifi_bands(vec![b1, b2]);
+        assert_eq!(
+            result.len(),
+            2,
+            "different SSIDs on same band must both survive"
+        );
+    }
 }
