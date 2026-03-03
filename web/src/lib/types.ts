@@ -504,12 +504,25 @@ export interface SpeedTestHistoryResponse {
   total: number;
 }
 
+/** Summary returned by POST /api/v1/scanner/trigger. */
+export interface ScanSummary {
+  new_devices: number;
+  updated_devices: number;
+  offline_devices: number;
+  total_scanned: number;
+  sources: string[];
+}
+
 export interface SettingsData {
   webhook_url: string | null;
   // Network Scanner
   scan_interval_seconds: number | null;
   scan_subnets: string | null;
   ping_sweep_enabled: boolean | null;
+  nmap_scan_enabled: boolean;
+  netbios_scan_enabled: boolean;
+  snmp_scan_enabled: boolean;
+  http_fingerprint_enabled: boolean;
   // Data Retention
   retention_traffic_hours: number | null;
   retention_alerts_days: number | null;

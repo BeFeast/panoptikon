@@ -30,6 +30,14 @@ export default function ScannerSettingsPage() {
   const [savedScanSubnets, setSavedScanSubnets] = useState("");
   const [pingSweepEnabled, setPingSweepEnabled] = useState(true);
   const [savedPingSweepEnabled, setSavedPingSweepEnabled] = useState(true);
+  const [nmapEnabled, setNmapEnabled] = useState(false);
+  const [savedNmapEnabled, setSavedNmapEnabled] = useState(false);
+  const [netbiosEnabled, setNetbiosEnabled] = useState(false);
+  const [savedNetbiosEnabled, setSavedNetbiosEnabled] = useState(false);
+  const [snmpEnabled, setSnmpEnabled] = useState(false);
+  const [savedSnmpEnabled, setSavedSnmpEnabled] = useState(false);
+  const [httpFingerprintEnabled, setHttpFingerprintEnabled] = useState(false);
+  const [savedHttpFingerprintEnabled, setSavedHttpFingerprintEnabled] = useState(false);
   const [scannerStatus, setScannerStatus] = useState<Status>("idle");
   const [scannerMsg, setScannerMsg] = useState("");
 
@@ -44,6 +52,10 @@ export default function ScannerSettingsPage() {
           scan_interval_seconds: number | null;
           scan_subnets: string | null;
           ping_sweep_enabled: boolean | null;
+          nmap_scan_enabled: boolean | null;
+          netbios_scan_enabled: boolean | null;
+          snmp_scan_enabled: boolean | null;
+          http_fingerprint_enabled: boolean | null;
         }) => {
           if (loadToken !== settingsLoadTokenRef.current) return;
           const interval = String(data.scan_interval_seconds ?? 60);
@@ -55,6 +67,18 @@ export default function ScannerSettingsPage() {
           const ping = data.ping_sweep_enabled ?? true;
           setPingSweepEnabled(ping);
           setSavedPingSweepEnabled(ping);
+          const nmap = data.nmap_scan_enabled ?? false;
+          setNmapEnabled(nmap);
+          setSavedNmapEnabled(nmap);
+          const netbios = data.netbios_scan_enabled ?? false;
+          setNetbiosEnabled(netbios);
+          setSavedNetbiosEnabled(netbios);
+          const snmp = data.snmp_scan_enabled ?? false;
+          setSnmpEnabled(snmp);
+          setSavedSnmpEnabled(snmp);
+          const http = data.http_fingerprint_enabled ?? false;
+          setHttpFingerprintEnabled(http);
+          setSavedHttpFingerprintEnabled(http);
         }
       )
       .catch(() => {});
@@ -63,7 +87,11 @@ export default function ScannerSettingsPage() {
   const scannerDirty =
     scanInterval !== savedScanInterval ||
     scanSubnets !== savedScanSubnets ||
-    pingSweepEnabled !== savedPingSweepEnabled;
+    pingSweepEnabled !== savedPingSweepEnabled ||
+    nmapEnabled !== savedNmapEnabled ||
+    netbiosEnabled !== savedNetbiosEnabled ||
+    snmpEnabled !== savedSnmpEnabled ||
+    httpFingerprintEnabled !== savedHttpFingerprintEnabled;
 
   async function handleScannerSave() {
     settingsLoadTokenRef.current++;
@@ -84,6 +112,10 @@ export default function ScannerSettingsPage() {
           scan_interval_seconds: interval,
           scan_subnets: scanSubnets,
           ping_sweep_enabled: pingSweepEnabled,
+          nmap_scan_enabled: nmapEnabled,
+          netbios_scan_enabled: netbiosEnabled,
+          snmp_scan_enabled: snmpEnabled,
+          http_fingerprint_enabled: httpFingerprintEnabled,
         }),
         credentials: "include",
       });
@@ -98,6 +130,18 @@ export default function ScannerSettingsPage() {
         const newPing = data.ping_sweep_enabled ?? pingSweepEnabled;
         setPingSweepEnabled(newPing);
         setSavedPingSweepEnabled(newPing);
+        const newNmap = data.nmap_scan_enabled ?? nmapEnabled;
+        setNmapEnabled(newNmap);
+        setSavedNmapEnabled(newNmap);
+        const newNetbios = data.netbios_scan_enabled ?? netbiosEnabled;
+        setNetbiosEnabled(newNetbios);
+        setSavedNetbiosEnabled(newNetbios);
+        const newSnmp = data.snmp_scan_enabled ?? snmpEnabled;
+        setSnmpEnabled(newSnmp);
+        setSavedSnmpEnabled(newSnmp);
+        const newHttp = data.http_fingerprint_enabled ?? httpFingerprintEnabled;
+        setHttpFingerprintEnabled(newHttp);
+        setSavedHttpFingerprintEnabled(newHttp);
         setScannerStatus("success");
         setScannerMsg("Scanner settings saved.");
         setTimeout(() => setScannerStatus("idle"), 3000);
@@ -192,6 +236,121 @@ export default function ScannerSettingsPage() {
               <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setPingSweepEnabled((v) => !v)}>
                 Active ping sweep
               </Label>
+            </div>
+
+            <div className="mt-2 border-t border-slate-800 pt-4">
+              <p className="mb-3 text-xs font-medium text-slate-300">
+                Enrichment Sources
+              </p>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={nmapEnabled}
+                    data-testid="nmap-toggle"
+                    onClick={() => setNmapEnabled((v) => !v)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+                      nmapEnabled ? "bg-cyan-500" : "bg-slate-700"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+                        nmapEnabled ? "translate-x-4" : "translate-x-0.5"
+                      }`}
+                    />
+                  </button>
+                  <div>
+                    <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setNmapEnabled((v) => !v)}>
+                      Nmap service detection
+                    </Label>
+                    <p className="text-[10px] text-slate-600">
+                      Scan open ports and detect services (requires nmap)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={netbiosEnabled}
+                    data-testid="netbios-toggle"
+                    onClick={() => setNetbiosEnabled((v) => !v)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+                      netbiosEnabled ? "bg-cyan-500" : "bg-slate-700"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+                        netbiosEnabled ? "translate-x-4" : "translate-x-0.5"
+                      }`}
+                    />
+                  </button>
+                  <div>
+                    <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setNetbiosEnabled((v) => !v)}>
+                      NetBIOS name lookup
+                    </Label>
+                    <p className="text-[10px] text-slate-600">
+                      Discover Windows machine names (requires nmblookup)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={snmpEnabled}
+                    data-testid="snmp-toggle"
+                    onClick={() => setSnmpEnabled((v) => !v)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+                      snmpEnabled ? "bg-cyan-500" : "bg-slate-700"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+                        snmpEnabled ? "translate-x-4" : "translate-x-0.5"
+                      }`}
+                    />
+                  </button>
+                  <div>
+                    <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setSnmpEnabled((v) => !v)}>
+                      SNMP discovery
+                    </Label>
+                    <p className="text-[10px] text-slate-600">
+                      Query managed switches/routers via SNMP (requires snmpget)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={httpFingerprintEnabled}
+                    data-testid="http-fingerprint-toggle"
+                    onClick={() => setHttpFingerprintEnabled((v) => !v)}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+                      httpFingerprintEnabled ? "bg-cyan-500" : "bg-slate-700"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+                        httpFingerprintEnabled ? "translate-x-4" : "translate-x-0.5"
+                      }`}
+                    />
+                  </button>
+                  <div>
+                    <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setHttpFingerprintEnabled((v) => !v)}>
+                      HTTP fingerprinting
+                    </Label>
+                    <p className="text-[10px] text-slate-600">
+                      Detect web servers and infer device type from HTTP headers
+                    </p>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {scannerStatus === "success" && scannerMsg && (

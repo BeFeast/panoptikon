@@ -33,7 +33,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDevice, resetDeviceCustom, fetchDeviceSysinfo, createAsset, fetchXiaomiWifiDevices, fetchXiaomiDevices, fetchXiaomiStatus, identifyDevices, resolveDevices } from "@/lib/api";
+import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDevice, resetDeviceCustom, fetchDeviceSysinfo, createAsset, fetchXiaomiWifiDevices, fetchXiaomiDevices, fetchXiaomiStatus, identifyDevices, resolveDevices, triggerNetworkScan } from "@/lib/api";
 import type { DeviceEvent, UptimeStats, PortScanResult, DeviceCustomFields, CreateAssetRequest } from "@/lib/api";
 import type { Device, DeviceSysinfo, DeviceWifiInfo, XiaomiWifiDevice, XiaomiDevice } from "@/lib/types";
 import { formatPercent, timeAgo } from "@/lib/format";
@@ -366,13 +366,18 @@ export default function DevicesPage() {
                 onClick={async () => {
                   setScanningNetwork(true);
                   try {
-                    await fetch("/api/v1/scanner/trigger", { method: "POST", credentials: "include" });
-                    toast.success("Network scan complete");
+                    const summary = await triggerNetworkScan();
+                    const parts: string[] = [];
+                    if (summary.new_devices > 0) parts.push(`${summary.new_devices} new`);
+                    if (summary.updated_devices > 0) parts.push(`${summary.updated_devices} updated`);
+                    if (summary.offline_devices > 0) parts.push(`${summary.offline_devices} offline`);
+                    const desc = parts.length > 0 ? parts.join(", ") : "No changes";
+                    toast.success("Network scan complete", { description: `${summary.total_scanned} scanned — ${desc}` });
                     await load();
                   } catch {
                     toast.error("Network scan failed");
                   } finally {
-                    setTimeout(() => setScanningNetwork(false), 5000);
+                    setScanningNetwork(false);
                   }
                 }}
               >
