@@ -302,26 +302,26 @@ export default function DevicesPage() {
 
   return (
     <PageTransition>
-    <div className="space-y-6">
+    <div className="space-y-7">
       {/* Header */}
-      <div className="rounded-2xl border border-slate-800/70 bg-slate-900/40 px-4 py-4 sm:px-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-1.5">
+      <div className="rounded-2xl border border-slate-800/70 bg-slate-900/45 px-5 py-5 sm:px-6">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-semibold tracking-tight text-white">Devices</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-white">Devices</h1>
               <HelpTooltip text="All devices discovered on your network. Use Scan Now to discover new devices, Re-identify to fingerprint them, and Resolve Names to look up hostnames via DNS." />
             </div>
-            <p className="max-w-2xl text-sm text-slate-300/80">
+            <p className="max-w-2xl text-sm leading-6 text-slate-300/80">
               Discover, classify, and monitor every device on your network.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+          <div className="flex flex-wrap items-center gap-2.5 xl:justify-end">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="border border-slate-700/70 bg-slate-800/60 text-slate-200 hover:bg-slate-800 hover:text-white"
+                  className="border border-blue-500/40 bg-blue-500/15 text-blue-100 hover:bg-blue-500/25 hover:text-white"
                   onClick={() => setAddAssetOpen(true)}
                 >
                   <Plus className="mr-2 h-4 w-4" />
@@ -337,7 +337,7 @@ export default function DevicesPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="border border-slate-700/70 bg-slate-800/60 text-slate-200 hover:bg-slate-800 hover:text-white"
+                  className="border border-slate-700/75 bg-slate-800/60 text-slate-200 hover:bg-slate-800/90 hover:text-white"
                   disabled={identifying}
                   onClick={async () => {
                     setIdentifying(true);
@@ -374,7 +374,7 @@ export default function DevicesPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="border border-slate-600/70 bg-slate-800/70 text-slate-100 hover:bg-slate-800"
+                  className="border border-emerald-500/40 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25 hover:text-white"
                   disabled={scanningNetwork}
                   onClick={async () => {
                     setScanningNetwork(true);
@@ -416,7 +416,7 @@ export default function DevicesPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="border border-slate-700/70 bg-slate-800/60 text-slate-200 hover:bg-slate-800 hover:text-white"
+                  className="border border-slate-700/75 bg-slate-800/60 text-slate-200 hover:bg-slate-800/90 hover:text-white"
                   disabled={resolving}
                   onClick={async () => {
                     setResolving(true);
@@ -457,8 +457,8 @@ export default function DevicesPage() {
       </div>
 
       {/* Filter bar */}
-      <div className="rounded-2xl border border-slate-800/70 bg-slate-900/35 px-4 py-3 sm:px-6">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="rounded-2xl border border-slate-800/70 bg-slate-900/40 px-5 py-4 sm:px-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             {(["all", "online", "offline", "unknown"] as Filter[]).map((f) => (
               <Button
@@ -466,9 +466,9 @@ export default function DevicesPage() {
                 variant="secondary"
                 size="sm"
                 onClick={() => setFilter(f)}
-                className={`h-8 border text-xs ${
+                className={`h-8 rounded-full border px-3 text-xs ${
                   filter === f
-                    ? "border-slate-600 bg-slate-700/80 text-slate-100 hover:bg-slate-700"
+                    ? "border-slate-600 bg-slate-700/90 text-white hover:bg-slate-700"
                     : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                 }`}
               >
@@ -477,7 +477,7 @@ export default function DevicesPage() {
                 {f === "offline" && "Offline"}
                 {f === "unknown" && "Unknown"}
                 {counts && (
-                  <span className="ml-1.5 text-xs opacity-70">
+                  <span className="ml-1.5 rounded-full bg-slate-900/55 px-1.5 py-0.5 text-[10px] leading-none opacity-80">
                     {counts[f]}
                   </span>
                 )}
@@ -485,21 +485,21 @@ export default function DevicesPage() {
             ))}
           </div>
 
-          <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center lg:w-auto">
-            <div className="relative w-full sm:min-w-[18rem] lg:w-80">
+          <div className="flex w-full flex-col gap-2.5 sm:flex-row sm:items-center lg:w-auto">
+            <div className="relative w-full sm:min-w-[20rem] lg:w-96">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <Input
                 placeholder="Search name, IP, MAC, vendor…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-9 border-slate-700/70 bg-slate-900/70 pl-9 text-sm text-slate-200 placeholder:text-slate-500 focus-visible:ring-slate-500/60"
+                className="h-9 border-slate-700/75 bg-slate-900/72 pl-9 text-sm text-slate-200 placeholder:text-slate-500 focus-visible:ring-slate-500/55"
               />
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" size="sm" className="h-9 gap-1.5 border border-slate-700/70 bg-slate-800/60 text-slate-200 hover:bg-slate-800 hover:text-white">
+                  <Button variant="secondary" size="sm" className="h-9 gap-1.5 border border-slate-700/75 bg-slate-800/60 text-slate-200 hover:bg-slate-800/90 hover:text-white">
                     <Download className="h-4 w-4" />
                     Export
                     <ChevronDown className="h-3 w-3" />
@@ -536,7 +536,7 @@ export default function DevicesPage() {
                   size="icon"
                   className={`h-9 w-9 border ${
                     view === "grid"
-                      ? "border-slate-600 bg-slate-700/80 text-slate-100 hover:bg-slate-700"
+                      ? "border-slate-600 bg-slate-700/90 text-white hover:bg-slate-700"
                       : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                   }`}
                   onClick={() => toggleView("grid")}
@@ -549,7 +549,7 @@ export default function DevicesPage() {
                   size="icon"
                   className={`h-9 w-9 border ${
                     view === "table"
-                      ? "border-slate-600 bg-slate-700/80 text-slate-100 hover:bg-slate-700"
+                      ? "border-slate-600 bg-slate-700/90 text-white hover:bg-slate-700"
                       : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                   }`}
                   onClick={() => toggleView("table")}
@@ -568,8 +568,8 @@ export default function DevicesPage() {
         view === "grid" ? (
         <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Card key={i} className="h-full border-slate-800/70 bg-slate-900/55">
-              <CardContent className="flex h-full flex-col p-6">
+            <Card key={i} className="h-full min-h-[15.5rem] border-slate-800/70 bg-slate-900/55">
+              <CardContent className="flex h-full flex-col p-5">
                 {/* Header row — icon + name + badges */}
                 <div className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-start gap-3">
                   <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
@@ -606,7 +606,7 @@ export default function DevicesPage() {
           ))}
         </div>
         ) : (
-        <div className="rounded-2xl border border-slate-800/80 bg-slate-900/70 shadow-[0_10px_30px_-18px_rgba(2,6,23,1)]">
+        <div className="rounded-2xl border border-slate-800/70 bg-slate-900/55 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.95)]">
           <Table>
             <TableHeader>
               <TableRow className="border-slate-800 hover:bg-transparent">
@@ -755,115 +755,136 @@ function DeviceCard({
     }
   };
 
+  const osDisplay = device.custom_os ?? device.os_family;
+  const modelDisplay = device.custom_model ?? device.device_model;
+  const os = osDisplay ? getOsDisplay(osDisplay) : null;
+
   return (
     <Card
-      className="h-full cursor-pointer border-slate-800/70 bg-slate-900/55 transition-colors hover:border-slate-700/80 hover:bg-slate-900/70"
+      className="h-full min-h-[15.5rem] cursor-pointer border-slate-800/70 bg-slate-900/55 transition-[border-color,background-color,box-shadow] hover:border-slate-700/90 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
       onClick={onClick}
     >
-      <CardContent className="flex h-full flex-col p-6">
-
-        {/* ── Row 1: Icon + Identity + Badges ── */}
-        <div className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-start gap-3">
-
-          {/* Device icon — larger, color-coded by status */}
+      <CardContent className="flex h-full flex-col p-5">
+        {/* ── Header: icon + identity + status badges ── */}
+        <div className="flex items-start gap-3.5">
           <div
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${
               device.is_online
-                ? "bg-slate-800/90 ring-1 ring-emerald-500/20"
-                : "bg-slate-800/90 ring-1 ring-slate-700/80"
+                ? "border-emerald-500/30 bg-emerald-500/10"
+                : "border-slate-700/80 bg-slate-800/85"
             }`}
           >
             <DevIcon
-              className={`h-6 w-6 ${device.is_online ? "text-emerald-300" : "text-slate-500"}`}
+              className={`h-5 w-5 ${device.is_online ? "text-emerald-300" : "text-slate-500"}`}
             />
           </div>
 
-          {/* Name block */}
-          <div className="min-w-0 flex-1">
-            {/* Title row: status dot + name */}
-            <div className="flex min-h-6 min-w-0 items-center gap-2">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex min-w-0 items-center gap-2">
               <span
                 className={`h-2 w-2 shrink-0 rounded-full ${
-                  device.is_online
-                    ? "bg-emerald-400/90"
-                    : "bg-slate-600"
+                  device.is_online ? "bg-emerald-400/90" : "bg-slate-600"
                 }`}
               />
               <span
-                className={`min-w-0 flex-1 truncate text-base font-semibold leading-tight ${
+                className={`min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight ${
                   isUnnamed ? "text-slate-300" : "text-white"
                 }`}
                 title={displayName}
               >
                 {displayName}
               </span>
-              {device.is_critical && (
-                <Pin className="h-3 w-3 shrink-0 text-amber-400" />
-              )}
+              {device.is_critical && <Pin className="h-3.5 w-3.5 shrink-0 text-amber-400" />}
             </div>
-            {/* Vendor row keeps a fixed line-height for stable card geometry */}
-            <p className="mt-1.5 h-4 truncate text-xs text-slate-500" title={vendorDisplay ?? undefined}>
-              {vendorDisplay ?? "\u00A0"}
+
+            <p className="truncate text-xs text-slate-500" title={vendorDisplay ?? undefined}>
+              {vendorDisplay ?? "Unknown vendor"}
             </p>
+
+            {(os || modelDisplay) && (
+              <div className="flex min-h-[1.25rem] flex-wrap items-center gap-1.5 pt-0.5">
+                {os && (
+                  <Badge variant="outline" className={`text-[10px] ${os.colorClass}`}>
+                    {os.label}
+                    {device.os_version ? ` ${device.os_version}` : ""}
+                  </Badge>
+                )}
+                {modelDisplay && (
+                  <span className="truncate text-[10px] text-slate-500" title={modelDisplay}>
+                    {modelDisplay}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
-          {/* Badges — stacked top-right, never overlap title */}
-          <div className="flex min-h-6 min-w-[3.5rem] shrink-0 flex-col items-end gap-1">
+          <div className="flex shrink-0 flex-col items-end gap-1.5">
+            <Badge
+              variant="outline"
+              className={`border text-[10px] ${
+                device.is_online
+                  ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-300"
+                  : "border-slate-700/80 bg-slate-800/70 text-slate-400"
+              }`}
+            >
+              {device.is_online ? "Online" : "Offline"}
+            </Badge>
             {device.agent?.is_online && (
-              <span className="rounded border border-slate-700/80 bg-slate-800/80 px-1.5 py-0.5 text-[10px] font-medium text-slate-300">
+              <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-[10px] text-blue-300">
                 Agent
-              </span>
+              </Badge>
             )}
             {!device.is_known && (
-              <span className="rounded border border-amber-500/25 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-300">
-                NEW
-              </span>
+              <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-300">
+                New
+              </Badge>
             )}
           </div>
         </div>
 
-        {/* ── Divider ── */}
-        <div className="my-4 border-t border-slate-800/80" />
-
-        {/* ── Row 2: Network info — IP + MAC, labeled, shown once each ── */}
-        <div className="space-y-2">
-          <div className="flex min-h-5 items-center gap-2">
-            <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">IP</span>
-            <span className="min-w-0 truncate font-mono text-[13px] tabular-nums text-slate-300">{primaryIp}</span>
+        {/* ── Core network metadata ── */}
+        <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl border border-slate-800/75 bg-slate-900/55 p-3">
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">IP</p>
+            <p className="mt-1 truncate font-mono text-[13px] tabular-nums text-slate-200" title={primaryIp}>
+              {primaryIp}
+            </p>
           </div>
-          <div className="flex min-h-5 items-center gap-2">
-            <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">MAC</span>
-            <span className="min-w-0 truncate font-mono text-xs tabular-nums text-slate-500">{device.mac ?? "—"}</span>
+          <div className="min-w-0">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">MAC</p>
+            <p className="mt-1 truncate font-mono text-xs tabular-nums text-slate-500" title={device.mac ?? undefined}>
+              {device.mac ?? "—"}
+            </p>
           </div>
         </div>
 
-        {/* ── Row 3: Agent metrics — CPU + RAM inline progress bars ── */}
+        {/* ── Agent metrics ── */}
         {hasAgentMetrics && (
-          <div className="mt-4 space-y-2.5">
+          <div className="mt-4 space-y-2.5 rounded-xl border border-slate-800/70 bg-slate-900/45 p-3">
             {device.agent!.cpu_percent != null && (
               <div className="flex items-center gap-2">
-                <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">CPU</span>
+                <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">CPU</span>
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800/90">
                   <div
-                    className="h-full rounded-full bg-sky-500/60 transition-all"
+                    className="h-full rounded-full bg-sky-500/65 transition-all"
                     style={{ width: `${Math.min(device.agent!.cpu_percent, 100)}%` }}
                   />
                 </div>
-                <span className="w-9 shrink-0 text-right font-mono text-[11px] tabular-nums text-slate-400">
+                <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-slate-400">
                   {formatPercent(device.agent!.cpu_percent)}
                 </span>
               </div>
             )}
             {device.agent!.memory_percent != null && (
               <div className="flex items-center gap-2">
-                <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-slate-500">RAM</span>
+                <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">RAM</span>
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800/90">
                   <div
-                    className="h-full rounded-full bg-violet-500/60 transition-all"
+                    className="h-full rounded-full bg-violet-500/65 transition-all"
                     style={{ width: `${Math.min(device.agent!.memory_percent, 100)}%` }}
                   />
                 </div>
-                <span className="w-9 shrink-0 text-right font-mono text-[11px] tabular-nums text-slate-400">
+                <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-slate-400">
                   {formatPercent(device.agent!.memory_percent)}
                 </span>
               </div>
@@ -871,49 +892,13 @@ function DeviceCard({
           </div>
         )}
 
-        {/* ── Row 4: 24h sparkline ── */}
         {device.status_timeline && device.status_timeline.length > 0 && (
-          <div className="mt-4">
-            <StatusSparkline timeline={device.status_timeline} width={160} height={10} />
+          <div className="mt-4 rounded-lg border border-slate-800/70 bg-slate-900/45 px-3 py-2">
+            <StatusSparkline timeline={device.status_timeline} width={170} height={10} />
           </div>
         )}
 
-        {/* ── Row 5: OS badge + model ── */}
-        {(() => {
-          const osDisplay = device.custom_os ?? device.os_family;
-          const modelDisplay = device.custom_model ?? device.device_model;
-          if (!osDisplay && !modelDisplay) return null;
-          const os = osDisplay ? getOsDisplay(osDisplay) : null;
-          return (
-            <div className="mt-4 flex flex-wrap items-center gap-1.5">
-              {os && (
-                <Badge variant="outline" className={`text-[10px] ${os.colorClass}`}>
-                  {os.label}{device.os_version ? ` ${device.os_version}` : ""}
-                </Badge>
-              )}
-              {modelDisplay && (
-                <span className="text-[10px] text-slate-500">{modelDisplay}</span>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* ── Row 6: mDNS services ── */}
-        {device.mdns_services && (
-          <div className="mt-4 flex flex-wrap gap-1.5">
-            {device.mdns_services.split(",").map((svc) => (
-              <Badge
-                key={svc}
-                variant="outline"
-                className="border-slate-700/80 bg-slate-800/60 text-[10px] text-slate-400"
-              >
-                {svc.trim()}
-              </Badge>
-            ))}
-          </div>
-        )}
-
-        {/* ── Footer: last seen + optional Wake button ── */}
+        {/* ── Footer ── */}
         <div className="mt-auto flex items-center justify-between gap-2 border-t border-slate-800/80 pt-4">
           <p className={`text-[11px] ${device.is_online ? "text-emerald-300/80" : "text-slate-500"}`}>
             {device.is_online ? "Online now" : `Last seen ${timeAgo(device.last_seen_at)}`}
@@ -979,7 +964,7 @@ function DevicesTable({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-800/80 bg-slate-900/70 shadow-[0_10px_30px_-18px_rgba(2,6,23,1)]">
+    <div className="rounded-2xl border border-slate-800/70 bg-slate-900/55 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.95)]">
       <Table>
         <TableHeader>
           <TableRow className="border-slate-800 hover:bg-transparent">
