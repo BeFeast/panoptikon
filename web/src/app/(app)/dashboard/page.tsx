@@ -289,7 +289,7 @@ function StatCard({
       )}
     >
       <CardHeader className="flex flex-row items-start justify-between pb-1.5 sm:pb-1.5">
-        <CardTitle className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">
+        <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
           {title}
         </CardTitle>
         <div className="flex items-center gap-2">
