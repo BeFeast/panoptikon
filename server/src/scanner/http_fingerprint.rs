@@ -111,9 +111,7 @@ pub fn infer_device_from_server(server: &str) -> Option<&'static str> {
 
     if lower.contains("mikrotik") {
         Some("router")
-    } else if lower.contains("synology") {
-        Some("nas")
-    } else if lower.contains("qnap") {
+    } else if lower.contains("synology") || lower.contains("qnap") {
         Some("nas")
     } else if lower.contains("ubnt") || lower.contains("ubiquiti") || lower.contains("unifi") {
         Some("access_point")
