@@ -197,7 +197,7 @@ export default function DnsLogsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-4" data-testid="dns-stats-grid">
           <Card className="border-slate-800/70 bg-slate-900/55">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">

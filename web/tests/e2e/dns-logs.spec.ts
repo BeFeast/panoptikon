@@ -82,10 +82,11 @@ test.describe('DNS Query Log page — no 500 errors', () => {
       expect(resp.status, `${resp.url} should return 200`).toBe(200);
     }
 
-    // Stats cards should be visible (Total Queries, Blocked, etc.)
-    // Use .tracking-tight to target CardTitle elements specifically (avoids matching the "Blocked" filter button)
-    await expect(page.locator('.tracking-tight', { hasText: 'Total Queries' })).toBeVisible();
-    await expect(page.locator('.tracking-tight', { hasText: 'Blocked' })).toBeVisible();
+    // Stats cards should be visible — scoped to data-testid="dns-stats-grid" to avoid
+    // matching filter buttons or table headers elsewhere on the page
+    const statsGrid = page.getByTestId('dns-stats-grid');
+    await expect(statsGrid.getByText('Total Queries')).toBeVisible();
+    await expect(statsGrid.getByText('Blocked')).toBeVisible();
 
     await page.screenshot({ path: 'tests/screenshots/dns-logs-stats.png' });
   });
