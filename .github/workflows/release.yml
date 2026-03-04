@@ -87,7 +87,7 @@ jobs:
             arch: amd64
             runner: macos-13
           - target: aarch64-apple-darwin
-            arch: blacksmith-4vcpu-ubuntu-2404-arm
+            arch: arm64
             runner: macos-latest
     steps:
       - uses: actions/checkout@v4
