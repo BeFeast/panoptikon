@@ -254,7 +254,7 @@ export default function CloudflareTunnelPage() {
           <div className="flex items-center gap-3">
             <Cloud className="h-6 w-6 text-orange-400" />
             <div>
-              <h1 className="text-2xl font-bold text-slate-100">
+              <h1 className="text-2xl font-semibold text-white">
                 Cloudflare Tunnel
               </h1>
               <p className="text-sm text-slate-400">

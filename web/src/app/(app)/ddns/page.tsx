@@ -463,7 +463,7 @@ export default function DdnsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-slate-100">Dynamic DNS</h1>
+            <h1 className="text-2xl font-semibold text-white">Dynamic DNS</h1>
             <p className="text-sm text-slate-400">
               Manage DDNS client configurations for automatic DNS updates
             </p>
@@ -492,50 +492,50 @@ export default function DdnsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-            <Card className="border-slate-700 bg-slate-800/50">
+            <Card className="border-slate-800/70 bg-slate-900/55">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-slate-400">
+                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                   Total Entries
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-slate-100">
+                <p className="text-2xl font-semibold tabular-nums text-white">
                   {statusData.total}
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-slate-700 bg-slate-800/50">
+            <Card className="border-slate-800/70 bg-slate-900/55">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-slate-400">
+                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                   Enabled
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-blue-400">
+                <p className="text-2xl font-semibold tabular-nums text-blue-400">
                   {statusData.enabled}
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-slate-700 bg-slate-800/50">
+            <Card className="border-slate-800/70 bg-slate-900/55">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-slate-400">
+                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                   Healthy
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-emerald-400">
+                <p className="text-2xl font-semibold tabular-nums text-emerald-400">
                   {statusData.healthy}
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-slate-700 bg-slate-800/50">
+            <Card className="border-slate-800/70 bg-slate-900/55">
               <CardHeader className="pb-2">
-                <CardTitle className="text-xs font-medium text-slate-400">
+                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                   Failing
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold text-rose-400">
+                <p className="text-2xl font-semibold tabular-nums text-rose-400">
                   {statusData.failing}
                 </p>
               </CardContent>
@@ -554,7 +554,7 @@ export default function DdnsPage() {
         </div>
 
         {/* Table */}
-        <Card className="border-slate-700 bg-slate-800/50">
+        <Card className="border-slate-800/70 bg-slate-900/55">
           {entries === null ? (
             <div className="p-6 space-y-3">
               {[...Array(3)].map((_, i) => (

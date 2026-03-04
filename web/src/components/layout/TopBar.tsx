@@ -452,7 +452,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                   {unreadCount > 0 && (
                     <button
                       onClick={handleMarkAllRead}
-                      className="text-xs text-accent hover:text-accent/80 transition-colors"
+                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
                     >
                       Mark all read
                     </button>
@@ -487,7 +487,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                     >
                       <div className="flex items-center gap-2">
                         {!alert.is_read && (
-                          <span className="h-2 w-2 rounded-full bg-accent shrink-0" />
+                          <span className="h-2 w-2 rounded-full bg-blue-400 shrink-0" />
                         )}
                         <SeverityBadge severity={alert.severity} />
                         <span className="text-xs text-slate-500 ml-auto">
@@ -508,7 +508,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                     setBellOpen(false);
                     router.push("/alerts");
                   }}
-                  className="flex w-full items-center justify-center px-4 py-2.5 text-sm text-accent hover:bg-slate-800/60 transition-colors"
+                  className="flex w-full items-center justify-center px-4 py-2.5 text-sm text-blue-400 hover:text-blue-300 hover:bg-slate-800/60 transition-colors"
                 >
                   View all alerts
                 </button>
@@ -520,7 +520,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
         {/* ── User Avatar Menu ── */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-accent text-sm font-medium text-white hover:bg-accent/80 transition-colors">
+            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-sm font-medium text-white hover:bg-blue-600 transition-colors">
               A
             </button>
           </DropdownMenuTrigger>
