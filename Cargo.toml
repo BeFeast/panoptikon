@@ -3,7 +3,7 @@ resolver = "2"
 members = ["server", "agent"]
 
 [workspace.package]
-version = "0.6.82"
+version = "0.6.83"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/BeFeast/panoptikon"
