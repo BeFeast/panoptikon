@@ -32,8 +32,23 @@ if [[ -z "$BINARY_PATH" ]]; then
   cd "$REPO_ROOT"
 
   echo "=== Step 1/4: Pulling latest main ==="
+  # Stash any local modifications (e.g. smoke-test screenshots from a prior run)
+  # so they don't block git checkout. Stash is restored after pull.
+  STASH_NAME="deploy-auto-stash-$(date +%Y%m%dT%H%M%S)"
+  STASHED=false
+  if ! git -C "$REPO_ROOT" diff --quiet || ! git -C "$REPO_ROOT" diff --cached --quiet; then
+    echo "  [deploy] local changes detected — stashing as '$STASH_NAME'"
+    git -C "$REPO_ROOT" stash push -m "$STASH_NAME"
+    STASHED=true
+  fi
   git checkout main
   git pull origin main
+  # Restore any stashed changes (best-effort; not fatal if it conflicts)
+  if [[ "$STASHED" == "true" ]]; then
+    git -C "$REPO_ROOT" stash pop 2>/dev/null || {
+      echo "  [deploy] WARNING: could not pop stash '$STASH_NAME' — manual restore may be needed"
+    }
+  fi
 
   echo "=== Step 2/4: Building web frontend ==="
   cd web
