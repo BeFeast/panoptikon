@@ -13,7 +13,7 @@ env:
 jobs:
   rust:
     name: Rust Build & Lint
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
 
@@ -81,7 +81,7 @@ jobs:
 
   frontend:
     name: Frontend Build
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     defaults:
       run:
         working-directory: web
@@ -104,7 +104,7 @@ jobs:
 
   e2e:
     name: E2E Tests (Playwright)
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     needs: [rust]
     steps:
       - uses: actions/checkout@v4
