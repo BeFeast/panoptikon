@@ -149,7 +149,7 @@ export default function DnsLogsPage() {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight">
+              <h1 className="text-2xl font-semibold tracking-tight text-white">
                 DNS Query Log
               </h1>
               <HelpTooltip text="Shows DNS queries made by devices on your network. Useful for spotting suspicious domains and debugging connectivity. Data is kept for 7 days." />
@@ -198,65 +198,69 @@ export default function DnsLogsPage() {
 
         {/* Stats Cards */}
         <div className="grid gap-4 md:grid-cols-4">
-          <Card>
+          <Card className="border-slate-800/70 bg-slate-900/55">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Total Queries
               </CardTitle>
-              <Globe className="h-4 w-4 text-muted-foreground" />
+              <Globe className="h-4 w-4 text-slate-500" />
             </CardHeader>
             <CardContent>
               {statsLoading ? (
                 <Skeleton className="h-8 w-24" />
               ) : (
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-semibold tabular-nums text-white">
                   {stats?.total_queries.toLocaleString() ?? 0}
                 </div>
               )}
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-slate-800/70 bg-slate-900/55">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Blocked</CardTitle>
-              <ShieldBan className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                Blocked
+              </CardTitle>
+              <ShieldBan className="h-4 w-4 text-rose-500/60" />
             </CardHeader>
             <CardContent>
               {statsLoading ? (
                 <Skeleton className="h-8 w-24" />
               ) : (
-                <div className="text-2xl font-bold text-red-400">
+                <div className="text-2xl font-semibold tabular-nums text-rose-400">
                   {stats?.total_blocked.toLocaleString() ?? 0}
                 </div>
               )}
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-slate-800/70 bg-slate-900/55">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Unique Domains
               </CardTitle>
-              <Search className="h-4 w-4 text-muted-foreground" />
+              <Search className="h-4 w-4 text-slate-500" />
             </CardHeader>
             <CardContent>
               {statsLoading ? (
                 <Skeleton className="h-8 w-24" />
               ) : (
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-semibold tabular-nums text-white">
                   {stats?.unique_domains.toLocaleString() ?? 0}
                 </div>
               )}
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-slate-800/70 bg-slate-900/55">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Clients</CardTitle>
-              <Monitor className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                Clients
+              </CardTitle>
+              <Monitor className="h-4 w-4 text-slate-500" />
             </CardHeader>
             <CardContent>
               {statsLoading ? (
                 <Skeleton className="h-8 w-24" />
               ) : (
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-semibold tabular-nums text-white">
                   {stats?.unique_clients.toLocaleString() ?? 0}
                 </div>
               )}

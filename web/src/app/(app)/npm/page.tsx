@@ -2252,7 +2252,7 @@ export default function NpmPage() {
             <Globe className="h-5 w-5 text-orange-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-semibold text-white">
               Nginx Proxy Manager
             </h1>
             <p className="text-sm text-slate-400">
