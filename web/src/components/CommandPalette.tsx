@@ -138,7 +138,7 @@ export function CommandPalette() {
       label="Command palette"
       className="fixed inset-0 z-[100]"
       overlayClassName="fixed inset-0 bg-black/70 backdrop-blur-sm"
-      contentClassName="fixed left-1/2 top-[15vh] -translate-x-1/2 w-[min(560px,calc(100vw-2rem))] max-h-[min(480px,60vh)] flex flex-col overflow-hidden rounded-2xl border border-slate-600/80 bg-slate-900 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.8)]"
+      contentClassName="fixed left-1/2 top-[15vh] -translate-x-1/2 z-[100] w-[min(560px,calc(100vw-2rem))] max-h-[min(480px,60vh)] flex flex-col overflow-hidden rounded-2xl border border-slate-600/80 bg-slate-900 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.8)]"
       shouldFilter={!hasResults}
     >
       {/* Search input */}

@@ -34,17 +34,17 @@ test.describe("Command Palette UX (#571)", () => {
     const searchInput = page.locator('[cmdk-input]');
     await expect(searchInput).toBeVisible();
 
-    // "Pages" group heading should be visible
-    await expect(page.getByText("Pages")).toBeVisible();
+    // "Pages" group heading should be visible (scoped to dialog to avoid sidebar matches)
+    await expect(dialogContent.getByText("Pages")).toBeVisible();
 
-    // Page items should be readable
-    await expect(page.getByText("Dashboard")).toBeVisible();
-    await expect(page.getByText("Devices")).toBeVisible();
-    await expect(page.getByText("Settings")).toBeVisible();
+    // Page items should be readable (scoped to dialog to avoid page heading/sidebar matches)
+    await expect(dialogContent.getByText("Dashboard")).toBeVisible();
+    await expect(dialogContent.getByText("Devices")).toBeVisible();
+    await expect(dialogContent.getByText("Settings")).toBeVisible();
 
     // "Actions" group heading should also be visible
-    await expect(page.getByText("Actions")).toBeVisible();
-    await expect(page.getByText("Scan Now")).toBeVisible();
+    await expect(dialogContent.getByText("Actions")).toBeVisible();
+    await expect(dialogContent.getByText("Scan Now")).toBeVisible();
 
     await page.screenshot({
       path: "tests/screenshots/command-palette-open.png",
@@ -141,8 +141,10 @@ test.describe("Section Spacing (#571)", () => {
       timeout: 10000,
     });
 
-    // Check grid gap — the grid container should have gap >= 20px (gap-5)
-    const gridContainer = page.locator(".grid").first();
+    // Check grid gap — the bento grid should have gap >= 20px (gap-6 = 24px).
+    // Use .grid.gap-6 to target the bento grid specifically and avoid the
+    // sidebar collapse grid (which has no gap class).
+    const gridContainer = page.locator(".grid.gap-6").first();
     const gap = await gridContainer.evaluate((el) =>
       window.getComputedStyle(el).gap,
     );
@@ -166,8 +168,9 @@ test.describe("Section Spacing (#571)", () => {
     const container = page.locator(".space-y-8").first();
     await expect(container).toBeVisible();
 
-    // Cards grid should have gap-5 (20px)
-    const grid = page.locator(".grid").first();
+    // Cards grid should have gap-5 (20px).
+    // Use .grid.gap-5 to target the settings cards grid specifically.
+    const grid = page.locator(".grid.gap-5").first();
     const gap = await grid.evaluate((el) =>
       window.getComputedStyle(el).gap,
     );

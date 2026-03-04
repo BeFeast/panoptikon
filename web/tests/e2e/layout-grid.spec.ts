@@ -159,7 +159,7 @@ test.describe('Layout & Grid — no overflow or clipping (#524)', () => {
     await expect(page.getByText('Device Breakdown')).toBeVisible({ timeout: 10000 });
 
     // Wait for device breakdown section to populate (or show "No devices found")
-    const breakdownSection = page.getByText('Device Breakdown').locator('xpath=ancestor::div[contains(@class,"border-slate-800")]').first();
+    const breakdownSection = page.getByText('Device Breakdown').locator('xpath=ancestor::div[contains(@class,"border-slate-7")]').first();
     await expect(breakdownSection).toBeVisible({ timeout: 10000 });
 
     await page.screenshot({ path: 'tests/screenshots/layout-device-breakdown.png', fullPage: true });
