@@ -302,9 +302,9 @@ export default function DevicesPage() {
 
   return (
     <PageTransition>
-    <div className="space-y-7">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="rounded-2xl border border-slate-800/70 bg-slate-900/45 px-5 py-5 sm:px-6">
+      <div className="rounded-2xl border border-slate-700/50 bg-slate-900/45 px-5 py-5 sm:px-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -457,7 +457,7 @@ export default function DevicesPage() {
       </div>
 
       {/* Filter bar */}
-      <div className="rounded-2xl border border-slate-800/70 bg-slate-900/40 px-5 py-4 sm:px-6">
+      <div className="rounded-2xl border border-slate-700/50 bg-slate-900/40 px-5 py-4 sm:px-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             {(["all", "online", "offline", "unknown"] as Filter[]).map((f) => (
@@ -566,9 +566,9 @@ export default function DevicesPage() {
       {/* Device list */}
       {sorted === null ? (
         view === "grid" ? (
-        <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Card key={i} className="h-full min-h-[15.5rem] border-slate-800/70 bg-slate-900/55">
+            <Card key={i} className="h-full min-h-[15.5rem] border-slate-700/50 bg-slate-900/55">
               <CardContent className="flex h-full flex-col p-5">
                 {/* Header row — icon + name + badges */}
                 <div className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-start gap-3">
@@ -606,7 +606,7 @@ export default function DevicesPage() {
           ))}
         </div>
         ) : (
-        <div className="rounded-2xl border border-slate-800/70 bg-slate-900/55 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.95)]">
+        <div className="rounded-2xl border border-slate-700/50 bg-slate-900/55 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.95)]">
           <Table>
             <TableHeader>
               <TableRow className="border-slate-800 hover:bg-transparent">
@@ -654,7 +654,7 @@ export default function DevicesPage() {
           </p>
         )
       ) : view === "grid" ? (
-        <StaggerContainer className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <StaggerContainer className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
           {sorted.map((device) => (
             <StaggerItem key={device.id}>
               <MotionCard className="h-full">
@@ -761,7 +761,7 @@ function DeviceCard({
 
   return (
     <Card
-      className="h-full min-h-[15.5rem] cursor-pointer border-slate-800/70 bg-slate-900/55 transition-[border-color,background-color,box-shadow] hover:border-slate-700/90 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
+      className="h-full min-h-[15.5rem] cursor-pointer border-slate-700/50 bg-slate-900/55 transition-[border-color,background-color,box-shadow] hover:border-slate-600/70 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
       onClick={onClick}
     >
       <CardContent className="flex h-full flex-col p-5">
@@ -964,7 +964,7 @@ function DevicesTable({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-800/70 bg-slate-900/55 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.95)]">
+    <div className="rounded-2xl border border-slate-700/50 bg-slate-900/55 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.95)]">
       <Table>
         <TableHeader>
           <TableRow className="border-slate-800 hover:bg-transparent">

@@ -82,6 +82,12 @@ test.describe("Settings save/load — MikroTik and Xiaomi", () => {
 
   test("Xiaomi settings save non-default IP", async ({ page }) => {
     await page.goto("/settings/xiaomi-mesh");
+    // Wait for settings API fetch to complete before interacting, to avoid
+    // the useEffect overwriting values we fill before the response arrives.
+    await expect(
+      page.getByRole("heading", { name: "Xiaomi Mesh", level: 1 }),
+    ).toBeVisible({ timeout: 15000 });
+    await page.waitForLoadState("networkidle");
 
     const enableSwitch = page.locator("#xiaomi-enabled");
     const ipInput = page.locator("#xiaomi-ip");

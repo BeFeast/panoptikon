@@ -283,7 +283,7 @@ function StatCard({
   const inner = (
     <Card
       className={cn(
-        "h-full min-h-[8.25rem] border-slate-800/70 bg-slate-900/55",
+        "h-full min-h-[8.25rem] border-slate-700/50 bg-slate-900/55",
         href &&
           "transition-[border-color,background-color,box-shadow] hover:border-slate-700/90 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]",
       )}
@@ -316,7 +316,7 @@ function StatCard({
 
 function StatCardSkeleton() {
   return (
-    <Card className="h-full min-h-[8.25rem] border-slate-800/70 bg-slate-900/55">
+    <Card className="h-full min-h-[8.25rem] border-slate-700/50 bg-slate-900/55">
       <CardHeader className="pb-3">
         <Skeleton className="h-3.5 w-24" />
       </CardHeader>
@@ -486,7 +486,7 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-    <div className="space-y-7">
+    <div className="space-y-8">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight text-white">Dashboard</h1>
         <p className="max-w-3xl text-sm leading-6 text-slate-400">
@@ -495,10 +495,10 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Bento Grid ─────────────────────────────────── */}
-      <StaggerContainer className="grid grid-cols-1 gap-5 xl:grid-cols-5">
+      <StaggerContainer className="grid grid-cols-1 gap-6 xl:grid-cols-5">
         {/* ── Health Score Ring ─────────────────────────── */}
         <StaggerItem><Card
-          className="h-full border-slate-800/70 bg-slate-900/55 xl:col-span-1"
+          className="h-full border-slate-700/50 bg-slate-900/55 xl:col-span-1"
           data-testid="infra-health-card"
         >
           <CardHeader className="pb-4">
@@ -620,7 +620,7 @@ export default function DashboardPage() {
         </div></StaggerItem>
 
         {/* ── WAN Traffic Card with Sparkline ─────────── */}
-        <StaggerItem className="xl:col-span-3"><Card className="border-slate-800/70 bg-slate-900/55">
+        <StaggerItem className="xl:col-span-3"><Card className="border-slate-700/50 bg-slate-900/55">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -719,7 +719,7 @@ export default function DashboardPage() {
         </Card></StaggerItem>
 
         {/* ── Alert Feed ───────────────────────────────── */}
-        <StaggerItem className="xl:col-span-2"><Card className="border-slate-800/70 bg-slate-900/55">
+        <StaggerItem className="xl:col-span-2"><Card className="border-slate-700/50 bg-slate-900/55">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
@@ -776,7 +776,7 @@ export default function DashboardPage() {
         </Card></StaggerItem>
 
         {/* ── Device Type Breakdown ────────────────────── */}
-        <StaggerItem className="xl:col-span-5"><Card className="border-slate-800/70 bg-slate-900/55">
+        <StaggerItem className="xl:col-span-5"><Card className="border-slate-700/50 bg-slate-900/55">
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">

@@ -123,26 +123,34 @@ export function CommandPalette() {
   const hasAssets = results.assets.length > 0
   const hasResults = hasDevices || hasAgents || hasSsh || hasAssets
 
+  const groupHeadingClass =
+    '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-2 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-slate-500'
+
+  const itemClass =
+    'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-slate-300 outline-none aria-selected:bg-blue-500/15 aria-selected:text-white cursor-pointer transition-colors'
+
+  const groupDividerClass = `border-t border-slate-800 mt-1 pt-1 ${groupHeadingClass}`
+
   return (
     <Command.Dialog
       open={open}
       onOpenChange={setOpen}
       label="Command palette"
-      className="fixed inset-0 z-50"
-      overlayClassName="fixed inset-0 bg-slate-950/80 backdrop-blur-sm"
-      contentClassName="fixed left-1/2 top-[15vh] -translate-x-1/2 w-[560px] max-h-[480px] flex flex-col overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl"
+      className="fixed inset-0 z-[100]"
+      overlayClassName="fixed inset-0 bg-black/70 backdrop-blur-sm"
+      contentClassName="fixed left-1/2 top-[15vh] -translate-x-1/2 z-[100] w-[min(560px,calc(100vw-2rem))] max-h-[min(480px,60vh)] flex flex-col overflow-hidden rounded-2xl border border-slate-600/80 bg-slate-900 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.8)]"
       shouldFilter={!hasResults}
     >
       {/* Search input */}
-      <div className="flex items-center gap-3 border-b border-slate-700 px-4 py-3">
-        <Search className="h-5 w-5 shrink-0 text-slate-500" />
+      <div className="flex items-center gap-3 border-b border-slate-700/80 px-4 py-3">
+        <Search className="h-5 w-5 shrink-0 text-slate-400" />
         <Command.Input
           value={query}
           onValueChange={setQuery}
           placeholder="Search pages, devices, actions…"
-          className="flex-1 bg-transparent text-lg text-white placeholder-slate-500 outline-none"
+          className="flex-1 bg-transparent text-base text-white placeholder-slate-500 outline-none"
         />
-        <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-[11px] font-medium text-slate-400">
+        <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-slate-600 bg-slate-800 px-1.5 py-0.5 text-[11px] font-medium text-slate-400">
           ESC
         </kbd>
       </div>
@@ -154,16 +162,13 @@ export function CommandPalette() {
         </Command.Empty>
 
         {/* Pages */}
-        <Command.Group
-          heading="Pages"
-          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-slate-500"
-        >
+        <Command.Group heading="Pages" className={groupHeadingClass}>
           {PAGES.map((page) => (
             <Command.Item
               key={page.href}
               value={page.label}
               onSelect={() => navigate(page.href)}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+              className={itemClass}
             >
               <page.icon className="h-4 w-4 shrink-0 text-slate-400" />
               <span>{page.label}</span>
@@ -172,14 +177,11 @@ export function CommandPalette() {
         </Command.Group>
 
         {/* Quick Actions */}
-        <Command.Group
-          heading="Actions"
-          className="mt-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-slate-500"
-        >
+        <Command.Group heading="Actions" className={groupDividerClass}>
           <Command.Item
             value="Scan Now"
             onSelect={handleScanNow}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+            className={itemClass}
           >
             <Radar className="h-4 w-4 shrink-0 text-slate-400" />
             <span>Scan Now</span>
@@ -187,7 +189,7 @@ export function CommandPalette() {
           <Command.Item
             value="Add Agent"
             onSelect={() => navigate('/agents')}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+            className={itemClass}
           >
             <Plus className="h-4 w-4 shrink-0 text-slate-400" />
             <span>Add Agent</span>
@@ -195,7 +197,7 @@ export function CommandPalette() {
           <Command.Item
             value="Add Alert"
             onSelect={() => navigate('/alerts')}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+            className={itemClass}
           >
             <BellPlus className="h-4 w-4 shrink-0 text-slate-400" />
             <span>Add Alert</span>
@@ -204,16 +206,13 @@ export function CommandPalette() {
 
         {/* Device search results */}
         {hasDevices && (
-          <Command.Group
-            heading="Devices"
-            className="mt-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-slate-500"
-          >
+          <Command.Group heading="Devices" className={groupDividerClass}>
             {results.devices.map((d) => (
               <Command.Item
                 key={`device-${d.id}`}
                 value={`device ${d.name ?? ''} ${d.ip_address ?? ''} ${d.mac_address ?? ''}`}
                 onSelect={() => navigate(`/devices?highlight=${d.id}`)}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+                className={itemClass}
               >
                 <Monitor className="h-4 w-4 shrink-0 text-slate-400" />
                 <span
@@ -236,16 +235,13 @@ export function CommandPalette() {
 
         {/* Agent search results */}
         {hasAgents && (
-          <Command.Group
-            heading="Agents"
-            className="mt-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-slate-500"
-          >
+          <Command.Group heading="Agents" className={groupDividerClass}>
             {results.agents.map((a) => (
               <Command.Item
                 key={`agent-${a.id}`}
                 value={`agent ${a.name ?? ''} ${a.hostname ?? ''}`}
                 onSelect={() => navigate('/agents')}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+                className={itemClass}
               >
                 <Cpu className="h-4 w-4 shrink-0 text-slate-400" />
                 <span
@@ -266,16 +262,13 @@ export function CommandPalette() {
 
         {/* SSH Hosts search results */}
         {hasSsh && (
-          <Command.Group
-            heading="SSH Hosts"
-            className="mt-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-slate-500"
-          >
+          <Command.Group heading="SSH Hosts" className={groupDividerClass}>
             {results.ssh_targets.map((st) => (
               <Command.Item
                 key={`ssh-${st.id}`}
                 value={`ssh ${st.name} ${st.host}`}
                 onSelect={() => navigate('/ssh-hosts')}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+                className={itemClass}
               >
                 <Terminal className="h-4 w-4 shrink-0 text-slate-400" />
                 <span
@@ -296,16 +289,13 @@ export function CommandPalette() {
 
         {/* Assets search results */}
         {hasAssets && (
-          <Command.Group
-            heading="Assets"
-            className="mt-2 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5 [&_[cmdk-group-heading]]:text-xs [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-slate-500"
-          >
+          <Command.Group heading="Assets" className={groupDividerClass}>
             {results.assets.map((asset) => (
               <Command.Item
                 key={`asset-${asset.id}`}
                 value={`asset ${asset.name} ${asset.location ?? ''}`}
                 onSelect={() => navigate('/assets')}
-                className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-slate-300 aria-selected:bg-slate-800 aria-selected:text-white cursor-pointer"
+                className={itemClass}
               >
                 <Package className="h-4 w-4 shrink-0 text-slate-400" />
                 <span>{asset.name}</span>
