@@ -1018,7 +1018,10 @@ pub fn parse_nmap_output(output: &str) -> Vec<PortEntry> {
     results
 }
 
-/// POST /api/v1/devices/:id/scan — trigger a local nmap port scan.
+/// POST /api/v1/devices/:id/scan — trigger an on-demand port scan.
+///
+/// Uses nmap when available for richer service/version detection,
+/// otherwise falls back to an async TCP connect scan of the top-1000 ports.
 pub async fn trigger_scan(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -1086,44 +1089,31 @@ pub async fn trigger_scan(
         }
     }
 
-    // Validate IP to prevent command injection
-    if ip.parse::<std::net::IpAddr>().is_err() {
+    // Validate IP
+    let parsed_ip: std::net::IpAddr = ip.parse().map_err(|_| {
         tracing::error!("Invalid IP address for scan: {ip}");
-        return Err((
+        (
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({"error": "Invalid IP address"})),
-        ));
-    }
+        )
+    })?;
 
-    // Run nmap locally
-    let nmap_output = match tokio::process::Command::new("nmap")
-        .args(["-sV", "--open", "-T4", "--host-timeout", "30s"])
-        .arg(&ip)
-        .output()
-        .await
-    {
-        Ok(output) => {
-            if !output.status.success() {
-                let stderr = String::from_utf8_lossy(&output.stderr);
-                tracing::error!("nmap exited with {}: {stderr}", output.status);
-                return Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({"error": format!("nmap failed: {stderr}")})),
-                ));
-            }
-            String::from_utf8_lossy(&output.stdout).to_string()
-        }
-        Err(e) => {
-            tracing::error!("Failed to execute nmap for device {id} (IP: {ip}): {e}");
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": format!("Failed to execute nmap: {e}")})),
-            ));
-        }
-    };
+    // Run port scan — nmap if available, TCP connect fallback otherwise
+    let scan_result = crate::scanner::port_scanner::scan_host(parsed_ip).await;
 
-    // Parse output
-    let ports = parse_nmap_output(&nmap_output);
+    // Convert scanner PortEntry to API PortEntry
+    let ports: Vec<PortEntry> = scan_result
+        .ports
+        .into_iter()
+        .map(|p| PortEntry {
+            port: p.port,
+            protocol: p.protocol,
+            state: p.state,
+            service: p.service,
+            version: p.version,
+        })
+        .collect();
+
     let result_json = serde_json::to_string(&ports).unwrap_or_else(|_| "[]".to_string());
 
     // Store in DB
