@@ -1,0 +1,24 @@
+# docker-compose.override.yml — dev overrides
+#
+# This file is automatically loaded by `docker compose up` and overrides
+# values in docker-compose.yml for local development.
+#
+# To use production settings only, run:
+#   docker compose -f docker-compose.yml up -d
+
+services:
+  panoptikon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: panoptikon:dev
+    environment:
+      - RUST_LOG=panoptikon_server=debug,tower_http=debug
+    ports:
+      - "8080:8080"
+
+  caddy:
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2019:2019"
