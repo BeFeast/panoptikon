@@ -3,6 +3,7 @@ pub mod device_identify;
 pub mod http_fingerprint;
 pub mod netbios;
 pub mod nmap;
+pub mod port_scanner;
 pub mod snmp;
 
 use anyhow::Result;
