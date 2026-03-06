@@ -269,9 +269,165 @@ ssh root@10.10.0.11 bash /tmp/teardown-lxc.sh
 /user remove panoptikon
 ```
 
+---
+
+## VLAN 20 Test Environment
+
+A dedicated VLAN 20 environment for validating Panoptikon's VLAN integration: device discovery by VLAN, DHCP lease tracking on tagged networks, and VLAN management via the API (test cases M-80 through M-83).
+
+### VLAN 20 Network Topology
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Proxmox Host (DevBox 10.10.0.11)                               │
+│                                                                 │
+│  ┌──────────────────┐                                           │
+│  │ MikroTik CHR     │     vmbr0                                 │
+│  │ 10.10.0.125      │◄─────────────────────────┐               │
+│  │ (main LAN gw)    │                           │               │
+│  │                  │     VLAN 20 (802.1Q)      │               │
+│  │ 10.20.0.1/24     │◄───────────────┐          │               │
+│  │ (VLAN 20 gw)     │               │          │               │
+│  └──────────────────┘               │          │               │
+│                                     │          │               │
+│           VLAN 20 tagged            │   main LAN untagged      │
+│         ┌───────────────────────────┤          │               │
+│         │                           │          │               │
+│  ┌──────────────┐        ┌──────────────┐  ┌──────────────┐   │
+│  │ test-vlan20-a│        │ test-vlan20-b│  │ (CT 201-203) │   │
+│  │ CT 204       │        │ CT 205       │  │ main LAN     │   │
+│  │ DHCP (VLAN20)│        │ DHCP (VLAN20)│  │ containers   │   │
+│  │ 256MB        │        │ 128MB        │  │              │   │
+│  │ Debian 12    │        │ Alpine       │  │              │   │
+│  └──────────────┘        └──────────────┘  └──────────────┘   │
+│                                                                 │
+│  ┌──────────────────────────────────┐                           │
+│  │ Panoptikon          CT 115      │                           │
+│  │ 10.10.0.22:8080  (dashboard)    │                           │
+│  │ 10.10.0.22:53   (Unbound DNS)  │                           │
+│  └──────────────────────────────────┘                           │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### VLAN 20 Container Details
+
+| CTID | Hostname       | OS       | RAM   | Disk | VLAN | IP Range          | Purpose                          |
+|------|----------------|----------|-------|------|------|-------------------|----------------------------------|
+| 204  | test-vlan20-a  | Debian 12| 256MB | 2GB  | 20   | 10.20.0.100–200   | VLAN client — DHCP discovery     |
+| 205  | test-vlan20-b  | Alpine   | 128MB | 2GB  | 20   | 10.20.0.100–200   | VLAN client — minimal footprint  |
+
+### VLAN 20 MikroTik Configuration
+
+| Resource               | Name             | Value                        |
+|------------------------|------------------|------------------------------|
+| VLAN interface         | `vlan20-test`    | VLAN ID 20 on `bridge-test`  |
+| IP address             | —                | `10.20.0.1/24`               |
+| DHCP pool              | `vlan20-pool`    | `10.20.0.100–10.20.0.200`    |
+| DHCP server            | `vlan20-dhcp`    | on `vlan20-test` interface   |
+| DHCP network           | —                | `10.20.0.0/24`, gw=`10.20.0.1`, dns=`10.10.0.22` |
+
+### VLAN 20 Quick Start
+
+#### 1. Configure VLAN 20 on MikroTik (from any machine)
+
+```bash
+# Set environment variables
+export PANOPTIKON_PASS="your-password"
+export MIKROTIK_PASS="your-password"
+
+# Create VLAN 20 + DHCP via Panoptikon & MikroTik APIs
+bash scripts/test-env/setup-vlan20.sh
+```
+
+This creates the VLAN 20 interface on MikroTik via Panoptikon API (test M-81), then
+configures DHCP pool/server/network via the MikroTik REST API directly.
+
+#### 2. Create LXC containers on VLAN 20 (on Proxmox host)
+
+```bash
+scp scripts/test-env/setup-vlan20-lxc.sh root@10.10.0.11:/tmp/
+ssh root@10.10.0.11 bash /tmp/setup-vlan20-lxc.sh
+```
+
+Creates CT 204 and CT 205 with `tag=20` on their network interface, so all traffic
+is 802.1Q-tagged with VLAN 20. They get DHCP leases from the `vlan20-dhcp` server.
+
+#### 3. Verify the VLAN 20 environment
+
+```bash
+export PANOPTIKON_PASS="your-password"
+export MIKROTIK_PASS="your-password"
+
+# Full verification including M-82/M-83 API tests
+bash scripts/test-env/verify-vlan20.sh
+
+# Skip destructive API tests (M-82 rename, M-83 delete/recreate)
+SKIP_API_TESTS=1 bash scripts/test-env/verify-vlan20.sh
+```
+
+Checks:
+- VLAN 20 exists on MikroTik (via Panoptikon API)
+- DHCP pool/server configured correctly
+- Containers are running with VLAN 20 IPs (10.20.0.x)
+- DHCP leases appear in Panoptikon
+- VLAN rename (M-82) and delete/recreate (M-83) work
+
+#### 4. Tear down
+
+```bash
+# Destroy containers (on Proxmox host)
+ssh root@10.10.0.11 bash /tmp/teardown-vlan20.sh --lxc
+
+# Remove MikroTik VLAN config (from anywhere)
+export PANOPTIKON_PASS="your-password"
+export MIKROTIK_PASS="your-password"
+bash scripts/test-env/teardown-vlan20.sh --mikrotik
+
+# Or destroy everything at once
+bash scripts/test-env/teardown-vlan20.sh --all
+```
+
+### VLAN 20 Test Cases
+
+| # | Test Case | Method | Expected Result |
+|---|-----------|--------|-----------------|
+| M-80 | List VLANs | `GET /api/v1/mikrotik/vlans` | Returns VLAN 20 in list |
+| M-81 | Create VLAN | `POST /api/v1/mikrotik/vlans` | VLAN 20 created on MikroTik |
+| M-82 | Update VLAN | `PUT /api/v1/mikrotik/vlans/:id` | VLAN renamed, verified, renamed back |
+| M-83 | Delete VLAN | `DELETE /api/v1/mikrotik/vlans/:id` | VLAN removed, confirmed absent |
+
+### VLAN 20 API Verification
+
+```bash
+# Login
+curl -c cookies.txt -X POST http://10.10.0.22:8080/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"password":"your-password"}'
+
+# List VLANs (M-80) — should include vlan20-test
+curl -b cookies.txt http://10.10.0.22:8080/api/v1/mikrotik/vlans | jq .
+
+# Check DHCP leases — filter for VLAN 20 subnet
+curl -b cookies.txt http://10.10.0.22:8080/api/v1/mikrotik/dhcp-leases | \
+  jq '[.[] | select(.address | startswith("10.20.0."))]'
+```
+
+### VLAN 20 Troubleshooting
+
+| Problem | Check |
+|---------|-------|
+| Containers don't get 10.20.0.x IPs | Verify VLAN tag: `pct config 204 \| grep net0` should show `tag=20` |
+| DHCP leases not showing | Check MikroTik: `/ip dhcp-server print` — `vlan20-dhcp` should be running |
+| Containers can't reach 10.20.0.1 | Verify VLAN interface has IP: `/ip address print where interface=vlan20-test` |
+| VLAN not visible in Panoptikon | Check MikroTik REST API: `curl -sk -u admin:pass https://10.10.0.125/rest/interface/vlan` |
+| API returns 401 | Re-authenticate: POST `/api/v1/auth/login` |
+
+---
+
 ## Notes
 
 - Proxmox API: `https://10.10.0.11:8006` (credentials in Infisical under `/proxmox-devbox`)
 - Root password for all containers: `panoptikon-test` (test environment only)
 - The containers can be left running permanently as a stable test environment
 - Storage: `local-lvm`, 2 GB root disk each
+- VLAN 20 containers (CT 204–205) are separate from main LAN containers (CT 201–203)
