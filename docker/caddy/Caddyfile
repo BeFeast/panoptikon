@@ -4,6 +4,13 @@
 # automatic HTTPS via Let's Encrypt. Using :443 serves with a self-signed
 # certificate for local / LAN deployments.
 
+{
+	# Expose the admin API so Panoptikon can manage Caddy at runtime.
+	# Listens on all interfaces inside the container; port 2019 is mapped
+	# in docker-compose.yml for host access.
+	admin 0.0.0.0:2019
+}
+
 :443 {
 	reverse_proxy panoptikon:8080
 }
