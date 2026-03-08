@@ -156,17 +156,16 @@ pub async fn sync_to_caddy(state: &AppState) {
     // If that fails (e.g. fresh Caddy with no apps config), fall back to
     // POST /config/apps which creates the intermediate path.
     let patch_url = format!("{admin_url}/config/apps/http");
-    let patched = match state
-        .caddy_http
-        .patch(&patch_url)
-        .header("Content-Type", "application/json")
-        .json(&http_app)
-        .send()
-        .await
-    {
-        Ok(resp) if resp.status().is_success() => true,
-        _ => false,
-    };
+    let patched = matches!(
+        state
+            .caddy_http
+            .patch(&patch_url)
+            .header("Content-Type", "application/json")
+            .json(&http_app)
+            .send()
+            .await,
+        Ok(resp) if resp.status().is_success()
+    );
 
     if patched {
         info!("Caddy config synced successfully ({route_count} routes)");
