@@ -67,8 +67,11 @@ jobs:
           done
           curl -sf http://localhost:2019/config/ || (echo "Caddy failed to start within 30s" && exit 1)
 
-      - name: Test
-        run: cargo test --all-targets
+      - name: Test (unit + other integration)
+        run: cargo test --lib --bins --test integration
+
+      - name: Test (Caddy integration, sequential — shared Caddy state)
+        run: cargo test --test caddy_integration -- --test-threads=1
 
       - name: Write deploy metadata
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
