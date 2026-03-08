@@ -150,18 +150,42 @@ pub async fn sync_to_caddy(state: &AppState) {
     });
 
     let admin_url = caddy_admin_url(state).await;
-    let url = format!("{admin_url}/config/apps/http");
+    let route_count = routes.len();
+
+    // Try PATCH first (works when /config/apps/http already exists).
+    // If that fails (e.g. fresh Caddy with no apps config), fall back to
+    // POST /config/apps which creates the intermediate path.
+    let patch_url = format!("{admin_url}/config/apps/http");
+    let patched = matches!(
+        state
+            .caddy_http
+            .patch(&patch_url)
+            .header("Content-Type", "application/json")
+            .json(&http_app)
+            .send()
+            .await,
+        Ok(resp) if resp.status().is_success()
+    );
+
+    if patched {
+        info!("Caddy config synced successfully ({route_count} routes)");
+        return;
+    }
+
+    // Fallback: POST the full apps object (creates the /config/apps path).
+    let apps_payload = serde_json::json!({ "http": http_app });
+    let post_url = format!("{admin_url}/config/apps");
 
     match state
         .caddy_http
-        .patch(&url)
+        .post(&post_url)
         .header("Content-Type", "application/json")
-        .json(&http_app)
+        .json(&apps_payload)
         .send()
         .await
     {
         Ok(resp) if resp.status().is_success() => {
-            info!("Caddy config synced successfully ({} routes)", routes.len());
+            info!("Caddy config synced via POST fallback ({route_count} routes)");
         }
         Ok(resp) => {
             let status = resp.status();

@@ -51,8 +51,27 @@ jobs:
       - name: Build
         run: cargo build --release --all-targets
 
-      - name: Test
-        run: cargo test --all-targets
+      - name: Start Caddy for integration tests
+        run: |
+          echo '{"admin":{"listen":"0.0.0.0:2019"}}' > /tmp/caddy-test.json
+          docker run -d --name caddy-test \
+            -p 2019:2019 \
+            -v /tmp/caddy-test.json:/etc/caddy/caddy.json \
+            caddy:2-alpine caddy run --config /etc/caddy/caddy.json
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:2019/config/ > /dev/null 2>&1; then
+              echo "Caddy admin API ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://localhost:2019/config/ || (echo "Caddy failed to start within 30s" && exit 1)
+
+      - name: Test (unit + other integration)
+        run: cargo test --lib --bins --test integration
+
+      - name: Test (Caddy integration, sequential — shared Caddy state)
+        run: cargo test --test caddy_integration -- --test-threads=1
 
       - name: Write deploy metadata
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
