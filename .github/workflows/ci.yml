@@ -53,7 +53,11 @@ jobs:
 
       - name: Start Caddy for integration tests
         run: |
-          docker run -d --name caddy-test -p 2019:2019 caddy:2-alpine
+          echo '{"admin":{"listen":"0.0.0.0:2019"}}' > /tmp/caddy-test.json
+          docker run -d --name caddy-test \
+            -p 2019:2019 \
+            -v /tmp/caddy-test.json:/etc/caddy/caddy.json \
+            caddy:2-alpine caddy run --config /etc/caddy/caddy.json
           for i in $(seq 1 30); do
             if curl -sf http://localhost:2019/config/ > /dev/null 2>&1; then
               echo "Caddy admin API ready after ${i}s"
