@@ -250,10 +250,7 @@ pub async fn test_connection(
         .or(get_setting(&state, "pfsense_username").await)
         .unwrap_or_else(|| "root".to_string());
 
-    let auth_type = body
-        .auth_type
-        .as_deref()
-        .unwrap_or("password");
+    let auth_type = body.auth_type.as_deref().unwrap_or("password");
 
     let auth = if auth_type == "key" {
         let key = body
@@ -356,7 +353,14 @@ pub async fn toggle_interface(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_interface_toggle", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_interface_toggle",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense toggle interface error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -389,9 +393,7 @@ pub async fn gateways(
 }
 
 /// GET /api/v1/pfsense/routes
-pub async fn routes(
-    State(state): State<AppState>,
-) -> Result<Json<Vec<PfsenseRoute>>, StatusCode> {
+pub async fn routes(State(state): State<AppState>) -> Result<Json<Vec<PfsenseRoute>>, StatusCode> {
     let client = pfsense_client(&state)
         .await
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
@@ -422,8 +424,14 @@ pub async fn create_route(
         .await
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
 
-    let desc = format!("Create pfSense static route {} via {}", body.network, body.gateway);
-    let cmds = vec![format!("route_create network={} gateway={}", body.network, body.gateway)];
+    let desc = format!(
+        "Create pfSense static route {} via {}",
+        body.network, body.gateway
+    );
+    let cmds = vec![format!(
+        "route_create network={} gateway={}",
+        body.network, body.gateway
+    )];
 
     match client.route_create(&body.network, &body.gateway) {
         Ok(_) => {
@@ -431,7 +439,14 @@ pub async fn create_route(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_route_create", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_route_create",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense create route error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -456,7 +471,14 @@ pub async fn delete_route(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_route_delete", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_route_delete",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense delete route error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -531,7 +553,14 @@ pub async fn create_dhcp_static_mapping(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_dhcp_static_create", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_dhcp_static_create",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense create DHCP static mapping error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -556,7 +585,14 @@ pub async fn delete_dhcp_static_mapping(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_dhcp_static_delete", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_dhcp_static_delete",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense delete DHCP static mapping error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -606,7 +642,14 @@ pub async fn create_firewall_rule(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_firewall_rule_create", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_firewall_rule_create",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense create firewall rule error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -637,7 +680,14 @@ pub async fn update_firewall_rule(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_firewall_rule_update", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_firewall_rule_update",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense update firewall rule error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -662,7 +712,14 @@ pub async fn delete_firewall_rule(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_firewall_rule_delete", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_firewall_rule_delete",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense delete firewall rule error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -684,7 +741,10 @@ pub async fn toggle_firewall_rule(
         "{} pfSense firewall rule {id}",
         if body.disabled { "Disable" } else { "Enable" }
     );
-    let cmds = vec![format!("firewall_rule_update {id} disabled={}", body.disabled)];
+    let cmds = vec![format!(
+        "firewall_rule_update {id} disabled={}",
+        body.disabled
+    )];
 
     match client.firewall_rule_update(&data) {
         Ok(_) => {
@@ -692,7 +752,14 @@ pub async fn toggle_firewall_rule(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_firewall_rule_toggle", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_firewall_rule_toggle",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense toggle firewall rule error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -742,7 +809,14 @@ pub async fn create_nat_rule(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_nat_rule_create", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_nat_rule_create",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense create NAT rule error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -773,7 +847,14 @@ pub async fn update_nat_rule(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_nat_rule_update", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_nat_rule_update",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense update NAT rule error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -798,7 +879,14 @@ pub async fn delete_nat_rule(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_nat_rule_delete", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_nat_rule_delete",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense delete NAT rule error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -806,9 +894,7 @@ pub async fn delete_nat_rule(
 }
 
 /// GET /api/v1/pfsense/aliases
-pub async fn aliases(
-    State(state): State<AppState>,
-) -> Result<Json<Vec<PfsenseAlias>>, StatusCode> {
+pub async fn aliases(State(state): State<AppState>) -> Result<Json<Vec<PfsenseAlias>>, StatusCode> {
     let client = pfsense_client(&state)
         .await
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
@@ -848,7 +934,14 @@ pub async fn create_alias(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_alias_create", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_alias_create",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense create alias error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -879,7 +972,14 @@ pub async fn update_alias(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_alias_update", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_alias_update",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense update alias error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -904,7 +1004,14 @@ pub async fn delete_alias(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_alias_delete", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_alias_delete",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense delete alias error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -979,7 +1086,14 @@ pub async fn create_dns_override(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_dns_override_create", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_dns_override_create",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense create DNS override error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -1004,7 +1118,14 @@ pub async fn delete_dns_override(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_dns_override_delete", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_dns_override_delete",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense delete DNS override error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -1012,9 +1133,7 @@ pub async fn delete_dns_override(
 }
 
 /// GET /api/v1/pfsense/config-backups
-pub async fn config_backups(
-    State(_state): State<AppState>,
-) -> Json<Vec<Value>> {
+pub async fn config_backups(State(_state): State<AppState>) -> Json<Vec<Value>> {
     // Config backups are managed via create/restore flow.
     // For v1, return empty list — snapshots are ephemeral (created on-demand).
     Json(vec![])
@@ -1044,7 +1163,14 @@ pub async fn create_config_backup(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_config_backup", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_config_backup",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense create config backup error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -1052,9 +1178,7 @@ pub async fn create_config_backup(
 }
 
 /// GET /api/v1/pfsense/config-backups/current
-pub async fn config_current(
-    State(state): State<AppState>,
-) -> Result<Json<Value>, StatusCode> {
+pub async fn config_current(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
     let client = pfsense_client(&state)
         .await
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
@@ -1104,7 +1228,14 @@ pub async fn restore_config_backup(
             Ok(StatusCode::NO_CONTENT)
         }
         Err(e) => {
-            audit::log_failure(&state.db, "pfsense_config_restore", &desc, &cmds, &e.to_string()).await;
+            audit::log_failure(
+                &state.db,
+                "pfsense_config_restore",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
             tracing::error!("pfSense restore config error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
@@ -1112,9 +1243,7 @@ pub async fn restore_config_backup(
 }
 
 /// GET /api/v1/pfsense/audit
-pub async fn audit_log(
-    State(state): State<AppState>,
-) -> Result<Json<Vec<Value>>, StatusCode> {
+pub async fn audit_log(State(state): State<AppState>) -> Result<Json<Vec<Value>>, StatusCode> {
     // Return pfSense-related audit entries from the shared audit log
     let rows: Vec<(i64, String, String, String, String, i32, Option<String>)> = sqlx::query_as(
         "SELECT id, created_at, action, description, vyos_commands, success, error_msg \
@@ -1129,17 +1258,19 @@ pub async fn audit_log(
 
     let entries: Vec<Value> = rows
         .into_iter()
-        .map(|(id, created_at, action, description, commands, success, error_msg)| {
-            serde_json::json!({
-                "id": id,
-                "timestamp": created_at,
-                "action": action,
-                "description": description,
-                "commands": commands,
-                "success": success != 0,
-                "error": error_msg,
-            })
-        })
+        .map(
+            |(id, created_at, action, description, commands, success, error_msg)| {
+                serde_json::json!({
+                    "id": id,
+                    "timestamp": created_at,
+                    "action": action,
+                    "description": description,
+                    "commands": commands,
+                    "success": success != 0,
+                    "error": error_msg,
+                })
+            },
+        )
         .collect();
 
     Ok(Json(entries))

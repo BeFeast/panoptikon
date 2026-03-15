@@ -513,16 +513,8 @@ pub async fn update_settings(
 
     // --- pfSense settings ---
     if let Some(enabled) = body.pfsense_enabled {
-        upsert_setting(
-            &state,
-            "pfsense_enabled",
-            if enabled { "1" } else { "0" },
-        )
-        .await?;
-        info!(
-            pfsense_enabled = enabled,
-            "pfSense enabled toggle updated"
-        );
+        upsert_setting(&state, "pfsense_enabled", if enabled { "1" } else { "0" }).await?;
+        info!(pfsense_enabled = enabled, "pfSense enabled toggle updated");
     }
 
     if let Some(ref host) = body.pfsense_host {

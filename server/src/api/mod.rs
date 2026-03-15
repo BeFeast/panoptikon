@@ -411,10 +411,7 @@ pub fn router(state: AppState) -> Router {
         .route("/pfsense/aliases/:id", delete(pfsense::delete_alias))
         .route("/pfsense/dns/config", get(pfsense::dns_config))
         .route("/pfsense/dns/overrides", get(pfsense::dns_overrides))
-        .route(
-            "/pfsense/dns/overrides",
-            post(pfsense::create_dns_override),
-        )
+        .route("/pfsense/dns/overrides", post(pfsense::create_dns_override))
         .route(
             "/pfsense/dns/overrides/:id",
             delete(pfsense::delete_dns_override),

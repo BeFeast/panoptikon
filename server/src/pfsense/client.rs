@@ -128,7 +128,9 @@ impl PfsenseClient {
             PfsenseAuth::Agent => {
                 let mut agent = sess.agent().context("SSH agent init")?;
                 agent.connect().context("SSH agent connect")?;
-                agent.list_identities().context("SSH agent list identities")?;
+                agent
+                    .list_identities()
+                    .context("SSH agent list identities")?;
                 let identities = agent.identities().context("SSH agent get identities")?;
                 let mut authed = false;
                 for identity in identities {
@@ -138,13 +140,21 @@ impl PfsenseClient {
                     }
                 }
                 if !authed {
-                    anyhow::bail!("SSH agent auth failed — no matching key for {}@{}", self.username, self.host);
+                    anyhow::bail!(
+                        "SSH agent auth failed — no matching key for {}@{}",
+                        self.username,
+                        self.host
+                    );
                 }
             }
         }
 
         if !sess.authenticated() {
-            anyhow::bail!("SSH authentication failed for {}@{}", self.username, self.host);
+            anyhow::bail!(
+                "SSH authentication failed for {}@{}",
+                self.username,
+                self.host
+            );
         }
 
         Ok(sess)
@@ -194,7 +204,11 @@ impl PfsenseClient {
         remote_file.close().context("close SCP channel")?;
         remote_file.wait_close().context("wait SCP close")?;
 
-        tracing::info!("Uploaded bridge script to pfSense {}:{}", BRIDGE_REMOTE_PATH, expected_hash);
+        tracing::info!(
+            "Uploaded bridge script to pfSense {}:{}",
+            BRIDGE_REMOTE_PATH,
+            expected_hash
+        );
         Ok(())
     }
 
@@ -222,9 +236,7 @@ impl PfsenseClient {
         channel.send_eof().context("send EOF")?;
 
         let mut output = String::new();
-        channel
-            .read_to_string(&mut output)
-            .context("read stdout")?;
+        channel.read_to_string(&mut output).context("read stdout")?;
         channel.wait_close().ok();
 
         let elapsed = start.elapsed();
@@ -241,13 +253,14 @@ impl PfsenseClient {
             .with_context(|| format!("no JSON in bridge output for action '{action}': {output}"))?;
         let json_str = &output[json_start..];
 
-        let resp: BridgeResponse =
-            serde_json::from_str(json_str).with_context(|| {
-                format!("failed to parse bridge JSON for action '{action}': {json_str}")
-            })?;
+        let resp: BridgeResponse = serde_json::from_str(json_str).with_context(|| {
+            format!("failed to parse bridge JSON for action '{action}': {json_str}")
+        })?;
 
         if !resp.success {
-            let err_msg = resp.error.unwrap_or_else(|| "unknown bridge error".to_string());
+            let err_msg = resp
+                .error
+                .unwrap_or_else(|| "unknown bridge error".to_string());
             anyhow::bail!("pfSense bridge error ({}): {}", action, err_msg);
         }
 
