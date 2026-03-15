@@ -1108,9 +1108,13 @@ export function deletePfsenseFirewallRule(id: string): Promise<void> {
   );
 }
 
-export function togglePfsenseFirewallRule(id: string): Promise<void> {
+export function togglePfsenseFirewallRule(
+  id: string,
+  disabled: boolean,
+): Promise<void> {
   return apiPost<void>(
     `/api/v1/pfsense/firewall/rules/${encodeURIComponent(id)}/toggle`,
+    { disabled },
   );
 }
 
@@ -1196,7 +1200,7 @@ export function createPfsenseConfigBackup(body?: {
 }): Promise<PfsenseConfigSnapshot> {
   return apiPost<PfsenseConfigSnapshot>(
     "/api/v1/pfsense/config-backups",
-    body,
+    body ?? {},
   );
 }
 
@@ -1215,6 +1219,7 @@ export function fetchPfsenseConfigDiff(
 export function restorePfsenseConfigBackup(id: string): Promise<void> {
   return apiPost<void>(
     `/api/v1/pfsense/config-backups/${encodeURIComponent(id)}/restore`,
+    {},
   );
 }
 

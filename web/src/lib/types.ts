@@ -1945,7 +1945,6 @@ export interface PfsenseRoute {
 
 export interface PfsenseDnsConfig {
   resolver_enabled: boolean;
-  forwarder_enabled: boolean;
   servers: string[];
 }
 

@@ -2,6 +2,9 @@
 //!
 //! These endpoints proxy requests to a pfSense box via SSH + PHP bridge,
 //! using cached responses to avoid redundant network calls.
+//!
+//! All SSH I/O is offloaded to blocking threads via `tokio::task::spawn_blocking`
+//! to avoid starving the Tokio async runtime.
 
 use axum::{
     extract::{Path, State},
@@ -268,7 +271,10 @@ pub async fn test_connection(
 
     let client = PfsenseClient::new(&host, port, &username, auth);
 
-    match client.status() {
+    match tokio::task::spawn_blocking(move || client.status())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(info) => Ok(Json(PfsenseStatusResponse::from_info(info))),
         Err(e) => {
             tracing::warn!("pfSense test connection failed: {e}");
@@ -291,7 +297,10 @@ pub async fn status(
         }
     }
 
-    match client.status() {
+    match tokio::task::spawn_blocking(move || client.status())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(info) => {
             let resp = PfsenseStatusResponse::from_info(info);
             if let Ok(val) = serde_json::to_value(&resp) {
@@ -320,10 +329,13 @@ pub async fn interfaces(
         }
     }
 
-    let result = client.interfaces().map_err(|e| {
-        tracing::error!("pfSense interfaces error: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
+    let result = tokio::task::spawn_blocking(move || client.interfaces())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense interfaces error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
 
     if let Ok(val) = serde_json::to_value(&result) {
         state.pfsense_cache.set("interfaces".into(), val);
@@ -347,7 +359,12 @@ pub async fn toggle_interface(
     );
     let cmds = vec![format!("interface_toggle {id} enable={}", body.enable)];
 
-    match client.interface_toggle(&id, body.enable) {
+    let id_clone = id.clone();
+    let enable = body.enable;
+    match tokio::task::spawn_blocking(move || client.interface_toggle(&id_clone, enable))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_interface_toggle", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -381,10 +398,13 @@ pub async fn gateways(
         }
     }
 
-    let result = client.gateways().map_err(|e| {
-        tracing::error!("pfSense gateways error: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
+    let result = tokio::task::spawn_blocking(move || client.gateways())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense gateways error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
 
     if let Ok(val) = serde_json::to_value(&result) {
         state.pfsense_cache.set("gateways".into(), val);
@@ -404,10 +424,13 @@ pub async fn routes(State(state): State<AppState>) -> Result<Json<Vec<PfsenseRou
         }
     }
 
-    let result = client.routes().map_err(|e| {
-        tracing::error!("pfSense routes error: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
+    let result = tokio::task::spawn_blocking(move || client.routes())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense routes error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
 
     if let Ok(val) = serde_json::to_value(&result) {
         state.pfsense_cache.set("routes".into(), val);
@@ -433,7 +456,12 @@ pub async fn create_route(
         body.network, body.gateway
     )];
 
-    match client.route_create(&body.network, &body.gateway) {
+    let network = body.network.clone();
+    let gateway = body.gateway.clone();
+    match tokio::task::spawn_blocking(move || client.route_create(&network, &gateway))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_route_create", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -465,7 +493,11 @@ pub async fn delete_route(
     let desc = format!("Delete pfSense static route {id}");
     let cmds = vec![format!("route_delete {id}")];
 
-    match client.route_delete(&id) {
+    let id_clone = id.clone();
+    match tokio::task::spawn_blocking(move || client.route_delete(&id_clone))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_route_delete", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -499,10 +531,13 @@ pub async fn dhcp_leases(
         }
     }
 
-    let result = client.dhcp_leases().map_err(|e| {
-        tracing::error!("pfSense DHCP leases error: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
+    let result = tokio::task::spawn_blocking(move || client.dhcp_leases())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense DHCP leases error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
 
     if let Ok(val) = serde_json::to_value(&result) {
         state.pfsense_cache.set("dhcp_leases".into(), val);
@@ -524,10 +559,13 @@ pub async fn dhcp_static_mappings(
         }
     }
 
-    let result = client.dhcp_static_mappings().map_err(|e| {
-        tracing::error!("pfSense DHCP static mappings error: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
+    let result = tokio::task::spawn_blocking(move || client.dhcp_static_mappings())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense DHCP static mappings error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
 
     if let Ok(val) = serde_json::to_value(&result) {
         state.pfsense_cache.set("dhcp_static_mappings".into(), val);
@@ -547,7 +585,11 @@ pub async fn create_dhcp_static_mapping(
     let desc = "Create pfSense DHCP static mapping".to_string();
     let cmds = vec!["dhcp_static_create".to_string()];
 
-    match client.dhcp_static_create(&body.data) {
+    let data = body.data;
+    match tokio::task::spawn_blocking(move || client.dhcp_static_create(&data))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_dhcp_static_create", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -579,7 +621,11 @@ pub async fn delete_dhcp_static_mapping(
     let desc = format!("Delete pfSense DHCP static mapping {id}");
     let cmds = vec![format!("dhcp_static_delete {id}")];
 
-    match client.dhcp_static_delete(&id) {
+    let id_clone = id.clone();
+    match tokio::task::spawn_blocking(move || client.dhcp_static_delete(&id_clone))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_dhcp_static_delete", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -613,10 +659,13 @@ pub async fn firewall_rules(
         }
     }
 
-    let result = client.firewall_rules().map_err(|e| {
-        tracing::error!("pfSense firewall rules error: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
+    let result = tokio::task::spawn_blocking(move || client.firewall_rules())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense firewall rules error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
 
     if let Ok(val) = serde_json::to_value(&result) {
         state.pfsense_cache.set("firewall_rules".into(), val);
@@ -636,7 +685,11 @@ pub async fn create_firewall_rule(
     let desc = "Create pfSense firewall rule".to_string();
     let cmds = vec!["firewall_rule_create".to_string()];
 
-    match client.firewall_rule_create(&body.data) {
+    let data = body.data;
+    match tokio::task::spawn_blocking(move || client.firewall_rule_create(&data))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_firewall_rule_create", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -674,7 +727,10 @@ pub async fn update_firewall_rule(
     let desc = format!("Update pfSense firewall rule {id}");
     let cmds = vec![format!("firewall_rule_update {id}")];
 
-    match client.firewall_rule_update(&data) {
+    match tokio::task::spawn_blocking(move || client.firewall_rule_update(&data))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_firewall_rule_update", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -706,7 +762,11 @@ pub async fn delete_firewall_rule(
     let desc = format!("Delete pfSense firewall rule {id}");
     let cmds = vec![format!("firewall_rule_delete {id}")];
 
-    match client.firewall_rule_delete(&id) {
+    let id_clone = id.clone();
+    match tokio::task::spawn_blocking(move || client.firewall_rule_delete(&id_clone))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_firewall_rule_delete", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -746,7 +806,10 @@ pub async fn toggle_firewall_rule(
         body.disabled
     )];
 
-    match client.firewall_rule_update(&data) {
+    match tokio::task::spawn_blocking(move || client.firewall_rule_update(&data))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_firewall_rule_toggle", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -780,10 +843,13 @@ pub async fn nat_rules(
         }
     }
 
-    let result = client.nat_rules().map_err(|e| {
-        tracing::error!("pfSense NAT rules error: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
+    let result = tokio::task::spawn_blocking(move || client.nat_rules())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense NAT rules error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
 
     if let Ok(val) = serde_json::to_value(&result) {
         state.pfsense_cache.set("nat_rules".into(), val);
@@ -803,7 +869,11 @@ pub async fn create_nat_rule(
     let desc = "Create pfSense NAT rule".to_string();
     let cmds = vec!["nat_rule_create".to_string()];
 
-    match client.nat_rule_create(&body.data) {
+    let data = body.data;
+    match tokio::task::spawn_blocking(move || client.nat_rule_create(&data))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_nat_rule_create", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -841,7 +911,10 @@ pub async fn update_nat_rule(
     let desc = format!("Update pfSense NAT rule {id}");
     let cmds = vec![format!("nat_rule_update {id}")];
 
-    match client.nat_rule_update(&data) {
+    match tokio::task::spawn_blocking(move || client.nat_rule_update(&data))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_nat_rule_update", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -873,7 +946,11 @@ pub async fn delete_nat_rule(
     let desc = format!("Delete pfSense NAT rule {id}");
     let cmds = vec![format!("nat_rule_delete {id}")];
 
-    match client.nat_rule_delete(&id) {
+    let id_clone = id.clone();
+    match tokio::task::spawn_blocking(move || client.nat_rule_delete(&id_clone))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_nat_rule_delete", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -905,10 +982,13 @@ pub async fn aliases(State(state): State<AppState>) -> Result<Json<Vec<PfsenseAl
         }
     }
 
-    let result = client.aliases().map_err(|e| {
-        tracing::error!("pfSense aliases error: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
+    let result = tokio::task::spawn_blocking(move || client.aliases())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense aliases error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
 
     if let Ok(val) = serde_json::to_value(&result) {
         state.pfsense_cache.set("aliases".into(), val);
@@ -928,7 +1008,11 @@ pub async fn create_alias(
     let desc = "Create pfSense alias".to_string();
     let cmds = vec!["alias_create".to_string()];
 
-    match client.alias_create(&body.data) {
+    let data = body.data;
+    match tokio::task::spawn_blocking(move || client.alias_create(&data))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_alias_create", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -966,7 +1050,10 @@ pub async fn update_alias(
     let desc = format!("Update pfSense alias {id}");
     let cmds = vec![format!("alias_update {id}")];
 
-    match client.alias_update(&data) {
+    match tokio::task::spawn_blocking(move || client.alias_update(&data))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_alias_update", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -998,7 +1085,11 @@ pub async fn delete_alias(
     let desc = format!("Delete pfSense alias {id}");
     let cmds = vec![format!("alias_delete {id}")];
 
-    match client.alias_delete(&id) {
+    let id_clone = id.clone();
+    match tokio::task::spawn_blocking(move || client.alias_delete(&id_clone))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_alias_delete", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -1032,10 +1123,13 @@ pub async fn dns_config(
         }
     }
 
-    let result = client.dns_config().map_err(|e| {
-        tracing::error!("pfSense DNS config error: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
+    let result = tokio::task::spawn_blocking(move || client.dns_config())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense DNS config error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
 
     if let Ok(val) = serde_json::to_value(&result) {
         state.pfsense_cache.set("dns_config".into(), val);
@@ -1057,10 +1151,13 @@ pub async fn dns_overrides(
         }
     }
 
-    let result = client.dns_overrides().map_err(|e| {
-        tracing::error!("pfSense DNS overrides error: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
+    let result = tokio::task::spawn_blocking(move || client.dns_overrides())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense DNS overrides error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
 
     if let Ok(val) = serde_json::to_value(&result) {
         state.pfsense_cache.set("dns_overrides".into(), val);
@@ -1080,7 +1177,11 @@ pub async fn create_dns_override(
     let desc = "Create pfSense DNS override".to_string();
     let cmds = vec!["dns_override_create".to_string()];
 
-    match client.dns_override_create(&body.data) {
+    let data = body.data;
+    match tokio::task::spawn_blocking(move || client.dns_override_create(&data))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_dns_override_create", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -1112,7 +1213,11 @@ pub async fn delete_dns_override(
     let desc = format!("Delete pfSense DNS override {id}");
     let cmds = vec![format!("dns_override_delete {id}")];
 
-    match client.dns_override_delete(&id) {
+    let id_clone = id.clone();
+    match tokio::task::spawn_blocking(move || client.dns_override_delete(&id_clone))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_dns_override_delete", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -1157,7 +1262,10 @@ pub async fn create_config_backup(
     );
     let cmds = vec!["config_snapshot".to_string()];
 
-    match client.config_snapshot() {
+    match tokio::task::spawn_blocking(move || client.config_snapshot())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_config_backup", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
@@ -1183,10 +1291,13 @@ pub async fn config_current(State(state): State<AppState>) -> Result<Json<Value>
         .await
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
 
-    let result = client.config_current().map_err(|e| {
-        tracing::error!("pfSense config current error: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
+    let result = tokio::task::spawn_blocking(move || client.config_current())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense config current error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
 
     Ok(Json(result))
 }
@@ -1200,10 +1311,13 @@ pub async fn config_diff(
         .await
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
 
-    let result = client.config_diff(&id, None).map_err(|e| {
-        tracing::error!("pfSense config diff error: {e}");
-        StatusCode::BAD_GATEWAY
-    })?;
+    let result = tokio::task::spawn_blocking(move || client.config_diff(&id, None))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense config diff error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
 
     Ok(Json(result))
 }
@@ -1218,11 +1332,14 @@ pub async fn restore_config_backup(
         .await
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
 
-    let content = body.content.as_deref().unwrap_or(&id);
+    let content = body.content.as_deref().unwrap_or(&id).to_string();
     let desc = format!("Restore pfSense config backup {id}");
     let cmds = vec![format!("config_restore {id}")];
 
-    match client.config_restore(content) {
+    match tokio::task::spawn_blocking(move || client.config_restore(&content))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
         Ok(_) => {
             audit::log_success(&state.db, "pfsense_config_restore", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)

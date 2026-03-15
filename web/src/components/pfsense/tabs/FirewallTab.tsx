@@ -126,7 +126,7 @@ function FilterRulesSection() {
     setSaving(true);
     try {
       const body = {
-        action: editRule.action as "pass" | "block" | "reject",
+        type: editRule.action as "pass" | "block" | "reject",
         interface: editRule.interface,
         protocol: editRule.protocol || null,
         source: editRule.source,
@@ -166,7 +166,7 @@ function FilterRulesSection() {
 
   const handleToggle = async (r: PfsenseFirewallRule) => {
     try {
-      await togglePfsenseFirewallRule(r.id);
+      await togglePfsenseFirewallRule(r.id, !r.disabled);
       toast.success(r.disabled ? "Rule enabled" : "Rule disabled");
       reload();
     } catch (e) {
@@ -607,7 +607,7 @@ function AliasesSection() {
     try {
       const body = {
         name: editAlias.name,
-        alias_type: editAlias.alias_type,
+        type: editAlias.alias_type,
         address: editAlias.address,
         description: editAlias.description || null,
       };

@@ -101,19 +101,6 @@ export function DnsTab() {
                   {config.resolver_enabled ? "Enabled" : "Disabled"}
                 </Badge>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-slate-400">DNS Forwarder (dnsmasq):</span>
-                <Badge
-                  variant="outline"
-                  className={
-                    config.forwarder_enabled
-                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                      : "border-slate-600/30 bg-slate-600/10 text-slate-500"
-                  }
-                >
-                  {config.forwarder_enabled ? "Enabled" : "Disabled"}
-                </Badge>
-              </div>
               {config.servers.length > 0 && (
                 <div>
                   <span className="text-sm text-slate-400">Upstream DNS Servers:</span>

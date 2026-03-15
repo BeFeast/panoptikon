@@ -96,7 +96,7 @@ async fn check_pfsense(state: &AppState) -> Option<bool> {
         .unwrap_or(22);
     let username = get_setting(state, "pfsense_username")
         .await
-        .unwrap_or_else(|| "admin".to_string());
+        .unwrap_or_else(|| "root".to_string());
 
     let auth_type = get_setting(state, "pfsense_auth_type")
         .await
