@@ -6,6 +6,7 @@ pub mod dhcp;
 pub mod enrichment;
 pub mod mdns;
 pub mod mikrotik;
+pub mod pfsense;
 pub mod mikrotik_traffic;
 pub mod netflow;
 pub mod npm;

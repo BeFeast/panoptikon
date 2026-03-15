@@ -36,6 +36,7 @@ pub mod metrics;
 pub mod mikrotik;
 pub mod nat;
 pub mod npm;
+pub mod pfsense;
 pub mod qos;
 pub mod scanner;
 pub mod search;
@@ -73,6 +74,8 @@ pub struct AppState {
     pub xiaomi_http: reqwest::Client,
     /// Shared reqwest::Client for Xiaomi Mesh test-connection.
     pub xiaomi_mesh_http: reqwest::Client,
+    /// TTL cache for pfSense read operations.
+    pub pfsense_cache: Arc<crate::pfsense::client::PfsenseCache>,
 }
 
 impl AppState {
@@ -95,6 +98,7 @@ impl AppState {
                 .timeout(std::time::Duration::from_secs(10))
                 .build()
                 .expect("xiaomi mesh HTTP client"),
+            pfsense_cache: Arc::new(crate::pfsense::client::PfsenseCache::new()),
         }
     }
 }
@@ -355,6 +359,84 @@ pub fn router(state: AppState) -> Router {
         .route("/xiaomi/lan-info", get(xiaomi::lan_info))
         .route("/xiaomi/wifi-bands", get(xiaomi::wifi_bands))
         .route("/xiaomi/firmware", get(xiaomi::firmware))
+        // pfSense firewall
+        .route("/pfsense/status", get(pfsense::status))
+        .route("/pfsense/test-connection", post(pfsense::test_connection))
+        .route("/pfsense/interfaces", get(pfsense::interfaces))
+        .route(
+            "/pfsense/interfaces/:id/toggle",
+            post(pfsense::toggle_interface),
+        )
+        .route("/pfsense/gateways", get(pfsense::gateways))
+        .route("/pfsense/routes", get(pfsense::routes))
+        .route("/pfsense/routes", post(pfsense::create_route))
+        .route("/pfsense/routes/:id", delete(pfsense::delete_route))
+        .route("/pfsense/dhcp/leases", get(pfsense::dhcp_leases))
+        .route(
+            "/pfsense/dhcp/static-mappings",
+            get(pfsense::dhcp_static_mappings),
+        )
+        .route(
+            "/pfsense/dhcp/static-mappings",
+            post(pfsense::create_dhcp_static_mapping),
+        )
+        .route(
+            "/pfsense/dhcp/static-mappings/:id",
+            delete(pfsense::delete_dhcp_static_mapping),
+        )
+        .route("/pfsense/firewall/rules", get(pfsense::firewall_rules))
+        .route(
+            "/pfsense/firewall/rules",
+            post(pfsense::create_firewall_rule),
+        )
+        .route(
+            "/pfsense/firewall/rules/:id",
+            put(pfsense::update_firewall_rule),
+        )
+        .route(
+            "/pfsense/firewall/rules/:id",
+            delete(pfsense::delete_firewall_rule),
+        )
+        .route(
+            "/pfsense/firewall/rules/:id/toggle",
+            post(pfsense::toggle_firewall_rule),
+        )
+        .route("/pfsense/nat/rules", get(pfsense::nat_rules))
+        .route("/pfsense/nat/rules", post(pfsense::create_nat_rule))
+        .route("/pfsense/nat/rules/:id", put(pfsense::update_nat_rule))
+        .route("/pfsense/nat/rules/:id", delete(pfsense::delete_nat_rule))
+        .route("/pfsense/aliases", get(pfsense::aliases))
+        .route("/pfsense/aliases", post(pfsense::create_alias))
+        .route("/pfsense/aliases/:id", put(pfsense::update_alias))
+        .route("/pfsense/aliases/:id", delete(pfsense::delete_alias))
+        .route("/pfsense/dns/config", get(pfsense::dns_config))
+        .route("/pfsense/dns/overrides", get(pfsense::dns_overrides))
+        .route(
+            "/pfsense/dns/overrides",
+            post(pfsense::create_dns_override),
+        )
+        .route(
+            "/pfsense/dns/overrides/:id",
+            delete(pfsense::delete_dns_override),
+        )
+        .route("/pfsense/config-backups", get(pfsense::config_backups))
+        .route(
+            "/pfsense/config-backups",
+            post(pfsense::create_config_backup),
+        )
+        .route(
+            "/pfsense/config-backups/current",
+            get(pfsense::config_current),
+        )
+        .route(
+            "/pfsense/config-backups/:id/diff",
+            get(pfsense::config_diff),
+        )
+        .route(
+            "/pfsense/config-backups/:id/restore",
+            post(pfsense::restore_config_backup),
+        )
+        .route("/pfsense/audit", get(pfsense::audit_log))
         // QoS / Traffic Shaping
         .route("/qos/summary", get(qos::qos_summary))
         .route(
@@ -499,8 +581,13 @@ async fn cache_invalidation(
     let path = request.uri().path().to_string();
     let is_mutating = !matches!(*request.method(), Method::GET);
     let response = next.run(request).await;
-    if is_mutating && response.status().is_success() && path.contains("/mikrotik/") {
-        state.mikrotik_cache.clear();
+    if is_mutating && response.status().is_success() {
+        if path.contains("/mikrotik/") {
+            state.mikrotik_cache.clear();
+        }
+        if path.contains("/pfsense/") {
+            state.pfsense_cache.clear();
+        }
     }
     response
 }

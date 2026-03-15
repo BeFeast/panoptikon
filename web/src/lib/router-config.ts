@@ -3,18 +3,21 @@ import type { SettingsData } from "./types";
 /**
  * Available router types.
  */
-export const ROUTER_TYPES = ["mikrotik"] as const;
+export const ROUTER_TYPES = ["mikrotik", "pfsense"] as const;
 
 export type RouterType = (typeof ROUTER_TYPES)[number];
 
 /**
- * Default router type is always MikroTik.
+ * Determine default router type from settings.
  */
 export function getDefaultRouterType(
-  _settings: Pick<
+  settings: Pick<
     SettingsData,
-    "mikrotik_enabled"
+    "mikrotik_enabled" | "pfsense_enabled" | "default_router"
   > | null,
 ): RouterType {
+  if (settings?.default_router === "pfsense" && settings.pfsense_enabled) {
+    return "pfsense";
+  }
   return "mikrotik";
 }
