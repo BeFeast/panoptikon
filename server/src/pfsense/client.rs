@@ -115,6 +115,8 @@ impl PfsenseClient {
         let mut sess = Session::new().context("create SSH session")?;
         sess.set_tcp_stream(tcp);
         sess.handshake().context("SSH handshake")?;
+        // TODO: Host key verification is not implemented (same trade-off as MikroTik's
+        // danger_accept_invalid_certs). For production, consider TOFU or pinned fingerprints.
 
         match &self.auth {
             PfsenseAuth::Password(pw) => {
@@ -433,6 +435,10 @@ impl PfsenseClient {
             payload["new"] = serde_json::Value::String(new.to_string());
         }
         self.bridge_data("config_diff", Some(&payload))
+    }
+
+    pub fn config_list_backups(&self) -> Result<Value> {
+        self.bridge_data("config_list_backups", None)
     }
 
     pub fn config_restore(&self, content_b64: &str) -> Result<Value> {

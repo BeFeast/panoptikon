@@ -324,7 +324,7 @@ try {
         if (isset($payload['description'])) $rule['descr'] = $payload['description'];
         if (isset($payload['disabled']) && $payload['disabled']) $rule['disabled'] = '';
         if (isset($payload['log']) && $payload['log']) $rule['log'] = '';
-        $rule['tracker'] = strval(time());
+        $rule['tracker'] = strval(intval(microtime(true) * 1000000));
         $rules[] = $rule;
         config_set_path('filter/rule', $rules);
         write_config("Panoptikon: added firewall rule");
@@ -429,7 +429,7 @@ try {
         if (isset($payload['local_port'])) $rule['local-port'] = $payload['local_port'];
         if (isset($payload['description'])) $rule['descr'] = $payload['description'];
         if (isset($payload['disabled']) && $payload['disabled']) $rule['disabled'] = '';
-        $rule['tracker'] = strval(time());
+        $rule['tracker'] = strval(intval(microtime(true) * 1000000));
         $rules[] = $rule;
         config_set_path('nat/rule', $rules);
         write_config("Panoptikon: added NAT port-forward rule");
@@ -691,6 +691,10 @@ try {
         $content_b64 = isset($payload['content']) ? $payload['content'] : null;
         if (!$content_b64) respond(false, null, 'Missing config content');
         $config_xml = base64_decode($content_b64);
+        // Validate XML before writing
+        $parsed = @simplexml_load_string($config_xml);
+        if ($parsed === false) respond(false, null, 'Invalid XML config');
+        if ($parsed->getName() !== 'pfsense') respond(false, null, 'Invalid XML config: root element must be <pfsense>');
         // Backup current config first
         $backup_path = '/cf/conf/backup/config-' . date('YmdHis') . '.xml';
         @mkdir('/cf/conf/backup', 0755, true);
@@ -720,6 +724,23 @@ try {
                         'interface' => $m[3],
                     ];
                 }
+            }
+        }
+        respond(true, $result);
+
+    case 'config_list_backups':
+        $backup_dir = '/cf/conf/backup/';
+        $result = [];
+        if (is_dir($backup_dir)) {
+            $files = glob($backup_dir . 'config-*.xml');
+            rsort($files); // newest first
+            foreach (array_slice($files, 0, 20) as $f) {
+                $result[] = [
+                    'id' => basename($f, '.xml'),
+                    'timestamp' => date('c', filemtime($f)),
+                    'description' => basename($f),
+                    'size_bytes' => filesize($f),
+                ];
             }
         }
         respond(true, $result);

@@ -1238,10 +1238,20 @@ pub async fn delete_dns_override(
 }
 
 /// GET /api/v1/pfsense/config-backups
-pub async fn config_backups(State(_state): State<AppState>) -> Json<Vec<Value>> {
-    // Config backups are managed via create/restore flow.
-    // For v1, return empty list — snapshots are ephemeral (created on-demand).
-    Json(vec![])
+pub async fn config_backups(State(state): State<AppState>) -> Result<Json<Value>, StatusCode> {
+    let client = pfsense_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let result = tokio::task::spawn_blocking(move || client.config_list_backups())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense config list backups error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
+
+    Ok(Json(result))
 }
 
 /// POST /api/v1/pfsense/config-backups
