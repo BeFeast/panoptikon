@@ -1242,10 +1242,12 @@ pub async fn restore_config_backup(
     }
 }
 
+type AuditRow = (i64, String, String, String, String, i32, Option<String>);
+
 /// GET /api/v1/pfsense/audit
 pub async fn audit_log(State(state): State<AppState>) -> Result<Json<Vec<Value>>, StatusCode> {
     // Return pfSense-related audit entries from the shared audit log
-    let rows: Vec<(i64, String, String, String, String, i32, Option<String>)> = sqlx::query_as(
+    let rows: Vec<AuditRow> = sqlx::query_as(
         "SELECT id, created_at, action, description, vyos_commands, success, error_msg \
          FROM audit_log WHERE action LIKE 'pfsense_%' ORDER BY id DESC LIMIT 100",
     )
