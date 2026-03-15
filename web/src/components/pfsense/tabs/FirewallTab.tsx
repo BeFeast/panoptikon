@@ -126,6 +126,7 @@ function FilterRulesSection() {
     setSaving(true);
     try {
       const body = {
+        action: editRule.action,
         type: editRule.action as "pass" | "block" | "reject",
         interface: editRule.interface,
         protocol: editRule.protocol || null,
@@ -607,6 +608,7 @@ function AliasesSection() {
     try {
       const body = {
         name: editAlias.name,
+        alias_type: editAlias.alias_type,
         type: editAlias.alias_type,
         address: editAlias.address,
         description: editAlias.description || null,
