@@ -10,7 +10,6 @@ pub mod mikrotik_traffic;
 pub mod netflow;
 pub mod npm;
 pub mod oui;
-pub mod pfsense;
 pub mod retention;
 pub mod scanner;
 pub mod speedtest_scheduler;

@@ -88,7 +88,6 @@ import {
   fetchTrafficHistory,
 } from "@/lib/api";
 import { formatBps } from "@/lib/format";
-import { useData } from "@/hooks/useData";
 import type {
   MikrotikStatus,
   MikrotikInterface,
@@ -125,7 +124,32 @@ function formatMemory(bytes: string | null): string {
   return `${(n / 1024 / 1024).toFixed(0)} MB`;
 }
 
-// ── Generic data loader hook (extracted to hooks/useData.ts) ──
+// ── Generic data loader hook ──────────────────────────────
+
+function useData<T>(fetcher: () => Promise<T>) {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await fetcher();
+      setData(result);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  }, [fetcher]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  return { data, loading, error, reload: load };
+}
 
 // ── Status Header ─────────────────────────────────────────
 

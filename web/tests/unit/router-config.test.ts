@@ -9,10 +9,9 @@ describe("ROUTER_TYPES", () => {
     expect(ROUTER_TYPES[0]).toBe("mikrotik");
   });
 
-  it("contains mikrotik and pfsense", () => {
+  it("contains only mikrotik", () => {
     expect(ROUTER_TYPES).toContain("mikrotik");
-    expect(ROUTER_TYPES).toContain("pfsense");
-    expect(ROUTER_TYPES).toHaveLength(2);
+    expect(ROUTER_TYPES).toHaveLength(1);
   });
 
   it("does not contain vyos", () => {
@@ -21,32 +20,18 @@ describe("ROUTER_TYPES", () => {
 });
 
 describe("getDefaultRouterType", () => {
-  it("returns mikrotik when mikrotik is enabled and default", () => {
+  it("returns mikrotik when mikrotik is enabled", () => {
     expect(
       getDefaultRouterType({
         mikrotik_enabled: true,
-        pfsense_enabled: false,
-        default_router: "mikrotik",
       }),
     ).toBe("mikrotik");
   });
 
-  it("returns pfsense when pfsense is enabled and default", () => {
+  it("returns mikrotik when mikrotik is disabled", () => {
     expect(
       getDefaultRouterType({
-        mikrotik_enabled: true,
-        pfsense_enabled: true,
-        default_router: "pfsense",
-      }),
-    ).toBe("pfsense");
-  });
-
-  it("returns mikrotik when pfsense is default but not enabled", () => {
-    expect(
-      getDefaultRouterType({
-        mikrotik_enabled: true,
-        pfsense_enabled: false,
-        default_router: "pfsense",
+        mikrotik_enabled: false,
       }),
     ).toBe("mikrotik");
   });

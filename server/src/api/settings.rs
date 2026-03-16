@@ -52,16 +52,6 @@ pub struct SettingsResponse {
     pub cloudflare_api_token_set: bool,
     pub cloudflare_account_id: Option<String>,
     pub cloudflare_tunnel_id: Option<String>,
-    // --- pfSense ---
-    pub pfsense_enabled: bool,
-    pub pfsense_host: Option<String>,
-    pub pfsense_port: Option<u16>,
-    pub pfsense_username: Option<String>,
-    pub pfsense_auth_type: Option<String>,
-    pub pfsense_password_set: bool,
-    pub pfsense_private_key_set: bool,
-    // --- Default Router ---
-    pub default_router: Option<String>,
     // --- Advanced / Legacy ---
     pub show_legacy_routers: bool,
 }
@@ -108,16 +98,6 @@ pub struct UpdateSettingsRequest {
     pub cloudflare_api_token: Option<String>,
     pub cloudflare_account_id: Option<String>,
     pub cloudflare_tunnel_id: Option<String>,
-    // --- pfSense ---
-    pub pfsense_enabled: Option<bool>,
-    pub pfsense_host: Option<String>,
-    pub pfsense_port: Option<u16>,
-    pub pfsense_username: Option<String>,
-    pub pfsense_auth_type: Option<String>,
-    pub pfsense_password: Option<String>,
-    pub pfsense_private_key: Option<String>,
-    // --- Default Router ---
-    pub default_router: Option<String>,
     // --- Advanced / Legacy ---
     pub show_legacy_routers: Option<bool>,
 }
@@ -237,28 +217,6 @@ pub async fn get_settings(
     let cloudflare_account_id = get_setting(&state, "cloudflare_account_id").await;
     let cloudflare_tunnel_id = get_setting(&state, "cloudflare_tunnel_id").await;
 
-    // pfSense settings.
-    let pfsense_enabled = get_setting(&state, "pfsense_enabled")
-        .await
-        .map(|v| v == "1" || v == "true")
-        .unwrap_or(false);
-    let pfsense_host = get_setting(&state, "pfsense_host").await;
-    let pfsense_port = get_setting(&state, "pfsense_port")
-        .await
-        .and_then(|v| v.parse().ok())
-        .or(Some(22));
-    let pfsense_username = get_setting(&state, "pfsense_username").await;
-    let pfsense_auth_type = get_setting(&state, "pfsense_auth_type")
-        .await
-        .or(Some("password".to_string()));
-    let pfsense_password_set = get_setting(&state, "pfsense_password").await.is_some();
-    let pfsense_private_key_set = get_setting(&state, "pfsense_private_key").await.is_some();
-
-    // Default Router setting.
-    let default_router = get_setting(&state, "default_router")
-        .await
-        .or(Some("mikrotik".to_string()));
-
     // Advanced / Legacy settings.
     let show_legacy_routers = get_setting(&state, "show_legacy_routers")
         .await
@@ -296,14 +254,6 @@ pub async fn get_settings(
         cloudflare_api_token_set,
         cloudflare_account_id,
         cloudflare_tunnel_id,
-        pfsense_enabled,
-        pfsense_host,
-        pfsense_port,
-        pfsense_username,
-        pfsense_auth_type,
-        pfsense_password_set,
-        pfsense_private_key_set,
-        default_router,
         show_legacy_routers,
     }))
 }
@@ -509,48 +459,6 @@ pub async fn update_settings(
     if let Some(ref tunnel_id) = body.cloudflare_tunnel_id {
         upsert_setting(&state, "cloudflare_tunnel_id", tunnel_id).await?;
         info!(cloudflare_tunnel_id = %tunnel_id, "Cloudflare tunnel ID updated");
-    }
-
-    // --- pfSense settings ---
-    if let Some(enabled) = body.pfsense_enabled {
-        upsert_setting(&state, "pfsense_enabled", if enabled { "1" } else { "0" }).await?;
-        info!(pfsense_enabled = enabled, "pfSense enabled toggle updated");
-    }
-
-    if let Some(ref host) = body.pfsense_host {
-        upsert_setting(&state, "pfsense_host", host).await?;
-        info!(pfsense_host = %host, "pfSense host updated");
-    }
-
-    if let Some(port) = body.pfsense_port {
-        upsert_setting(&state, "pfsense_port", &port.to_string()).await?;
-        info!(pfsense_port = port, "pfSense port updated");
-    }
-
-    if let Some(ref username) = body.pfsense_username {
-        upsert_setting(&state, "pfsense_username", username).await?;
-        info!(pfsense_username = %username, "pfSense username updated");
-    }
-
-    if let Some(ref auth_type) = body.pfsense_auth_type {
-        upsert_setting(&state, "pfsense_auth_type", auth_type).await?;
-        info!(pfsense_auth_type = %auth_type, "pfSense auth type updated");
-    }
-
-    if let Some(ref password) = body.pfsense_password {
-        upsert_setting(&state, "pfsense_password", password).await?;
-        info!("pfSense password updated");
-    }
-
-    if let Some(ref private_key) = body.pfsense_private_key {
-        upsert_setting(&state, "pfsense_private_key", private_key).await?;
-        info!("pfSense private key updated");
-    }
-
-    // --- Default Router ---
-    if let Some(ref router) = body.default_router {
-        upsert_setting(&state, "default_router", router).await?;
-        info!(default_router = %router, "Default router updated");
     }
 
     // --- Advanced / Legacy settings ---
