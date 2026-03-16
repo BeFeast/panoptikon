@@ -67,6 +67,20 @@ import type {
   MikrotikAddressListRequest,
   MikrotikDns,
   MikrotikWireguard,
+  PfsenseStatus,
+  PfsenseInterface,
+  PfsenseFirewallRule,
+  PfsenseNatRule,
+  PfsenseAlias,
+  PfsenseDhcpLease,
+  PfsenseDhcpStaticMapping,
+  PfsenseGateway,
+  PfsenseRoute,
+  PfsenseDnsConfig,
+  PfsenseDnsOverride,
+  PfsenseConfigSnapshot,
+  PfsenseConfigDiff,
+  PfsenseAuditEntry,
   Asset,
   AssetRequest,
   AssetImportRow,
@@ -985,6 +999,232 @@ export function fetchMikrotikDns(): Promise<MikrotikDns> {
 
 export function fetchMikrotikWireguard(): Promise<MikrotikWireguard> {
   return apiGet<MikrotikWireguard>("/api/v1/mikrotik/wireguard");
+}
+
+// ─── pfSense ──────────────────────────────────────────────
+
+export function fetchPfsenseStatus(): Promise<PfsenseStatus> {
+  return apiGet<PfsenseStatus>("/api/v1/pfsense/status");
+}
+
+export function testPfsenseConnection(
+  host?: string,
+  port?: number,
+  username?: string,
+  auth_type?: string,
+  password?: string,
+  private_key?: string,
+): Promise<PfsenseStatus> {
+  return apiPost<PfsenseStatus>("/api/v1/pfsense/test-connection", {
+    host,
+    port,
+    username,
+    auth_type,
+    password,
+    private_key,
+  });
+}
+
+export function fetchPfsenseInterfaces(): Promise<PfsenseInterface[]> {
+  return apiGet<PfsenseInterface[]>("/api/v1/pfsense/interfaces");
+}
+
+export function togglePfsenseInterface(id: string): Promise<void> {
+  return apiPost<void>(
+    `/api/v1/pfsense/interfaces/${encodeURIComponent(id)}/toggle`,
+  );
+}
+
+export function fetchPfsenseGateways(): Promise<PfsenseGateway[]> {
+  return apiGet<PfsenseGateway[]>("/api/v1/pfsense/gateways");
+}
+
+export function fetchPfsenseRoutes(): Promise<PfsenseRoute[]> {
+  return apiGet<PfsenseRoute[]>("/api/v1/pfsense/routes");
+}
+
+export function createPfsenseRoute(body: {
+  network: string;
+  gateway: string;
+}): Promise<void> {
+  return apiPost<void>("/api/v1/pfsense/routes", body);
+}
+
+export function deletePfsenseRoute(id: string): Promise<void> {
+  return apiDelete(`/api/v1/pfsense/routes/${encodeURIComponent(id)}`);
+}
+
+export function fetchPfsenseDhcpLeases(): Promise<PfsenseDhcpLease[]> {
+  return apiGet<PfsenseDhcpLease[]>("/api/v1/pfsense/dhcp/leases");
+}
+
+export function fetchPfsenseDhcpStaticMappings(): Promise<
+  PfsenseDhcpStaticMapping[]
+> {
+  return apiGet<PfsenseDhcpStaticMapping[]>(
+    "/api/v1/pfsense/dhcp/static-mappings",
+  );
+}
+
+export function createPfsenseDhcpStaticMapping(body: {
+  mac: string;
+  ip: string;
+  hostname?: string;
+  description?: string;
+  interface: string;
+}): Promise<void> {
+  return apiPost<void>("/api/v1/pfsense/dhcp/static-mappings", body);
+}
+
+export function deletePfsenseDhcpStaticMapping(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/pfsense/dhcp/static-mappings/${encodeURIComponent(id)}`,
+  );
+}
+
+export function fetchPfsenseFirewallRules(): Promise<PfsenseFirewallRule[]> {
+  return apiGet<PfsenseFirewallRule[]>("/api/v1/pfsense/firewall/rules");
+}
+
+export function createPfsenseFirewallRule(
+  body: Omit<PfsenseFirewallRule, "id" | "tracker">,
+): Promise<void> {
+  return apiPost<void>("/api/v1/pfsense/firewall/rules", body);
+}
+
+export function updatePfsenseFirewallRule(
+  id: string,
+  body: Partial<Omit<PfsenseFirewallRule, "id" | "tracker">>,
+): Promise<void> {
+  return apiPut<void>(
+    `/api/v1/pfsense/firewall/rules/${encodeURIComponent(id)}`,
+    body,
+  );
+}
+
+export function deletePfsenseFirewallRule(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/pfsense/firewall/rules/${encodeURIComponent(id)}`,
+  );
+}
+
+export function togglePfsenseFirewallRule(
+  id: string,
+  disabled: boolean,
+): Promise<void> {
+  return apiPost<void>(
+    `/api/v1/pfsense/firewall/rules/${encodeURIComponent(id)}/toggle`,
+    { disabled },
+  );
+}
+
+export function fetchPfsenseNatRules(): Promise<PfsenseNatRule[]> {
+  return apiGet<PfsenseNatRule[]>("/api/v1/pfsense/nat/rules");
+}
+
+export function createPfsenseNatRule(
+  body: Omit<PfsenseNatRule, "id">,
+): Promise<void> {
+  return apiPost<void>("/api/v1/pfsense/nat/rules", body);
+}
+
+export function updatePfsenseNatRule(
+  id: string,
+  body: Partial<Omit<PfsenseNatRule, "id">>,
+): Promise<void> {
+  return apiPut<void>(
+    `/api/v1/pfsense/nat/rules/${encodeURIComponent(id)}`,
+    body,
+  );
+}
+
+export function deletePfsenseNatRule(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/pfsense/nat/rules/${encodeURIComponent(id)}`,
+  );
+}
+
+export function fetchPfsenseAliases(): Promise<PfsenseAlias[]> {
+  return apiGet<PfsenseAlias[]>("/api/v1/pfsense/aliases");
+}
+
+export function createPfsenseAlias(
+  body: Omit<PfsenseAlias, "detail">,
+): Promise<void> {
+  return apiPost<void>("/api/v1/pfsense/aliases", body);
+}
+
+export function updatePfsenseAlias(
+  id: string,
+  body: Partial<PfsenseAlias>,
+): Promise<void> {
+  return apiPut<void>(
+    `/api/v1/pfsense/aliases/${encodeURIComponent(id)}`,
+    body,
+  );
+}
+
+export function deletePfsenseAlias(id: string): Promise<void> {
+  return apiDelete(`/api/v1/pfsense/aliases/${encodeURIComponent(id)}`);
+}
+
+export function fetchPfsenseDnsConfig(): Promise<PfsenseDnsConfig> {
+  return apiGet<PfsenseDnsConfig>("/api/v1/pfsense/dns/config");
+}
+
+export function fetchPfsenseDnsOverrides(): Promise<PfsenseDnsOverride[]> {
+  return apiGet<PfsenseDnsOverride[]>("/api/v1/pfsense/dns/overrides");
+}
+
+export function createPfsenseDnsOverride(body: {
+  host: string;
+  domain: string;
+  ip: string;
+  description?: string;
+}): Promise<void> {
+  return apiPost<void>("/api/v1/pfsense/dns/overrides", body);
+}
+
+export function deletePfsenseDnsOverride(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/pfsense/dns/overrides/${encodeURIComponent(id)}`,
+  );
+}
+
+export function fetchPfsenseConfigBackups(): Promise<PfsenseConfigSnapshot[]> {
+  return apiGet<PfsenseConfigSnapshot[]>("/api/v1/pfsense/config-backups");
+}
+
+export function createPfsenseConfigBackup(body?: {
+  description?: string;
+}): Promise<PfsenseConfigSnapshot> {
+  return apiPost<PfsenseConfigSnapshot>(
+    "/api/v1/pfsense/config-backups",
+    body ?? {},
+  );
+}
+
+export function fetchPfsenseConfigCurrent(): Promise<string> {
+  return apiGet<string>("/api/v1/pfsense/config-backups/current");
+}
+
+export function fetchPfsenseConfigDiff(
+  id: string,
+): Promise<PfsenseConfigDiff> {
+  return apiGet<PfsenseConfigDiff>(
+    `/api/v1/pfsense/config-backups/${encodeURIComponent(id)}/diff`,
+  );
+}
+
+export function restorePfsenseConfigBackup(id: string): Promise<void> {
+  return apiPost<void>(
+    `/api/v1/pfsense/config-backups/${encodeURIComponent(id)}/restore`,
+    {},
+  );
+}
+
+export function fetchPfsenseAudit(): Promise<PfsenseAuditEntry[]> {
+  return apiGet<PfsenseAuditEntry[]>("/api/v1/pfsense/audit");
 }
 
 // ─── Assets (IT inventory) ───────────────────────────────
