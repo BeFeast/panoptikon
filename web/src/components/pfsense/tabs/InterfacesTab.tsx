@@ -18,7 +18,7 @@ function matchesFilter(iface: PfsenseInterface, filter: IfaceFilter): boolean {
   return iface.iface_type.toLowerCase() === filter.toLowerCase();
 }
 
-function statusBadge(status: PfsenseInterface["status"]) {
+function statusBadge(status: string) {
   switch (status) {
     case "up":
       return (
@@ -36,6 +36,12 @@ function statusBadge(status: PfsenseInterface["status"]) {
       return (
         <Badge variant="outline" className="border-slate-600/30 bg-slate-600/10 text-slate-500">
           Disabled
+        </Badge>
+      );
+    default:
+      return (
+        <Badge variant="outline" className="border-slate-600/30 bg-slate-600/10 text-slate-400">
+          {status || "Unknown"}
         </Badge>
       );
   }

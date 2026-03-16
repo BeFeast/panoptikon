@@ -1864,7 +1864,7 @@ export interface PfsenseInterface {
   name: string;
   descr: string | null;
   iface_type: string;
-  status: "up" | "down" | "disabled";
+  status: string;
   ip_address: string | null;
   subnet: string | null;
   mac: string | null;
@@ -1976,12 +1976,13 @@ export interface PfsenseConfigDiff {
 }
 
 export interface PfsenseAuditEntry {
-  id: string;
+  id: number;
   timestamp: string;
   action: string;
   description: string;
-  diff: string | null;
+  commands: string | null;
   success: boolean;
+  error: string | null;
 }
 
 // ─── Xiaomi MiWiFi ──────────────────────────────────────

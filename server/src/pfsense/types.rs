@@ -33,7 +33,7 @@ pub struct PfsenseInterface {
     pub ip_address: Option<String>,
     pub subnet: Option<String>,
     pub mac: Option<String>,
-    pub mtu: Option<u32>,
+    pub mtu: Option<String>,
     pub media: Option<String>,
 }
 
