@@ -366,6 +366,7 @@ pub async fn toggle_interface(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_interface_toggle", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -463,6 +464,7 @@ pub async fn create_route(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_route_create", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -499,6 +501,7 @@ pub async fn delete_route(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_route_delete", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -591,6 +594,7 @@ pub async fn create_dhcp_static_mapping(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_dhcp_static_create", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -627,6 +631,7 @@ pub async fn delete_dhcp_static_mapping(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_dhcp_static_delete", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -691,6 +696,7 @@ pub async fn create_firewall_rule(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_firewall_rule_create", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -732,6 +738,7 @@ pub async fn update_firewall_rule(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_firewall_rule_update", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -768,6 +775,7 @@ pub async fn delete_firewall_rule(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_firewall_rule_delete", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -811,6 +819,7 @@ pub async fn toggle_firewall_rule(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_firewall_rule_toggle", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -875,6 +884,7 @@ pub async fn create_nat_rule(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_nat_rule_create", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -916,6 +926,7 @@ pub async fn update_nat_rule(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_nat_rule_update", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -952,6 +963,7 @@ pub async fn delete_nat_rule(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_nat_rule_delete", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -1014,6 +1026,7 @@ pub async fn create_alias(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_alias_create", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -1055,6 +1068,7 @@ pub async fn update_alias(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_alias_update", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -1091,6 +1105,7 @@ pub async fn delete_alias(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_alias_delete", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -1183,6 +1198,7 @@ pub async fn create_dns_override(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_dns_override_create", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -1219,6 +1235,7 @@ pub async fn delete_dns_override(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_dns_override_delete", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -1277,6 +1294,7 @@ pub async fn create_config_backup(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_config_backup", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }
@@ -1351,6 +1369,7 @@ pub async fn restore_config_backup(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
+            state.pfsense_cache.clear();
             audit::log_success(&state.db, "pfsense_config_restore", &desc, &cmds).await;
             Ok(StatusCode::NO_CONTENT)
         }

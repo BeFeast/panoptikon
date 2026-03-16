@@ -18,7 +18,9 @@ use super::types::*;
 const CACHE_TTL: Duration = Duration::from_secs(30);
 
 /// Remote path where the bridge script is uploaded.
-const BRIDGE_REMOTE_PATH: &str = "/tmp/panoptikon-bridge.php";
+/// Placed in /root (owner-only writable) to prevent TOCTOU attacks
+/// that would be possible in world-writable /tmp.
+const BRIDGE_REMOTE_PATH: &str = "/root/.panoptikon-bridge.php";
 
 /// A cache entry: the JSON value and the instant it was stored.
 struct CacheEntry {

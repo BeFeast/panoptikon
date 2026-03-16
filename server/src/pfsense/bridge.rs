@@ -69,16 +69,15 @@ try {
         }
         $mem_used = $mem_total - $mem_free;
 
-        $cpu_line = shell_exec('sysctl -n kern.cp_time 2>/dev/null');
+        $t1 = preg_split('/\s+/', trim(shell_exec('sysctl -n kern.cp_time 2>/dev/null')));
+        usleep(200000); // 200 ms
+        $t2 = preg_split('/\s+/', trim(shell_exec('sysctl -n kern.cp_time 2>/dev/null')));
         $cpu_usage = 0.0;
-        if ($cpu_line) {
-            $parts = preg_split('/\s+/', trim($cpu_line));
-            if (count($parts) >= 5) {
-                $total = array_sum($parts);
-                $idle = intval($parts[4]);
-                if ($total > 0) {
-                    $cpu_usage = round((($total - $idle) / $total) * 100, 2);
-                }
+        if (count($t1) >= 5 && count($t2) >= 5) {
+            $dtotal = array_sum($t2) - array_sum($t1);
+            $didle = intval($t2[4]) - intval($t1[4]);
+            if ($dtotal > 0) {
+                $cpu_usage = round((($dtotal - $didle) / $dtotal) * 100, 2);
             }
         }
 
@@ -102,7 +101,7 @@ try {
                 $result[] = [
                     'name' => $ifname,
                     'descr' => isset($ifcfg['descr']) ? $ifcfg['descr'] : $ifname,
-                    'iface_type' => isset($ifcfg['if']) ? (strpos($ifcfg['if'], 'vlan') !== false ? 'vlan' : 'physical') : 'unknown',
+                    'iface_type' => isset($ifcfg['if']) ? (strpos($ifcfg['if'], 'vlan') !== false ? 'vlan' : (strpos($ifcfg['if'], 'bridge') !== false ? 'bridge' : (strpos($ifcfg['if'], 'lagg') !== false ? 'lagg' : 'physical'))) : 'unknown',
                     'status' => isset($info['status']) ? $info['status'] : 'unknown',
                     'ip_address' => isset($info['ipaddr']) ? $info['ipaddr'] : null,
                     'subnet' => isset($info['subnet']) ? $info['subnet'] : null,
@@ -662,9 +661,12 @@ try {
         }
         $tmp_old = tempnam('/tmp', 'pf_diff_old_');
         $tmp_new = tempnam('/tmp', 'pf_diff_new_');
+        if ($tmp_old === false || $tmp_new === false) {
+            respond(false, null, 'Failed to create temp files for diff');
+        }
         file_put_contents($tmp_old, $old);
         file_put_contents($tmp_new, $new);
-        $diff = shell_exec("diff -u {$tmp_old} {$tmp_new} 2>&1");
+        $diff = shell_exec("diff -u " . escapeshellarg($tmp_old) . " " . escapeshellarg($tmp_new) . " 2>&1");
         unlink($tmp_old);
         unlink($tmp_new);
         // Semantic summary: compare XML sections
