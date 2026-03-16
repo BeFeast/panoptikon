@@ -170,10 +170,12 @@ try {
         if (!$network || !$gateway) respond(false, null, 'Missing network or gateway');
         $routes = config_get_path('staticroutes/route');
         if (!is_array($routes)) $routes = [];
-        $routes[] = [
+        $route = [
             'network' => $network,
             'gateway' => $gateway,
         ];
+        if (isset($payload['interface'])) $route['interface'] = $payload['interface'];
+        $routes[] = $route;
         config_set_path('staticroutes/route', $routes);
         write_config("Panoptikon: added static route {$network}");
         system_routing_configure();

@@ -90,6 +90,7 @@ pub struct ToggleInterfaceRequest {
 pub struct CreateRouteRequest {
     pub network: String,
     pub gateway: String,
+    pub interface: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -255,18 +256,15 @@ pub async fn test_connection(
 
     let auth_type = body.auth_type.as_deref().unwrap_or("password");
 
+    // Security: never fall back to stored credentials here — a malicious user could
+    // point test_connection at their own SSH server to capture them.
     let auth = if auth_type == "key" {
-        let key = body
-            .private_key
-            .or(get_setting(&state, "pfsense_private_key").await)
-            .unwrap_or_default();
-        PfsenseAuth::Key(key)
+        match body.private_key {
+            Some(key) => PfsenseAuth::Key(key),
+            None => PfsenseAuth::Agent,
+        }
     } else {
-        let password = body
-            .password
-            .or(get_setting(&state, "pfsense_password").await)
-            .unwrap_or_default();
-        PfsenseAuth::Password(password)
+        PfsenseAuth::Password(body.password.unwrap_or_default())
     };
 
     let client = PfsenseClient::new(&host, port, &username, auth);
@@ -459,9 +457,12 @@ pub async fn create_route(
 
     let network = body.network.clone();
     let gateway = body.gateway.clone();
-    match tokio::task::spawn_blocking(move || client.route_create(&network, &gateway))
-        .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    let interface = body.interface.clone();
+    match tokio::task::spawn_blocking(move || {
+        client.route_create(&network, &gateway, interface.as_deref())
+    })
+    .await
+    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     {
         Ok(_) => {
             state.pfsense_cache.clear();
@@ -726,9 +727,8 @@ pub async fn update_firewall_rule(
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
 
     let mut data = body.data;
-    if let Some(obj) = data.as_object_mut() {
-        obj.insert("id".to_string(), Value::String(id.clone()));
-    }
+    let obj = data.as_object_mut().ok_or(StatusCode::BAD_REQUEST)?;
+    obj.insert("id".to_string(), Value::String(id.clone()));
 
     let desc = format!("Update pfSense firewall rule {id}");
     let cmds = vec![format!("firewall_rule_update {id}")];
@@ -914,9 +914,8 @@ pub async fn update_nat_rule(
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
 
     let mut data = body.data;
-    if let Some(obj) = data.as_object_mut() {
-        obj.insert("id".to_string(), Value::String(id.clone()));
-    }
+    let obj = data.as_object_mut().ok_or(StatusCode::BAD_REQUEST)?;
+    obj.insert("id".to_string(), Value::String(id.clone()));
 
     let desc = format!("Update pfSense NAT rule {id}");
     let cmds = vec![format!("nat_rule_update {id}")];
@@ -1056,9 +1055,8 @@ pub async fn update_alias(
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
 
     let mut data = body.data;
-    if let Some(obj) = data.as_object_mut() {
-        obj.insert("name".to_string(), Value::String(id.clone()));
-    }
+    let obj = data.as_object_mut().ok_or(StatusCode::BAD_REQUEST)?;
+    obj.insert("name".to_string(), Value::String(id.clone()));
 
     let desc = format!("Update pfSense alias {id}");
     let cmds = vec![format!("alias_update {id}")];
@@ -1360,7 +1358,10 @@ pub async fn restore_config_backup(
         .await
         .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
 
-    let content = body.content.as_deref().unwrap_or(&id).to_string();
+    let content = match body.content {
+        Some(ref c) => c.clone(),
+        None => return Err(StatusCode::BAD_REQUEST),
+    };
     let desc = format!("Restore pfSense config backup {id}");
     let cmds = vec![format!("config_restore {id}")];
 

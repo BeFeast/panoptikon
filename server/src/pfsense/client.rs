@@ -197,7 +197,7 @@ impl PfsenseClient {
         let mut remote_file = sess
             .scp_send(
                 std::path::Path::new(BRIDGE_REMOTE_PATH),
-                0o644,
+                0o600,
                 data.len() as u64,
                 None,
             )
@@ -354,8 +354,16 @@ impl PfsenseClient {
         self.bridge_data("interface_toggle", Some(&payload))
     }
 
-    pub fn route_create(&self, network: &str, gateway: &str) -> Result<Value> {
-        let payload = serde_json::json!({ "network": network, "gateway": gateway });
+    pub fn route_create(
+        &self,
+        network: &str,
+        gateway: &str,
+        interface: Option<&str>,
+    ) -> Result<Value> {
+        let mut payload = serde_json::json!({ "network": network, "gateway": gateway });
+        if let Some(iface) = interface {
+            payload["interface"] = serde_json::Value::String(iface.to_string());
+        }
         self.bridge_data("route_create", Some(&payload))
     }
 

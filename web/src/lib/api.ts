@@ -1046,6 +1046,7 @@ export function fetchPfsenseRoutes(): Promise<PfsenseRoute[]> {
 export function createPfsenseRoute(body: {
   network: string;
   gateway: string;
+  interface?: string;
 }): Promise<void> {
   return apiPost<void>("/api/v1/pfsense/routes", body);
 }

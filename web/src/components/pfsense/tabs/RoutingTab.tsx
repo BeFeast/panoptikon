@@ -75,6 +75,7 @@ export function RoutingTab() {
       await createPfsenseRoute({
         network: form.network,
         gateway: form.gateway,
+        ...(form.interface ? { interface: form.interface } : {}),
       });
       toast.success("Static route created");
       setShowCreate(false);
