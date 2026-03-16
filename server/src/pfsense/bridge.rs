@@ -102,7 +102,7 @@ try {
                 $result[] = [
                     'name' => $ifname,
                     'descr' => isset($ifcfg['descr']) ? $ifcfg['descr'] : $ifname,
-                    'type' => isset($ifcfg['if']) ? (strpos($ifcfg['if'], 'vlan') !== false ? 'vlan' : 'physical') : 'unknown',
+                    'iface_type' => isset($ifcfg['if']) ? (strpos($ifcfg['if'], 'vlan') !== false ? 'vlan' : 'physical') : 'unknown',
                     'status' => isset($info['status']) ? $info['status'] : 'unknown',
                     'ip_address' => isset($info['ipaddr']) ? $info['ipaddr'] : null,
                     'subnet' => isset($info['subnet']) ? $info['subnet'] : null,
@@ -288,7 +288,7 @@ try {
                 $tracker = isset($r['tracker']) ? strval($r['tracker']) : null;
                 $result[] = [
                     'id' => $tracker,
-                    'type' => isset($r['type']) ? $r['type'] : 'pass',
+                    'action' => isset($r['type']) ? $r['type'] : 'pass',
                     'interface' => isset($r['interface']) ? $r['interface'] : null,
                     'protocol' => isset($r['protocol']) ? $r['protocol'] : null,
                     'source' => isset($r['source']['address']) ? $r['source']['address'] : (isset($r['source']['any']) ? 'any' : null),
@@ -496,7 +496,7 @@ try {
             foreach ($aliases as $a) {
                 $result[] = [
                     'name' => isset($a['name']) ? $a['name'] : null,
-                    'type' => isset($a['type']) ? $a['type'] : null,
+                    'alias_type' => isset($a['type']) ? $a['type'] : null,
                     'address' => isset($a['address']) ? $a['address'] : null,
                     'description' => isset($a['descr']) ? $a['descr'] : null,
                     'detail' => isset($a['detail']) ? $a['detail'] : null,

@@ -27,13 +27,13 @@ pub struct PfsenseSystemInfo {
 pub struct PfsenseInterface {
     pub name: Option<String>,
     pub descr: Option<String>,
-    #[serde(rename = "type")]
+    #[serde(alias = "type")]
     pub iface_type: Option<String>,
     pub status: Option<String>,
     pub ip_address: Option<String>,
     pub subnet: Option<String>,
     pub mac: Option<String>,
-    pub mtu: Option<String>,
+    pub mtu: Option<u32>,
     pub media: Option<String>,
 }
 
@@ -86,7 +86,7 @@ pub struct PfsenseDhcpStaticMapping {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PfsenseFirewallRule {
     pub id: Option<String>,
-    #[serde(rename = "type")]
+    #[serde(alias = "type")]
     pub action: Option<String>,
     pub interface: Option<String>,
     pub protocol: Option<String>,
@@ -119,7 +119,7 @@ pub struct PfsenseNatRule {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PfsenseAlias {
     pub name: Option<String>,
-    #[serde(rename = "type")]
+    #[serde(alias = "type")]
     pub alias_type: Option<String>,
     pub address: Option<String>,
     pub description: Option<String>,
