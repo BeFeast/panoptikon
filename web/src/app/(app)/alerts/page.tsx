@@ -118,6 +118,19 @@ function severityBadge(severity: Alert["severity"]) {
   }
 }
 
+function severityBorderColor(severity: Alert["severity"]): string {
+  switch (severity) {
+    case "CRITICAL":
+      return "border-l-red-500";
+    case "WARNING":
+      return "border-l-amber-500";
+    case "INFO":
+      return "border-l-blue-500";
+    default:
+      return "border-l-slate-500";
+  }
+}
+
 type StatusFilter = "all" | "active" | "acknowledged";
 type TypeFilter = "all" | Alert["type"];
 
@@ -140,6 +153,7 @@ export default function AlertsPage() {
   const [ackNote, setAckNote] = useState("");
   const [muteDropdownId, setMuteDropdownId] = useState<string | null>(null);
   const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
+  const [acknowledgingIds, setAcknowledgingIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     try {
@@ -190,19 +204,29 @@ export default function AlertsPage() {
     if (!ackAlertId) return;
     try {
       await acknowledgeAlert(ackAlertId, ackNote || undefined);
-      setAlerts((prev) =>
-        (prev ?? []).map((a) =>
-          a.id === ackAlertId
-            ? {
-                ...a,
-                acknowledged_at: new Date().toISOString(),
-                acknowledged_by: ackNote || null,
-                is_read: true,
-              }
-            : a
-        )
-      );
+      // Trigger strike-through animation
+      setAcknowledgingIds((prev) => new Set(prev).add(ackAlertId));
       setAckDialogOpen(false);
+      // After animation, update the alert state
+      setTimeout(() => {
+        setAlerts((prev) =>
+          (prev ?? []).map((a) =>
+            a.id === ackAlertId
+              ? {
+                  ...a,
+                  acknowledged_at: new Date().toISOString(),
+                  acknowledged_by: ackNote || null,
+                  is_read: true,
+                }
+              : a
+          )
+        );
+        setAcknowledgingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(ackAlertId);
+          return next;
+        });
+      }, 600);
     } catch {
       // silently ignore
     }
@@ -403,6 +427,38 @@ export default function AlertsPage() {
         </div>
       </div>
 
+      {/* Severity Summary Bar */}
+      {alerts && alerts.length > 0 && (() => {
+        const criticalCount = alerts.filter((a) => a.severity === "CRITICAL" && !a.acknowledged_at).length;
+        const warningCount = alerts.filter((a) => a.severity === "WARNING" && !a.acknowledged_at).length;
+        const infoCount = alerts.filter((a) => a.severity === "INFO" && !a.acknowledged_at).length;
+        return (
+          <div className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/50 px-4 py-2.5">
+            {criticalCount > 0 && (
+              <Badge className="bg-red-500/20 text-red-400 border-red-500/30 gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                {criticalCount} critical
+              </Badge>
+            )}
+            {warningCount > 0 && (
+              <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-amber-500" />
+                {warningCount} warning
+              </Badge>
+            )}
+            {infoCount > 0 && (
+              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-blue-500" />
+                {infoCount} info
+              </Badge>
+            )}
+            {criticalCount === 0 && warningCount === 0 && infoCount === 0 && (
+              <span className="text-sm text-slate-500">All alerts acknowledged</span>
+            )}
+          </div>
+        );
+      })()}
+
       {/* Alert list */}
       {alerts === null ? (
         <div className="space-y-3">
@@ -434,12 +490,16 @@ export default function AlertsPage() {
           {alerts.map((alert) => (
             <Card
               key={alert.id}
-              className={`border-slate-800 transition-colors hover:bg-slate-800/60 hover:border-blue-500/30 ${
-                alert.acknowledged_at
-                  ? "bg-[#12121a] opacity-70"
-                  : !alert.is_read
-                    ? "border-l-2 border-l-blue-500 bg-slate-900"
-                    : "bg-slate-900"
+              className={`border-slate-800 border-l-2 transition-all hover:bg-slate-800/60 hover:border-blue-500/30 ${
+                severityBorderColor(alert.severity)
+              } ${
+                acknowledgingIds.has(alert.id)
+                  ? "animate-ack-fadeout"
+                  : alert.acknowledged_at
+                    ? "bg-[#12121a] opacity-70"
+                    : alert.severity === "CRITICAL"
+                      ? "bg-slate-900 animate-pulse-critical"
+                      : "bg-slate-900"
               }`}
             >
               <CardContent className="flex items-center gap-4 py-4">

@@ -70,10 +70,21 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
+        "pulse-critical": {
+          "0%, 100%": { backgroundColor: "rgba(239, 68, 68, 0.05)" },
+          "50%": { backgroundColor: "rgba(239, 68, 68, 0.10)" },
+        },
+        "ack-fadeout": {
+          "0%": { opacity: "1", textDecoration: "none" },
+          "40%": { opacity: "0.8", textDecoration: "line-through" },
+          "100%": { opacity: "0.5", textDecoration: "line-through" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        "pulse-critical": "pulse-critical 3s ease-in-out infinite",
+        "ack-fadeout": "ack-fadeout 600ms ease-out forwards",
       },
     },
   },

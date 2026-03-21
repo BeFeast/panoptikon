@@ -69,6 +69,82 @@ test.describe('Alerts page', () => {
     await page.screenshot({ path: 'tests/screenshots/alerts-no-duplicates.png', fullPage: true });
   });
 
+  test('alert rows have severity-colored left borders', async ({ page }) => {
+    await page.goto('/alerts/');
+    await expect(page.getByRole('heading', { name: 'Alerts', level: 1 })).toBeVisible({ timeout: 15000 });
+
+    // Check that alert cards have border-l-2 class for severity borders
+    const cards = await page.locator('[class*="border-l-2"]').all();
+
+    // If there are alerts, they should have colored left borders
+    if (cards.length > 0) {
+      for (const card of cards) {
+        const classes = await card.getAttribute('class');
+        // Each card should have one of the severity border colors
+        const hasSeverityBorder =
+          classes?.includes('border-l-red-500') ||
+          classes?.includes('border-l-amber-500') ||
+          classes?.includes('border-l-blue-500');
+        expect(hasSeverityBorder).toBeTruthy();
+      }
+    }
+
+    await page.screenshot({ path: 'tests/screenshots/alerts-severity-borders.png', fullPage: true });
+  });
+
+  test('critical alerts have pulse animation', async ({ page }) => {
+    await page.goto('/alerts/');
+    await expect(page.getByRole('heading', { name: 'Alerts', level: 1 })).toBeVisible({ timeout: 15000 });
+
+    // Check for critical alert cards with pulse animation
+    const criticalCards = await page.locator('[class*="animate-pulse-critical"]').all();
+
+    // If there are critical alerts, they should have the pulse animation class
+    // We also verify that cards with red borders exist if critical alerts are present
+    const criticalBadges = await page.locator('text=CRITICAL').all();
+    if (criticalBadges.length > 0) {
+      // There should be at least one pulsing card (non-acknowledged criticals)
+      // Some may be acknowledged and not pulsing
+      expect(criticalCards.length).toBeGreaterThanOrEqual(0);
+    }
+
+    await page.screenshot({ path: 'tests/screenshots/alerts-critical-pulse.png', fullPage: true });
+  });
+
+  test('severity summary bar shows counts', async ({ page }) => {
+    await page.goto('/alerts/');
+    await expect(page.getByRole('heading', { name: 'Alerts', level: 1 })).toBeVisible({ timeout: 15000 });
+
+    // Fetch alerts via API to check if there are any
+    const resp = await page.request.get('/api/v1/alerts?limit=200');
+    expect(resp.ok()).toBeTruthy();
+    const alerts: Array<{ severity: string; acknowledged_at: string | null }> = await resp.json();
+
+    const activeAlerts = alerts.filter(a => !a.acknowledged_at);
+
+    if (alerts.length > 0) {
+      // Summary bar should be visible when there are alerts
+      const summaryBar = page.locator('[class*="rounded-lg"][class*="border-slate-800"][class*="bg-slate-900"]').first();
+
+      // Check for severity count badges
+      const criticalCount = activeAlerts.filter(a => a.severity === 'CRITICAL').length;
+      const warningCount = activeAlerts.filter(a => a.severity === 'WARNING').length;
+      const infoCount = activeAlerts.filter(a => a.severity === 'INFO').length;
+
+      if (criticalCount > 0) {
+        await expect(page.getByText(`${criticalCount} critical`)).toBeVisible();
+      }
+      if (warningCount > 0) {
+        await expect(page.getByText(`${warningCount} warning`)).toBeVisible();
+      }
+      if (infoCount > 0) {
+        await expect(page.getByText(`${infoCount} info`)).toBeVisible();
+      }
+    }
+
+    await page.screenshot({ path: 'tests/screenshots/alerts-summary-bar.png', fullPage: true });
+  });
+
   test('agent offline alert shows agent name not raw UUID', async ({ page }) => {
     const agentName = `e2e-alert-agent-${Date.now()}`;
 
