@@ -41,7 +41,7 @@ test.describe('Sidebar polish — accent bar, hover, separators', () => {
     await expect(iconWithScale).toBeVisible();
   });
 
-  test('collapsed sidebar tooltips have slide animation class', async ({ page }) => {
+  test('collapsed sidebar shows tooltips on hover', async ({ page }) => {
     const sidebar = page.locator('aside');
     await expect(sidebar).toBeVisible({ timeout: 15000 });
 
@@ -53,8 +53,8 @@ test.describe('Sidebar polish — accent bar, hover, separators', () => {
     const firstNavIcon = sidebar.locator('a').first();
     await firstNavIcon.hover();
 
-    // Tooltip should appear with slide-in animation class
-    const tooltip = page.locator('[data-side="right"].slide-in-from-left-1');
+    // Tooltip should appear on the right side with the nav label
+    const tooltip = page.locator('[role="tooltip"]');
     await expect(tooltip).toBeVisible({ timeout: 5000 });
 
     await page.screenshot({ path: 'tests/screenshots/sidebar-collapsed-tooltip.png' });

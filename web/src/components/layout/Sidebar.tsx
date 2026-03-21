@@ -376,8 +376,8 @@ export function Sidebar() {
                   <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
                 </TooltipContent>
               </Tooltip>
-              <p className="text-[10px] text-slate-800">
-                {serverVersion ?? "..."}
+              <p className="text-[10px] text-slate-700">
+                Panoptikon {serverVersion ?? "..."}
               </p>
             </div>
           ) : (
