@@ -57,7 +57,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="login-bg-mesh relative flex min-h-screen items-center justify-center overflow-hidden">
+    <div className="login-bg-mesh relative flex min-h-screen items-center justify-center overflow-x-hidden">
       {/* Animated floating orbs */}
       <div className="login-orb login-orb-1" />
       <div className="login-orb login-orb-2" />
