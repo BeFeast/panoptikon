@@ -44,7 +44,8 @@ test.describe("No sticky tab/filter bars (#482)", () => {
     const position = await filterBar.evaluate(
       (el) => window.getComputedStyle(el).position,
     );
-    expect(position).toBe("static");
+    // position must not be sticky or fixed — static or relative are both fine
+    expect(["static", "relative"]).toContain(position);
 
     await page.screenshot({
       path: "tests/screenshots/no-sticky-devices-filter.png",

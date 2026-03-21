@@ -67,10 +67,9 @@ test.describe('Devices page: bento layout, pill filters, timeline', () => {
     const mapButton = page.locator('button[title="Network Map"]');
     await expect(mapButton).toBeVisible({ timeout: 10000 });
 
-    // Click it and verify navigation to topology
+    // Click it and verify navigation to topology (full-screen canvas, no heading)
     await mapButton.click();
     await page.waitForURL(/\/topology/, { timeout: 10000 });
-    await expect(page.getByRole('heading', { name: /topology/i })).toBeVisible({ timeout: 10000 });
     await page.screenshot({ path: 'tests/screenshots/devices-topology-link.png', fullPage: true });
   });
 
