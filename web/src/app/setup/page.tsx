@@ -61,7 +61,7 @@ export default function SetupPage() {
   };
 
   return (
-    <div className="login-bg-mesh relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+    <div className="login-bg-mesh relative flex min-h-screen items-center justify-center overflow-x-hidden p-4">
       {/* Animated floating orbs */}
       <div className="login-orb login-orb-1" />
       <div className="login-orb login-orb-2" />

@@ -1,6 +1,13 @@
-import { test, expect, PASSWORD } from '../../e2e/fixtures';
+import { test, expect, setupIfNeeded } from '../../e2e/fixtures';
 
 test.describe('Login page visual upgrade', () => {
+  test.beforeEach(async ({ page, context }) => {
+    // Ensure initial setup is complete so /login doesn't redirect to /setup
+    await setupIfNeeded(page);
+    // Clear session so we land on the login page, not dashboard
+    await context.clearCookies();
+  });
+
   test('login page has animated background and glow card', async ({ page }) => {
     await page.goto('/login/');
 
