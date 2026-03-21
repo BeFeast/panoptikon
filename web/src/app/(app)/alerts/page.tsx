@@ -53,6 +53,7 @@ import { downloadExport } from "@/lib/export";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/PageTransition";
 import { HelpTooltip } from "@/components/HelpTooltip";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Tooltip,
   TooltipContent,
@@ -420,15 +421,11 @@ export default function AlertsPage() {
           ))}
         </div>
       ) : alerts.length === 0 ? (
-        <Card className="border-slate-800 bg-slate-900">
-          <CardContent className="flex flex-col items-center gap-3 py-16">
-            <BellOff className="h-12 w-12 text-slate-600" />
-            <p className="text-lg font-medium text-slate-400">No alerts yet — all quiet</p>
-            <p className="max-w-sm text-sm text-slate-600">
-              Alerts appear here when new devices join the network, devices go offline, or configured rules are triggered. Set up rules in Settings → Alert Rules.
-            </p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={Shield}
+          title="All clear!"
+          description="No alerts to show. Alerts appear when new devices join the network, devices go offline, or configured rules trigger. Set up rules in Settings → Alert Rules."
+        />
       ) : (
         <div className="space-y-2">
           {alerts.map((alert) => (

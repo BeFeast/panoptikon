@@ -36,6 +36,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import { downloadExport } from "@/lib/export";
 import { DeviceTrafficChart } from "@/components/DeviceTrafficChart";
+import { EmptyState } from "@/components/ui/empty-state";
 
 /** Format an ISO minute string to HH:mm for the X axis. */
 function formatTime(iso: string): string {
@@ -285,7 +286,11 @@ export default function TrafficPage() {
             </TableBody>
           </Table>
         ) : topDevices.length === 0 ? (
-          <div className="p-8 text-center text-slate-500">No active devices.</div>
+          <EmptyState
+            icon={Activity}
+            title="No traffic data"
+            description="No active devices detected. Enable NetFlow or sFlow monitoring on your router to start collecting traffic data."
+          />
         ) : (
           <Table>
             <TableHeader>

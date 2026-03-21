@@ -48,6 +48,7 @@ import { useWsEvent } from "@/lib/ws";
 import { getDeviceIcon } from "@/lib/device-icons";
 import { getOsDisplay } from "@/lib/os-icons";
 import { toast } from "sonner";
+import { ErrorState } from "@/components/ui/empty-state";
 
 // ─── Types ────────────────────────────────────────────────
 
@@ -171,9 +172,7 @@ export default function AssetDetailContent() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-rose-400">{error}</p>
-      </div>
+      <ErrorState message={error} onRetry={load} />
     );
   }
 

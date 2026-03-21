@@ -10,6 +10,8 @@ import {
   MonitorSmartphone,
   Pin,
   Router,
+  Check,
+  Rocket,
   WifiOff,
 } from "lucide-react";
 import {
@@ -42,6 +44,7 @@ import { toast } from "sonner";
 import { useWsEvent } from "@/lib/ws";
 import { getDeviceIcon } from "@/lib/device-icons";
 import type { DeviceType } from "@/lib/device-type";
+import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
 // ─── Format ISO minute string to HH:mm ─────────────────
@@ -369,6 +372,52 @@ const TYPE_COLORS: Record<string, string> = {
   unknown: "bg-slate-500",
 };
 
+// ─── Welcome Card (first-run) ────────────────────────────
+
+function WelcomeCard({ stats }: { stats: DashboardStats }) {
+  const steps = [
+    { label: "Configure router", done: stats.router_status !== "unconfigured" && stats.router_type !== "none", href: "/settings" },
+    { label: "Discover devices", done: stats.devices_total > 0, href: "/devices" },
+    { label: "Set up alerts", done: stats.alerts_unread > 0 || stats.devices_total > 3, href: "/alerts" },
+  ];
+  const completed = steps.filter((s) => s.done).length;
+  const pct = Math.round((completed / steps.length) * 100);
+
+  if (completed === steps.length) return null;
+
+  return (
+    <Card className="border-slate-700/50 bg-slate-900/55">
+      <CardContent className="flex flex-col gap-4 py-6">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-500/15">
+            <Rocket className="h-5 w-5 text-blue-400" />
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white">Welcome to Panoptikon</p>
+            <p className="text-xs text-slate-500">Complete setup to get the most out of your dashboard</p>
+          </div>
+          <span className="ml-auto text-xs font-medium text-slate-400">{pct}%</span>
+        </div>
+        <Progress value={pct} className="h-1.5" />
+        <ul className="space-y-2">
+          {steps.map((step) => (
+            <li key={step.label} className="flex items-center gap-2 text-sm">
+              {step.done ? (
+                <Check className="h-4 w-4 text-emerald-400" />
+              ) : (
+                <div className="h-4 w-4 rounded-full border border-slate-700" />
+              )}
+              <Link href={step.href} className={step.done ? "text-slate-500 line-through" : "text-slate-300 hover:text-white"}>
+                {step.label}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Page ───────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -493,6 +542,9 @@ export default function DashboardPage() {
           Network health, traffic, and alerts at a glance.
         </p>
       </div>
+
+      {/* ── Welcome card (first-run) ───────────────────── */}
+      {stats && <WelcomeCard stats={stats} />}
 
       {/* ── Bento Grid ─────────────────────────────────── */}
       <StaggerContainer className="grid grid-cols-1 gap-6 xl:grid-cols-5">

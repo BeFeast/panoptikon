@@ -44,6 +44,7 @@ import { useWsEvent } from "@/lib/ws";
 import { PageTransition } from "@/components/PageTransition";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import { copyToClipboard } from "@/lib/utils";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function AgentsPage() {
   const router = useRouter();
@@ -166,13 +167,11 @@ export default function AgentsPage() {
             </TableBody>
           </Table>
         ) : agents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Terminal className="mb-4 h-12 w-12 text-slate-600" />
-            <p className="text-lg font-medium text-slate-400">No agents yet</p>
-            <p className="mt-1 text-sm text-slate-600">
-              Click &quot;Add Agent&quot; to generate an install command.
-            </p>
-          </div>
+          <EmptyState
+            icon={Terminal}
+            title="No agents connected"
+            description="Install an agent on a remote machine to collect system metrics. Click &quot;Add Agent&quot; above to generate an install command."
+          />
         ) : (
           <Table>
             <TableHeader>

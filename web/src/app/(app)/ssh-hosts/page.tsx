@@ -53,6 +53,7 @@ import { formatBytes, timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
 import { PageTransition } from "@/components/PageTransition";
 import { toast } from "sonner";
+import { EmptyState } from "@/components/ui/empty-state";
 
 export default function SshHostsPage() {
   const [targets, setTargets] = useState<SshTarget[] | null>(null);
@@ -170,13 +171,13 @@ export default function SshHostsPage() {
               </TableBody>
             </Table>
           ) : targets.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Server className="mb-4 h-12 w-12 text-slate-600" />
-              <p className="text-lg font-medium text-slate-400">No SSH hosts yet</p>
-              <p className="mt-1 text-sm text-slate-600">
-                Add a host to start collecting metrics via SSH without installing an agent.
-              </p>
-            </div>
+            <EmptyState
+              icon={Server}
+              title="No SSH hosts configured"
+              description="Add a host to start collecting metrics via SSH without installing an agent."
+              actionLabel="Add SSH Host"
+              onAction={() => setAddOpen(true)}
+            />
           ) : (
             <Table>
               <TableHeader>

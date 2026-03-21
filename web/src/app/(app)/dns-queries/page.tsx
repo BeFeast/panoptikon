@@ -31,6 +31,7 @@ import type {
   DnsQueryStats,
 } from "@/lib/types";
 import { PageTransition } from "@/components/PageTransition";
+import { ErrorState } from "@/components/ui/empty-state";
 
 type TimeRange = "1h" | "6h" | "24h" | "48h" | "7d";
 
@@ -123,9 +124,7 @@ export default function DnsQueriesPage() {
 
   if (error && !logData) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-rose-400">{error}</p>
-      </div>
+      <ErrorState message={error} onRetry={loadLog} />
     );
   }
 

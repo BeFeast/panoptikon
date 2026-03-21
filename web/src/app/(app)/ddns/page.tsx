@@ -58,6 +58,7 @@ import {
 } from "@/lib/api";
 import type { DdnsEntry, DdnsEntryRequest, DdnsStatus } from "@/lib/types";
 import { toast } from "sonner";
+import { ErrorState } from "@/components/ui/empty-state";
 
 const PROVIDERS = [
   "cloudflare",
@@ -451,9 +452,7 @@ export default function DdnsPage() {
 
   if (error && !entries) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-rose-400">{error}</p>
-      </div>
+      <ErrorState message={error} onRetry={loadData} />
     );
   }
 

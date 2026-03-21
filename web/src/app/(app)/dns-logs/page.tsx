@@ -46,6 +46,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { fetchDnsQueryLog, fetchDnsStats, purgeDnsLogs } from "@/lib/api";
+import { EmptyState } from "@/components/ui/empty-state";
 import type {
   DnsQueryLogEntry,
   DnsStatsResponse,
@@ -359,12 +360,12 @@ export default function DnsLogsPage() {
                       ))
                     ) : logData?.entries.length === 0 ? (
                       <TableRow>
-                        <TableCell
-                          colSpan={7}
-                          className="h-24 text-center text-muted-foreground"
-                        >
-                          No DNS queries recorded yet. Configure Unbound log
-                          ingestion to start collecting data.
+                        <TableCell colSpan={7}>
+                          <EmptyState
+                            icon={Globe}
+                            title="No DNS queries recorded"
+                            description="Configure Unbound or Pi-hole log ingestion in Settings → DNS to start collecting DNS query data."
+                          />
                         </TableCell>
                       </TableRow>
                     ) : (
