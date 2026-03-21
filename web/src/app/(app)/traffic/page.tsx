@@ -82,7 +82,7 @@ export default function TrafficPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold text-white">Traffic</h1>
+          <h1 className="text-3xl font-bold tracking-tight font-display text-white">Traffic</h1>
           <HelpTooltip text="Network bandwidth usage over time. Requires NetFlow/sFlow export from your router to be configured in Settings." />
         </div>
         <DropdownMenu>

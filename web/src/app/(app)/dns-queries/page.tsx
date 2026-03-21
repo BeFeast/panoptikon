@@ -135,7 +135,7 @@ export default function DnsQueriesPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-white">DNS Query Log</h1>
+            <h1 className="text-3xl font-bold tracking-tight font-display text-white">DNS Query Log</h1>
             {stats && (
               <Badge variant="secondary" className="gap-1">
                 <Globe className="h-3 w-3" />

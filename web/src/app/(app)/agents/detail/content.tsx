@@ -113,7 +113,7 @@ export default function AgentDetailContent() {
           Back to Agents
         </Link>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-white">
+          <h1 className="text-3xl font-bold tracking-tight font-display text-white">
             {agent.name ?? agent.id.slice(0, 8)}
           </h1>
           <Badge

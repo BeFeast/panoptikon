@@ -270,7 +270,7 @@ export default function AlertsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-semibold text-white">Alerts</h1>
+          <h1 className="text-3xl font-bold tracking-tight font-display text-white">Alerts</h1>
           <HelpTooltip text="Notifications about network events — new devices, devices going offline, and security alerts. Configure rules in Settings → Alert Rules." />
           {activeCount > 0 && (
             <Badge variant="secondary" className="gap-1">

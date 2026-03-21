@@ -302,7 +302,7 @@ export default function RouterSettingsPage() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <h1 className="text-2xl font-semibold text-white">
+          <h1 className="text-3xl font-bold tracking-tight font-display text-white">
             Router Settings
           </h1>
         </div>

@@ -486,9 +486,9 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-    <div className="space-y-8">
+    <div className="space-y-10">
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight font-display text-white">Dashboard</h1>
         <p className="max-w-3xl text-sm leading-6 text-slate-400">
           Network health, traffic, and alerts at a glance.
         </p>
@@ -532,7 +532,7 @@ export default function DashboardPage() {
         />
 
         {/* ── Stat Cards Row ───────────────────────────── */}
-        <StaggerItem className="xl:col-span-4"><div className="grid h-full grid-cols-2 gap-4 xl:grid-cols-4">
+        <StaggerItem className="xl:col-span-4"><div className="grid h-full grid-cols-2 gap-5 xl:grid-cols-4">
           {statsError ? (
             <>
               <StatCard

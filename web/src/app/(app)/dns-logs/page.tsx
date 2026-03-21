@@ -149,7 +149,7 @@ export default function DnsLogsPage() {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-white">
+              <h1 className="text-3xl font-bold tracking-tight font-display text-white">
                 DNS Query Log
               </h1>
               <HelpTooltip text="Shows DNS queries made by devices on your network. Useful for spotting suspicious domains and debugging connectivity. Data is kept for 7 days." />

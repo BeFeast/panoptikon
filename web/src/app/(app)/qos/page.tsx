@@ -163,7 +163,7 @@ export default function QosPage() {
               <Gauge className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-white">QoS / Traffic Shaping</h1>
+              <h1 className="text-3xl font-bold tracking-tight font-display text-white">QoS / Traffic Shaping</h1>
               <p className="text-sm text-slate-400">
                 Queue policies, bandwidth limits, and hierarchical shaping.
               </p>

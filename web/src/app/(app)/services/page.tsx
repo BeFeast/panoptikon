@@ -281,7 +281,7 @@ export default function ServicesPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-white">Services</h1>
+            <h1 className="text-3xl font-bold tracking-tight font-display text-white">Services</h1>
             <p className="mt-1 text-sm text-slate-400">
               Manage reverse proxy entries and port-forwarding rules
             </p>

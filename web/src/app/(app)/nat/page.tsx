@@ -132,7 +132,7 @@ export default function NatPage() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight text-white">NAT / Port Forwarding</h1>
+                <h1 className="text-3xl font-bold tracking-tight font-display text-white">NAT / Port Forwarding</h1>
                 <HelpTooltip text="Manage MikroTik NAT and port-forwarding rules from the same command-center style UI." />
               </div>
               <p className="text-sm text-slate-400">

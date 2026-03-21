@@ -105,7 +105,7 @@ export default function SettingsPage() {
   return (
     <PageTransition>
       <div className="mx-auto max-w-5xl py-8">
-        <h1 className="text-2xl font-semibold text-white">Settings</h1>
+        <h1 className="text-3xl font-bold tracking-tight font-display text-white">Settings</h1>
 
         <div className="mt-8 space-y-8">
           {settingsNav.map((group) => {

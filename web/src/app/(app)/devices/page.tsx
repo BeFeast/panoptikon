@@ -308,7 +308,7 @@ export default function DevicesPage() {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-white">Devices</h1>
+              <h1 className="text-3xl font-bold tracking-tight font-display text-white">Devices</h1>
               <HelpTooltip text="All devices discovered on your network. Use Scan Now to discover new devices, Re-identify to fingerprint them, and Resolve Names to look up hostnames via DNS." />
             </div>
             <p className="max-w-2xl text-sm leading-6 text-slate-300/80">
