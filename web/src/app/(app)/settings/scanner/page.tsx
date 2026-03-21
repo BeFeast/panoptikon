@@ -3,22 +3,18 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Radar,
-  Loader2,
-  CheckCircle,
+  Search,
+  Layers,
   AlertCircle,
   ArrowLeft,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageTransition } from "@/components/PageTransition";
+import {
+  SettingsSection,
+  ValidatedInput,
+  AnimatedSaveButton,
+} from "@/components/settings";
 import Link from "next/link";
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -92,6 +88,9 @@ export default function ScannerSettingsPage() {
     netbiosEnabled !== savedNetbiosEnabled ||
     snmpEnabled !== savedSnmpEnabled ||
     httpFingerprintEnabled !== savedHttpFingerprintEnabled;
+
+  const intervalNum = parseInt(scanInterval, 10);
+  const intervalInvalid = isNaN(intervalNum) || intervalNum < 10;
 
   async function handleScannerSave() {
     settingsLoadTokenRef.current++;
@@ -168,216 +167,137 @@ export default function ScannerSettingsPage() {
           <h1 className="text-2xl font-semibold text-white">Network Scanner</h1>
         </div>
 
-        <Card className="border-slate-800 bg-slate-900">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10">
-                <Radar className="h-4 w-4 text-cyan-400" />
-              </div>
-              <div>
-                <CardTitle className="text-base text-white">
-                  Scanner Configuration
-                </CardTitle>
-                <CardDescription className="text-xs text-slate-500">
-                  Configure ARP scanning interval, target subnets, and ping sweep.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="scan-interval" className="text-xs text-slate-400">
-                Scan interval (seconds)
-              </Label>
-              <Input
-                id="scan-interval"
-                type="number"
-                min={10}
-                value={scanInterval}
-                onChange={(e) => setScanInterval(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-                placeholder="60"
-              />
-            </div>
+        <SettingsSection
+          icon={<Search className="h-4 w-4 text-cyan-400" />}
+          iconBg="bg-cyan-500/10"
+          title="Scan Settings"
+          description="Configure ARP scanning interval and target subnets."
+        >
+          <ValidatedInput
+            id="scan-interval"
+            label="Scan interval (seconds)"
+            type="number"
+            min={10}
+            value={scanInterval}
+            onChange={(e) => setScanInterval(e.target.value)}
+            placeholder="60"
+            validationState={
+              scanInterval === "" ? "idle" : intervalInvalid ? "invalid" : "valid"
+            }
+            validationMessage={
+              intervalInvalid && scanInterval !== ""
+                ? "Must be at least 10 seconds."
+                : undefined
+            }
+          />
 
-            <div className="space-y-1.5">
-              <Label htmlFor="scan-subnets" className="text-xs text-slate-400">
-                Subnets to scan (comma-separated CIDR)
-              </Label>
-              <Input
-                id="scan-subnets"
-                type="text"
-                value={scanSubnets}
-                onChange={(e) => setScanSubnets(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-                placeholder="10.0.0.0/24, 192.168.1.0/24"
-              />
-              <p className="text-[10px] text-slate-600">
-                Leave empty to auto-detect from router interfaces.
-              </p>
-            </div>
+          <ValidatedInput
+            id="scan-subnets"
+            label="Subnets to scan (comma-separated CIDR)"
+            type="text"
+            value={scanSubnets}
+            onChange={(e) => setScanSubnets(e.target.value)}
+            placeholder="10.0.0.0/24, 192.168.1.0/24"
+            hint="Leave empty to auto-detect from router interfaces."
+          />
 
-            <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              role="switch"
+              aria-checked={pingSweepEnabled}
+              onClick={() => setPingSweepEnabled((v) => !v)}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
+                pingSweepEnabled ? "bg-cyan-500" : "bg-slate-700"
+              }`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+                  pingSweepEnabled ? "translate-x-4" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+            <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setPingSweepEnabled((v) => !v)}>
+              Active ping sweep
+            </Label>
+          </div>
+        </SettingsSection>
+
+        <SettingsSection
+          icon={<Layers className="h-4 w-4 text-cyan-400" />}
+          iconBg="bg-cyan-500/10"
+          title="Enrichment Sources"
+          description="Enable additional device discovery methods."
+        >
+          {[
+            {
+              id: "nmap",
+              label: "Nmap service detection",
+              desc: "Scan open ports and detect services (requires nmap)",
+              checked: nmapEnabled,
+              toggle: () => setNmapEnabled((v) => !v),
+            },
+            {
+              id: "netbios",
+              label: "NetBIOS name lookup",
+              desc: "Discover Windows machine names (requires nmblookup)",
+              checked: netbiosEnabled,
+              toggle: () => setNetbiosEnabled((v) => !v),
+            },
+            {
+              id: "snmp",
+              label: "SNMP discovery",
+              desc: "Query managed switches/routers via SNMP (requires snmpget)",
+              checked: snmpEnabled,
+              toggle: () => setSnmpEnabled((v) => !v),
+            },
+            {
+              id: "http-fingerprint",
+              label: "HTTP fingerprinting",
+              desc: "Detect web servers and infer device type from HTTP headers",
+              checked: httpFingerprintEnabled,
+              toggle: () => setHttpFingerprintEnabled((v) => !v),
+            },
+          ].map((item) => (
+            <div key={item.id} className="flex items-center gap-3">
               <button
                 type="button"
                 role="switch"
-                aria-checked={pingSweepEnabled}
-                onClick={() => setPingSweepEnabled((v) => !v)}
+                aria-checked={item.checked}
+                data-testid={`${item.id}-toggle`}
+                onClick={item.toggle}
                 className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                  pingSweepEnabled ? "bg-cyan-500" : "bg-slate-700"
+                  item.checked ? "bg-cyan-500" : "bg-slate-700"
                 }`}
               >
                 <span
                   className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
-                    pingSweepEnabled ? "translate-x-4" : "translate-x-0.5"
+                    item.checked ? "translate-x-4" : "translate-x-0.5"
                   }`}
                 />
               </button>
-              <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setPingSweepEnabled((v) => !v)}>
-                Active ping sweep
-              </Label>
-            </div>
-
-            <div className="mt-2 border-t border-slate-800 pt-4">
-              <p className="mb-3 text-xs font-medium text-slate-300">
-                Enrichment Sources
-              </p>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={nmapEnabled}
-                    data-testid="nmap-toggle"
-                    onClick={() => setNmapEnabled((v) => !v)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                      nmapEnabled ? "bg-cyan-500" : "bg-slate-700"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
-                        nmapEnabled ? "translate-x-4" : "translate-x-0.5"
-                      }`}
-                    />
-                  </button>
-                  <div>
-                    <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setNmapEnabled((v) => !v)}>
-                      Nmap service detection
-                    </Label>
-                    <p className="text-[10px] text-slate-600">
-                      Scan open ports and detect services (requires nmap)
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={netbiosEnabled}
-                    data-testid="netbios-toggle"
-                    onClick={() => setNetbiosEnabled((v) => !v)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                      netbiosEnabled ? "bg-cyan-500" : "bg-slate-700"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
-                        netbiosEnabled ? "translate-x-4" : "translate-x-0.5"
-                      }`}
-                    />
-                  </button>
-                  <div>
-                    <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setNetbiosEnabled((v) => !v)}>
-                      NetBIOS name lookup
-                    </Label>
-                    <p className="text-[10px] text-slate-600">
-                      Discover Windows machine names (requires nmblookup)
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={snmpEnabled}
-                    data-testid="snmp-toggle"
-                    onClick={() => setSnmpEnabled((v) => !v)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                      snmpEnabled ? "bg-cyan-500" : "bg-slate-700"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
-                        snmpEnabled ? "translate-x-4" : "translate-x-0.5"
-                      }`}
-                    />
-                  </button>
-                  <div>
-                    <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setSnmpEnabled((v) => !v)}>
-                      SNMP discovery
-                    </Label>
-                    <p className="text-[10px] text-slate-600">
-                      Query managed switches/routers via SNMP (requires snmpget)
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={httpFingerprintEnabled}
-                    data-testid="http-fingerprint-toggle"
-                    onClick={() => setHttpFingerprintEnabled((v) => !v)}
-                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                      httpFingerprintEnabled ? "bg-cyan-500" : "bg-slate-700"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
-                        httpFingerprintEnabled ? "translate-x-4" : "translate-x-0.5"
-                      }`}
-                    />
-                  </button>
-                  <div>
-                    <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setHttpFingerprintEnabled((v) => !v)}>
-                      HTTP fingerprinting
-                    </Label>
-                    <p className="text-[10px] text-slate-600">
-                      Detect web servers and infer device type from HTTP headers
-                    </p>
-                  </div>
-                </div>
+              <div>
+                <Label className="text-xs text-slate-400 cursor-pointer" onClick={item.toggle}>
+                  {item.label}
+                </Label>
+                <p className="text-[10px] text-slate-600">{item.desc}</p>
               </div>
             </div>
+          ))}
+        </SettingsSection>
 
-            {scannerStatus === "success" && scannerMsg && (
-              <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-                <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-                <p className="text-xs text-emerald-400">{scannerMsg}</p>
-              </div>
-            )}
-            {scannerStatus === "error" && scannerMsg && (
-              <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-                <p className="text-xs text-rose-400">{scannerMsg}</p>
-              </div>
-            )}
+        {scannerStatus === "error" && scannerMsg && (
+          <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+            <p className="text-xs text-rose-400">{scannerMsg}</p>
+          </div>
+        )}
 
-            <Button
-              onClick={handleScannerSave}
-              disabled={!scannerDirty || scannerStatus === "loading"}
-              className="bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
-            >
-              {scannerStatus === "loading" ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              ) : null}
-              Save
-            </Button>
-          </CardContent>
-        </Card>
+        <AnimatedSaveButton
+          onClick={handleScannerSave}
+          status={scannerStatus}
+          disabled={!scannerDirty || scannerStatus === "loading"}
+        />
       </div>
     </PageTransition>
   );

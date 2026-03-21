@@ -6,20 +6,15 @@ import {
   Eye,
   EyeOff,
   CheckCircle,
-  AlertCircle,
   ArrowLeft,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { PageTransition } from "@/components/PageTransition";
+import {
+  SettingsSection,
+  ValidatedInput,
+  AnimatedSaveButton,
+  PasswordStrengthMeter,
+} from "@/components/settings";
 import Link from "next/link";
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -33,12 +28,8 @@ export default function PasswordSettingsPage() {
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNext, setShowNext] = useState(false);
 
-  const validationError = (() => {
-    if (next && next.length < 8)
-      return "New password must be at least 8 characters.";
-    if (confirm && next !== confirm) return "Passwords do not match.";
-    return "";
-  })();
+  const nextTooShort = next.length > 0 && next.length < 8;
+  const mismatch = confirm.length > 0 && next !== confirm;
 
   const canSubmitPw =
     current.length > 0 &&
@@ -101,79 +92,71 @@ export default function PasswordSettingsPage() {
           <h1 className="text-2xl font-semibold text-white">Change Password</h1>
         </div>
 
-        <Card className="border-slate-800 bg-slate-900">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
-                <Lock className="h-4 w-4 text-blue-400" />
-              </div>
-              <div>
-                <CardTitle className="text-base text-white">
-                  Password
-                </CardTitle>
-                <CardDescription className="text-xs text-slate-500">
-                  After changing, you&apos;ll be redirected to login again.
-                </CardDescription>
-              </div>
+        <SettingsSection
+          icon={<Lock className="h-4 w-4 text-blue-400" />}
+          iconBg="bg-blue-500/10"
+          title="Password"
+          description="After changing, you'll be redirected to login again."
+        >
+          {pwStatus === "success" ? (
+            <div className="flex flex-col items-center gap-3 py-6 text-center">
+              <CheckCircle className="h-10 w-10 text-emerald-400" />
+              <p className="text-sm text-emerald-400">
+                Password changed! Redirecting to login&hellip;
+              </p>
             </div>
-          </CardHeader>
-          <CardContent>
-            {pwStatus === "success" ? (
-              <div className="flex flex-col items-center gap-3 py-6 text-center">
-                <CheckCircle className="h-10 w-10 text-emerald-400" />
-                <p className="text-sm text-emerald-400">
-                  Password changed! Redirecting to login…
-                </p>
-              </div>
-            ) : (
-              <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="current" className="text-xs text-slate-400">
-                    Current password
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="current"
-                      type={showCurrent ? "text" : "password"}
-                      value={current}
-                      onChange={(e) => setCurrent(e.target.value)}
-                      className="border-slate-800 bg-slate-950 pr-10 text-white placeholder:text-slate-600"
-                      placeholder="••••••••"
-                      autoComplete="current-password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowCurrent((v) => !v)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                      tabIndex={-1}
-                    >
-                      {showCurrent ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </button>
-                  </div>
-                </div>
+          ) : (
+            <form onSubmit={handlePasswordSubmit} className="space-y-4">
+              <ValidatedInput
+                id="current"
+                label="Current password"
+                type={showCurrent ? "text" : "password"}
+                value={current}
+                onChange={(e) => setCurrent(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="current-password"
+                validationState={
+                  pwStatus === "error" && pwError.includes("incorrect")
+                    ? "invalid"
+                    : "idle"
+                }
+                rightElement={
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrent((v) => !v)}
+                    className="text-slate-500 hover:text-slate-300"
+                    tabIndex={-1}
+                  >
+                    {showCurrent ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                }
+              />
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="new" className="text-xs text-slate-400">
-                    New password
-                  </Label>
-                  <div className="relative">
-                    <Input
-                      id="new"
-                      type={showNext ? "text" : "password"}
-                      value={next}
-                      onChange={(e) => setNext(e.target.value)}
-                      className="border-slate-800 bg-slate-950 pr-10 text-white placeholder:text-slate-600"
-                      placeholder="Min. 8 characters"
-                      autoComplete="new-password"
-                    />
+              <div className="space-y-1">
+                <ValidatedInput
+                  id="new"
+                  label="New password"
+                  type={showNext ? "text" : "password"}
+                  value={next}
+                  onChange={(e) => setNext(e.target.value)}
+                  placeholder="Min. 8 characters"
+                  autoComplete="new-password"
+                  validationState={
+                    nextTooShort
+                      ? "invalid"
+                      : next.length >= 8
+                        ? "valid"
+                        : "idle"
+                  }
+                  rightElement={
                     <button
                       type="button"
                       onClick={() => setShowNext((v) => !v)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                      className="text-slate-500 hover:text-slate-300"
                       tabIndex={-1}
                     >
                       {showNext ? (
@@ -182,62 +165,48 @@ export default function PasswordSettingsPage() {
                         <Eye className="h-4 w-4" />
                       )}
                     </button>
-                  </div>
-                  {next.length > 0 && (
-                    <div className="mt-1 flex gap-1">
-                      {[1, 2, 3, 4].map((i) => (
-                        <div
-                          key={i}
-                          className={`h-0.5 flex-1 rounded-full transition-colors ${
-                            next.length >= i * 4
-                              ? next.length < 8
-                                ? "bg-rose-500"
-                                : next.length < 12
-                                  ? "bg-yellow-500"
-                                  : "bg-emerald-500"
-                              : "bg-slate-800"
-                          }`}
-                        />
-                      ))}
-                    </div>
-                  )}
+                  }
+                />
+                <PasswordStrengthMeter password={next} />
+              </div>
+
+              <ValidatedInput
+                id="confirm"
+                label="Confirm new password"
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="••••••••"
+                autoComplete="new-password"
+                validationState={
+                  mismatch
+                    ? "invalid"
+                    : confirm.length > 0 && next === confirm
+                      ? "valid"
+                      : "idle"
+                }
+                validationMessage={
+                  mismatch ? "Passwords do not match." : undefined
+                }
+              />
+
+              {pwStatus === "error" && pwError && (
+                <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+                  <span className="h-4 w-4 shrink-0 text-rose-400">!</span>
+                  <p className="text-xs text-rose-400">{pwError}</p>
                 </div>
+              )}
 
-                <div className="space-y-1.5">
-                  <Label htmlFor="confirm" className="text-xs text-slate-400">
-                    Confirm new password
-                  </Label>
-                  <Input
-                    id="confirm"
-                    type="password"
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                    className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-                    placeholder="••••••••"
-                    autoComplete="new-password"
-                  />
-                </div>
-
-                {(validationError || (pwStatus === "error" && pwError)) && (
-                  <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-                    <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-                    <p className="text-xs text-rose-400">
-                      {pwStatus === "error" && pwError ? pwError : validationError}
-                    </p>
-                  </div>
-                )}
-
-                <Button
-                  type="submit"
-                  disabled={!canSubmitPw}
-                  className="w-full bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
-                >
-                  {pwStatus === "loading" ? "Changing…" : "Change Password"}
-                </Button>
-              </form>
-            )}
-          </CardContent>
-        </Card>
+              <AnimatedSaveButton
+                type="submit"
+                status={pwStatus}
+                disabled={!canSubmitPw}
+                label="Change Password"
+                className="w-full"
+              />
+            </form>
+          )}
+        </SettingsSection>
       </div>
     </PageTransition>
   );
