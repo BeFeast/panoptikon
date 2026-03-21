@@ -19,19 +19,19 @@ test.describe('Devices page: bento layout, pill filters, timeline', () => {
     await expect(offlinePill).toBeVisible();
     await expect(unknownPill).toBeVisible();
 
-    // Click Online pill
+    // Click Online pill and wait for it to become active
     await onlinePill.click();
-    await page.waitForTimeout(500);
+    await expect(onlinePill).toHaveClass(/text-white/, { timeout: 5000 });
     await page.screenshot({ path: 'tests/screenshots/devices-pill-online.png', fullPage: true });
 
-    // Click Offline pill
+    // Click Offline pill and wait for it to become active
     await offlinePill.click();
-    await page.waitForTimeout(500);
+    await expect(offlinePill).toHaveClass(/text-white/, { timeout: 5000 });
     await page.screenshot({ path: 'tests/screenshots/devices-pill-offline.png', fullPage: true });
 
     // Click All pill to reset
     await allPill.click();
-    await page.waitForTimeout(500);
+    await expect(allPill).toHaveClass(/text-white/, { timeout: 5000 });
     await page.screenshot({ path: 'tests/screenshots/devices-pill-all.png', fullPage: true });
   });
 
@@ -39,7 +39,6 @@ test.describe('Devices page: bento layout, pill filters, timeline', () => {
     // Ensure grid view is selected
     const gridButton = page.locator('button[title="Grid view"]');
     await gridButton.click();
-    await page.waitForTimeout(1000);
 
     // Grid container should exist
     const grid = page.locator('.grid.auto-rows-auto');
@@ -52,23 +51,25 @@ test.describe('Devices page: bento layout, pill filters, timeline', () => {
     // Switch to table view
     const tableButton = page.locator('button[title="Table view"]');
     await tableButton.click();
-    await page.waitForTimeout(1000);
 
     // Table should be visible
     const table = page.locator('table');
     await expect(table).toBeVisible({ timeout: 10000 });
 
-    // Table rows should have border-l-2 class for color-coded borders
+    // At least one row should carry border-l-2 (color-coded left border)
+    const coloredRow = page.locator('tr.border-l-2');
+    await expect(coloredRow.first()).toBeVisible({ timeout: 10000 });
+
     await page.screenshot({ path: 'tests/screenshots/devices-table-borders.png', fullPage: true });
   });
 
   test('network map toggle links to topology page', async ({ page }) => {
-    // Network Map button should be visible
-    const mapButton = page.locator('button[title="Network Map"]');
-    await expect(mapButton).toBeVisible({ timeout: 10000 });
+    // Network Map link should be visible (it's an <a>, not a <button>)
+    const mapLink = page.locator('a[title="Network Map"]');
+    await expect(mapLink).toBeVisible({ timeout: 10000 });
 
-    // Click it and verify navigation to topology (full-screen canvas, no heading)
-    await mapButton.click();
+    // Click it and verify navigation to topology
+    await mapLink.click();
     await page.waitForURL(/\/topology/, { timeout: 10000 });
     await page.screenshot({ path: 'tests/screenshots/devices-topology-link.png', fullPage: true });
   });
@@ -77,7 +78,6 @@ test.describe('Devices page: bento layout, pill filters, timeline', () => {
     // Switch to table view
     const tableButton = page.locator('button[title="Table view"]');
     await tableButton.click();
-    await page.waitForTimeout(500);
 
     // Table should be visible
     await expect(page.locator('table')).toBeVisible({ timeout: 10000 });
@@ -85,7 +85,6 @@ test.describe('Devices page: bento layout, pill filters, timeline', () => {
     // Switch back to grid view
     const gridButton = page.locator('button[title="Grid view"]');
     await gridButton.click();
-    await page.waitForTimeout(500);
 
     // Grid should be visible (cards instead of table)
     await expect(page.locator('.grid.auto-rows-auto')).toBeVisible({ timeout: 10000 });

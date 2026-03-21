@@ -64,6 +64,7 @@ import { StatusSparkline } from "@/components/StatusSparkline";
 import { downloadExport } from "@/lib/export";
 
 type Filter = "all" | "online" | "offline" | "unknown";
+const FILTER_ORDER: Filter[] = ["all", "online", "offline", "unknown"];
 type ViewMode = "grid" | "table";
 type SortField = "last_seen_at" | "ip" | "hostname";
 type SortDir = "asc" | "desc";
@@ -466,15 +467,15 @@ export default function DevicesPage() {
               layout
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
               style={{
-                width: `calc(${100 / 4}% - 2px)`,
-                left: `calc(${(["all", "online", "offline", "unknown"] as Filter[]).indexOf(filter) * 25}% + 1px)`,
+                width: `calc(${100 / FILTER_ORDER.length}% - 2px)`,
+                left: `calc(${FILTER_ORDER.indexOf(filter) * (100 / FILTER_ORDER.length)}% + 1px)`,
               }}
             />
-            {(["all", "online", "offline", "unknown"] as Filter[]).map((f) => (
+            {FILTER_ORDER.map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`relative z-10 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
+                className={`relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
                   filter === f
                     ? "text-white"
                     : "text-slate-400 hover:text-slate-200"
@@ -570,15 +571,12 @@ export default function DevicesPage() {
                 <Separator orientation="vertical" className="mx-0.5 h-6 self-center bg-slate-700/50" />
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Link href="/topology">
-                      <Button
-                        variant="secondary"
-                        size="icon"
-                        className="h-9 w-9 border border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
-                        title="Network Map"
-                      >
-                        <Network className="h-4 w-4" />
-                      </Button>
+                    <Link
+                      href="/topology"
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                      title="Network Map"
+                    >
+                      <Network className="h-4 w-4" />
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent className="border-slate-700 bg-slate-800 text-slate-200">
