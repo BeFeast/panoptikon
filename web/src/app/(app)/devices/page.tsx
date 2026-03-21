@@ -459,29 +459,39 @@ export default function DevicesPage() {
       {/* Filter bar */}
       <div className="rounded-2xl border border-slate-700/50 bg-slate-900/40 px-5 py-4 sm:px-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex items-center rounded-full border border-slate-700/60 bg-slate-800/40 p-1">
+            {/* Animated sliding background */}
+            <motion.div
+              className="absolute inset-y-1 rounded-full bg-slate-700/90"
+              layout
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              style={{
+                width: `calc(${100 / 4}% - 2px)`,
+                left: `calc(${(["all", "online", "offline", "unknown"] as Filter[]).indexOf(filter) * 25}% + 1px)`,
+              }}
+            />
             {(["all", "online", "offline", "unknown"] as Filter[]).map((f) => (
-              <Button
+              <button
                 key={f}
-                variant="secondary"
-                size="sm"
                 onClick={() => setFilter(f)}
-                className={`h-8 rounded-full border px-3 text-xs ${
+                className={`relative z-10 flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-medium transition-colors ${
                   filter === f
-                    ? "border-slate-600 bg-slate-700/90 text-white hover:bg-slate-700"
-                    : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                    ? "text-white"
+                    : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                {f === "all" && "All"}
-                {f === "online" && "Online"}
-                {f === "offline" && "Offline"}
-                {f === "unknown" && "Unknown"}
+                {f === "online" && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />}
+                {f === "offline" && <span className="h-1.5 w-1.5 rounded-full bg-red-400" />}
+                {f === "unknown" && <span className="h-1.5 w-1.5 rounded-full bg-slate-500" />}
+                {f === "all" ? "All" : f === "online" ? "Online" : f === "offline" ? "Offline" : "Unknown"}
                 {counts && (
-                  <span className="ml-1.5 rounded-full bg-slate-900/55 px-1.5 py-0.5 text-[10px] leading-none opacity-80">
+                  <span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${
+                    filter === f ? "bg-slate-900/55 text-white" : "bg-slate-800/55 text-slate-500"
+                  }`}>
                     {counts[f]}
                   </span>
                 )}
-              </Button>
+              </button>
             ))}
           </div>
 
@@ -557,6 +567,24 @@ export default function DevicesPage() {
                 >
                   <List className="h-4 w-4" />
                 </Button>
+                <Separator orientation="vertical" className="mx-0.5 h-6 self-center bg-slate-700/50" />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link href="/topology">
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-9 w-9 border border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                        title="Network Map"
+                      >
+                        <Network className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent className="border-slate-700 bg-slate-800 text-slate-200">
+                    View network topology map
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
           </div>
@@ -654,17 +682,21 @@ export default function DevicesPage() {
           </p>
         )
       ) : view === "grid" ? (
-        <StaggerContainer className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {sorted.map((device) => (
-            <StaggerItem key={device.id}>
-              <MotionCard className="h-full">
-                <DeviceCard
-                  device={device}
-                  onClick={() => setSelectedDevice(device)}
-                />
-              </MotionCard>
-            </StaggerItem>
-          ))}
+        <StaggerContainer className="grid auto-rows-auto grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {sorted.map((device) => {
+            const isImportant = isDeviceImportant(device);
+            return (
+              <StaggerItem key={device.id} className={isImportant ? "md:col-span-2 xl:col-span-1 xl:row-span-2" : ""}>
+                <MotionCard className="h-full">
+                  <DeviceCard
+                    device={device}
+                    onClick={() => setSelectedDevice(device)}
+                    large={isImportant}
+                  />
+                </MotionCard>
+              </StaggerItem>
+            );
+          })}
         </StaggerContainer>
       ) : (
         <DevicesTable
@@ -721,12 +753,42 @@ function getDevicePrimaryTitle(device: Device): { title: string; isUnnamed: bool
   return { title: "Unknown Device", isUnnamed: true };
 }
 
+const IMPORTANT_DEVICE_TYPES = new Set(["router", "server", "nas", "switch", "access_point", "workstation"]);
+
+function isDeviceImportant(device: Device): boolean {
+  if (device.is_critical) return true;
+  const effectiveType = device.custom_type ?? device.device_type;
+  if (effectiveType && IMPORTANT_DEVICE_TYPES.has(effectiveType)) return true;
+  // Infer from icon type
+  const { type } = getDeviceIcon(device.custom_vendor ?? device.vendor, device.hostname, device.mdns_services, effectiveType);
+  return IMPORTANT_DEVICE_TYPES.has(type);
+}
+
+/** Map device type to left-border color class for table rows */
+function getDeviceTypeBorderColor(device: Device): string {
+  const effectiveType = device.custom_type ?? device.device_type;
+  const { type } = getDeviceIcon(device.custom_vendor ?? device.vendor, device.hostname, device.mdns_services, effectiveType);
+  switch (type) {
+    case "router": case "switch": case "access_point": return "border-l-sky-500";
+    case "server": case "nas": case "workstation": return "border-l-violet-500";
+    case "laptop": case "desktop": return "border-l-emerald-500";
+    case "phone": case "tablet": return "border-l-amber-500";
+    case "tv": case "gaming": return "border-l-rose-500";
+    case "printer": return "border-l-orange-500";
+    case "iot": return "border-l-teal-500";
+    case "vm": case "container": return "border-l-indigo-500";
+    default: return "border-l-slate-600";
+  }
+}
+
 function DeviceCard({
   device,
   onClick,
+  large = false,
 }: {
   device: Device;
   onClick: () => void;
+  large?: boolean;
 }) {
   const [waking, setWaking] = useState(false);
   const ips = device.ips ?? [];
@@ -761,7 +823,7 @@ function DeviceCard({
 
   return (
     <Card
-      className="h-full min-h-[15.5rem] cursor-pointer border-slate-700/50 bg-slate-900/55 transition-[border-color,background-color,box-shadow] hover:border-slate-600/70 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
+      className={`h-full cursor-pointer border-slate-700/50 bg-slate-900/55 transition-[border-color,background-color,box-shadow] hover:border-slate-600/70 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)] ${large ? "min-h-[20rem]" : "min-h-[15.5rem]"}`}
       onClick={onClick}
     >
       <CardContent className="flex h-full flex-col p-5">
@@ -894,7 +956,10 @@ function DeviceCard({
 
         {device.status_timeline && device.status_timeline.length > 0 && (
           <div className="mt-4 rounded-lg border border-slate-800/70 bg-slate-900/45 px-3 py-2">
-            <StatusSparkline timeline={device.status_timeline} width={170} height={10} />
+            {large && (
+              <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">24h Status</p>
+            )}
+            <StatusSparkline timeline={device.status_timeline} width={large ? 260 : 170} height={large ? 14 : 10} />
           </div>
         )}
 
@@ -1022,7 +1087,7 @@ function DevicesTable({
                   ease: "easeOut",
                   delay: Math.min(index * 0.01, 0.12),
                 }}
-                className="cursor-pointer border-b border-slate-800 transition-colors hover:bg-slate-800/60 data-[state=selected]:bg-muted"
+                className={`cursor-pointer border-b border-slate-800 border-l-2 transition-colors hover:bg-slate-800/60 data-[state=selected]:bg-muted ${getDeviceTypeBorderColor(device)}`}
                 onClick={() => onSelect(device)}
               >
                 <TableCell>

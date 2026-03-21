@@ -9,7 +9,7 @@ export function StatusSparkline({
   width = 96,
   height = 16,
 }: {
-  timeline: boolean[];
+  timeline: (boolean | null)[];
   width?: number;
   height?: number;
 }) {
@@ -35,7 +35,7 @@ export function StatusSparkline({
           width={barWidth}
           height={height}
           rx={1}
-          fill={online ? "#10b981" : "#334155"}
+          fill={online === true ? "#10b981" : online === false ? "#ef4444" : "#475569"}
         />
       ))}
     </svg>
