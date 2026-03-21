@@ -26,6 +26,10 @@
     --ring: 217 91% 60%;
     --radius: 0.5rem;
 
+    /* Shimmer / skeleton loader */
+    --skeleton-base: 217 33% 10%;
+    --skeleton-highlight: 217 33% 17%;
+
     /* Semantic status colors */
     --status-online: 160 84% 39%;    /* emerald-500 */
     --status-offline: 350 89% 60%;   /* rose-500 */
@@ -109,9 +113,9 @@
 .animate-shimmer {
   background: linear-gradient(
     90deg,
-    hsl(217 33% 10%) 0%,
-    hsl(217 33% 17%) 50%,
-    hsl(217 33% 10%) 100%
+    hsl(var(--skeleton-base)) 0%,
+    hsl(var(--skeleton-highlight)) 50%,
+    hsl(var(--skeleton-base)) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.5s ease-in-out infinite;

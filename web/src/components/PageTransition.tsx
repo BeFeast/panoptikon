@@ -3,10 +3,9 @@
 import { motion, useReducedMotion } from 'framer-motion'
 
 const containerVariants = {
-  hidden: { opacity: 0, filter: 'blur(2px)' },
+  hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    filter: 'blur(0px)',
     transition: {
       duration: 0.18,
       ease: 'easeOut',

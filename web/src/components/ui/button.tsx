@@ -62,6 +62,10 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       )
     }
 
+    // Note: onDrag, onDragStart, onDragEnd, onAnimationStart are destructured
+    // out of props to avoid type conflicts — React's HTML drag event types are
+    // incompatible with framer-motion's motion event types. They are re-attached
+    // only in the asChild/Slot branch where they match the expected HTML types.
     return (
       <MotionButton
         className={cn(buttonVariants({ variant, size, className }))}

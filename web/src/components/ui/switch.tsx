@@ -11,20 +11,18 @@ const Switch = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof SwitchPrimitives.Root>
 >(({ className, checked, defaultChecked, onCheckedChange, ...props }, ref) => {
   const prefersReducedMotion = useReducedMotion()
-  const [isChecked, setIsChecked] = React.useState(checked ?? defaultChecked ?? false)
-
-  React.useEffect(() => {
-    if (checked !== undefined) {
-      setIsChecked(checked)
-    }
-  }, [checked])
+  const [localChecked, setLocalChecked] = React.useState(defaultChecked ?? false)
+  const isControlled = checked !== undefined
+  const resolvedChecked = isControlled ? checked : localChecked
 
   const handleCheckedChange = React.useCallback(
     (value: boolean) => {
-      setIsChecked(value)
+      if (!isControlled) {
+        setLocalChecked(value)
+      }
       onCheckedChange?.(value)
     },
-    [onCheckedChange]
+    [onCheckedChange, isControlled]
   )
 
   return (
@@ -41,7 +39,7 @@ const Switch = React.forwardRef<
     >
       <motion.span
         className="pointer-events-none block h-5 w-5 rounded-full bg-background shadow-lg ring-0"
-        animate={{ x: isChecked ? 20 : 0 }}
+        animate={{ x: resolvedChecked ? 20 : 0 }}
         transition={
           prefersReducedMotion
             ? { duration: 0 }
