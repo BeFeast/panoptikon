@@ -4,9 +4,9 @@ test.describe("Scanner Enrichment Settings", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto("/settings/scanner/");
-    await expect(page.getByText("Scanner Configuration")).toBeVisible({
-      timeout: 15000,
-    });
+    await expect(
+      page.getByRole("heading", { name: "Network Scanner", level: 1 }),
+    ).toBeVisible({ timeout: 15000 });
     await page.waitForLoadState("networkidle");
   });
 
@@ -51,9 +51,9 @@ test.describe("Scanner Enrichment Settings", () => {
 
     // Reload and verify persistence
     await page.reload();
-    await expect(page.getByText("Scanner Configuration")).toBeVisible({
-      timeout: 15000,
-    });
+    await expect(
+      page.getByRole("heading", { name: "Network Scanner", level: 1 }),
+    ).toBeVisible({ timeout: 15000 });
     await page.waitForLoadState("networkidle");
 
     // Wait for settings to load (toggles update after fetch)

@@ -12,7 +12,7 @@ test.describe("Settings pages: visual sections, inline validation, save animatio
     ).toBeVisible({ timeout: 15000 });
 
     // Verify SettingsSection renders with icon badge
-    await expect(page.getByText("Password")).toBeVisible();
+    await expect(page.getByText("Password", { exact: true })).toBeVisible();
 
     // Type a short password — strength meter should appear
     const newPwInput = page.locator("#new");
@@ -60,8 +60,8 @@ test.describe("Settings pages: visual sections, inline validation, save animatio
       page.getByRole("heading", { name: "Network Scanner", level: 1 }),
     ).toBeVisible({ timeout: 15000 });
 
-    // Should have two separate SettingsSection cards
-    const sectionCards = page.locator('[class*="border-slate-800"][class*="bg-slate-900"]');
+    // Should have two separate SettingsSection cards (scoped to main to exclude sidebar)
+    const sectionCards = page.locator('main [class*="border-slate-800"][class*="bg-slate-900"]');
     await expect(sectionCards).toHaveCount(2);
 
     // First section: "Scan Settings"
@@ -92,8 +92,8 @@ test.describe("Settings pages: visual sections, inline validation, save animatio
       page.getByRole("heading", { name: "Data Retention", level: 1 }),
     ).toBeVisible({ timeout: 15000 });
 
-    // Should have two section cards (Retention Policy + Database)
-    const sectionCards = page.locator('[class*="border-slate-800"][class*="bg-slate-900"]');
+    // Should have two section cards (Retention Policy + Database), scoped to main to exclude sidebar
+    const sectionCards = page.locator('main [class*="border-slate-800"][class*="bg-slate-900"]');
     await expect(sectionCards).toHaveCount(2);
 
     await expect(page.getByText("Retention Policy")).toBeVisible();
