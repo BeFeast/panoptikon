@@ -7,6 +7,11 @@ const config: Config = {
     "./src/app/**/*.{ts,tsx}",
     "./src/components/**/*.{ts,tsx}",
   ],
+  safelist: [
+    "gradient-text",
+    "gradient-primary",
+    "gradient-warm",
+  ],
   theme: {
     extend: {
       colors: {
