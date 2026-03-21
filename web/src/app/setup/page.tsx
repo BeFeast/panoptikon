@@ -61,13 +61,20 @@ export default function SetupPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 p-4">
-      <Card className="w-full max-w-md border-slate-800 bg-slate-900">
+    <div className="login-bg-mesh relative flex min-h-screen items-center justify-center overflow-hidden p-4">
+      {/* Animated floating orbs */}
+      <div className="login-orb login-orb-1" />
+      <div className="login-orb login-orb-2" />
+      <div className="login-orb login-orb-3" />
+
+      <Card className="login-card-glow relative z-10 w-full max-w-md border-slate-800 bg-slate-900/80 backdrop-blur-sm">
         <CardHeader className="items-center pb-2">
           <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-xl bg-blue-500 shadow-lg shadow-blue-500/20">
             <Shield className="h-7 w-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">Welcome to Panoptikon</h1>
+          <h1 className="login-gradient-text text-2xl font-bold">
+            Welcome to Panoptikon
+          </h1>
           <p className="text-center text-sm text-slate-500">
             Set up your admin password to get started.
           </p>
@@ -85,14 +92,14 @@ export default function SetupPage() {
               {/* Password section */}
               <div className="space-y-2">
                 <Label htmlFor="password">Admin Password</Label>
-                <div className="relative">
+                <div className="login-input relative rounded-md">
                   <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <Input
                     id="password"
                     type={showPassword ? "text" : "password"}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-9 pr-9"
+                    className="pl-9 pr-9 transition-shadow duration-200"
                     placeholder="Min. 8 characters"
                     autoFocus
                     required
@@ -100,8 +107,9 @@ export default function SetupPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                    className="eye-toggle absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
                     tabIndex={-1}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
                       <EyeOff className="h-4 w-4" />
@@ -114,14 +122,14 @@ export default function SetupPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="confirm">Confirm Password</Label>
-                <div className="relative">
+                <div className="login-input relative rounded-md">
                   <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
                   <Input
                     id="confirm"
                     type={showPassword ? "text" : "password"}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className="pl-9"
+                    className="pl-9 transition-shadow duration-200"
                     placeholder="Repeat password"
                     required
                   />
@@ -141,6 +149,11 @@ export default function SetupPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Version info */}
+      <p className="absolute bottom-4 z-10 text-xs text-slate-600">
+        Panoptikon
+      </p>
     </div>
   );
 }

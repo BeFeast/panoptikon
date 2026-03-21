@@ -104,3 +104,159 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Login page animated gradient mesh ────────────────── */
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes float-orb-1 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.15;
+  }
+  33% {
+    transform: translate(30px, -40px) scale(1.1);
+    opacity: 0.2;
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.95);
+    opacity: 0.12;
+  }
+}
+
+@keyframes float-orb-2 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.1;
+  }
+  50% {
+    transform: translate(-40px, -30px) scale(1.15);
+    opacity: 0.18;
+  }
+}
+
+@keyframes float-orb-3 {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.12;
+  }
+  40% {
+    transform: translate(20px, 30px) scale(1.08);
+    opacity: 0.16;
+  }
+  80% {
+    transform: translate(-30px, -10px) scale(0.92);
+    opacity: 0.1;
+  }
+}
+
+.login-bg-mesh {
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 30%, rgba(37, 99, 235, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 70%, rgba(99, 102, 241, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 50% at 50% 10%, rgba(14, 165, 233, 0.06) 0%, transparent 50%),
+    #020617;
+  background-size: 200% 200%;
+  animation: gradient-shift 20s ease infinite;
+}
+
+/* Floating orb elements */
+.login-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+.login-orb-1 {
+  width: 400px;
+  height: 400px;
+  background: rgba(37, 99, 235, 0.15);
+  top: 10%;
+  left: 15%;
+  animation: float-orb-1 12s ease-in-out infinite;
+}
+
+.login-orb-2 {
+  width: 300px;
+  height: 300px;
+  background: rgba(99, 102, 241, 0.12);
+  bottom: 15%;
+  right: 10%;
+  animation: float-orb-2 15s ease-in-out infinite;
+}
+
+.login-orb-3 {
+  width: 250px;
+  height: 250px;
+  background: rgba(14, 165, 233, 0.1);
+  top: 50%;
+  right: 30%;
+  animation: float-orb-3 18s ease-in-out infinite;
+}
+
+/* Card glow effect */
+.login-card-glow {
+  box-shadow:
+    0 0 80px -20px rgba(37, 99, 235, 0.1),
+    0 0 40px -10px rgba(99, 102, 241, 0.06),
+    inset 0 1px 0 0 rgba(148, 163, 184, 0.08);
+}
+
+/* Gradient text */
+.login-gradient-text {
+  background: linear-gradient(135deg, #e2e8f0 0%, #3b82f6 50%, #818cf8 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Focus ring glow animation */
+@keyframes ring-glow {
+  0% {
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15), 0 0 12px rgba(37, 99, 235, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3);
+  }
+}
+
+.login-input:focus-within {
+  animation: ring-glow 2s ease-in-out infinite;
+}
+
+/* Eye icon toggle transition */
+.eye-toggle {
+  transition: transform 0.2s ease, opacity 0.15s ease;
+}
+
+.eye-toggle:active {
+  transform: translateY(-50%) scale(0.9);
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .login-bg-mesh {
+    animation: none;
+  }
+  .login-orb {
+    animation: none !important;
+  }
+  .login-input:focus-within {
+    animation: none;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.3);
+  }
+}
