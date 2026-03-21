@@ -75,7 +75,7 @@ const config: Config = {
           "50%": { backgroundColor: "rgba(239, 68, 68, 0.10)" },
         },
         "ack-fadeout": {
-          "0%": { opacity: "1", textDecoration: "none" },
+          "0%": { opacity: "1" },
           "40%": { opacity: "0.8", textDecoration: "line-through" },
           "100%": { opacity: "0.5", textDecoration: "line-through" },
         },

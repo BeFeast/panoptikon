@@ -96,16 +96,20 @@ test.describe('Alerts page', () => {
     await page.goto('/alerts/');
     await expect(page.getByRole('heading', { name: 'Alerts', level: 1 })).toBeVisible({ timeout: 15000 });
 
-    // Check for critical alert cards with pulse animation
+    // Count pulsing critical cards (only non-acknowledged criticals get the pulse class)
     const criticalCards = await page.locator('[class*="animate-pulse-critical"]').all();
 
-    // If there are critical alerts, they should have the pulse animation class
-    // We also verify that cards with red borders exist if critical alerts are present
-    const criticalBadges = await page.locator('text=CRITICAL').all();
-    if (criticalBadges.length > 0) {
-      // There should be at least one pulsing card (non-acknowledged criticals)
-      // Some may be acknowledged and not pulsing
-      expect(criticalCards.length).toBeGreaterThan(0);
+    // Each pulsing card should contain a CRITICAL badge
+    for (const card of criticalCards) {
+      await expect(card.locator('text=CRITICAL')).toBeVisible();
+    }
+
+    // Also verify: if there are any unacknowledged critical alerts, at least one should pulse
+    const unacknowledgedCriticalBadges = await page
+      .locator('[class*="animate-pulse-critical"] :text("CRITICAL")')
+      .all();
+    if (criticalCards.length > 0) {
+      expect(unacknowledgedCriticalBadges.length).toBeGreaterThan(0);
     }
 
     await page.screenshot({ path: 'tests/screenshots/alerts-critical-pulse.png', fullPage: true });
