@@ -96,6 +96,22 @@
   animation: glow-pulse-rose 2.4s ease-in-out infinite;
 }
 
+/* ── Card active/selected state ──────────────────────── */
+.card-active {
+  position: relative;
+}
+.card-active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: linear-gradient(180deg, hsl(217 91% 60%), hsl(217 91% 45%));
+  pointer-events: none;
+}
+
 /* Hide scrollbar while preserving scroll behavior */
 .scrollbar-hide {
   -ms-overflow-style: none;
