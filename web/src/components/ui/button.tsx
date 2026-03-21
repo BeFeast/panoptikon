@@ -1,6 +1,9 @@
+'use client'
+
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
+import { motion, useReducedMotion } from "framer-motion"
 
 import { cn } from "@/lib/utils"
 
@@ -39,13 +42,31 @@ export interface ButtonProps
   asChild?: boolean
 }
 
+const MotionButton = motion.create("button")
+
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const Comp = asChild ? Slot : "button"
+  ({ className, variant, size, asChild = false, onDrag, onDragStart, onDragEnd, onAnimationStart, ...props }, ref) => {
+    const prefersReducedMotion = useReducedMotion()
+
+    if (asChild) {
+      return (
+        <Slot
+          className={cn(buttonVariants({ variant, size, className }))}
+          ref={ref}
+          onDrag={onDrag}
+          onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
+          onAnimationStart={onAnimationStart}
+          {...props}
+        />
+      )
+    }
+
     return (
-      <Comp
+      <MotionButton
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
+        whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
         {...props}
       />
     )

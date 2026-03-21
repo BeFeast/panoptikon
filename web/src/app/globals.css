@@ -96,6 +96,74 @@
   animation: glow-pulse-rose 2.4s ease-in-out infinite;
 }
 
+/* ── Shimmer loader animation ────────────────────────── */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    hsl(217 33% 10%) 0%,
+    hsl(217 33% 17%) 50%,
+    hsl(217 33% 10%) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-shimmer {
+    animation: none;
+  }
+}
+
+/* ── Table row hover highlight ───────────────────────── */
+.table-row-hover {
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+.table-row-hover::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: hsl(217 91% 60%);
+  transform: scaleY(0);
+  transition: transform 0.2s ease;
+}
+
+.table-row-hover:hover::before {
+  transform: scaleY(1);
+}
+
+/* ── Shake animation for destructive actions ─────────── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-shake {
+    animation: none;
+  }
+}
+
 /* Hide scrollbar while preserving scroll behavior */
 .scrollbar-hide {
   -ms-overflow-style: none;
