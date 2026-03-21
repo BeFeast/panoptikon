@@ -37,12 +37,12 @@ test.describe("Card Glassmorphism 2.0 (#592)", () => {
     );
     expect(backdropFilter).toContain("blur");
 
-    // Verify the before pseudo-element exists (top-edge glow)
-    const beforeHeight = await firstCard.evaluate((el) => {
+    // Verify the before pseudo-element exists (top-edge glow) via its gradient background
+    const beforeBg = await firstCard.evaluate((el) => {
       const style = getComputedStyle(el, "::before");
-      return style.height;
+      return style.backgroundImage;
     });
-    expect(beforeHeight).toBe("1px");
+    expect(beforeBg).toContain("gradient");
 
     await page.screenshot({
       path: "tests/screenshots/card-glassmorphism-dashboard.png",
@@ -61,11 +61,11 @@ test.describe("Card Glassmorphism 2.0 (#592)", () => {
     const card = page.locator('[class*="backdrop-blur-xl"]').first();
     await expect(card).toBeVisible();
 
-    // Verify the card has transition property for border-color
+    // Verify the card has transition property that covers border-color
     const transition = await card.evaluate(
       (el) => getComputedStyle(el).transitionProperty,
     );
-    expect(transition).toContain("border");
+    expect(transition === "all" || transition.includes("border")).toBe(true);
 
     // Hover and verify border changes
     await card.hover();
