@@ -96,6 +96,21 @@
   animation: glow-pulse-rose 2.4s ease-in-out infinite;
 }
 
+/* Notification badge pulse */
+@keyframes badge-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+.badge-pulse {
+  animation: badge-pulse 2s ease-in-out infinite;
+}
+
 /* Hide scrollbar while preserving scroll behavior */
 .scrollbar-hide {
   -ms-overflow-style: none;

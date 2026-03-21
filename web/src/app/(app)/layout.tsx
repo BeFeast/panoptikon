@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TopBar } from "@/components/layout/TopBar";
+import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { MobileSidebar } from "@/components/layout/MobileSidebar";
 import { CommandPalette } from "@/components/CommandPalette";
 import { WebSocketProvider } from "@/components/providers/WebSocketProvider";
@@ -20,6 +21,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Sidebar />
           <div className="flex min-w-0 flex-1 flex-col overflow-clip">
             <TopBar mobileMenu={<MobileSidebar />} />
+            <Breadcrumbs />
             <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-3 pb-8 pt-4 md:px-6 md:pb-10 md:pt-6">
               <div className="mx-auto w-full max-w-[1700px]">{children}</div>
             </main>
