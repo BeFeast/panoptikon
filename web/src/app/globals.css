@@ -111,6 +111,12 @@
   animation: badge-pulse 2s ease-in-out infinite;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  .badge-pulse {
+    animation: none;
+  }
+}
+
 /* Hide scrollbar while preserving scroll behavior */
 .scrollbar-hide {
   -ms-overflow-style: none;
