@@ -57,28 +57,30 @@
   }
 }
 
-/* Gradient text utility for key dashboard numbers */
-.gradient-text {
-  background: var(--gradient-text);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
+@layer utilities {
+  /* Gradient text utility for key dashboard numbers */
+  .gradient-text {
+    background: var(--gradient-text);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
 
-/* Gradient accent for primary action buttons */
-.gradient-primary {
-  background: var(--gradient-primary);
-}
-.gradient-primary:hover {
-  background: var(--gradient-primary-hover);
-}
+  /* Gradient accent for primary action buttons */
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  .gradient-primary:hover {
+    background: var(--gradient-primary-hover);
+  }
 
-/* Warm accent for active/featured states */
-.gradient-warm {
-  background: var(--gradient-warm);
-}
-.gradient-warm:hover {
-  background: var(--gradient-warm-hover);
+  /* Warm accent for active/featured states */
+  .gradient-warm {
+    background: var(--gradient-warm);
+  }
+  .gradient-warm:hover {
+    background: var(--gradient-warm-hover);
+  }
 }
 
 /* Tabular nums for IPs, MACs, bandwidth values */
