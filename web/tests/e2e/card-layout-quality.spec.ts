@@ -29,18 +29,18 @@ test.describe("Card Layout Quality (#538)", () => {
     ).toBeVisible();
 
     // Wait for stat cards to resolve
-    await expect(page.getByText("Router Status")).toBeVisible({
+    await expect(page.getByText("Total Devices")).toBeVisible({
       timeout: 10000,
     });
 
-    // The stat card title elements should have the new label styling
-    // (text-[11px] font-medium uppercase tracking-wider text-slate-500)
-    const routerTitle = page.getByText("Router Status");
-    await expect(routerTitle).toHaveCSS("text-transform", "uppercase");
-    await expect(routerTitle).toHaveCSS("letter-spacing", /[1-9]/);
-
-    const devicesTitle = page.getByText("Active Devices");
+    // The hero stat title elements should have the new label styling
+    // (text-[11px] font-medium uppercase tracking-wider text-white/70)
+    const devicesTitle = page.getByText("Total Devices");
     await expect(devicesTitle).toHaveCSS("text-transform", "uppercase");
+    await expect(devicesTitle).toHaveCSS("letter-spacing", /[1-9]/);
+
+    const alertsTitle = page.getByText("Active Alerts");
+    await expect(alertsTitle).toHaveCSS("text-transform", "uppercase");
 
     await page.screenshot({
       path: "tests/screenshots/card-layout-dashboard-labels.png",
@@ -56,14 +56,11 @@ test.describe("Card Layout Quality (#538)", () => {
       page.getByRole("heading", { name: "Dashboard", level: 1 }),
     ).toBeVisible();
 
-    // Wait for stat cards to resolve
-    const routerValue = page.getByText(
-      /^(Online|Offline|Unconfigured|Unreachable)$/,
-    );
-    await expect(routerValue.first()).toBeVisible({ timeout: 10000 });
+    // Wait for hero stat cards to resolve
+    await expect(page.getByText("Total Devices")).toBeVisible({ timeout: 10000 });
 
     // Subtitle text should be visible (not too muted)
-    const subtitleText = page.getByText(/total known|All clear|Needs attention|Cannot load|Cannot reach|Connected to|Router not configured/);
+    const subtitleText = page.getByText(/online now|All clear|Needs attention|critical online|Cannot load/);
     await expect(subtitleText.first()).toBeVisible({ timeout: 10000 });
 
     await page.screenshot({

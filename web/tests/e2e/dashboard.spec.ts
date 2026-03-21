@@ -9,10 +9,12 @@ test.describe('Dashboard', () => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
     // Hero stats row should show 4 cards
-    await expect(page.getByText('Total Devices')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('Active Alerts')).toBeVisible();
-    await expect(page.getByText('Uptime')).toBeVisible();
-    await expect(page.getByText('Traffic')).toBeVisible();
+    const heroStats = page.getByTestId('hero-stats');
+    await expect(heroStats).toBeVisible({ timeout: 10000 });
+    await expect(heroStats.getByText('Total Devices')).toBeVisible();
+    await expect(heroStats.getByText('Active Alerts')).toBeVisible();
+    await expect(heroStats.getByText('Uptime')).toBeVisible();
+    await expect(heroStats.getByText('Traffic')).toBeVisible();
 
     await page.screenshot({ path: 'tests/screenshots/dashboard-hero-stats.png', fullPage: true });
   });
