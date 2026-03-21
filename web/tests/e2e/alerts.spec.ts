@@ -105,7 +105,7 @@ test.describe('Alerts page', () => {
     if (criticalBadges.length > 0) {
       // There should be at least one pulsing card (non-acknowledged criticals)
       // Some may be acknowledged and not pulsing
-      expect(criticalCards.length).toBeGreaterThanOrEqual(0);
+      expect(criticalCards.length).toBeGreaterThan(0);
     }
 
     await page.screenshot({ path: 'tests/screenshots/alerts-critical-pulse.png', fullPage: true });
@@ -124,7 +124,7 @@ test.describe('Alerts page', () => {
 
     if (alerts.length > 0) {
       // Summary bar should be visible when there are alerts
-      const summaryBar = page.locator('[class*="rounded-lg"][class*="border-slate-800"][class*="bg-slate-900"]').first();
+      await expect(page.locator('[class*="rounded-lg"][class*="border-slate-800"][class*="bg-slate-900"]').first()).toBeVisible();
 
       // Check for severity count badges
       const criticalCount = activeAlerts.filter(a => a.severity === 'CRITICAL').length;

@@ -427,8 +427,8 @@ export default function AlertsPage() {
         </div>
       </div>
 
-      {/* Severity Summary Bar */}
-      {alerts && alerts.length > 0 && (() => {
+      {/* Severity Summary Bar — hidden when filters are active since counts would not reflect global state */}
+      {alerts && alerts.length > 0 && statusFilter === "all" && typeFilter === "all" && (() => {
         const criticalCount = alerts.filter((a) => a.severity === "CRITICAL" && !a.acknowledged_at).length;
         const warningCount = alerts.filter((a) => a.severity === "WARNING" && !a.acknowledged_at).length;
         const infoCount = alerts.filter((a) => a.severity === "INFO" && !a.acknowledged_at).length;
@@ -490,7 +490,7 @@ export default function AlertsPage() {
           {alerts.map((alert) => (
             <Card
               key={alert.id}
-              className={`border-slate-800 border-l-2 transition-all hover:bg-slate-800/60 hover:border-blue-500/30 ${
+              className={`border-slate-800 border-l-2 transition-all hover:bg-slate-800/60 hover:border-t-blue-500/30 hover:border-r-blue-500/30 hover:border-b-blue-500/30 ${
                 severityBorderColor(alert.severity)
               } ${
                 acknowledgingIds.has(alert.id)
