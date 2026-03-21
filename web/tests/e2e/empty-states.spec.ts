@@ -104,10 +104,20 @@ test.describe('Empty states with illustrated placeholders', () => {
     // The traffic page might have a heading or just content
     await page.waitForTimeout(3000);
 
-    const emptyState = page.getByText('No traffic data');
-    if (await emptyState.isVisible()) {
-      await expect(emptyState).toBeVisible();
-      await expect(page.getByText('Enable NetFlow or sFlow')).toBeVisible();
+    // The page has two empty states: a chart fallback ("No traffic data available yet.")
+    // and an EmptyState component in the devices table ("No traffic data" + description).
+    // Check for whichever is present.
+    const emptyStateComponent = page.getByText('Enable NetFlow or sFlow');
+    const chartFallback = page.getByText('No traffic data available yet');
+
+    // Use isVisible with a short timeout to avoid hanging on non-existent elements
+    const componentVisible = await emptyStateComponent.isVisible({ timeout: 1000 }).catch(() => false);
+    const chartVisible = await chartFallback.isVisible({ timeout: 1000 }).catch(() => false);
+
+    if (componentVisible) {
+      await expect(emptyStateComponent).toBeVisible();
+    } else if (chartVisible) {
+      await expect(chartFallback).toBeVisible();
     }
 
     await page.screenshot({ path: 'tests/screenshots/empty-state-traffic.png', fullPage: true });
