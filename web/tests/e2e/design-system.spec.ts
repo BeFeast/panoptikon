@@ -6,6 +6,7 @@ test.describe('Design System Overhaul', () => {
   });
 
   test('page headings use display font and updated typography', async ({ page }) => {
+    await page.goto('/dashboard');
     // Dashboard heading should be visible with updated styling
     const heading = page.getByRole('heading', { name: 'Dashboard', level: 1 });
     await expect(heading).toBeVisible();
@@ -78,13 +79,13 @@ test.describe('Design System Overhaul', () => {
   });
 
   test('display font is loaded via CSS variable', async ({ page }) => {
-    // Check the --font-display CSS variable is set on the body
+    // The --font-display CSS variable should be resolvable on the body
     const hasDisplayFont = await page.evaluate(() => {
-      return document.body.classList.toString();
+      return getComputedStyle(document.body).getPropertyValue('--font-display');
     });
 
     // The Plus Jakarta Sans font variable should be applied to the body
-    expect(hasDisplayFont).toContain('__variable_');
+    expect(hasDisplayFont.trim()).not.toBe('');
 
     await page.screenshot({ path: 'tests/screenshots/design-system-fonts.png' });
   });
