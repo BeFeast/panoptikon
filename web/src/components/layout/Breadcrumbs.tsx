@@ -4,6 +4,9 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { ChevronRight } from "lucide-react";
 
+/** Routes whose page.tsx is just a redirect — don't link to these in breadcrumbs */
+const REDIRECT_ONLY: Set<string> = new Set(["/router", "/xiaomi"]);
+
 /** Human-friendly labels for known route segments */
 const LABELS: Record<string, string> = {
   settings: "Settings",
@@ -72,7 +75,9 @@ export function Breadcrumbs() {
           <span key={crumb.href} className="flex items-center gap-1">
             {i > 0 && <ChevronRight className="h-3 w-3 text-slate-600" />}
             {isLast ? (
-              <span className="text-slate-300">{crumb.label}</span>
+              <span className="text-slate-300" aria-current="page">{crumb.label}</span>
+            ) : REDIRECT_ONLY.has(crumb.href) ? (
+              <span>{crumb.label}</span>
             ) : (
               <Link
                 href={crumb.href}
