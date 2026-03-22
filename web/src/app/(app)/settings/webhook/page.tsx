@@ -9,17 +9,11 @@ import {
   AlertCircle,
   ArrowLeft,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { PageTransition } from "@/components/PageTransition";
+import { SettingsSection } from "@/components/settings/settings-section";
+import { ValidatedInput } from "@/components/settings/validated-input";
+import { SaveButton } from "@/components/settings/save-button";
 import Link from "next/link";
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -49,6 +43,8 @@ export default function WebhookSettingsPage() {
   }, []);
 
   const webhookDirty = webhookUrl !== (savedWebhookUrl ?? "");
+  const urlValid =
+    webhookUrl === "" ? "idle" : /^https?:\/\/.+/.test(webhookUrl) ? "valid" : "invalid";
 
   async function handleWebhookSave() {
     settingsLoadTokenRef.current++;
@@ -116,89 +112,69 @@ export default function WebhookSettingsPage() {
           <h1 className="text-2xl font-semibold text-white">Webhook Notifications</h1>
         </div>
 
-        <Card className="border-slate-800 bg-slate-900">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-500/10">
-                <Bell className="h-4 w-4 text-purple-400" />
-              </div>
-              <div>
-                <CardTitle className="text-base text-white">
-                  Webhook Configuration
-                </CardTitle>
-                <CardDescription className="text-xs text-slate-500">
-                  POST alert payloads to Discord, Slack, ntfy.sh, or any URL.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="webhook-url" className="text-xs text-slate-400">
-                Webhook URL
-              </Label>
-              <Input
-                id="webhook-url"
-                type="url"
-                value={webhookUrl}
-                onChange={(e) => setWebhookUrl(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-                placeholder="https://ntfy.sh/my-topic or Discord webhook URL"
-              />
-            </div>
+        <SettingsSection
+          icon={<Bell className="h-4 w-4 text-purple-400" />}
+          iconBg="bg-purple-500/10"
+          title="Webhook Configuration"
+          description="POST alert payloads to Discord, Slack, ntfy.sh, or any URL."
+        >
+          <ValidatedInput
+            inputId="webhook-url"
+            label="Webhook URL"
+            type="url"
+            value={webhookUrl}
+            onChange={(e) => setWebhookUrl(e.target.value)}
+            placeholder="https://ntfy.sh/my-topic or Discord webhook URL"
+            validationState={urlValid as "idle" | "valid" | "invalid"}
+            error="Enter a valid URL (http:// or https://)"
+          />
 
-            {webhookStatus === "success" && webhookMsg && (
-              <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-                <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-                <p className="text-xs text-emerald-400">{webhookMsg}</p>
-              </div>
-            )}
-            {webhookStatus === "error" && webhookMsg && (
-              <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-                <p className="text-xs text-rose-400">{webhookMsg}</p>
-              </div>
-            )}
-            {testStatus === "success" && testMsg && (
-              <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-                <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-                <p className="text-xs text-emerald-400">{testMsg}</p>
-              </div>
-            )}
-            {testStatus === "error" && testMsg && (
-              <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-                <p className="text-xs text-rose-400">{testMsg}</p>
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <Button
-                onClick={handleWebhookSave}
-                disabled={!webhookDirty || webhookStatus === "loading"}
-                className="bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
-              >
-                {webhookStatus === "loading" ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                ) : null}
-                Save
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleWebhookTest}
-                disabled={!savedWebhookUrl || testStatus === "loading"}
-                className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
-              >
-                {testStatus === "loading" ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Send className="mr-1.5 h-3.5 w-3.5" />
-                )}
-                Test
-              </Button>
+          {webhookStatus === "success" && webhookMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+              <p className="text-xs text-emerald-400">{webhookMsg}</p>
             </div>
-          </CardContent>
-        </Card>
+          )}
+          {webhookStatus === "error" && webhookMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{webhookMsg}</p>
+            </div>
+          )}
+          {testStatus === "success" && testMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+              <p className="text-xs text-emerald-400">{testMsg}</p>
+            </div>
+          )}
+          {testStatus === "error" && testMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{testMsg}</p>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <SaveButton
+              status={webhookStatus}
+              disabled={!webhookDirty}
+              onClick={handleWebhookSave}
+            />
+            <Button
+              variant="outline"
+              onClick={handleWebhookTest}
+              disabled={!savedWebhookUrl || testStatus === "loading"}
+              className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+            >
+              {testStatus === "loading" ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Send className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              Test
+            </Button>
+          </div>
+        </SettingsSection>
       </div>
     </PageTransition>
   );

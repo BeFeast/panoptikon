@@ -8,18 +8,13 @@ import {
   CheckCircle,
   AlertCircle,
   ArrowLeft,
+  Clock,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { PageTransition } from "@/components/PageTransition";
+import { SettingsSection } from "@/components/settings/settings-section";
+import { ValidatedInput } from "@/components/settings/validated-input";
+import { SaveButton } from "@/components/settings/save-button";
 import Link from "next/link";
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -81,6 +76,16 @@ export default function RetentionSettingsPage() {
     retTrafficHours !== savedRetTrafficHours ||
     retAlertsDays !== savedRetAlertsDays ||
     retAgentDays !== savedRetAgentDays;
+
+  const trafficNum = parseInt(retTrafficHours, 10);
+  const trafficValid =
+    retTrafficHours === "" ? "idle" : !isNaN(trafficNum) && trafficNum >= 1 ? "valid" : "invalid";
+  const alertsNum = parseInt(retAlertsDays, 10);
+  const alertsValid =
+    retAlertsDays === "" ? "idle" : !isNaN(alertsNum) && alertsNum >= 1 ? "valid" : "invalid";
+  const agentNum = parseInt(retAgentDays, 10);
+  const agentValid =
+    retAgentDays === "" ? "idle" : !isNaN(agentNum) && agentNum >= 1 ? "valid" : "invalid";
 
   async function handleRetentionSave() {
     settingsLoadTokenRef.current++;
@@ -180,127 +185,108 @@ export default function RetentionSettingsPage() {
           <h1 className="text-2xl font-semibold text-white">Data Retention</h1>
         </div>
 
-        <Card className="border-slate-800 bg-slate-900">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10">
-                <Database className="h-4 w-4 text-amber-400" />
-              </div>
-              <div>
-                <CardTitle className="text-base text-white">
-                  Retention Configuration
-                </CardTitle>
-                <CardDescription className="text-xs text-slate-500">
-                  Configure how long data is kept and manage database size.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between rounded-md border border-slate-800 bg-slate-950 px-3 py-2">
-              <span className="text-xs text-slate-400">Current DB size</span>
-              <span className="text-sm font-medium text-white">
-                {dbSizeBytes !== null ? formatBytes(dbSizeBytes) : "..."}
-              </span>
-            </div>
+        <SettingsSection
+          icon={<Clock className="h-4 w-4 text-amber-400" />}
+          iconBg="bg-amber-500/10"
+          title="Retention Periods"
+          description="Configure how long each type of data is kept."
+        >
+          <ValidatedInput
+            inputId="ret-traffic"
+            label="Traffic samples retention (hours)"
+            type="number"
+            min={1}
+            value={retTrafficHours}
+            onChange={(e) => setRetTrafficHours(e.target.value)}
+            placeholder="48"
+            validationState={trafficValid as "idle" | "valid" | "invalid"}
+            error="Must be at least 1 hour"
+          />
 
-            <div className="space-y-1.5">
-              <Label htmlFor="ret-traffic" className="text-xs text-slate-400">
-                Traffic samples retention (hours)
-              </Label>
-              <Input
-                id="ret-traffic"
-                type="number"
-                min={1}
-                value={retTrafficHours}
-                onChange={(e) => setRetTrafficHours(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-                placeholder="48"
-              />
-            </div>
+          <ValidatedInput
+            inputId="ret-alerts"
+            label="Acknowledged alerts retention (days)"
+            type="number"
+            min={1}
+            value={retAlertsDays}
+            onChange={(e) => setRetAlertsDays(e.target.value)}
+            placeholder="90"
+            validationState={alertsValid as "idle" | "valid" | "invalid"}
+            error="Must be at least 1 day"
+          />
 
-            <div className="space-y-1.5">
-              <Label htmlFor="ret-alerts" className="text-xs text-slate-400">
-                Acknowledged alerts retention (days)
-              </Label>
-              <Input
-                id="ret-alerts"
-                type="number"
-                min={1}
-                value={retAlertsDays}
-                onChange={(e) => setRetAlertsDays(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-                placeholder="90"
-              />
-            </div>
+          <ValidatedInput
+            inputId="ret-agent"
+            label="Agent reports retention (days)"
+            type="number"
+            min={1}
+            value={retAgentDays}
+            onChange={(e) => setRetAgentDays(e.target.value)}
+            placeholder="7"
+            validationState={agentValid as "idle" | "valid" | "invalid"}
+            error="Must be at least 1 day"
+          />
 
-            <div className="space-y-1.5">
-              <Label htmlFor="ret-agent" className="text-xs text-slate-400">
-                Agent reports retention (days)
-              </Label>
-              <Input
-                id="ret-agent"
-                type="number"
-                min={1}
-                value={retAgentDays}
-                onChange={(e) => setRetAgentDays(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-                placeholder="7"
-              />
+          {retentionStatus === "success" && retentionMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+              <p className="text-xs text-emerald-400">{retentionMsg}</p>
             </div>
+          )}
+          {retentionStatus === "error" && retentionMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{retentionMsg}</p>
+            </div>
+          )}
 
-            {retentionStatus === "success" && retentionMsg && (
-              <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-                <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-                <p className="text-xs text-emerald-400">{retentionMsg}</p>
-              </div>
+          <SaveButton
+            status={retentionStatus}
+            disabled={!retentionDirty}
+            onClick={handleRetentionSave}
+          />
+        </SettingsSection>
+
+        <SettingsSection
+          icon={<Database className="h-4 w-4 text-amber-400" />}
+          iconBg="bg-amber-500/10"
+          title="Database Maintenance"
+          description="Monitor database size and reclaim space."
+        >
+          <div className="flex items-center justify-between rounded-md border border-slate-800 bg-slate-950 px-3 py-2">
+            <span className="text-xs text-slate-400">Current DB size</span>
+            <span className="text-sm font-medium text-white">
+              {dbSizeBytes !== null ? formatBytes(dbSizeBytes) : "..."}
+            </span>
+          </div>
+
+          {vacuumStatus === "success" && vacuumMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+              <p className="text-xs text-emerald-400">{vacuumMsg}</p>
+            </div>
+          )}
+          {vacuumStatus === "error" && vacuumMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{vacuumMsg}</p>
+            </div>
+          )}
+
+          <Button
+            variant="outline"
+            onClick={handleVacuum}
+            disabled={vacuumStatus === "loading"}
+            className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+          >
+            {vacuumStatus === "loading" ? (
+              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
             )}
-            {retentionStatus === "error" && retentionMsg && (
-              <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-                <p className="text-xs text-rose-400">{retentionMsg}</p>
-              </div>
-            )}
-            {vacuumStatus === "success" && vacuumMsg && (
-              <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-                <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-                <p className="text-xs text-emerald-400">{vacuumMsg}</p>
-              </div>
-            )}
-            {vacuumStatus === "error" && vacuumMsg && (
-              <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-                <p className="text-xs text-rose-400">{vacuumMsg}</p>
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <Button
-                onClick={handleRetentionSave}
-                disabled={!retentionDirty || retentionStatus === "loading"}
-                className="bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
-              >
-                {retentionStatus === "loading" ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                ) : null}
-                Save
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleVacuum}
-                disabled={vacuumStatus === "loading"}
-                className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
-              >
-                {vacuumStatus === "loading" ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-                )}
-                VACUUM
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            VACUUM
+          </Button>
+        </SettingsSection>
       </div>
     </PageTransition>
   );

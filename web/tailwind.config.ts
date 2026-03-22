@@ -73,11 +73,35 @@ const config: Config = {
         shimmer: {
           "100%": { transform: "translateX(100%)" },
         },
+        shake: {
+          "0%, 100%": { transform: "translateX(0)" },
+          "20%": { transform: "translateX(-4px)" },
+          "40%": { transform: "translateX(4px)" },
+          "60%": { transform: "translateX(-4px)" },
+          "80%": { transform: "translateX(2px)" },
+        },
+        "save-glow": {
+          "0%": { boxShadow: "0 0 0 0 rgba(16,185,129,0.5)" },
+          "50%": { boxShadow: "0 0 12px 4px rgba(16,185,129,0.3)" },
+          "100%": { boxShadow: "0 0 0 0 rgba(16,185,129,0)" },
+        },
+        "fade-in": {
+          from: { opacity: "0", transform: "scale(0.8)" },
+          to: { opacity: "1", transform: "scale(1)" },
+        },
+        "strength-fill": {
+          from: { width: "0%" },
+          to: { width: "var(--strength-width)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         shimmer: "shimmer 1.5s linear infinite",
+        shake: "shake 0.4s ease-in-out",
+        "save-glow": "save-glow 0.8s ease-out",
+        "fade-in": "fade-in 0.2s ease-out",
+        "strength-fill": "strength-fill 0.4s ease-out forwards",
       },
     },
   },
