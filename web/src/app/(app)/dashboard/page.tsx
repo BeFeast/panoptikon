@@ -509,7 +509,7 @@ export default function DashboardPage() {
                 value={stats.devices_total}
                 subtitle={`${stats.devices_online} currently online`}
                 icon={<MonitorSmartphone className="h-5 w-5" />}
-                gradient="bg-gradient-to-br from-blue-600/90 to-blue-900/90"
+                gradient="bg-gradient-to-br from-blue-500/20 to-blue-900/40"
                 href="/devices"
               />
             </StaggerItem>
@@ -521,8 +521,8 @@ export default function DashboardPage() {
                 icon={<AlertTriangle className="h-5 w-5" />}
                 gradient={
                   stats.alerts_unread > 0
-                    ? "bg-gradient-to-br from-amber-600/90 to-amber-900/90"
-                    : "bg-gradient-to-br from-emerald-600/90 to-emerald-900/90"
+                    ? "bg-gradient-to-br from-amber-500/20 to-amber-900/40"
+                    : "bg-gradient-to-br from-emerald-500/20 to-emerald-900/40"
                 }
                 href="/alerts"
               />
@@ -540,10 +540,10 @@ export default function DashboardPage() {
                 icon={<Activity className="h-5 w-5" />}
                 gradient={
                   stats.critical_total === 0 || (stats.critical_online / stats.critical_total) >= 0.9
-                    ? "bg-gradient-to-br from-emerald-600/90 to-emerald-900/90"
+                    ? "bg-gradient-to-br from-emerald-500/20 to-emerald-900/40"
                     : (stats.critical_online / stats.critical_total) >= 0.7
-                      ? "bg-gradient-to-br from-amber-600/90 to-amber-900/90"
-                      : "bg-gradient-to-br from-rose-600/90 to-rose-900/90"
+                      ? "bg-gradient-to-br from-amber-500/20 to-amber-900/40"
+                      : "bg-gradient-to-br from-rose-500/20 to-rose-900/40"
                 }
               />
             </StaggerItem>
@@ -553,7 +553,7 @@ export default function DashboardPage() {
                 value={stats.wan_rx_bps}
                 subtitle={`↑ ${formatBps(stats.wan_tx_bps)}`}
                 icon={<Router className="h-5 w-5" />}
-                gradient="bg-gradient-to-br from-violet-600/90 to-violet-900/90"
+                gradient="bg-gradient-to-br from-violet-500/20 to-violet-900/40"
                 href="/traffic"
                 formatValue={(v) => `↓ ${formatBps(v)}`}
               />

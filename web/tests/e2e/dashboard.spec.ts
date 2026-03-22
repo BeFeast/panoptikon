@@ -6,7 +6,7 @@ test.describe('Dashboard', () => {
     await login(page);
   });
 
-  test.skip('dashboard page loads with hero stat cards', async ({ page }) => {
+  test('dashboard page loads with hero stat cards', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
     // Wait for API calls to settle before checking hero stats

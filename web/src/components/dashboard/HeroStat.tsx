@@ -66,7 +66,7 @@ export function HeroStat({
   const inner = (
     <Card
       className={cn(
-        "relative overflow-hidden border-0 h-full",
+        "relative overflow-hidden border-slate-700/40 h-full",
         gradient,
         href && "transition-shadow hover:shadow-lg hover:shadow-black/20"
       )}
