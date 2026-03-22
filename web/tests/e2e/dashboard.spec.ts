@@ -16,9 +16,12 @@ test.describe('Dashboard', () => {
     await expect(page.getByText('Active Alerts')).toBeVisible({ timeout: 5000 });
     // Third and fourth cards differ between success/error states
     const infraOrUptime = page.getByText('Infra Health').or(page.getByText('Uptime'));
-    await expect(infraOrUptime).toBeVisible({ timeout: 5000 });
-    const wanOrTraffic = page.getByText('WAN Traffic').or(page.getByText('Traffic'));
-    await expect(wanOrTraffic).toBeVisible({ timeout: 5000 });
+    await expect(infraOrUptime.first()).toBeVisible({ timeout: 5000 });
+    // "WAN Traffic" appears in both hero stat and bento section; "Traffic" matches sidebar nav + subtitle
+    // Use exact match + .first() to avoid strict mode violations from duplicate text
+    const wanOrTraffic = page.getByText('WAN Traffic', { exact: true })
+      .or(page.getByText('Traffic', { exact: true }));
+    await expect(wanOrTraffic.first()).toBeVisible({ timeout: 5000 });
 
     await page.screenshot({ path: 'tests/screenshots/dashboard-hero-stats.png', fullPage: true });
   });
@@ -68,7 +71,8 @@ test.describe('Dashboard', () => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
     // All bento grid sections should be visible
-    await expect(page.getByText('WAN Traffic')).toBeVisible({ timeout: 10000 });
+    // "WAN Traffic" appears in both hero stat and bento section; use .first() to avoid strict mode
+    await expect(page.getByText('WAN Traffic').first()).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Recent Alerts')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Infrastructure Health')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Device Breakdown')).toBeVisible({ timeout: 5000 });

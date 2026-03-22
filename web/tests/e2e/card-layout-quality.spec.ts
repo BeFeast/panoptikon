@@ -79,7 +79,8 @@ test.describe("Card Layout Quality (#538)", () => {
 
     // Section titles like "WAN Traffic", "Recent Alerts", "Device Breakdown"
     // should all use the consistent label typography
-    const wanTraffic = page.getByText("WAN Traffic");
+    // "WAN Traffic" appears in both hero stat and bento section; use .first()
+    const wanTraffic = page.getByText("WAN Traffic").first();
     await expect(wanTraffic).toBeVisible({ timeout: 10000 });
     await expect(wanTraffic).toHaveCSS("text-transform", "uppercase");
 
