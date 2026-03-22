@@ -132,7 +132,7 @@ export default function AlertRulesPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-2xl space-y-6 py-8">
+      <div className="mx-auto max-w-2xl space-y-8 py-8">
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
@@ -140,7 +140,7 @@ export default function AlertRulesPage() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <h1 className="text-2xl font-semibold text-white">Alert Rules</h1>
+          <h1 className="text-3xl font-bold tracking-tight font-display text-white">Alert Rules</h1>
         </div>
 
         {status === "success" && statusMsg && (

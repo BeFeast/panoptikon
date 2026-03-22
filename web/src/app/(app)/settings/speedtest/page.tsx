@@ -109,7 +109,7 @@ export default function SpeedtestSettingsPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-lg space-y-6 py-8">
+      <div className="mx-auto max-w-lg space-y-8 py-8">
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
@@ -117,7 +117,7 @@ export default function SpeedtestSettingsPage() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <h1 className="text-2xl font-semibold text-white">Speed Test</h1>
+          <h1 className="text-3xl font-bold tracking-tight font-display text-white">Speed Test</h1>
         </div>
 
         <Card className="border-slate-800 bg-slate-900">
@@ -137,7 +137,7 @@ export default function SpeedtestSettingsPage() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="speedtest-auto" className="text-xs text-slate-400">
                   Auto-run interval (hours)

@@ -294,7 +294,7 @@ function StatusMessages({
 export default function RouterSettingsPage() {
   return (
     <PageTransition>
-      <div className="mx-auto max-w-lg space-y-6 py-8">
+      <div className="mx-auto max-w-lg space-y-8 py-8">
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
@@ -302,7 +302,7 @@ export default function RouterSettingsPage() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <h1 className="text-2xl font-semibold text-white">
+          <h1 className="text-3xl font-bold tracking-tight font-display text-white">
             Router Settings
           </h1>
         </div>

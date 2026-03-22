@@ -77,12 +77,12 @@ export default function TailscaleSettingsPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-6xl space-y-6 py-8">
+      <div className="mx-auto max-w-6xl space-y-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Shield className="h-6 w-6 text-blue-500" />
-            <h1 className="text-2xl font-semibold text-white">Tailscale</h1>
+            <h1 className="text-3xl font-bold tracking-tight font-display text-white">Tailscale</h1>
             {data && (
               <Badge
                 variant="outline"
@@ -108,7 +108,7 @@ export default function TailscaleSettingsPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid gap-4 sm:grid-cols-4">
+        <div className="grid gap-5 sm:grid-cols-4">
           <SummaryCard
             title="Status"
             value={data?.backend_state ?? null}
@@ -290,7 +290,7 @@ function SummaryCard({
 }) {
   return (
     <Card className="border-slate-800 bg-slate-900">
-      <CardContent className="flex items-center gap-4 p-5">
+      <CardContent className="flex items-center gap-5 p-5">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800">
           {icon}
         </div>

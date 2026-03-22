@@ -129,11 +129,11 @@ export default function DnsQueriesPage() {
 
   return (
     <PageTransition>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-white">DNS Query Log</h1>
+            <h1 className="text-3xl font-bold tracking-tight font-display text-white">DNS Query Log</h1>
             {stats && (
               <Badge variant="secondary" className="gap-1">
                 <Globe className="h-3 w-3" />
@@ -145,7 +145,7 @@ export default function DnsQueriesPage() {
 
         {/* Stats cards */}
         {stats === null ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <Card key={i} className="border-slate-800 bg-slate-900">
                 <CardContent className="py-4">
@@ -156,7 +156,7 @@ export default function DnsQueriesPage() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
             <Card className="border-slate-800 bg-slate-900">
               <CardContent className="py-4">
                 <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
@@ -211,7 +211,7 @@ export default function DnsQueriesPage() {
 
         {/* Top domains + Per-device stats */}
         {stats && (stats.top_queried_domains.length > 0 || stats.per_device_stats.length > 0) && (
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
             {/* Top queried domains */}
             {stats.top_queried_domains.length > 0 && (
               <Card className="border-slate-800 bg-slate-900">

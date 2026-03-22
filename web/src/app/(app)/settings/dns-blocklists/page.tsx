@@ -253,7 +253,7 @@ export default function DnsBlocklistsPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-5xl space-y-6 py-8">
+      <div className="mx-auto max-w-5xl space-y-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -263,7 +263,7 @@ export default function DnsBlocklistsPage() {
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            <h1 className="text-2xl font-semibold text-white">
+            <h1 className="text-3xl font-bold tracking-tight font-display text-white">
               DNS Blocklists
             </h1>
           </div>
@@ -303,7 +303,7 @@ export default function DnsBlocklistsPage() {
         </div>
 
         {/* Stats cards */}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
           <Card className="border-slate-800 bg-slate-900">
             <CardContent className="py-3">
               <p className="text-xs text-slate-500">Blocked Domains</p>

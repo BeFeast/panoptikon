@@ -200,7 +200,7 @@ function DdnsFormDialog({
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <div className="space-y-2">
               <Label>Provider</Label>
               <select
@@ -253,7 +253,7 @@ function DdnsFormDialog({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <div className="space-y-2">
               <Label>Username</Label>
               <Input
@@ -300,7 +300,7 @@ function DdnsFormDialog({
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-5">
             <div className="space-y-2">
               <Label>IP Source</Label>
               <select
@@ -459,11 +459,11 @@ export default function DdnsPage() {
 
   return (
     <PageTransition>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-white">Dynamic DNS</h1>
+            <h1 className="text-3xl font-bold tracking-tight font-display text-white">Dynamic DNS</h1>
             <p className="text-sm text-slate-400">
               Manage DDNS client configurations for automatic DNS updates
             </p>
@@ -485,13 +485,13 @@ export default function DdnsPage() {
 
         {/* Status cards */}
         {statusData === null ? (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
             {[...Array(4)].map((_, i) => (
               <Skeleton key={i} className="h-24 bg-slate-800" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
             <Card className="border-slate-800/70 bg-slate-900/55">
               <CardHeader className="pb-2">
                 <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">

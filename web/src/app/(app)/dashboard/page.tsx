@@ -448,16 +448,16 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">Dashboard</h1>
+        <h1 className="text-3xl font-bold tracking-tight font-display text-white">Dashboard</h1>
         <p className="max-w-3xl text-sm leading-6 text-slate-400">
           Network health, traffic, and alerts at a glance.
         </p>
       </div>
 
       {/* ── Hero Stats Row ─────────────────────────────── */}
-      <StaggerContainer className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <StaggerContainer className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {statsError ? (
           <>
             <StaggerItem>

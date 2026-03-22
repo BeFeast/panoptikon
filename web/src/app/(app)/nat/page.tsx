@@ -124,15 +124,15 @@ export default function NatPage() {
 
   return (
     <PageTransition>
-      <div className="space-y-6">
-        <section className="flex flex-col gap-4 rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
+      <div className="space-y-8">
+        <section className="flex flex-col gap-5 rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-5">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/20 via-fuchsia-500/10 to-blue-500/10 text-violet-300">
               <ArrowRightLeft className="h-6 w-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight text-white">NAT / Port Forwarding</h1>
+                <h1 className="text-3xl font-bold tracking-tight font-display text-white">NAT / Port Forwarding</h1>
                 <HelpTooltip text="Manage MikroTik NAT and port-forwarding rules from the same command-center style UI." />
               </div>
               <p className="text-sm text-slate-400">
@@ -155,7 +155,7 @@ export default function NatPage() {
           </Button>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-1 lg:max-w-md">
+        <section className="grid gap-5 sm:grid-cols-1 lg:max-w-md">
           <SummaryCard
             title="MikroTik NAT Rules"
             value={summary?.mikrotik_rule_count ?? null}
@@ -383,7 +383,7 @@ function SummaryCard({
 }) {
   return (
     <Card className={surfaceClass}>
-      <CardContent className="flex min-h-[96px] items-center gap-4 p-4">
+      <CardContent className="flex min-h-[96px] items-center gap-5 p-4">
         <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border", iconClass)}>
           {icon}
         </div>
@@ -486,7 +486,7 @@ function MikrotikNatDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1.5">
               <Label className="text-slate-400">Chain</Label>
               <Input
@@ -507,7 +507,7 @@ function MikrotikNatDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1.5">
               <Label className="text-slate-400">Protocol</Label>
               <Input
@@ -528,7 +528,7 @@ function MikrotikNatDialog({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1.5">
               <Label className="text-slate-400">To Addresses</Label>
               <Input

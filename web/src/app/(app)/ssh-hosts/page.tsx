@@ -118,10 +118,10 @@ export default function SshHostsPage() {
 
   return (
     <PageTransition>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold text-white">SSH Hosts</h1>
+          <h1 className="text-3xl font-bold tracking-tight font-display text-white">SSH Hosts</h1>
           <SshTargetFormDialog
             open={addOpen}
             onOpenChange={setAddOpen}
@@ -455,7 +455,7 @@ function SshTargetFormDialog({
       </DialogHeader>
 
       <div className="space-y-4 pt-2">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-5">
           <div className="space-y-2">
             <Label>Name</Label>
             <Input
@@ -474,7 +474,7 @@ function SshTargetFormDialog({
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-5">
           <div className="space-y-2">
             <Label>Port</Label>
             <Input
@@ -536,7 +536,7 @@ function SshTargetFormDialog({
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-5">
           <div className="space-y-2">
             <Label>Poll Interval (seconds)</Label>
             <Input
