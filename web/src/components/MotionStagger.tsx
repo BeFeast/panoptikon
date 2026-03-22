@@ -23,9 +23,11 @@ const itemVariants = {
 export function StaggerContainer({
   children,
   className,
+  style,
 }: {
   children: React.ReactNode
   className?: string
+  style?: React.CSSProperties
 }) {
   return (
     <motion.div
@@ -33,6 +35,7 @@ export function StaggerContainer({
       initial="hidden"
       animate="visible"
       className={className}
+      style={style}
     >
       {children}
     </motion.div>
