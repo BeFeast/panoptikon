@@ -129,7 +129,7 @@ export default function VpnStatusPage() {
   return (
     <PageTransition>
       <div className="space-y-8">
-        <section className="flex flex-col gap-5 rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4 md:flex-row md:items-center md:justify-between">
+        <section className="flex flex-col gap-5 rounded-xl border border-slate-800/70 bg-slate-950/40 p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-5">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-indigo-500/30 bg-gradient-to-br from-indigo-500/20 via-blue-500/10 to-cyan-500/10 text-indigo-300">
               <Shield className="h-6 w-6" />
