@@ -53,6 +53,8 @@ import { downloadExport } from "@/lib/export";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/PageTransition";
 import { HelpTooltip } from "@/components/HelpTooltip";
+import { EmptyState } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
 import {
   Tooltip,
   TooltipContent,
@@ -254,11 +256,7 @@ export default function AlertsPage() {
   }
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-rose-400">{error}</p>
-      </div>
-    );
+    return <ErrorState message={error} onRetry={load} />;
   }
 
   const activeCount = (alerts ?? []).filter((a) => !a.acknowledged_at).length;
@@ -421,12 +419,15 @@ export default function AlertsPage() {
         </div>
       ) : alerts.length === 0 ? (
         <Card className="border-slate-800 bg-slate-900">
-          <CardContent className="flex flex-col items-center gap-3 py-16">
-            <BellOff className="h-12 w-12 text-slate-600" />
-            <p className="text-lg font-medium text-slate-400">No alerts yet — all quiet</p>
-            <p className="max-w-sm text-sm text-slate-600">
-              Alerts appear here when new devices join the network, devices go offline, or configured rules are triggered. Set up rules in Settings → Alert Rules.
-            </p>
+          <CardContent>
+            <EmptyState
+              icon={Shield}
+              title="All clear!"
+              description="No alerts right now. Alerts appear when new devices join, devices go offline, or configured rules are triggered."
+              variant="success"
+              actionLabel="Configure Alert Rules"
+              actionHref="/settings/alert-rules"
+            />
           </CardContent>
         </Card>
       ) : (

@@ -31,6 +31,8 @@ import type {
   DnsQueryStats,
 } from "@/lib/types";
 import { PageTransition } from "@/components/PageTransition";
+import { EmptyState } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
 
 type TimeRange = "1h" | "6h" | "24h" | "48h" | "7d";
 
@@ -122,11 +124,7 @@ export default function DnsQueriesPage() {
   const totalPages = logData ? Math.ceil(logData.total / perPage) : 0;
 
   if (error && !logData) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-rose-400">{error}</p>
-      </div>
-    );
+    return <ErrorState message={error} onRetry={loadLog} />;
   }
 
   return (
@@ -363,11 +361,14 @@ export default function DnsQueriesPage() {
           </Card>
         ) : logData.items.length === 0 ? (
           <Card className="border-slate-800 bg-slate-900">
-            <CardContent className="flex flex-col items-center gap-3 py-16">
-              <Globe className="h-10 w-10 text-slate-600" />
-              <p className="text-sm text-slate-500">
-                No DNS queries found for the selected filters.
-              </p>
+            <CardContent>
+              <EmptyState
+                icon={Globe}
+                title="No DNS queries recorded"
+                description="No queries match the selected filters. Check that DNS logging is enabled in Settings → DNS."
+                actionLabel="DNS Settings"
+                actionHref="/settings/dns"
+              />
             </CardContent>
           </Card>
         ) : (
