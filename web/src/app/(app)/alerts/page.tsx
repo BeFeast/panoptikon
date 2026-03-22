@@ -120,6 +120,19 @@ function severityBadge(severity: Alert["severity"]) {
   }
 }
 
+function severityBorderClass(severity: Alert["severity"]) {
+  switch (severity) {
+    case "CRITICAL":
+      return "border-l-4 border-l-red-500";
+    case "WARNING":
+      return "border-l-4 border-l-amber-500";
+    case "INFO":
+      return "border-l-4 border-l-blue-500";
+    default:
+      return "";
+  }
+}
+
 type StatusFilter = "all" | "active" | "acknowledged";
 type TypeFilter = "all" | Alert["type"];
 
@@ -142,6 +155,7 @@ export default function AlertsPage() {
   const [ackNote, setAckNote] = useState("");
   const [muteDropdownId, setMuteDropdownId] = useState<string | null>(null);
   const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
+  const [acknowledgingIds, setAcknowledgingIds] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
     try {
@@ -190,21 +204,32 @@ export default function AlertsPage() {
 
   async function handleAcknowledge() {
     if (!ackAlertId) return;
+    const id = ackAlertId;
     try {
-      await acknowledgeAlert(ackAlertId, ackNote || undefined);
-      setAlerts((prev) =>
-        (prev ?? []).map((a) =>
-          a.id === ackAlertId
-            ? {
-                ...a,
-                acknowledged_at: new Date().toISOString(),
-                acknowledged_by: ackNote || null,
-                is_read: true,
-              }
-            : a
-        )
-      );
+      await acknowledgeAlert(id, ackNote || undefined);
       setAckDialogOpen(false);
+      // Start strike-through animation
+      setAcknowledgingIds((prev) => new Set(prev).add(id));
+      // After animation completes, update the alert state
+      setTimeout(() => {
+        setAcknowledgingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        setAlerts((prev) =>
+          (prev ?? []).map((a) =>
+            a.id === id
+              ? {
+                  ...a,
+                  acknowledged_at: new Date().toISOString(),
+                  acknowledged_by: ackNote || null,
+                  is_read: true,
+                }
+              : a
+          )
+        );
+      }, 600);
     } catch {
       // silently ignore
     }
@@ -261,6 +286,9 @@ export default function AlertsPage() {
 
   const activeCount = (alerts ?? []).filter((a) => !a.acknowledged_at).length;
   const acknowledgedCount = (alerts ?? []).filter((a) => !!a.acknowledged_at).length;
+  const criticalCount = (alerts ?? []).filter((a) => a.severity === "CRITICAL" && !a.acknowledged_at).length;
+  const warningCount = (alerts ?? []).filter((a) => a.severity === "WARNING" && !a.acknowledged_at).length;
+  const infoCount = (alerts ?? []).filter((a) => a.severity === "INFO" && !a.acknowledged_at).length;
 
   return (
     <PageTransition>
@@ -401,6 +429,33 @@ export default function AlertsPage() {
         </div>
       </div>
 
+      {/* Severity Summary Bar */}
+      {alerts && alerts.length > 0 && (criticalCount > 0 || warningCount > 0 || infoCount > 0) && (
+        <div className="flex items-center gap-3 rounded-lg border border-slate-800 bg-slate-900/50 px-4 py-2.5">
+          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Severity</span>
+          <div className="flex items-center gap-3">
+            {criticalCount > 0 && (
+              <Badge className="bg-red-500/20 text-red-400 border-red-500/30 gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+                {criticalCount} critical
+              </Badge>
+            )}
+            {warningCount > 0 && (
+              <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                {warningCount} warning
+              </Badge>
+            )}
+            {infoCount > 0 && (
+              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                {infoCount} info
+              </Badge>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Alert list */}
       {alerts === null ? (
         <div className="space-y-3">
@@ -435,12 +490,14 @@ export default function AlertsPage() {
           {alerts.map((alert) => (
             <Card
               key={alert.id}
-              className={`border-slate-800 transition-colors hover:bg-slate-800/60 hover:border-blue-500/30 ${
-                alert.acknowledged_at
-                  ? "bg-[#12121a] opacity-70"
-                  : !alert.is_read
-                    ? "border-l-2 border-l-blue-500 bg-slate-900"
-                    : "bg-slate-900"
+              className={`border-slate-800 transition-all hover:bg-slate-800/60 hover:border-blue-500/30 ${severityBorderClass(alert.severity)} ${
+                acknowledgingIds.has(alert.id)
+                  ? "animate-ack-strike opacity-0"
+                  : alert.acknowledged_at
+                    ? "bg-[#12121a] opacity-70"
+                    : alert.severity === "CRITICAL"
+                      ? "animate-pulse-critical bg-slate-900"
+                      : "bg-slate-900"
               }`}
             >
               <CardContent className="flex items-center gap-4 py-4">
