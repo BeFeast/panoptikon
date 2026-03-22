@@ -6,17 +6,18 @@ test.describe('Dashboard', () => {
     await login(page);
   });
 
-  test.skip('dashboard page loads with hero stat cards', async ({ page }) => {
+  test('dashboard page loads with hero stat cards', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+
+    // Wait for API calls to settle before checking hero stats
+    await page.waitForLoadState('networkidle');
 
     // Should have hero stat cards (4 of them) — wait for stats to load
     // In error state titles are: Total Devices, Active Alerts, Uptime, Traffic
     // In success state: Total Devices, Active Alerts, Infra Health, WAN Traffic
-    await expect(page.getByText('Total Devices')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('Active Alerts')).toBeVisible({ timeout: 5000 });
-    // Third and fourth cards differ between success/error states.
-    // Use exact matching + .first() because "WAN Traffic" also appears as
-    // a bento section header, and "Traffic" substring matches many elements.
+    await expect(page.getByText('Total Devices')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Active Alerts').first()).toBeVisible({ timeout: 10000 });
+    // Third and fourth cards differ between success/error states
     const infraOrUptime = page.getByText('Infra Health').or(page.getByText('Uptime'));
     await expect(infraOrUptime.first()).toBeVisible({ timeout: 5000 });
     // "WAN Traffic" appears in both hero stat and bento section; "Traffic" matches sidebar nav + subtitle
@@ -69,8 +70,11 @@ test.describe('Dashboard', () => {
     await page.screenshot({ path: 'tests/screenshots/dashboard-quick-actions.png', fullPage: true });
   });
 
-  test.skip('bento grid layout has correct sections', async ({ page }) => {
+  test('bento grid layout has correct sections', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+
+    // Wait for API calls to settle before checking bento grid
+    await page.waitForLoadState('networkidle');
 
     // All bento grid sections should be visible
     // "WAN Traffic" appears in both hero stat and bento section; use .first() to avoid strict mode
