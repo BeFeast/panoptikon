@@ -92,4 +92,53 @@ test.describe("pfSense Settings — save / reload roundtrip", () => {
       page.getByText(/Connected|unreachable|Failed|Error|refused/i),
     ).toBeVisible({ timeout: 15000 });
   });
+
+  test("successful connection test auto-enables the integration toggle", async ({
+    page,
+  }) => {
+    // Ensure toggle starts OFF
+    const toggle = page.locator("#pf-enabled");
+    if ((await toggle.getAttribute("aria-checked")) === "true") {
+      await toggle.click();
+      await page.getByRole("button", { name: "Save" }).click();
+      await expect(
+        page.getByText("pfSense settings saved."),
+      ).toBeVisible({ timeout: 10000 });
+      await page.reload();
+      await expect(toggle).toBeVisible({ timeout: 15000 });
+    }
+    await expect(toggle).toHaveAttribute("aria-checked", "false");
+
+    // Mock the test-connection API to return a successful response
+    await page.route("**/api/v1/pfsense/test-connection", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          configured: true,
+          reachable: true,
+          hostname: "pfSense-test",
+          version: "2.8.1-RELEASE",
+        }),
+      }),
+    );
+
+    await page.locator("#pf-host").fill("10.10.0.1");
+    await page.locator("#pf-username").fill("admin");
+
+    await page.getByRole("button", { name: "Test Connection" }).click();
+    await expect(page.getByText(/Connected!/)).toBeVisible({ timeout: 10000 });
+
+    // Toggle should be auto-enabled after successful connection
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+
+    // Save button should be enabled (dirty state from toggle change)
+    await expect(
+      page.getByRole("button", { name: "Save" }),
+    ).toBeEnabled();
+
+    await page.screenshot({
+      path: "tests/screenshots/settings-pfsense-auto-enable.png",
+    });
+  });
 });
