@@ -203,11 +203,11 @@ export default function CaddyPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-5xl space-y-6 py-8">
+      <div className="mx-auto max-w-5xl space-y-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold text-white">
+            <h1 className="text-3xl font-bold tracking-tight font-display text-white">
               Caddy Reverse Proxy
             </h1>
             <HelpTooltip text="Manage reverse-proxy hosts that Caddy serves. Add domains, point them to internal services, and enable automatic HTTPS." />

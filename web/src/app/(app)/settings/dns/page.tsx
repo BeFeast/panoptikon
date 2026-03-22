@@ -158,7 +158,7 @@ export default function DnsSettingsPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-5xl space-y-6 py-8">
+      <div className="mx-auto max-w-5xl space-y-8 py-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -168,7 +168,7 @@ export default function DnsSettingsPage() {
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            <h1 className="text-2xl font-semibold text-white">
+            <h1 className="text-3xl font-bold tracking-tight font-display text-white">
               Unbound DNS
             </h1>
           </div>

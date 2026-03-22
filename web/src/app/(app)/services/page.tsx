@@ -277,11 +277,11 @@ export default function ServicesPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-5xl space-y-6 py-8 px-4">
+      <div className="mx-auto max-w-5xl space-y-8 py-8 px-4">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-white">Services</h1>
+            <h1 className="text-3xl font-bold tracking-tight font-display text-white">Services</h1>
             <p className="mt-1 text-sm text-slate-400">
               Manage reverse proxy entries and port-forwarding rules
             </p>

@@ -75,7 +75,7 @@ export default function AgentDetailContent() {
 
   if (!agent || !reports) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
         <Skeleton className="h-8 w-64" />
         <Skeleton className="h-64 w-full" />
         <Skeleton className="h-64 w-full" />
@@ -102,7 +102,7 @@ export default function AgentDetailContent() {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Back link + header */}
       <div>
         <Link
@@ -113,7 +113,7 @@ export default function AgentDetailContent() {
           Back to Agents
         </Link>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold text-white">
+          <h1 className="text-3xl font-bold tracking-tight font-display text-white">
             {agent.name ?? agent.id.slice(0, 8)}
           </h1>
           <Badge
@@ -146,7 +146,7 @@ export default function AgentDetailContent() {
 
       {/* Charts */}
       {chartData.length > 0 ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* CPU Chart */}
           <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
             <h2 className="text-sm font-medium text-slate-400 mb-3">CPU Usage %</h2>

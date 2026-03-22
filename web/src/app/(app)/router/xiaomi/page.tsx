@@ -32,11 +32,11 @@ export default function XiaomiRouterPage() {
 
   return (
     <PageTransition>
-      <div className="space-y-6">
+      <div className="space-y-8">
         <RouterSelector active="xiaomi" />
 
         {!settingsLoaded ? (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <Skeleton className="h-10 w-64" />
             <Skeleton className="h-96 w-full" />
           </div>

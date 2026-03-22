@@ -144,12 +144,12 @@ export default function DnsLogsPage() {
 
   return (
     <PageTransition>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-white">
+              <h1 className="text-3xl font-bold tracking-tight font-display text-white">
                 DNS Query Log
               </h1>
               <HelpTooltip text="Shows DNS queries made by devices on your network. Useful for spotting suspicious domains and debugging connectivity. Data is kept for 7 days." />
@@ -197,7 +197,7 @@ export default function DnsLogsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-4" data-testid="dns-stats-grid">
+        <div className="grid gap-5 md:grid-cols-4" data-testid="dns-stats-grid">
           <Card className="border-slate-800/70 bg-slate-900/55">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
@@ -451,7 +451,7 @@ export default function DnsLogsPage() {
           </TabsContent>
 
           {/* Statistics Tab */}
-          <TabsContent value="stats" className="space-y-6">
+          <TabsContent value="stats" className="space-y-8">
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Top Queried Domains */}
               <Card>

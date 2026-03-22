@@ -231,9 +231,9 @@ export default function CloudflareTunnelPage() {
   if (loading && !status) {
     return (
       <PageTransition>
-        <div className="space-y-6">
+        <div className="space-y-8">
           <Skeleton className="h-8 w-64" />
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-3">
             <Skeleton className="h-32" />
             <Skeleton className="h-32" />
             <Skeleton className="h-32" />
@@ -248,13 +248,13 @@ export default function CloudflareTunnelPage() {
 
   return (
     <PageTransition>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Cloud className="h-6 w-6 text-orange-400" />
             <div>
-              <h1 className="text-2xl font-semibold text-white">
+              <h1 className="text-3xl font-bold tracking-tight font-display text-white">
                 Cloudflare Tunnel
               </h1>
               <p className="text-sm text-slate-400">
@@ -312,7 +312,7 @@ export default function CloudflareTunnelPage() {
 
         {/* Summary cards */}
         {!notConfigured && status && (
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-5 md:grid-cols-3">
             {/* Tunnel Status */}
             <Card className="border-slate-800 bg-slate-900/80">
               <CardHeader className="pb-2">

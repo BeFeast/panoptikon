@@ -169,7 +169,7 @@ export default function RetentionSettingsPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-lg space-y-6 py-8">
+      <div className="mx-auto max-w-lg space-y-8 py-8">
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
@@ -177,7 +177,7 @@ export default function RetentionSettingsPage() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <h1 className="text-2xl font-semibold text-white">Data Retention</h1>
+          <h1 className="text-3xl font-bold tracking-tight font-display text-white">Data Retention</h1>
         </div>
 
         <Card className="border-slate-800 bg-slate-900">

@@ -179,9 +179,9 @@ export default function AssetDetailContent() {
 
   if (!device) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
         <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <Skeleton className="h-64 w-full" />
           <Skeleton className="h-64 w-full" />
           <Skeleton className="h-64 w-full" />
@@ -222,7 +222,7 @@ export default function AssetDetailContent() {
   const hasLiveMetrics = chartData.length > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Back link + Header */}
       <div>
         <Link
@@ -538,7 +538,7 @@ function InfoGrid({
     .join(" ") || effectiveDiskSize;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {/* Hardware Column */}
       <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
         <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
@@ -691,7 +691,7 @@ function InfoGrid({
             <Tag size={14} />
             Asset Management
           </h3>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
             <EditableInfoRow
               label="Purchase Date"
               value={device.purchase_date}
@@ -729,7 +729,7 @@ function InfoGrid({
 
 function LiveMetricsPanel({ chartData }: { chartData: ChartPoint[] }) {
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       {/* CPU Chart */}
       <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
         <h2 className="text-sm font-medium text-slate-400 mb-3">CPU Usage %</h2>

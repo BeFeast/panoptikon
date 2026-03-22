@@ -410,10 +410,10 @@ ${filtered
 
   return (
     <PageTransition>
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold text-white">Assets</h1>
+          <h1 className="text-3xl font-bold tracking-tight font-display text-white">Assets</h1>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -1009,7 +1009,7 @@ function AssetFormDialog({
 
       <div className="space-y-4 pt-2">
         {/* Name + Type */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-5">
           <div className="space-y-2">
             <Label>Name</Label>
             <Input
@@ -1035,7 +1035,7 @@ function AssetFormDialog({
         </div>
 
         {/* Status + Location */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-5">
           <div className="space-y-2">
             <Label>Status</Label>
             <select
@@ -1061,7 +1061,7 @@ function AssetFormDialog({
         </div>
 
         {/* Owner + Tags */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-5">
           <div className="space-y-2">
             <Label>Owner</Label>
             <Input
@@ -1086,7 +1086,7 @@ function AssetFormDialog({
         </div>
 
         {/* Serial + Purchase Date */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-5">
           <div className="space-y-2">
             <Label>Serial Number</Label>
             <Input

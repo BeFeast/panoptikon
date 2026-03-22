@@ -161,7 +161,7 @@ function StatusHeader({ status }: { status: MikrotikStatus }) {
           <Router className="h-5 w-5 text-pink-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-semibold text-white">MikroTik Router</h1>
+          <h1 className="text-3xl font-bold tracking-tight font-display text-white">MikroTik Router</h1>
           <p className="text-xs text-slate-500">
             {status.board_name ?? "RouterOS"}{" "}
             {status.version && (

@@ -156,14 +156,14 @@ export default function QosPage() {
 
   return (
     <PageTransition>
-      <div className="space-y-6">
-        <section className="flex flex-col gap-4 rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-center gap-4">
+      <div className="space-y-8">
+        <section className="flex flex-col gap-5 rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-5">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/20 via-cyan-500/10 to-indigo-500/10 text-blue-300">
               <Gauge className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-white">QoS / Traffic Shaping</h1>
+              <h1 className="text-3xl font-bold tracking-tight font-display text-white">QoS / Traffic Shaping</h1>
               <p className="text-sm text-slate-400">
                 Queue policies, bandwidth limits, and hierarchical shaping.
               </p>
@@ -184,7 +184,7 @@ export default function QosPage() {
           </Button>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-2">
+        <section className="grid gap-5 sm:grid-cols-2">
           <SummaryCard
             title="MikroTik Simple Queues"
             value={summary?.mikrotik_simple_queue_count ?? null}
@@ -519,7 +519,7 @@ function SummaryCard({
 }) {
   return (
     <Card className={surfaceClass}>
-      <CardContent className="flex min-h-[96px] items-center gap-4 p-4">
+      <CardContent className="flex min-h-[96px] items-center gap-5 p-4">
         <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border", iconClass)}>
           {icon}
         </div>

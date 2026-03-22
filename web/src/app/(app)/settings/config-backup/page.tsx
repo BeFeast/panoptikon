@@ -283,7 +283,7 @@ export default function ConfigBackupPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-3xl space-y-6 py-8">
+      <div className="mx-auto max-w-3xl space-y-8 py-8">
         {/* Header with back link */}
         <div className="flex items-center gap-3">
           <a
@@ -293,7 +293,7 @@ export default function ConfigBackupPage() {
             <ArrowLeft className="h-4 w-4" />
           </a>
           <div>
-            <h1 className="text-2xl font-semibold text-white">
+            <h1 className="text-3xl font-bold tracking-tight font-display text-white">
               Config Backup & Rollback
             </h1>
             <p className="text-sm text-slate-500">
