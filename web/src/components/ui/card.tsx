@@ -4,12 +4,15 @@ import { cn } from "@/lib/utils"
 
 const Card = React.forwardRef<
   HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLDivElement> & { selected?: boolean }
+>(({ className, selected, ...props }, ref) => (
   <div
     ref={ref}
     className={cn(
-      "rounded-2xl border border-slate-700/50 bg-slate-900/60 text-card-foreground shadow-[0_8px_26px_-18px_rgba(15,23,42,0.95)] backdrop-blur-sm supports-[backdrop-filter]:bg-slate-900/55",
+      "relative rounded-2xl border border-slate-700/50 bg-slate-900/60 text-card-foreground shadow-[0_8px_26px_-18px_rgba(15,23,42,0.95)] backdrop-blur-xl supports-[backdrop-filter]:bg-slate-900/55",
+      "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:rounded-t-2xl before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent",
+      "transition-[border-color] duration-200 ease-out hover:border-blue-500/20",
+      selected && "card-selected",
       className
     )}
     {...props}

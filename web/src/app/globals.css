@@ -107,6 +107,18 @@
   animation: glow-pulse-rose 2.4s ease-in-out infinite;
 }
 
+/* ── Card selected accent bar ──────────────────────── */
+.card-selected::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(to bottom, hsl(217 91% 60%), hsl(217 91% 45%));
+}
+
 /* Hide scrollbar while preserving scroll behavior */
 .scrollbar-hide {
   -ms-overflow-style: none;
