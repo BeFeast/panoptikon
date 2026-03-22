@@ -4,7 +4,7 @@ test.describe("Scanner Enrichment Settings", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto("/settings/scanner/");
-    await expect(page.getByText("Scanner Configuration")).toBeVisible({
+    await expect(page.getByText("Scan Configuration")).toBeVisible({
       timeout: 15000,
     });
     await page.waitForLoadState("networkidle");
@@ -51,7 +51,7 @@ test.describe("Scanner Enrichment Settings", () => {
 
     // Reload and verify persistence
     await page.reload();
-    await expect(page.getByText("Scanner Configuration")).toBeVisible({
+    await expect(page.getByText("Scan Configuration")).toBeVisible({
       timeout: 15000,
     });
     await page.waitForLoadState("networkidle");

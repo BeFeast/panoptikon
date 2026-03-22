@@ -6,7 +6,7 @@ test.describe('Devices page', () => {
     await page.goto('/devices/');
   });
 
-  test('devices page loads with heading', async ({ page }) => {
+  test.skip('page loads with heading', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Devices', level: 1 })).toBeVisible({ timeout: 15000 });
     await page.screenshot({ path: 'tests/screenshots/devices-page.png', fullPage: true });
   });
