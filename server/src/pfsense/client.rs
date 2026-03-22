@@ -419,6 +419,18 @@ impl PfsenseClient {
         self.bridge_data("dns_override_delete", Some(&payload))
     }
 
+    // ── Services management ──
+
+    pub fn services(&self) -> Result<Vec<PfsenseService>> {
+        let val = self.bridge_data("services", None)?;
+        serde_json::from_value(val).context("parse pfSense services")
+    }
+
+    pub fn service_action(&self, name: &str, action: &str) -> Result<Value> {
+        let payload = serde_json::json!({ "name": name, "action": action });
+        self.bridge_data("service_action", Some(&payload))
+    }
+
     // ── Config management ──
 
     pub fn config_snapshot(&self) -> Result<Value> {

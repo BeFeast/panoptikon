@@ -1985,6 +1985,12 @@ export interface PfsenseAuditEntry {
   error: string | null;
 }
 
+export interface PfsenseService {
+  name: string;
+  description: string;
+  running: boolean;
+}
+
 // ─── Xiaomi MiWiFi ──────────────────────────────────────
 
 export interface XiaomiStatus {

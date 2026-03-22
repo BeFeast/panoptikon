@@ -728,6 +728,86 @@ try {
         }
         respond(true, $result);
 
+    case 'services':
+        // List all known services and their running status.
+        // pfSense stores service metadata in /etc/inc/services.inc and
+        // uses get_services() to enumerate them.
+        if (function_exists('get_services')) {
+            $svcs = get_services();
+        } else {
+            $svcs = [];
+        }
+        $result = [];
+        foreach ($svcs as $svc) {
+            $name = isset($svc['name']) ? $svc['name'] : '';
+            $desc = isset($svc['description']) ? $svc['description'] : $name;
+            // get_service_status returns 1 if running, 0 if stopped
+            $running = false;
+            if (function_exists('get_service_status')) {
+                $running = get_service_status($svc) ? true : false;
+            }
+            $result[] = [
+                'name' => $name,
+                'description' => $desc,
+                'running' => $running,
+            ];
+        }
+        respond(true, $result);
+
+    case 'service_action':
+        $name = isset($payload['name']) ? $payload['name'] : null;
+        $svc_action = isset($payload['action']) ? $payload['action'] : null;
+        if (!$name) respond(false, null, 'Missing service name');
+        if (!in_array($svc_action, ['start', 'stop', 'restart'])) {
+            respond(false, null, 'Invalid action: must be start, stop, or restart');
+        }
+        // Find the service definition
+        if (function_exists('get_services')) {
+            $svcs = get_services();
+        } else {
+            respond(false, null, 'get_services() not available');
+        }
+        $target = null;
+        foreach ($svcs as $svc) {
+            if (isset($svc['name']) && $svc['name'] === $name) {
+                $target = $svc;
+                break;
+            }
+        }
+        if (!$target) respond(false, null, "Service {$name} not found");
+        switch ($svc_action) {
+            case 'start':
+                if (function_exists('service_control_start')) {
+                    service_control_start($name, $target);
+                } else {
+                    respond(false, null, 'service_control_start() not available');
+                }
+                break;
+            case 'stop':
+                if (function_exists('service_control_stop')) {
+                    service_control_stop($name, $target);
+                } else {
+                    respond(false, null, 'service_control_stop() not available');
+                }
+                break;
+            case 'restart':
+                if (function_exists('service_control_restart')) {
+                    service_control_restart($name, $target);
+                } else {
+                    respond(false, null, 'service_control_restart() not available');
+                }
+                break;
+        }
+        // Check status after action
+        $running = false;
+        if (function_exists('get_service_status')) {
+            // Small delay to let the service start/stop
+            usleep(500000);
+            $running = get_service_status($target) ? true : false;
+        }
+        write_config("Panoptikon: {$svc_action} service {$name}");
+        respond(true, ['name' => $name, 'action' => $svc_action, 'running' => $running]);
+
     case 'config_list_backups':
         $backup_dir = '/cf/conf/backup/';
         $result = [];

@@ -141,6 +141,11 @@ pub struct CreateDnsOverrideRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct ServiceActionRequest {
+    pub action: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ToggleFirewallRuleRequest {
     pub disabled: bool,
 }
@@ -1364,6 +1369,81 @@ pub async fn restore_config_backup(
             )
             .await;
             tracing::error!("pfSense restore config error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// GET /api/v1/pfsense/services
+pub async fn services(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<PfsenseService>>, StatusCode> {
+    let client = pfsense_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.pfsense_cache.get("services") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let result = tokio::task::spawn_blocking(move || client.services())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense services error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.pfsense_cache.set("services".into(), val);
+    }
+    Ok(Json(result))
+}
+
+/// POST /api/v1/pfsense/services/:name/action
+pub async fn service_action(
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    Json(body): Json<ServiceActionRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = pfsense_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let desc = format!(
+        "{} pfSense service {name}",
+        match body.action.as_str() {
+            "start" => "Start",
+            "stop" => "Stop",
+            "restart" => "Restart",
+            _ => "Action on",
+        }
+    );
+    let cmds = vec![format!("service_action {} {}", name, body.action)];
+
+    let name_clone = name.clone();
+    let action = body.action.clone();
+    match tokio::task::spawn_blocking(move || client.service_action(&name_clone, &action))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
+        Ok(_) => {
+            state.pfsense_cache.get("services"); // invalidate by letting it expire
+            audit::log_success(&state.db, "pfsense_service_action", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            audit::log_failure(
+                &state.db,
+                "pfsense_service_action",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
+            tracing::error!("pfSense service action error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
     }

@@ -433,6 +433,11 @@ pub fn router(state: AppState) -> Router {
             "/pfsense/config-backups/:id/restore",
             post(pfsense::restore_config_backup),
         )
+        .route("/pfsense/services", get(pfsense::services))
+        .route(
+            "/pfsense/services/:name/action",
+            post(pfsense::service_action),
+        )
         .route("/pfsense/audit", get(pfsense::audit_log))
         // QoS / Traffic Shaping
         .route("/qos/summary", get(qos::qos_summary))
