@@ -14,7 +14,9 @@ test.describe('Dashboard', () => {
     // In success state: Total Devices, Active Alerts, Infra Health, WAN Traffic
     await expect(page.getByText('Total Devices')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Active Alerts')).toBeVisible({ timeout: 5000 });
-    // Third and fourth cards differ between success/error states
+    // Third and fourth cards differ between success/error states.
+    // Use exact matching + .first() because "WAN Traffic" also appears as
+    // a bento section header, and "Traffic" substring matches many elements.
     const infraOrUptime = page.getByText('Infra Health').or(page.getByText('Uptime'));
     await expect(infraOrUptime.first()).toBeVisible({ timeout: 5000 });
     // "WAN Traffic" appears in both hero stat and bento section; "Traffic" matches sidebar nav + subtitle
