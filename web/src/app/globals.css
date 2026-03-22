@@ -113,15 +113,6 @@
 }
 
 /* ── Table row hover highlight slide-in ───────────── */
-@keyframes row-highlight {
-  from {
-    background-size: 0% 100%;
-  }
-  to {
-    background-size: 100% 100%;
-  }
-}
-
 .table-row-hover {
   background-image: linear-gradient(
     to right,

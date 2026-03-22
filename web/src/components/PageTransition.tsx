@@ -48,7 +48,6 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
       initial="hidden"
       animate="visible"
       variants={prefersReducedMotion ? containerVariantsReduced : containerVariants}
-      style={{ filter: 'blur(0px)' }}
     >
       {children}
     </motion.div>
