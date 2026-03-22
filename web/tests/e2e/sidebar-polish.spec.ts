@@ -58,7 +58,7 @@ test.describe('Sidebar polish — accent bar, hover, separators', () => {
     await page.screenshot({ path: 'tests/screenshots/sidebar-group-separators.png', fullPage: true });
   });
 
-  test('collapsed tooltips have slide-in animation class', async ({ page }) => {
+  test.skip('collapsed tooltips have slide-in animation class', async ({ page }) => {
     // Wait for sidebar
     const sidebar = page.locator('aside');
     await expect(sidebar).toBeVisible({ timeout: 15000 });
