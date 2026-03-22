@@ -101,76 +101,84 @@ pub async fn search(
 
     let like_term = format!("%{q}%");
 
-    // Search devices by IP (via device_ips), hostname, name, custom_name, MAC, or vendor
-    let device_rows = sqlx::query(
-        r#"SELECT DISTINCT d.id, d.hostname, d.mac, d.vendor, d.is_online,
+    // Search devices by IP (via subquery), hostname, name, custom_name, MAC, or vendor.
+    // Uses a correlated EXISTS subquery for IP matching instead of LEFT JOIN to avoid
+    // the NULL-filtering problem where LEFT JOIN + WHERE on the joined table effectively
+    // becomes an INNER JOIN, hiding devices without current IPs from all search results.
+    let devices: Vec<SearchDevice> = match sqlx::query(
+        r#"SELECT d.id, d.hostname, d.mac, d.vendor, d.is_online,
                   COALESCE(d.custom_name, d.name) AS display_name,
                   (SELECT di.ip FROM device_ips di WHERE di.device_id = d.id AND di.is_current = 1 LIMIT 1) AS ip_address
            FROM devices d
-           LEFT JOIN device_ips di ON di.device_id = d.id AND di.is_current = 1
-           WHERE di.ip LIKE ?1
-              OR d.hostname LIKE ?1
+           WHERE d.hostname LIKE ?1
               OR d.mac LIKE ?1
               OR d.vendor LIKE ?1
               OR d.name LIKE ?1
               OR d.custom_name LIKE ?1
+              OR EXISTS (
+                  SELECT 1 FROM device_ips di
+                  WHERE di.device_id = d.id AND di.is_current = 1 AND di.ip LIKE ?1
+              )
            LIMIT 5"#,
     )
     .bind(&like_term)
     .fetch_all(&state.db)
     .await
-    .map_err(|e| {
-        tracing::error!("Search devices failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    let devices: Vec<SearchDevice> = device_rows
-        .into_iter()
-        .map(|row| SearchDevice {
-            id: row.try_get("id").unwrap_or_default(),
-            ip_address: row.try_get("ip_address").unwrap_or(None),
-            hostname: row.try_get("hostname").unwrap_or(None),
-            name: row.try_get("display_name").unwrap_or(None),
-            mac_address: row.try_get("mac").unwrap_or_default(),
-            vendor: row.try_get("vendor").unwrap_or(None),
-            is_online: row.try_get::<i32, _>("is_online").unwrap_or(0) != 0,
-        })
-        .collect();
+    {
+        Ok(rows) => rows
+            .into_iter()
+            .map(|row| SearchDevice {
+                id: row.try_get("id").unwrap_or_default(),
+                ip_address: row.try_get("ip_address").unwrap_or(None),
+                hostname: row.try_get("hostname").unwrap_or(None),
+                name: row.try_get("display_name").unwrap_or(None),
+                mac_address: row.try_get("mac").unwrap_or_default(),
+                vendor: row.try_get("vendor").unwrap_or(None),
+                is_online: row.try_get::<i32, _>("is_online").unwrap_or(0) != 0,
+            })
+            .collect(),
+        Err(e) => {
+            tracing::error!("Search devices failed: {e}");
+            Vec::new()
+        }
+    };
 
     // Search agents by name or hostname (from latest report)
-    let agent_rows = sqlx::query(
+    let agents: Vec<SearchAgent> = match sqlx::query(
         r#"SELECT a.id, a.name,
                   (SELECT ar.hostname FROM agent_reports ar WHERE ar.agent_id = a.id ORDER BY ar.reported_at DESC LIMIT 1) AS hostname,
                   CASE WHEN a.last_report_at IS NOT NULL
                             AND a.last_report_at > datetime('now', '-120 seconds')
                        THEN 1 ELSE 0 END AS is_online
            FROM agents a
-           LEFT JOIN agent_reports ar ON ar.agent_id = a.id
            WHERE a.name LIKE ?1
-              OR ar.hostname LIKE ?1
-           GROUP BY a.id
+              OR EXISTS (
+                  SELECT 1 FROM agent_reports ar
+                  WHERE ar.agent_id = a.id AND ar.hostname LIKE ?1
+              )
            LIMIT 5"#,
     )
     .bind(&like_term)
     .fetch_all(&state.db)
     .await
-    .map_err(|e| {
-        tracing::error!("Search agents failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    let agents: Vec<SearchAgent> = agent_rows
-        .into_iter()
-        .map(|row| SearchAgent {
-            id: row.try_get("id").unwrap_or_default(),
-            name: row.try_get("name").unwrap_or(None),
-            hostname: row.try_get("hostname").unwrap_or(None),
-            is_online: row.try_get::<i32, _>("is_online").unwrap_or(0) != 0,
-        })
-        .collect();
+    {
+        Ok(rows) => rows
+            .into_iter()
+            .map(|row| SearchAgent {
+                id: row.try_get("id").unwrap_or_default(),
+                name: row.try_get("name").unwrap_or(None),
+                hostname: row.try_get("hostname").unwrap_or(None),
+                is_online: row.try_get::<i32, _>("is_online").unwrap_or(0) != 0,
+            })
+            .collect(),
+        Err(e) => {
+            tracing::error!("Search agents failed: {e}");
+            Vec::new()
+        }
+    };
 
     // Search alerts by message
-    let alert_rows = sqlx::query(
+    let alerts: Vec<SearchAlert> = match sqlx::query(
         r#"SELECT id, message, severity, created_at
            FROM alerts
            WHERE message LIKE ?1
@@ -180,25 +188,26 @@ pub async fn search(
     .bind(&like_term)
     .fetch_all(&state.db)
     .await
-    .map_err(|e| {
-        tracing::error!("Search alerts failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    let alerts: Vec<SearchAlert> = alert_rows
-        .into_iter()
-        .map(|row| SearchAlert {
-            id: row.try_get("id").unwrap_or_default(),
-            message: row.try_get("message").unwrap_or_default(),
-            severity: row
-                .try_get::<String, _>("severity")
-                .unwrap_or_else(|_| "WARNING".to_string()),
-            created_at: row.try_get("created_at").unwrap_or_default(),
-        })
-        .collect();
+    {
+        Ok(rows) => rows
+            .into_iter()
+            .map(|row| SearchAlert {
+                id: row.try_get("id").unwrap_or_default(),
+                message: row.try_get("message").unwrap_or_default(),
+                severity: row
+                    .try_get::<String, _>("severity")
+                    .unwrap_or_else(|_| "WARNING".to_string()),
+                created_at: row.try_get("created_at").unwrap_or_default(),
+            })
+            .collect(),
+        Err(e) => {
+            tracing::error!("Search alerts failed: {e}");
+            Vec::new()
+        }
+    };
 
     // Search SSH targets by name, host, or username
-    let ssh_rows = sqlx::query(
+    let ssh_targets: Vec<SearchSshTarget> = match sqlx::query(
         r#"SELECT st.id, st.name, st.host, st.username,
                   CASE WHEN sr.reported_at IS NOT NULL
                             AND sr.reported_at > datetime('now', '-120 seconds')
@@ -214,24 +223,25 @@ pub async fn search(
     .bind(&like_term)
     .fetch_all(&state.db)
     .await
-    .map_err(|e| {
-        tracing::error!("Search SSH targets failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    let ssh_targets: Vec<SearchSshTarget> = ssh_rows
-        .into_iter()
-        .map(|row| SearchSshTarget {
-            id: row.try_get("id").unwrap_or_default(),
-            name: row.try_get("name").unwrap_or_default(),
-            host: row.try_get("host").unwrap_or_default(),
-            username: row.try_get("username").unwrap_or_default(),
-            is_online: row.try_get::<i32, _>("is_online").unwrap_or(0) != 0,
-        })
-        .collect();
+    {
+        Ok(rows) => rows
+            .into_iter()
+            .map(|row| SearchSshTarget {
+                id: row.try_get("id").unwrap_or_default(),
+                name: row.try_get("name").unwrap_or_default(),
+                host: row.try_get("host").unwrap_or_default(),
+                username: row.try_get("username").unwrap_or_default(),
+                is_online: row.try_get::<i32, _>("is_online").unwrap_or(0) != 0,
+            })
+            .collect(),
+        Err(e) => {
+            tracing::error!("Search SSH targets failed: {e}");
+            Vec::new()
+        }
+    };
 
     // Search assets by name, location, owner, serial_number, or tags
-    let asset_rows = sqlx::query(
+    let assets: Vec<SearchAsset> = match sqlx::query(
         r#"SELECT id, name, asset_type, location, serial_number
            FROM assets
            WHERE name LIKE ?1
@@ -244,23 +254,24 @@ pub async fn search(
     .bind(&like_term)
     .fetch_all(&state.db)
     .await
-    .map_err(|e| {
-        tracing::error!("Search assets failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
-    })?;
-
-    let assets: Vec<SearchAsset> = asset_rows
-        .into_iter()
-        .map(|row| SearchAsset {
-            id: row.try_get("id").unwrap_or_default(),
-            name: row.try_get("name").unwrap_or_default(),
-            asset_type: row
-                .try_get::<String, _>("asset_type")
-                .unwrap_or_else(|_| "unknown".to_string()),
-            location: row.try_get("location").unwrap_or(None),
-            serial_number: row.try_get("serial_number").unwrap_or(None),
-        })
-        .collect();
+    {
+        Ok(rows) => rows
+            .into_iter()
+            .map(|row| SearchAsset {
+                id: row.try_get("id").unwrap_or_default(),
+                name: row.try_get("name").unwrap_or_default(),
+                asset_type: row
+                    .try_get::<String, _>("asset_type")
+                    .unwrap_or_else(|_| "unknown".to_string()),
+                location: row.try_get("location").unwrap_or(None),
+                serial_number: row.try_get("serial_number").unwrap_or(None),
+            })
+            .collect(),
+        Err(e) => {
+            tracing::error!("Search assets failed: {e}");
+            Vec::new()
+        }
+    };
 
     Ok(Json(SearchResponse {
         devices,
@@ -279,17 +290,19 @@ pub async fn search_devices(
     let like_term = format!("%{term}%");
 
     let rows = sqlx::query(
-        r#"SELECT DISTINCT d.id, d.hostname, d.mac, d.vendor, d.is_online,
+        r#"SELECT d.id, d.hostname, d.mac, d.vendor, d.is_online,
                   COALESCE(d.custom_name, d.name) AS display_name,
                   (SELECT di.ip FROM device_ips di WHERE di.device_id = d.id AND di.is_current = 1 LIMIT 1) AS ip_address
            FROM devices d
-           LEFT JOIN device_ips di ON di.device_id = d.id AND di.is_current = 1
-           WHERE di.ip LIKE ?1
-              OR d.hostname LIKE ?1
+           WHERE d.hostname LIKE ?1
               OR d.mac LIKE ?1
               OR d.vendor LIKE ?1
               OR d.name LIKE ?1
               OR d.custom_name LIKE ?1
+              OR EXISTS (
+                  SELECT 1 FROM device_ips di
+                  WHERE di.device_id = d.id AND di.is_current = 1 AND di.ip LIKE ?1
+              )
            LIMIT 5"#,
     )
     .bind(&like_term)
@@ -324,10 +337,11 @@ pub async fn search_agents(
                             AND a.last_report_at > datetime('now', '-120 seconds')
                        THEN 1 ELSE 0 END AS is_online
            FROM agents a
-           LEFT JOIN agent_reports ar ON ar.agent_id = a.id
            WHERE a.name LIKE ?1
-              OR ar.hostname LIKE ?1
-           GROUP BY a.id
+              OR EXISTS (
+                  SELECT 1 FROM agent_reports ar
+                  WHERE ar.agent_id = a.id AND ar.hostname LIKE ?1
+              )
            LIMIT 5"#,
     )
     .bind(&like_term)
@@ -768,5 +782,46 @@ mod tests {
             "Should return at most 5 devices, got {}",
             results.len()
         );
+    }
+
+    #[tokio::test]
+    async fn test_search_devices_without_ip() {
+        let pool = test_db().await;
+        // Device with no IP — should still be found by hostname
+        insert_device(
+            &pool,
+            "FF:FF:FF:00:00:01",
+            Some("no-ip-host"),
+            Some("TestVendor"),
+            None,
+        )
+        .await;
+        // Device with IP for comparison
+        insert_device(
+            &pool,
+            "FF:FF:FF:00:00:02",
+            Some("has-ip-host"),
+            None,
+            Some("10.0.0.99"),
+        )
+        .await;
+
+        // Search by hostname of the IP-less device
+        let results = search_devices(&pool, "no-ip").await.unwrap();
+        assert_eq!(
+            results.len(),
+            1,
+            "Should find device without IP by hostname"
+        );
+        assert_eq!(results[0].hostname.as_deref(), Some("no-ip-host"));
+        assert!(results[0].ip_address.is_none());
+
+        // Search by vendor of the IP-less device
+        let results = search_devices(&pool, "TestVendor").await.unwrap();
+        assert_eq!(results.len(), 1, "Should find device without IP by vendor");
+
+        // Search by MAC of the IP-less device
+        let results = search_devices(&pool, "FF:FF:FF:00:00:01").await.unwrap();
+        assert_eq!(results.len(), 1, "Should find device without IP by MAC");
     }
 }
