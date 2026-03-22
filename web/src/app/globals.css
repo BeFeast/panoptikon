@@ -105,13 +105,6 @@
   display: none;
 }
 
-/* ── Shimmer effect for skeleton loaders ──────────── */
-@keyframes shimmer {
-  100% {
-    transform: translateX(100%);
-  }
-}
-
 /* ── Table row hover highlight slide-in ───────────── */
 .table-row-hover {
   background-image: linear-gradient(
