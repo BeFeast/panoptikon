@@ -10,8 +10,9 @@ test.describe('Card glassmorphism 2.0 — backdrop blur, glow, hover (#592)', ()
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
     await expect(page.getByText('Total Devices')).toBeVisible({ timeout: 10000 });
 
-    // Find a Card component on the dashboard — they use backdrop-blur-xl now
-    const card = page.locator('.backdrop-blur-xl').first();
+    // Find a Card component on the dashboard — they use backdrop-blur-xl + rounded-2xl
+    // (TopBar also has backdrop-blur-xl but not rounded-2xl, so we need both)
+    const card = page.locator('.rounded-2xl.backdrop-blur-xl').first();
     await expect(card).toBeVisible();
 
     // Verify the card has the ::before pseudo-element for top-edge glow
@@ -29,7 +30,7 @@ test.describe('Card glassmorphism 2.0 — backdrop blur, glow, hover (#592)', ()
     await page.goto('/dashboard');
     await expect(page.getByText('Total Devices')).toBeVisible({ timeout: 10000 });
 
-    const card = page.locator('.backdrop-blur-xl').first();
+    const card = page.locator('.rounded-2xl.backdrop-blur-xl').first();
     await expect(card).toBeVisible();
 
     // Verify the card has a transition on border-color
