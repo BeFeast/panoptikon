@@ -12,7 +12,7 @@ export function PfSenseStatusHeader({ status }: { status: PfsenseStatus }) {
           <Shield className="h-5 w-5 text-blue-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-semibold text-white">pfSense Firewall</h1>
+          <h1 className="text-2xl font-semibold text-white">pfSense Router</h1>
           <p className="text-xs text-slate-500">
             {status.hostname ?? "pfSense"}{" "}
             {status.version && (
