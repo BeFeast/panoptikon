@@ -77,12 +77,14 @@ test.describe('Sidebar polish — accent bar, hover, separators', () => {
     await expect(devicesLink).toBeVisible({ timeout: 5000 });
     await devicesLink.hover();
 
-    // Wait for tooltip to appear
-    const tooltip = page.locator('[role="tooltip"]');
-    await expect(tooltip).toBeVisible({ timeout: 10000 });
+    // Wait for tooltip to appear — Radix renders a role="tooltip" accessibility
+    // wrapper (no classes) plus a visual content element with data-side attribute.
+    // Target the visual content element which carries the animation classes.
+    const tooltipContent = page.locator('[data-side="right"]').filter({ hasText: 'Devices' });
+    await expect(tooltipContent).toBeVisible({ timeout: 10000 });
 
-    // Verify tooltip has the slide-in animation class
-    await expect(tooltip).toHaveClass(/slide-in-from-left/, { timeout: 10000 });
+    // Verify tooltip content has the slide-in animation class
+    await expect(tooltipContent).toHaveClass(/slide-in-from-left/, { timeout: 10000 });
 
     await page.screenshot({ path: 'tests/screenshots/sidebar-tooltip-slide.png', fullPage: true });
   });
