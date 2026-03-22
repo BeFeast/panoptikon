@@ -192,3 +192,103 @@
 .animate-ack-strike * {
   text-decoration: inherit;
 }
+
+/* ── Login / Setup animated gradient mesh background ── */
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes float-orb {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.12;
+  }
+  33% {
+    transform: translate(30px, -20px) scale(1.1);
+    opacity: 0.18;
+  }
+  66% {
+    transform: translate(-20px, 15px) scale(0.95);
+    opacity: 0.1;
+  }
+}
+
+@keyframes float-orb-reverse {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.1;
+  }
+  33% {
+    transform: translate(-25px, 20px) scale(1.05);
+    opacity: 0.15;
+  }
+  66% {
+    transform: translate(15px, -25px) scale(0.9);
+    opacity: 0.08;
+  }
+}
+
+@keyframes ring-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+  50% {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0);
+  }
+}
+
+.login-bg {
+  background: linear-gradient(
+    135deg,
+    #020617 0%,
+    #0f172a 25%,
+    #020617 50%,
+    #0c1425 75%,
+    #020617 100%
+  );
+  background-size: 400% 400%;
+  animation: gradient-shift 15s ease infinite;
+}
+
+.login-orb {
+  animation: float-orb 12s ease-in-out infinite;
+}
+
+.login-orb-reverse {
+  animation: float-orb-reverse 14s ease-in-out infinite;
+}
+
+.login-card-glow {
+  box-shadow:
+    0 0 80px 20px rgba(59, 130, 246, 0.06),
+    0 0 40px 10px rgba(59, 130, 246, 0.04),
+    inset 0 1px 0 0 rgba(148, 163, 184, 0.08);
+}
+
+.input-focus-glow:focus-within {
+  animation: ring-glow 2s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-bg {
+    animation: none;
+  }
+  .login-orb,
+  .login-orb-reverse {
+    animation: none;
+  }
+  .input-focus-glow:focus-within {
+    animation: none;
+  }
+}
