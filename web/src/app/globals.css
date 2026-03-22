@@ -30,15 +30,6 @@
     --status-online: 160 84% 39%;    /* emerald-500 */
     --status-offline: 350 89% 60%;   /* rose-500 */
     --status-warning: 43 96% 56%;    /* amber-400 */
-
-    /* ── Gradient accent tokens ────────────────────────── */
-    --gradient-primary: linear-gradient(135deg, #3b82f6, #6366f1);       /* blue-500 → indigo-500 */
-    --gradient-primary-hover: linear-gradient(135deg, #2563eb, #4f46e5); /* blue-600 → indigo-600 */
-    --gradient-warm: linear-gradient(135deg, #f59e0b, #f97316);          /* amber-500 → orange-500 */
-    --gradient-warm-hover: linear-gradient(135deg, #d97706, #ea580c);    /* amber-600 → orange-600 */
-    --gradient-text: linear-gradient(135deg, #60a5fa, #818cf8);          /* blue-400 → indigo-400 */
-    --gradient-text-warm: linear-gradient(135deg, #fbbf24, #fb923c);     /* amber-400 → orange-400 */
-    --gradient-surface: linear-gradient(135deg, rgba(59, 130, 246, 0.08), rgba(99, 102, 241, 0.08));
   }
 
   * {
@@ -49,8 +40,6 @@
     @apply text-foreground;
     background-color: #020617;
     background-image:
-      radial-gradient(circle at 10% 0%, rgba(99, 102, 241, 0.12) 0%, transparent 50%),
-      radial-gradient(circle at 90% 100%, rgba(16, 185, 129, 0.08) 0%, transparent 50%),
       radial-gradient(circle at 16% -18%, rgba(37, 99, 235, 0.16) 0%, transparent 42%),
       radial-gradient(circle at 88% -26%, rgba(30, 41, 59, 0.24) 0%, transparent 38%),
       linear-gradient(180deg, #020617 0%, #030712 62%, #020617 100%);
@@ -63,21 +52,6 @@
 .tabular-nums {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
-}
-
-/* ── Gradient text utility ─────────────────────────── */
-.gradient-text {
-  background: var(--gradient-text);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.gradient-text-warm {
-  background: var(--gradient-text-warm);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
 /* ── Inter variable font smooth weight hierarchy ───── */

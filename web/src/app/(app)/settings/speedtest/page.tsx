@@ -117,7 +117,7 @@ export default function SpeedtestSettingsPage() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <h1 className="text-3xl font-bold tracking-tight font-display text-white">Speed Test</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">Speed Test</h1>
         </div>
 
         <Card className="border-slate-800 bg-slate-900">

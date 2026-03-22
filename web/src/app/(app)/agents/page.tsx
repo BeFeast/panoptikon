@@ -120,7 +120,7 @@ export default function AgentsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-bold tracking-tight font-display text-white">Agents</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">Agents</h1>
           <HelpTooltip text="Lightweight agents installed on your machines that report system info (CPU, memory, disk, OS) back to Panoptikon." />
         </div>
         <AddAgentDialog

@@ -70,40 +70,6 @@ type ViewMode = "grid" | "table";
 type SortField = "last_seen_at" | "ip" | "hostname";
 type SortDir = "asc" | "desc";
 
-/** Infrastructure device types that get larger bento cards */
-const IMPORTANT_DEVICE_TYPES = new Set([
-  "router", "server", "switch", "nas", "access_point", "ups",
-]);
-
-function isImportantDevice(device: Device): boolean {
-  const effectiveType = device.custom_type ?? device.device_type;
-  return (
-    device.is_critical === true ||
-    (effectiveType != null && IMPORTANT_DEVICE_TYPES.has(effectiveType))
-  );
-}
-
-/** Color for device-type left border in table view */
-const DEVICE_TYPE_COLORS: Record<string, string> = {
-  router: "border-l-emerald-500",
-  access_point: "border-l-teal-500",
-  server: "border-l-blue-500",
-  switch: "border-l-cyan-500",
-  nas: "border-l-violet-500",
-  ups: "border-l-amber-500",
-  laptop: "border-l-sky-400",
-  desktop: "border-l-sky-400",
-  workstation: "border-l-sky-400",
-  phone: "border-l-indigo-400",
-  tablet: "border-l-indigo-400",
-  tv: "border-l-pink-400",
-  printer: "border-l-orange-400",
-  iot: "border-l-lime-400",
-  gaming: "border-l-fuchsia-400",
-  vm: "border-l-purple-400",
-  container: "border-l-purple-400",
-};
-
 export default function DevicesPage() {
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [scanningNetwork, setScanningNetwork] = useState(false);
@@ -340,7 +306,7 @@ export default function DevicesPage() {
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-bold tracking-tight font-display text-white">Devices</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-white">Devices</h1>
               <HelpTooltip text="All devices discovered on your network. Use Scan Now to discover new devices, Re-identify to fingerprint them, and Resolve Names to look up hostnames via DNS." />
             </div>
             <p className="max-w-2xl text-sm leading-6 text-slate-300/80">
@@ -728,24 +694,17 @@ export default function DevicesPage() {
           />
         )
       ) : view === "grid" ? (
-        <StaggerContainer className="grid auto-rows-fr grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {sorted.map((device) => {
-            const important = isImportantDevice(device);
-            return (
-              <StaggerItem
-                key={device.id}
-                className={important ? "md:col-span-2 xl:col-span-1 xl:row-span-2" : ""}
-              >
-                <MotionCard className="h-full">
-                  <DeviceCard
-                    device={device}
-                    important={important}
-                    onClick={() => setSelectedDevice(device)}
-                  />
-                </MotionCard>
-              </StaggerItem>
-            );
-          })}
+        <StaggerContainer className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {sorted.map((device) => (
+            <StaggerItem key={device.id}>
+              <MotionCard className="h-full">
+                <DeviceCard
+                  device={device}
+                  onClick={() => setSelectedDevice(device)}
+                />
+              </MotionCard>
+            </StaggerItem>
+          ))}
         </StaggerContainer>
       ) : (
         <DevicesTable
@@ -804,11 +763,9 @@ function getDevicePrimaryTitle(device: Device): { title: string; isUnnamed: bool
 
 function DeviceCard({
   device,
-  important,
   onClick,
 }: {
   device: Device;
-  important?: boolean;
   onClick: () => void;
 }) {
   const [waking, setWaking] = useState(false);
@@ -844,9 +801,7 @@ function DeviceCard({
 
   return (
     <Card
-      className={`h-full min-h-[15.5rem] cursor-pointer border-slate-700/50 bg-slate-900/55 transition-[border-color,background-color,box-shadow] hover:border-slate-600/70 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)] ${
-        important ? "ring-1 ring-slate-600/40" : ""
-      }`}
+      className="h-full min-h-[15.5rem] cursor-pointer border-slate-700/50 bg-slate-900/55 transition-[border-color,background-color,box-shadow] hover:border-slate-600/70 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
       onClick={onClick}
     >
       <CardContent className="flex h-full flex-col p-5">
@@ -1096,9 +1051,6 @@ function DevicesTable({
             const { icon: RowIcon } = getDeviceIcon(device.vendor, device.hostname, device.mdns_services, device.device_type);
             const vendorDisplay = device.vendor ?? "—";
             const canWake = !device.is_online && device.mac && !device.is_randomized_mac;
-            const effectiveType = device.custom_type ?? device.device_type;
-            const borderColor = effectiveType ? (DEVICE_TYPE_COLORS[effectiveType] ?? "border-l-slate-700") : "border-l-slate-700";
-
             return (
               <motion.tr
                 key={device.id}
@@ -1109,7 +1061,7 @@ function DevicesTable({
                   ease: "easeOut",
                   delay: Math.min(index * 0.01, 0.12),
                 }}
-                className={`cursor-pointer border-b border-slate-800 border-l-2 transition-colors hover:bg-slate-800/60 data-[state=selected]:bg-muted ${borderColor}`}
+                className="cursor-pointer border-b border-slate-800 transition-colors hover:bg-slate-800/60 data-[state=selected]:bg-muted"
                 onClick={() => onSelect(device)}
               >
                 <TableCell>
@@ -2554,7 +2506,7 @@ function AddAssetDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* Name (required) */}
           <div>
             <label className="text-[11px] font-medium text-slate-400">

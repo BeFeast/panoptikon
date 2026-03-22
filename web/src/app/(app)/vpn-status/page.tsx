@@ -135,7 +135,7 @@ export default function VpnStatusPage() {
               <Shield className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight font-display text-white">VPN Status</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-white">VPN Status</h1>
               <p className="text-sm text-slate-400">
                 WireGuard tunnels, peer connectivity, and transfer stats.
               </p>

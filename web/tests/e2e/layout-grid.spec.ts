@@ -9,7 +9,7 @@ test.describe('Layout & Grid — card clipping / spacing regressions (#544)', ()
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
-    await expect(page.getByText('Total Devices')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
 
     // Scroll the main content area to the very bottom
     await page.evaluate(() => {
@@ -45,7 +45,7 @@ test.describe('Layout & Grid — card clipping / spacing regressions (#544)', ()
     await page.setViewportSize({ width: 1366, height: 768 });
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
-    await expect(page.getByText('Total Devices')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
 
     // Scroll to bottom
     await page.evaluate(() => {
@@ -63,11 +63,11 @@ test.describe('Layout & Grid — card clipping / spacing regressions (#544)', ()
   test('stat cards have consistent padding — no extra bottom space', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto('/dashboard');
-    await expect(page.getByText('Total Devices')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
 
     // Verify core stat card headers are present (style token may vary between
     // tracking-wider and arbitrary tracking values after UI polish updates).
-    const statLabels = ['Total Devices', 'Active Alerts', 'WAN Traffic', 'Infra Health'];
+    const statLabels = ['Router Status', 'Active Devices', 'WAN Bandwidth', 'Unread Alerts'];
     for (const label of statLabels) {
       await expect(page.getByText(label).first()).toBeVisible();
     }
@@ -131,7 +131,7 @@ test.describe('Layout & Grid — no overflow or clipping (#524)', () => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
     // Wait for stat cards to resolve
-    await expect(page.getByText('Total Devices')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
 
     // No horizontal scrollbar — body should not be wider than viewport
     const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
@@ -145,7 +145,7 @@ test.describe('Layout & Grid — no overflow or clipping (#524)', () => {
     await page.setViewportSize({ width: 768, height: 1024 });
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
-    await expect(page.getByText('Total Devices')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
 
     const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
     const viewportWidth = await page.evaluate(() => window.innerWidth);
@@ -167,12 +167,12 @@ test.describe('Layout & Grid — no overflow or clipping (#524)', () => {
 
   test('stat card values use truncate to prevent overflow', async ({ page }) => {
     await page.goto('/dashboard');
-    await expect(page.getByText('Total Devices')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
 
     // Verify that the stat card value elements have truncate class
     // This is a structural check — the "truncate" class on value <p> elements
     // ensures long text won't break the card layout.
-    const statValues = page.locator('.tabular-nums');
+    const statValues = page.locator('.tabular-nums.truncate');
     const count = await statValues.count();
     // At least one stat card value should have the truncate class
     expect(count).toBeGreaterThan(0);

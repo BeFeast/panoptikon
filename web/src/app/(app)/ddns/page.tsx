@@ -463,7 +463,7 @@ export default function DdnsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight font-display text-white">Dynamic DNS</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-white">Dynamic DNS</h1>
             <p className="text-sm text-slate-400">
               Manage DDNS client configurations for automatic DNS updates
             </p>

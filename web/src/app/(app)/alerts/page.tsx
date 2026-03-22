@@ -120,19 +120,6 @@ function severityBadge(severity: Alert["severity"]) {
   }
 }
 
-function severityBorderClass(severity: Alert["severity"]) {
-  switch (severity) {
-    case "CRITICAL":
-      return "border-l-4 border-l-red-500";
-    case "WARNING":
-      return "border-l-4 border-l-amber-500";
-    case "INFO":
-      return "border-l-4 border-l-blue-500";
-    default:
-      return "";
-  }
-}
-
 type StatusFilter = "all" | "active" | "acknowledged";
 type TypeFilter = "all" | Alert["type"];
 
@@ -292,11 +279,11 @@ export default function AlertsPage() {
 
   return (
     <PageTransition>
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-bold tracking-tight font-display text-white">Alerts</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">Alerts</h1>
           <HelpTooltip text="Notifications about network events — new devices, devices going offline, and security alerts. Configure rules in Settings → Alert Rules." />
           {activeCount > 0 && (
             <Badge variant="secondary" className="gap-1">
@@ -490,13 +477,13 @@ export default function AlertsPage() {
           {alerts.map((alert) => (
             <Card
               key={alert.id}
-              className={`rounded-l-none border-slate-800 transition-all hover:bg-slate-800/60 hover:border-blue-500/30 ${severityBorderClass(alert.severity)} ${
+              className={`border-slate-800 transition-all hover:bg-slate-800/60 hover:border-blue-500/30 ${
                 acknowledgingIds.has(alert.id)
                   ? "animate-ack-strike opacity-0"
                   : alert.acknowledged_at
                     ? "bg-[#12121a] opacity-70"
-                    : alert.severity === "CRITICAL"
-                      ? "animate-pulse-critical bg-slate-900"
+                    : !alert.is_read
+                      ? "border-l-2 border-l-blue-500 bg-slate-900"
                       : "bg-slate-900"
               }`}
             >
