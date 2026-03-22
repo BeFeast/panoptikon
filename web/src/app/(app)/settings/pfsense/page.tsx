@@ -416,7 +416,7 @@ export default function PfsenseSettingsPage() {
                   pfSense Connection
                 </CardTitle>
                 <CardDescription className="text-xs text-slate-500">
-                  Configure pfSense firewall integration via SSH.
+                  Configure pfSense router integration via SSH.
                 </CardDescription>
               </div>
             </div>

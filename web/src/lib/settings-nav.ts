@@ -33,7 +33,7 @@ export const settingsNav: SettingsNavGroup[] = [
       {
         href: "/settings/pfsense",
         title: "pfSense",
-        description: "Configure pfSense firewall integration via SSH.",
+        description: "Configure pfSense router integration via SSH.",
       },
       {
         href: "/settings/dns",
