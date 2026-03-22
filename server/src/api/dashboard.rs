@@ -1,5 +1,6 @@
 use crate::api::AppState;
 use crate::mikrotik::client::MikrotikClient;
+use crate::pfsense::client::{PfsenseAuth, PfsenseClient};
 use axum::{
     extract::{Query, State},
     Json,
@@ -10,7 +11,7 @@ use std::time::Duration;
 #[derive(Serialize)]
 pub struct DashboardStats {
     pub router_status: String, // "connected" | "disconnected" | "unconfigured"
-    pub router_type: String,   // "mikrotik" | "none"
+    pub router_type: String,   // "mikrotik" | "pfsense" | "none"
     pub devices_online: i64,
     pub devices_total: i64,
     pub alerts_unread: i64,
@@ -78,11 +79,70 @@ async fn check_mikrotik(state: &AppState) -> Option<bool> {
     }
 }
 
+/// Check pfSense router connectivity with a short timeout for the dashboard.
+async fn check_pfsense(state: &AppState) -> Option<bool> {
+    let enabled = get_setting(state, "pfsense_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+    if !enabled {
+        return None;
+    }
+
+    let host = get_setting(state, "pfsense_host").await?;
+    let port: u16 = get_setting(state, "pfsense_port")
+        .await
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(22);
+    let username = get_setting(state, "pfsense_username")
+        .await
+        .unwrap_or_else(|| "root".to_string());
+
+    let auth_type = get_setting(state, "pfsense_auth_type")
+        .await
+        .unwrap_or_else(|| "password".to_string());
+
+    let auth = if auth_type == "key" {
+        let key = get_setting(state, "pfsense_private_key").await?;
+        PfsenseAuth::Key(key)
+    } else {
+        let password = get_setting(state, "pfsense_password")
+            .await
+            .unwrap_or_default();
+        PfsenseAuth::Password(password)
+    };
+
+    let client = PfsenseClient::new(&host, port, &username, auth);
+    match tokio::time::timeout(DASHBOARD_ROUTER_TIMEOUT, async {
+        tokio::task::spawn_blocking(move || client.test_connection())
+            .await
+            .map_err(|e| anyhow::anyhow!("{e}"))
+            .and_then(|r| r)
+    })
+    .await
+    {
+        Ok(Ok(())) => Some(true),
+        Ok(Err(_)) => Some(false),
+        Err(_) => Some(false),
+    }
+}
+
 /// Determine which router is the "active" one based on settings.
-/// Returns `("mikrotik" | "none", Option<bool>)` — router type and
+/// Returns `("mikrotik" | "pfsense" | "none", Option<bool>)` — router type and
 /// connectivity result (None = unconfigured, Some(true) = connected, Some(false) = unreachable).
 async fn active_router(state: &AppState) -> (&'static str, Option<bool>) {
-    // MikroTik takes priority when explicitly enabled.
+    // Check default_router preference first.
+    let default_router = get_setting(state, "default_router").await;
+
+    // If user explicitly chose pfSense as default, try it first.
+    if default_router.as_deref() == Some("pfsense") {
+        let result = check_pfsense(state).await;
+        if result.is_some() {
+            return ("pfsense", result);
+        }
+    }
+
+    // MikroTik: check if enabled.
     let mikrotik_enabled = get_setting(state, "mikrotik_enabled")
         .await
         .map(|v| v == "1" || v == "true")
@@ -90,6 +150,14 @@ async fn active_router(state: &AppState) -> (&'static str, Option<bool>) {
 
     if mikrotik_enabled {
         return ("mikrotik", check_mikrotik(state).await);
+    }
+
+    // pfSense fallback (if not already tried above).
+    if default_router.as_deref() != Some("pfsense") {
+        let result = check_pfsense(state).await;
+        if result.is_some() {
+            return ("pfsense", result);
+        }
     }
 
     ("none", None)

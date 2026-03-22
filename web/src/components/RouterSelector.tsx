@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Router } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-type ActiveRouter = "mikrotik" | "xiaomi";
+type ActiveRouter = "mikrotik" | "xiaomi" | "pfsense";
 
 interface RouterSelectorProps {
   active: ActiveRouter;
@@ -41,6 +41,21 @@ export function RouterSelector({ active }: RouterSelectorProps) {
         <Link href="/router/xiaomi">
           <Router className="mr-1.5 h-3.5 w-3.5" />
           Xiaomi
+        </Link>
+      </Button>
+      <Button
+        variant={active === "pfsense" ? "default" : "outline"}
+        size="sm"
+        asChild
+        className={
+          active === "pfsense"
+            ? "bg-blue-600 text-white hover:bg-blue-500"
+            : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
+        }
+      >
+        <Link href="/router/pfsense">
+          <Router className="mr-1.5 h-3.5 w-3.5" />
+          pfSense
         </Link>
       </Button>
     </div>

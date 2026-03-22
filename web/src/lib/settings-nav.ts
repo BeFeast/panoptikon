@@ -31,6 +31,11 @@ export const settingsNav: SettingsNavGroup[] = [
         description: "Configure Xiaomi mesh router integration.",
       },
       {
+        href: "/settings/pfsense",
+        title: "pfSense",
+        description: "Configure pfSense firewall integration via SSH.",
+      },
+      {
         href: "/settings/dns",
         title: "Unbound DNS",
         description: "Manage local DNS A records via Unbound.",
