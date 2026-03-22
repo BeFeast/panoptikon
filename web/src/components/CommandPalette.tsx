@@ -136,8 +136,8 @@ export function CommandPalette() {
       open={open}
       onOpenChange={setOpen}
       label="Command palette"
-      className="fixed inset-0 z-[100]"
-      overlayClassName="fixed inset-0 bg-black/70 backdrop-blur-sm"
+      className="flex flex-col flex-1 min-h-0"
+      overlayClassName="fixed inset-0 z-[99] bg-black/70 backdrop-blur-sm"
       contentClassName="fixed left-1/2 top-[15vh] -translate-x-1/2 z-[100] w-[min(560px,calc(100vw-2rem))] max-h-[min(480px,60vh)] flex flex-col overflow-hidden rounded-2xl border border-slate-600/80 bg-slate-900 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.8)]"
       shouldFilter={!hasResults}
     >
@@ -148,6 +148,7 @@ export function CommandPalette() {
           value={query}
           onValueChange={setQuery}
           placeholder="Search pages, devices, actions…"
+          autoFocus
           className="flex-1 bg-transparent text-base text-white placeholder-slate-500 outline-none"
         />
         <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-slate-600 bg-slate-800 px-1.5 py-0.5 text-[11px] font-medium text-slate-400">
