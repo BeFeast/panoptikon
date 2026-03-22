@@ -34,8 +34,8 @@ test.describe('UI regression fixes (#628)', () => {
     const sidebar = page.locator('aside');
     await expect(sidebar).toBeVisible({ timeout: 15000 });
 
-    // Version text should include "Panoptikon" prefix
-    const versionText = sidebar.locator('text=Panoptikon');
+    // Version text should include "Panoptikon" prefix (use <p> selector to avoid matching logo <span>)
+    const versionText = sidebar.locator('p').filter({ hasText: 'Panoptikon' });
     await expect(versionText).toBeVisible({ timeout: 10000 });
 
     await page.screenshot({ path: 'tests/screenshots/sidebar-version-prefix.png', fullPage: true });
