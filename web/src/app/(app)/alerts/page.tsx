@@ -477,7 +477,7 @@ export default function AlertsPage() {
           {alerts.map((alert) => (
             <Card
               key={alert.id}
-              className={`border-slate-800 transition-all hover:bg-slate-800/60 hover:border-blue-500/30 ${
+              className={`rounded-l-none border-slate-800 transition-all hover:bg-slate-800/60 hover:border-blue-500/30 ${
                 acknowledgingIds.has(alert.id)
                   ? "animate-ack-strike opacity-0"
                   : alert.acknowledged_at
