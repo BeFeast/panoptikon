@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -35,11 +36,80 @@ import {
 import { useData } from "@/hooks/useData";
 import type { PfsenseDhcpStaticMapping } from "@/lib/types";
 
-export function DhcpTab() {
-  const leasesFetcher = useCallback(() => fetchPfsenseDhcpLeases(), []);
-  const mappingsFetcher = useCallback(() => fetchPfsenseDhcpStaticMappings(), []);
-  const { data: leases, loading: leasesLoading } = useData(leasesFetcher);
-  const { data: mappings, loading: mappingsLoading, reload: reloadMappings } = useData(mappingsFetcher);
+// ── Active Leases Sub-Tab ───────────────────────────────
+
+function ActiveLeasesSection() {
+  const fetcher = useCallback(() => fetchPfsenseDhcpLeases(), []);
+  const { data: leases, loading } = useData(fetcher);
+
+  if (loading) return <Skeleton className="h-48 w-full" />;
+
+  return (
+    <Card className="border-slate-800 bg-slate-900">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-white">
+          <Server className="h-4 w-4 text-blue-400" />
+          Active Leases
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                <th className="px-3 py-2">IP</th>
+                <th className="px-3 py-2">MAC</th>
+                <th className="px-3 py-2">Hostname</th>
+                <th className="px-3 py-2">Start</th>
+                <th className="px-3 py-2">End</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="px-3 py-2">Interface</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(leases ?? []).length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
+                    No active leases
+                  </td>
+                </tr>
+              ) : (
+                (leases ?? []).map((l, i) => (
+                  <tr key={`${l.mac}-${i}`} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                    <td className="px-3 py-2 font-mono text-white">{l.ip}</td>
+                    <td className="px-3 py-2 font-mono text-slate-400">{l.mac}</td>
+                    <td className="px-3 py-2 text-slate-300">{l.hostname ?? "\u2014"}</td>
+                    <td className="px-3 py-2 text-slate-400">{l.start ?? "\u2014"}</td>
+                    <td className="px-3 py-2 text-slate-400">{l.end ?? "\u2014"}</td>
+                    <td className="px-3 py-2">
+                      <Badge
+                        variant="outline"
+                        className={
+                          l.status === "active"
+                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                            : "border-slate-600/30 bg-slate-600/10 text-slate-500"
+                        }
+                      >
+                        {l.status}
+                      </Badge>
+                    </td>
+                    <td className="px-3 py-2 text-slate-400">{l.interface}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Static Mappings Sub-Tab ─────────────────────────────
+
+function StaticMappingsSection() {
+  const fetcher = useCallback(() => fetchPfsenseDhcpStaticMappings(), []);
+  const { data: mappings, loading, reload } = useData(fetcher);
 
   const [showCreate, setShowCreate] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PfsenseDhcpStaticMapping | null>(null);
@@ -53,7 +123,7 @@ export function DhcpTab() {
       toast.success("Static mapping created");
       setShowCreate(false);
       setForm({ mac: "", ip: "", hostname: "", description: "", interface: "lan" });
-      reloadMappings();
+      reload();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to create mapping");
     } finally {
@@ -67,78 +137,16 @@ export function DhcpTab() {
       await deletePfsenseDhcpStaticMapping(deleteTarget.id);
       toast.success("Static mapping deleted");
       setDeleteTarget(null);
-      reloadMappings();
+      reload();
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Failed to delete mapping");
     }
   };
 
-  return (
-    <div className="space-y-6">
-      {/* Active Leases */}
-      <Card className="border-slate-800 bg-slate-900">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-white">
-            <Server className="h-4 w-4 text-blue-400" />
-            Active Leases
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {leasesLoading ? (
-            <Skeleton className="h-32 w-full" />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
-                    <th className="px-3 py-2">IP</th>
-                    <th className="px-3 py-2">MAC</th>
-                    <th className="px-3 py-2">Hostname</th>
-                    <th className="px-3 py-2">Start</th>
-                    <th className="px-3 py-2">End</th>
-                    <th className="px-3 py-2">Status</th>
-                    <th className="px-3 py-2">Interface</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(leases ?? []).length === 0 ? (
-                    <tr>
-                      <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
-                        No active leases
-                      </td>
-                    </tr>
-                  ) : (
-                    (leases ?? []).map((l, i) => (
-                      <tr key={`${l.mac}-${i}`} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                        <td className="px-3 py-2 font-mono text-white">{l.ip}</td>
-                        <td className="px-3 py-2 font-mono text-slate-400">{l.mac}</td>
-                        <td className="px-3 py-2 text-slate-300">{l.hostname ?? "\u2014"}</td>
-                        <td className="px-3 py-2 text-slate-400">{l.start ?? "\u2014"}</td>
-                        <td className="px-3 py-2 text-slate-400">{l.end ?? "\u2014"}</td>
-                        <td className="px-3 py-2">
-                          <Badge
-                            variant="outline"
-                            className={
-                              l.status === "active"
-                                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                                : "border-slate-600/30 bg-slate-600/10 text-slate-500"
-                            }
-                          >
-                            {l.status}
-                          </Badge>
-                        </td>
-                        <td className="px-3 py-2 text-slate-400">{l.interface}</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+  if (loading) return <Skeleton className="h-48 w-full" />;
 
-      {/* Static Mappings */}
+  return (
+    <>
       <Card className="border-slate-800 bg-slate-900">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
@@ -155,53 +163,49 @@ export function DhcpTab() {
           </Button>
         </CardHeader>
         <CardContent>
-          {mappingsLoading ? (
-            <Skeleton className="h-32 w-full" />
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
-                    <th className="px-3 py-2">MAC</th>
-                    <th className="px-3 py-2">IP</th>
-                    <th className="px-3 py-2">Hostname</th>
-                    <th className="px-3 py-2">Description</th>
-                    <th className="px-3 py-2">Interface</th>
-                    <th className="px-3 py-2 text-right">Actions</th>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <th className="px-3 py-2">MAC</th>
+                  <th className="px-3 py-2">IP</th>
+                  <th className="px-3 py-2">Hostname</th>
+                  <th className="px-3 py-2">Description</th>
+                  <th className="px-3 py-2">Interface</th>
+                  <th className="px-3 py-2 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(mappings ?? []).length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-8 text-center text-slate-500">
+                      No static mappings
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {(mappings ?? []).length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-3 py-8 text-center text-slate-500">
-                        No static mappings
+                ) : (
+                  (mappings ?? []).map((m) => (
+                    <tr key={m.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <td className="px-3 py-2 font-mono text-white">{m.mac}</td>
+                      <td className="px-3 py-2 font-mono text-slate-300">{m.ip}</td>
+                      <td className="px-3 py-2 text-slate-300">{m.hostname ?? "\u2014"}</td>
+                      <td className="px-3 py-2 text-slate-400">{m.description ?? "\u2014"}</td>
+                      <td className="px-3 py-2 text-slate-400">{m.interface}</td>
+                      <td className="px-3 py-2 text-right">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-rose-400 hover:text-rose-300"
+                          onClick={() => setDeleteTarget(m)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </td>
                     </tr>
-                  ) : (
-                    (mappings ?? []).map((m) => (
-                      <tr key={m.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                        <td className="px-3 py-2 font-mono text-white">{m.mac}</td>
-                        <td className="px-3 py-2 font-mono text-slate-300">{m.ip}</td>
-                        <td className="px-3 py-2 text-slate-300">{m.hostname ?? "\u2014"}</td>
-                        <td className="px-3 py-2 text-slate-400">{m.description ?? "\u2014"}</td>
-                        <td className="px-3 py-2 text-slate-400">{m.interface}</td>
-                        <td className="px-3 py-2 text-right">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-rose-400 hover:text-rose-300"
-                            onClick={() => setDeleteTarget(m)}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
 
@@ -281,6 +285,25 @@ export function DhcpTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
+  );
+}
+
+// ── DHCP Tab (Orchestrator) ─────────────────────────────
+
+export function DhcpTab() {
+  return (
+    <Tabs defaultValue="leases" className="w-full">
+      <TabsList className="border-slate-800 bg-slate-900">
+        <TabsTrigger value="leases">Active Leases</TabsTrigger>
+        <TabsTrigger value="mappings">Static Mappings</TabsTrigger>
+      </TabsList>
+      <TabsContent value="leases">
+        <ActiveLeasesSection />
+      </TabsContent>
+      <TabsContent value="mappings">
+        <StaticMappingsSection />
+      </TabsContent>
+    </Tabs>
   );
 }
