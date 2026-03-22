@@ -321,8 +321,8 @@ export function Sidebar() {
                       </button>
                       <span
                         className={cn(
-                          "cursor-default select-none text-[10px] font-medium uppercase tracking-wider",
-                          hasActive ? "text-blue-400/80" : "text-slate-600",
+                          "cursor-default select-none text-[11px] font-semibold uppercase tracking-wider",
+                          hasActive ? "text-blue-400" : "text-slate-500",
                         )}
                       >
                         {group.label}
@@ -377,8 +377,8 @@ export function Sidebar() {
                   <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
                 </TooltipContent>
               </Tooltip>
-              <p className="text-[10px] text-slate-700/60">
-                {serverVersion ?? "..."}
+              <p className="text-[10px] text-slate-700">
+                Panoptikon {serverVersion ?? "..."}
               </p>
             </div>
           ) : (

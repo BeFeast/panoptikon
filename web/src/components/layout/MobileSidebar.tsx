@@ -80,8 +80,8 @@ export function MobileSidebar() {
                     </button>
                     <span
                       className={cn(
-                        "cursor-default select-none text-[10px] font-medium uppercase tracking-wider",
-                        hasActive ? "text-blue-400/80" : "text-slate-600",
+                        "cursor-default select-none text-[11px] font-semibold uppercase tracking-wider",
+                        hasActive ? "text-blue-400" : "text-slate-500",
                       )}
                     >
                       {group.label}
@@ -158,11 +158,11 @@ export function MobileSidebar() {
                     : "bg-slate-600"
                 )}
               />
-              <span className="text-xs text-slate-600">
+              <span className="text-xs text-slate-500">
                 {wsConnected ? "Live" : "Disconnected"}
               </span>
-              <p className="ml-auto text-[10px] text-slate-700/60">
-                {serverVersion ?? "..."}
+              <p className="ml-auto text-[10px] text-slate-700">
+                Panoptikon {serverVersion ?? "..."}
               </p>
             </div>
           </div>
