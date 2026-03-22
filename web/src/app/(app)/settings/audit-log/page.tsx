@@ -103,7 +103,7 @@ export default function AuditLogPage() {
     <PageTransition>
       <div className="mx-auto max-w-4xl space-y-8 py-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight font-display text-white">Audit Log</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">Audit Log</h1>
           <a
             href="/settings"
             className="text-sm text-slate-400 hover:text-slate-300"

@@ -207,7 +207,7 @@ export default function CaddyPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold tracking-tight font-display text-white">
+            <h1 className="text-2xl font-semibold tracking-tight text-white">
               Caddy Reverse Proxy
             </h1>
             <HelpTooltip text="Manage reverse-proxy hosts that Caddy serves. Add domains, point them to internal services, and enable automatic HTTPS." />

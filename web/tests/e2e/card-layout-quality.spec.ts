@@ -29,17 +29,17 @@ test.describe("Card Layout Quality (#538)", () => {
     ).toBeVisible();
 
     // Wait for stat cards to resolve
-    await expect(page.getByText("Total Devices")).toBeVisible({
+    await expect(page.getByText("Router Status")).toBeVisible({
       timeout: 10000,
     });
 
     // The stat card title elements should have the new label styling
     // (text-[11px] font-medium uppercase tracking-wider text-slate-500)
-    const routerTitle = page.getByText("Total Devices");
+    const routerTitle = page.getByText("Router Status");
     await expect(routerTitle).toHaveCSS("text-transform", "uppercase");
     await expect(routerTitle).toHaveCSS("letter-spacing", /[1-9]/);
 
-    const devicesTitle = page.getByText("Active Alerts");
+    const devicesTitle = page.getByText("Active Devices");
     await expect(devicesTitle).toHaveCSS("text-transform", "uppercase");
 
     await page.screenshot({
@@ -58,7 +58,7 @@ test.describe("Card Layout Quality (#538)", () => {
 
     // Wait for stat cards to resolve
     const routerValue = page.getByText(
-      /currently online|Cannot load/,
+      /total known|Cannot load/,
     );
     await expect(routerValue.first()).toBeVisible({ timeout: 10000 });
 

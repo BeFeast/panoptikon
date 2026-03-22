@@ -1,6 +1,6 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('Devices page — bento layout, pill filters, topology link', () => {
+test.describe('Devices page — pill filters, topology link', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/devices/');
@@ -52,10 +52,10 @@ test.describe('Devices page — bento layout, pill filters, topology link', () =
     const gridButton = page.getByTitle('Grid view');
     await expect(gridButton).toBeVisible();
 
-    await page.screenshot({ path: 'tests/screenshots/devices-grid-bento.png', fullPage: true });
+    await page.screenshot({ path: 'tests/screenshots/devices-grid.png', fullPage: true });
   });
 
-  test('table view shows color-coded left borders', async ({ page }) => {
+  test('table view renders correctly', async ({ page }) => {
     // Switch to table view
     const tableButton = page.getByTitle('Table view');
     await tableButton.click();
@@ -64,7 +64,7 @@ test.describe('Devices page — bento layout, pill filters, topology link', () =
     // Table should be visible
     await expect(page.locator('table')).toBeVisible({ timeout: 10000 });
 
-    await page.screenshot({ path: 'tests/screenshots/devices-table-borders.png', fullPage: true });
+    await page.screenshot({ path: 'tests/screenshots/devices-table.png', fullPage: true });
   });
 
   test('view toggle switches between grid and table', async ({ page }) => {

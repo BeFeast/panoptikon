@@ -121,7 +121,7 @@ export default function SshHostsPage() {
       <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-3xl font-bold tracking-tight font-display text-white">SSH Hosts</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">SSH Hosts</h1>
           <SshTargetFormDialog
             open={addOpen}
             onOpenChange={setAddOpen}

@@ -6,45 +6,38 @@ test.describe('Dashboard', () => {
     await login(page);
   });
 
-  test('dashboard page loads with hero stat cards', async ({ page }) => {
+  test('dashboard page loads with stat cards', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
-    // Wait for API calls to settle before checking hero stats
+    // Wait for API calls to settle before checking stat cards
     await page.waitForLoadState('networkidle');
 
-    // Should have hero stat cards (4 of them) — wait for stats to load
-    // In error state titles are: Total Devices, Active Alerts, Uptime, Traffic
-    // In success state: Total Devices, Active Alerts, Infra Health, WAN Traffic
-    await expect(page.getByText('Total Devices')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('Active Alerts').first()).toBeVisible({ timeout: 10000 });
-    // Third and fourth cards differ between success/error states
-    const infraOrUptime = page.getByText('Infra Health').or(page.getByText('Uptime'));
-    await expect(infraOrUptime.first()).toBeVisible({ timeout: 5000 });
-    // "WAN Traffic" appears in both hero stat and bento section; "Traffic" matches sidebar nav + subtitle
-    // Use exact match + .first() to avoid strict mode violations from duplicate text
-    const wanOrTraffic = page.getByText('WAN Traffic', { exact: true })
-      .or(page.getByText('Traffic', { exact: true }));
-    await expect(wanOrTraffic.first()).toBeVisible({ timeout: 5000 });
+    // Should have stat cards (4 of them) — wait for stats to load
+    // In error state titles: Router Status, Active Devices, WAN Bandwidth, Unread Alerts
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Active Devices')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('WAN Bandwidth')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Unread Alerts')).toBeVisible({ timeout: 5000 });
 
-    await page.screenshot({ path: 'tests/screenshots/dashboard-hero-stats.png', fullPage: true });
+    await page.screenshot({ path: 'tests/screenshots/dashboard-stat-cards.png', fullPage: true });
   });
 
-  test('hero stats show animated values after load', async ({ page }) => {
+  test('stat cards show values after load', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
-    // Wait for hero stats to resolve from skeleton to real values
-    await expect(page.getByText('Total Devices')).toBeVisible({ timeout: 10000 });
+    // Wait for stat cards to resolve from skeleton to real values
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
 
-    // "Total Devices" card shows a number and subtitle
-    const devicesSubtitle = page.getByText(/currently online/);
+    // "Active Devices" card shows a number and subtitle
+    const devicesSubtitle = page.getByText(/total known/);
     await expect(devicesSubtitle.first()).toBeVisible({ timeout: 10000 });
 
-    // "Active Alerts" card shows status
-    await expect(page.getByText('Active Alerts')).toBeVisible();
+    // "Unread Alerts" card shows status
+    await expect(page.getByText('Unread Alerts')).toBeVisible();
     const alertsSubtitle = page.getByText(/All clear|Needs attention/);
     await expect(alertsSubtitle.first()).toBeVisible({ timeout: 10000 });
 
-    await page.screenshot({ path: 'tests/screenshots/dashboard-hero-values.png', fullPage: true });
+    await page.screenshot({ path: 'tests/screenshots/dashboard-stat-values.png', fullPage: true });
   });
 
   test('infrastructure health ring loads', async ({ page }) => {
@@ -77,7 +70,6 @@ test.describe('Dashboard', () => {
     await page.waitForLoadState('networkidle');
 
     // All bento grid sections should be visible
-    // "WAN Traffic" appears in both hero stat and bento section; use .first() to avoid strict mode
     await expect(page.getByText('WAN Traffic').first()).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Recent Alerts')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Infrastructure Health')).toBeVisible({ timeout: 5000 });
@@ -164,12 +156,12 @@ test.describe('Dashboard', () => {
     await page.screenshot({ path: 'tests/screenshots/dashboard-fast-api.png' });
   });
 
-  test('dashboard renders hero stats within 3 seconds', async ({ page }) => {
+  test('dashboard renders stat cards within 3 seconds', async ({ page }) => {
     await page.goto('/dashboard');
     const start = Date.now();
 
-    // Wait for the hero stat cards to fully render (not skeletons)
-    const devicesSubtitle = page.getByText(/currently online/);
+    // Wait for the stat cards to fully render (not skeletons)
+    const devicesSubtitle = page.getByText(/total known/);
     await expect(devicesSubtitle.first()).toBeVisible({ timeout: 5000 });
     const elapsed = Date.now() - start;
 
@@ -184,9 +176,9 @@ test.describe('Dashboard', () => {
     await page.goto('/dashboard');
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
-    // All hero stat cards should still be visible
-    await expect(page.getByText('Total Devices')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('Active Alerts')).toBeVisible();
+    // All stat cards should still be visible
+    await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Active Devices')).toBeVisible();
 
     // Quick actions should be visible
     await expect(page.getByText('Scan Network')).toBeVisible();

@@ -51,27 +51,17 @@ test.describe('TopBar polish (#602)', () => {
     await page.screenshot({ path: 'tests/screenshots/topbar-no-breadcrumbs.png' });
   });
 
-  test('notification badge has pulse animation class when unread > 0', async ({ page }) => {
+  test('notification bell is visible and functional', async ({ page }) => {
     // Check the notification bell area
     const bellButton = page.locator('button[aria-label="Notifications"]');
     await expect(bellButton).toBeVisible();
 
-    // Check if there's a badge — if unread > 0 it should have pulse class
-    const badge = bellButton.locator('.animate-badge-pulse');
-    const badgeCount = await badge.count();
+    // Click the bell to open dropdown
+    await bellButton.click();
 
-    if (badgeCount > 0) {
-      // Badge exists and has the pulse animation class
-      await expect(badge).toBeVisible();
+    // Dropdown should show "Notifications" header
+    await expect(page.getByText('Notifications')).toBeVisible({ timeout: 5000 });
 
-      // Verify it has the animation style
-      const animationName = await badge.evaluate((el) => {
-        return window.getComputedStyle(el).animationName;
-      });
-      expect(animationName).toContain('badge-pulse');
-    }
-    // If no unread alerts, badge won't be rendered — that's fine
-
-    await page.screenshot({ path: 'tests/screenshots/topbar-notification-badge.png' });
+    await page.screenshot({ path: 'tests/screenshots/topbar-notification-bell.png' });
   });
 });

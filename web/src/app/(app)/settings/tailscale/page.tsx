@@ -82,7 +82,7 @@ export default function TailscaleSettingsPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Shield className="h-6 w-6 text-blue-500" />
-            <h1 className="text-3xl font-bold tracking-tight font-display text-white">Tailscale</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-white">Tailscale</h1>
             {data && (
               <Badge
                 variant="outline"
