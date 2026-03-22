@@ -169,6 +169,9 @@ function PfsensePanel() {
         setTestMsg(
           `Connected! ${data.hostname ? data.hostname : ""}${data.version ? ` · pfSense ${data.version}` : ""}`
         );
+        if (!enabled) {
+          setEnabled(true);
+        }
         setTimeout(() => setTestStatus("idle"), 5000);
       } else if (data.configured) {
         setTestStatus("error");
