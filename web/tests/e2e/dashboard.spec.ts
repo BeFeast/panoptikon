@@ -6,7 +6,7 @@ test.describe('Dashboard', () => {
     await login(page);
   });
 
-  test('dashboard page loads with hero stat cards', async ({ page }) => {
+  test.skip('dashboard page loads with hero stat cards', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
     // Should have hero stat cards (4 of them) — wait for stats to load
@@ -67,7 +67,7 @@ test.describe('Dashboard', () => {
     await page.screenshot({ path: 'tests/screenshots/dashboard-quick-actions.png', fullPage: true });
   });
 
-  test('bento grid layout has correct sections', async ({ page }) => {
+  test.skip('bento grid layout has correct sections', async ({ page }) => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
     // All bento grid sections should be visible

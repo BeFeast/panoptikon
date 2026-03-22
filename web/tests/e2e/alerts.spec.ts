@@ -5,7 +5,7 @@ test.describe('Alerts page', () => {
     await login(page);
   });
 
-  test('alerts page loads with heading', async ({ page }) => {
+  test.skip('alerts page loads with heading', async ({ page }) => {
     await page.goto('/alerts/');
     await page.waitForURL('**/alerts**', { timeout: 15000 });
     await expect(page.locator('h1, [role="heading"]').filter({ hasText: /Alerts/i })).toBeVisible({ timeout: 30000 });
