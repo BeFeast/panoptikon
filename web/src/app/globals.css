@@ -104,3 +104,56 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Shimmer effect for skeleton loaders ──────────── */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* ── Table row hover highlight slide-in ───────────── */
+@keyframes row-highlight {
+  from {
+    background-size: 0% 100%;
+  }
+  to {
+    background-size: 100% 100%;
+  }
+}
+
+.table-row-hover {
+  background-image: linear-gradient(
+    to right,
+    hsl(217 33% 17% / 0.5),
+    hsl(217 33% 17% / 0.5)
+  );
+  background-size: 0% 100%;
+  background-repeat: no-repeat;
+  transition: background-size 0.2s ease-out;
+}
+.table-row-hover:hover {
+  background-size: 100% 100%;
+}
+
+/* ── Shake animation for destructive actions ──────── */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+.animate-shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .table-row-hover {
+    transition: none;
+  }
+  .animate-shake {
+    animation: none;
+  }
+}
