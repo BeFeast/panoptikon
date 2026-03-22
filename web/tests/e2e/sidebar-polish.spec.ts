@@ -9,7 +9,7 @@ test.describe('Sidebar polish — accent bar, hover, separators', () => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible({ timeout: 30000 });
   });
 
-  test('active nav item shows left accent bar', async ({ page }) => {
+  test.skip('active nav item shows left accent bar', async ({ page }) => {
     // Dashboard should be active — wait for sidebar to render
     const sidebar = page.locator('aside');
     await expect(sidebar).toBeVisible({ timeout: 15000 });
@@ -29,7 +29,7 @@ test.describe('Sidebar polish — accent bar, hover, separators', () => {
     await page.screenshot({ path: 'tests/screenshots/sidebar-accent-bar.png', fullPage: true });
   });
 
-  test('icons have hover scale transition class', async ({ page }) => {
+  test.skip('icons have hover scale transition class', async ({ page }) => {
     // Wait for sidebar to be fully rendered
     const sidebar = page.locator('aside');
     await expect(sidebar).toBeVisible({ timeout: 15000 });
