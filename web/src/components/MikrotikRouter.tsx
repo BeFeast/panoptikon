@@ -215,25 +215,29 @@ function SystemTab({ status }: { status: MikrotikStatus }) {
     <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
       <InfoStatCard
         icon={<Monitor className="h-5 w-5 text-pink-400" />}
-        iconColorClass="bg-pink-500/10"
+        iconColorClass="bg-gradient-to-br from-pink-500/20 to-pink-500/5"
+        glowColorClass="bg-pink-500/[0.07]"
         label="Version"
         value={status.version ?? "\u2014"}
       />
       <InfoStatCard
         icon={<Clock className="h-5 w-5 text-emerald-400" />}
-        iconColorClass="bg-emerald-500/10"
+        iconColorClass="bg-gradient-to-br from-emerald-500/20 to-emerald-500/5"
+        glowColorClass="bg-emerald-500/[0.07]"
         label="Uptime"
         value={status.uptime ?? "\u2014"}
       />
       <InfoStatCard
         icon={<Cpu className="h-5 w-5 text-amber-400" />}
-        iconColorClass="bg-amber-500/10"
+        iconColorClass="bg-gradient-to-br from-amber-500/20 to-amber-500/5"
+        glowColorClass="bg-amber-500/[0.07]"
         label="CPU Load"
         value={status.cpu_load ? `${status.cpu_load}%` : "\u2014"}
       />
       <InfoStatCard
         icon={<MemoryStick className="h-5 w-5 text-purple-400" />}
-        iconColorClass="bg-purple-500/10"
+        iconColorClass="bg-gradient-to-br from-purple-500/20 to-purple-500/5"
+        glowColorClass="bg-purple-500/[0.07]"
         label="Memory"
         value={
           memUsed
@@ -243,13 +247,15 @@ function SystemTab({ status }: { status: MikrotikStatus }) {
       />
       <InfoStatCard
         icon={<HardDrive className="h-5 w-5 text-cyan-400" />}
-        iconColorClass="bg-cyan-500/10"
+        iconColorClass="bg-gradient-to-br from-cyan-500/20 to-cyan-500/5"
+        glowColorClass="bg-cyan-500/[0.07]"
         label="Platform"
         value={platformValue}
       />
       <InfoStatCard
         icon={<Server className="h-5 w-5 text-blue-400" />}
-        iconColorClass="bg-blue-500/10"
+        iconColorClass="bg-gradient-to-br from-blue-500/20 to-blue-500/5"
+        glowColorClass="bg-blue-500/[0.07]"
         label="Board"
         value={status.board_name ?? "\u2014"}
       />
