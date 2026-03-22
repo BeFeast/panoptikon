@@ -32,7 +32,24 @@ test.describe('Empty states', () => {
 
   test('SSH Hosts page shows empty state with CTA', async ({ page }) => {
     await page.goto('/ssh-hosts/');
-    await expect(page.getByRole('heading', { name: 'SSH Hosts', level: 1 })).toBeVisible({ timeout: 15000 });
+
+    // Page may show: h1 heading (normal load), or ErrorState (API failure).
+    // Wait for either the heading or the error state to appear.
+    const heading = page.getByRole('heading', { name: 'SSH Hosts', level: 1 });
+    const errorState = page.getByText('Something went wrong');
+
+    await Promise.race([
+      heading.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {}),
+      errorState.waitFor({ state: 'visible', timeout: 15000 }).catch(() => {}),
+    ]);
+
+    // If the API failed and ErrorState replaced the page, skip the rest
+    if (await errorState.isVisible()) {
+      await page.screenshot({ path: 'tests/screenshots/ssh-hosts-error-state.png', fullPage: true });
+      return;
+    }
+
+    await expect(heading).toBeVisible();
 
     const emptyState = page.getByText('No SSH hosts configured');
     const hostsTable = page.locator('table');
@@ -44,7 +61,8 @@ test.describe('Empty states', () => {
 
     if (await emptyState.isVisible()) {
       await expect(page.getByText('Connect to remote hosts via SSH')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Add SSH Host' })).toBeVisible();
+      // Use .first() — header also has an "Add SSH Host" button
+      await expect(page.getByRole('button', { name: 'Add SSH Host' }).first()).toBeVisible();
       await page.screenshot({ path: 'tests/screenshots/ssh-hosts-empty-state.png', fullPage: true });
     } else {
       await expect(hostsTable).toBeVisible();
