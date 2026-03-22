@@ -9,7 +9,9 @@ import {
   Info,
   MonitorSmartphone,
   Pin,
+  Radar,
   Router,
+  Shield,
   WifiOff,
 } from "lucide-react";
 import {
@@ -38,11 +40,13 @@ import type { Alert, CriticalDevice, DashboardStats, TrafficHistoryPoint, Device
 import { formatBps, timeAgo } from "@/lib/format";
 import { PageTransition } from "@/components/PageTransition";
 import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
+import { HeroStat } from "@/components/dashboard/HeroStat";
+import { HealthRing } from "@/components/dashboard/HealthRing";
 import { toast } from "sonner";
 import { useWsEvent } from "@/lib/ws";
 import { getDeviceIcon } from "@/lib/device-icons";
 import type { DeviceType } from "@/lib/device-type";
-import { cn } from "@/lib/utils";
+
 
 // ─── Format ISO minute string to HH:mm ─────────────────
 
@@ -169,159 +173,14 @@ function CriticalDevicesDialog({
   );
 }
 
-// ─── Health Ring SVG ───────────────────────────────────
+// ─── Loading skeleton for hero stat cards ────────────────
 
-function HealthRing({ online, total }: { online: number; total: number }) {
-  const pct = total === 0 ? 0 : Math.round((online / total) * 100);
-  const circumference = 2 * Math.PI * 40; // r=40
-  const offset = circumference - (pct / 100) * circumference;
-  const color =
-    pct >= 90 ? "stroke-emerald-500" : pct >= 70 ? "stroke-amber-500" : "stroke-rose-500";
-  const bgColor =
-    pct >= 90
-      ? "text-emerald-500/10"
-      : pct >= 70
-        ? "text-amber-500/10"
-        : "text-rose-500/10";
-  const textColor =
-    pct >= 90 ? "text-emerald-400" : pct >= 70 ? "text-amber-400" : "text-rose-400";
-
-  if (total === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center gap-1">
-        <div className="relative aspect-square w-full max-w-[7rem]">
-          <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-            <circle
-              cx="50"
-              cy="50"
-              r="40"
-              fill="none"
-              strokeWidth="8"
-              className="text-slate-500/10 stroke-current"
-            />
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-sm font-medium text-slate-500">N/A</span>
-          </div>
-        </div>
-        <span className="text-xs text-slate-500 text-center">
-          No critical devices
-        </span>
-      </div>
-    );
-  }
-
+function HeroStatSkeleton() {
   return (
-    <div className="flex flex-col items-center justify-center gap-1">
-      <div className="relative aspect-square w-full max-w-[7rem]">
-        <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
-          <circle
-            cx="50"
-            cy="50"
-            r="40"
-            fill="none"
-            strokeWidth="8"
-            className={`${bgColor} stroke-current`}
-          />
-          <circle
-            cx="50"
-            cy="50"
-            r="40"
-            fill="none"
-            strokeWidth="8"
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            className={`${color} transition-all duration-700 ease-out`}
-          />
-        </svg>
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className={`text-2xl font-bold tabular-nums ${textColor}`}>
-            {pct}%
-          </span>
-        </div>
-      </div>
-      <span className="text-xs text-slate-500">
-        {online}/{total} critical online
-      </span>
-    </div>
-  );
-}
-
-// ─── Status dot ─────────────────────────────────────────
-
-function StatusDot({ status }: { status: "online" | "offline" | "warning" }) {
-  const colors = {
-    online: "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online",
-    offline: "bg-rose-400 ring-2 ring-rose-400/30 status-glow-offline",
-    warning: "bg-amber-400 ring-2 ring-amber-400/30",
-  };
-  return (
-    <span
-      className={`inline-block h-2.5 w-2.5 rounded-full ${colors[status]}`}
-    />
-  );
-}
-
-// ─── Stat Card ──────────────────────────────────────────
-
-function StatCard({
-  title,
-  value,
-  subtitle,
-  icon,
-  status,
-  href,
-}: {
-  title: string;
-  value: string;
-  subtitle: string;
-  icon: React.ReactNode;
-  status: "online" | "offline" | "warning";
-  href?: string;
-}) {
-  const inner = (
-    <Card
-      className={cn(
-        "h-full min-h-[8.25rem] border-slate-700/50 bg-slate-900/55",
-        href &&
-          "transition-[border-color,background-color,box-shadow] hover:border-slate-700/90 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]",
-      )}
-    >
-      <CardHeader className="flex flex-row items-start justify-between pb-3">
-        <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-          {title}
-        </CardTitle>
-        <div className="flex items-center gap-2">
-          <StatusDot status={status} />
-          <span className="text-slate-500">{icon}</span>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <p className="truncate text-[1.65rem] font-semibold leading-none tabular-nums text-white">{value}</p>
-        <p className="truncate text-xs leading-5 text-slate-400">{subtitle}</p>
-      </CardContent>
-    </Card>
-  );
-  return href ? (
-    <Link href={href} className="block h-full">
-      {inner}
-    </Link>
-  ) : (
-    inner
-  );
-}
-
-// ─── Loading skeleton for stat cards ────────────────────
-
-function StatCardSkeleton() {
-  return (
-    <Card className="h-full min-h-[8.25rem] border-slate-700/50 bg-slate-900/55">
-      <CardHeader className="pb-3">
-        <Skeleton className="h-3.5 w-24" />
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <Skeleton className="h-8 w-24" />
+    <Card className="h-full min-h-[140px] border-slate-700/50 bg-slate-900/55">
+      <CardContent className="p-5 space-y-4">
+        <Skeleton className="h-3 w-20" />
+        <Skeleton className="h-9 w-28 mt-auto" />
         <Skeleton className="h-3 w-32" />
       </CardContent>
     </Card>
@@ -337,20 +196,6 @@ function SectionError({ message }: { message: string }) {
       <span>{message}</span>
     </div>
   );
-}
-
-// ─── Derive display values from flat stats ──────────────
-
-function routerStatusLabel(s: DashboardStats): { label: string; status: "online" | "offline" | "warning" } {
-  switch (s.router_status) {
-    case "connected":
-    case "online":
-      return { label: "Online", status: "online" };
-    case "unconfigured":
-      return { label: "Unconfigured", status: "warning" };
-    default:
-      return { label: "Offline", status: "offline" };
-  }
 }
 
 // ─── Device breakdown bar colors ────────────────────────
@@ -369,11 +214,34 @@ const TYPE_COLORS: Record<string, string> = {
   unknown: "bg-slate-500",
 };
 
+// ─── Quick Actions ──────────────────────────────────────
+
+function QuickActions() {
+  const actions = [
+    { label: "Scan Network", icon: <Radar className="h-4 w-4" />, href: "/settings/scanner" },
+    { label: "View Alerts", icon: <AlertTriangle className="h-4 w-4" />, href: "/alerts" },
+    { label: "Check DNS", icon: <Shield className="h-4 w-4" />, href: "/dns-queries" },
+  ];
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {actions.map((action) => (
+        <Link
+          key={action.label}
+          href={action.href}
+          className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-slate-900/60 px-4 py-2 text-sm text-slate-300 transition-all hover:border-slate-600 hover:bg-slate-800/80 hover:text-white"
+        >
+          {action.icon}
+          {action.label}
+        </Link>
+      ))}
+    </div>
+  );
+}
+
 // ─── Page ───────────────────────────────────────────────
 
 export default function DashboardPage() {
-  // Each section has independent data + error state.
-  // null = still loading (show skeleton), non-null = loaded.
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [statsError, setStatsError] = useState(false);
 
@@ -430,7 +298,6 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Fire all fetches in parallel — each resolves independently
   const loadAll = useCallback(() => {
     loadStats();
     loadAlerts();
@@ -444,7 +311,6 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, [loadAll]);
 
-  // Keep a ref to current devices so WS handler can look up names without stale closure
   const devicesRef = useRef(devices);
   devicesRef.current = devices;
 
@@ -486,7 +352,7 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight text-white">Dashboard</h1>
         <p className="max-w-3xl text-sm leading-6 text-slate-400">
@@ -494,344 +360,408 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      {/* ── Hero Stats Row ─────────────────────────────── */}
+      <StaggerContainer className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {statsError ? (
+          <>
+            <StaggerItem>
+              <HeroStat
+                title="Total Devices"
+                value={0}
+                subtitle="Cannot load stats"
+                icon={<MonitorSmartphone className="h-5 w-5" />}
+                gradient="bg-gradient-to-br from-slate-800 to-slate-900"
+                href="/devices"
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <HeroStat
+                title="Active Alerts"
+                value={0}
+                subtitle="Cannot load stats"
+                icon={<AlertTriangle className="h-5 w-5" />}
+                gradient="bg-gradient-to-br from-slate-800 to-slate-900"
+                href="/alerts"
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <HeroStat
+                title="Uptime"
+                value={0}
+                suffix="%"
+                subtitle="Cannot load stats"
+                icon={<Activity className="h-5 w-5" />}
+                gradient="bg-gradient-to-br from-slate-800 to-slate-900"
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <HeroStat
+                title="Traffic"
+                value={0}
+                subtitle="Cannot load stats"
+                icon={<Router className="h-5 w-5" />}
+                gradient="bg-gradient-to-br from-slate-800 to-slate-900"
+                href="/traffic"
+              />
+            </StaggerItem>
+          </>
+        ) : stats ? (
+          <>
+            <StaggerItem>
+              <HeroStat
+                title="Total Devices"
+                value={stats.devices_total}
+                subtitle={`${stats.devices_online} currently online`}
+                icon={<MonitorSmartphone className="h-5 w-5" />}
+                gradient="bg-gradient-to-br from-blue-600/90 to-blue-900/90"
+                href="/devices"
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <HeroStat
+                title="Active Alerts"
+                value={stats.alerts_unread}
+                subtitle={stats.alerts_unread > 0 ? "Needs attention" : "All clear"}
+                icon={<AlertTriangle className="h-5 w-5" />}
+                gradient={
+                  stats.alerts_unread > 0
+                    ? "bg-gradient-to-br from-amber-600/90 to-amber-900/90"
+                    : "bg-gradient-to-br from-emerald-600/90 to-emerald-900/90"
+                }
+                href="/alerts"
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <HeroStat
+                title="Infra Health"
+                value={stats.critical_total > 0 ? Math.round((stats.critical_online / stats.critical_total) * 100) : 100}
+                suffix="%"
+                subtitle={
+                  stats.critical_total > 0
+                    ? `${stats.critical_online}/${stats.critical_total} critical online`
+                    : "No critical devices"
+                }
+                icon={<Activity className="h-5 w-5" />}
+                gradient={
+                  stats.critical_total === 0 || (stats.critical_online / stats.critical_total) >= 0.9
+                    ? "bg-gradient-to-br from-emerald-600/90 to-emerald-900/90"
+                    : (stats.critical_online / stats.critical_total) >= 0.7
+                      ? "bg-gradient-to-br from-amber-600/90 to-amber-900/90"
+                      : "bg-gradient-to-br from-rose-600/90 to-rose-900/90"
+                }
+              />
+            </StaggerItem>
+            <StaggerItem>
+              <HeroStat
+                title="WAN Traffic"
+                value={stats.wan_rx_bps}
+                subtitle={`↑ ${formatBps(stats.wan_tx_bps)}`}
+                icon={<Router className="h-5 w-5" />}
+                gradient="bg-gradient-to-br from-violet-600/90 to-violet-900/90"
+                href="/traffic"
+                formatValue={(v) => `↓ ${formatBps(v)}`}
+              />
+            </StaggerItem>
+          </>
+        ) : (
+          <>
+            <StaggerItem><HeroStatSkeleton /></StaggerItem>
+            <StaggerItem><HeroStatSkeleton /></StaggerItem>
+            <StaggerItem><HeroStatSkeleton /></StaggerItem>
+            <StaggerItem><HeroStatSkeleton /></StaggerItem>
+          </>
+        )}
+      </StaggerContainer>
+
+      {/* ── Quick Actions ──────────────────────────────── */}
+      <QuickActions />
+
       {/* ── Bento Grid ─────────────────────────────────── */}
-      <StaggerContainer className="grid grid-cols-1 gap-6 xl:grid-cols-5">
-        {/* ── Health Score Ring ─────────────────────────── */}
-        <StaggerItem><Card
-          className="h-full border-slate-700/50 bg-slate-900/55 xl:col-span-1"
-          data-testid="infra-health-card"
+      <div
+        className="grid grid-cols-1 gap-6 xl:grid-cols-6"
+        style={{
+          gridTemplateAreas: `
+            "traffic traffic traffic traffic alerts alerts"
+            "health health breakdown breakdown breakdown breakdown"
+          `,
+        }}
+      >
+        {/* ── WAN Traffic Card (2x1 wide) ────────────── */}
+        <StaggerContainer
+          className="col-span-1 xl:col-span-4"
+          style={{ gridArea: "traffic" } as React.CSSProperties}
         >
-          <CardHeader className="pb-4">
-            <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-              Infrastructure Health
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex items-center justify-center pb-5">
-            {statsError ? (
-              <SectionError message="Failed to load" />
-            ) : stats ? (
-              <button
-                type="button"
-                className="group cursor-pointer rounded-xl border border-slate-800/80 p-2 transition-colors hover:border-slate-700 hover:bg-slate-800/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
-                onClick={() => setCriticalDialogOpen(true)}
-                aria-label="View critical devices"
-              >
-                <HealthRing online={stats.critical_online} total={stats.critical_total} />
-                <span className="mt-1.5 flex items-center justify-center gap-1 text-[11px] text-slate-500 transition-colors group-hover:text-slate-300">
-                  <Info className="h-3 w-3" /> View details
-                </span>
-              </button>
-            ) : (
-              <Skeleton className="aspect-square w-full max-w-[7rem] rounded-full" />
-            )}
-          </CardContent>
-        </Card></StaggerItem>
+          <StaggerItem>
+            <Card className="border-slate-700/50 bg-slate-900/55 h-full">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-blue-400" />
+                    <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                      WAN Traffic
+                    </CardTitle>
+                  </div>
+                  <Link
+                    href="/traffic"
+                    className="flex items-center gap-1 text-xs text-blue-400 transition-colors hover:text-blue-300"
+                  >
+                    Details <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {/* Current aggregate speeds */}
+                <div className="mb-4 flex flex-wrap items-end gap-6 rounded-xl border border-slate-800/70 bg-slate-900/50 px-4 py-3">
+                  <div className="min-w-[8rem]">
+                    <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-emerald-400/85">Download</span>
+                    <p className="mt-1 text-2xl font-semibold leading-none tabular-nums text-white">
+                      {statsError ? "—" : stats ? formatBps(stats.wan_rx_bps) : "—"}
+                    </p>
+                  </div>
+                  <div className="min-w-[8rem]">
+                    <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-blue-400/90">Upload</span>
+                    <p className="mt-1 text-2xl font-semibold leading-none tabular-nums text-white">
+                      {statsError ? "—" : stats ? formatBps(stats.wan_tx_bps) : "—"}
+                    </p>
+                  </div>
+                  <span className="ml-auto text-[11px] uppercase tracking-[0.12em] text-slate-600">Last 60 samples</span>
+                </div>
+                {/* Sparkline */}
+                {trafficError ? (
+                  <div className="flex h-[120px] items-center justify-center">
+                    <SectionError message="Failed to load traffic data" />
+                  </div>
+                ) : trafficHistory === null ? (
+                  <Skeleton className="h-[120px] w-full" />
+                ) : trafficHistory.length > 0 ? (
+                  <div className="h-[120px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={trafficHistory} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
+                        <defs>
+                          <linearGradient id="sparkRx" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                          </linearGradient>
+                          <linearGradient id="sparkTx" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "#0f172a",
+                            border: "1px solid #1e293b",
+                            borderRadius: "6px",
+                            color: "#fff",
+                            fontSize: "12px",
+                          }}
+                          labelFormatter={formatTime}
+                          formatter={(value: number, name: string) => [
+                            formatBps(value),
+                            name === "rx_bps" ? "↓ Download" : "↑ Upload",
+                          ]}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="rx_bps"
+                          stroke="#10b981"
+                          strokeWidth={1.5}
+                          fill="url(#sparkRx)"
+                          dot={false}
+                          name="rx_bps"
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="tx_bps"
+                          stroke="#3b82f6"
+                          strokeWidth={1.5}
+                          fill="url(#sparkTx)"
+                          dot={false}
+                          name="tx_bps"
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="flex h-[120px] items-center justify-center">
+                    <p className="text-sm text-slate-600">No traffic data yet</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </StaggerItem>
+        </StaggerContainer>
+
+        {/* ── Alert Feed (1x1) ───────────────────────── */}
+        <StaggerContainer
+          className="col-span-1 xl:col-span-2"
+          style={{ gridArea: "alerts" } as React.CSSProperties}
+        >
+          <StaggerItem>
+            <Card className="border-slate-700/50 bg-slate-900/55 h-full">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                    Recent Alerts
+                  </CardTitle>
+                  <Link
+                    href="/alerts"
+                    className="flex items-center gap-1 text-xs text-blue-400 transition-colors hover:text-blue-300"
+                  >
+                    View all <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {alertsError ? (
+                  <SectionError message="Failed to load alerts" />
+                ) : alerts === null ? (
+                  <div className="space-y-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div key={i} className="flex items-center gap-3">
+                        <Skeleton className="h-2.5 w-2.5 rounded-full" />
+                        <Skeleton className="h-4 flex-1" />
+                        <Skeleton className="h-3 w-12" />
+                      </div>
+                    ))}
+                  </div>
+                ) : alerts.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-slate-600">
+                    No recent alerts — all clear.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {alerts.map((alert) => (
+                      <div
+                        key={alert.id}
+                        className={`flex items-center gap-2.5 rounded-lg border border-transparent px-3 py-2 ${
+                          !alert.is_read ? "border-blue-500/15 bg-blue-500/6" : "hover:border-slate-800/70"
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-2 w-2 shrink-0 rounded-full ${severityDotColor(alert.severity)}`}
+                        />
+                        <p className="min-w-0 flex-1 truncate text-sm text-slate-300" title={alert.message}>
+                          {alert.message}
+                        </p>
+                        <span className="w-14 shrink-0 text-right text-xs tabular-nums text-slate-600">
+                          {timeAgo(alert.created_at)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </StaggerItem>
+        </StaggerContainer>
+
+        {/* ── Network Health Ring (1x1) ──────────────── */}
+        <StaggerContainer
+          className="col-span-1 xl:col-span-2"
+          style={{ gridArea: "health" } as React.CSSProperties}
+        >
+          <StaggerItem>
+            <Card
+              className="h-full border-slate-700/50 bg-slate-900/55"
+              data-testid="infra-health-card"
+            >
+              <CardHeader className="pb-4">
+                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                  Infrastructure Health
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="flex items-center justify-center pb-5">
+                {statsError ? (
+                  <SectionError message="Failed to load" />
+                ) : stats ? (
+                  <button
+                    type="button"
+                    className="group cursor-pointer rounded-xl border border-slate-800/80 p-2 transition-colors hover:border-slate-700 hover:bg-slate-800/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                    onClick={() => setCriticalDialogOpen(true)}
+                    aria-label="View critical devices"
+                  >
+                    <HealthRing online={stats.critical_online} total={stats.critical_total} />
+                    <span className="mt-1.5 flex items-center justify-center gap-1 text-[11px] text-slate-500 transition-colors group-hover:text-slate-300">
+                      <Info className="h-3 w-3" /> View details
+                    </span>
+                  </button>
+                ) : (
+                  <Skeleton className="aspect-square w-full max-w-[7rem] rounded-full" />
+                )}
+              </CardContent>
+            </Card>
+          </StaggerItem>
+        </StaggerContainer>
         <CriticalDevicesDialog
           open={criticalDialogOpen}
           onOpenChange={setCriticalDialogOpen}
         />
 
-        {/* ── Stat Cards Row ───────────────────────────── */}
-        <StaggerItem className="xl:col-span-4"><div className="grid h-full grid-cols-2 gap-4 xl:grid-cols-4">
-          {statsError ? (
-            <>
-              <StatCard
-                title="Router Status"
-                href="/router"
-                value="Unreachable"
-                subtitle="Cannot load stats"
-                icon={<Router className="h-4 w-4" />}
-                status="offline"
-              />
-              <StatCard
-                title="Active Devices"
-                href="/devices"
-                value="—"
-                subtitle="Cannot load stats"
-                icon={<MonitorSmartphone className="h-4 w-4" />}
-                status="offline"
-              />
-              <StatCard
-                title="WAN Bandwidth"
-                href="/traffic"
-                value="—"
-                subtitle="Cannot load stats"
-                icon={<Activity className="h-4 w-4" />}
-                status="offline"
-              />
-              <StatCard
-                title="Unread Alerts"
-                href="/alerts"
-                value="—"
-                subtitle="Cannot load stats"
-                icon={<AlertTriangle className="h-4 w-4" />}
-                status="offline"
-              />
-            </>
-          ) : stats ? (
-            <>
-              <StatCard
-                title="Router Status"
-                href="/router"
-                value={routerStatusLabel(stats).label}
-                subtitle={
-                  stats.router_status === "connected" || stats.router_status === "online"
-                    ? `Connected to ${stats.router_type === "mikrotik" ? "MikroTik" : "router"}`
-                    : stats.router_status === "unconfigured"
-                      ? "Router not configured"
-                      : `Cannot reach ${stats.router_type === "mikrotik" ? "MikroTik" : "router"}`
-                }
-                icon={<Router className="h-4 w-4" />}
-                status={routerStatusLabel(stats).status}
-              />
-              <StatCard
-                title="Active Devices"
-                href="/devices"
-                value={String(stats.devices_online)}
-                subtitle={`${stats.devices_total} total known`}
-                icon={<MonitorSmartphone className="h-4 w-4" />}
-                status="online"
-              />
-              <StatCard
-                title="WAN Bandwidth"
-                href="/traffic"
-                value={`↓ ${formatBps(stats.wan_rx_bps)}`}
-                subtitle={`↑ ${formatBps(stats.wan_tx_bps)}`}
-                icon={<Activity className="h-4 w-4" />}
-                status="online"
-              />
-              <StatCard
-                title="Unread Alerts"
-                href="/alerts"
-                value={String(stats.alerts_unread)}
-                subtitle={stats.alerts_unread > 0 ? "Needs attention" : "All clear"}
-                icon={<AlertTriangle className="h-4 w-4" />}
-                status={stats.alerts_unread > 0 ? "warning" : "online"}
-              />
-            </>
-          ) : (
-            <>
-              <StatCardSkeleton />
-              <StatCardSkeleton />
-              <StatCardSkeleton />
-              <StatCardSkeleton />
-            </>
-          )}
-        </div></StaggerItem>
-
-        {/* ── WAN Traffic Card with Sparkline ─────────── */}
-        <StaggerItem className="xl:col-span-3"><Card className="border-slate-700/50 bg-slate-900/55">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-blue-400" />
-                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-                  WAN Traffic
-                </CardTitle>
-              </div>
-              <Link
-                href="/traffic"
-                className="flex items-center gap-1 text-xs text-blue-400 transition-colors hover:text-blue-300"
-              >
-                Details <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {/* Current aggregate speeds */}
-            <div className="mb-4 flex flex-wrap items-end gap-6 rounded-xl border border-slate-800/70 bg-slate-900/50 px-4 py-3">
-              <div className="min-w-[8rem]">
-                <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-emerald-400/85">Download</span>
-                <p className="mt-1 text-2xl font-semibold leading-none tabular-nums text-white">
-                  {statsError ? "—" : stats ? formatBps(stats.wan_rx_bps) : "—"}
-                </p>
-              </div>
-              <div className="min-w-[8rem]">
-                <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-blue-400/90">Upload</span>
-                <p className="mt-1 text-2xl font-semibold leading-none tabular-nums text-white">
-                  {statsError ? "—" : stats ? formatBps(stats.wan_tx_bps) : "—"}
-                </p>
-              </div>
-              <span className="ml-auto text-[11px] uppercase tracking-[0.12em] text-slate-600">Last 60 samples</span>
-            </div>
-            {/* Sparkline */}
-            {trafficError ? (
-              <div className="flex h-[120px] items-center justify-center">
-                <SectionError message="Failed to load traffic data" />
-              </div>
-            ) : trafficHistory === null ? (
-              <Skeleton className="h-[120px] w-full" />
-            ) : trafficHistory.length > 0 ? (
-              <div className="h-[120px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={trafficHistory} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-                    <defs>
-                      <linearGradient id="sparkRx" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="sparkTx" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#0f172a",
-                        border: "1px solid #1e293b",
-                        borderRadius: "6px",
-                        color: "#fff",
-                        fontSize: "12px",
-                      }}
-                      labelFormatter={formatTime}
-                      formatter={(value: number, name: string) => [
-                        formatBps(value),
-                        name === "rx_bps" ? "↓ Download" : "↑ Upload",
-                      ]}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="rx_bps"
-                      stroke="#10b981"
-                      strokeWidth={1.5}
-                      fill="url(#sparkRx)"
-                      dot={false}
-                      name="rx_bps"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="tx_bps"
-                      stroke="#3b82f6"
-                      strokeWidth={1.5}
-                      fill="url(#sparkTx)"
-                      dot={false}
-                      name="tx_bps"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="flex h-[120px] items-center justify-center">
-                <p className="text-sm text-slate-600">No traffic data yet</p>
-              </div>
-            )}
-          </CardContent>
-        </Card></StaggerItem>
-
-        {/* ── Alert Feed ───────────────────────────────── */}
-        <StaggerItem className="xl:col-span-2"><Card className="border-slate-700/50 bg-slate-900/55">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-                Recent Alerts
-              </CardTitle>
-              <Link
-                href="/alerts"
-                className="flex items-center gap-1 text-xs text-blue-400 transition-colors hover:text-blue-300"
-              >
-                View all <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {alertsError ? (
-              <SectionError message="Failed to load alerts" />
-            ) : alerts === null ? (
-              <div className="space-y-3">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <Skeleton className="h-2.5 w-2.5 rounded-full" />
-                    <Skeleton className="h-4 flex-1" />
-                    <Skeleton className="h-3 w-12" />
-                  </div>
-                ))}
-              </div>
-            ) : alerts.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-600">
-                No recent alerts — all clear.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {alerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    className={`flex items-center gap-2.5 rounded-lg border border-transparent px-3 py-2 ${
-                      !alert.is_read ? "border-blue-500/15 bg-blue-500/6" : "hover:border-slate-800/70"
-                    }`}
+        {/* ── Device Breakdown (2x1 wide) ────────────── */}
+        <StaggerContainer
+          className="col-span-1 xl:col-span-4"
+          style={{ gridArea: "breakdown" } as React.CSSProperties}
+        >
+          <StaggerItem>
+            <Card className="border-slate-700/50 bg-slate-900/55 h-full">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                    Device Breakdown
+                  </CardTitle>
+                  <Link
+                    href="/devices"
+                    className="flex items-center gap-1 text-xs text-blue-400 transition-colors hover:text-blue-300"
                   >
-                    <span
-                      className={`inline-block h-2 w-2 shrink-0 rounded-full ${severityDotColor(alert.severity)}`}
-                    />
-                    <p className="min-w-0 flex-1 truncate text-sm text-slate-300" title={alert.message}>
-                      {alert.message}
-                    </p>
-                    <span className="w-14 shrink-0 text-right text-xs tabular-nums text-slate-600">
-                      {timeAgo(alert.created_at)}
-                    </span>
+                    View all <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {devicesError ? (
+                  <SectionError message="Failed to load devices" />
+                ) : devices === null ? (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <Skeleton key={i} className="h-10 w-full" />
+                    ))}
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card></StaggerItem>
-
-        {/* ── Device Type Breakdown ────────────────────── */}
-        <StaggerItem className="xl:col-span-5"><Card className="border-slate-700/50 bg-slate-900/55">
-          <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-                Device Breakdown
-              </CardTitle>
-              <Link
-                href="/devices"
-                className="flex items-center gap-1 text-xs text-blue-400 transition-colors hover:text-blue-300"
-              >
-                View all <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {devicesError ? (
-              <SectionError message="Failed to load devices" />
-            ) : devices === null ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
-              </div>
-            ) : deviceBreakdown.length === 0 ? (
-              <p className="text-sm text-slate-600">No devices found.</p>
-            ) : (
-              <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-                {deviceBreakdown.map((item) => {
-                  const Icon = getDeviceIcon(item.type, null, null).icon;
-                  return (
-                    <div key={item.type} className="flex items-center gap-3">
-                      <Icon className="h-4 w-4 shrink-0 text-slate-400" />
-                      <span className="w-28 shrink-0 truncate text-sm text-slate-300">
-                        {item.label}
-                      </span>
-                      <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-800/90">
-                          <div
-                            className={`h-full rounded-full ${TYPE_COLORS[item.type] ?? "bg-slate-500"} transition-all duration-500`}
-                            style={{
-                              width: `${(item.count / maxCount) * 100}%`,
-                            }}
-                          />
+                ) : deviceBreakdown.length === 0 ? (
+                  <p className="text-sm text-slate-600">No devices found.</p>
+                ) : (
+                  <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {deviceBreakdown.map((item) => {
+                      const Icon = getDeviceIcon(item.type, null, null).icon;
+                      return (
+                        <div key={item.type} className="flex items-center gap-3">
+                          <Icon className="h-4 w-4 shrink-0 text-slate-400" />
+                          <span className="w-28 shrink-0 truncate text-sm text-slate-300">
+                            {item.label}
+                          </span>
+                          <div className="flex min-w-0 flex-1 items-center gap-2">
+                            <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-800/90">
+                              <div
+                                className={`h-full rounded-full ${TYPE_COLORS[item.type] ?? "bg-slate-500"} transition-all duration-500`}
+                                style={{
+                                  width: `${(item.count / maxCount) * 100}%`,
+                                }}
+                              />
+                            </div>
+                            <span className="w-8 text-right text-xs tabular-nums text-slate-500">
+                              {item.count}
+                            </span>
+                          </div>
                         </div>
-                        <span className="w-8 text-right text-xs tabular-nums text-slate-500">
-                          {item.count}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card></StaggerItem>
-      </StaggerContainer>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </StaggerItem>
+        </StaggerContainer>
+      </div>
     </div>
     </PageTransition>
   );
