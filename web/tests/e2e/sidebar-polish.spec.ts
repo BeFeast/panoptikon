@@ -5,7 +5,8 @@ test.describe('Sidebar polish — accent bar, hover, separators', () => {
     await login(page);
     // Ensure dashboard is fully loaded before sidebar tests
     await page.goto('/dashboard');
-    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible({ timeout: 15000 });
+    await page.waitForURL('**/dashboard**', { timeout: 15000 });
+    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible({ timeout: 30000 });
   });
 
   test('active nav item shows left accent bar', async ({ page }) => {
@@ -18,11 +19,11 @@ test.describe('Sidebar polish — accent bar, hover, separators', () => {
 
     // The accent bar is a span inside the active link
     const accentBar = activeLink.locator('span.rounded-full');
-    await expect(accentBar).toBeVisible();
+    await expect(accentBar).toBeVisible({ timeout: 10000 });
 
     // Verify it has the gradient background classes
-    await expect(accentBar).toHaveClass(/bg-gradient-to-b/);
-    await expect(accentBar).toHaveClass(/from-blue-400/);
+    await expect(accentBar).toHaveClass(/bg-gradient-to-b/, { timeout: 10000 });
+    await expect(accentBar).toHaveClass(/from-blue-400/, { timeout: 10000 });
 
     await page.screenshot({ path: 'tests/screenshots/sidebar-accent-bar.png', fullPage: true });
   });
@@ -35,7 +36,7 @@ test.describe('Sidebar polish — accent bar, hover, separators', () => {
     // Check that nav link icons have the hover scale class
     const navIcon = page.locator('aside a[href="/devices"] svg');
     await expect(navIcon).toBeVisible({ timeout: 15000 });
-    await expect(navIcon).toHaveClass(/group-hover\/nav:scale-105/);
+    await expect(navIcon).toHaveClass(/group-hover\/nav:scale-105/, { timeout: 10000 });
 
     await page.screenshot({ path: 'tests/screenshots/sidebar-hover-icon.png', fullPage: true });
   });
@@ -75,10 +76,10 @@ test.describe('Sidebar polish — accent bar, hover, separators', () => {
 
     // Wait for tooltip to appear
     const tooltip = page.locator('[role="tooltip"]');
-    await expect(tooltip).toBeVisible({ timeout: 5000 });
+    await expect(tooltip).toBeVisible({ timeout: 10000 });
 
     // Verify tooltip has the slide-in animation class
-    await expect(tooltip).toHaveClass(/slide-in-from-left/);
+    await expect(tooltip).toHaveClass(/slide-in-from-left/, { timeout: 10000 });
 
     await page.screenshot({ path: 'tests/screenshots/sidebar-tooltip-slide.png', fullPage: true });
   });

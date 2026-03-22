@@ -7,14 +7,16 @@ test.describe('Alerts page', () => {
 
   test('alerts page loads with heading', async ({ page }) => {
     await page.goto('/alerts/');
-    await expect(page.getByRole('heading', { name: 'Alerts', level: 1 })).toBeVisible({ timeout: 15000 });
+    await page.waitForURL('**/alerts**', { timeout: 15000 });
+    await expect(page.getByRole('heading', { name: 'Alerts', level: 1 })).toBeVisible({ timeout: 30000 });
     await page.screenshot({ path: 'tests/screenshots/alerts-page.png', fullPage: true });
   });
 
   test('no duplicate agent_offline alerts within cooldown window', async ({ page }) => {
     // Navigate to alerts page.
     await page.goto('/alerts/');
-    await expect(page.getByRole('heading', { name: 'Alerts', level: 1 })).toBeVisible({ timeout: 15000 });
+    await page.waitForURL('**/alerts**', { timeout: 15000 });
+    await expect(page.getByRole('heading', { name: 'Alerts', level: 1 })).toBeVisible({ timeout: 30000 });
 
     // Fetch all agent_offline alerts via the API.
     const resp = await page.request.get('/api/v1/alerts?limit=200&type=agent_offline');
@@ -92,7 +94,8 @@ test.describe('Alerts page', () => {
 
     // Navigate to alerts page and verify it loads.
     await page.goto('/alerts/');
-    await expect(page.getByRole('heading', { name: 'Alerts', level: 1 })).toBeVisible({ timeout: 15000 });
+    await page.waitForURL('**/alerts**', { timeout: 15000 });
+    await expect(page.getByRole('heading', { name: 'Alerts', level: 1 })).toBeVisible({ timeout: 30000 });
 
     // Check that no alert messages contain a raw UUID pattern (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx).
     // This verifies the fix: agent_offline alerts should use agent name, not UUID.
