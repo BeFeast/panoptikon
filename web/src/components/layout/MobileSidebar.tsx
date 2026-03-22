@@ -60,7 +60,10 @@ export function MobileSidebar() {
               return (
                 <div key={group.key} className="mb-1">
                   <div
-                    className="flex w-full items-center gap-1 px-3 py-1.5"
+                    className={cn(
+                      "flex w-full items-center gap-1 px-3 py-1.5",
+                      group.key !== "network" && "mt-3 border-t border-dotted border-slate-800/60 pt-2",
+                    )}
                   >
                     <button
                       onClick={() => toggleGroup(group.key)}
@@ -77,8 +80,8 @@ export function MobileSidebar() {
                     </button>
                     <span
                       className={cn(
-                        "cursor-default select-none text-[11px] font-semibold uppercase tracking-wider",
-                        hasActive ? "text-blue-400" : "text-slate-500",
+                        "cursor-default select-none text-[10px] font-medium uppercase tracking-wider",
+                        hasActive ? "text-blue-400/80" : "text-slate-600",
                       )}
                     >
                       {group.label}
@@ -103,13 +106,16 @@ export function MobileSidebar() {
                             href={item.href}
                             onClick={() => setOpen(false)}
                             className={cn(
-                              "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                              "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
                               active
                                 ? "bg-blue-500/10 text-blue-500"
                                 : "text-slate-400 hover:bg-slate-800/60 hover:text-white",
                             )}
                           >
-                            <Icon className="h-[18px] w-[18px] shrink-0" />
+                            {active && (
+                              <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
+                            )}
+                            <Icon className="h-[18px] w-[18px] shrink-0 transition-transform duration-150 group-hover/nav:scale-105" />
                             <span>{item.label}</span>
                           </Link>
                         );
@@ -126,20 +132,23 @@ export function MobileSidebar() {
                 href="/settings"
                 onClick={() => setOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                  "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
                   pathname?.startsWith("/settings")
                     ? "bg-blue-500/10 text-blue-500"
                     : "text-slate-400 hover:bg-slate-800/60 hover:text-white",
                 )}
               >
-                <Settings className="h-[18px] w-[18px] shrink-0" />
+                {pathname?.startsWith("/settings") && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
+                )}
+                <Settings className="h-[18px] w-[18px] shrink-0 transition-transform duration-150 group-hover/nav:scale-105" />
                 <span>Settings</span>
               </Link>
             </div>
           </nav>
 
           {/* Status */}
-          <div className="shrink-0 border-t border-slate-800 p-3">
+          <div className="shrink-0 border-t border-slate-800/50 p-3">
             <div className="flex items-center gap-1.5 px-2">
               <span
                 className={cn(
@@ -149,11 +158,11 @@ export function MobileSidebar() {
                     : "bg-slate-600"
                 )}
               />
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-slate-600">
                 {wsConnected ? "Live" : "Disconnected"}
               </span>
-              <p className="ml-auto text-[10px] text-slate-700">
-                Panoptikon {serverVersion ?? "..."}
+              <p className="ml-auto text-[10px] text-slate-700/60">
+                {serverVersion ?? "..."}
               </p>
             </div>
           </div>

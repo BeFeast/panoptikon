@@ -215,14 +215,18 @@ export function Sidebar() {
       <Link
         href={item.href}
         className={cn(
-          "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+          "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
           active
             ? "bg-blue-500/10 text-blue-500"
             : "text-slate-400 hover:bg-slate-800/60 hover:text-white",
           sidebarCollapsed && "justify-center px-0",
         )}
       >
-        <Icon className="h-[18px] w-[18px] shrink-0" />
+        {/* Active accent bar */}
+        {active && (
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
+        )}
+        <Icon className="h-[18px] w-[18px] shrink-0 transition-transform duration-150 group-hover/nav:scale-105" />
         {!sidebarCollapsed && <span>{item.label}</span>}
       </Link>
     );
@@ -233,7 +237,7 @@ export function Sidebar() {
           <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
           <TooltipContent
             side="right"
-            className="border-slate-800 bg-slate-900"
+            className="border-slate-800 bg-slate-900 animate-in slide-in-from-left-1 duration-150"
           >
             <p>{item.label}</p>
           </TooltipContent>
@@ -297,7 +301,10 @@ export function Sidebar() {
                 return (
                   <div key={group.key} className="mb-1">
                     <div
-                      className="flex w-full items-center gap-1 px-3 py-1.5"
+                      className={cn(
+                        "flex w-full items-center gap-1 px-3 py-1.5",
+                        group.key !== "network" && "mt-3 border-t border-dotted border-slate-800/60 pt-2",
+                      )}
                     >
                       <button
                         onClick={() => toggleGroup(group.key)}
@@ -314,8 +321,8 @@ export function Sidebar() {
                       </button>
                       <span
                         className={cn(
-                          "cursor-default select-none text-[11px] font-semibold uppercase tracking-wider",
-                          hasActive ? "text-blue-400" : "text-slate-500",
+                          "cursor-default select-none text-[10px] font-medium uppercase tracking-wider",
+                          hasActive ? "text-blue-400/80" : "text-slate-600",
                         )}
                       >
                         {group.label}
@@ -349,7 +356,7 @@ export function Sidebar() {
         </nav>
 
         {/* Version + connection status */}
-        <div className="border-t border-slate-800 p-2">
+        <div className="border-t border-slate-800/50 p-2">
           {!sidebarCollapsed ? (
             <div className="flex items-center gap-1.5 px-3 py-1">
               <Tooltip>
@@ -370,8 +377,8 @@ export function Sidebar() {
                   <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
                 </TooltipContent>
               </Tooltip>
-              <p className="text-[10px] text-slate-700">
-                Panoptikon {serverVersion ?? "..."}
+              <p className="text-[10px] text-slate-700/60">
+                {serverVersion ?? "..."}
               </p>
             </div>
           ) : (
