@@ -23,8 +23,8 @@ test.describe("Card Glassmorphism 2.0 (#592)", () => {
     // Wait for cards to render
     await page.waitForTimeout(2000);
 
-    // Find a card element with the updated backdrop-blur-xl class (use rounded-2xl to skip TopBar)
-    const card = page.locator('[class*="backdrop-blur-xl"][class*="rounded-2xl"]').first();
+    // Find a card element with the updated backdrop-blur-xl class (use rounded-xl to skip TopBar)
+    const card = page.locator('[class*="backdrop-blur-xl"][class*="rounded-xl"]').first();
     await expect(card).toBeVisible({ timeout: 10000 });
 
     // Verify the computed backdrop-filter includes a large blur value
@@ -48,8 +48,8 @@ test.describe("Card Glassmorphism 2.0 (#592)", () => {
 
     await page.waitForTimeout(2000);
 
-    // The card should have a ::before pseudo-element with the gradient glow (use rounded-2xl to skip TopBar)
-    const card = page.locator('[class*="backdrop-blur-xl"][class*="rounded-2xl"]').first();
+    // The card should have a ::before pseudo-element with the gradient glow (use rounded-xl to skip TopBar)
+    const card = page.locator('[class*="backdrop-blur-xl"][class*="rounded-xl"]').first();
     await expect(card).toBeVisible({ timeout: 10000 });
 
     // Check the ::before pseudo-element exists and has a gradient background
@@ -74,7 +74,7 @@ test.describe("Card Glassmorphism 2.0 (#592)", () => {
 
     await page.waitForTimeout(2000);
 
-    const card = page.locator('[class*="backdrop-blur-xl"][class*="rounded-2xl"]').first();
+    const card = page.locator('[class*="backdrop-blur-xl"][class*="rounded-xl"]').first();
     await expect(card).toBeVisible({ timeout: 10000 });
 
     // Card should have transition property for border-color
