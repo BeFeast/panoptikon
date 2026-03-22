@@ -457,35 +457,29 @@ export default function DevicesPage() {
       {/* Filter bar */}
       <div className="rounded-2xl border border-slate-700/50 bg-slate-900/40 px-5 py-4 sm:px-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex items-center gap-1 rounded-full border border-slate-700/60 bg-slate-800/40 p-1">
+          <div className="flex flex-wrap items-center gap-2">
             {(["all", "online", "offline", "unknown"] as Filter[]).map((f) => (
-              <button
+              <Button
                 key={f}
+                variant="secondary"
+                size="sm"
                 onClick={() => setFilter(f)}
-                className={`relative h-7 rounded-full px-3 text-xs font-medium transition-colors ${
+                className={`h-8 rounded-full border px-3 text-xs ${
                   filter === f
-                    ? "text-white"
-                    : "text-slate-400 hover:text-slate-200"
+                    ? "border-slate-600 bg-slate-700/90 text-white hover:bg-slate-700"
+                    : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                 }`}
               >
-                {filter === f && (
-                  <motion.span
-                    layoutId="filter-pill"
-                    className="absolute inset-0 rounded-full bg-slate-700/90 shadow-sm"
-                    transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
-                  />
+                {f === "all" && "All"}
+                {f === "online" && "Online"}
+                {f === "offline" && "Offline"}
+                {f === "unknown" && "Unknown"}
+                {counts && (
+                  <span className="ml-1.5 rounded-full bg-slate-900/55 px-1.5 py-0.5 text-[10px] leading-none opacity-80">
+                    {counts[f]}
+                  </span>
                 )}
-                <span className="relative z-10 flex items-center gap-1.5">
-                  {f === "all" ? "All" : f === "online" ? "Online" : f === "offline" ? "Offline" : "Unknown"}
-                  {counts && (
-                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] leading-none ${
-                      filter === f ? "bg-slate-900/55 text-white/80" : "bg-slate-800/60 text-slate-500"
-                    }`}>
-                      {counts[f]}
-                    </span>
-                  )}
-                </span>
-              </button>
+              </Button>
             ))}
           </div>
 
