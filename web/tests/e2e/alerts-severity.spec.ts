@@ -9,14 +9,10 @@ test.describe('Alerts page severity indicators', () => {
     await page.goto('/alerts/');
     await expect(page.getByRole('heading', { name: 'Alerts', level: 1 })).toBeVisible({ timeout: 15000 });
 
-    // Wait for alerts to load (either cards appear or "No alerts yet" message)
-    const alertCard = page.locator('[class*="border-l-4"]').first();
-    const emptyState = page.getByText('No alerts yet');
+    // Wait for alerts API to finish loading
+    await page.waitForLoadState('networkidle');
 
-    await Promise.race([
-      alertCard.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
-      emptyState.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
-    ]);
+    const emptyState = page.getByText('No alerts yet');
 
     if (await emptyState.isVisible()) {
       // No alerts — skip border checks but verify page loaded
@@ -47,14 +43,12 @@ test.describe('Alerts page severity indicators', () => {
     await page.goto('/alerts/');
     await expect(page.getByRole('heading', { name: 'Alerts', level: 1 })).toBeVisible({ timeout: 15000 });
 
+    // Wait for alerts API to finish loading
+    await page.waitForLoadState('networkidle');
+
     // Check for critical alert cards with pulse animation
     const criticalCards = page.locator('.animate-pulse-critical');
     const emptyState = page.getByText('No alerts yet');
-
-    await Promise.race([
-      criticalCards.first().waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
-      emptyState.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
-    ]);
 
     // If critical alerts exist, they should have the pulse class
     if (await criticalCards.first().isVisible().catch(() => false)) {
@@ -75,14 +69,11 @@ test.describe('Alerts page severity indicators', () => {
     await page.goto('/alerts/');
     await expect(page.getByRole('heading', { name: 'Alerts', level: 1 })).toBeVisible({ timeout: 15000 });
 
-    // Wait for alerts to load
+    // Wait for alerts API to finish loading
+    await page.waitForLoadState('networkidle');
+
     const summaryBar = page.getByText('Severity');
     const emptyState = page.getByText('No alerts yet');
-
-    await Promise.race([
-      summaryBar.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
-      emptyState.waitFor({ state: 'visible', timeout: 10000 }).catch(() => {}),
-    ]);
 
     if (await emptyState.isVisible()) {
       // No alerts — summary bar should not be visible
