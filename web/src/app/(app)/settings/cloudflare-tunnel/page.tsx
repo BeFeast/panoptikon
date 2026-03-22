@@ -3,22 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Cloud,
-  Loader2,
   CheckCircle,
   AlertCircle,
   ArrowLeft,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageTransition } from "@/components/PageTransition";
+import { SettingsSection } from "@/components/settings/SettingsSection";
+import { SaveButton } from "@/components/settings/SaveButton";
 import Link from "next/link";
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -61,6 +54,21 @@ export default function CloudflareTunnelSettingsPage() {
     accountId !== (savedAccountId ?? "") ||
     tunnelId !== (savedTunnelId ?? "");
 
+  // Inline validation for hex account ID
+  const accountValid =
+    accountId.length === 0
+      ? "idle"
+      : /^[0-9a-fA-F]{32}$/.test(accountId)
+        ? "valid"
+        : "error";
+  // UUID validation for tunnel ID
+  const tunnelValid =
+    tunnelId.length === 0
+      ? "idle"
+      : /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(tunnelId)
+        ? "valid"
+        : "error";
+
   async function handleSave() {
     settingsLoadTokenRef.current++;
     setStatus("loading");
@@ -102,7 +110,7 @@ export default function CloudflareTunnelSettingsPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-lg space-y-8 py-8">
+      <div className="mx-auto max-w-lg space-y-6 py-8">
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
@@ -115,116 +123,133 @@ export default function CloudflareTunnelSettingsPage() {
           </h1>
         </div>
 
-        <Card className="border-slate-800 bg-slate-900">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-500/10">
-                <Cloud className="h-4 w-4 text-orange-400" />
-              </div>
-              <div>
-                <CardTitle className="text-base text-white">
-                  Tunnel Configuration
-                </CardTitle>
-                <CardDescription className="text-xs text-slate-500">
-                  Connect to your Cloudflare Tunnel to expose services securely.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="cf-api-token" className="text-xs text-slate-400">
-                API Token{" "}
-                {apiTokenSet && (
-                  <span className="text-emerald-500">(saved)</span>
-                )}
-              </Label>
-              <Input
-                id="cf-api-token"
-                type="password"
-                value={apiToken}
-                onChange={(e) => setApiToken(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-                placeholder={
-                  apiTokenSet
-                    ? "••••••••  (leave blank to keep current)"
-                    : "Enter Cloudflare API token"
-                }
-              />
-              <p className="text-[10px] text-slate-600">
-                Create at: dash.cloudflare.com → My Profile → API Tokens →
-                Create Token. Required permissions:{" "}
-                <code className="text-slate-500">
-                  Account:Cloudflare Tunnel:Edit
-                </code>
-                ,{" "}
-                <code className="text-slate-500">Zone:DNS:Edit</code>
-              </p>
-            </div>
+        <SettingsSection
+          icon={<Cloud className="h-4 w-4 text-orange-400" />}
+          iconBg="bg-orange-500/10"
+          title="Tunnel Configuration"
+          description="Connect to your Cloudflare Tunnel to expose services securely."
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor="cf-api-token" className="text-xs text-slate-400">
+              API Token{" "}
+              {apiTokenSet && (
+                <span className="text-emerald-500">(saved)</span>
+              )}
+            </Label>
+            <Input
+              id="cf-api-token"
+              type="password"
+              value={apiToken}
+              onChange={(e) => setApiToken(e.target.value)}
+              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              placeholder={
+                apiTokenSet
+                  ? "••••••••  (leave blank to keep current)"
+                  : "Enter Cloudflare API token"
+              }
+            />
+            <p className="text-[10px] text-slate-600">
+              Create at: dash.cloudflare.com → My Profile → API Tokens →
+              Create Token. Required permissions:{" "}
+              <code className="text-slate-500">
+                Account:Cloudflare Tunnel:Edit
+              </code>
+              ,{" "}
+              <code className="text-slate-500">Zone:DNS:Edit</code>
+            </p>
+          </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="cf-account-id" className="text-xs text-slate-400">
-                Account ID
-              </Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="cf-account-id" className="text-xs text-slate-400">
+              Account ID
+            </Label>
+            <div className="relative">
               <Input
                 id="cf-account-id"
                 type="text"
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                className={`border-slate-800 bg-slate-950 text-white placeholder:text-slate-600 ${
+                  accountValid === "valid"
+                    ? "border-emerald-500/40"
+                    : accountValid === "error"
+                      ? "border-rose-500/40"
+                      : ""
+                }`}
                 placeholder="e.g. 1a2b3c4d5e6f..."
               />
-              <p className="text-[10px] text-slate-600">
-                Found at: dash.cloudflare.com → any domain → right sidebar →
-                Account ID. Format: 32-character hex string.
-              </p>
+              {accountValid === "valid" && (
+                <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
+                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                </div>
+              )}
             </div>
+            <p className="text-[10px] text-slate-600">
+              Found at: dash.cloudflare.com → any domain → right sidebar →
+              Account ID. Format: 32-character hex string.
+            </p>
+            {accountValid === "error" && (
+              <p className="animate-fade-in text-xs text-rose-400">
+                Must be a 32-character hex string.
+              </p>
+            )}
+          </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="cf-tunnel-id" className="text-xs text-slate-400">
-                Tunnel ID
-              </Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="cf-tunnel-id" className="text-xs text-slate-400">
+              Tunnel ID
+            </Label>
+            <div className="relative">
               <Input
                 id="cf-tunnel-id"
                 type="text"
                 value={tunnelId}
                 onChange={(e) => setTunnelId(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                className={`border-slate-800 bg-slate-950 text-white placeholder:text-slate-600 ${
+                  tunnelValid === "valid"
+                    ? "border-emerald-500/40"
+                    : tunnelValid === "error"
+                      ? "border-rose-500/40"
+                      : ""
+                }`}
                 placeholder="e.g. a1b2c3d4-e5f6-..."
               />
-              <p className="text-[10px] text-slate-600">
-                Found at: dash.cloudflare.com → Zero Trust → Networks →
-                Tunnels → your tunnel → Overview. Format: UUID.
+              {tunnelValid === "valid" && (
+                <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
+                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                </div>
+              )}
+            </div>
+            <p className="text-[10px] text-slate-600">
+              Found at: dash.cloudflare.com → Zero Trust → Networks →
+              Tunnels → your tunnel → Overview. Format: UUID.
+            </p>
+            {tunnelValid === "error" && (
+              <p className="animate-fade-in text-xs text-rose-400">
+                Must be a valid UUID format.
               </p>
-            </div>
-
-            {status === "success" && msg && (
-              <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-                <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-                <p className="text-xs text-emerald-400">{msg}</p>
-              </div>
             )}
-            {status === "error" && msg && (
-              <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-                <p className="text-xs text-rose-400">{msg}</p>
-              </div>
-            )}
+          </div>
 
-            <div className="flex gap-2">
-              <Button
-                onClick={handleSave}
-                disabled={!dirty || status === "loading"}
-                className="bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
-              >
-                {status === "loading" ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                ) : null}
-                Save
-              </Button>
+          {status === "success" && msg && (
+            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+              <p className="text-xs text-emerald-400">{msg}</p>
             </div>
-          </CardContent>
-        </Card>
+          )}
+          {status === "error" && msg && (
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{msg}</p>
+            </div>
+          )}
+
+          <SaveButton
+            status={status}
+            disabled={!dirty}
+            onClick={handleSave}
+          />
+        </SettingsSection>
       </div>
     </PageTransition>
   );

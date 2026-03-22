@@ -73,11 +73,34 @@ const config: Config = {
         shimmer: {
           "100%": { transform: "translateX(100%)" },
         },
+        shake: {
+          "0%, 100%": { transform: "translateX(0)" },
+          "10%, 30%, 50%, 70%, 90%": { transform: "translateX(-2px)" },
+          "20%, 40%, 60%, 80%": { transform: "translateX(2px)" },
+        },
+        "success-glow": {
+          "0%": { boxShadow: "0 0 0 0 rgba(16, 185, 129, 0)" },
+          "50%": { boxShadow: "0 0 12px 2px rgba(16, 185, 129, 0.3)" },
+          "100%": { boxShadow: "0 0 0 0 rgba(16, 185, 129, 0)" },
+        },
+        "check-scale": {
+          "0%": { transform: "scale(0)", opacity: "0" },
+          "60%": { transform: "scale(1.15)", opacity: "1" },
+          "100%": { transform: "scale(1)", opacity: "1" },
+        },
+        "fade-in": {
+          "0%": { opacity: "0", transform: "translateX(4px)" },
+          "100%": { opacity: "1", transform: "translateX(0)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         shimmer: "shimmer 1.5s linear infinite",
+        shake: "shake 0.4s ease-in-out",
+        "success-glow": "success-glow 0.8s ease-out",
+        "check-scale": "check-scale 0.3s ease-out forwards",
+        "fade-in": "fade-in 0.2s ease-out forwards",
       },
     },
   },

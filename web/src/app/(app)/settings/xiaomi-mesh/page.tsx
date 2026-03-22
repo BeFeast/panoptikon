@@ -9,19 +9,14 @@ import {
   AlertCircle,
   ArrowLeft,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { testXiaomiMeshConnection } from "@/lib/api";
 import { PageTransition } from "@/components/PageTransition";
+import { SettingsSection } from "@/components/settings/SettingsSection";
+import { SaveButton } from "@/components/settings/SaveButton";
 import Link from "next/link";
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -110,6 +105,11 @@ export default function XiaomiMeshSettingsPage() {
   const passwordRequired = enabled && !passwordSet && password.length === 0;
   const canSave = dirty && ipValid && intervalValid && !passwordRequired;
 
+  // Inline validation states
+  const ipValidation = ip.length === 0 ? "idle" : ipValid ? "valid" : "error";
+  const intervalValidation =
+    pollInterval.length === 0 ? "idle" : intervalValid ? "valid" : "error";
+
   async function handleSave() {
     // Validate
     if (!ipValid) {
@@ -143,7 +143,6 @@ export default function XiaomiMeshSettingsPage() {
 
       // Always send all changed fields
       if (Object.keys(body).length === 0 && dirty) {
-        // If dirty flag is set but body is empty, send all fields
         body.xiaomi_mesh_enabled = enabled;
         body.xiaomi_mesh_ip = ip;
         body.xiaomi_mesh_poll_interval = intervalNum;
@@ -213,7 +212,7 @@ export default function XiaomiMeshSettingsPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-lg space-y-8 py-8">
+      <div className="mx-auto max-w-lg space-y-6 py-8">
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
@@ -224,128 +223,132 @@ export default function XiaomiMeshSettingsPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-white">Xiaomi Mesh</h1>
         </div>
 
-        <Card className="border-slate-800 bg-slate-900">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-500/10">
-                <Wifi className="h-4 w-4 text-orange-400" />
-              </div>
-              <div className="flex-1">
-                <CardTitle className="text-base text-white">
-                  Xiaomi Mesh Connection
-                </CardTitle>
-                <CardDescription className="text-xs text-slate-500">
-                  Connect to your Xiaomi mesh router to fetch WiFi clients, mesh
-                  topology, and device info.
-                </CardDescription>
-              </div>
-              <div className="flex items-center gap-2">
-                <Label
-                  htmlFor="xiaomi-enabled"
-                  className="text-xs text-slate-400"
-                >
-                  {enabled ? "Enabled" : "Disabled"}
-                </Label>
-                <Switch
-                  id="xiaomi-enabled"
-                  checked={enabled}
-                  onCheckedChange={setEnabled}
-                />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Router IP */}
-            <div className="space-y-1.5">
-              <Label htmlFor="xiaomi-ip" className="text-xs text-slate-400">
-                Router IP{" "}
-                {savedIp && (
-                  <span className="text-emerald-500">(saved)</span>
-                )}
+        <SettingsSection
+          icon={<Wifi className="h-4 w-4 text-orange-400" />}
+          iconBg="bg-orange-500/10"
+          title="Xiaomi Mesh Connection"
+          description="Connect to your Xiaomi mesh router to fetch WiFi clients, mesh topology, and device info."
+          headerRight={
+            <div className="flex items-center gap-2">
+              <Label
+                htmlFor="xiaomi-enabled"
+                className="text-xs text-slate-400"
+              >
+                {enabled ? "Enabled" : "Disabled"}
               </Label>
+              <Switch
+                id="xiaomi-enabled"
+                checked={enabled}
+                onCheckedChange={setEnabled}
+              />
+            </div>
+          }
+        >
+          {/* Router IP */}
+          <div className="space-y-1.5">
+            <Label htmlFor="xiaomi-ip" className="text-xs text-slate-400">
+              Router IP{" "}
+              {savedIp && (
+                <span className="text-emerald-500">(saved)</span>
+              )}
+            </Label>
+            <div className="relative">
               <Input
                 id="xiaomi-ip"
                 type="text"
                 value={ip}
                 onChange={(e) => setIp(e.target.value)}
                 autoComplete="one-time-code"
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                className={`border-slate-800 bg-slate-950 text-white placeholder:text-slate-600 ${
+                  ipValidation === "valid"
+                    ? "border-emerald-500/40"
+                    : ipValidation === "error"
+                      ? "border-rose-500/40"
+                      : ""
+                }`}
                 placeholder="10.10.0.199"
               />
-              {ip && !ipValid && (
-                <p className="text-xs text-rose-400">
-                  Enter a valid IPv4 address.
-                </p>
+              {ipValidation === "valid" && (
+                <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
+                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                </div>
               )}
             </div>
-
-            {/* Proxy Host */}
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="xiaomi-proxy-host"
-                className="text-xs text-slate-400"
-              >
-                Proxy Host{" "}
-                <span className="text-slate-600">(optional)</span>
-                {savedProxyHost && (
-                  <span className="text-emerald-500"> (saved)</span>
-                )}
-              </Label>
-              <Input
-                id="xiaomi-proxy-host"
-                type="text"
-                value={proxyHost}
-                onChange={(e) => setProxyHost(e.target.value)}
-                autoComplete="one-time-code"
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-                placeholder="e.g. 10.10.0.14:9199"
-              />
-              <p className="text-xs text-slate-600">
-                If the router blocks direct access, enter a proxy host (IP:port)
-                that forwards TCP to the router. Leave empty for direct
-                connection.
+            {ip && !ipValid && (
+              <p className="animate-fade-in text-xs text-rose-400">
+                Enter a valid IPv4 address.
               </p>
-            </div>
+            )}
+          </div>
 
-            {/* Password */}
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="xiaomi-password"
-                className="text-xs text-slate-400"
-              >
-                Password{" "}
-                {passwordSet && (
-                  <span className="text-emerald-500">(saved)</span>
-                )}
-              </Label>
-              <Input
-                id="xiaomi-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-                placeholder={
-                  passwordSet
-                    ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022  (leave blank to keep current)"
-                    : "Enter router password"
-                }
-              />
-              {passwordRequired && (
-                <p className="text-xs text-rose-400">
-                  Password is required when integration is enabled.
-                </p>
+          {/* Proxy Host */}
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="xiaomi-proxy-host"
+              className="text-xs text-slate-400"
+            >
+              Proxy Host{" "}
+              <span className="text-slate-600">(optional)</span>
+              {savedProxyHost && (
+                <span className="text-emerald-500"> (saved)</span>
               )}
-            </div>
+            </Label>
+            <Input
+              id="xiaomi-proxy-host"
+              type="text"
+              value={proxyHost}
+              onChange={(e) => setProxyHost(e.target.value)}
+              autoComplete="one-time-code"
+              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              placeholder="e.g. 10.10.0.14:9199"
+            />
+            <p className="text-xs text-slate-600">
+              If the router blocks direct access, enter a proxy host (IP:port)
+              that forwards TCP to the router. Leave empty for direct
+              connection.
+            </p>
+          </div>
 
-            {/* Poll interval */}
-            <div className="space-y-1.5">
-              <Label
-                htmlFor="xiaomi-poll-interval"
-                className="text-xs text-slate-400"
-              >
-                Poll Interval (seconds)
-              </Label>
+          {/* Password */}
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="xiaomi-password"
+              className="text-xs text-slate-400"
+            >
+              Password{" "}
+              {passwordSet && (
+                <span className="text-emerald-500">(saved)</span>
+              )}
+            </Label>
+            <Input
+              id="xiaomi-password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              placeholder={
+                passwordSet
+                  ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022  (leave blank to keep current)"
+                  : "Enter router password"
+              }
+            />
+            {passwordRequired && (
+              <p className="animate-fade-in text-xs text-rose-400">
+                Password is required when integration is enabled.
+              </p>
+            )}
+          </div>
+
+          {/* Poll interval */}
+          <div className="space-y-1.5">
+            <Label
+              htmlFor="xiaomi-poll-interval"
+              className="text-xs text-slate-400"
+            >
+              Poll Interval (seconds)
+            </Label>
+            <div className="relative">
               <Input
                 id="xiaomi-poll-interval"
                 type="number"
@@ -353,90 +356,96 @@ export default function XiaomiMeshSettingsPage() {
                 max={300}
                 value={pollInterval}
                 onChange={(e) => setPollInterval(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                className={`border-slate-800 bg-slate-950 text-white placeholder:text-slate-600 ${
+                  intervalValidation === "valid"
+                    ? "border-emerald-500/40"
+                    : intervalValidation === "error"
+                      ? "border-rose-500/40"
+                      : ""
+                }`}
                 placeholder="30"
               />
-              {pollInterval && !intervalValid && (
-                <p className="text-xs text-rose-400">
-                  Must be between 10 and 300 seconds.
-                </p>
+              {intervalValidation === "valid" && (
+                <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
+                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                </div>
               )}
             </div>
+            {pollInterval && !intervalValid && (
+              <p className="animate-fade-in text-xs text-rose-400">
+                Must be between 10 and 300 seconds.
+              </p>
+            )}
+          </div>
 
-            {/* Save status messages */}
-            {saveStatus === "success" && saveMsg && (
-              <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-                <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-                <p className="text-xs text-emerald-400">{saveMsg}</p>
-              </div>
-            )}
-            {saveStatus === "error" && saveMsg && (
-              <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-                <p className="text-xs text-rose-400">{saveMsg}</p>
-              </div>
-            )}
-
-            {/* Test connection status */}
-            {testStatus === "success" && testMsg && (
-              <div className="space-y-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-                  <p className="text-xs text-emerald-400">{testMsg}</p>
-                </div>
-                {testDetails && (
-                  <div className="space-y-0.5 pl-6 text-xs text-emerald-400/80">
-                    {testDetails.router_model && (
-                      <p>Model: {testDetails.router_model}</p>
-                    )}
-                    {testDetails.hardware && (
-                      <p>Hardware: {testDetails.hardware}</p>
-                    )}
-                    {testDetails.firmware && (
-                      <p>Firmware: {testDetails.firmware}</p>
-                    )}
-                    {testDetails.router_name && (
-                      <p>Name: {testDetails.router_name}</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-            {testStatus === "error" && testMsg && (
-              <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-                <p className="text-xs text-rose-400">{testMsg}</p>
-              </div>
-            )}
-
-            {/* Buttons */}
-            <div className="flex gap-2">
-              <Button
-                onClick={handleSave}
-                disabled={!canSave || saveStatus === "loading"}
-                className="bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
-              >
-                {saveStatus === "loading" ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                ) : null}
-                Save
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handleTest}
-                disabled={!ip || !ipValid || testStatus === "loading"}
-                className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
-              >
-                {testStatus === "loading" ? (
-                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Plug className="mr-1.5 h-3.5 w-3.5" />
-                )}
-                Test Connection
-              </Button>
+          {/* Save status messages */}
+          {saveStatus === "success" && saveMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+              <p className="text-xs text-emerald-400">{saveMsg}</p>
             </div>
-          </CardContent>
-        </Card>
+          )}
+          {saveStatus === "error" && saveMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{saveMsg}</p>
+            </div>
+          )}
+
+          {/* Test connection status */}
+          {testStatus === "success" && testMsg && (
+            <div className="space-y-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+                <p className="text-xs text-emerald-400">{testMsg}</p>
+              </div>
+              {testDetails && (
+                <div className="space-y-0.5 pl-6 text-xs text-emerald-400/80">
+                  {testDetails.router_model && (
+                    <p>Model: {testDetails.router_model}</p>
+                  )}
+                  {testDetails.hardware && (
+                    <p>Hardware: {testDetails.hardware}</p>
+                  )}
+                  {testDetails.firmware && (
+                    <p>Firmware: {testDetails.firmware}</p>
+                  )}
+                  {testDetails.router_name && (
+                    <p>Name: {testDetails.router_name}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          {testStatus === "error" && testMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{testMsg}</p>
+            </div>
+          )}
+
+          {/* Buttons */}
+          <div className="flex gap-2">
+            <SaveButton
+              status={saveStatus}
+              disabled={!canSave}
+              onClick={handleSave}
+            />
+            <Button
+              variant="outline"
+              onClick={handleTest}
+              disabled={!ip || !ipValid || testStatus === "loading"}
+              className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+            >
+              {testStatus === "loading" ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Plug className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              Test Connection
+            </Button>
+          </div>
+        </SettingsSection>
       </div>
     </PageTransition>
   );
