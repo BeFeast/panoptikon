@@ -9,13 +9,6 @@ import {
   AlertCircle,
   ArrowLeft,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +17,8 @@ import {
   testMikrotikConnection,
 } from "@/lib/api";
 import { PageTransition } from "@/components/PageTransition";
+import { SettingsSection } from "@/components/settings/SettingsSection";
+import { SaveButton } from "@/components/settings/SaveButton";
 import Link from "next/link";
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -74,6 +69,9 @@ function MikrotikPanel() {
     user !== (savedUser ?? "") ||
     password.length > 0 ||
     enabled !== savedEnabled;
+
+  // Inline validation
+  const urlValid = url.length === 0 ? "idle" : /^https?:\/\/.+/.test(url) ? "valid" : "error";
 
   async function handleSave() {
     loadTokenRef.current++;
@@ -167,14 +165,30 @@ function MikrotikPanel() {
         <Label htmlFor="mt-url" className="text-xs text-slate-400">
           Router URL
         </Label>
-        <Input
-          id="mt-url"
-          type="url"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
-          placeholder="http://10.10.0.125"
-        />
+        <div className="relative">
+          <Input
+            id="mt-url"
+            type="url"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            className={`border-slate-800 bg-slate-950 text-white placeholder:text-slate-600 ${
+              urlValid === "valid"
+                ? "border-emerald-500/40"
+                : urlValid === "error"
+                  ? "border-rose-500/40"
+                  : ""
+            }`}
+            placeholder="http://10.10.0.125"
+          />
+          {urlValid === "valid" && (
+            <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
+              <CheckCircle className="h-4 w-4 text-emerald-400" />
+            </div>
+          )}
+        </div>
+        {urlValid === "error" && (
+          <p className="animate-fade-in text-xs text-rose-400">Enter a valid URL (http:// or https://).</p>
+        )}
       </div>
 
       <div className="space-y-1.5">
@@ -218,16 +232,11 @@ function MikrotikPanel() {
       />
 
       <div className="flex gap-2">
-        <Button
+        <SaveButton
+          status={saveStatus}
+          disabled={!dirty}
           onClick={handleSave}
-          disabled={!dirty || saveStatus === "loading"}
-          className="bg-pink-600 text-white hover:bg-pink-500 disabled:opacity-40"
-        >
-          {saveStatus === "loading" && (
-            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-          )}
-          Save
-        </Button>
+        />
         <Button
           variant="outline"
           onClick={handleTest}
@@ -294,7 +303,7 @@ function StatusMessages({
 export default function RouterSettingsPage() {
   return (
     <PageTransition>
-      <div className="mx-auto max-w-lg space-y-8 py-8">
+      <div className="mx-auto max-w-lg space-y-6 py-8">
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
@@ -307,26 +316,14 @@ export default function RouterSettingsPage() {
           </h1>
         </div>
 
-        <Card className="border-slate-800 bg-slate-900">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
-                <Router className="h-4 w-4 text-blue-400" />
-              </div>
-              <div>
-                <CardTitle className="text-base text-white">
-                  Router Connection
-                </CardTitle>
-                <CardDescription className="text-xs text-slate-500">
-                  Configure MikroTik router integration.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <MikrotikPanel />
-          </CardContent>
-        </Card>
+        <SettingsSection
+          icon={<Router className="h-4 w-4 text-blue-400" />}
+          iconBg="bg-blue-500/10"
+          title="Router Connection"
+          description="Configure MikroTik router integration."
+        >
+          <MikrotikPanel />
+        </SettingsSection>
       </div>
     </PageTransition>
   );

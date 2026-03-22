@@ -3,22 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Radar,
-  Loader2,
   CheckCircle,
   AlertCircle,
   ArrowLeft,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageTransition } from "@/components/PageTransition";
+import { SettingsSection } from "@/components/settings/SettingsSection";
+import { SaveButton } from "@/components/settings/SaveButton";
 import Link from "next/link";
 
 type Status = "idle" | "loading" | "success" | "error";
@@ -57,6 +50,20 @@ export default function SpeedtestSettingsPage() {
   const speedtestDirty =
     speedtestRetDays !== savedSpeedtestRetDays ||
     speedtestAutoHours !== savedSpeedtestAutoHours;
+
+  // Inline validation
+  const retValid =
+    speedtestRetDays.length === 0
+      ? "idle"
+      : !isNaN(parseInt(speedtestRetDays, 10)) && parseInt(speedtestRetDays, 10) >= 1
+        ? "valid"
+        : "error";
+  const autoValid =
+    speedtestAutoHours.length === 0
+      ? "idle"
+      : !isNaN(parseInt(speedtestAutoHours, 10)) && parseInt(speedtestAutoHours, 10) >= 0
+        ? "valid"
+        : "error";
 
   async function handleSpeedtestSave() {
     settingsLoadTokenRef.current++;
@@ -109,7 +116,7 @@ export default function SpeedtestSettingsPage() {
 
   return (
     <PageTransition>
-      <div className="mx-auto max-w-lg space-y-8 py-8">
+      <div className="mx-auto max-w-lg space-y-6 py-8">
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
@@ -120,82 +127,94 @@ export default function SpeedtestSettingsPage() {
           <h1 className="text-2xl font-semibold tracking-tight text-white">Speed Test</h1>
         </div>
 
-        <Card className="border-slate-800 bg-slate-900">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
-                <Radar className="h-4 w-4 text-blue-400" />
-              </div>
-              <div>
-                <CardTitle className="text-base text-white">
-                  Speed Test Configuration
-                </CardTitle>
-                <CardDescription className="text-xs text-slate-500">
-                  Configure automatic speed tests and result retention.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <Label htmlFor="speedtest-auto" className="text-xs text-slate-400">
-                  Auto-run interval (hours)
-                </Label>
+        <SettingsSection
+          icon={<Radar className="h-4 w-4 text-blue-400" />}
+          iconBg="bg-blue-500/10"
+          title="Speed Test Configuration"
+          description="Configure automatic speed tests and result retention."
+        >
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="speedtest-auto" className="text-xs text-slate-400">
+                Auto-run interval (hours)
+              </Label>
+              <div className="relative">
                 <Input
                   id="speedtest-auto"
                   type="number"
                   min={0}
                   value={speedtestAutoHours}
                   onChange={(e) => setSpeedtestAutoHours(e.target.value)}
-                  className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                  className={`border-slate-800 bg-slate-950 text-white placeholder:text-slate-600 ${
+                    autoValid === "valid"
+                      ? "border-emerald-500/40"
+                      : autoValid === "error"
+                        ? "border-rose-500/40"
+                        : ""
+                  }`}
                   placeholder="0 = disabled"
                 />
-                <p className="text-[10px] text-slate-600">
-                  Set to 0 to disable. E.g. 6 = every 6 hours.
-                </p>
+                {autoValid === "valid" && (
+                  <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
+                    <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  </div>
+                )}
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="speedtest-ret" className="text-xs text-slate-400">
-                  History retention (days)
-                </Label>
+              <p className="text-[10px] text-slate-600">
+                Set to 0 to disable. E.g. 6 = every 6 hours.
+              </p>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="speedtest-ret" className="text-xs text-slate-400">
+                History retention (days)
+              </Label>
+              <div className="relative">
                 <Input
                   id="speedtest-ret"
                   type="number"
                   min={1}
                   value={speedtestRetDays}
                   onChange={(e) => setSpeedtestRetDays(e.target.value)}
-                  className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                  className={`border-slate-800 bg-slate-950 text-white placeholder:text-slate-600 ${
+                    retValid === "valid"
+                      ? "border-emerald-500/40"
+                      : retValid === "error"
+                        ? "border-rose-500/40"
+                        : ""
+                  }`}
                   placeholder="90"
                 />
+                {retValid === "valid" && (
+                  <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
+                    <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  </div>
+                )}
               </div>
+              {retValid === "error" && (
+                <p className="animate-fade-in text-xs text-rose-400">Must be at least 1 day.</p>
+              )}
             </div>
+          </div>
 
-            {speedtestStatus === "success" && speedtestMsg && (
-              <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-                <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-                <p className="text-xs text-emerald-400">{speedtestMsg}</p>
-              </div>
-            )}
-            {speedtestStatus === "error" && speedtestMsg && (
-              <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-                <p className="text-xs text-rose-400">{speedtestMsg}</p>
-              </div>
-            )}
+          {speedtestStatus === "success" && speedtestMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+              <p className="text-xs text-emerald-400">{speedtestMsg}</p>
+            </div>
+          )}
+          {speedtestStatus === "error" && speedtestMsg && (
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{speedtestMsg}</p>
+            </div>
+          )}
 
-            <Button
-              onClick={handleSpeedtestSave}
-              disabled={!speedtestDirty || speedtestStatus === "loading"}
-              className="bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
-            >
-              {speedtestStatus === "loading" ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              ) : null}
-              Save
-            </Button>
-          </CardContent>
-        </Card>
+          <SaveButton
+            status={speedtestStatus}
+            disabled={!speedtestDirty}
+            onClick={handleSpeedtestSave}
+          />
+        </SettingsSection>
       </div>
     </PageTransition>
   );

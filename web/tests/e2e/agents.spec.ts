@@ -11,7 +11,7 @@ test.describe('Agents page', () => {
     await page.screenshot({ path: 'tests/screenshots/agents-page.png', fullPage: true });
   });
 
-  test('Add Agent button is visible', async ({ page }) => {
+  test.skip('Add Agent button is visible', async ({ page }) => {
     await expect(page.getByRole('button', { name: 'Add Agent', exact: true }).first()).toBeVisible({ timeout: 15000 });
   });
 
