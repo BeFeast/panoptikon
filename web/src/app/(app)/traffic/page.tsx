@@ -34,6 +34,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { HelpTooltip } from "@/components/HelpTooltip";
+import { EmptyState } from "@/components/EmptyState";
 import { downloadExport } from "@/lib/export";
 import { DeviceTrafficChart } from "@/components/DeviceTrafficChart";
 
@@ -230,7 +231,11 @@ export default function TrafficPage() {
           </div>
         ) : (
           <div className="flex h-[200px] items-center justify-center">
-            <p className="text-sm text-slate-500">No traffic data available yet.</p>
+            <div className="text-center">
+              <Activity className="mx-auto mb-2 h-8 w-8 text-slate-600" />
+              <p className="text-sm font-medium text-slate-400">No traffic data</p>
+              <p className="mt-1 text-xs text-slate-600">Enable NetFlow/sFlow export in Settings to see bandwidth data.</p>
+            </div>
           </div>
         )}
       </div>
@@ -285,7 +290,13 @@ export default function TrafficPage() {
             </TableBody>
           </Table>
         ) : topDevices.length === 0 ? (
-          <div className="p-8 text-center text-slate-500">No active devices.</div>
+          <EmptyState
+            icon={Activity}
+            title="No traffic data"
+            description="No active devices with bandwidth usage. Make sure NetFlow/sFlow is configured in Settings."
+            actionLabel="Traffic Settings"
+            actionHref="/settings/router"
+          />
         ) : (
           <Table>
             <TableHeader>

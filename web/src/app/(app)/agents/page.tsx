@@ -43,6 +43,8 @@ import { timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
 import { PageTransition } from "@/components/PageTransition";
 import { HelpTooltip } from "@/components/HelpTooltip";
+import { EmptyState } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
 import { copyToClipboard } from "@/lib/utils";
 
 export default function AgentsPage() {
@@ -109,11 +111,7 @@ export default function AgentsPage() {
   };
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-rose-400">{error}</p>
-      </div>
-    );
+    return <ErrorState message={error} onRetry={load} />;
   }
 
   return (
@@ -166,13 +164,17 @@ export default function AgentsPage() {
             </TableBody>
           </Table>
         ) : agents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Terminal className="mb-4 h-12 w-12 text-slate-600" />
-            <p className="text-lg font-medium text-slate-400">No agents yet</p>
-            <p className="mt-1 text-sm text-slate-600">
-              Click &quot;Add Agent&quot; to generate an install command.
-            </p>
-          </div>
+          <EmptyState
+            icon={Terminal}
+            title="No agents connected"
+            description="Install a lightweight agent on your machines to collect system metrics like CPU, memory, and disk usage."
+            actionLabel="Add Agent"
+            onAction={() => {
+              // Programmatically click the Add Agent button in the header
+              const btn = document.querySelector<HTMLButtonElement>('[data-add-agent-trigger]');
+              btn?.click();
+            }}
+          />
         ) : (
           <Table>
             <TableHeader>
@@ -411,7 +413,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
   return (
     <Dialog open={open} onOpenChange={(v) => (v ? setOpen(true) : handleClose())}>
       <DialogTrigger asChild>
-        <Button>
+        <Button data-add-agent-trigger>
           <Plus className="mr-2 h-4 w-4" />
           Add Agent
         </Button>

@@ -5,11 +5,14 @@ import {
   Activity,
   AlertTriangle,
   ArrowRight,
+  CheckCircle2,
+  Circle,
   ExternalLink,
   Info,
   MonitorSmartphone,
   Pin,
   Radar,
+  Rocket,
   Router,
   Shield,
   WifiOff,
@@ -46,7 +49,7 @@ import { toast } from "sonner";
 import { useWsEvent } from "@/lib/ws";
 import { getDeviceIcon } from "@/lib/device-icons";
 import type { DeviceType } from "@/lib/device-type";
-
+import { Progress } from "@/components/ui/progress";
 
 // ─── Format ISO minute string to HH:mm ─────────────────
 
@@ -189,12 +192,105 @@ function HeroStatSkeleton() {
 
 // ─── Error card shown when a section fails to load ──────
 
-function SectionError({ message }: { message: string }) {
+function SectionError({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: () => void;
+}) {
   return (
     <div className="flex items-center gap-2 py-4 text-sm text-rose-400">
       <WifiOff className="h-4 w-4 shrink-0" />
       <span>{message}</span>
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="ml-2 text-xs text-slate-400 underline underline-offset-2 hover:text-white transition-colors"
+        >
+          Retry
+        </button>
+      )}
     </div>
+  );
+}
+
+// ─── Welcome Card for first-run experience ──────────────
+
+function WelcomeCard({
+  stats,
+}: {
+  stats: DashboardStats;
+}) {
+  const steps = [
+    {
+      label: "Configure router connection",
+      done: stats.router_status === "connected" || stats.router_status === "online",
+      href: "/settings/router",
+    },
+    {
+      label: "Discover network devices",
+      done: stats.devices_total > 0,
+      href: "/devices",
+    },
+    {
+      label: "Set up alert rules",
+      done: stats.devices_total > 0,
+      href: "/settings/alert-rules",
+    },
+    {
+      label: "Enable DNS monitoring",
+      done: stats.router_status === "connected" || stats.router_status === "online",
+      href: "/settings/dns",
+    },
+  ];
+
+  const completedCount = steps.filter((s) => s.done).length;
+  const pct = Math.round((completedCount / steps.length) * 100);
+
+  // Don't show the card if setup is complete
+  if (pct === 100) return null;
+
+  return (
+    <Card className="border-blue-500/20 bg-gradient-to-br from-slate-900/80 to-blue-950/30" data-testid="welcome-card">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
+          <Rocket className="h-5 w-5 text-blue-400" />
+          Welcome to Panoptikon
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-slate-400">Setup progress</span>
+            <span className="tabular-nums text-blue-400">{pct}%</span>
+          </div>
+          <Progress value={pct} />
+        </div>
+        <div className="space-y-2">
+          {steps.map((step) => (
+            <Link
+              key={step.label}
+              href={step.href}
+              className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-slate-800/60"
+            >
+              {step.done ? (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                </span>
+              ) : (
+                <span className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-700 bg-slate-800/50">
+                  <Circle className="h-3 w-3 text-slate-600" />
+                </span>
+              )}
+              <span className={step.done ? "text-slate-500 line-through" : "text-slate-300"}>
+                {step.label}
+              </span>
+            </Link>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -476,6 +572,9 @@ export default function DashboardPage() {
       {/* ── Quick Actions ──────────────────────────────── */}
       <QuickActions />
 
+      {/* ── Welcome Card (first-run) ─────────────────── */}
+      {stats && <WelcomeCard stats={stats} />}
+
       {/* ── Bento Grid ─────────────────────────────────── */}
       <div
         className="grid grid-cols-1 gap-6 xl:grid-cols-6"
@@ -529,7 +628,7 @@ export default function DashboardPage() {
                 {/* Sparkline */}
                 {trafficError ? (
                   <div className="flex h-[120px] items-center justify-center">
-                    <SectionError message="Failed to load traffic data" />
+                    <SectionError message="Failed to load traffic data" onRetry={loadTraffic} />
                   </div>
                 ) : trafficHistory === null ? (
                   <Skeleton className="h-[120px] w-full" />
@@ -614,7 +713,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 {alertsError ? (
-                  <SectionError message="Failed to load alerts" />
+                  <SectionError message="Failed to load alerts" onRetry={loadAlerts} />
                 ) : alerts === null ? (
                   <div className="space-y-3">
                     {Array.from({ length: 5 }).map((_, i) => (
@@ -673,7 +772,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="flex items-center justify-center pb-5">
                 {statsError ? (
-                  <SectionError message="Failed to load" />
+                  <SectionError message="Failed to load" onRetry={loadStats} />
                 ) : stats ? (
                   <button
                     type="button"
@@ -720,7 +819,7 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 {devicesError ? (
-                  <SectionError message="Failed to load devices" />
+                  <SectionError message="Failed to load devices" onRetry={loadDevices} />
                 ) : devices === null ? (
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                     {Array.from({ length: 4 }).map((_, i) => (

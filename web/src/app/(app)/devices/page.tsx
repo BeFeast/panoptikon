@@ -60,6 +60,8 @@ import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
 import { MotionCard } from "@/components/MotionCard";
 import { DeviceTrafficChart } from "@/components/DeviceTrafficChart";
 import { StatusSparkline } from "@/components/StatusSparkline";
+import { EmptyState } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
 
 import { downloadExport } from "@/lib/export";
 
@@ -284,11 +286,7 @@ export default function DevicesPage() {
   }, [filtered, sortField, sortDir]);
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-rose-400">{error}</p>
-      </div>
-    );
+    return <ErrorState message={error} onRetry={load} />;
   }
 
   const counts = devices
@@ -641,17 +639,35 @@ export default function DevicesPage() {
         )
       ) : sorted.length === 0 ? (
         filter === "all" && !search.trim() ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Monitor className="mb-4 h-12 w-12 text-slate-600" />
-            <p className="text-lg font-medium text-slate-400">No devices found yet</p>
-            <p className="mt-1 max-w-sm text-sm text-slate-600">
-              Make sure your router is configured in Settings, then click &quot;Scan Now&quot; to discover devices on your network.
-            </p>
-          </div>
+          <EmptyState
+            icon={Monitor}
+            title="No devices found"
+            description="Run a network scan to discover devices on your network. Make sure your router is configured in Settings."
+            actionLabel="Scan Network"
+            onAction={async () => {
+              setScanningNetwork(true);
+              try {
+                const summary = await triggerNetworkScan();
+                const parts: string[] = [];
+                if (summary.new_devices > 0) parts.push(`${summary.new_devices} new`);
+                if (summary.updated_devices > 0) parts.push(`${summary.updated_devices} updated`);
+                if (summary.offline_devices > 0) parts.push(`${summary.offline_devices} offline`);
+                const desc = parts.length > 0 ? parts.join(", ") : "No changes";
+                toast.success("Network scan complete", { description: `${summary.total_scanned} scanned — ${desc}` });
+                await load();
+              } catch {
+                toast.error("Network scan failed");
+              } finally {
+                setScanningNetwork(false);
+              }
+            }}
+          />
         ) : (
-          <p className="py-10 text-center text-slate-500">
-            No devices match your filters.
-          </p>
+          <EmptyState
+            icon={Search}
+            title="No devices match your filters"
+            description="Try adjusting your search or filter criteria."
+          />
         )
       ) : view === "grid" ? (
         <StaggerContainer className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
