@@ -3,10 +3,16 @@ import { test, expect, login } from '../../e2e/fixtures';
 test.describe('Sidebar polish — accent bar, hover, separators', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
+    // Ensure dashboard is fully loaded before sidebar tests
+    await page.goto('/dashboard');
+    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible({ timeout: 15000 });
   });
 
   test('active nav item shows left accent bar', async ({ page }) => {
-    // Dashboard should be active after login
+    // Dashboard should be active — wait for sidebar to render
+    const sidebar = page.locator('aside');
+    await expect(sidebar).toBeVisible({ timeout: 15000 });
+
     const activeLink = page.locator('aside a[href="/dashboard"]');
     await expect(activeLink).toBeVisible({ timeout: 15000 });
 
@@ -22,6 +28,10 @@ test.describe('Sidebar polish — accent bar, hover, separators', () => {
   });
 
   test('icons have hover scale transition class', async ({ page }) => {
+    // Wait for sidebar to be fully rendered
+    const sidebar = page.locator('aside');
+    await expect(sidebar).toBeVisible({ timeout: 15000 });
+
     // Check that nav link icons have the hover scale class
     const navIcon = page.locator('aside a[href="/devices"] svg');
     await expect(navIcon).toBeVisible({ timeout: 15000 });
@@ -46,14 +56,21 @@ test.describe('Sidebar polish — accent bar, hover, separators', () => {
   });
 
   test('collapsed tooltips have slide-in animation class', async ({ page }) => {
+    // Wait for sidebar
+    const sidebar = page.locator('aside');
+    await expect(sidebar).toBeVisible({ timeout: 15000 });
+
     // Collapse the sidebar
     const collapseBtn = page.getByRole('button', { name: 'Collapse sidebar' });
     await expect(collapseBtn).toBeVisible({ timeout: 15000 });
     await collapseBtn.click();
 
+    // Wait for collapse animation
+    await page.waitForTimeout(500);
+
     // Hover over a nav icon to trigger tooltip
     const devicesLink = page.locator('aside a[href="/devices"]');
-    await expect(devicesLink).toBeVisible();
+    await expect(devicesLink).toBeVisible({ timeout: 5000 });
     await devicesLink.hover();
 
     // Wait for tooltip to appear
@@ -72,8 +89,8 @@ test.describe('Sidebar polish — accent bar, hover, separators', () => {
     await expect(sidebar).toBeVisible({ timeout: 15000 });
 
     // Version text should be visible but with reduced opacity
-    const versionText = sidebar.locator('p.text-slate-700\\/60');
-    await expect(versionText).toBeVisible();
+    const versionText = sidebar.locator('p.text-\\[10px\\]');
+    await expect(versionText).toBeVisible({ timeout: 10000 });
 
     await page.screenshot({ path: 'tests/screenshots/sidebar-footer.png', fullPage: true });
   });

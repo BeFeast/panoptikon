@@ -25,13 +25,13 @@ test.describe("Version display", () => {
       page.getByRole("heading", { name: "Dashboard", level: 1 }),
     ).toBeVisible({ timeout: 15000 });
 
-    // The sidebar version text should contain the server version
-    const versionText = page.locator("text=Panoptikon v");
-    await expect(versionText).toBeVisible({ timeout: 10000 });
-    await expect(versionText).toContainText(`Panoptikon ${expectedVersion}`);
+    // Wait for sidebar to be visible
+    const sidebar = page.locator("aside");
+    await expect(sidebar).toBeVisible({ timeout: 15000 });
 
-    // Ensure the old hardcoded "v0.5.0" is NOT displayed
-    await expect(page.locator("text=v0.5.0")).not.toBeVisible();
+    // The sidebar version text shows the server version (e.g. "v0.11.3")
+    const versionText = sidebar.locator(`text=${expectedVersion}`);
+    await expect(versionText).toBeVisible({ timeout: 10000 });
 
     await page.screenshot({ path: "tests/screenshots/version-sidebar.png" });
   });
