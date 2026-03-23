@@ -162,52 +162,9 @@ export function CommandPalette() {
           No results found.
         </Command.Empty>
 
-        {/* Pages */}
-        <Command.Group heading="Pages" className={groupHeadingClass}>
-          {PAGES.map((page) => (
-            <Command.Item
-              key={page.href}
-              value={page.label}
-              onSelect={() => navigate(page.href)}
-              className={itemClass}
-            >
-              <page.icon className="h-4 w-4 shrink-0 text-slate-400" />
-              <span>{page.label}</span>
-            </Command.Item>
-          ))}
-        </Command.Group>
-
-        {/* Quick Actions */}
-        <Command.Group heading="Actions" className={groupDividerClass}>
-          <Command.Item
-            value="Scan Now"
-            onSelect={handleScanNow}
-            className={itemClass}
-          >
-            <Radar className="h-4 w-4 shrink-0 text-slate-400" />
-            <span>Scan Now</span>
-          </Command.Item>
-          <Command.Item
-            value="Add Agent"
-            onSelect={() => navigate('/agents')}
-            className={itemClass}
-          >
-            <Plus className="h-4 w-4 shrink-0 text-slate-400" />
-            <span>Add Agent</span>
-          </Command.Item>
-          <Command.Item
-            value="Add Alert"
-            onSelect={() => navigate('/alerts')}
-            className={itemClass}
-          >
-            <BellPlus className="h-4 w-4 shrink-0 text-slate-400" />
-            <span>Add Alert</span>
-          </Command.Item>
-        </Command.Group>
-
-        {/* Device search results */}
+        {/* ── When search returns entity matches, show them first ── */}
         {hasDevices && (
-          <Command.Group heading="Devices" className={groupDividerClass}>
+          <Command.Group heading="Devices" className={groupHeadingClass}>
             {results.devices.map((d) => (
               <Command.Item
                 key={`device-${d.id}`}
@@ -234,9 +191,8 @@ export function CommandPalette() {
           </Command.Group>
         )}
 
-        {/* Agent search results */}
         {hasAgents && (
-          <Command.Group heading="Agents" className={groupDividerClass}>
+          <Command.Group heading="Agents" className={hasDevices ? groupDividerClass : groupHeadingClass}>
             {results.agents.map((a) => (
               <Command.Item
                 key={`agent-${a.id}`}
@@ -261,9 +217,8 @@ export function CommandPalette() {
           </Command.Group>
         )}
 
-        {/* SSH Hosts search results */}
         {hasSsh && (
-          <Command.Group heading="SSH Hosts" className={groupDividerClass}>
+          <Command.Group heading="SSH Hosts" className={(hasDevices || hasAgents) ? groupDividerClass : groupHeadingClass}>
             {results.ssh_targets.map((st) => (
               <Command.Item
                 key={`ssh-${st.id}`}
@@ -288,9 +243,8 @@ export function CommandPalette() {
           </Command.Group>
         )}
 
-        {/* Assets search results */}
         {hasAssets && (
-          <Command.Group heading="Assets" className={groupDividerClass}>
+          <Command.Group heading="Assets" className={(hasDevices || hasAgents || hasSsh) ? groupDividerClass : groupHeadingClass}>
             {results.assets.map((asset) => (
               <Command.Item
                 key={`asset-${asset.id}`}
@@ -309,6 +263,49 @@ export function CommandPalette() {
             ))}
           </Command.Group>
         )}
+
+        {/* ── Quick Actions ── */}
+        <Command.Group heading="Actions" className={hasResults ? groupDividerClass : groupHeadingClass}>
+          <Command.Item
+            value="Scan Now"
+            onSelect={handleScanNow}
+            className={itemClass}
+          >
+            <Radar className="h-4 w-4 shrink-0 text-slate-400" />
+            <span>Scan Now</span>
+          </Command.Item>
+          <Command.Item
+            value="Add Agent"
+            onSelect={() => navigate('/agents')}
+            className={itemClass}
+          >
+            <Plus className="h-4 w-4 shrink-0 text-slate-400" />
+            <span>Add Agent</span>
+          </Command.Item>
+          <Command.Item
+            value="Add Alert"
+            onSelect={() => navigate('/alerts')}
+            className={itemClass}
+          >
+            <BellPlus className="h-4 w-4 shrink-0 text-slate-400" />
+            <span>Add Alert</span>
+          </Command.Item>
+        </Command.Group>
+
+        {/* ── Pages (navigation) — last when search results exist ── */}
+        <Command.Group heading="Pages" className={groupDividerClass}>
+          {PAGES.map((page) => (
+            <Command.Item
+              key={page.href}
+              value={page.label}
+              onSelect={() => navigate(page.href)}
+              className={itemClass}
+            >
+              <page.icon className="h-4 w-4 shrink-0 text-slate-400" />
+              <span>{page.label}</span>
+            </Command.Item>
+          ))}
+        </Command.Group>
       </Command.List>
     </Command.Dialog>
   )
