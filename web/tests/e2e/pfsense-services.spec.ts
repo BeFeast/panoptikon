@@ -124,8 +124,8 @@ test.describe("pfSense Services Tab", () => {
     await expect(page.getByRole("button", { name: "Restart" }).first()).toBeVisible();
     await expect(page.getByRole("button", { name: "Stop" }).first()).toBeVisible();
 
-    // Stopped service should have Start button
-    await expect(page.getByRole("button", { name: "Start" })).toBeVisible();
+    // Stopped service should have Start button (exact: true to avoid matching "Restart")
+    await expect(page.getByRole("button", { name: "Start", exact: true })).toBeVisible();
 
     await page.screenshot({
       path: "tests/screenshots/pfsense-services-list.png",
