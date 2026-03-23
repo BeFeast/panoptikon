@@ -240,7 +240,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
             if (results && query.length >= 2) setIsOpen(true);
           }}
           placeholder="Search devices, IPs, MACs...  ⌘K"
-          className="h-9 w-full rounded-xl border border-slate-800/80 bg-slate-900/68 px-3 text-sm text-white placeholder-slate-500 transition-all duration-300 focus:border-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:shadow-[0_0_15px_rgba(59,130,246,0.15)]"
+          className="h-8 w-full rounded-lg border border-slate-800/80 bg-slate-900 px-3 text-sm text-white placeholder-slate-500 transition-all duration-300 focus:border-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:shadow-[0_0_15px_rgba(59,130,246,0.15)]"
         />
 
         {/* Search Results Dropdown */}
