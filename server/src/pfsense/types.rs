@@ -172,6 +172,14 @@ pub struct PfsenseAuditEntry {
     pub success: Option<bool>,
 }
 
+/// pfSense service entry.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PfsenseService {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub running: Option<bool>,
+}
+
 /// Composite pfSense status (connection + system info).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PfsenseStatus {

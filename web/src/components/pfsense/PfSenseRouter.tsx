@@ -9,6 +9,7 @@ import {
   Globe,
   GitFork,
   FileArchive,
+  Cog,
 } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -22,6 +23,7 @@ import { DhcpTab } from "./tabs/DhcpTab";
 import { DnsTab } from "./tabs/DnsTab";
 import { RoutingTab } from "./tabs/RoutingTab";
 import { ConfigTab } from "./tabs/ConfigTab";
+import { ServicesTab } from "./tabs/ServicesTab";
 
 export default function PfSenseRouter() {
   const fetcher = useCallback(() => fetchPfsenseStatus(), []);
@@ -63,6 +65,10 @@ export default function PfSenseRouter() {
             <Globe className="h-3.5 w-3.5" />
             DNS
           </TabsTrigger>
+          <TabsTrigger value="services" className="gap-1.5">
+            <Cog className="h-3.5 w-3.5" />
+            Services
+          </TabsTrigger>
           <TabsTrigger value="routing" className="gap-1.5">
             <GitFork className="h-3.5 w-3.5" />
             Routing
@@ -87,6 +93,9 @@ export default function PfSenseRouter() {
         </TabsContent>
         <TabsContent value="dns">
           <DnsTab />
+        </TabsContent>
+        <TabsContent value="services">
+          <ServicesTab />
         </TabsContent>
         <TabsContent value="routing">
           <RoutingTab />

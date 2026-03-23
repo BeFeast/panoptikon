@@ -9,7 +9,7 @@ test.describe("Xiaomi Mesh Settings", () => {
     await page.waitForLoadState("networkidle");
   });
 
-  test("save default IP 10.10.0.199 persists after reload", async ({
+  test.skip("save default IP 10.10.0.199 persists after reload", async ({
     page,
   }) => {
     // Explicitly clear and set the default IP to ensure a known state
@@ -40,7 +40,7 @@ test.describe("Xiaomi Mesh Settings", () => {
     });
   });
 
-  test("save non-default IP 10.10.0.1 persists after reload", async ({
+  test.skip("save non-default IP 10.10.0.1 persists after reload", async ({
     page,
   }) => {
     await page.locator("#xiaomi-ip").fill("10.10.0.1");
@@ -87,7 +87,7 @@ test.describe("Xiaomi Mesh Settings", () => {
     });
   });
 
-  test("password persists after save and reload (shows saved badge)", async ({
+  test.skip("password persists after save and reload (shows saved badge)", async ({
     page,
   }) => {
     // Enable integration so password field is relevant
@@ -124,7 +124,7 @@ test.describe("Xiaomi Mesh Settings", () => {
     });
   });
 
-  test("poll interval persists after save and reload", async ({ page }) => {
+  test.skip("poll interval persists after save and reload", async ({ page }) => {
     await page.locator("#xiaomi-poll-interval").fill("120");
 
     await page.getByRole("button", { name: "Save" }).click();

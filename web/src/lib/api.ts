@@ -81,6 +81,7 @@ import type {
   PfsenseConfigSnapshot,
   PfsenseConfigDiff,
   PfsenseAuditEntry,
+  PfsenseService,
   Asset,
   AssetRequest,
   AssetImportRow,
@@ -1225,6 +1226,20 @@ export function restorePfsenseConfigBackup(id: string): Promise<void> {
 
 export function fetchPfsenseAudit(): Promise<PfsenseAuditEntry[]> {
   return apiGet<PfsenseAuditEntry[]>("/api/v1/pfsense/audit");
+}
+
+export function fetchPfsenseServices(): Promise<PfsenseService[]> {
+  return apiGet<PfsenseService[]>("/api/v1/pfsense/services");
+}
+
+export function pfsenseServiceAction(
+  name: string,
+  action: "start" | "stop" | "restart",
+): Promise<void> {
+  return apiPost<void>(
+    `/api/v1/pfsense/services/${encodeURIComponent(name)}/action`,
+    { action },
+  );
 }
 
 // ─── Assets (IT inventory) ───────────────────────────────
