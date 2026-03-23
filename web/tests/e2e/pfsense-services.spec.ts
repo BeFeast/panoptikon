@@ -104,11 +104,11 @@ test.describe("pfSense Services Tab", () => {
     await expect(servicesTab).toBeVisible({ timeout: 15000 });
     await servicesTab.click();
 
-    // Verify service names are visible
-    await expect(page.getByText("unbound")).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText("dhcpd")).toBeVisible();
-    await expect(page.getByText("ntpd")).toBeVisible();
-    await expect(page.getByText("syslogd")).toBeVisible();
+    // Verify service names are visible (use role selectors to avoid matching tab labels)
+    await expect(page.getByRole("cell", { name: "unbound" })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("cell", { name: "dhcpd" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "ntpd" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "syslogd" })).toBeVisible();
 
     // Verify running services show "Running" badge
     const runningBadges = page.locator("text=Running");
