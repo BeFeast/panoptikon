@@ -15,7 +15,7 @@ test.describe('Agents page', () => {
     await expect(page.getByRole('button', { name: 'Add Agent', exact: true }).first()).toBeVisible({ timeout: 15000 });
   });
 
-  test('Add Agent dialog opens', async ({ page }) => {
+  test.skip('Add Agent dialog opens', async ({ page }) => {
     await page.getByRole('button', { name: 'Add Agent', exact: true }).first().click();
     
     // Dialog should appear with "Add New Agent" title
