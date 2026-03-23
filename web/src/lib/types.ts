@@ -1816,9 +1816,12 @@ export interface CreateMikrotikNatRuleRequest {
   chain: string;
   action: string;
   protocol?: string;
+  src_address?: string;
+  dst_address?: string;
   dst_port?: string;
   to_addresses?: string;
   to_ports?: string;
+  out_interface?: string;
   comment?: string;
   disabled?: boolean;
 }

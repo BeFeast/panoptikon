@@ -104,7 +104,9 @@ export default function NatPage() {
         (r.comment ?? "").toLowerCase().includes(q) ||
         (r.to_addresses ?? "").toLowerCase().includes(q) ||
         (r.dst_port ?? "").toLowerCase().includes(q) ||
-        (r.action ?? "").toLowerCase().includes(q),
+        (r.action ?? "").toLowerCase().includes(q) ||
+        (r.src_address ?? "").toLowerCase().includes(q) ||
+        (r.dst_address ?? "").toLowerCase().includes(q),
     );
   }, [mtRules, search]);
 
@@ -213,6 +215,8 @@ export default function NatPage() {
                       <TableHead className="text-xs uppercase tracking-wide text-slate-500">Chain</TableHead>
                       <TableHead className="text-xs uppercase tracking-wide text-slate-500">Action</TableHead>
                       <TableHead className="text-xs uppercase tracking-wide text-slate-500">Protocol</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wide text-slate-500">Src Address</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wide text-slate-500">Dst Address</TableHead>
                       <TableHead className="text-xs uppercase tracking-wide text-slate-500">Dst Port</TableHead>
                       <TableHead className="text-xs uppercase tracking-wide text-slate-500">To Address</TableHead>
                       <TableHead className="text-xs uppercase tracking-wide text-slate-500">To Port</TableHead>
@@ -247,6 +251,8 @@ export default function NatPage() {
                         </TableCell>
 
                         <TableCell className="text-slate-300">{rule.protocol ?? "any"}</TableCell>
+                        <TableCell className="font-mono text-xs text-slate-300">{rule.src_address ?? "-"}</TableCell>
+                        <TableCell className="font-mono text-xs text-slate-300">{rule.dst_address ?? "-"}</TableCell>
                         <TableCell className="font-mono text-xs text-slate-300">{rule.dst_port ?? "-"}</TableCell>
                         <TableCell className="font-mono text-xs text-slate-300">{rule.to_addresses ?? "-"}</TableCell>
                         <TableCell className="font-mono text-xs text-slate-300">{rule.to_ports ?? "-"}</TableCell>
@@ -416,9 +422,12 @@ function MikrotikNatDialog({
     chain: string;
     action: string;
     protocol?: string;
+    src_address?: string;
+    dst_address?: string;
     dst_port?: string;
     to_addresses?: string;
     to_ports?: string;
+    out_interface?: string;
     comment?: string;
     disabled?: boolean;
   }) => Promise<void>;
@@ -427,9 +436,12 @@ function MikrotikNatDialog({
   const [chain, setChain] = useState("dstnat");
   const [action, setAction] = useState("dst-nat");
   const [protocol, setProtocol] = useState("tcp");
+  const [srcAddress, setSrcAddress] = useState("");
+  const [dstAddress, setDstAddress] = useState("");
   const [dstPort, setDstPort] = useState("");
   const [toAddresses, setToAddresses] = useState("");
   const [toPorts, setToPorts] = useState("");
+  const [outInterface, setOutInterface] = useState("");
   const [comment, setComment] = useState("");
   const [disabled, setDisabled] = useState(false);
 
@@ -439,18 +451,24 @@ function MikrotikNatDialog({
         setChain(existing.chain ?? "dstnat");
         setAction(existing.action ?? "dst-nat");
         setProtocol(existing.protocol ?? "");
+        setSrcAddress(existing.src_address ?? "");
+        setDstAddress(existing.dst_address ?? "");
         setDstPort(existing.dst_port ?? "");
         setToAddresses(existing.to_addresses ?? "");
         setToPorts(existing.to_ports ?? "");
+        setOutInterface(existing.out_interface ?? "");
         setComment(existing.comment ?? "");
         setDisabled(existing.disabled);
       } else {
         setChain("dstnat");
         setAction("dst-nat");
         setProtocol("tcp");
+        setSrcAddress("");
+        setDstAddress("");
         setDstPort("");
         setToAddresses("");
         setToPorts("");
+        setOutInterface("");
         setComment("");
         setDisabled(false);
       }
@@ -465,9 +483,12 @@ function MikrotikNatDialog({
         chain,
         action,
         protocol: protocol || undefined,
+        src_address: srcAddress || undefined,
+        dst_address: dstAddress || undefined,
         dst_port: dstPort || undefined,
         to_addresses: toAddresses || undefined,
         to_ports: toPorts || undefined,
+        out_interface: outInterface || undefined,
         comment: comment || undefined,
         disabled,
       });
@@ -530,6 +551,27 @@ function MikrotikNatDialog({
 
           <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1.5">
+              <Label className="text-slate-400">Src Address</Label>
+              <Input
+                value={srcAddress}
+                onChange={(e) => setSrcAddress(e.target.value)}
+                placeholder="0.0.0.0/0"
+                className="bg-slate-950 border-slate-800 text-slate-200"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-slate-400">Dst Address</Label>
+              <Input
+                value={dstAddress}
+                onChange={(e) => setDstAddress(e.target.value)}
+                placeholder="203.0.113.1"
+                className="bg-slate-950 border-slate-800 text-slate-200"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-5">
+            <div className="space-y-1.5">
               <Label className="text-slate-400">To Addresses</Label>
               <Input
                 value={toAddresses}
@@ -547,6 +589,16 @@ function MikrotikNatDialog({
                 className="bg-slate-950 border-slate-800 text-slate-200"
               />
             </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-slate-400">Out Interface</Label>
+            <Input
+              value={outInterface}
+              onChange={(e) => setOutInterface(e.target.value)}
+              placeholder="ether1"
+              className="bg-slate-950 border-slate-800 text-slate-200"
+            />
           </div>
 
           <div className="space-y-1.5">
