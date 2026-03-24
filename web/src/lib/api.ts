@@ -1011,9 +1011,29 @@ export function createMikrotikAddressList(
   return apiPost<void>("/api/v1/mikrotik/firewall/address-list", body);
 }
 
+export function updateMikrotikAddressList(
+  id: string,
+  body: MikrotikAddressListRequest
+): Promise<void> {
+  return apiPatch<void>(
+    `/api/v1/mikrotik/firewall/address-list/${encodeURIComponent(id)}`,
+    body
+  );
+}
+
 export function deleteMikrotikAddressList(id: string): Promise<void> {
   return apiDelete(
     `/api/v1/mikrotik/firewall/address-list/${encodeURIComponent(id)}`
+  );
+}
+
+export function toggleMikrotikAddressList(
+  id: string,
+  disabled: boolean
+): Promise<void> {
+  return apiPost<void>(
+    `/api/v1/mikrotik/firewall/address-list/${encodeURIComponent(id)}/toggle`,
+    { disabled }
   );
 }
 
