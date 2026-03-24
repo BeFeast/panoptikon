@@ -1306,6 +1306,7 @@ export interface MikrotikFirewallRule {
   disabled: boolean;
   bytes: string | null;
   packets: string | null;
+  time: string | null;
 }
 
 export interface MikrotikNatRule {
@@ -1351,6 +1352,7 @@ export interface MikrotikFirewallFilterRequest {
   out_interface?: string;
   comment?: string;
   disabled?: boolean;
+  time?: string;
 }
 
 export interface MikrotikFirewallNatRequest {
