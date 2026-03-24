@@ -6,6 +6,7 @@ import type { Page } from "@playwright/test";
  *
  * Validates that the MikroTik tab is only shown when the router
  * actually has WireGuard interfaces configured (#476).
+ * Also validates OpenVPN tab visibility (#664).
  */
 
 // ── Mock data ────────────────────────────────────────────────
@@ -13,6 +14,7 @@ import type { Page } from "@playwright/test";
 /** VPN status response with no MikroTik WireGuard interfaces. */
 const MOCK_VPN_NO_MIKROTIK_WG = {
   mikrotik_available: false,
+  openvpn_available: false,
   interfaces: [],
   total_peers: 0,
   online_peers: 0,
@@ -23,6 +25,7 @@ const MOCK_VPN_NO_MIKROTIK_WG = {
 /** VPN status response with MikroTik WireGuard interfaces. */
 const MOCK_VPN_WITH_MIKROTIK_WG = {
   mikrotik_available: true,
+  openvpn_available: false,
   interfaces: [
     {
       name: "wireguard1",
@@ -45,10 +48,69 @@ const MOCK_VPN_WITH_MIKROTIK_WG = {
       peers_online: 1,
       peers_total: 1,
       source: "mikrotik",
+      vpn_type: "wireguard",
     },
   ],
   total_peers: 1,
   online_peers: 1,
+  total_rx_bytes: 1048576,
+  total_tx_bytes: 524288,
+};
+
+/** VPN status response with both WireGuard and OpenVPN. */
+const MOCK_VPN_WITH_OPENVPN = {
+  mikrotik_available: true,
+  openvpn_available: true,
+  interfaces: [
+    {
+      name: "wireguard1",
+      address: null,
+      port: 13231,
+      public_key: "ABCDEF1234567890ABCDEF1234567890ABCDEFGH=",
+      status: "up",
+      peers: [
+        {
+          name: "wg-peer-1",
+          public_key: "PEER1KEY1234567890ABCDEF1234567890ABCDE=",
+          endpoint: "203.0.113.1:51820",
+          allowed_ips: ["10.0.0.2/32"],
+          last_handshake: Math.floor(Date.now() / 1000) - 30,
+          rx_bytes: 1048576,
+          tx_bytes: 524288,
+          connectivity: "online",
+        },
+      ],
+      peers_online: 1,
+      peers_total: 1,
+      source: "mikrotik",
+      vpn_type: "wireguard",
+    },
+    {
+      name: "OpenVPN Server",
+      address: null,
+      port: 1194,
+      public_key: null,
+      status: "up",
+      peers: [
+        {
+          name: "ovpn-user-1",
+          public_key: null,
+          endpoint: "198.51.100.5",
+          allowed_ips: [],
+          last_handshake: null,
+          rx_bytes: null,
+          tx_bytes: null,
+          connectivity: "online",
+        },
+      ],
+      peers_online: 1,
+      peers_total: 1,
+      source: "mikrotik",
+      vpn_type: "openvpn",
+    },
+  ],
+  total_peers: 2,
+  online_peers: 2,
   total_rx_bytes: 1048576,
   total_tx_bytes: 524288,
 };
@@ -121,6 +183,82 @@ test.describe("VPN Status Page — MikroTik tab visibility (#476)", () => {
 
     await page.screenshot({
       path: "tests/screenshots/vpn-status-with-mikrotik-tab.png",
+    });
+  });
+});
+
+test.describe("VPN Status Page — OpenVPN tab (#664)", () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test("hides OpenVPN tab when no OpenVPN server is configured", async ({
+    page,
+  }) => {
+    await mockVpnStatus(page, MOCK_VPN_WITH_MIKROTIK_WG);
+    await page.goto("/vpn-status/");
+
+    await expect(
+      page.getByRole("heading", { name: "VPN Status", level: 1 }),
+    ).toBeVisible({ timeout: 15000 });
+
+    // OpenVPN tab should NOT be visible
+    await expect(
+      page.getByRole("tab", { name: "OpenVPN" }),
+    ).not.toBeVisible();
+
+    await page.screenshot({
+      path: "tests/screenshots/vpn-status-no-openvpn-tab.png",
+    });
+  });
+
+  test("shows OpenVPN tab and connected clients when available", async ({
+    page,
+  }) => {
+    await mockVpnStatus(page, MOCK_VPN_WITH_OPENVPN);
+    await page.goto("/vpn-status/");
+
+    await expect(
+      page.getByRole("heading", { name: "VPN Status", level: 1 }),
+    ).toBeVisible({ timeout: 15000 });
+
+    // OpenVPN tab should be visible
+    await expect(
+      page.getByRole("tab", { name: "OpenVPN" }),
+    ).toBeVisible();
+
+    // Click OpenVPN tab and verify data
+    await page.getByRole("tab", { name: "OpenVPN" }).click();
+    await expect(page.getByText("OpenVPN Server")).toBeVisible();
+    await expect(page.getByText("ovpn-user-1")).toBeVisible();
+
+    await page.screenshot({
+      path: "tests/screenshots/vpn-status-openvpn-tab.png",
+    });
+  });
+
+  test("shows both WireGuard and OpenVPN in overview", async ({
+    page,
+  }) => {
+    await mockVpnStatus(page, MOCK_VPN_WITH_OPENVPN);
+    await page.goto("/vpn-status/");
+
+    await expect(
+      page.getByRole("heading", { name: "VPN Status", level: 1 }),
+    ).toBeVisible({ timeout: 15000 });
+
+    // Navigate to overview tab explicitly
+    await page.getByRole("tab", { name: "Overview" }).click();
+
+    // Both VPN types should show summary cards
+    await expect(page.getByText("WireGuard")).toBeVisible();
+    await expect(page.getByText("OpenVPN", { exact: true }).first()).toBeVisible();
+
+    // Summary cards should show correct totals
+    await expect(page.getByText("2")).toBeVisible(); // total peers online
+
+    await page.screenshot({
+      path: "tests/screenshots/vpn-status-overview-both.png",
     });
   });
 });

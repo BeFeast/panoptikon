@@ -1751,6 +1751,70 @@ export function fetchVpnStatus(): Promise<
   return apiGet<import("./types").VpnStatusResponse>("/api/v1/vpn-status");
 }
 
+// ─── OpenVPN Management ─────────────────────────────────────
+
+export function fetchOpenVpnDashboard(): Promise<
+  import("./types").OpenVpnDashboardResponse
+> {
+  return apiGet<import("./types").OpenVpnDashboardResponse>(
+    "/api/v1/openvpn/dashboard",
+  );
+}
+
+export function fetchOpenVpnServer(): Promise<
+  import("./types").OpenVpnServerConfig
+> {
+  return apiGet<import("./types").OpenVpnServerConfig>(
+    "/api/v1/openvpn/server",
+  );
+}
+
+export function updateOpenVpnServer(
+  body: Partial<import("./types").OpenVpnServerConfig>,
+): Promise<void> {
+  return apiPatch("/api/v1/openvpn/server", body) as Promise<void>;
+}
+
+export function fetchOpenVpnClients(): Promise<
+  import("./types").OpenVpnClientEntry[]
+> {
+  return apiGet<import("./types").OpenVpnClientEntry[]>(
+    "/api/v1/openvpn/clients",
+  );
+}
+
+export function createOpenVpnClient(body: {
+  name: string;
+  password: string;
+  service?: string;
+  profile?: string;
+  local_address?: string;
+  remote_address?: string;
+  comment?: string;
+}): Promise<void> {
+  return apiPost("/api/v1/openvpn/clients", body) as Promise<void>;
+}
+
+export function deleteOpenVpnClient(id: string): Promise<void> {
+  return apiDelete(`/api/v1/openvpn/clients/${encodeURIComponent(id)}`);
+}
+
+export function exportOpenVpnClientConfig(
+  name: string,
+): Promise<import("./types").ClientConfigExportResponse> {
+  return apiGet<import("./types").ClientConfigExportResponse>(
+    `/api/v1/openvpn/clients/${encodeURIComponent(name)}/export`,
+  );
+}
+
+export function fetchMtCertificates(): Promise<
+  import("./types").MtCertificatesDashboardResponse
+> {
+  return apiGet<import("./types").MtCertificatesDashboardResponse>(
+    "/api/v1/mikrotik/certificates",
+  );
+}
+
 // ─── QoS / Traffic Shaping ───────────────────────────────────
 
 export function fetchQosSummary(): Promise<

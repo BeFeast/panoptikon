@@ -1955,15 +1955,101 @@ export interface VpnInterfaceStatus {
   peers_total: number;
   /** "mikrotik" */
   source: string;
+  /** "wireguard" or "openvpn" */
+  vpn_type: string;
 }
 
 export interface VpnStatusResponse {
   mikrotik_available: boolean;
+  openvpn_available: boolean;
   interfaces: VpnInterfaceStatus[];
   total_peers: number;
   online_peers: number;
   total_rx_bytes: number;
   total_tx_bytes: number;
+}
+
+// ─── OpenVPN Management Dashboard ───────────────────────
+
+export interface OpenVpnServerConfig {
+  enabled: boolean;
+  port: number | null;
+  protocol: string | null;
+  mode: string | null;
+  cipher: string | null;
+  auth: string | null;
+  certificate: string | null;
+  default_profile: string | null;
+  require_client_certificate: boolean;
+  netmask: string | null;
+  tls_version: string | null;
+}
+
+export interface OpenVpnClientEntry {
+  id: string;
+  name: string;
+  service: string | null;
+  profile: string | null;
+  local_address: string | null;
+  remote_address: string | null;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface OpenVpnActiveConnection {
+  name: string;
+  service: string | null;
+  caller_id: string | null;
+  address: string | null;
+  uptime: string | null;
+  encoding: string | null;
+}
+
+export interface OpenVpnServerInterfaceEntry {
+  id: string | null;
+  name: string;
+  user: string | null;
+  running: boolean;
+  client_address: string | null;
+  encoding: string | null;
+  uptime: string | null;
+}
+
+export interface OpenVpnDashboardResponse {
+  mikrotik_available: boolean;
+  server: OpenVpnServerConfig | null;
+  clients: OpenVpnClientEntry[];
+  active_connections: OpenVpnActiveConnection[];
+  server_interfaces: OpenVpnServerInterfaceEntry[];
+}
+
+export interface MtCertificateEntry {
+  id: string;
+  name: string;
+  common_name: string | null;
+  fingerprint: string | null;
+  key_size: string | null;
+  days_valid: string | null;
+  trusted: boolean;
+  key_type: string | null;
+  issuer: string | null;
+  serial_number: string | null;
+  subject_alt_name: string | null;
+  invalid_before: string | null;
+  invalid_after: string | null;
+  expires_after: string | null;
+  has_private_key: boolean;
+  is_ca: boolean;
+}
+
+export interface MtCertificatesDashboardResponse {
+  mikrotik_available: boolean;
+  certificates: MtCertificateEntry[];
+}
+
+export interface ClientConfigExportResponse {
+  config: string;
+  filename: string;
 }
 
 export interface QosSummary {
