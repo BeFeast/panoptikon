@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSWRFetch } from "@/hooks/useSWRFetch";
 import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -220,8 +221,6 @@ function parseCSVLine(line: string): string[] {
 // ─── Main list page ─────────────────────────────────────
 
 function AssetsListPage() {
-  const [assets, setAssets] = useState<Asset[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Asset | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -234,24 +233,11 @@ function AssetsListPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [locationFilter, setLocationFilter] = useState<string>("");
 
-  const load = useCallback(async () => {
-    try {
-      const loadedAssets = await loadAssetsWithDeviceSync({
-        fetchAssets,
-        syncAssetsFromDevices,
-      });
-      setAssets(loadedAssets);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load assets");
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 30_000);
-    return () => clearInterval(interval);
-  }, [load]);
+  const { data: assets, error, mutate } = useSWRFetch<Asset[]>(
+    "/api/v1/assets",
+    () => loadAssetsWithDeviceSync({ fetchAssets, syncAssetsFromDevices }),
+    { refreshInterval: 30_000 },
+  );
 
   // Client-side filtering
   const filtered = useMemo(() => {
@@ -291,7 +277,10 @@ function AssetsListPage() {
     setDeleting(true);
     try {
       await deleteAssetInventory(pendingDelete.id);
-      setAssets((prev) => prev?.filter((a) => a.id !== pendingDelete.id) ?? null);
+      mutate(
+        (prev) => prev?.filter((a) => a.id !== pendingDelete.id),
+        { revalidate: false },
+      );
       toast.success("Asset deleted");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Delete failed");
@@ -306,7 +295,7 @@ function AssetsListPage() {
       const result = await autoLinkAssets();
       if (result.linked > 0) {
         toast.success(`Linked ${result.linked} asset(s) to network devices`);
-        load();
+        mutate();
       } else {
         toast.info("No unlinked assets could be matched to devices");
       }
@@ -323,7 +312,7 @@ function AssetsListPage() {
       const result = await syncAssetsFromDevices();
       if (result.created > 0) {
         toast.success(`Created ${result.created} asset(s) from discovered devices`);
-        load();
+        mutate();
       } else {
         toast.info("All discovered devices already have linked assets");
       }
@@ -487,7 +476,7 @@ ${filtered
               onOpenChange={setAddOpen}
               onSaved={() => {
                 setAddOpen(false);
-                load();
+                mutate();
               }}
             />
           </div>
@@ -707,7 +696,7 @@ ${filtered
             existing={editAsset}
             onSaved={() => {
               setEditAsset(null);
-              load();
+              mutate();
             }}
           />
         )}
@@ -718,7 +707,7 @@ ${filtered
           onOpenChange={setImportOpen}
           onImported={() => {
             setImportOpen(false);
-            load();
+            mutate();
           }}
         />
 

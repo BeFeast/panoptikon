@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSWRFetch } from "@/hooks/useSWRFetch";
 import {
   Activity,
   AlertTriangle,
@@ -111,7 +112,7 @@ function CriticalDevicesDialog({
               <WifiOff className="h-4 w-4 shrink-0" />
               <span>Failed to load critical devices</span>
             </div>
-          ) : devices === null ? (
+          ) : !devices ? (
             <div className="space-y-3 py-2">
               {Array.from({ length: 3 }).map((_, i) => (
                 <Skeleton key={i} className="h-12 w-full" />
@@ -418,77 +419,43 @@ function QuickActions() {
 // ─── Page ───────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [statsError, setStatsError] = useState(false);
-
-  const [alerts, setAlerts] = useState<Alert[] | null>(null);
-  const [alertsError, setAlertsError] = useState(false);
-
-  const [trafficHistory, setTrafficHistory] = useState<TrafficHistoryPoint[] | null>(null);
-  const [trafficError, setTrafficError] = useState(false);
-
-  const [devices, setDevices] = useState<Device[] | null>(null);
-  const [devicesError, setDevicesError] = useState(false);
-
   const [criticalDialogOpen, setCriticalDialogOpen] = useState(false);
 
-  // ── Independent loaders — each resolves on its own ────
+  // ── Independent SWR fetchers — each resolves on its own ────
 
-  const loadStats = useCallback(async () => {
-    try {
-      const s = await fetchDashboardStats();
-      setStats(s);
-      setStatsError(false);
-    } catch {
-      setStatsError(true);
-    }
-  }, []);
+  const { data: stats, error: statsError, mutate: mutateStats } = useSWRFetch<DashboardStats>(
+    "/api/v1/dashboard/stats",
+    fetchDashboardStats,
+    { refreshInterval: 30_000 },
+  );
 
-  const loadAlerts = useCallback(async () => {
-    try {
-      const a = await fetchRecentAlerts(5);
-      setAlerts(Array.isArray(a) ? a : []);
-      setAlertsError(false);
-    } catch {
-      setAlertsError(true);
-    }
-  }, []);
+  const { data: alerts, error: alertsError, mutate: mutateAlerts } = useSWRFetch<Alert[]>(
+    "/api/v1/dashboard/alerts",
+    () => fetchRecentAlerts(5),
+    { refreshInterval: 30_000 },
+  );
 
-  const loadTraffic = useCallback(async () => {
-    try {
-      const th = await fetchTrafficHistory(60);
-      setTrafficHistory(th);
-      setTrafficError(false);
-    } catch {
-      setTrafficError(true);
-    }
-  }, []);
+  const { data: trafficHistory, error: trafficError, mutate: mutateTraffic } = useSWRFetch<TrafficHistoryPoint[]>(
+    "/api/v1/dashboard/traffic",
+    () => fetchTrafficHistory(60),
+    { refreshInterval: 30_000 },
+  );
 
-  const loadDevices = useCallback(async () => {
-    try {
-      const devs = await fetchDevices();
-      setDevices(Array.isArray(devs) ? devs : []);
-      setDevicesError(false);
-    } catch {
-      setDevicesError(true);
-    }
-  }, []);
-
-  const loadAll = useCallback(() => {
-    loadStats();
-    loadAlerts();
-    loadTraffic();
-    loadDevices();
-  }, [loadStats, loadAlerts, loadTraffic, loadDevices]);
-
-  useEffect(() => {
-    loadAll();
-    const interval = setInterval(loadAll, 30_000);
-    return () => clearInterval(interval);
-  }, [loadAll]);
+  const { data: devices, error: devicesError, mutate: mutateDevices } = useSWRFetch<Device[]>(
+    "/api/v1/devices",
+    fetchDevices,
+    { refreshInterval: 30_000 },
+  );
 
   const devicesRef = useRef(devices);
   devicesRef.current = devices;
+
+  const revalidateAll = () => {
+    mutateStats();
+    mutateAlerts();
+    mutateTraffic();
+    mutateDevices();
+  };
 
   useWsEvent(
     ["device_online", "device_offline", "new_device", "agent_online", "agent_offline"],
@@ -506,7 +473,7 @@ export default function DashboardPage() {
           toast.info(`New device discovered: ${d.mac}`, { description: d.ip });
         }
       }
-      loadAll();
+      revalidateAll();
     }
   );
 
@@ -556,7 +523,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="flex items-center justify-center pb-5">
             {statsError ? (
-              <SectionError message="Failed to load" onRetry={loadStats} />
+              <SectionError message="Failed to load" onRetry={() => mutateStats()} />
             ) : stats ? (
               <button
                 type="button"
@@ -705,9 +672,9 @@ export default function DashboardPage() {
             {/* Sparkline */}
             {trafficError ? (
               <div className="flex h-[120px] items-center justify-center">
-                <SectionError message="Failed to load traffic data" onRetry={loadTraffic} />
+                <SectionError message="Failed to load traffic data" onRetry={() => mutateTraffic()} />
               </div>
-            ) : trafficHistory === null ? (
+            ) : !trafficHistory ? (
               <Skeleton className="h-[120px] w-full" />
             ) : trafficHistory.length > 0 ? (
               <div className="h-[120px]">
@@ -783,8 +750,8 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {alertsError ? (
-              <SectionError message="Failed to load alerts" onRetry={loadAlerts} />
-            ) : alerts === null ? (
+              <SectionError message="Failed to load alerts" onRetry={() => mutateAlerts()} />
+            ) : !alerts ? (
               <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <div key={i} className="flex items-center gap-3">
@@ -840,8 +807,8 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {devicesError ? (
-              <SectionError message="Failed to load devices" onRetry={loadDevices} />
-            ) : devices === null ? (
+              <SectionError message="Failed to load devices" onRetry={() => mutateDevices()} />
+            ) : !devices ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Skeleton key={i} className="h-10 w-full" />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSWRFetch } from "@/hooks/useSWRFetch";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowDown, ArrowUp, Battery, Box, ChevronDown, CircuitBoard, Container, Cpu, Download, ExternalLink, Gamepad2, HardDrive, HelpCircle, Laptop, Loader2, LayoutGrid, List, MemoryStick, Monitor, Network, Pencil, Pin, PinOff, Plus, Power, Printer, Radar, RotateCcw, Router, Search, Server, Smartphone, Tablet, Tv, VolumeX, Wifi, WifiOff } from "lucide-react";
@@ -71,11 +72,9 @@ type SortField = "last_seen_at" | "ip" | "hostname";
 type SortDir = "asc" | "desc";
 
 export default function DevicesPage() {
-  const [devices, setDevices] = useState<Device[] | null>(null);
   const [scanningNetwork, setScanningNetwork] = useState(false);
   const [identifying, setIdentifying] = useState(false);
   const [resolving, setResolving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
@@ -90,19 +89,11 @@ export default function DevicesPage() {
   const [addAssetOpen, setAddAssetOpen] = useState(false);
   const [wifiMap, setWifiMap] = useState<Record<string, DeviceWifiInfo>>({});
 
-  const load = useCallback(async () => {
-    try {
-      setDevices(await fetchDevices());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load devices");
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 15_000);
-    return () => clearInterval(interval);
-  }, [load]);
+  const { data: devices, error, mutate } = useSWRFetch<Device[]>(
+    "/api/v1/devices",
+    fetchDevices,
+    { refreshInterval: 15_000 },
+  );
 
   // Fetch Xiaomi WiFi data for device list columns
   useEffect(() => {
@@ -194,7 +185,7 @@ export default function DevicesPage() {
           toast.info(`New device discovered: ${d.mac}`, { description: d.ip });
         }
       }
-      load();
+      mutate();
     }
   );
 
@@ -286,7 +277,7 @@ export default function DevicesPage() {
   }, [filtered, sortField, sortDir]);
 
   if (error) {
-    return <ErrorState message={error} onRetry={load} />;
+    return <ErrorState message={error} onRetry={() => mutate()} />;
   }
 
   const counts = devices
@@ -342,7 +333,7 @@ export default function DevicesPage() {
                     try {
                       const result = await identifyDevices();
                       toast.success(`Checked ${result.devices_checked} devices`);
-                      await load();
+                      await mutate();
                     } catch {
                       toast.error("Device identification failed");
                     } finally {
@@ -384,7 +375,7 @@ export default function DevicesPage() {
                       if (summary.offline_devices > 0) parts.push(`${summary.offline_devices} offline`);
                       const desc = parts.length > 0 ? parts.join(", ") : "No changes";
                       toast.success("Network scan complete", { description: `${summary.total_scanned} scanned — ${desc}` });
-                      await load();
+                      await mutate();
                     } catch {
                       toast.error("Network scan failed");
                     } finally {
@@ -422,7 +413,7 @@ export default function DevicesPage() {
                       const result = await resolveDevices();
                       if (result.resolved > 0) {
                         toast.success(`Resolved ${result.resolved} device${result.resolved === 1 ? "" : "s"}`);
-                        await load();
+                        await mutate();
                       } else {
                         toast.info("No new hostnames found");
                       }
@@ -672,7 +663,7 @@ export default function DevicesPage() {
                 if (summary.offline_devices > 0) parts.push(`${summary.offline_devices} offline`);
                 const desc = parts.length > 0 ? parts.join(", ") : "No changes";
                 toast.success("Network scan complete", { description: `${summary.total_scanned} scanned — ${desc}` });
-                await load();
+                await mutate();
               } catch {
                 toast.error("Network scan failed");
               } finally {
@@ -715,7 +706,7 @@ export default function DevicesPage() {
       <AddAssetDialog
         open={addAssetOpen}
         onOpenChange={setAddAssetOpen}
-        onCreated={load}
+        onCreated={() => mutate()}
       />
 
       {/* Slide-in detail panel */}
@@ -729,7 +720,7 @@ export default function DevicesPage() {
           side="right"
           className="flex w-full flex-col overflow-hidden border-slate-800 bg-slate-950 sm:max-w-md"
         >
-          {selectedDevice && <DeviceDetail device={selectedDevice} onUpdate={load} />}
+          {selectedDevice && <DeviceDetail device={selectedDevice} onUpdate={() => mutate()} />}
         </SheetContent>
       </Sheet>
     </div>

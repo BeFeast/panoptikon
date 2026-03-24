@@ -4,17 +4,20 @@ import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { MobileSidebar } from "@/components/layout/MobileSidebar";
 import { CommandPalette } from "@/components/CommandPalette";
 import { WebSocketProvider } from "@/components/providers/WebSocketProvider";
+import { SWRProvider } from "@/components/providers/SWRProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 /**
  * Authenticated app layout with sidebar + topbar.
  * Login page uses the root layout directly (no chrome).
  *
+ * SWRProvider enables data caching and deduplication across pages.
  * WebSocketProvider keeps a persistent WS connection so all child pages
  * receive live updates (device/agent state changes) without polling.
  */
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
+    <SWRProvider>
     <WebSocketProvider>
       <TooltipProvider delayDuration={300}>
         <div className="flex h-screen overflow-clip">
@@ -30,5 +33,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <CommandPalette />
       </TooltipProvider>
     </WebSocketProvider>
+    </SWRProvider>
   );
 }
