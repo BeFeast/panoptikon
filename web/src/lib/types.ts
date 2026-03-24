@@ -1854,6 +1854,19 @@ export interface MikrotikQueueTree {
   dynamic: boolean;
 }
 
+export interface MikrotikQueueTreeRequest {
+  name: string;
+  parent: string;
+  packet_mark?: string;
+  priority?: string;
+  max_limit?: string;
+  burst_limit?: string;
+  burst_threshold?: string;
+  burst_time?: string;
+  comment?: string;
+  disabled?: boolean;
+}
+
 // ─── VPN Status Dashboard ───────────────────────────────────
 
 export interface VpnPeerStatus {

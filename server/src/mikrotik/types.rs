@@ -420,6 +420,29 @@ pub struct QueueTree {
     pub queued_bytes: Option<String>,
 }
 
+/// MikroTik queue tree write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct QueueTreeWriteRequest {
+    pub name: String,
+    pub parent: String,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "packet-mark")]
+    pub packet_mark: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub priority: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "max-limit")]
+    pub max_limit: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "burst-limit")]
+    pub burst_limit: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "burst-threshold")]
+    pub burst_threshold: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "burst-time")]
+    pub burst_time: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<String>,
+}
+
 /// MikroTik firewall mangle rule (`/rest/ip/firewall/mangle`).
 /// Used for policy-based routing (marking packets with routing marks).
 #[derive(Debug, Clone, Serialize, Deserialize)]

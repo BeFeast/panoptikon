@@ -492,6 +492,18 @@ pub fn router(state: AppState) -> Router {
             delete(qos::delete_mikrotik_simple_queue),
         )
         .route("/qos/mikrotik/queue-tree", get(qos::mikrotik_queue_tree))
+        .route(
+            "/qos/mikrotik/queue-tree",
+            post(qos::create_mikrotik_queue_tree),
+        )
+        .route(
+            "/qos/mikrotik/queue-tree/:id",
+            put(qos::update_mikrotik_queue_tree),
+        )
+        .route(
+            "/qos/mikrotik/queue-tree/:id",
+            delete(qos::delete_mikrotik_queue_tree),
+        )
         // VPN Status Dashboard
         .route("/vpn-status", get(vpn_status::vpn_status))
         // Tailscale

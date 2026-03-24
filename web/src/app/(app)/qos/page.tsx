@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   Gauge,
@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Search,
   Trash2,
+  TreePine,
 } from "lucide-react";
 import {
   Card,
@@ -51,11 +52,14 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageTransition } from "@/components/PageTransition";
 import {
+  createMikrotikQueueTree,
   createMikrotikSimpleQueue,
+  deleteMikrotikQueueTree,
   deleteMikrotikSimpleQueue,
   fetchMikrotikQueueTree,
   fetchMikrotikSimpleQueues,
   fetchQosSummary,
+  updateMikrotikQueueTree,
   updateMikrotikSimpleQueue,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -69,17 +73,26 @@ import { toast } from "sonner";
 const surfaceClass =
   "border-slate-800/70 bg-gradient-to-b from-slate-900/80 to-slate-900/55 shadow-[0_12px_30px_rgba(2,6,23,0.35)]";
 
+const LIVE_POLL_INTERVAL = 5000;
+
 export default function QosPage() {
   const [summary, setSummary] = useState<QosSummary | null>(null);
   const [mtQueues, setMtQueues] = useState<MikrotikSimpleQueue[] | null>(null);
   const [mtTree, setMtTree] = useState<MikrotikQueueTree[] | null>(null);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+  const [liveRefresh, setLiveRefresh] = useState(false);
+  const liveRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [showAddMtQueue, setShowAddMtQueue] = useState(false);
   const [editMtQueue, setEditMtQueue] = useState<MikrotikSimpleQueue | null>(null);
   const [pendingDeleteMtQueue, setPendingDeleteMtQueue] =
     useState<MikrotikSimpleQueue | null>(null);
+
+  const [showAddMtTree, setShowAddMtTree] = useState(false);
+  const [editMtTree, setEditMtTree] = useState<MikrotikQueueTree | null>(null);
+  const [pendingDeleteMtTree, setPendingDeleteMtTree] =
+    useState<MikrotikQueueTree | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -119,6 +132,21 @@ export default function QosPage() {
     if (activeTab === "mikrotik") loadMtQueues();
   }, [activeTab, loadMtQueues]);
 
+  // Live polling for real-time rate updates
+  useEffect(() => {
+    if (liveRefresh && activeTab === "mikrotik") {
+      liveRef.current = setInterval(() => {
+        loadMtQueues();
+      }, LIVE_POLL_INTERVAL);
+    }
+    return () => {
+      if (liveRef.current) {
+        clearInterval(liveRef.current);
+        liveRef.current = null;
+      }
+    };
+  }, [liveRefresh, activeTab, loadMtQueues]);
+
   const filteredMtQueues = useMemo(() => {
     if (!mtQueues) return null;
     if (!search.trim()) return mtQueues;
@@ -136,7 +164,10 @@ export default function QosPage() {
     if (!search.trim()) return mtTree;
     const q = search.toLowerCase();
     return mtTree.filter(
-      (t) => t.name.toLowerCase().includes(q) || (t.parent ?? "").toLowerCase().includes(q),
+      (t) =>
+        t.name.toLowerCase().includes(q) ||
+        (t.parent ?? "").toLowerCase().includes(q) ||
+        (t.packet_mark ?? "").toLowerCase().includes(q),
     );
   }, [mtTree, search]);
 
@@ -151,6 +182,20 @@ export default function QosPage() {
       toast.error("Failed to delete simple queue");
     } finally {
       setPendingDeleteMtQueue(null);
+    }
+  }
+
+  async function handleDeleteMtTree() {
+    if (!pendingDeleteMtTree || !pendingDeleteMtTree.id) return;
+    try {
+      await deleteMikrotikQueueTree(pendingDeleteMtTree.id);
+      setMtTree((prev) => prev?.filter((t) => t.id !== pendingDeleteMtTree.id) ?? null);
+      toast.success(`Deleted queue tree entry '${pendingDeleteMtTree.name}'`);
+      load();
+    } catch {
+      toast.error("Failed to delete queue tree entry");
+    } finally {
+      setPendingDeleteMtTree(null);
     }
   }
 
@@ -170,18 +215,39 @@ export default function QosPage() {
             </div>
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              load();
-              if (activeTab === "mikrotik") loadMtQueues();
-            }}
-            className="border-slate-700 bg-slate-900/60 text-slate-200 hover:bg-slate-800"
-          >
-            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2">
+            {activeTab === "mikrotik" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setLiveRefresh((v) => !v)}
+                className={cn(
+                  "border-slate-700 bg-slate-900/60 text-slate-200 hover:bg-slate-800",
+                  liveRefresh && "border-emerald-500/50 text-emerald-300",
+                )}
+              >
+                <RefreshCw
+                  className={cn(
+                    "mr-1.5 h-3.5 w-3.5",
+                    liveRefresh && "animate-spin",
+                  )}
+                />
+                {liveRefresh ? "Live" : "Auto-refresh"}
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                load();
+                if (activeTab === "mikrotik") loadMtQueues();
+              }}
+              className="border-slate-700 bg-slate-900/60 text-slate-200 hover:bg-slate-800"
+            >
+              <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
+              Refresh
+            </Button>
+          </div>
         </section>
 
         <section className="grid gap-5 sm:grid-cols-2">
@@ -196,7 +262,7 @@ export default function QosPage() {
             title="MikroTik Queue Tree"
             value={summary?.mikrotik_queue_tree_count ?? null}
             available={summary?.mikrotik_available ?? null}
-            icon={<Network className="h-4 w-4 text-cyan-300" />}
+            icon={<TreePine className="h-4 w-4 text-cyan-300" />}
             iconClass="border-cyan-500/30 bg-cyan-500/15"
           />
         </section>
@@ -272,16 +338,28 @@ export default function QosPage() {
                 />
               </div>
 
-              <Button
-                size="sm"
-                onClick={() => setShowAddMtQueue(true)}
-                className="bg-blue-600 text-white hover:bg-blue-500"
-              >
-                <Plus className="mr-1.5 h-3.5 w-3.5" />
-                Add Queue
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => setShowAddMtQueue(true)}
+                  className="bg-blue-600 text-white hover:bg-blue-500"
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Add Queue
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowAddMtTree(true)}
+                  className="border-slate-700 text-slate-200 hover:bg-slate-800"
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Add Tree Entry
+                </Button>
+              </div>
             </div>
 
+            {/* Simple Queues Table */}
             <Card className={surfaceClass}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base text-white">Simple Queues</CardTitle>
@@ -331,7 +409,9 @@ export default function QosPage() {
                             <TableCell className="text-slate-300">{queue.target}</TableCell>
                             <TableCell className="font-mono text-xs text-slate-400">{queue.max_limit ?? "—"}</TableCell>
                             <TableCell className="text-slate-300">{queue.priority ?? "—"}</TableCell>
-                            <TableCell className="font-mono text-xs text-slate-400">{queue.rate ?? "—"}</TableCell>
+                            <TableCell className="font-mono text-xs text-slate-400">
+                              <RateDisplay rate={queue.rate} />
+                            </TableCell>
                             <TableCell>
                               <Badge
                                 variant="outline"
@@ -380,11 +460,12 @@ export default function QosPage() {
               </CardContent>
             </Card>
 
+            {/* Queue Tree Table */}
             <Card className={surfaceClass}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base text-white">Queue Tree</CardTitle>
                 <CardDescription className="text-xs text-slate-500">
-                  Hierarchical queue entries (read-only view).
+                  Hierarchical queue entries for packet-mark based shaping.
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
@@ -399,6 +480,7 @@ export default function QosPage() {
                         <TableHead className="text-xs uppercase tracking-wide text-slate-500">Priority</TableHead>
                         <TableHead className="text-xs uppercase tracking-wide text-slate-500">Rate</TableHead>
                         <TableHead className="text-xs uppercase tracking-wide text-slate-500">Status</TableHead>
+                        <TableHead className="text-right text-xs uppercase tracking-wide text-slate-500">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
 
@@ -406,7 +488,7 @@ export default function QosPage() {
                       {filteredMtTree === null ? (
                         Array.from({ length: 2 }).map((_, i) => (
                           <TableRow key={i} className="border-slate-800/70">
-                            {Array.from({ length: 7 }).map((_, j) => (
+                            {Array.from({ length: 8 }).map((_, j) => (
                               <TableCell key={j}>
                                 <Skeleton className="h-4 w-20 bg-slate-800" />
                               </TableCell>
@@ -415,7 +497,7 @@ export default function QosPage() {
                         ))
                       ) : filteredMtTree.length === 0 ? (
                         <TableRow className="border-slate-800/70 hover:bg-transparent">
-                          <TableCell colSpan={7} className="py-12 text-center text-slate-500">
+                          <TableCell colSpan={8} className="py-12 text-center text-slate-500">
                             {search ? "No tree entries match your filter." : "No queue tree entries."}
                           </TableCell>
                         </TableRow>
@@ -430,7 +512,9 @@ export default function QosPage() {
                             <TableCell className="text-slate-300">{entry.packet_mark ?? "—"}</TableCell>
                             <TableCell className="font-mono text-xs text-slate-400">{entry.max_limit ?? "—"}</TableCell>
                             <TableCell className="text-slate-300">{entry.priority ?? "—"}</TableCell>
-                            <TableCell className="font-mono text-xs text-slate-400">{entry.rate ?? "—"}</TableCell>
+                            <TableCell className="font-mono text-xs text-slate-400">
+                              <RateDisplay rate={entry.rate} />
+                            </TableCell>
                             <TableCell>
                               <Badge
                                 variant="outline"
@@ -438,11 +522,37 @@ export default function QosPage() {
                                   "rounded-md border text-[11px] uppercase",
                                   entry.disabled
                                     ? "border-slate-700 bg-slate-900/70 text-slate-500"
-                                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+                                    : entry.dynamic
+                                      ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
                                 )}
                               >
-                                {entry.disabled ? "disabled" : "active"}
+                                {entry.disabled ? "disabled" : entry.dynamic ? "dynamic" : "active"}
                               </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-1">
+                                {!entry.dynamic && entry.id && (
+                                  <>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setEditMtTree(entry)}
+                                      className="h-8 w-8 p-0 text-slate-400 hover:text-white"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => setPendingDeleteMtTree(entry)}
+                                      className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  </>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))
@@ -455,6 +565,7 @@ export default function QosPage() {
           </TabsContent>
         </Tabs>
 
+        {/* Simple Queue Form Dialog */}
         <MikrotikQueueFormDialog
           open={showAddMtQueue || editMtQueue !== null}
           onOpenChange={(open) => {
@@ -472,6 +583,25 @@ export default function QosPage() {
           }}
         />
 
+        {/* Queue Tree Form Dialog */}
+        <QueueTreeFormDialog
+          open={showAddMtTree || editMtTree !== null}
+          onOpenChange={(open) => {
+            if (!open) {
+              setShowAddMtTree(false);
+              setEditMtTree(null);
+            }
+          }}
+          existing={editMtTree}
+          onSaved={() => {
+            setShowAddMtTree(false);
+            setEditMtTree(null);
+            loadMtQueues();
+            load();
+          }}
+        />
+
+        {/* Delete Simple Queue Confirmation */}
         <AlertDialog
           open={pendingDeleteMtQueue !== null}
           onOpenChange={(open) => {
@@ -499,10 +629,48 @@ export default function QosPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Delete Queue Tree Confirmation */}
+        <AlertDialog
+          open={pendingDeleteMtTree !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingDeleteMtTree(null);
+          }}
+        >
+          <AlertDialogContent className="border-slate-800 bg-slate-900">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-white">Delete Queue Tree Entry</AlertDialogTitle>
+              <AlertDialogDescription className="text-slate-400">
+                Are you sure you want to delete queue tree entry{" "}
+                <span className="font-medium text-white">{pendingDeleteMtTree?.name}</span>?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-slate-800 text-slate-300 hover:bg-slate-800">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteMtTree}
+                className="bg-rose-600 text-white hover:bg-rose-500"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </PageTransition>
   );
 }
+
+// ── Rate Display ──────────────────────────────────────────
+
+function RateDisplay({ rate }: { rate: string | null }) {
+  if (!rate || rate === "0/0" || rate === "0") return <span className="text-slate-600">—</span>;
+  return <span className="text-cyan-400">{rate}</span>;
+}
+
+// ── Summary Card ──────────────────────────────────────────
 
 function SummaryCard({
   title,
@@ -538,6 +706,8 @@ function SummaryCard({
     </Card>
   );
 }
+
+// ── Simple Queue Form Dialog ──────────────────────────────
 
 function MikrotikQueueFormDialog({
   open,
@@ -729,6 +899,238 @@ function MikrotikQueueFormDialog({
               className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
               placeholder="Optional comment"
             />
+          </div>
+
+          {formError && (
+            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+              <p className="text-xs text-rose-400">{formError}</p>
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              className="border-slate-800 text-slate-300 hover:bg-slate-800"
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={loading} className="bg-blue-600 text-white hover:bg-blue-500">
+              {loading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              {isEdit ? "Update" : "Create"}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Queue Tree Form Dialog ────────────────────────────────
+
+function QueueTreeFormDialog({
+  open,
+  onOpenChange,
+  existing,
+  onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  existing: MikrotikQueueTree | null;
+  onSaved: () => void;
+}) {
+  const isEdit = existing !== null;
+  const [name, setName] = useState("");
+  const [parent, setParent] = useState("");
+  const [packetMark, setPacketMark] = useState("");
+  const [priority, setPriority] = useState("");
+  const [maxLimit, setMaxLimit] = useState("");
+  const [burstLimit, setBurstLimit] = useState("");
+  const [burstThreshold, setBurstThreshold] = useState("");
+  const [burstTime, setBurstTime] = useState("");
+  const [comment, setComment] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      if (existing) {
+        setName(existing.name);
+        setParent(existing.parent ?? "");
+        setPacketMark(existing.packet_mark ?? "");
+        setPriority(existing.priority ?? "");
+        setMaxLimit(existing.max_limit ?? "");
+        setBurstLimit(existing.burst_limit ?? "");
+        setBurstThreshold(existing.burst_threshold ?? "");
+        setBurstTime(existing.burst_time ?? "");
+        setComment(existing.comment ?? "");
+      } else {
+        setName("");
+        setParent("global");
+        setPacketMark("");
+        setPriority("");
+        setMaxLimit("");
+        setBurstLimit("");
+        setBurstThreshold("");
+        setBurstTime("");
+        setComment("");
+      }
+      setFormError(null);
+    }
+  }, [open, existing]);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setFormError(null);
+
+    if (!name.trim()) {
+      setFormError("Name is required");
+      return;
+    }
+    if (!parent.trim()) {
+      setFormError("Parent is required (e.g. global)");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const body = {
+        name: name.trim(),
+        parent: parent.trim(),
+        packet_mark: packetMark.trim() || undefined,
+        priority: priority.trim() || undefined,
+        max_limit: maxLimit.trim() || undefined,
+        burst_limit: burstLimit.trim() || undefined,
+        burst_threshold: burstThreshold.trim() || undefined,
+        burst_time: burstTime.trim() || undefined,
+        comment: comment.trim() || undefined,
+      };
+
+      if (isEdit && existing?.id) {
+        await updateMikrotikQueueTree(existing.id, body);
+        toast.success(`Updated tree entry '${name.trim()}'`);
+      } else {
+        await createMikrotikQueueTree(body);
+        toast.success(`Created tree entry '${name.trim()}'`);
+      }
+      onSaved();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Failed to save queue tree entry");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-white">{isEdit ? "Edit Queue Tree Entry" : "Add Queue Tree Entry"}</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label htmlFor="tree-name" className="text-xs text-slate-400">
+              Name
+            </Label>
+            <Input
+              id="tree-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              placeholder="voip-priority"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="tree-parent" className="text-xs text-slate-400">
+              Parent
+            </Label>
+            <Input
+              id="tree-parent"
+              value={parent}
+              onChange={(e) => setParent(e.target.value)}
+              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              placeholder="global"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="tree-packet-mark" className="text-xs text-slate-400">
+              Packet Mark
+            </Label>
+            <Input
+              id="tree-packet-mark"
+              value={packetMark}
+              onChange={(e) => setPacketMark(e.target.value)}
+              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              placeholder="voip-mark"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-400">Max Limit</Label>
+              <Input
+                value={maxLimit}
+                onChange={(e) => setMaxLimit(e.target.value)}
+                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                placeholder="10M"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-400">Priority</Label>
+              <Input
+                value={priority}
+                onChange={(e) => setPriority(e.target.value)}
+                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                placeholder="1"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-400">Burst Limit</Label>
+              <Input
+                value={burstLimit}
+                onChange={(e) => setBurstLimit(e.target.value)}
+                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                placeholder="15M"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-400">Burst Threshold</Label>
+              <Input
+                value={burstThreshold}
+                onChange={(e) => setBurstThreshold(e.target.value)}
+                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                placeholder="8M"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-400">Burst Time</Label>
+              <Input
+                value={burstTime}
+                onChange={(e) => setBurstTime(e.target.value)}
+                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                placeholder="10s"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-slate-400">Comment</Label>
+              <Input
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                placeholder="Optional comment"
+              />
+            </div>
           </div>
 
           {formError && (

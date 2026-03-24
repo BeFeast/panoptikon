@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 
 use super::AppState;
 use crate::mikrotik::client::MikrotikClient;
-use crate::mikrotik::types::SimpleQueueWriteRequest;
+use crate::mikrotik::types::{QueueTreeWriteRequest, SimpleQueueWriteRequest};
 
 // ── Helpers ─────────────────────────────────────────────────
 
@@ -314,6 +314,118 @@ pub async fn mikrotik_queue_tree(
         state.mikrotik_cache.set("queue-tree".into(), val);
     }
     Ok(Json(result))
+}
+
+// ── Queue Tree CRUD ────────────────────────────────────────
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikQueueTreeUpsertRequest {
+    pub name: String,
+    pub parent: String,
+    pub packet_mark: Option<String>,
+    pub priority: Option<String>,
+    pub max_limit: Option<String>,
+    pub burst_limit: Option<String>,
+    pub burst_threshold: Option<String>,
+    pub burst_time: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<bool>,
+}
+
+/// POST /api/v1/qos/mikrotik/queue-tree
+pub async fn create_mikrotik_queue_tree(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikQueueTreeUpsertRequest>,
+) -> Result<StatusCode, StatusCode> {
+    if body.name.trim().is_empty() || body.parent.trim().is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = QueueTreeWriteRequest {
+        name: body.name.trim().to_string(),
+        parent: body.parent.trim().to_string(),
+        packet_mark: body.packet_mark.map(|s| s.trim().to_string()),
+        priority: body.priority.map(|s| s.trim().to_string()),
+        max_limit: body.max_limit.map(|s| s.trim().to_string()),
+        burst_limit: body.burst_limit.map(|s| s.trim().to_string()),
+        burst_threshold: body.burst_threshold.map(|s| s.trim().to_string()),
+        burst_time: body.burst_time.map(|s| s.trim().to_string()),
+        comment: body.comment.map(|s| s.trim().to_string()),
+        disabled: body
+            .disabled
+            .map(|d| if d { "true" } else { "false" }.to_string()),
+    };
+
+    client.create_queue_tree(&req).await.map_err(|e| {
+        tracing::error!("MikroTik queue tree create error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// PUT /api/v1/qos/mikrotik/queue-tree/:id
+pub async fn update_mikrotik_queue_tree(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikQueueTreeUpsertRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = QueueTreeWriteRequest {
+        name: body.name.trim().to_string(),
+        parent: body.parent.trim().to_string(),
+        packet_mark: body.packet_mark.map(|s| s.trim().to_string()),
+        priority: body.priority.map(|s| s.trim().to_string()),
+        max_limit: body.max_limit.map(|s| s.trim().to_string()),
+        burst_limit: body.burst_limit.map(|s| s.trim().to_string()),
+        burst_threshold: body.burst_threshold.map(|s| s.trim().to_string()),
+        burst_time: body.burst_time.map(|s| s.trim().to_string()),
+        comment: body.comment.map(|s| s.trim().to_string()),
+        disabled: body
+            .disabled
+            .map(|d| if d { "true" } else { "false" }.to_string()),
+    };
+
+    client.update_queue_tree(id, &req).await.map_err(|e| {
+        tracing::error!("MikroTik queue tree update error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// DELETE /api/v1/qos/mikrotik/queue-tree/:id
+pub async fn delete_mikrotik_queue_tree(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    client.delete_queue_tree(id).await.map_err(|e| {
+        tracing::error!("MikroTik queue tree delete error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 // ── Summary Endpoint ────────────────────────────────────────
