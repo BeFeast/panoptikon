@@ -4,9 +4,9 @@ test.describe('Authentication', () => {
   test('login page loads correctly', async ({ page }) => {
     await page.goto('/login/');
     
-    // Wait for hydration - the "Sign in to your network dashboard" text appears after status check
+    // Wait for hydration - the "Sign in to your network operations console" text appears after status check
     await expect(page.getByRole('heading', { name: 'Panoptikon', level: 1 })).toBeVisible();
-    await expect(page.getByText('Sign in to your network dashboard')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Sign in to your network operations console')).toBeVisible({ timeout: 15000 });
     
     // Password input should be present
     await expect(page.locator('#password')).toBeVisible();
@@ -19,7 +19,7 @@ test.describe('Authentication', () => {
 
   test('login with wrong password shows error', async ({ page }) => {
     await page.goto('/login/');
-    await expect(page.getByText('Sign in to your network dashboard')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Sign in to your network operations console')).toBeVisible({ timeout: 15000 });
     
     await page.fill('#password', 'wrongpassword');
     await page.getByRole('button', { name: 'Sign In' }).click();
@@ -31,7 +31,7 @@ test.describe('Authentication', () => {
 
   test('login with correct password redirects to dashboard', async ({ page }) => {
     await page.goto('/login/');
-    await expect(page.getByText('Sign in to your network dashboard')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText('Sign in to your network operations console')).toBeVisible({ timeout: 15000 });
     
     await page.fill('#password', PASSWORD);
     await page.getByRole('button', { name: 'Sign In' }).click();
