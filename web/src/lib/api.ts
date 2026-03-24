@@ -1388,6 +1388,24 @@ export function deleteAlertRule(id: string): Promise<void> {
   return apiDelete(`/api/v1/alert-rules/${id}`);
 }
 
+export function reorderAlertRules(
+  ruleIds: string[]
+): Promise<AlertRule[]> {
+  return apiPut<AlertRule[]>("/api/v1/alert-rules/reorder", {
+    rule_ids: ruleIds,
+  });
+}
+
+export function exportAlertRules(): Promise<AlertRule[]> {
+  return apiGet<AlertRule[]>("/api/v1/alert-rules/export");
+}
+
+export function importAlertRules(
+  rules: CreateAlertRuleRequest[]
+): Promise<AlertRule[]> {
+  return apiPost<AlertRule[]>("/api/v1/alert-rules/import", rules);
+}
+
 // ─── Caddy Reverse Proxy ─────────────────────────────────
 
 export function fetchCaddyStatus(): Promise<CaddyStatus> {

@@ -187,6 +187,9 @@ pub fn router(state: AppState) -> Router {
         // Alert rules
         .route("/alert-rules", get(alert_rules::list))
         .route("/alert-rules", post(alert_rules::create))
+        .route("/alert-rules/reorder", put(alert_rules::reorder))
+        .route("/alert-rules/export", get(alert_rules::export))
+        .route("/alert-rules/import", post(alert_rules::import))
         .route("/alert-rules/:id", put(alert_rules::update))
         .route("/alert-rules/:id", delete(alert_rules::delete))
         // Settings

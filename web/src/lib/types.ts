@@ -1555,6 +1555,12 @@ export interface AlertRule {
   notify_telegram: boolean;
   notify_email: boolean;
   notify_in_app: boolean;
+  position: number;
+  hit_count: number;
+  schedule_days: string | null;
+  schedule_start_time: string | null;
+  schedule_end_time: string | null;
+  connection_limit: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -1566,6 +1572,10 @@ export interface CreateAlertRuleRequest {
   notify_telegram?: boolean;
   notify_email?: boolean;
   notify_in_app?: boolean;
+  schedule_days?: string | null;
+  schedule_start_time?: string | null;
+  schedule_end_time?: string | null;
+  connection_limit?: number | null;
 }
 
 export interface UpdateAlertRuleRequest {
@@ -1574,6 +1584,10 @@ export interface UpdateAlertRuleRequest {
   notify_telegram?: boolean;
   notify_email?: boolean;
   notify_in_app?: boolean;
+  schedule_days?: string | null;
+  schedule_start_time?: string | null;
+  schedule_end_time?: string | null;
+  connection_limit?: number | null;
 }
 
 // ─── Caddy Reverse Proxy ─────────────────────────────────

@@ -106,6 +106,10 @@ const FASTFETCH_DATA_MIGRATION: &str = include_str!("migrations/031_fastfetch_da
 /// Migration 032: RBAC multi-user, SMTP email notifications, SNMP management.
 const RBAC_SMTP_SNMP_MIGRATION: &str = include_str!("migrations/032_rbac_smtp_snmp.sql");
 
+/// Migration 033: Alert rules enhancements — position, hit counters, schedules, connection limits.
+const ALERT_RULES_ENHANCEMENTS_MIGRATION: &str =
+    include_str!("migrations/033_alert_rules_enhancements.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -811,6 +815,36 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
             .await?;
 
         info!("Applied migration 032_rbac_smtp_snmp.sql");
+    }
+
+    // Migration 033: Alert rules enhancements — position, hit counters, schedules, connection limits.
+    let applied_33: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 33")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_33 {
+        for statement in ALERT_RULES_ENHANCEMENTS_MIGRATION.split(';') {
+            let code = statement
+                .lines()
+                .skip_while(|l| {
+                    let t = l.trim();
+                    t.is_empty() || t.starts_with("--")
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let stmt = code.trim();
+            if stmt.is_empty() {
+                continue;
+            }
+            sqlx::query(stmt).execute(pool).await?;
+        }
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (33)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 033_alert_rules_enhancements.sql");
     }
 
     // Purge expired sessions on startup.
