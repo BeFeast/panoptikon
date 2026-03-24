@@ -272,19 +272,6 @@ pub struct AgentMemInfo {
     pub swap_used_bytes: Option<i64>,
 }
 
-/// Agent WebSocket identification message (first message after connection).
-/// The API key is now supplied via the `Authorization: Bearer` header on the WS upgrade
-/// request; the message body only needs to carry `agent_id`. The `api_key` field is kept
-/// (optional) for backward compatibility with older agent versions.
-#[derive(Debug, Deserialize)]
-pub struct AgentAuthMessage {
-    /// Ignored — API key is read from the `Authorization` header. Kept for backward compat.
-    #[serde(default)]
-    #[allow(dead_code)]
-    pub api_key: Option<String>,
-    pub agent_id: String,
-}
-
 impl Agent {
     fn from_row(row: sqlx::sqlite::SqliteRow) -> Result<Self, sqlx::Error> {
         Ok(Self {
@@ -592,17 +579,19 @@ pub async fn bulk_delete(
 
 /// GET /api/v1/agent/ws — WebSocket endpoint for agent connections.
 /// Agents authenticate via `Authorization: Bearer <api_key>` header on the WS upgrade request.
+/// Authentication is performed **before** the WebSocket upgrade so unauthenticated connections
+/// are rejected with a plain HTTP 401 and never promoted to a WebSocket.
 pub async fn ws_handler(
     ws: WebSocketUpgrade,
     State(state): State<AppState>,
     headers: HeaderMap,
-) -> impl IntoResponse {
+) -> Response {
+    // Extract Bearer token from the Authorization header.
     let api_key = headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
         .and_then(|s| {
             let s = s.trim();
-            // case-insensitive prefix check, whitespace-tolerant
             if s.len() > 7 && s[..7].eq_ignore_ascii_case("bearer ") {
                 Some(s[7..].trim().to_owned())
             } else {
@@ -610,7 +599,24 @@ pub async fn ws_handler(
             }
         });
 
-    ws.on_upgrade(move |socket| handle_agent_ws(socket, state, api_key))
+    let api_key = match api_key {
+        Some(k) if !k.is_empty() => k,
+        _ => {
+            warn!("Agent WebSocket: missing or empty Authorization header");
+            return (StatusCode::UNAUTHORIZED, "missing Authorization header").into_response();
+        }
+    };
+
+    // Look up the agent by verifying the API key against stored hashes.
+    let agent_id = match find_agent_by_api_key(&state.db, &api_key).await {
+        Some(id) => id,
+        None => {
+            warn!("Agent WebSocket: no agent matched the provided API key");
+            return (StatusCode::UNAUTHORIZED, "invalid API key").into_response();
+        }
+    };
+
+    ws.on_upgrade(move |socket| handle_agent_ws(socket, state, agent_id))
 }
 
 /// GET /api/v1/ws — WebSocket endpoint for UI live updates.
@@ -658,22 +664,9 @@ async fn handle_ui_ws(mut socket: WebSocket, state: AppState) {
 }
 
 /// Handle an individual agent WebSocket connection.
-async fn handle_agent_ws(mut socket: WebSocket, state: AppState, api_key: Option<String>) {
-    info!("Agent WebSocket connection opened");
-
-    // Step 1: Verify agent via API key from Authorization header + agent_id from first message.
-    let agent_id = match wait_for_auth(&mut socket, &state, api_key).await {
-        Some(id) => id,
-        None => {
-            warn!("Agent WebSocket: auth failed or timed out");
-            let _ = socket
-                .send(Message::Text(
-                    json!({"error": "authentication failed"}).to_string(),
-                ))
-                .await;
-            return;
-        }
-    };
+/// The agent has already been authenticated by `ws_handler` before the upgrade.
+async fn handle_agent_ws(mut socket: WebSocket, state: AppState, agent_id: String) {
+    info!(agent_id = %agent_id, "Agent WebSocket connection opened (authenticated)");
 
     // Mark agent online in DB.
     let now = chrono::Utc::now().to_rfc3339();
@@ -808,54 +801,34 @@ async fn handle_agent_ws(mut socket: WebSocket, state: AppState, api_key: Option
     );
 }
 
-/// Wait for the agent's first message (containing its agent_id) and verify the API key
-/// that was supplied via the `Authorization: Bearer` header during the WS upgrade.
-async fn wait_for_auth(
-    socket: &mut WebSocket,
-    state: &AppState,
-    api_key: Option<String>,
-) -> Option<String> {
-    // Reject immediately if no API key was provided in the upgrade headers.
-    let api_key = match api_key {
-        Some(k) if !k.is_empty() => k,
-        _ => {
-            warn!("Agent WebSocket: no Authorization header provided");
-            return None;
-        }
-    };
-
-    // Give the agent 10 seconds to send its identification message.
-    let timeout = tokio::time::Duration::from_secs(10);
-    let msg = tokio::time::timeout(timeout, socket.recv()).await.ok()??;
-
-    let text = match msg {
-        Ok(Message::Text(t)) => t,
-        _ => return None,
-    };
-
-    let auth: AgentAuthMessage = match serde_json::from_str(&text) {
-        Ok(a) => a,
-        Err(e) => {
-            warn!("agent ws: failed to parse auth message: {}", e);
-            return None;
-        }
-    };
-
-    // Verify the API key (from header) against the stored hash for this agent.
-    let row = sqlx::query("SELECT api_key_hash FROM agents WHERE id = ?")
-        .bind(&auth.agent_id)
-        .fetch_optional(&state.db)
+/// Look up an agent by verifying the supplied API key against every stored bcrypt hash.
+/// Returns the agent ID on the first match, or `None` if no agent matches.
+async fn find_agent_by_api_key(db: &sqlx::SqlitePool, api_key: &str) -> Option<String> {
+    let rows = sqlx::query("SELECT id, api_key_hash FROM agents")
+        .fetch_all(db)
         .await
-        .ok()??;
+        .ok()?;
 
-    let stored_hash: String = row.try_get("api_key_hash").ok()?;
-
-    if bcrypt::verify(&api_key, &stored_hash).unwrap_or(false) {
-        Some(auth.agent_id)
-    } else {
-        warn!(agent_id = %auth.agent_id, "Agent API key verification failed");
+    let key = api_key.to_owned();
+    // bcrypt verification is CPU-intensive; run off the async runtime.
+    tokio::task::spawn_blocking(move || {
+        for row in &rows {
+            let id: String = match row.try_get("id") {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            let hash: String = match row.try_get("api_key_hash") {
+                Ok(v) => v,
+                Err(_) => continue,
+            };
+            if bcrypt::verify(&key, &hash).unwrap_or(false) {
+                return Some(id);
+            }
+        }
         None
-    }
+    })
+    .await
+    .ok()?
 }
 
 /// Normalize a MAC address string to lowercase colon-separated format (`aa:bb:cc:dd:ee:ff`).
