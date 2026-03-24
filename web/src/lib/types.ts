@@ -2523,3 +2523,54 @@ export interface SnmpStatus {
   available: boolean;
   config: SnmpConfig;
 }
+
+// ─── OpenVPN Management ─────────────────────────────────────
+
+export interface OvpnServerConfig {
+  enabled: boolean;
+  port: number;
+  mode: string;
+  protocol: string;
+  certificate: string;
+  default_profile: string;
+  cipher: string;
+  auth: string;
+  require_client_certificate: boolean;
+}
+
+export interface PppSecret {
+  id: string;
+  name: string;
+  service: string;
+  profile: string;
+  local_address: string;
+  remote_address: string;
+  disabled: boolean;
+  comment: string;
+}
+
+export interface CreatePppSecretRequest {
+  name: string;
+  password?: string;
+  service?: string;
+  profile?: string;
+  local_address?: string;
+  remote_address?: string;
+  comment?: string;
+}
+
+export interface MikrotikCertificate {
+  id: string;
+  name: string;
+  common_name: string;
+  key_type: string;
+  key_size: string;
+  trusted: boolean;
+  ca: boolean;
+  issuer: string;
+  serial_number: string;
+  invalid_before: string;
+  invalid_after: string;
+  expired: boolean;
+  has_private_key: boolean;
+}

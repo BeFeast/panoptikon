@@ -77,6 +77,7 @@ export const navGroups: NavGroup[] = [
       { href: "/nat", label: "NAT", icon: ArrowRightLeft },
       { href: "/qos", label: "QoS", icon: Gauge },
       { href: "/vpn-status", label: "VPN Status", icon: Shield },
+      { href: "/settings/openvpn", label: "OpenVPN", icon: Shield },
       { href: "/ddns", label: "DDNS", icon: Globe },
     ],
   },

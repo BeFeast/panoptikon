@@ -105,7 +105,7 @@ pub async fn vpn_status(
     let mut interfaces: Vec<VpnInterfaceStatus> = Vec::new();
 
     // ── MikroTik WireGuard ──
-    if let Some(client) = mikrotik {
+    if let Some(ref client) = mikrotik {
         let wg_ifaces = client.wireguard_interfaces().await.unwrap_or_default();
         // Only mark MikroTik as available if it has WireGuard interfaces
         mikrotik_available = !wg_ifaces.is_empty();
@@ -170,6 +170,51 @@ pub async fn vpn_status(
                 } else {
                     "down".to_string()
                 }),
+                peers,
+                peers_online,
+                peers_total,
+                source: "mikrotik".to_string(),
+            });
+        }
+    }
+
+    // ── MikroTik OpenVPN (PPP active connections) ──
+    if let Some(ref client) = mikrotik {
+        let active = client.ppp_active().await.unwrap_or_default();
+        let ovpn_connections: Vec<&crate::mikrotik::types::PppActive> = active
+            .iter()
+            .filter(|c| c.service.as_deref() == Some("ovpn"))
+            .collect();
+
+        if !ovpn_connections.is_empty() {
+            mikrotik_available = true;
+            let peers: Vec<VpnPeerStatus> = ovpn_connections
+                .iter()
+                .map(|c| VpnPeerStatus {
+                    name: c.name.clone().unwrap_or_default(),
+                    public_key: None,
+                    endpoint: c.caller_id.clone(),
+                    allowed_ips: c
+                        .address
+                        .clone()
+                        .map(|a| vec![format!("{a}/32")])
+                        .unwrap_or_default(),
+                    last_handshake: None,
+                    rx_bytes: None,
+                    tx_bytes: None,
+                    connectivity: "online".to_string(),
+                })
+                .collect();
+
+            let peers_online = peers.len();
+            let peers_total = peers.len();
+
+            interfaces.push(VpnInterfaceStatus {
+                name: "ovpn-server".to_string(),
+                address: None,
+                port: None,
+                public_key: None,
+                status: Some("up".to_string()),
                 peers,
                 peers_online,
                 peers_total,

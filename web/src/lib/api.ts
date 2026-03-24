@@ -2101,3 +2101,33 @@ export function updateSnmpConfig(data: Partial<import("./types").SnmpConfig>): P
 export function testEmail(): Promise<void> {
   return apiPost<void>("/api/v1/settings/test-email");
 }
+
+// ─── OpenVPN Management ────────────────────────────────────
+
+export function fetchOvpnServer(): Promise<import("./types").OvpnServerConfig> {
+  return apiGet<import("./types").OvpnServerConfig>("/api/v1/openvpn/server");
+}
+
+export function updateOvpnServer(data: Partial<import("./types").OvpnServerConfig>): Promise<void> {
+  return apiPatch<void>("/api/v1/openvpn/server", data);
+}
+
+export function fetchOvpnClients(): Promise<import("./types").PppSecret[]> {
+  return apiGet<import("./types").PppSecret[]>("/api/v1/openvpn/clients");
+}
+
+export function createOvpnClient(data: import("./types").CreatePppSecretRequest): Promise<void> {
+  return apiPost<void>("/api/v1/openvpn/clients", data);
+}
+
+export function deleteOvpnClient(id: string): Promise<void> {
+  return apiDelete(`/api/v1/openvpn/clients/${id}`);
+}
+
+export function fetchOvpnCertificates(): Promise<import("./types").MikrotikCertificate[]> {
+  return apiGet<import("./types").MikrotikCertificate[]>("/api/v1/openvpn/certificates");
+}
+
+export function deleteOvpnCertificate(id: string): Promise<void> {
+  return apiDelete(`/api/v1/openvpn/certificates/${id}`);
+}
