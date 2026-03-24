@@ -1,7 +1,8 @@
 //! VPN Status Dashboard API endpoints.
 //!
 //! Provides a unified view of VPN tunnel status from MikroTik
-//! routers — WireGuard peer connectivity, handshake recency, and transfer stats.
+//! routers — WireGuard peer connectivity, handshake recency, transfer stats,
+//! and OpenVPN connected clients.
 
 use axum::{extract::State, Json};
 use serde::Serialize;
@@ -75,6 +76,18 @@ pub struct VpnInterfaceStatus {
     pub peers_total: usize,
     /// "mikrotik"
     pub source: String,
+    /// "wireguard" or "openvpn"
+    pub vpn_type: String,
+}
+
+/// OpenVPN connected client status.
+#[derive(Debug, Serialize)]
+pub struct OvpnClientStatus {
+    pub name: String,
+    pub caller_id: Option<String>,
+    pub address: Option<String>,
+    pub uptime: Option<String>,
+    pub encoding: Option<String>,
 }
 
 /// Overall VPN status summary.
@@ -86,6 +99,10 @@ pub struct VpnStatusResponse {
     pub online_peers: usize,
     pub total_rx_bytes: u64,
     pub total_tx_bytes: u64,
+    /// OpenVPN connected clients (from PPP active, service=ovpn).
+    pub openvpn_clients: Vec<OvpnClientStatus>,
+    /// Whether OpenVPN server is enabled on MikroTik.
+    pub openvpn_enabled: bool,
 }
 
 // ── Handler ────────────────────────────────────────────────
@@ -97,6 +114,8 @@ pub async fn vpn_status(
     let mikrotik = mikrotik_client(&state).await;
     // mikrotik_available is determined after we check for WireGuard interfaces
     let mut mikrotik_available = false;
+    let mut openvpn_enabled = false;
+    let mut openvpn_clients: Vec<OvpnClientStatus> = Vec::new();
 
     let now = chrono::Utc::now().timestamp();
     // 3 minutes = 180 seconds threshold for "online"
@@ -105,7 +124,7 @@ pub async fn vpn_status(
     let mut interfaces: Vec<VpnInterfaceStatus> = Vec::new();
 
     // ── MikroTik WireGuard ──
-    if let Some(client) = mikrotik {
+    if let Some(client) = &mikrotik {
         let wg_ifaces = client.wireguard_interfaces().await.unwrap_or_default();
         // Only mark MikroTik as available if it has WireGuard interfaces
         mikrotik_available = !wg_ifaces.is_empty();
@@ -174,7 +193,87 @@ pub async fn vpn_status(
                 peers_online,
                 peers_total,
                 source: "mikrotik".to_string(),
+                vpn_type: "wireguard".to_string(),
             });
+        }
+    }
+
+    // ── MikroTik OpenVPN ──
+    if let Some(client) = &mikrotik {
+        // Check if OpenVPN server is enabled
+        if let Ok(cfg) = client.ovpn_server_config().await {
+            openvpn_enabled =
+                cfg.enabled.as_deref() == Some("true") || cfg.enabled.as_deref() == Some("yes");
+
+            if openvpn_enabled {
+                mikrotik_available = true;
+
+                // Fetch OpenVPN server interfaces
+                let ovpn_ifaces = client.ovpn_server_interfaces().await.unwrap_or_default();
+
+                let port: Option<u32> = cfg.port.as_deref().and_then(|s| s.parse().ok());
+
+                // Count running/total
+                let running_count = ovpn_ifaces
+                    .iter()
+                    .filter(|i| i.running.as_deref() == Some("true"))
+                    .count();
+
+                // Build peers from OpenVPN server interfaces (each represents a connected client)
+                let peers: Vec<VpnPeerStatus> = ovpn_ifaces
+                    .iter()
+                    .map(|i| {
+                        let is_running = i.running.as_deref() == Some("true");
+                        VpnPeerStatus {
+                            name: i
+                                .user
+                                .clone()
+                                .unwrap_or_else(|| i.name.clone().unwrap_or_default()),
+                            public_key: None,
+                            endpoint: i.mac_address.clone(),
+                            allowed_ips: vec![],
+                            last_handshake: None,
+                            rx_bytes: None,
+                            tx_bytes: None,
+                            connectivity: if is_running {
+                                "online".to_string()
+                            } else {
+                                "offline".to_string()
+                            },
+                        }
+                    })
+                    .collect();
+
+                if !ovpn_ifaces.is_empty() {
+                    interfaces.push(VpnInterfaceStatus {
+                        name: "OpenVPN Server".to_string(),
+                        address: None,
+                        port,
+                        public_key: None,
+                        status: Some("up".to_string()),
+                        peers_online: running_count,
+                        peers_total: ovpn_ifaces.len(),
+                        peers,
+                        source: "mikrotik".to_string(),
+                        vpn_type: "openvpn".to_string(),
+                    });
+                }
+
+                // Fetch PPP active connections for OpenVPN
+                if let Ok(active) = client.ppp_active().await {
+                    openvpn_clients = active
+                        .into_iter()
+                        .filter(|a| a.service.as_deref() == Some("ovpn"))
+                        .map(|a| OvpnClientStatus {
+                            name: a.name.unwrap_or_default(),
+                            caller_id: a.caller_id,
+                            address: a.address,
+                            uptime: a.uptime,
+                            encoding: a.encoding,
+                        })
+                        .collect();
+                }
+            }
         }
     }
 
@@ -198,6 +297,8 @@ pub async fn vpn_status(
         online_peers,
         total_rx_bytes,
         total_tx_bytes,
+        openvpn_clients,
+        openvpn_enabled,
     }))
 }
 

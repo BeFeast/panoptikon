@@ -5,9 +5,12 @@ import { useHashTab } from "@/hooks/useHashTab";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
+  Clock,
+  Lock,
   RefreshCw,
   Search,
   Shield,
+  Users,
   Wifi,
   WifiOff,
 } from "lucide-react";
@@ -34,7 +37,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageTransition } from "@/components/PageTransition";
 import { fetchVpnStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { VpnInterfaceStatus, VpnStatusResponse } from "@/lib/types";
+import type {
+  OvpnClientStatus,
+  VpnInterfaceStatus,
+  VpnStatusResponse,
+} from "@/lib/types";
 
 const surfaceClass =
   "border-slate-800/70 bg-gradient-to-b from-slate-900/80 to-slate-900/55 shadow-[0_12px_30px_rgba(2,6,23,0.35)]";
@@ -67,7 +74,11 @@ export default function VpnStatusPage() {
   const [data, setData] = useState<VpnStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useHashTab("overview", ["overview", "mikrotik"]);
+  const [activeTab, setActiveTab] = useHashTab("overview", [
+    "overview",
+    "mikrotik",
+    "openvpn",
+  ]);
   const defaultTabSet = useRef(false);
 
   const load = useCallback(async () => {
@@ -114,7 +125,8 @@ export default function VpnStatusPage() {
         ),
       }))
       .filter(
-        (iface) => iface.name.toLowerCase().includes(q) || iface.peers.length > 0,
+        (iface) =>
+          iface.name.toLowerCase().includes(q) || iface.peers.length > 0,
       );
   }, [data, search]);
 
@@ -123,10 +135,25 @@ export default function VpnStatusPage() {
     [filteredInterfaces],
   );
 
+  const wireguardInterfaces = useMemo(
+    () =>
+      filteredInterfaces?.filter(
+        (i) => (i.vpn_type ?? "wireguard") === "wireguard",
+      ) ?? [],
+    [filteredInterfaces],
+  );
+
+  const openvpnInterfaces = useMemo(
+    () => filteredInterfaces?.filter((i) => i.vpn_type === "openvpn") ?? [],
+    [filteredInterfaces],
+  );
+
   const overviewInterfaces = useMemo(() => {
     if (!data) return [];
     return data.interfaces;
   }, [data]);
+
+  const openvpnClients = data?.openvpn_clients ?? [];
 
   return (
     <PageTransition>
@@ -137,9 +164,12 @@ export default function VpnStatusPage() {
               <Shield className="h-6 w-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-white">VPN Status</h1>
+              <h1 className="text-2xl font-semibold tracking-tight text-white">
+                VPN Status
+              </h1>
               <p className="text-sm text-slate-400">
-                WireGuard tunnels, peer connectivity, and transfer stats.
+                WireGuard &amp; OpenVPN tunnels, peer connectivity, and transfer
+                stats.
               </p>
             </div>
           </div>
@@ -205,12 +235,22 @@ export default function VpnStatusPage() {
                 MikroTik
               </TabsTrigger>
             )}
+            {data?.openvpn_enabled && (
+              <TabsTrigger
+                value="openvpn"
+                className="rounded-lg px-4 data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+              >
+                OpenVPN
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4 pt-2">
             <Card className={surfaceClass}>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base text-white">Tunnel Overview</CardTitle>
+                <CardTitle className="text-base text-white">
+                  Tunnel Overview
+                </CardTitle>
                 <CardDescription className="text-sm text-slate-400">
                   Peers are treated as online when the last handshake is within
                   3 minutes. Data auto-refreshes every 30 seconds.
@@ -218,33 +258,80 @@ export default function VpnStatusPage() {
               </CardHeader>
               <CardContent>
                 <div className="grid gap-2 text-sm text-slate-300 md:grid-cols-2">
-                  {data?.mikrotik_available ? (
+                  {wireguardInterfaces.length > 0 && (
                     <div className="rounded-lg border border-slate-800/80 bg-slate-950/50 p-3">
                       <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">
-                        MikroTik coverage
+                        WireGuard
                       </p>
                       <p className="mt-1 text-slate-200">
                         <span className="font-semibold text-white">
-                          {mikrotikInterfaces.length}
+                          {wireguardInterfaces.length}
                         </span>{" "}
-                        interface{mikrotikInterfaces.length === 1 ? "" : "s"},{" "}
+                        interface
+                        {wireguardInterfaces.length === 1 ? "" : "s"},{" "}
                         <span className="font-semibold text-white">
-                          {mikrotikInterfaces.reduce((sum, i) => sum + i.peers_total, 0)}
+                          {wireguardInterfaces.reduce(
+                            (sum, i) => sum + i.peers_total,
+                            0,
+                          )}
                         </span>{" "}
-                        peer{mikrotikInterfaces.reduce((sum, i) => sum + i.peers_total, 0) === 1 ? "" : "s"}
+                        peer
+                        {wireguardInterfaces.reduce(
+                          (sum, i) => sum + i.peers_total,
+                          0,
+                        ) === 1
+                          ? ""
+                          : "s"}
                         ,{" "}
                         <span className="font-semibold text-emerald-300">
-                          {mikrotikInterfaces.reduce((sum, i) => sum + i.peers_online, 0)} online
+                          {wireguardInterfaces.reduce(
+                            (sum, i) => sum + i.peers_online,
+                            0,
+                          )}{" "}
+                          online
                         </span>
                       </p>
                     </div>
-                  ) : (
+                  )}
+                  {data?.openvpn_enabled && (
+                    <div className="rounded-lg border border-slate-800/80 bg-slate-950/50 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                        OpenVPN
+                      </p>
+                      <p className="mt-1 text-slate-200">
+                        <span className="font-semibold text-emerald-300">
+                          {openvpnClients.length} connected
+                        </span>{" "}
+                        client{openvpnClients.length === 1 ? "" : "s"}
+                        {openvpnInterfaces.length > 0 && (
+                          <>
+                            ,{" "}
+                            <span className="font-semibold text-white">
+                              {openvpnInterfaces.reduce(
+                                (sum, i) => sum + i.peers_total,
+                                0,
+                              )}
+                            </span>{" "}
+                            interface
+                            {openvpnInterfaces.reduce(
+                              (sum, i) => sum + i.peers_total,
+                              0,
+                            ) === 1
+                              ? ""
+                              : "s"}
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  )}
+                  {!data?.mikrotik_available &&
+                    !data?.openvpn_enabled &&
                     !loading && (
                       <div className="rounded-lg border border-slate-800/80 bg-slate-950/50 p-3 text-slate-400">
-                        No router is configured. Configure router credentials in Settings.
+                        No router is configured. Configure router credentials in
+                        Settings.
                       </div>
-                    )
-                  )}
+                    )}
                 </div>
               </CardContent>
             </Card>
@@ -258,7 +345,10 @@ export default function VpnStatusPage() {
             ) : (
               <div className="space-y-4">
                 {overviewInterfaces.map((iface) => (
-                  <InterfaceCard key={`${iface.source}-${iface.name}`} iface={iface} />
+                  <InterfaceCard
+                    key={`${iface.source}-${iface.name}`}
+                    iface={iface}
+                  />
                 ))}
               </div>
             )}
@@ -285,9 +375,79 @@ export default function VpnStatusPage() {
               </Card>
             ) : (
               mikrotikInterfaces.map((iface) => (
-                <InterfaceCard key={`${iface.source}-${iface.name}`} iface={iface} />
+                <InterfaceCard
+                  key={`${iface.source}-${iface.name}`}
+                  iface={iface}
+                />
               ))
             )}
+          </TabsContent>
+
+          <TabsContent value="openvpn" className="space-y-4 pt-2">
+            <Card className={surfaceClass}>
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-orange-300" />
+                  <CardTitle className="text-base text-white">
+                    OpenVPN Connected Clients
+                  </CardTitle>
+                </div>
+                <CardDescription className="text-sm text-slate-400">
+                  Active OpenVPN sessions from MikroTik PPP connections.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto border-t border-slate-800/70">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-slate-800/70 hover:bg-transparent">
+                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">
+                          Status
+                        </TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">
+                          Client
+                        </TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">
+                          Address
+                        </TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">
+                          Caller ID
+                        </TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">
+                          Uptime
+                        </TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">
+                          Encoding
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {openvpnClients.length === 0 ? (
+                        <TableRow className="border-slate-800/70 hover:bg-transparent">
+                          <TableCell
+                            colSpan={6}
+                            className="py-9 text-center text-sm text-slate-500"
+                          >
+                            No OpenVPN clients connected.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        openvpnClients.map((client) => (
+                          <OvpnClientRow key={client.name} client={client} />
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {openvpnInterfaces.map((iface) => (
+              <InterfaceCard
+                key={`${iface.source}-${iface.name}`}
+                iface={iface}
+              />
+            ))}
           </TabsContent>
         </Tabs>
       </div>
@@ -315,7 +475,12 @@ function SummaryCard({
   return (
     <Card className={surfaceClass}>
       <CardContent className="flex min-h-[96px] items-center gap-5 p-4">
-        <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border", iconClass)}>
+        <div
+          className={cn(
+            "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border",
+            iconClass,
+          )}
+        >
           {icon}
         </div>
         <div className="min-w-0">
@@ -325,7 +490,14 @@ function SummaryCard({
           {loading ? (
             <Skeleton className="mt-2 h-6 w-20 bg-slate-800" />
           ) : (
-            <p className={cn("mt-1 font-semibold text-white", isText ? "text-base" : "text-2xl")}>{value ?? "—"}</p>
+            <p
+              className={cn(
+                "mt-1 font-semibold text-white",
+                isText ? "text-base" : "text-2xl",
+              )}
+            >
+              {value ?? "—"}
+            </p>
           )}
           {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}
         </div>
@@ -336,13 +508,16 @@ function SummaryCard({
 
 function InterfaceCard({ iface }: { iface: VpnInterfaceStatus }) {
   const isUp = iface.status === "up" || iface.status === "u/u";
+  const vpnType = iface.vpn_type ?? "wireguard";
 
   return (
     <Card className={surfaceClass}>
       <CardHeader className="space-y-3 pb-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <CardTitle className="text-base font-semibold text-white">{iface.name}</CardTitle>
+            <CardTitle className="text-base font-semibold text-white">
+              {iface.name}
+            </CardTitle>
             <Badge
               variant="outline"
               className={cn(
@@ -354,13 +529,29 @@ function InterfaceCard({ iface }: { iface: VpnInterfaceStatus }) {
             >
               {isUp ? "up" : "down"}
             </Badge>
-            <Badge variant="outline" className="rounded-md border-slate-700 bg-slate-900/60 text-[11px] uppercase text-slate-400">
+            <Badge
+              variant="outline"
+              className="rounded-md border-slate-700 bg-slate-900/60 text-[11px] uppercase text-slate-400"
+            >
               {iface.source}
+            </Badge>
+            <Badge
+              variant="outline"
+              className={cn(
+                "rounded-md border text-[11px] uppercase",
+                vpnType === "openvpn"
+                  ? "border-orange-500/30 bg-orange-500/10 text-orange-300"
+                  : "border-blue-500/30 bg-blue-500/10 text-blue-300",
+              )}
+            >
+              {vpnType}
             </Badge>
           </div>
 
           <div className="rounded-md border border-slate-800/80 bg-slate-950/60 px-2 py-1 text-xs text-slate-400">
-            <span className="font-medium text-slate-200">{iface.peers_online}</span>
+            <span className="font-medium text-slate-200">
+              {iface.peers_online}
+            </span>
             <span className="mx-1 text-slate-600">/</span>
             <span>{iface.peers_total}</span> online
           </div>
@@ -383,6 +574,32 @@ function InterfaceCard({ iface }: { iface: VpnInterfaceStatus }) {
             </span>
           )}
         </div>
+
+        {/* Per-tunnel bandwidth summary */}
+        {iface.peers.length > 0 && (
+          <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+            <span className="flex items-center gap-1">
+              <ArrowDownToLine className="h-3 w-3 text-cyan-400" />
+              RX:{" "}
+              {formatBytes(
+                iface.peers.reduce(
+                  (sum, p) => sum + (p.rx_bytes ?? 0),
+                  0,
+                ),
+              )}
+            </span>
+            <span className="flex items-center gap-1">
+              <ArrowUpFromLine className="h-3 w-3 text-amber-400" />
+              TX:{" "}
+              {formatBytes(
+                iface.peers.reduce(
+                  (sum, p) => sum + (p.tx_bytes ?? 0),
+                  0,
+                ),
+              )}
+            </span>
+          </div>
+        )}
       </CardHeader>
 
       <CardContent className="p-0">
@@ -390,20 +607,39 @@ function InterfaceCard({ iface }: { iface: VpnInterfaceStatus }) {
           <Table>
             <TableHeader>
               <TableRow className="border-slate-800/70 hover:bg-transparent">
-                <TableHead className="text-xs uppercase tracking-wide text-slate-500">Status</TableHead>
-                <TableHead className="text-xs uppercase tracking-wide text-slate-500">Peer</TableHead>
-                <TableHead className="text-xs uppercase tracking-wide text-slate-500">Endpoint</TableHead>
-                <TableHead className="text-xs uppercase tracking-wide text-slate-500">Allowed IPs</TableHead>
-                <TableHead className="text-xs uppercase tracking-wide text-slate-500">Last Handshake</TableHead>
-                <TableHead className="text-right text-xs uppercase tracking-wide text-slate-500">RX</TableHead>
-                <TableHead className="text-right text-xs uppercase tracking-wide text-slate-500">TX</TableHead>
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500">
+                  Status
+                </TableHead>
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500">
+                  Peer
+                </TableHead>
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500">
+                  Endpoint
+                </TableHead>
+                {vpnType === "wireguard" && (
+                  <TableHead className="text-xs uppercase tracking-wide text-slate-500">
+                    Allowed IPs
+                  </TableHead>
+                )}
+                <TableHead className="text-xs uppercase tracking-wide text-slate-500">
+                  {vpnType === "wireguard" ? "Last Handshake" : "Status"}
+                </TableHead>
+                <TableHead className="text-right text-xs uppercase tracking-wide text-slate-500">
+                  RX
+                </TableHead>
+                <TableHead className="text-right text-xs uppercase tracking-wide text-slate-500">
+                  TX
+                </TableHead>
               </TableRow>
             </TableHeader>
 
             <TableBody>
               {iface.peers.length === 0 ? (
                 <TableRow className="border-slate-800/70 hover:bg-transparent">
-                  <TableCell colSpan={7} className="py-9 text-center text-sm text-slate-500">
+                  <TableCell
+                    colSpan={vpnType === "wireguard" ? 7 : 6}
+                    className="py-9 text-center text-sm text-slate-500"
+                  >
                     No peers configured.
                   </TableCell>
                 </TableRow>
@@ -435,30 +671,55 @@ function InterfaceCard({ iface }: { iface: VpnInterfaceStatus }) {
                     </TableCell>
 
                     <TableCell className="max-w-[220px]">
-                      <div className="truncate font-medium text-white" title={peer.name || undefined}>
+                      <div
+                        className="truncate font-medium text-white"
+                        title={peer.name || undefined}
+                      >
                         {peer.name || (
                           <span className="font-mono text-slate-500">
-                            {peer.public_key ? `${peer.public_key.substring(0, 12)}...` : "Unknown"}
+                            {peer.public_key
+                              ? `${peer.public_key.substring(0, 12)}...`
+                              : "Unknown"}
                           </span>
                         )}
                       </div>
                     </TableCell>
 
                     <TableCell className="max-w-[220px] font-mono text-xs text-slate-400">
-                      <span className="block truncate" title={peer.endpoint ?? undefined}>
+                      <span
+                        className="block truncate"
+                        title={peer.endpoint ?? undefined}
+                      >
                         {peer.endpoint ?? "—"}
                       </span>
                     </TableCell>
 
-                    <TableCell className="max-w-[260px] font-mono text-xs text-slate-400">
-                      <span className="block truncate" title={peer.allowed_ips.join(", ") || undefined}>
-                        {peer.allowed_ips.length > 0 ? peer.allowed_ips.join(", ") : "—"}
-                      </span>
-                    </TableCell>
+                    {vpnType === "wireguard" && (
+                      <TableCell className="max-w-[260px] font-mono text-xs text-slate-400">
+                        <span
+                          className="block truncate"
+                          title={
+                            peer.allowed_ips.join(", ") || undefined
+                          }
+                        >
+                          {peer.allowed_ips.length > 0
+                            ? peer.allowed_ips.join(", ")
+                            : "—"}
+                        </span>
+                      </TableCell>
+                    )}
 
-                    <TableCell className="text-slate-400">{timeAgo(peer.last_handshake)}</TableCell>
-                    <TableCell className="text-right font-mono text-xs text-slate-400">{formatBytes(peer.rx_bytes)}</TableCell>
-                    <TableCell className="text-right font-mono text-xs text-slate-400">{formatBytes(peer.tx_bytes)}</TableCell>
+                    <TableCell className="text-slate-400">
+                      {vpnType === "wireguard"
+                        ? timeAgo(peer.last_handshake)
+                        : peer.connectivity}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs text-slate-400">
+                      {formatBytes(peer.rx_bytes)}
+                    </TableCell>
+                    <TableCell className="text-right font-mono text-xs text-slate-400">
+                      {formatBytes(peer.tx_bytes)}
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -467,5 +728,44 @@ function InterfaceCard({ iface }: { iface: VpnInterfaceStatus }) {
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function OvpnClientRow({ client }: { client: OvpnClientStatus }) {
+  return (
+    <TableRow className="border-slate-800/70 hover:bg-slate-800/35">
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <Wifi className="h-3.5 w-3.5 text-emerald-400" />
+          <Badge
+            variant="outline"
+            className="rounded-md border border-emerald-500/30 bg-emerald-500/10 text-[11px] uppercase text-emerald-300"
+          >
+            online
+          </Badge>
+        </div>
+      </TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <Users className="h-3.5 w-3.5 text-slate-500" />
+          <span className="font-medium text-white">{client.name}</span>
+        </div>
+      </TableCell>
+      <TableCell className="font-mono text-xs text-slate-400">
+        {client.address ?? "—"}
+      </TableCell>
+      <TableCell className="font-mono text-xs text-slate-400">
+        {client.caller_id ?? "—"}
+      </TableCell>
+      <TableCell className="text-slate-400">
+        <div className="flex items-center gap-1">
+          <Clock className="h-3 w-3 text-slate-500" />
+          {client.uptime ?? "—"}
+        </div>
+      </TableCell>
+      <TableCell className="text-xs text-slate-400">
+        {client.encoding ?? "—"}
+      </TableCell>
+    </TableRow>
   );
 }

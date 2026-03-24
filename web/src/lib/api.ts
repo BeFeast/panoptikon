@@ -1751,6 +1751,57 @@ export function fetchVpnStatus(): Promise<
   return apiGet<import("./types").VpnStatusResponse>("/api/v1/vpn-status");
 }
 
+// ─── OpenVPN Management ─────────────────────────────────────
+
+export function fetchOvpnServerConfig(): Promise<
+  import("./types").OvpnServerStatus
+> {
+  return apiGet<import("./types").OvpnServerStatus>("/api/v1/openvpn/server");
+}
+
+export function updateOvpnServerConfig(
+  data: Partial<import("./types").OvpnServerStatus>,
+): Promise<{ status: string; message: string }> {
+  return apiPatch<{ status: string; message: string }>(
+    "/api/v1/openvpn/server",
+    data,
+  );
+}
+
+export function fetchOvpnInterfaces(): Promise<
+  import("./types").OvpnInterfaceResponse[]
+> {
+  return apiGet<import("./types").OvpnInterfaceResponse[]>(
+    "/api/v1/openvpn/interfaces",
+  );
+}
+
+export function fetchOvpnCertificates(): Promise<
+  import("./types").CertificateResponse[]
+> {
+  return apiGet<import("./types").CertificateResponse[]>(
+    "/api/v1/openvpn/certificates",
+  );
+}
+
+export function fetchOvpnClients(): Promise<
+  import("./types").OvpnConnectedClient[]
+> {
+  return apiGet<import("./types").OvpnConnectedClient[]>(
+    "/api/v1/openvpn/clients",
+  );
+}
+
+export function exportOvpnClientConfig(data: {
+  server_address: string;
+  username?: string;
+}): Promise<import("./types").OvpnClientConfigResponse> {
+  return apiPost<import("./types").OvpnClientConfigResponse>(
+    "/api/v1/openvpn/export-client-config",
+    data,
+  );
+}
+
 // ─── QoS / Traffic Shaping ───────────────────────────────────
 
 export function fetchQosSummary(): Promise<

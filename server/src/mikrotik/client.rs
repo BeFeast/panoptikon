@@ -442,6 +442,55 @@ impl MikrotikClient {
         Ok(res)
     }
 
+    /// Fetch OpenVPN server interfaces.
+    pub async fn ovpn_server_interfaces(&self) -> Result<Vec<OvpnServerInterface>> {
+        let val = self.get("/interface/ovpn-server").await?;
+        let res: Vec<OvpnServerInterface> =
+            serde_json::from_value(val).context("failed to parse OVPN server interfaces")?;
+        Ok(res)
+    }
+
+    /// Fetch OpenVPN server configuration.
+    pub async fn ovpn_server_config(&self) -> Result<OvpnServerConfig> {
+        let val = self.get("/interface/ovpn-server/server").await?;
+        let res: OvpnServerConfig =
+            serde_json::from_value(val).context("failed to parse OVPN server config")?;
+        Ok(res)
+    }
+
+    /// Update OpenVPN server configuration.
+    pub async fn update_ovpn_server_config(
+        &self,
+        req: &OvpnServerConfigWriteRequest,
+    ) -> Result<()> {
+        self.send_json(Method::POST, "/interface/ovpn-server/server/set", req)
+            .await
+    }
+
+    /// Fetch certificates.
+    pub async fn certificates(&self) -> Result<Vec<Certificate>> {
+        let val = self.get("/certificate").await?;
+        let res: Vec<Certificate> =
+            serde_json::from_value(val).context("failed to parse certificates")?;
+        Ok(res)
+    }
+
+    /// Fetch PPP secrets (VPN users).
+    pub async fn ppp_secrets(&self) -> Result<Vec<PppSecret>> {
+        let val = self.get("/ppp/secret").await?;
+        let res: Vec<PppSecret> =
+            serde_json::from_value(val).context("failed to parse PPP secrets")?;
+        Ok(res)
+    }
+
+    /// Fetch PPP active connections.
+    pub async fn ppp_active(&self) -> Result<Vec<PppActive>> {
+        let val = self.get("/ppp/active").await?;
+        let res: Vec<PppActive> =
+            serde_json::from_value(val).context("failed to parse PPP active connections")?;
+        Ok(res)
+    }
+
     /// Fetch WireGuard peers.
     pub async fn wireguard_peers(&self) -> Result<Vec<WgPeer>> {
         let val = self.get("/interface/wireguard/peers").await?;

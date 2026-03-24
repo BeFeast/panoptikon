@@ -1955,6 +1955,16 @@ export interface VpnInterfaceStatus {
   peers_total: number;
   /** "mikrotik" */
   source: string;
+  /** "wireguard" or "openvpn" */
+  vpn_type: string;
+}
+
+export interface OvpnClientStatus {
+  name: string;
+  caller_id: string | null;
+  address: string | null;
+  uptime: string | null;
+  encoding: string | null;
 }
 
 export interface VpnStatusResponse {
@@ -1964,6 +1974,62 @@ export interface VpnStatusResponse {
   online_peers: number;
   total_rx_bytes: number;
   total_tx_bytes: number;
+  openvpn_clients: OvpnClientStatus[];
+  openvpn_enabled: boolean;
+}
+
+export interface OvpnServerStatus {
+  enabled: boolean;
+  port: number | null;
+  mode: string | null;
+  protocol: string | null;
+  cipher: string | null;
+  auth: string | null;
+  certificate: string | null;
+  require_client_certificate: boolean;
+  netmask: string | null;
+  default_profile: string | null;
+}
+
+export interface OvpnInterfaceResponse {
+  id: string;
+  name: string;
+  user: string | null;
+  mac_address: string | null;
+  running: boolean;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface CertificateResponse {
+  id: string;
+  name: string;
+  common_name: string | null;
+  issuer: string | null;
+  key_size: string | null;
+  days_valid: string | null;
+  invalid_before: string | null;
+  invalid_after: string | null;
+  expired: boolean;
+  trusted: boolean;
+  ca: boolean;
+  fingerprint: string | null;
+  has_private_key: boolean;
+}
+
+export interface OvpnClientConfigResponse {
+  config: string;
+  filename: string;
+}
+
+export interface OvpnConnectedClient {
+  id: string;
+  name: string;
+  service: string | null;
+  caller_id: string | null;
+  address: string | null;
+  uptime: string | null;
+  encoding: string | null;
 }
 
 export interface QosSummary {
