@@ -153,6 +153,104 @@ pub struct DhcpStaticLeaseWriteRequest {
     pub comment: Option<String>,
 }
 
+/// MikroTik DHCP server (`/rest/ip/dhcp-server`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DhcpServer {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub interface: Option<String>,
+    #[serde(rename = "address-pool")]
+    pub address_pool: Option<String>,
+    #[serde(rename = "lease-time")]
+    pub lease_time: Option<String>,
+    pub disabled: Option<String>,
+    #[serde(rename = "authoritative")]
+    pub authoritative: Option<String>,
+    pub dynamic: Option<String>,
+    pub invalid: Option<String>,
+}
+
+/// MikroTik DHCP server write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct DhcpServerWriteRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub interface: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "address-pool")]
+    pub address_pool: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "lease-time")]
+    pub lease_time: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authoritative: Option<String>,
+}
+
+/// MikroTik DHCP network (`/rest/ip/dhcp-server/network`).
+/// Configures options sent to clients: gateway, DNS, domain, NTP.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DhcpNetwork {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub address: Option<String>,
+    pub gateway: Option<String>,
+    #[serde(rename = "dns-server")]
+    pub dns_server: Option<String>,
+    pub domain: Option<String>,
+    #[serde(rename = "ntp-server")]
+    pub ntp_server: Option<String>,
+    pub comment: Option<String>,
+    pub dynamic: Option<String>,
+}
+
+/// MikroTik DHCP network write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct DhcpNetworkWriteRequest {
+    pub address: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gateway: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dns-server")]
+    pub dns_server: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub domain: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "ntp-server")]
+    pub ntp_server: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+}
+
+/// MikroTik IP pool (`/rest/ip/pool`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IpPool {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub ranges: Option<String>,
+    pub comment: Option<String>,
+    pub dynamic: Option<String>,
+}
+
+/// MikroTik IP pool write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct IpPoolWriteRequest {
+    pub name: String,
+    pub ranges: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+}
+
+/// MikroTik log entry (`/rest/log`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LogEntry {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub time: Option<String>,
+    pub topics: Option<String>,
+    pub message: Option<String>,
+}
+
 /// MikroTik firewall filter rule (`/rest/ip/firewall/filter`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FirewallFilter {
