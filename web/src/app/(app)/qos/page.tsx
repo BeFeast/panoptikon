@@ -72,7 +72,7 @@ import type {
 import { toast } from "sonner";
 
 const surfaceClass =
-  "border-slate-800/70 bg-gradient-to-b from-slate-900/80 to-slate-900/55 shadow-[0_12px_30px_rgba(2,6,23,0.35)]";
+  "border-slate-800 bg-slate-900/60 shadow-[0_12px_30px_rgba(2,6,23,0.35)]";
 
 const LIVE_POLL_INTERVAL = 5000;
 

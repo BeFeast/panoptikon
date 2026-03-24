@@ -37,7 +37,7 @@ import { cn } from "@/lib/utils";
 import type { VpnInterfaceStatus, VpnStatusResponse } from "@/lib/types";
 
 const surfaceClass =
-  "border-slate-800/70 bg-gradient-to-b from-slate-900/80 to-slate-900/55 shadow-[0_12px_30px_rgba(2,6,23,0.35)]";
+  "border-slate-800 bg-slate-900/60 shadow-[0_12px_30px_rgba(2,6,23,0.35)]";
 
 /** Format bytes into a human-readable string. */
 function formatBytes(bytes: number | null): string {
