@@ -61,6 +61,13 @@ import type {
   MikrotikRoute,
   MikrotikDhcpLease,
   MikrotikDhcpStaticMappingRequest,
+  MikrotikDhcpServer,
+  MikrotikDhcpServerUpdateRequest,
+  MikrotikDhcpNetwork,
+  MikrotikDhcpNetworkRequest,
+  MikrotikIpPool,
+  MikrotikIpPoolRequest,
+  MikrotikDhcpLogEntry,
   MikrotikFirewall,
   MikrotikFirewallFilterRequest,
   MikrotikFirewallNatRequest,
@@ -925,6 +932,75 @@ export function createMikrotikDhcpStaticMapping(
 
 export function deleteMikrotikDhcpLease(id: string): Promise<void> {
   return apiDelete(`/api/v1/mikrotik/dhcp-leases/${encodeURIComponent(id)}`);
+}
+
+// DHCP Server Pool Configuration
+export function fetchMikrotikDhcpServers(): Promise<MikrotikDhcpServer[]> {
+  return apiGet<MikrotikDhcpServer[]>("/api/v1/mikrotik/dhcp/servers");
+}
+
+export function updateMikrotikDhcpServer(
+  id: string,
+  body: MikrotikDhcpServerUpdateRequest
+): Promise<void> {
+  return apiPatch<void>(
+    `/api/v1/mikrotik/dhcp/servers/${encodeURIComponent(id)}`,
+    body
+  );
+}
+
+export function fetchMikrotikDhcpNetworks(): Promise<MikrotikDhcpNetwork[]> {
+  return apiGet<MikrotikDhcpNetwork[]>("/api/v1/mikrotik/dhcp/networks");
+}
+
+export function createMikrotikDhcpNetwork(
+  body: MikrotikDhcpNetworkRequest
+): Promise<void> {
+  return apiPost<void>("/api/v1/mikrotik/dhcp/networks", body);
+}
+
+export function updateMikrotikDhcpNetwork(
+  id: string,
+  body: MikrotikDhcpNetworkRequest
+): Promise<void> {
+  return apiPatch<void>(
+    `/api/v1/mikrotik/dhcp/networks/${encodeURIComponent(id)}`,
+    body
+  );
+}
+
+export function deleteMikrotikDhcpNetwork(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/mikrotik/dhcp/networks/${encodeURIComponent(id)}`
+  );
+}
+
+export function fetchMikrotikDhcpPools(): Promise<MikrotikIpPool[]> {
+  return apiGet<MikrotikIpPool[]>("/api/v1/mikrotik/dhcp/pools");
+}
+
+export function createMikrotikDhcpPool(
+  body: MikrotikIpPoolRequest
+): Promise<void> {
+  return apiPost<void>("/api/v1/mikrotik/dhcp/pools", body);
+}
+
+export function updateMikrotikDhcpPool(
+  id: string,
+  body: MikrotikIpPoolRequest
+): Promise<void> {
+  return apiPut<void>(
+    `/api/v1/mikrotik/dhcp/pools/${encodeURIComponent(id)}`,
+    body
+  );
+}
+
+export function deleteMikrotikDhcpPool(id: string): Promise<void> {
+  return apiDelete(`/api/v1/mikrotik/dhcp/pools/${encodeURIComponent(id)}`);
+}
+
+export function fetchMikrotikDhcpLogs(): Promise<MikrotikDhcpLogEntry[]> {
+  return apiGet<MikrotikDhcpLogEntry[]>("/api/v1/mikrotik/dhcp/logs");
 }
 
 export function fetchMikrotikFirewall(): Promise<MikrotikFirewall> {

@@ -316,6 +316,78 @@ impl MikrotikClient {
             .await
     }
 
+    /// Fetch DHCP servers.
+    pub async fn dhcp_servers(&self) -> Result<Vec<DhcpServer>> {
+        let val = self.get("/ip/dhcp-server").await?;
+        let res: Vec<DhcpServer> =
+            serde_json::from_value(val).context("failed to parse DHCP servers")?;
+        Ok(res)
+    }
+
+    /// Update a DHCP server by RouterOS `.id`.
+    pub async fn update_dhcp_server(&self, id: &str, req: &DhcpServerWriteRequest) -> Result<()> {
+        self.send_json(Method::PATCH, &format!("/ip/dhcp-server/{id}"), req)
+            .await
+    }
+
+    /// Fetch DHCP networks (options sent to clients).
+    pub async fn dhcp_networks(&self) -> Result<Vec<DhcpNetwork>> {
+        let val = self.get("/ip/dhcp-server/network").await?;
+        let res: Vec<DhcpNetwork> =
+            serde_json::from_value(val).context("failed to parse DHCP networks")?;
+        Ok(res)
+    }
+
+    /// Create a DHCP network.
+    pub async fn create_dhcp_network(&self, req: &DhcpNetworkWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/ip/dhcp-server/network", req)
+            .await
+    }
+
+    /// Update a DHCP network by RouterOS `.id`.
+    pub async fn update_dhcp_network(&self, id: &str, req: &DhcpNetworkWriteRequest) -> Result<()> {
+        self.send_json(Method::PATCH, &format!("/ip/dhcp-server/network/{id}"), req)
+            .await
+    }
+
+    /// Delete a DHCP network by RouterOS `.id`.
+    pub async fn delete_dhcp_network(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/ip/dhcp-server/network/{id}"))
+            .await
+    }
+
+    /// Fetch IP address pools.
+    pub async fn ip_pools(&self) -> Result<Vec<IpPool>> {
+        let val = self.get("/ip/pool").await?;
+        let res: Vec<IpPool> = serde_json::from_value(val).context("failed to parse IP pools")?;
+        Ok(res)
+    }
+
+    /// Create an IP pool.
+    pub async fn create_ip_pool(&self, req: &IpPoolWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/ip/pool", req).await
+    }
+
+    /// Update an IP pool by RouterOS `.id`.
+    pub async fn update_ip_pool(&self, id: &str, req: &IpPoolWriteRequest) -> Result<()> {
+        self.send_json(Method::PATCH, &format!("/ip/pool/{id}"), req)
+            .await
+    }
+
+    /// Delete an IP pool by RouterOS `.id`.
+    pub async fn delete_ip_pool(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/ip/pool/{id}"))
+            .await
+    }
+
+    /// Fetch DHCP-specific log entries.
+    pub async fn dhcp_logs(&self) -> Result<Vec<LogEntry>> {
+        let val = self.get("/log?topics=dhcp").await?;
+        let res: Vec<LogEntry> =
+            serde_json::from_value(val).context("failed to parse DHCP logs")?;
+        Ok(res)
+    }
+
     /// Fetch firewall filter rules.
     pub async fn firewall_filter(&self) -> Result<Vec<FirewallFilter>> {
         let val = self.get("/ip/firewall/filter").await?;

@@ -112,6 +112,17 @@ import {
   toggleMikrotikAddressList,
   moveMikrotikFirewallFilter,
   createMikrotikDhcpStaticMapping,
+  fetchMikrotikDhcpServers,
+  updateMikrotikDhcpServer,
+  fetchMikrotikDhcpNetworks,
+  createMikrotikDhcpNetwork,
+  updateMikrotikDhcpNetwork,
+  deleteMikrotikDhcpNetwork,
+  fetchMikrotikDhcpPools,
+  createMikrotikDhcpPool,
+  updateMikrotikDhcpPool,
+  deleteMikrotikDhcpPool,
+  fetchMikrotikDhcpLogs,
   fetchTrafficHistory,
   fetchMikrotikMangleRules,
   createMikrotikMangleRule,
@@ -151,6 +162,12 @@ import type {
   MikrotikDns,
   MikrotikWireguard,
   TrafficHistoryPoint,
+  MikrotikDhcpServer,
+  MikrotikDhcpNetwork,
+  MikrotikDhcpNetworkRequest,
+  MikrotikIpPool,
+  MikrotikIpPoolRequest,
+  MikrotikDhcpLogEntry,
 } from "@/lib/types";
 
 function formatBytes(bytes: string | null): string {
@@ -1053,6 +1070,550 @@ function DhcpLeasesTable({
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ── DHCP Server Pool Configuration ────────────────────────
+
+function DhcpServersSection({ reload: parentReload }: { reload: () => Promise<void> }) {
+  const servers = useData(useCallback(() => fetchMikrotikDhcpServers(), []));
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editLeaseTime, setEditLeaseTime] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const handleEdit = (srv: MikrotikDhcpServer) => {
+    setEditId(srv.id);
+    setEditLeaseTime(srv.lease_time ?? "");
+  };
+
+  const handleSave = async () => {
+    if (!editId) return;
+    setSaving(true);
+    try {
+      await updateMikrotikDhcpServer(editId, { lease_time: editLeaseTime || undefined });
+      toast.success("DHCP server updated");
+      setEditId(null);
+      await servers.reload();
+      await parentReload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to update server");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (servers.loading) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (servers.error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{servers.error}</p>
+      </div>
+    );
+  }
+
+  if (!servers.data || servers.data.length === 0) {
+    return <p className="py-4 text-sm text-slate-500">No DHCP servers configured.</p>;
+  }
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-slate-800">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-slate-800 bg-slate-950 text-left">
+            <th className="px-4 py-3 font-medium text-slate-400">Name</th>
+            <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
+            <th className="px-4 py-3 font-medium text-slate-400">Address Pool</th>
+            <th className="px-4 py-3 font-medium text-slate-400">Lease Time</th>
+            <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+            <th className="px-4 py-3 font-medium text-slate-400 w-20" />
+          </tr>
+        </thead>
+        <tbody>
+          {servers.data.map((srv, idx) => (
+            <tr key={srv.id ?? idx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors">
+              <td className="px-4 py-3 font-medium text-white">{srv.name ?? "\u2014"}</td>
+              <td className="px-4 py-3 text-slate-300">{srv.interface ?? "\u2014"}</td>
+              <td className="px-4 py-3 text-slate-300">{srv.address_pool ?? "\u2014"}</td>
+              <td className="px-4 py-3">
+                {editId === srv.id ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      className="h-7 w-28 bg-slate-800 border-slate-700 text-white text-xs"
+                      value={editLeaseTime}
+                      onChange={(e) => setEditLeaseTime(e.target.value)}
+                      placeholder="e.g. 1d"
+                    />
+                    <Button size="sm" className="h-7 text-xs" onClick={handleSave} disabled={saving}>Save</Button>
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditId(null)}>Cancel</Button>
+                  </div>
+                ) : (
+                  <span className="font-mono text-xs text-slate-400">{srv.lease_time ?? "\u2014"}</span>
+                )}
+              </td>
+              <td className="px-4 py-3">
+                <Badge
+                  variant="outline"
+                  className={srv.disabled ? "border-slate-700 text-slate-500 text-xs" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"}
+                >
+                  {srv.disabled ? "disabled" : "active"}
+                </Badge>
+              </td>
+              <td className="px-4 py-3">
+                {!editId && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-slate-400 hover:text-white"
+                    onClick={() => handleEdit(srv)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+const EMPTY_NETWORK_FORM: MikrotikDhcpNetworkRequest = {
+  address: "",
+  gateway: "",
+  dns_server: "",
+  domain: "",
+  ntp_server: "",
+  comment: "",
+};
+
+function DhcpNetworksSection() {
+  const networks = useData(useCallback(() => fetchMikrotikDhcpNetworks(), []));
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState<MikrotikDhcpNetworkRequest>({ ...EMPTY_NETWORK_FORM });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MikrotikDhcpNetwork | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!form.address.trim()) return;
+    setSaving(true);
+    try {
+      if (editId) {
+        await updateMikrotikDhcpNetwork(editId, form);
+        toast.success("DHCP network updated");
+      } else {
+        await createMikrotikDhcpNetwork(form);
+        toast.success("DHCP network created");
+      }
+      setShowAdd(false);
+      setEditId(null);
+      setForm({ ...EMPTY_NETWORK_FORM });
+      await networks.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Operation failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEdit = (n: MikrotikDhcpNetwork) => {
+    setEditId(n.id);
+    setForm({
+      address: n.address ?? "",
+      gateway: n.gateway ?? "",
+      dns_server: n.dns_server ?? "",
+      domain: n.domain ?? "",
+      ntp_server: n.ntp_server ?? "",
+      comment: n.comment ?? "",
+    });
+    setShowAdd(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget?.id) return;
+    try {
+      await deleteMikrotikDhcpNetwork(deleteTarget.id);
+      toast.success("DHCP network deleted");
+      setDeleteTarget(null);
+      await networks.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    }
+  };
+
+  if (networks.loading) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (networks.error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{networks.error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button
+          size="sm"
+          className="gap-1.5"
+          onClick={() => {
+            setEditId(null);
+            setForm({ ...EMPTY_NETWORK_FORM });
+            setShowAdd(true);
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" /> Add Network
+        </Button>
+      </div>
+
+      {(!networks.data || networks.data.length === 0) ? (
+        <p className="py-4 text-sm text-slate-500">No DHCP networks configured. Add one to define options for clients.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-md border border-slate-800">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                <th className="px-4 py-3 font-medium text-slate-400">Address</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Gateway</th>
+                <th className="px-4 py-3 font-medium text-slate-400">DNS</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Domain</th>
+                <th className="px-4 py-3 font-medium text-slate-400">NTP</th>
+                <th className="px-4 py-3 font-medium text-slate-400 w-20" />
+              </tr>
+            </thead>
+            <tbody>
+              {networks.data.map((n, idx) => (
+                <tr key={n.id ?? idx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors">
+                  <td className="px-4 py-3 font-mono text-xs text-white">{n.address ?? "\u2014"}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-300">{n.gateway ?? "\u2014"}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-300">{n.dns_server ?? "\u2014"}</td>
+                  <td className="px-4 py-3 text-slate-300">{n.domain ?? "\u2014"}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-300">{n.ntp_server ?? "\u2014"}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-white" onClick={() => handleEdit(n)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      {!n.dynamic && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-rose-400" onClick={() => setDeleteTarget(n)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Dialog open={showAdd} onOpenChange={(open) => { if (!open) { setShowAdd(false); setEditId(null); } }}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{editId ? "Edit DHCP Network" : "Add DHCP Network"}</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Configure DHCP options (gateway, DNS, domain, NTP) for a network range.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div>
+              <Label className="text-slate-300 text-xs">Network Address (CIDR)</Label>
+              <Input className="bg-slate-800 border-slate-700 text-white" placeholder="192.168.1.0/24" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300 text-xs">Gateway</Label>
+              <Input className="bg-slate-800 border-slate-700 text-white" placeholder="192.168.1.1" value={form.gateway ?? ""} onChange={(e) => setForm({ ...form, gateway: e.target.value || undefined })} />
+            </div>
+            <div>
+              <Label className="text-slate-300 text-xs">DNS Servers (comma-separated)</Label>
+              <Input className="bg-slate-800 border-slate-700 text-white" placeholder="8.8.8.8,8.8.4.4" value={form.dns_server ?? ""} onChange={(e) => setForm({ ...form, dns_server: e.target.value || undefined })} />
+            </div>
+            <div>
+              <Label className="text-slate-300 text-xs">Domain</Label>
+              <Input className="bg-slate-800 border-slate-700 text-white" placeholder="local" value={form.domain ?? ""} onChange={(e) => setForm({ ...form, domain: e.target.value || undefined })} />
+            </div>
+            <div>
+              <Label className="text-slate-300 text-xs">NTP Server</Label>
+              <Input className="bg-slate-800 border-slate-700 text-white" placeholder="pool.ntp.org" value={form.ntp_server ?? ""} onChange={(e) => setForm({ ...form, ntp_server: e.target.value || undefined })} />
+            </div>
+            <div>
+              <Label className="text-slate-300 text-xs">Comment</Label>
+              <Input className="bg-slate-800 border-slate-700 text-white" value={form.comment ?? ""} onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setShowAdd(false); setEditId(null); }}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={saving || !form.address.trim()}>
+              {saving ? "Saving\u2026" : editId ? "Update" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete DHCP Network</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Remove network {deleteTarget?.address}? DHCP clients in this range will no longer receive options.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 text-slate-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+const EMPTY_POOL_FORM: MikrotikIpPoolRequest = { name: "", ranges: "", comment: "" };
+
+function DhcpPoolsSection() {
+  const pools = useData(useCallback(() => fetchMikrotikDhcpPools(), []));
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState<MikrotikIpPoolRequest>({ ...EMPTY_POOL_FORM });
+  const [editId, setEditId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<MikrotikIpPool | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!form.name.trim() || !form.ranges.trim()) return;
+    setSaving(true);
+    try {
+      if (editId) {
+        await updateMikrotikDhcpPool(editId, form);
+        toast.success("IP pool updated");
+      } else {
+        await createMikrotikDhcpPool(form);
+        toast.success("IP pool created");
+      }
+      setShowAdd(false);
+      setEditId(null);
+      setForm({ ...EMPTY_POOL_FORM });
+      await pools.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Operation failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleEdit = (p: MikrotikIpPool) => {
+    setEditId(p.id);
+    setForm({ name: p.name ?? "", ranges: p.ranges ?? "", comment: p.comment ?? "" });
+    setShowAdd(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget?.id) return;
+    try {
+      await deleteMikrotikDhcpPool(deleteTarget.id);
+      toast.success("IP pool deleted");
+      setDeleteTarget(null);
+      await pools.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Delete failed");
+    }
+  };
+
+  if (pools.loading) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <Skeleton key={i} className="h-12 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (pools.error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{pools.error}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button
+          size="sm"
+          className="gap-1.5"
+          onClick={() => {
+            setEditId(null);
+            setForm({ ...EMPTY_POOL_FORM });
+            setShowAdd(true);
+          }}
+        >
+          <Plus className="h-3.5 w-3.5" /> Add Pool
+        </Button>
+      </div>
+
+      {(!pools.data || pools.data.length === 0) ? (
+        <p className="py-4 text-sm text-slate-500">No IP pools configured. Add one to define DHCP address ranges.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-md border border-slate-800">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                <th className="px-4 py-3 font-medium text-slate-400">Name</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Ranges</th>
+                <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
+                <th className="px-4 py-3 font-medium text-slate-400 w-20" />
+              </tr>
+            </thead>
+            <tbody>
+              {pools.data.map((p, idx) => (
+                <tr key={p.id ?? idx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors">
+                  <td className="px-4 py-3 font-medium text-white">{p.name ?? "\u2014"}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-slate-300">{p.ranges ?? "\u2014"}</td>
+                  <td className="px-4 py-3 text-slate-400 text-xs">{p.comment ?? "\u2014"}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-white" onClick={() => handleEdit(p)}>
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                      {!p.dynamic && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-rose-400" onClick={() => setDeleteTarget(p)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Dialog open={showAdd} onOpenChange={(open) => { if (!open) { setShowAdd(false); setEditId(null); } }}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editId ? "Edit IP Pool" : "Add IP Pool"}</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Define an IP address range for the DHCP server.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div>
+              <Label className="text-slate-300 text-xs">Pool Name</Label>
+              <Input className="bg-slate-800 border-slate-700 text-white" placeholder="dhcp-pool1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300 text-xs">IP Ranges</Label>
+              <Input className="bg-slate-800 border-slate-700 text-white" placeholder="192.168.1.100-192.168.1.200" value={form.ranges} onChange={(e) => setForm({ ...form, ranges: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300 text-xs">Comment</Label>
+              <Input className="bg-slate-800 border-slate-700 text-white" value={form.comment ?? ""} onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setShowAdd(false); setEditId(null); }}>Cancel</Button>
+            <Button onClick={handleSubmit} disabled={saving || !form.name.trim() || !form.ranges.trim()}>
+              {saving ? "Saving\u2026" : editId ? "Update" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete IP Pool</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Remove pool &quot;{deleteTarget?.name}&quot; ({deleteTarget?.ranges})? Any DHCP server using this pool will stop assigning addresses.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 text-slate-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+function DhcpLogsSection() {
+  const logs = useData(useCallback(() => fetchMikrotikDhcpLogs(), []));
+
+  if (logs.loading) {
+    return (
+      <div className="space-y-2">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-8 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (logs.error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{logs.error}</p>
+      </div>
+    );
+  }
+
+  if (!logs.data || logs.data.length === 0) {
+    return <p className="py-4 text-sm text-slate-500">No DHCP log entries found.</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-end">
+        <Button variant="ghost" size="sm" className="gap-1.5 text-slate-400" onClick={() => logs.reload()}>
+          Refresh
+        </Button>
+      </div>
+      <div className="overflow-x-auto rounded-md border border-slate-800 max-h-96 overflow-y-auto">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0">
+            <tr className="border-b border-slate-800 bg-slate-950 text-left">
+              <th className="px-4 py-2 font-medium text-slate-400 w-40">Time</th>
+              <th className="px-4 py-2 font-medium text-slate-400">Message</th>
+            </tr>
+          </thead>
+          <tbody>
+            {logs.data.slice(-100).reverse().map((entry, idx) => (
+              <tr key={entry.id ?? idx} className="border-b border-slate-800 last:border-b-0">
+                <td className="px-4 py-2 font-mono text-xs text-slate-500 whitespace-nowrap">{entry.time ?? "\u2014"}</td>
+                <td className="px-4 py-2 text-xs text-slate-300">{entry.message ?? "\u2014"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -3721,16 +4282,49 @@ export default function MikrotikRouter() {
           <Card className="border-slate-800 bg-slate-900">
             <CardHeader>
               <CardTitle className="text-base text-white">
-                DHCP Leases
+                DHCP Server Management
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <DhcpLeasesTable
-                data={dhcp.data}
-                loading={dhcp.loading}
-                error={dhcp.error}
-                reload={dhcp.reload}
-              />
+              <Tabs defaultValue="leases">
+                <TabsList className="border-slate-800 bg-slate-950 mb-4">
+                  <TabsTrigger value="leases" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-xs">
+                    Leases
+                  </TabsTrigger>
+                  <TabsTrigger value="servers" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-xs">
+                    Servers
+                  </TabsTrigger>
+                  <TabsTrigger value="pools" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-xs">
+                    IP Pools
+                  </TabsTrigger>
+                  <TabsTrigger value="networks" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-xs">
+                    Networks
+                  </TabsTrigger>
+                  <TabsTrigger value="logs" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-xs">
+                    Logs
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="leases">
+                  <DhcpLeasesTable
+                    data={dhcp.data}
+                    loading={dhcp.loading}
+                    error={dhcp.error}
+                    reload={dhcp.reload}
+                  />
+                </TabsContent>
+                <TabsContent value="servers">
+                  <DhcpServersSection reload={dhcp.reload} />
+                </TabsContent>
+                <TabsContent value="pools">
+                  <DhcpPoolsSection />
+                </TabsContent>
+                <TabsContent value="networks">
+                  <DhcpNetworksSection />
+                </TabsContent>
+                <TabsContent value="logs">
+                  <DhcpLogsSection />
+                </TabsContent>
+              </Tabs>
             </CardContent>
           </Card>
         </TabsContent>
