@@ -490,7 +490,7 @@ export default function DevicesPage() {
                 placeholder="Search name, IP, MAC, vendor…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-9 border-slate-700/75 bg-slate-900/72 pl-9 text-sm text-slate-200 placeholder:text-slate-500 focus-visible:ring-slate-500/55"
+                className="h-9 border-slate-700 bg-slate-900 pl-9 text-sm text-slate-200 placeholder:text-slate-500 focus-visible:ring-slate-500"
               />
             </div>
 
