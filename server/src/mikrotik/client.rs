@@ -500,6 +500,68 @@ impl MikrotikClient {
             .await
     }
 
+    /// Fetch IP route rules (policy-based routing).
+    pub async fn route_rules(&self) -> Result<Vec<RouteRule>> {
+        let val = self.get("/ip/route/rule").await?;
+        let res: Vec<RouteRule> =
+            serde_json::from_value(val).context("failed to parse route rules")?;
+        Ok(res)
+    }
+
+    /// Create an IP route rule.
+    pub async fn create_route_rule(&self, req: &RouteRuleWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/ip/route/rule", req).await
+    }
+
+    /// Delete an IP route rule by RouterOS `.id`.
+    pub async fn delete_route_rule(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/ip/route/rule/{id}"))
+            .await
+    }
+
+    /// Fetch Netwatch entries (gateway monitoring).
+    pub async fn netwatch(&self) -> Result<Vec<NetwatchEntry>> {
+        let val = self.get("/tool/netwatch").await?;
+        let res: Vec<NetwatchEntry> =
+            serde_json::from_value(val).context("failed to parse netwatch entries")?;
+        Ok(res)
+    }
+
+    /// Create a Netwatch entry.
+    pub async fn create_netwatch(&self, req: &NetwatchWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/tool/netwatch", req).await
+    }
+
+    /// Delete a Netwatch entry by RouterOS `.id`.
+    pub async fn delete_netwatch(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/tool/netwatch/{id}"))
+            .await
+    }
+
+    /// Fetch BGP connections (RouterOS v7).
+    pub async fn bgp_connections(&self) -> Result<Vec<BgpConnection>> {
+        let val = self.get("/routing/bgp/connection").await?;
+        let res: Vec<BgpConnection> =
+            serde_json::from_value(val).context("failed to parse BGP connections")?;
+        Ok(res)
+    }
+
+    /// Fetch OSPF instances (RouterOS v7).
+    pub async fn ospf_instances(&self) -> Result<Vec<OspfInstance>> {
+        let val = self.get("/routing/ospf/instance").await?;
+        let res: Vec<OspfInstance> =
+            serde_json::from_value(val).context("failed to parse OSPF instances")?;
+        Ok(res)
+    }
+
+    /// Fetch OSPF interface templates (RouterOS v7).
+    pub async fn ospf_interface_templates(&self) -> Result<Vec<OspfInterfaceTemplate>> {
+        let val = self.get("/routing/ospf/interface-template").await?;
+        let res: Vec<OspfInterfaceTemplate> =
+            serde_json::from_value(val).context("failed to parse OSPF interface templates")?;
+        Ok(res)
+    }
+
     /// Fetch all queue tree entries.
     pub async fn queue_tree(&self) -> Result<Vec<QueueTree>> {
         let val = self.get("/queue/tree").await?;

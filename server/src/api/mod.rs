@@ -349,6 +349,24 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/mikrotik/dns", get(mikrotik::dns))
         .route("/mikrotik/wireguard", get(mikrotik::wireguard))
+        // MikroTik advanced routing (PBR, gateway monitoring, BGP/OSPF)
+        .route(
+            "/mikrotik/routing/advanced",
+            get(mikrotik::routing_advanced),
+        )
+        .route("/mikrotik/routing/rules", post(mikrotik::create_route_rule))
+        .route(
+            "/mikrotik/routing/rules/:id",
+            delete(mikrotik::delete_route_rule),
+        )
+        .route(
+            "/mikrotik/routing/netwatch",
+            post(mikrotik::create_netwatch),
+        )
+        .route(
+            "/mikrotik/routing/netwatch/:id",
+            delete(mikrotik::delete_netwatch),
+        )
         // Xiaomi MiWiFi
         .route("/xiaomi/status", get(xiaomi::status))
         .route("/xiaomi/topology", get(xiaomi::topology))

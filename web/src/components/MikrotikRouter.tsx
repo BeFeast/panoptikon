@@ -24,6 +24,9 @@ import {
   Power,
   List,
   Pin,
+  GitFork,
+  Wifi,
+  HeartPulse,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -71,6 +74,11 @@ import {
   fetchMikrotikFirewall,
   fetchMikrotikDns,
   fetchMikrotikWireguard,
+  fetchMikrotikAdvancedRouting,
+  createMikrotikRouteRule,
+  deleteMikrotikRouteRule,
+  createMikrotikNetwatch,
+  deleteMikrotikNetwatch,
   createMikrotikVlan,
   updateMikrotikVlan,
   deleteMikrotikVlan,
@@ -105,6 +113,9 @@ import type {
   MikrotikAddressListRequest,
   MikrotikDns,
   MikrotikWireguard,
+  MikrotikAdvancedRouting,
+  MikrotikRouteRuleRequest,
+  MikrotikNetwatchRequest,
   TrafficHistoryPoint,
 } from "@/lib/types";
 
@@ -2525,6 +2536,642 @@ function TrafficTab() {
   );
 }
 
+// ── Advanced Routing Panel ────────────────────────────────
+
+function AdvancedRoutingPanel({
+  data,
+  loading,
+  error,
+  reload,
+}: {
+  data: MikrotikAdvancedRouting | null;
+  loading: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
+}) {
+  const [showAddRule, setShowAddRule] = useState(false);
+  const [showAddNetwatch, setShowAddNetwatch] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // PBR Rule form state
+  const [ruleForm, setRuleForm] = useState<MikrotikRouteRuleRequest>({
+    action: "lookup",
+    src_address: "",
+    dst_address: "",
+    table: "",
+    comment: "",
+  });
+
+  // Netwatch form state
+  const [netwatchForm, setNetwatchForm] = useState<MikrotikNetwatchRequest>({
+    host: "",
+    check_type: "icmp",
+    interval: "00:00:30",
+    timeout: "00:00:05",
+    comment: "",
+  });
+
+  const handleCreateRule = async () => {
+    try {
+      await createMikrotikRouteRule({
+        ...ruleForm,
+        src_address: ruleForm.src_address || undefined,
+        dst_address: ruleForm.dst_address || undefined,
+        table: ruleForm.table || undefined,
+        comment: ruleForm.comment || undefined,
+      });
+      toast.success("Route rule created");
+      setShowAddRule(false);
+      setRuleForm({ action: "lookup", src_address: "", dst_address: "", table: "", comment: "" });
+      await reload();
+    } catch {
+      toast.error("Failed to create route rule");
+    }
+  };
+
+  const handleDeleteRule = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await deleteMikrotikRouteRule(id);
+      toast.success("Route rule deleted");
+      await reload();
+    } catch {
+      toast.error("Failed to delete route rule");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleCreateNetwatch = async () => {
+    try {
+      await createMikrotikNetwatch({
+        ...netwatchForm,
+        check_type: netwatchForm.check_type || undefined,
+        interval: netwatchForm.interval || undefined,
+        timeout: netwatchForm.timeout || undefined,
+        comment: netwatchForm.comment || undefined,
+      });
+      toast.success("Netwatch entry created");
+      setShowAddNetwatch(false);
+      setNetwatchForm({ host: "", check_type: "icmp", interval: "00:00:30", timeout: "00:00:05", comment: "" });
+      await reload();
+    } catch {
+      toast.error("Failed to create netwatch entry");
+    }
+  };
+
+  const handleDeleteNetwatch = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await deleteMikrotikNetwatch(id);
+      toast.success("Netwatch entry deleted");
+      await reload();
+    } catch {
+      toast.error("Failed to delete netwatch entry");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+        <p className="text-xs text-rose-400">{error}</p>
+      </div>
+    );
+  }
+
+  const rules = data?.route_rules ?? [];
+  const netwatch = data?.netwatch ?? [];
+  const bgp = data?.bgp_connections ?? [];
+  const ospfInst = data?.ospf_instances ?? [];
+  const ospfIface = data?.ospf_interfaces ?? [];
+
+  return (
+    <div className="space-y-6">
+      {/* ── Policy-Based Routing Rules ── */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base text-white flex items-center gap-2">
+            <GitFork className="h-4 w-4 text-blue-400" />
+            Policy-Based Routing Rules
+          </CardTitle>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-slate-700 text-slate-300 hover:bg-slate-800"
+            onClick={() => setShowAddRule(true)}
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Add Rule
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {rules.length === 0 ? (
+            <p className="py-4 text-sm text-slate-500">No routing rules configured.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-md border border-slate-800">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                    <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Source</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Destination</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Action</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Table</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
+                    <th className="px-4 py-3 font-medium text-slate-400 w-16" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {rules.map((rule, idx) => (
+                    <tr
+                      key={rule.id ?? idx}
+                      className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <Badge
+                          variant="outline"
+                          className={
+                            rule.disabled
+                              ? "border-slate-700 text-slate-500 text-xs"
+                              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+                          }
+                        >
+                          {rule.disabled ? "disabled" : "active"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-300">
+                        {rule.src_address ?? "any"}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-300">
+                        {rule.dst_address ?? "any"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant="outline" className="border-blue-500/30 text-blue-400 text-xs">
+                          {rule.action ?? "lookup"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-slate-400">{rule.table ?? "main"}</td>
+                      <td className="px-4 py-3 text-slate-500 text-xs">{rule.comment ?? "\u2014"}</td>
+                      <td className="px-4 py-3">
+                        {rule.id && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-slate-500 hover:text-rose-400"
+                            disabled={deletingId === rule.id}
+                            onClick={() => handleDeleteRule(rule.id!)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Gateway Monitoring (Netwatch) ── */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base text-white flex items-center gap-2">
+            <HeartPulse className="h-4 w-4 text-emerald-400" />
+            Gateway Monitoring
+          </CardTitle>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-slate-700 text-slate-300 hover:bg-slate-800"
+            onClick={() => setShowAddNetwatch(true)}
+          >
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Add Monitor
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {netwatch.length === 0 ? (
+            <p className="py-4 text-sm text-slate-500">No gateway monitors configured.</p>
+          ) : (
+            <div className="overflow-x-auto rounded-md border border-slate-800">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                    <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Host</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Type</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Interval</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Since</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
+                    <th className="px-4 py-3 font-medium text-slate-400 w-16" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {netwatch.map((entry, idx) => (
+                    <tr
+                      key={entry.id ?? idx}
+                      className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        {entry.disabled ? (
+                          <Badge variant="outline" className="border-slate-700 text-slate-500 text-xs">
+                            disabled
+                          </Badge>
+                        ) : entry.status === "up" ? (
+                          <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs">
+                            up
+                          </Badge>
+                        ) : entry.status === "down" ? (
+                          <Badge variant="outline" className="border-rose-500/30 bg-rose-500/10 text-rose-400 text-xs">
+                            down
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-amber-500/30 text-amber-400 text-xs">
+                            {entry.status ?? "unknown"}
+                          </Badge>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-white font-medium">
+                        {entry.host}
+                      </td>
+                      <td className="px-4 py-3 text-slate-400">{entry.check_type ?? "icmp"}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-400">
+                        {entry.interval ?? "\u2014"}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-500">{entry.since ?? "\u2014"}</td>
+                      <td className="px-4 py-3 text-slate-500 text-xs">{entry.comment ?? "\u2014"}</td>
+                      <td className="px-4 py-3">
+                        {entry.id && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-slate-500 hover:text-rose-400"
+                            disabled={deletingId === entry.id}
+                            onClick={() => handleDeleteNetwatch(entry.id!)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── BGP Connections ── */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <CardTitle className="text-base text-white flex items-center gap-2">
+            <Wifi className="h-4 w-4 text-purple-400" />
+            BGP Connections
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {bgp.length === 0 ? (
+            <p className="py-4 text-sm text-slate-500">
+              No BGP connections configured. BGP requires the routing package on RouterOS.
+            </p>
+          ) : (
+            <div className="overflow-x-auto rounded-md border border-slate-800">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                    <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Name</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Remote Address</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Remote AS</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Local AS</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Role</th>
+                    <th className="px-4 py-3 font-medium text-slate-400">Table</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {bgp.map((conn, idx) => (
+                    <tr
+                      key={conn.id ?? idx}
+                      className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        <Badge
+                          variant="outline"
+                          className={
+                            conn.disabled
+                              ? "border-slate-700 text-slate-500 text-xs"
+                              : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+                          }
+                        >
+                          {conn.disabled ? "disabled" : "active"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-white font-medium">{conn.name ?? "\u2014"}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-300">
+                        {conn.remote_address ?? "\u2014"}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-300">
+                        {conn.remote_as ?? "\u2014"}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-slate-300">
+                        {conn.local_as ?? "\u2014"}
+                      </td>
+                      <td className="px-4 py-3 text-slate-400">{conn.local_role ?? "\u2014"}</td>
+                      <td className="px-4 py-3 text-slate-400">{conn.routing_table ?? "main"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── OSPF Configuration ── */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <CardTitle className="text-base text-white flex items-center gap-2">
+            <Network className="h-4 w-4 text-cyan-400" />
+            OSPF Configuration
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {ospfInst.length === 0 && ospfIface.length === 0 ? (
+            <p className="py-4 text-sm text-slate-500">
+              No OSPF configuration found. OSPF requires the routing package on RouterOS.
+            </p>
+          ) : (
+            <>
+              {ospfInst.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-sm font-medium text-slate-300">Instances</h4>
+                  <div className="overflow-x-auto rounded-md border border-slate-800">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                          <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+                          <th className="px-4 py-3 font-medium text-slate-400">Name</th>
+                          <th className="px-4 py-3 font-medium text-slate-400">Router ID</th>
+                          <th className="px-4 py-3 font-medium text-slate-400">Version</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ospfInst.map((inst, idx) => (
+                          <tr
+                            key={inst.id ?? idx}
+                            className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                          >
+                            <td className="px-4 py-3">
+                              <Badge
+                                variant="outline"
+                                className={
+                                  inst.disabled
+                                    ? "border-slate-700 text-slate-500 text-xs"
+                                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+                                }
+                              >
+                                {inst.disabled ? "disabled" : "active"}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-white font-medium">{inst.name ?? "\u2014"}</td>
+                            <td className="px-4 py-3 font-mono text-xs text-slate-300">
+                              {inst.router_id ?? "\u2014"}
+                            </td>
+                            <td className="px-4 py-3 text-slate-400">{inst.version ?? "\u2014"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+              {ospfIface.length > 0 && (
+                <div>
+                  <h4 className="mb-2 text-sm font-medium text-slate-300">Interface Templates</h4>
+                  <div className="overflow-x-auto rounded-md border border-slate-800">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                          <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+                          <th className="px-4 py-3 font-medium text-slate-400">Interfaces</th>
+                          <th className="px-4 py-3 font-medium text-slate-400">Area</th>
+                          <th className="px-4 py-3 font-medium text-slate-400">Cost</th>
+                          <th className="px-4 py-3 font-medium text-slate-400">Priority</th>
+                          <th className="px-4 py-3 font-medium text-slate-400">Type</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ospfIface.map((iface, idx) => (
+                          <tr
+                            key={iface.id ?? idx}
+                            className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                          >
+                            <td className="px-4 py-3">
+                              <Badge
+                                variant="outline"
+                                className={
+                                  iface.disabled
+                                    ? "border-slate-700 text-slate-500 text-xs"
+                                    : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+                                }
+                              >
+                                {iface.disabled ? "disabled" : "active"}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 font-mono text-xs text-white">
+                              {iface.interfaces ?? "\u2014"}
+                            </td>
+                            <td className="px-4 py-3 font-mono text-xs text-slate-300">
+                              {iface.area ?? "\u2014"}
+                            </td>
+                            <td className="px-4 py-3 text-slate-400">{iface.cost ?? "\u2014"}</td>
+                            <td className="px-4 py-3 text-slate-400">{iface.priority ?? "\u2014"}</td>
+                            <td className="px-4 py-3 text-slate-400">{iface.network_type ?? "\u2014"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Add Route Rule Dialog ── */}
+      <Dialog open={showAddRule} onOpenChange={setShowAddRule}>
+        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Add Route Rule</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Create a policy-based routing rule to route traffic by source, destination, or routing mark.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="rule-src" className="text-slate-300">Source Address</Label>
+              <Input
+                id="rule-src"
+                placeholder="e.g. 10.0.1.0/24 (optional)"
+                className="border-slate-700 bg-slate-950 text-white"
+                value={ruleForm.src_address ?? ""}
+                onChange={(e) => setRuleForm({ ...ruleForm, src_address: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="rule-dst" className="text-slate-300">Destination Address</Label>
+              <Input
+                id="rule-dst"
+                placeholder="e.g. 0.0.0.0/0 (optional)"
+                className="border-slate-700 bg-slate-950 text-white"
+                value={ruleForm.dst_address ?? ""}
+                onChange={(e) => setRuleForm({ ...ruleForm, dst_address: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="rule-action" className="text-slate-300">Action</Label>
+              <select
+                id="rule-action"
+                className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
+                value={ruleForm.action}
+                onChange={(e) => setRuleForm({ ...ruleForm, action: e.target.value })}
+              >
+                <option value="lookup">lookup</option>
+                <option value="lookup-only-in-table">lookup-only-in-table</option>
+                <option value="drop">drop</option>
+                <option value="unreachable">unreachable</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="rule-table" className="text-slate-300">Routing Table</Label>
+              <Input
+                id="rule-table"
+                placeholder="e.g. isp2 (optional)"
+                className="border-slate-700 bg-slate-950 text-white"
+                value={ruleForm.table ?? ""}
+                onChange={(e) => setRuleForm({ ...ruleForm, table: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="rule-comment" className="text-slate-300">Comment</Label>
+              <Input
+                id="rule-comment"
+                placeholder="Optional description"
+                className="border-slate-700 bg-slate-950 text-white"
+                value={ruleForm.comment ?? ""}
+                onChange={(e) => setRuleForm({ ...ruleForm, comment: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-slate-700 text-slate-300" onClick={() => setShowAddRule(false)}>
+              Cancel
+            </Button>
+            <Button className="bg-blue-600 text-white hover:bg-blue-700" onClick={handleCreateRule}>
+              Create Rule
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Add Netwatch Dialog ── */}
+      <Dialog open={showAddNetwatch} onOpenChange={setShowAddNetwatch}>
+        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Add Gateway Monitor</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Add a Netwatch health check to monitor a gateway IP address.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="nw-host" className="text-slate-300">Host / Gateway IP</Label>
+              <Input
+                id="nw-host"
+                placeholder="e.g. 8.8.8.8"
+                className="border-slate-700 bg-slate-950 text-white"
+                value={netwatchForm.host}
+                onChange={(e) => setNetwatchForm({ ...netwatchForm, host: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="nw-type" className="text-slate-300">Check Type</Label>
+              <select
+                id="nw-type"
+                className="w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-white"
+                value={netwatchForm.check_type ?? "icmp"}
+                onChange={(e) => setNetwatchForm({ ...netwatchForm, check_type: e.target.value })}
+              >
+                <option value="icmp">ICMP (Ping)</option>
+                <option value="tcp-conn">TCP Connect</option>
+                <option value="http-get">HTTP GET</option>
+              </select>
+            </div>
+            <div>
+              <Label htmlFor="nw-interval" className="text-slate-300">Interval</Label>
+              <Input
+                id="nw-interval"
+                placeholder="e.g. 00:00:30"
+                className="border-slate-700 bg-slate-950 text-white"
+                value={netwatchForm.interval ?? ""}
+                onChange={(e) => setNetwatchForm({ ...netwatchForm, interval: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="nw-timeout" className="text-slate-300">Timeout</Label>
+              <Input
+                id="nw-timeout"
+                placeholder="e.g. 00:00:05"
+                className="border-slate-700 bg-slate-950 text-white"
+                value={netwatchForm.timeout ?? ""}
+                onChange={(e) => setNetwatchForm({ ...netwatchForm, timeout: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="nw-comment" className="text-slate-300">Comment</Label>
+              <Input
+                id="nw-comment"
+                placeholder="Optional description"
+                className="border-slate-700 bg-slate-950 text-white"
+                value={netwatchForm.comment ?? ""}
+                onChange={(e) => setNetwatchForm({ ...netwatchForm, comment: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-slate-700 text-slate-300" onClick={() => setShowAddNetwatch(false)}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-blue-600 text-white hover:bg-blue-700"
+              onClick={handleCreateNetwatch}
+              disabled={!netwatchForm.host.trim()}
+            >
+              Create Monitor
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────
 
 export default function MikrotikRouter() {
@@ -2559,6 +3206,7 @@ export default function MikrotikRouter() {
   const fw = useData(useCallback(() => fetchMikrotikFirewall(), []));
   const dns = useData(useCallback(() => fetchMikrotikDns(), []));
   const wg = useData(useCallback(() => fetchMikrotikWireguard(), []));
+  const advRouting = useData(useCallback(() => fetchMikrotikAdvancedRouting(), []));
 
   if (loading) {
     return (
@@ -2650,6 +3298,13 @@ export default function MikrotikRouter() {
           >
             <BarChart3 className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">Traffic</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="advanced-routing"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+          >
+            <GitFork className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Adv. Routing</span>
           </TabsTrigger>
         </TabsList>
 
@@ -2772,6 +3427,15 @@ export default function MikrotikRouter() {
 
         <TabsContent value="traffic">
           <TrafficTab />
+        </TabsContent>
+
+        <TabsContent value="advanced-routing" className="space-y-4">
+          <AdvancedRoutingPanel
+            data={advRouting.data}
+            loading={advRouting.loading}
+            error={advRouting.error}
+            reload={advRouting.reload}
+          />
         </TabsContent>
       </Tabs>
     </div>

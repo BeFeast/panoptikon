@@ -420,6 +420,124 @@ pub struct QueueTree {
     pub queued_bytes: Option<String>,
 }
 
+/// MikroTik IP route rule for policy-based routing (`/rest/ip/route/rule`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RouteRule {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    #[serde(rename = "src-address")]
+    pub src_address: Option<String>,
+    #[serde(rename = "dst-address")]
+    pub dst_address: Option<String>,
+    #[serde(rename = "routing-mark")]
+    pub routing_mark: Option<String>,
+    pub action: Option<String>,
+    pub table: Option<String>,
+    pub interface: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<String>,
+}
+
+/// MikroTik route rule write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct RouteRuleWriteRequest {
+    #[serde(skip_serializing_if = "Option::is_none", rename = "src-address")]
+    pub src_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dst-address")]
+    pub dst_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "routing-mark")]
+    pub routing_mark: Option<String>,
+    pub action: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub table: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub interface: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<String>,
+}
+
+/// MikroTik Netwatch entry for gateway monitoring (`/rest/tool/netwatch`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NetwatchEntry {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub host: Option<String>,
+    #[serde(rename = "type")]
+    pub check_type: Option<String>,
+    pub interval: Option<String>,
+    pub timeout: Option<String>,
+    pub status: Option<String>,
+    pub since: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<String>,
+}
+
+/// MikroTik Netwatch write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct NetwatchWriteRequest {
+    pub host: String,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "type")]
+    pub check_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub interval: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub timeout: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<String>,
+}
+
+/// MikroTik BGP connection (RouterOS v7: `/rest/routing/bgp/connection`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BgpConnection {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    #[serde(rename = "remote.address")]
+    pub remote_address: Option<String>,
+    #[serde(rename = "remote.as")]
+    pub remote_as: Option<String>,
+    #[serde(rename = "local.role")]
+    pub local_role: Option<String>,
+    #[serde(rename = "routing-table")]
+    pub routing_table: Option<String>,
+    #[serde(rename = "as")]
+    pub local_as: Option<String>,
+    pub disabled: Option<String>,
+    pub comment: Option<String>,
+}
+
+/// MikroTik OSPF instance (RouterOS v7: `/rest/routing/ospf/instance`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OspfInstance {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    #[serde(rename = "router-id")]
+    pub router_id: Option<String>,
+    pub version: Option<String>,
+    pub disabled: Option<String>,
+    pub comment: Option<String>,
+}
+
+/// MikroTik OSPF interface template (RouterOS v7: `/rest/routing/ospf/interface-template`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OspfInterfaceTemplate {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub interfaces: Option<String>,
+    pub area: Option<String>,
+    pub cost: Option<String>,
+    pub priority: Option<String>,
+    #[serde(rename = "type")]
+    pub network_type: Option<String>,
+    pub disabled: Option<String>,
+    pub comment: Option<String>,
+}
+
 /// MikroTik WireGuard peer (`/rest/interface/wireguard/peers`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WgPeer {

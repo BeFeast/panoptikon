@@ -1392,6 +1392,92 @@ export interface MikrotikWireguard {
   interfaces: MikrotikWgInterface[];
 }
 
+// ─── MikroTik Advanced Routing ───────────────────────────
+
+export interface MikrotikRouteRule {
+  id: string | null;
+  src_address: string | null;
+  dst_address: string | null;
+  routing_mark: string | null;
+  action: string | null;
+  table: string | null;
+  interface: string | null;
+  comment: string | null;
+  disabled: boolean;
+}
+
+export interface MikrotikRouteRuleRequest {
+  src_address?: string;
+  dst_address?: string;
+  routing_mark?: string;
+  action: string;
+  table?: string;
+  interface?: string;
+  comment?: string;
+  disabled?: boolean;
+}
+
+export interface MikrotikNetwatchEntry {
+  id: string | null;
+  host: string;
+  check_type: string | null;
+  interval: string | null;
+  timeout: string | null;
+  status: string | null;
+  since: string | null;
+  comment: string | null;
+  disabled: boolean;
+}
+
+export interface MikrotikNetwatchRequest {
+  host: string;
+  check_type?: string;
+  interval?: string;
+  timeout?: string;
+  comment?: string;
+  disabled?: boolean;
+}
+
+export interface MikrotikBgpConnection {
+  id: string | null;
+  name: string | null;
+  remote_address: string | null;
+  remote_as: string | null;
+  local_role: string | null;
+  local_as: string | null;
+  routing_table: string | null;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface MikrotikOspfInstance {
+  id: string | null;
+  name: string | null;
+  router_id: string | null;
+  version: string | null;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface MikrotikOspfInterface {
+  id: string | null;
+  interfaces: string | null;
+  area: string | null;
+  cost: string | null;
+  priority: string | null;
+  network_type: string | null;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface MikrotikAdvancedRouting {
+  route_rules: MikrotikRouteRule[];
+  netwatch: MikrotikNetwatchEntry[];
+  bgp_connections: MikrotikBgpConnection[];
+  ospf_instances: MikrotikOspfInstance[];
+  ospf_interfaces: MikrotikOspfInterface[];
+}
+
 // ─── Alert Rules ─────────────────────────────────────────
 
 export interface AlertRule {

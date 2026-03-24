@@ -14,7 +14,7 @@ use super::{audit, AppState};
 use crate::mikrotik::client::MikrotikClient;
 use crate::mikrotik::types::{
     DhcpStaticLeaseWriteRequest, FirewallAddressListWriteRequest, FirewallFilterWriteRequest,
-    FirewallNatWriteRequest, VlanWriteRequest,
+    FirewallNatWriteRequest, NetwatchWriteRequest, RouteRuleWriteRequest, VlanWriteRequest,
 };
 
 // ── Helper: build a MikroTik client from DB settings ───────
@@ -1385,6 +1385,344 @@ pub async fn delete_dhcp_lease(
             let msg = e.to_string();
             audit::log_failure(&state.db, "mikrotik_dhcp_lease_delete", &desc, &cmds, &msg).await;
             tracing::error!("MikroTik DHCP lease delete error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+// ── Advanced Routing: Response Types ──────────────────────
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikRouteRuleResponse {
+    pub id: Option<String>,
+    pub src_address: Option<String>,
+    pub dst_address: Option<String>,
+    pub routing_mark: Option<String>,
+    pub action: Option<String>,
+    pub table: Option<String>,
+    pub interface: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikRouteRuleRequest {
+    pub src_address: Option<String>,
+    pub dst_address: Option<String>,
+    pub routing_mark: Option<String>,
+    pub action: String,
+    pub table: Option<String>,
+    pub interface: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikNetwatchResponse {
+    pub id: Option<String>,
+    pub host: String,
+    pub check_type: Option<String>,
+    pub interval: Option<String>,
+    pub timeout: Option<String>,
+    pub status: Option<String>,
+    pub since: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikNetwatchRequest {
+    pub host: String,
+    pub check_type: Option<String>,
+    pub interval: Option<String>,
+    pub timeout: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikBgpConnectionResponse {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub remote_address: Option<String>,
+    pub remote_as: Option<String>,
+    pub local_role: Option<String>,
+    pub local_as: Option<String>,
+    pub routing_table: Option<String>,
+    pub disabled: bool,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikOspfInstanceResponse {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub router_id: Option<String>,
+    pub version: Option<String>,
+    pub disabled: bool,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikOspfInterfaceResponse {
+    pub id: Option<String>,
+    pub interfaces: Option<String>,
+    pub area: Option<String>,
+    pub cost: Option<String>,
+    pub priority: Option<String>,
+    pub network_type: Option<String>,
+    pub disabled: bool,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikAdvancedRoutingResponse {
+    pub route_rules: Vec<MikrotikRouteRuleResponse>,
+    pub netwatch: Vec<MikrotikNetwatchResponse>,
+    pub bgp_connections: Vec<MikrotikBgpConnectionResponse>,
+    pub ospf_instances: Vec<MikrotikOspfInstanceResponse>,
+    pub ospf_interfaces: Vec<MikrotikOspfInterfaceResponse>,
+}
+
+// ── Advanced Routing: Endpoints ───────────────────────────
+
+/// GET /api/v1/mikrotik/routing/advanced
+///
+/// Returns all advanced routing data in a single call: route rules (PBR),
+/// Netwatch (gateway monitoring), BGP connections, OSPF instances & interfaces.
+pub async fn routing_advanced(
+    State(state): State<AppState>,
+) -> Result<Json<MikrotikAdvancedRoutingResponse>, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.mikrotik_cache.get("routing-advanced") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let route_rules = client.route_rules().await.unwrap_or_default();
+    let netwatch = client.netwatch().await.unwrap_or_default();
+    // BGP/OSPF may not be available on all routers — gracefully default to empty
+    let bgp = client.bgp_connections().await.unwrap_or_default();
+    let ospf_inst = client.ospf_instances().await.unwrap_or_default();
+    let ospf_iface = client.ospf_interface_templates().await.unwrap_or_default();
+
+    let resp = MikrotikAdvancedRoutingResponse {
+        route_rules: route_rules
+            .into_iter()
+            .map(|r| MikrotikRouteRuleResponse {
+                id: r.id,
+                src_address: r.src_address,
+                dst_address: r.dst_address,
+                routing_mark: r.routing_mark,
+                action: r.action,
+                table: r.table,
+                interface: r.interface,
+                comment: r.comment,
+                disabled: is_true(&r.disabled),
+            })
+            .collect(),
+        netwatch: netwatch
+            .into_iter()
+            .map(|n| MikrotikNetwatchResponse {
+                id: n.id,
+                host: n.host.unwrap_or_default(),
+                check_type: n.check_type,
+                interval: n.interval,
+                timeout: n.timeout,
+                status: n.status,
+                since: n.since,
+                comment: n.comment,
+                disabled: is_true(&n.disabled),
+            })
+            .collect(),
+        bgp_connections: bgp
+            .into_iter()
+            .map(|b| MikrotikBgpConnectionResponse {
+                id: b.id,
+                name: b.name,
+                remote_address: b.remote_address,
+                remote_as: b.remote_as,
+                local_role: b.local_role,
+                local_as: b.local_as,
+                routing_table: b.routing_table,
+                disabled: is_true(&b.disabled),
+                comment: b.comment,
+            })
+            .collect(),
+        ospf_instances: ospf_inst
+            .into_iter()
+            .map(|o| MikrotikOspfInstanceResponse {
+                id: o.id,
+                name: o.name,
+                router_id: o.router_id,
+                version: o.version,
+                disabled: is_true(&o.disabled),
+                comment: o.comment,
+            })
+            .collect(),
+        ospf_interfaces: ospf_iface
+            .into_iter()
+            .map(|o| MikrotikOspfInterfaceResponse {
+                id: o.id,
+                interfaces: o.interfaces,
+                area: o.area,
+                cost: o.cost,
+                priority: o.priority,
+                network_type: o.network_type,
+                disabled: is_true(&o.disabled),
+                comment: o.comment,
+            })
+            .collect(),
+    };
+
+    if let Ok(val) = serde_json::to_value(&resp) {
+        state.mikrotik_cache.set("routing-advanced".into(), val);
+    }
+    Ok(Json(resp))
+}
+
+/// POST /api/v1/mikrotik/routing/rules
+pub async fn create_route_rule(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikRouteRuleRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = RouteRuleWriteRequest {
+        src_address: body.src_address.clone(),
+        dst_address: body.dst_address.clone(),
+        routing_mark: body.routing_mark.clone(),
+        action: body.action.clone(),
+        table: body.table.clone(),
+        interface: body.interface.clone(),
+        comment: body.comment.clone(),
+        disabled: body
+            .disabled
+            .map(|d| if d { "true" } else { "false" }.into()),
+    };
+
+    let desc = format!(
+        "Create MikroTik route rule: action={} src={} dst={}",
+        body.action,
+        body.src_address.as_deref().unwrap_or("any"),
+        body.dst_address.as_deref().unwrap_or("any"),
+    );
+    let cmds = vec![format!("POST /ip/route/rule action={}", body.action)];
+
+    match client.create_route_rule(&req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_route_rule_create", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_route_rule_create", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik route rule create error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// DELETE /api/v1/mikrotik/routing/rules/:id
+pub async fn delete_route_rule(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let desc = format!("Delete MikroTik route rule {id}");
+    let cmds = vec![format!("DELETE /ip/route/rule/{id}")];
+
+    match client.delete_route_rule(id).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_route_rule_delete", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_route_rule_delete", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik route rule delete error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// POST /api/v1/mikrotik/routing/netwatch
+pub async fn create_netwatch(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikNetwatchRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = NetwatchWriteRequest {
+        host: body.host.clone(),
+        check_type: body.check_type.clone(),
+        interval: body.interval.clone(),
+        timeout: body.timeout.clone(),
+        comment: body.comment.clone(),
+        disabled: body
+            .disabled
+            .map(|d| if d { "true" } else { "false" }.into()),
+    };
+
+    let desc = format!("Create MikroTik netwatch: host={}", body.host);
+    let cmds = vec![format!("POST /tool/netwatch host={}", body.host)];
+
+    match client.create_netwatch(&req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_netwatch_create", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_netwatch_create", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik netwatch create error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// DELETE /api/v1/mikrotik/routing/netwatch/:id
+pub async fn delete_netwatch(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let desc = format!("Delete MikroTik netwatch {id}");
+    let cmds = vec![format!("DELETE /tool/netwatch/{id}")];
+
+    match client.delete_netwatch(id).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_netwatch_delete", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_netwatch_delete", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik netwatch delete error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
     }

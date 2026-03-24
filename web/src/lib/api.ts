@@ -67,6 +67,9 @@ import type {
   MikrotikAddressListRequest,
   MikrotikDns,
   MikrotikWireguard,
+  MikrotikAdvancedRouting,
+  MikrotikRouteRuleRequest,
+  MikrotikNetwatchRequest,
   PfsenseStatus,
   PfsenseInterface,
   PfsenseFirewallRule,
@@ -1000,6 +1003,38 @@ export function fetchMikrotikDns(): Promise<MikrotikDns> {
 
 export function fetchMikrotikWireguard(): Promise<MikrotikWireguard> {
   return apiGet<MikrotikWireguard>("/api/v1/mikrotik/wireguard");
+}
+
+// ─── MikroTik Advanced Routing ────────────────────────────
+
+export function fetchMikrotikAdvancedRouting(): Promise<MikrotikAdvancedRouting> {
+  return apiGet<MikrotikAdvancedRouting>(
+    "/api/v1/mikrotik/routing/advanced"
+  );
+}
+
+export function createMikrotikRouteRule(
+  body: MikrotikRouteRuleRequest
+): Promise<void> {
+  return apiPost<void>("/api/v1/mikrotik/routing/rules", body);
+}
+
+export function deleteMikrotikRouteRule(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/mikrotik/routing/rules/${encodeURIComponent(id)}`
+  );
+}
+
+export function createMikrotikNetwatch(
+  body: MikrotikNetwatchRequest
+): Promise<void> {
+  return apiPost<void>("/api/v1/mikrotik/routing/netwatch", body);
+}
+
+export function deleteMikrotikNetwatch(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/mikrotik/routing/netwatch/${encodeURIComponent(id)}`
+  );
 }
 
 // ─── pfSense ──────────────────────────────────────────────
