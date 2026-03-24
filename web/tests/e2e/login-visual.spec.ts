@@ -15,7 +15,7 @@ test.describe("Login page visual upgrade", () => {
       page.getByRole("heading", { name: "Panoptikon", level: 1 }),
     ).toBeVisible({ timeout: 15000 });
     await expect(
-      page.getByText("Sign in to your network dashboard"),
+      page.getByText("Sign in to your network operations console"),
     ).toBeVisible({ timeout: 15000 });
 
     // Animated background: the outer container has login-bg class
@@ -66,7 +66,7 @@ test.describe("Login page visual upgrade", () => {
       page.getByRole("heading", { name: "Panoptikon", level: 1 }),
     ).toBeVisible({ timeout: 15000 });
     await expect(
-      page.getByText("Sign in to your network dashboard"),
+      page.getByText("Sign in to your network operations console"),
     ).toBeVisible({ timeout: 15000 });
 
     // Card should be visible and not overflow
@@ -86,7 +86,7 @@ test.describe("Login page visual upgrade", () => {
     await page.goto("/login/");
 
     await expect(
-      page.getByText("Sign in to your network dashboard"),
+      page.getByText("Sign in to your network operations console"),
     ).toBeVisible({ timeout: 15000 });
 
     // Initially "Show password" button is visible
