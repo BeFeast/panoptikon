@@ -266,7 +266,7 @@ export function Sidebar() {
               P
             </div>
             {!sidebarCollapsed && (
-              <span className="ml-2 text-lg font-semibold text-white">
+              <span className="ml-2 font-display text-lg font-semibold text-white">
                 Panoptikon
               </span>
             )}
