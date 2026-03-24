@@ -257,7 +257,7 @@ export function Sidebar() {
         )}
       >
         {/* Logo + collapse toggle */}
-        <div className="flex h-14 items-center justify-between border-b border-slate-800 px-3">
+        <div className="flex h-[3.75rem] items-center justify-between border-b border-slate-800/75 px-3">
           <Link
             href="/dashboard"
             className="flex items-center min-w-0"
