@@ -1955,15 +1955,90 @@ export interface VpnInterfaceStatus {
   peers_total: number;
   /** "mikrotik" */
   source: string;
+  /** "wireguard" or "openvpn" */
+  vpn_type: string;
 }
 
 export interface VpnStatusResponse {
   mikrotik_available: boolean;
+  openvpn_available: boolean;
   interfaces: VpnInterfaceStatus[];
   total_peers: number;
   online_peers: number;
   total_rx_bytes: number;
   total_tx_bytes: number;
+}
+
+// ─── OpenVPN Management ─────────────────────────────────────
+
+export interface OvpnServerResponse {
+  enabled: boolean;
+  port: number | null;
+  protocol: string | null;
+  mode: string | null;
+  cipher: string | null;
+  auth: string | null;
+  certificate: string | null;
+  default_profile: string | null;
+  require_client_certificate: boolean;
+}
+
+export interface OvpnClientEntry {
+  id: string;
+  name: string;
+  service: string | null;
+  profile: string | null;
+  local_address: string | null;
+  remote_address: string | null;
+  comment: string | null;
+  disabled: boolean;
+}
+
+export interface OvpnActiveConnection {
+  name: string;
+  caller_id: string | null;
+  address: string | null;
+  uptime: string | null;
+  encoding: string | null;
+}
+
+export interface OvpnCertificateEntry {
+  id: string;
+  name: string;
+  common_name: string | null;
+  fingerprint: string | null;
+  expires: string | null;
+  expired: boolean;
+  is_ca: boolean;
+  has_private_key: boolean;
+}
+
+export interface OvpnOverview {
+  server: OvpnServerResponse;
+  clients: OvpnClientEntry[];
+  active_connections: OvpnActiveConnection[];
+  certificates: OvpnCertificateEntry[];
+}
+
+export interface UpdateOvpnServerRequest {
+  enabled?: boolean;
+  port?: number;
+  protocol?: string;
+  mode?: string;
+  cipher?: string;
+  auth?: string;
+  certificate?: string;
+  default_profile?: string;
+  require_client_certificate?: boolean;
+}
+
+export interface CreateOvpnClientRequest {
+  name: string;
+  password: string;
+  profile?: string;
+  local_address?: string;
+  remote_address?: string;
+  comment?: string;
 }
 
 export interface QosSummary {

@@ -71,6 +71,11 @@ export const settingsNav: SettingsNavGroup[] = [
         title: "Cloudflare Tunnel",
         description: "Configure Cloudflare Tunnel API token and tunnel ID.",
       },
+      {
+        href: "/settings/openvpn",
+        title: "OpenVPN",
+        description: "Manage OpenVPN server and client accounts on MikroTik.",
+      },
     ],
   },
   {
