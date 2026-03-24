@@ -58,8 +58,13 @@ export default function LoginPage() {
     try {
       await login(password);
       window.location.href = "/dashboard";
-    } catch {
-      setError("Invalid password");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (msg.includes("429")) {
+        setError("Too many login attempts. Please wait and try again.");
+      } else {
+        setError("Invalid password");
+      }
     } finally {
       setLoading(false);
     }
