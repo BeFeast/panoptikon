@@ -43,12 +43,14 @@ pub mod search;
 pub mod services;
 pub mod settings;
 pub mod setup;
+pub mod snmp_config;
 pub mod speedtest;
 pub mod ssh_targets;
 pub mod tailscale;
 pub mod topology;
 pub mod traffic;
 pub mod unbound;
+pub mod users;
 pub mod vpn_status;
 pub mod xiaomi;
 pub mod xiaomi_mesh;
@@ -533,6 +535,17 @@ pub fn router(state: AppState) -> Router {
         .route("/ddns/:id", put(ddns::update))
         .route("/ddns/:id", delete(ddns::delete))
         .route("/ddns/:id/toggle", post(ddns::toggle))
+        // Users (RBAC)
+        .route("/users", get(users::list))
+        .route("/users", post(users::create))
+        .route("/users/:id", get(users::get_one))
+        .route("/users/:id", put(users::update))
+        .route("/users/:id", delete(users::delete))
+        // SNMP Configurations
+        .route("/snmp-configs", get(snmp_config::list))
+        .route("/snmp-configs", post(snmp_config::create))
+        .route("/snmp-configs/:id", put(snmp_config::update))
+        .route("/snmp-configs/:id", delete(snmp_config::delete))
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))

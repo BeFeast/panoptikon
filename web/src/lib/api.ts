@@ -1849,3 +1849,62 @@ export function triggerNetworkScan(): Promise<
     "/api/v1/scanner/trigger"
   );
 }
+
+// ─── Users (RBAC) ──────────────────────────────────────────
+
+/** List all users. */
+export function listUsers(): Promise<import("./types").User[]> {
+  return apiGet<import("./types").User[]>("/api/v1/users");
+}
+
+/** Get a single user by ID. */
+export function getUser(id: string): Promise<import("./types").User> {
+  return apiGet<import("./types").User>(`/api/v1/users/${id}`);
+}
+
+/** Create a new user. */
+export function createUser(
+  data: import("./types").CreateUserRequest,
+): Promise<import("./types").User> {
+  return apiPost<import("./types").User>("/api/v1/users", data);
+}
+
+/** Update a user. */
+export function updateUser(
+  id: string,
+  data: import("./types").UpdateUserRequest,
+): Promise<import("./types").User> {
+  return apiPut<import("./types").User>(`/api/v1/users/${id}`, data);
+}
+
+/** Delete a user. */
+export function deleteUser(id: string): Promise<void> {
+  return apiDelete(`/api/v1/users/${id}`);
+}
+
+// ─── SNMP Configuration ────────────────────────────────────
+
+/** List all SNMP configurations. */
+export function listSnmpConfigs(): Promise<import("./types").SnmpConfig[]> {
+  return apiGet<import("./types").SnmpConfig[]>("/api/v1/snmp-configs");
+}
+
+/** Create a new SNMP configuration. */
+export function createSnmpConfig(
+  data: import("./types").CreateSnmpConfigRequest,
+): Promise<import("./types").SnmpConfig> {
+  return apiPost<import("./types").SnmpConfig>("/api/v1/snmp-configs", data);
+}
+
+/** Update an SNMP configuration. */
+export function updateSnmpConfig(
+  id: string,
+  data: import("./types").UpdateSnmpConfigRequest,
+): Promise<import("./types").SnmpConfig> {
+  return apiPut<import("./types").SnmpConfig>(`/api/v1/snmp-configs/${id}`, data);
+}
+
+/** Delete an SNMP configuration. */
+export function deleteSnmpConfig(id: string): Promise<void> {
+  return apiDelete(`/api/v1/snmp-configs/${id}`);
+}

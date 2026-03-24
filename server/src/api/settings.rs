@@ -60,6 +60,14 @@ pub struct SettingsResponse {
     pub pfsense_auth_type: Option<String>,
     pub pfsense_password_set: bool,
     pub pfsense_private_key_set: bool,
+    // --- SMTP Email ---
+    pub smtp_enabled: bool,
+    pub smtp_host: Option<String>,
+    pub smtp_port: Option<u16>,
+    pub smtp_username: Option<String>,
+    pub smtp_password_set: bool,
+    pub smtp_from_email: Option<String>,
+    pub smtp_tls: bool,
     // --- Default Router ---
     pub default_router: Option<String>,
     // --- Advanced / Legacy ---
@@ -116,6 +124,14 @@ pub struct UpdateSettingsRequest {
     pub pfsense_auth_type: Option<String>,
     pub pfsense_password: Option<String>,
     pub pfsense_private_key: Option<String>,
+    // --- SMTP Email ---
+    pub smtp_enabled: Option<bool>,
+    pub smtp_host: Option<String>,
+    pub smtp_port: Option<u16>,
+    pub smtp_username: Option<String>,
+    pub smtp_password: Option<String>,
+    pub smtp_from_email: Option<String>,
+    pub smtp_tls: Option<bool>,
     // --- Default Router ---
     pub default_router: Option<String>,
     // --- Advanced / Legacy ---
@@ -254,6 +270,24 @@ pub async fn get_settings(
     let pfsense_password_set = get_setting(&state, "pfsense_password").await.is_some();
     let pfsense_private_key_set = get_setting(&state, "pfsense_private_key").await.is_some();
 
+    // SMTP Email settings.
+    let smtp_enabled = get_setting(&state, "smtp_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+    let smtp_host = get_setting(&state, "smtp_host").await;
+    let smtp_port = get_setting(&state, "smtp_port")
+        .await
+        .and_then(|v| v.parse().ok())
+        .or(Some(587));
+    let smtp_username = get_setting(&state, "smtp_username").await;
+    let smtp_password_set = get_setting(&state, "smtp_password").await.is_some();
+    let smtp_from_email = get_setting(&state, "smtp_from_email").await;
+    let smtp_tls = get_setting(&state, "smtp_tls")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(true);
+
     // Default Router setting.
     let default_router = get_setting(&state, "default_router")
         .await
@@ -303,6 +337,13 @@ pub async fn get_settings(
         pfsense_auth_type,
         pfsense_password_set,
         pfsense_private_key_set,
+        smtp_enabled,
+        smtp_host,
+        smtp_port,
+        smtp_username,
+        smtp_password_set,
+        smtp_from_email,
+        smtp_tls,
         default_router,
         show_legacy_routers,
     }))
@@ -545,6 +586,42 @@ pub async fn update_settings(
     if let Some(ref private_key) = body.pfsense_private_key {
         upsert_setting(&state, "pfsense_private_key", private_key).await?;
         info!("pfSense private key updated");
+    }
+
+    // --- SMTP Email settings ---
+    if let Some(enabled) = body.smtp_enabled {
+        upsert_setting(&state, "smtp_enabled", if enabled { "1" } else { "0" }).await?;
+        info!(smtp_enabled = enabled, "SMTP enabled toggle updated");
+    }
+
+    if let Some(ref host) = body.smtp_host {
+        upsert_setting(&state, "smtp_host", host).await?;
+        info!(smtp_host = %host, "SMTP host updated");
+    }
+
+    if let Some(port) = body.smtp_port {
+        upsert_setting(&state, "smtp_port", &port.to_string()).await?;
+        info!(smtp_port = port, "SMTP port updated");
+    }
+
+    if let Some(ref username) = body.smtp_username {
+        upsert_setting(&state, "smtp_username", username).await?;
+        info!(smtp_username = %username, "SMTP username updated");
+    }
+
+    if let Some(ref password) = body.smtp_password {
+        upsert_setting(&state, "smtp_password", password).await?;
+        info!("SMTP password updated");
+    }
+
+    if let Some(ref from_email) = body.smtp_from_email {
+        upsert_setting(&state, "smtp_from_email", from_email).await?;
+        info!(smtp_from_email = %from_email, "SMTP from email updated");
+    }
+
+    if let Some(tls) = body.smtp_tls {
+        upsert_setting(&state, "smtp_tls", if tls { "1" } else { "0" }).await?;
+        info!(smtp_tls = tls, "SMTP TLS toggle updated");
     }
 
     // --- Default Router ---

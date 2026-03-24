@@ -621,6 +621,14 @@ export interface SettingsData {
   pfsense_auth_type: string | null;
   pfsense_password_set: boolean;
   pfsense_private_key_set: boolean;
+  // SMTP Email
+  smtp_enabled: boolean;
+  smtp_host: string | null;
+  smtp_port: number | null;
+  smtp_username: string | null;
+  smtp_password_set: boolean;
+  smtp_from_email: string | null;
+  smtp_tls: boolean;
   default_router: string | null;
   // Advanced / Legacy
   show_legacy_routers: boolean;
@@ -992,6 +1000,8 @@ export interface SyslogResponse {
 export interface AuthStatus {
   authenticated: boolean;
   needs_setup: boolean;
+  username?: string | null;
+  role?: string | null;
 }
 
 export interface LoginResponse {
@@ -1401,6 +1411,7 @@ export interface AlertRule {
   threshold_value: number | null;
   notify_telegram: boolean;
   notify_in_app: boolean;
+  notify_email: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -1411,6 +1422,7 @@ export interface CreateAlertRuleRequest {
   threshold_value?: number | null;
   notify_telegram?: boolean;
   notify_in_app?: boolean;
+  notify_email?: boolean;
 }
 
 export interface UpdateAlertRuleRequest {
@@ -1418,6 +1430,7 @@ export interface UpdateAlertRuleRequest {
   threshold_value?: number | null;
   notify_telegram?: boolean;
   notify_in_app?: boolean;
+  notify_email?: boolean;
 }
 
 // ─── Caddy Reverse Proxy ─────────────────────────────────
@@ -2222,4 +2235,63 @@ export interface ResolveResult {
   candidates: number;
   /** Which sources were successfully queried. */
   sources_queried: string[];
+}
+
+// ─── Users (RBAC) ───────────────────────────────────────
+
+export interface User {
+  id: string;
+  username: string;
+  display_name: string | null;
+  email: string | null;
+  role: "admin" | "operator" | "readonly";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateUserRequest {
+  username: string;
+  display_name?: string;
+  email?: string;
+  password: string;
+  role?: "admin" | "operator" | "readonly";
+}
+
+export interface UpdateUserRequest {
+  display_name?: string;
+  email?: string;
+  role?: "admin" | "operator" | "readonly";
+  password?: string;
+}
+
+// ─── SNMP Configuration ─────────────────────────────────
+
+export interface SnmpConfig {
+  id: string;
+  device_name: string;
+  host: string;
+  port: number;
+  community: string;
+  version: "v1" | "v2c" | "v3";
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateSnmpConfigRequest {
+  device_name: string;
+  host: string;
+  port?: number;
+  community?: string;
+  version?: "v1" | "v2c" | "v3";
+  enabled?: boolean;
+}
+
+export interface UpdateSnmpConfigRequest {
+  device_name?: string;
+  host?: string;
+  port?: number;
+  community?: string;
+  version?: "v1" | "v2c" | "v3";
+  enabled?: boolean;
 }

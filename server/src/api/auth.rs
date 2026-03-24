@@ -121,6 +121,7 @@ fn extract_client_ip(headers: &HeaderMap, addr: SocketAddr, trusted_proxies: &[S
 /// Login request body.
 #[derive(Debug, Deserialize)]
 pub struct LoginRequest {
+    pub username: Option<String>,
     pub password: String,
 }
 
@@ -135,6 +136,8 @@ pub struct LoginResponse {
 pub struct AuthStatusResponse {
     pub authenticated: bool,
     pub needs_setup: bool,
+    pub username: Option<String>,
+    pub role: Option<String>,
 }
 
 /// POST /api/v1/auth/login — authenticate and set session cookie.
@@ -163,24 +166,41 @@ pub async fn login(
         return Err(resp);
     }
 
-    // Retrieve the stored admin password hash from settings.
-    let row: Option<String> =
-        sqlx::query("SELECT value FROM settings WHERE key = 'admin_password_hash'")
+    // Multi-user login: look up user by username, fall back to legacy single-admin.
+    let username = body.username.as_deref().unwrap_or("admin");
+
+    // Try to find the user in the users table first.
+    let user_row: Option<(String, String, String)> =
+        sqlx::query_as("SELECT id, password_hash, role FROM users WHERE username = ?")
+            .bind(username)
             .fetch_optional(&state.db)
             .await
             .map_err(|e| {
-                tracing::error!("Failed to query settings: {e}");
+                tracing::error!("Failed to query users: {e}");
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            })?
-            .and_then(|r| r.try_get("value").ok());
+            })?;
 
-    let hash = match row {
-        Some(hash) => hash,
-        None => {
-            // No password set — setup hasn't been completed yet.
-            // The user must go through POST /api/v1/setup first.
-            state.rate_limiter.clear(&client_ip);
-            return Err(StatusCode::PRECONDITION_REQUIRED.into_response());
+    let (user_id, hash) = if let Some((uid, phash, _role)) = user_row {
+        (Some(uid), phash)
+    } else {
+        // Fall back to legacy single-admin password from settings.
+        let legacy_hash: Option<String> =
+            sqlx::query("SELECT value FROM settings WHERE key = 'admin_password_hash'")
+                .fetch_optional(&state.db)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to query settings: {e}");
+                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                })?
+                .and_then(|r| r.try_get("value").ok());
+
+        match legacy_hash {
+            Some(h) => (None, h),
+            None => {
+                // No password set — setup hasn't been completed yet.
+                state.rate_limiter.clear(&client_ip);
+                return Err(StatusCode::PRECONDITION_REQUIRED.into_response());
+            }
         }
     };
 
@@ -192,7 +212,7 @@ pub async fn login(
 
     if !valid {
         // Slot was already reserved by try_login_attempt(); no separate record needed.
-        warn!(%client_ip, "Failed login attempt");
+        warn!(%client_ip, "Failed login attempt for user {}", username);
         return Err(StatusCode::UNAUTHORIZED.into_response());
     }
 
@@ -202,20 +222,23 @@ pub async fn login(
     let expiry_secs = state.config.auth.session_expiry_seconds.max(1);
     let expiry_modifier = format!("+{expiry_secs} seconds");
 
-    sqlx::query("INSERT INTO sessions (token, expires_at) VALUES (?, datetime('now', ?))")
-        .bind(&token)
-        .bind(&expiry_modifier)
-        .execute(&state.db)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to store session: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        })?;
+    sqlx::query(
+        "INSERT INTO sessions (token, expires_at, user_id) VALUES (?, datetime('now', ?), ?)",
+    )
+    .bind(&token)
+    .bind(&expiry_modifier)
+    .bind(&user_id)
+    .execute(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to store session: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR.into_response()
+    })?;
 
     // Clear rate-limiter only after session is successfully persisted.
     state.rate_limiter.clear(&client_ip);
 
-    tracing::info!(%client_ip, "Admin logged in, session created");
+    tracing::info!(%client_ip, username = username, "User logged in, session created");
 
     // Build Set-Cookie header.
     let cookie = format!(
@@ -339,23 +362,55 @@ pub async fn status(
         })?
         .is_none();
 
-    let authenticated = if let Some(token) = extract_session_token(&req) {
-        sqlx::query("SELECT 1 FROM sessions WHERE token = ? AND expires_at > datetime('now')")
+    let mut authenticated = false;
+    let mut username: Option<String> = None;
+    let mut role: Option<String> = None;
+
+    if let Some(token) = extract_session_token(&req) {
+        // Join sessions with users to get user info
+        let session_row: Option<(String, String)> = sqlx::query_as(
+            "SELECT u.username, u.role FROM sessions s \
+             JOIN users u ON s.user_id = u.id \
+             WHERE s.token = ? AND s.expires_at > datetime('now')",
+        )
+        .bind(&token)
+        .fetch_optional(&state.db)
+        .await
+        .map_err(|e| {
+            tracing::error!("Failed to check session: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
+
+        if let Some((uname, urole)) = session_row {
+            authenticated = true;
+            username = Some(uname);
+            role = Some(urole);
+        } else {
+            // Check for legacy sessions without user_id
+            let legacy = sqlx::query(
+                "SELECT 1 FROM sessions WHERE token = ? AND expires_at > datetime('now') AND user_id IS NULL",
+            )
             .bind(&token)
             .fetch_optional(&state.db)
             .await
             .map_err(|e| {
-                tracing::error!("Failed to check session: {e}");
+                tracing::error!("Failed to check legacy session: {e}");
                 StatusCode::INTERNAL_SERVER_ERROR
-            })?
-            .is_some()
-    } else {
-        false
-    };
+            })?;
+
+            if legacy.is_some() {
+                authenticated = true;
+                username = Some("admin".to_string());
+                role = Some("admin".to_string());
+            }
+        }
+    }
 
     Ok(Json(AuthStatusResponse {
         authenticated,
         needs_setup,
+        username,
+        role,
     }))
 }
 
