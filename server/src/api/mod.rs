@@ -38,6 +38,7 @@ pub mod nat;
 pub mod npm;
 pub mod pfsense;
 pub mod qos;
+pub mod routing;
 pub mod scanner;
 pub mod search;
 pub mod services;
@@ -439,6 +440,14 @@ pub fn router(state: AppState) -> Router {
             post(pfsense::service_action),
         )
         .route("/pfsense/audit", get(pfsense::audit_log))
+        // Advanced Routing (PBR, Multi-WAN, BGP/OSPF)
+        .route("/routing/advanced", get(routing::advanced_routing))
+        .route("/routing/rules", post(routing::create_routing_rule))
+        .route("/routing/rules/:id", delete(routing::delete_routing_rule))
+        .route("/routing/mangle", post(routing::create_mangle_rule))
+        .route("/routing/mangle/:id", delete(routing::delete_mangle_rule))
+        .route("/routing/routes", post(routing::create_route))
+        .route("/routing/routes/:id", delete(routing::delete_route))
         // QoS / Traffic Shaping
         .route("/qos/summary", get(qos::qos_summary))
         .route(

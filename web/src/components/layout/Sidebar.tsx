@@ -15,6 +15,7 @@ import {
   Cloud,
   Cpu,
   Gauge,
+  GitFork,
   Globe,
   LayoutDashboard,
   MonitorSmartphone,
@@ -72,6 +73,7 @@ export const navGroups: NavGroup[] = [
     label: "Routing & Proxy",
     items: [
       { href: "/router", label: "Router", icon: Router },
+      { href: "/advanced-routing", label: "Adv. Routing", icon: GitFork },
       { href: "/caddy", label: "Caddy", icon: Shield },
       { href: "/services", label: "Services", icon: Workflow },
       { href: "/nat", label: "NAT", icon: ArrowRightLeft },

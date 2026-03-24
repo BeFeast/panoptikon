@@ -2223,3 +2223,127 @@ export interface ResolveResult {
   /** Which sources were successfully queried. */
   sources_queried: string[];
 }
+
+// ─── Advanced Routing ───────────────────────────────────
+
+export interface RoutingRule {
+  id: string | null;
+  src_address: string | null;
+  dst_address: string | null;
+  routing_mark: string | null;
+  action: string | null;
+  table: string | null;
+  interface: string | null;
+  comment: string | null;
+  disabled: boolean;
+}
+
+export interface RoutingTable {
+  id: string | null;
+  name: string | null;
+  fib: string | null;
+  comment: string | null;
+}
+
+export interface MangleRule {
+  id: string | null;
+  chain: string | null;
+  action: string | null;
+  new_routing_mark: string | null;
+  passthrough: string | null;
+  src_address: string | null;
+  dst_address: string | null;
+  protocol: string | null;
+  dst_port: string | null;
+  src_port: string | null;
+  in_interface: string | null;
+  comment: string | null;
+  disabled: boolean;
+  bytes: string | null;
+  packets: string | null;
+}
+
+export interface AdvancedRoute {
+  id: string | null;
+  dst_address: string;
+  gateway: string | null;
+  distance: string | null;
+  routing_table: string | null;
+  active: boolean;
+  dynamic: boolean;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface OspfInstance {
+  id: string | null;
+  name: string | null;
+  router_id: string | null;
+  disabled: boolean;
+  comment: string | null;
+  version: string | null;
+}
+
+export interface OspfArea {
+  id: string | null;
+  name: string | null;
+  area_id: string | null;
+  instance: string | null;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface OspfInterfaceTemplate {
+  id: string | null;
+  interfaces: string | null;
+  area: string | null;
+  cost: string | null;
+  priority: string | null;
+  disabled: boolean;
+  comment: string | null;
+  network_type: string | null;
+}
+
+export interface OspfNeighbor {
+  id: string | null;
+  instance: string | null;
+  address: string | null;
+  router_id: string | null;
+  state: string | null;
+  state_changes: string | null;
+  priority: string | null;
+  adjacency: string | null;
+}
+
+export interface BgpConnection {
+  id: string | null;
+  name: string | null;
+  remote_address: string | null;
+  remote_as: string | null;
+  local_role: string | null;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface BgpSession {
+  id: string | null;
+  name: string | null;
+  remote_address: string | null;
+  remote_as: string | null;
+  established: boolean;
+  uptime: string | null;
+  prefix_count: string | null;
+}
+
+export interface AdvancedRoutingData {
+  routing_rules: RoutingRule[];
+  routing_tables: RoutingTable[];
+  mangle_rules: MangleRule[];
+  routes: AdvancedRoute[];
+  ospf_instances: OspfInstance[];
+  ospf_areas: OspfArea[];
+  ospf_interface_templates: OspfInterfaceTemplate[];
+  ospf_neighbors: OspfNeighbor[];
+  bgp_connections: BgpConnection[];
+  bgp_sessions: BgpSession[];
+}

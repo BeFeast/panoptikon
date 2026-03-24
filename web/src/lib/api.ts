@@ -100,6 +100,7 @@ import type {
   DnsIngestEntry,
   DnsIngestResponse,
   DnsPurgeResponse,
+  AdvancedRoutingData,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -1848,4 +1849,60 @@ export function triggerNetworkScan(): Promise<
   return apiPost<import("./types").ScanSummary>(
     "/api/v1/scanner/trigger"
   );
+}
+
+// ─── Advanced Routing ────────────────────────────────────────
+
+export function fetchAdvancedRouting(): Promise<AdvancedRoutingData> {
+  return apiGet<AdvancedRoutingData>("/api/v1/routing/advanced");
+}
+
+export function createRoutingRule(body: {
+  src_address?: string;
+  dst_address?: string;
+  routing_mark?: string;
+  action?: string;
+  table?: string;
+  interface?: string;
+  comment?: string;
+}): Promise<void> {
+  return apiPost<void>("/api/v1/routing/rules", body);
+}
+
+export function deleteRoutingRule(id: string): Promise<void> {
+  return apiDelete(`/api/v1/routing/rules/${encodeURIComponent(id)}`);
+}
+
+export function createMangleRule(body: {
+  chain: string;
+  action: string;
+  new_routing_mark?: string;
+  passthrough?: string;
+  src_address?: string;
+  dst_address?: string;
+  protocol?: string;
+  dst_port?: string;
+  src_port?: string;
+  in_interface?: string;
+  comment?: string;
+}): Promise<void> {
+  return apiPost<void>("/api/v1/routing/mangle", body);
+}
+
+export function deleteMangleRule(id: string): Promise<void> {
+  return apiDelete(`/api/v1/routing/mangle/${encodeURIComponent(id)}`);
+}
+
+export function createAdvancedRoute(body: {
+  dst_address: string;
+  gateway: string;
+  distance?: string;
+  routing_table?: string;
+  comment?: string;
+}): Promise<void> {
+  return apiPost<void>("/api/v1/routing/routes", body);
+}
+
+export function deleteAdvancedRoute(id: string): Promise<void> {
+  return apiDelete(`/api/v1/routing/routes/${encodeURIComponent(id)}`);
 }

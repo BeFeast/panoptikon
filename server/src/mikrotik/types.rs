@@ -420,6 +420,215 @@ pub struct QueueTree {
     pub queued_bytes: Option<String>,
 }
 
+/// MikroTik routing rule for policy-based routing (`/rest/routing/rule`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RoutingRule {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub disabled: Option<String>,
+    #[serde(rename = "src-address")]
+    pub src_address: Option<String>,
+    #[serde(rename = "dst-address")]
+    pub dst_address: Option<String>,
+    #[serde(rename = "routing-mark")]
+    pub routing_mark: Option<String>,
+    pub action: Option<String>,
+    pub table: Option<String>,
+    pub comment: Option<String>,
+    pub interface: Option<String>,
+}
+
+/// MikroTik routing rule write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct RoutingRuleWriteRequest {
+    #[serde(skip_serializing_if = "Option::is_none", rename = "src-address")]
+    pub src_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dst-address")]
+    pub dst_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "routing-mark")]
+    pub routing_mark: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub action: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub table: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub interface: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<String>,
+}
+
+/// MikroTik routing table (`/rest/routing/table`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RoutingTable {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub fib: Option<String>,
+    pub comment: Option<String>,
+}
+
+/// MikroTik IP route write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct IpRouteWriteRequest {
+    #[serde(rename = "dst-address")]
+    pub dst_address: String,
+    pub gateway: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub distance: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "routing-table")]
+    pub routing_table: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<String>,
+}
+
+/// MikroTik firewall mangle rule (`/rest/ip/firewall/mangle`) — used for PBR marking.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FirewallMangle {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub chain: Option<String>,
+    pub action: Option<String>,
+    #[serde(rename = "new-routing-mark")]
+    pub new_routing_mark: Option<String>,
+    pub passthrough: Option<String>,
+    #[serde(rename = "src-address")]
+    pub src_address: Option<String>,
+    #[serde(rename = "dst-address")]
+    pub dst_address: Option<String>,
+    pub protocol: Option<String>,
+    #[serde(rename = "dst-port")]
+    pub dst_port: Option<String>,
+    #[serde(rename = "src-port")]
+    pub src_port: Option<String>,
+    #[serde(rename = "in-interface")]
+    pub in_interface: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<String>,
+    pub bytes: Option<String>,
+    pub packets: Option<String>,
+}
+
+/// MikroTik firewall mangle write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct FirewallMangleWriteRequest {
+    pub chain: String,
+    pub action: String,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "new-routing-mark")]
+    pub new_routing_mark: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub passthrough: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "src-address")]
+    pub src_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dst-address")]
+    pub dst_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dst-port")]
+    pub dst_port: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "src-port")]
+    pub src_port: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "in-interface")]
+    pub in_interface: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<String>,
+}
+
+/// MikroTik OSPF instance (`/rest/routing/ospf/instance`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OspfInstance {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    #[serde(rename = "router-id")]
+    pub router_id: Option<String>,
+    pub disabled: Option<String>,
+    pub comment: Option<String>,
+    pub version: Option<String>,
+}
+
+/// MikroTik OSPF area (`/rest/routing/ospf/area`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OspfArea {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    #[serde(rename = "area-id")]
+    pub area_id: Option<String>,
+    pub instance: Option<String>,
+    pub disabled: Option<String>,
+    pub comment: Option<String>,
+}
+
+/// MikroTik OSPF interface-template (`/rest/routing/ospf/interface-template`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OspfInterfaceTemplate {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub interfaces: Option<String>,
+    pub area: Option<String>,
+    pub cost: Option<String>,
+    pub priority: Option<String>,
+    pub disabled: Option<String>,
+    pub comment: Option<String>,
+    #[serde(rename = "network-type")]
+    pub network_type: Option<String>,
+}
+
+/// MikroTik OSPF neighbor (`/rest/routing/ospf/neighbor`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OspfNeighbor {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub instance: Option<String>,
+    pub address: Option<String>,
+    #[serde(rename = "router-id")]
+    pub router_id: Option<String>,
+    pub state: Option<String>,
+    #[serde(rename = "state-changes")]
+    pub state_changes: Option<String>,
+    pub priority: Option<String>,
+    pub adjacency: Option<String>,
+}
+
+/// MikroTik BGP connection (`/rest/routing/bgp/connection`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BgpConnection {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    #[serde(rename = "remote.address")]
+    pub remote_address: Option<String>,
+    #[serde(rename = "remote.as")]
+    pub remote_as: Option<String>,
+    #[serde(rename = "local.role")]
+    pub local_role: Option<String>,
+    pub disabled: Option<String>,
+    pub comment: Option<String>,
+}
+
+/// MikroTik BGP session (`/rest/routing/bgp/session`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BgpSession {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    #[serde(rename = "remote.address")]
+    pub remote_address: Option<String>,
+    #[serde(rename = "remote.as")]
+    pub remote_as: Option<String>,
+    #[serde(rename = "established")]
+    pub established: Option<String>,
+    pub uptime: Option<String>,
+    #[serde(rename = "prefix-count")]
+    pub prefix_count: Option<String>,
+}
+
 /// MikroTik WireGuard peer (`/rest/interface/wireguard/peers`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WgPeer {
