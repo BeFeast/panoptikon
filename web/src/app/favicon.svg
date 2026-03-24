@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Outer broken hex ring — signal cyan -->
+  <g stroke="#22D3EE" stroke-width="2" fill="none" stroke-linecap="round">
+    <!-- Top-right edge -->
+    <line x1="16" y1="2" x2="27" y2="8" />
+    <!-- Right edge -->
+    <line x1="27" y1="8" x2="27" y2="20" />
+    <!-- Bottom-right edge -->
+    <line x1="27" y1="20" x2="20" y2="28" />
+    <!-- Bottom-left edge -->
+    <line x1="12" y1="28" x2="5" y2="20" />
+    <!-- Left edge -->
+    <line x1="5" y1="20" x2="5" y2="8" />
+    <!-- Top-left edge -->
+    <line x1="5" y1="8" x2="16" y2="2" />
+  </g>
+  <!-- Inner hex — subtle light -->
+  <polygon
+    points="16,8 22,11.5 22,18.5 16,22 10,18.5 10,11.5"
+    stroke="#E8EEF7"
+    stroke-opacity="0.92"
+    stroke-width="1"
+    fill="none"
+  />
+  <!-- Central amber dot -->
+  <circle cx="16" cy="15" r="3" fill="#F59E0B" />
+</svg>
