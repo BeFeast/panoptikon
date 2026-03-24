@@ -1392,6 +1392,87 @@ export interface MikrotikWireguard {
   interfaces: MikrotikWgInterface[];
 }
 
+// ─── MikroTik Advanced Routing ───────────────────────────
+
+export interface MikrotikMangleRule {
+  id: string | null;
+  chain: string | null;
+  action: string | null;
+  protocol: string | null;
+  src_address: string | null;
+  dst_address: string | null;
+  src_port: string | null;
+  dst_port: string | null;
+  in_interface: string | null;
+  out_interface: string | null;
+  new_routing_mark: string | null;
+  new_connection_mark: string | null;
+  new_packet_mark: string | null;
+  passthrough: boolean;
+  comment: string | null;
+  disabled: boolean;
+  bytes: string | null;
+  packets: string | null;
+}
+
+export interface MikrotikRoutingRule {
+  id: string | null;
+  src_address: string | null;
+  dst_address: string | null;
+  routing_mark: string | null;
+  action: string | null;
+  table: string | null;
+  interface: string | null;
+  comment: string | null;
+  disabled: boolean;
+}
+
+export interface MikrotikNetwatchEntry {
+  id: string | null;
+  host: string | null;
+  check_type: string | null;
+  interval: string | null;
+  timeout: string | null;
+  status: string | null;
+  since: string | null;
+  comment: string | null;
+  disabled: boolean;
+}
+
+export interface MikrotikAdvancedRouting {
+  mangle_rules: MikrotikMangleRule[];
+  routing_rules: MikrotikRoutingRule[];
+  netwatch: MikrotikNetwatchEntry[];
+}
+
+export interface MikrotikMangleRequest {
+  chain: string;
+  action: string;
+  protocol?: string;
+  src_address?: string;
+  dst_address?: string;
+  src_port?: string;
+  dst_port?: string;
+  in_interface?: string;
+  out_interface?: string;
+  new_routing_mark?: string;
+  new_connection_mark?: string;
+  new_packet_mark?: string;
+  passthrough?: boolean;
+  comment?: string;
+  disabled?: boolean;
+}
+
+export interface MikrotikRoutingRuleRequest {
+  action: string;
+  src_address?: string;
+  dst_address?: string;
+  routing_mark?: string;
+  table?: string;
+  interface?: string;
+  comment?: string;
+}
+
 // ─── Alert Rules ─────────────────────────────────────────
 
 export interface AlertRule {

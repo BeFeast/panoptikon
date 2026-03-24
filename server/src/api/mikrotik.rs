@@ -14,7 +14,7 @@ use super::{audit, AppState};
 use crate::mikrotik::client::MikrotikClient;
 use crate::mikrotik::types::{
     DhcpStaticLeaseWriteRequest, FirewallAddressListWriteRequest, FirewallFilterWriteRequest,
-    FirewallNatWriteRequest, VlanWriteRequest,
+    FirewallNatWriteRequest, MangleWriteRequest, RoutingRuleWriteRequest, VlanWriteRequest,
 };
 
 // ── Helper: build a MikroTik client from DB settings ───────
@@ -234,6 +234,93 @@ pub struct MikrotikToggleRequest {
 pub struct MikrotikAddressListRequest {
     pub list: String,
     pub address: String,
+    pub comment: Option<String>,
+}
+
+// ── Advanced Routing types ─────────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikAdvancedRoutingResponse {
+    pub mangle_rules: Vec<MikrotikMangleRule>,
+    pub routing_rules: Vec<MikrotikRoutingRule>,
+    pub netwatch: Vec<MikrotikNetwatchEntry>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikMangleRule {
+    pub id: Option<String>,
+    pub chain: Option<String>,
+    pub action: Option<String>,
+    pub protocol: Option<String>,
+    pub src_address: Option<String>,
+    pub dst_address: Option<String>,
+    pub src_port: Option<String>,
+    pub dst_port: Option<String>,
+    pub in_interface: Option<String>,
+    pub out_interface: Option<String>,
+    pub new_routing_mark: Option<String>,
+    pub new_connection_mark: Option<String>,
+    pub new_packet_mark: Option<String>,
+    pub passthrough: bool,
+    pub comment: Option<String>,
+    pub disabled: bool,
+    pub bytes: Option<String>,
+    pub packets: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikRoutingRule {
+    pub id: Option<String>,
+    pub src_address: Option<String>,
+    pub dst_address: Option<String>,
+    pub routing_mark: Option<String>,
+    pub action: Option<String>,
+    pub table: Option<String>,
+    pub interface: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikNetwatchEntry {
+    pub id: Option<String>,
+    pub host: Option<String>,
+    pub check_type: Option<String>,
+    pub interval: Option<String>,
+    pub timeout: Option<String>,
+    pub status: Option<String>,
+    pub since: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikMangleRequest {
+    pub chain: String,
+    pub action: String,
+    pub protocol: Option<String>,
+    pub src_address: Option<String>,
+    pub dst_address: Option<String>,
+    pub src_port: Option<String>,
+    pub dst_port: Option<String>,
+    pub in_interface: Option<String>,
+    pub out_interface: Option<String>,
+    pub new_routing_mark: Option<String>,
+    pub new_connection_mark: Option<String>,
+    pub new_packet_mark: Option<String>,
+    pub passthrough: Option<bool>,
+    pub comment: Option<String>,
+    pub disabled: Option<bool>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikRoutingRuleRequest {
+    pub action: String,
+    pub src_address: Option<String>,
+    pub dst_address: Option<String>,
+    pub routing_mark: Option<String>,
+    pub table: Option<String>,
+    pub interface: Option<String>,
     pub comment: Option<String>,
 }
 
@@ -1385,6 +1472,330 @@ pub async fn delete_dhcp_lease(
             let msg = e.to_string();
             audit::log_failure(&state.db, "mikrotik_dhcp_lease_delete", &desc, &cmds, &msg).await;
             tracing::error!("MikroTik DHCP lease delete error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+// ── Advanced Routing ──────────────────────────────────────
+
+fn to_mangle_write(body: &MikrotikMangleRequest) -> MangleWriteRequest {
+    MangleWriteRequest {
+        chain: body.chain.clone(),
+        action: body.action.clone(),
+        protocol: body.protocol.clone(),
+        src_address: body.src_address.clone(),
+        dst_address: body.dst_address.clone(),
+        src_port: body.src_port.clone(),
+        dst_port: body.dst_port.clone(),
+        in_interface: body.in_interface.clone(),
+        out_interface: body.out_interface.clone(),
+        new_routing_mark: body.new_routing_mark.clone(),
+        new_connection_mark: body.new_connection_mark.clone(),
+        new_packet_mark: body.new_packet_mark.clone(),
+        passthrough: body
+            .passthrough
+            .map(|p| if p { "true" } else { "false" }.to_string()),
+        comment: body.comment.clone(),
+        disabled: body
+            .disabled
+            .map(|d| if d { "true" } else { "false" }.to_string()),
+    }
+}
+
+/// GET /api/v1/mikrotik/advanced-routing
+///
+/// Returns mangle rules, routing rules, and netwatch entries in one call.
+pub async fn advanced_routing(
+    State(state): State<AppState>,
+) -> Result<Json<MikrotikAdvancedRoutingResponse>, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.mikrotik_cache.get("advanced-routing") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let mangle = client.mangle_rules().await.unwrap_or_default();
+    let rules = client.routing_rules().await.unwrap_or_default();
+    let nw = client.netwatch().await.unwrap_or_default();
+
+    let mangle_rules: Vec<MikrotikMangleRule> = mangle
+        .into_iter()
+        .map(|m| MikrotikMangleRule {
+            id: m.id,
+            chain: m.chain,
+            action: m.action,
+            protocol: m.protocol,
+            src_address: m.src_address,
+            dst_address: m.dst_address,
+            src_port: m.src_port,
+            dst_port: m.dst_port,
+            in_interface: m.in_interface,
+            out_interface: m.out_interface,
+            new_routing_mark: m.new_routing_mark,
+            new_connection_mark: m.new_connection_mark,
+            new_packet_mark: m.new_packet_mark,
+            passthrough: is_true(&m.passthrough),
+            comment: m.comment,
+            disabled: is_true(&m.disabled),
+            bytes: m.bytes,
+            packets: m.packets,
+        })
+        .collect();
+
+    let routing_rules: Vec<MikrotikRoutingRule> = rules
+        .into_iter()
+        .map(|r| MikrotikRoutingRule {
+            id: r.id,
+            src_address: r.src_address,
+            dst_address: r.dst_address,
+            routing_mark: r.routing_mark,
+            action: r.action,
+            table: r.table,
+            interface: r.interface,
+            comment: r.comment,
+            disabled: is_true(&r.disabled),
+        })
+        .collect();
+
+    let netwatch: Vec<MikrotikNetwatchEntry> = nw
+        .into_iter()
+        .map(|n| MikrotikNetwatchEntry {
+            id: n.id,
+            host: n.host,
+            check_type: n.check_type,
+            interval: n.interval,
+            timeout: n.timeout,
+            status: n.status,
+            since: n.since,
+            comment: n.comment,
+            disabled: is_true(&n.disabled),
+        })
+        .collect();
+
+    let result = MikrotikAdvancedRoutingResponse {
+        mangle_rules,
+        routing_rules,
+        netwatch,
+    };
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.mikrotik_cache.set("advanced-routing".into(), val);
+    }
+    Ok(Json(result))
+}
+
+/// POST /api/v1/mikrotik/mangle
+pub async fn create_mangle(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikMangleRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = to_mangle_write(&body);
+    let desc = format!(
+        "Create MikroTik mangle rule: chain={} action={}",
+        body.chain, body.action
+    );
+    let cmds = vec![format!("POST /ip/firewall/mangle chain={}", body.chain)];
+
+    match client.create_mangle_rule(&req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_mangle_create", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_mangle_create", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik mangle create error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// PATCH /api/v1/mikrotik/mangle/:id
+pub async fn update_mangle(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikMangleRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = to_mangle_write(&body);
+    let desc = format!("Update MikroTik mangle rule {id}");
+    let cmds = vec![format!("PATCH /ip/firewall/mangle/{id}")];
+
+    match client.update_mangle_rule(id, &req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_mangle_update", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_mangle_update", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik mangle update error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// DELETE /api/v1/mikrotik/mangle/:id
+pub async fn delete_mangle(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let desc = format!("Delete MikroTik mangle rule {id}");
+    let cmds = vec![format!("DELETE /ip/firewall/mangle/{id}")];
+
+    match client.delete_mangle_rule(id).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_mangle_delete", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_mangle_delete", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik mangle delete error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// POST /api/v1/mikrotik/mangle/:id/toggle
+pub async fn toggle_mangle(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikToggleRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let label = if body.disabled { "disable" } else { "enable" };
+    let desc = format!("{label} MikroTik mangle rule {id}");
+    let cmds = vec![format!(
+        "PATCH /ip/firewall/mangle/{id} disabled={}",
+        body.disabled
+    )];
+
+    match client.toggle_mangle_rule(id, body.disabled).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_mangle_toggle", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_mangle_toggle", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik mangle toggle error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// POST /api/v1/mikrotik/routing-rules
+pub async fn create_routing_rule(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikRoutingRuleRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = RoutingRuleWriteRequest {
+        src_address: body.src_address.clone(),
+        dst_address: body.dst_address.clone(),
+        routing_mark: body.routing_mark.clone(),
+        action: body.action.clone(),
+        table: body.table.clone(),
+        interface: body.interface.clone(),
+        comment: body.comment.clone(),
+        disabled: None,
+    };
+
+    let desc = format!("Create MikroTik routing rule: action={}", body.action);
+    let cmds = vec![format!("POST /ip/route/rule action={}", body.action)];
+
+    match client.create_routing_rule(&req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_routing_rule_create", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_routing_rule_create",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik routing rule create error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// DELETE /api/v1/mikrotik/routing-rules/:id
+pub async fn delete_routing_rule(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let desc = format!("Delete MikroTik routing rule {id}");
+    let cmds = vec![format!("DELETE /ip/route/rule/{id}")];
+
+    match client.delete_routing_rule(id).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_routing_rule_delete", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_routing_rule_delete",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik routing rule delete error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
     }

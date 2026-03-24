@@ -24,6 +24,9 @@ import {
   Power,
   List,
   Pin,
+  GitBranch,
+  Waypoints,
+  Wifi,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -71,6 +74,12 @@ import {
   fetchMikrotikFirewall,
   fetchMikrotikDns,
   fetchMikrotikWireguard,
+  fetchMikrotikAdvancedRouting,
+  createMikrotikMangle,
+  deleteMikrotikMangle,
+  toggleMikrotikMangle,
+  createMikrotikRoutingRule,
+  deleteMikrotikRoutingRule,
   createMikrotikVlan,
   updateMikrotikVlan,
   deleteMikrotikVlan,
@@ -105,6 +114,12 @@ import type {
   MikrotikAddressListRequest,
   MikrotikDns,
   MikrotikWireguard,
+  MikrotikAdvancedRouting,
+  MikrotikMangleRule,
+  MikrotikRoutingRule,
+  MikrotikNetwatchEntry,
+  MikrotikMangleRequest,
+  MikrotikRoutingRuleRequest,
   TrafficHistoryPoint,
 } from "@/lib/types";
 
@@ -724,6 +739,718 @@ function VlansPanel({
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+// ── Advanced Routing Panel ────────────────────────────────
+
+function AdvancedRoutingPanel({
+  data,
+  loading,
+  error,
+  reload,
+}: {
+  data: MikrotikAdvancedRouting | null;
+  loading: boolean;
+  error: string | null;
+  reload: () => void;
+}) {
+  const [subTab, setSubTab] = useState("mangle");
+  const [showMangleDialog, setShowMangleDialog] = useState(false);
+  const [showRuleDialog, setShowRuleDialog] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<{
+    type: "mangle" | "rule";
+    id: string;
+    label: string;
+  } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Mangle form state
+  const [mangleChain, setMangleChain] = useState("prerouting");
+  const [mangleAction, setMangleAction] = useState("mark-routing");
+  const [mangleSrcAddr, setMangleSrcAddr] = useState("");
+  const [mangleDstAddr, setMangleDstAddr] = useState("");
+  const [mangleProtocol, setMangleProtocol] = useState("");
+  const [mangleRoutingMark, setMangleRoutingMark] = useState("");
+  const [mangleComment, setMangleComment] = useState("");
+
+  // Routing rule form state
+  const [ruleAction, setRuleAction] = useState("lookup");
+  const [ruleSrcAddr, setRuleSrcAddr] = useState("");
+  const [ruleDstAddr, setRuleDstAddr] = useState("");
+  const [ruleRoutingMark, setRuleRoutingMark] = useState("");
+  const [ruleTable, setRuleTable] = useState("");
+  const [ruleComment, setRuleComment] = useState("");
+
+  const resetMangleForm = () => {
+    setMangleChain("prerouting");
+    setMangleAction("mark-routing");
+    setMangleSrcAddr("");
+    setMangleDstAddr("");
+    setMangleProtocol("");
+    setMangleRoutingMark("");
+    setMangleComment("");
+  };
+
+  const resetRuleForm = () => {
+    setRuleAction("lookup");
+    setRuleSrcAddr("");
+    setRuleDstAddr("");
+    setRuleRoutingMark("");
+    setRuleTable("");
+    setRuleComment("");
+  };
+
+  const handleCreateMangle = async () => {
+    try {
+      const req: MikrotikMangleRequest = {
+        chain: mangleChain,
+        action: mangleAction,
+        src_address: mangleSrcAddr || undefined,
+        dst_address: mangleDstAddr || undefined,
+        protocol: mangleProtocol || undefined,
+        new_routing_mark: mangleRoutingMark || undefined,
+        comment: mangleComment || undefined,
+      };
+      await createMikrotikMangle(req);
+      toast.success("Mangle rule created");
+      setShowMangleDialog(false);
+      resetMangleForm();
+      reload();
+    } catch {
+      toast.error("Failed to create mangle rule");
+    }
+  };
+
+  const handleCreateRule = async () => {
+    try {
+      const req: MikrotikRoutingRuleRequest = {
+        action: ruleAction,
+        src_address: ruleSrcAddr || undefined,
+        dst_address: ruleDstAddr || undefined,
+        routing_mark: ruleRoutingMark || undefined,
+        table: ruleTable || undefined,
+        comment: ruleComment || undefined,
+      };
+      await createMikrotikRoutingRule(req);
+      toast.success("Routing rule created");
+      setShowRuleDialog(false);
+      resetRuleForm();
+      reload();
+    } catch {
+      toast.error("Failed to create routing rule");
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      if (confirmDelete.type === "mangle") {
+        await deleteMikrotikMangle(confirmDelete.id);
+      } else {
+        await deleteMikrotikRoutingRule(confirmDelete.id);
+      }
+      toast.success(`${confirmDelete.type === "mangle" ? "Mangle rule" : "Routing rule"} deleted`);
+      setConfirmDelete(null);
+      reload();
+    } catch {
+      toast.error("Failed to delete rule");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const handleToggleMangle = async (id: string, currentDisabled: boolean) => {
+    try {
+      await toggleMikrotikMangle(id, !currentDisabled);
+      toast.success(currentDisabled ? "Mangle rule enabled" : "Mangle rule disabled");
+      reload();
+    } catch {
+      toast.error("Failed to toggle mangle rule");
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card className="border-slate-800 bg-slate-900">
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-48 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="border-slate-800 bg-slate-900">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+            <p className="text-xs text-rose-400">{error}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const mangleRules = data?.mangle_rules ?? [];
+  const routingRules = data?.routing_rules ?? [];
+  const netwatchEntries = data?.netwatch ?? [];
+
+  return (
+    <>
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <CardTitle className="text-base text-white">
+            Advanced Routing
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={subTab} onValueChange={setSubTab}>
+            <TabsList className="border-slate-800 bg-slate-950">
+              <TabsTrigger
+                value="mangle"
+                className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+              >
+                <Waypoints className="mr-1.5 h-3.5 w-3.5" />
+                Policy Routes
+              </TabsTrigger>
+              <TabsTrigger
+                value="rules"
+                className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+              >
+                <GitBranch className="mr-1.5 h-3.5 w-3.5" />
+                Routing Rules
+              </TabsTrigger>
+              <TabsTrigger
+                value="netwatch"
+                className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+              >
+                <Wifi className="mr-1.5 h-3.5 w-3.5" />
+                Gateway Monitor
+              </TabsTrigger>
+            </TabsList>
+
+            {/* ── Policy Routes (Mangle) ─────────────────── */}
+            <TabsContent value="mangle" className="mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-slate-400">
+                  Firewall mangle rules for packet marking (policy-based routing).
+                </p>
+                <Button
+                  size="sm"
+                  className="bg-sky-600 hover:bg-sky-700 text-white"
+                  onClick={() => setShowMangleDialog(true)}
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Add Rule
+                </Button>
+              </div>
+
+              {mangleRules.length === 0 ? (
+                <p className="py-4 text-sm text-slate-500">
+                  No mangle rules found.
+                </p>
+              ) : (
+                <div className="overflow-x-auto rounded-md border border-slate-800">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                        <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Action</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Src Address</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Dst Address</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Routing Mark</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mangleRules.map((rule, idx) => (
+                        <tr
+                          key={rule.id ?? idx}
+                          className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                        >
+                          <td className="px-4 py-3">
+                            <Badge
+                              variant="outline"
+                              className={
+                                rule.disabled
+                                  ? "border-slate-700 text-slate-500 text-xs"
+                                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+                              }
+                            >
+                              {rule.disabled ? "disabled" : "active"}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-slate-300">{rule.chain ?? "\u2014"}</td>
+                          <td className="px-4 py-3 text-white font-medium">{rule.action ?? "\u2014"}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-slate-300">
+                            {rule.src_address ?? "any"}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs text-slate-300">
+                            {rule.dst_address ?? "any"}
+                          </td>
+                          <td className="px-4 py-3">
+                            {rule.new_routing_mark ? (
+                              <Badge
+                                variant="outline"
+                                className="border-sky-500/30 text-sky-400 text-xs"
+                              >
+                                {rule.new_routing_mark}
+                              </Badge>
+                            ) : (
+                              <span className="text-slate-500">\u2014</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-400">
+                            {rule.comment ?? "\u2014"}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1">
+                              {rule.id && (
+                                <>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-slate-400 hover:text-white"
+                                    onClick={() => handleToggleMangle(rule.id!, rule.disabled)}
+                                    title={rule.disabled ? "Enable" : "Disable"}
+                                  >
+                                    <Power className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400"
+                                    onClick={() =>
+                                      setConfirmDelete({
+                                        type: "mangle",
+                                        id: rule.id!,
+                                        label: rule.comment ?? rule.action ?? "rule",
+                                      })
+                                    }
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* ── Routing Rules ───────────────────────────── */}
+            <TabsContent value="rules" className="mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-xs text-slate-400">
+                  IP route rules for policy-based routing decisions.
+                </p>
+                <Button
+                  size="sm"
+                  className="bg-sky-600 hover:bg-sky-700 text-white"
+                  onClick={() => setShowRuleDialog(true)}
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Add Rule
+                </Button>
+              </div>
+
+              {routingRules.length === 0 ? (
+                <p className="py-4 text-sm text-slate-500">
+                  No routing rules found.
+                </p>
+              ) : (
+                <div className="overflow-x-auto rounded-md border border-slate-800">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                        <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Action</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Src Address</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Dst Address</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Routing Mark</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Table</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {routingRules.map((rule, idx) => (
+                        <tr
+                          key={rule.id ?? idx}
+                          className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                        >
+                          <td className="px-4 py-3">
+                            <Badge
+                              variant="outline"
+                              className={
+                                rule.disabled
+                                  ? "border-slate-700 text-slate-500 text-xs"
+                                  : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+                              }
+                            >
+                              {rule.disabled ? "disabled" : "active"}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-white font-medium">{rule.action ?? "\u2014"}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-slate-300">
+                            {rule.src_address ?? "any"}
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs text-slate-300">
+                            {rule.dst_address ?? "any"}
+                          </td>
+                          <td className="px-4 py-3">
+                            {rule.routing_mark ? (
+                              <Badge
+                                variant="outline"
+                                className="border-sky-500/30 text-sky-400 text-xs"
+                              >
+                                {rule.routing_mark}
+                              </Badge>
+                            ) : (
+                              <span className="text-slate-500">\u2014</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-slate-300">{rule.table ?? "main"}</td>
+                          <td className="px-4 py-3 text-xs text-slate-400">
+                            {rule.comment ?? "\u2014"}
+                          </td>
+                          <td className="px-4 py-3">
+                            {rule.id && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400"
+                                onClick={() =>
+                                  setConfirmDelete({
+                                    type: "rule",
+                                    id: rule.id!,
+                                    label: rule.comment ?? rule.action ?? "rule",
+                                  })
+                                }
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* ── Gateway Monitor (Netwatch) ──────────────── */}
+            <TabsContent value="netwatch" className="mt-4">
+              <p className="text-xs text-slate-400 mb-3">
+                Gateway health monitoring via Netwatch. Shows host reachability and uptime.
+              </p>
+
+              {netwatchEntries.length === 0 ? (
+                <p className="py-4 text-sm text-slate-500">
+                  No Netwatch entries found. Configure gateway monitors on the router.
+                </p>
+              ) : (
+                <div className="overflow-x-auto rounded-md border border-slate-800">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                        <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Host</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Type</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Interval</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Since</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {netwatchEntries.map((entry, idx) => (
+                        <tr
+                          key={entry.id ?? idx}
+                          className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                        >
+                          <td className="px-4 py-3">
+                            <Badge
+                              variant="outline"
+                              className={
+                                entry.status === "up"
+                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+                                  : entry.status === "down"
+                                    ? "border-rose-500/30 bg-rose-500/10 text-rose-400 text-xs"
+                                    : "border-slate-700 text-slate-500 text-xs"
+                              }
+                            >
+                              {entry.disabled ? "disabled" : entry.status ?? "unknown"}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="font-mono tabular-nums text-white">
+                              {entry.host ?? "\u2014"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-slate-300">
+                            {entry.check_type ?? "icmp"}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-400">
+                            {entry.interval ?? "\u2014"}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-400">
+                            {entry.since ?? "\u2014"}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-400">
+                            {entry.comment ?? "\u2014"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* ── Create Mangle Rule Dialog ──────────────────── */}
+      <Dialog open={showMangleDialog} onOpenChange={setShowMangleDialog}>
+        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white">Add Mangle Rule</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Create a firewall mangle rule for policy-based routing.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-slate-300">Chain</Label>
+                <Input
+                  value={mangleChain}
+                  onChange={(e) => setMangleChain(e.target.value)}
+                  placeholder="prerouting"
+                  className="mt-1 border-slate-700 bg-slate-800 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-slate-300">Action</Label>
+                <Input
+                  value={mangleAction}
+                  onChange={(e) => setMangleAction(e.target.value)}
+                  placeholder="mark-routing"
+                  className="mt-1 border-slate-700 bg-slate-800 text-white"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-slate-300">Source Address</Label>
+                <Input
+                  value={mangleSrcAddr}
+                  onChange={(e) => setMangleSrcAddr(e.target.value)}
+                  placeholder="192.168.1.0/24"
+                  className="mt-1 border-slate-700 bg-slate-800 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-slate-300">Destination Address</Label>
+                <Input
+                  value={mangleDstAddr}
+                  onChange={(e) => setMangleDstAddr(e.target.value)}
+                  placeholder="0.0.0.0/0"
+                  className="mt-1 border-slate-700 bg-slate-800 text-white"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-slate-300">Protocol</Label>
+                <Input
+                  value={mangleProtocol}
+                  onChange={(e) => setMangleProtocol(e.target.value)}
+                  placeholder="tcp"
+                  className="mt-1 border-slate-700 bg-slate-800 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-slate-300">New Routing Mark</Label>
+                <Input
+                  value={mangleRoutingMark}
+                  onChange={(e) => setMangleRoutingMark(e.target.value)}
+                  placeholder="wan2-route"
+                  className="mt-1 border-slate-700 bg-slate-800 text-white"
+                />
+              </div>
+            </div>
+            <div>
+              <Label className="text-slate-300">Comment</Label>
+              <Input
+                value={mangleComment}
+                onChange={(e) => setMangleComment(e.target.value)}
+                placeholder="Policy route for subnet"
+                className="mt-1 border-slate-700 bg-slate-800 text-white"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowMangleDialog(false);
+                resetMangleForm();
+              }}
+              className="text-slate-300 hover:bg-slate-800"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateMangle}
+              disabled={!mangleChain.trim() || !mangleAction.trim()}
+              className="bg-sky-600 hover:bg-sky-700 text-white"
+            >
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Create Routing Rule Dialog ─────────────────── */}
+      <Dialog open={showRuleDialog} onOpenChange={setShowRuleDialog}>
+        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-white">Add Routing Rule</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Create an IP route rule for policy-based routing.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-slate-300">Action</Label>
+                <Input
+                  value={ruleAction}
+                  onChange={(e) => setRuleAction(e.target.value)}
+                  placeholder="lookup"
+                  className="mt-1 border-slate-700 bg-slate-800 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-slate-300">Table</Label>
+                <Input
+                  value={ruleTable}
+                  onChange={(e) => setRuleTable(e.target.value)}
+                  placeholder="wan2"
+                  className="mt-1 border-slate-700 bg-slate-800 text-white"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-slate-300">Source Address</Label>
+                <Input
+                  value={ruleSrcAddr}
+                  onChange={(e) => setRuleSrcAddr(e.target.value)}
+                  placeholder="192.168.1.0/24"
+                  className="mt-1 border-slate-700 bg-slate-800 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-slate-300">Destination Address</Label>
+                <Input
+                  value={ruleDstAddr}
+                  onChange={(e) => setRuleDstAddr(e.target.value)}
+                  placeholder="0.0.0.0/0"
+                  className="mt-1 border-slate-700 bg-slate-800 text-white"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-slate-300">Routing Mark</Label>
+                <Input
+                  value={ruleRoutingMark}
+                  onChange={(e) => setRuleRoutingMark(e.target.value)}
+                  placeholder="wan2-route"
+                  className="mt-1 border-slate-700 bg-slate-800 text-white"
+                />
+              </div>
+              <div>
+                <Label className="text-slate-300">Comment</Label>
+                <Input
+                  value={ruleComment}
+                  onChange={(e) => setRuleComment(e.target.value)}
+                  placeholder="PBR to WAN2"
+                  className="mt-1 border-slate-700 bg-slate-800 text-white"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowRuleDialog(false);
+                resetRuleForm();
+              }}
+              className="text-slate-300 hover:bg-slate-800"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateRule}
+              disabled={!ruleAction.trim()}
+              className="bg-sky-600 hover:bg-sky-700 text-white"
+            >
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Delete Confirmation ────────────────────────── */}
+      <AlertDialog
+        open={!!confirmDelete}
+        onOpenChange={(open) => !open && setConfirmDelete(null)}
+      >
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Delete {confirmDelete?.type === "mangle" ? "Mangle Rule" : "Routing Rule"}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              This will remove{" "}
+              <span className="font-mono text-slate-200">
+                {confirmDelete?.label ?? ""}
+              </span>
+              . This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 text-slate-300 hover:bg-slate-800">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-rose-600 text-white hover:bg-rose-700"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
@@ -2559,6 +3286,9 @@ export default function MikrotikRouter() {
   const fw = useData(useCallback(() => fetchMikrotikFirewall(), []));
   const dns = useData(useCallback(() => fetchMikrotikDns(), []));
   const wg = useData(useCallback(() => fetchMikrotikWireguard(), []));
+  const advRouting = useData(
+    useCallback(() => fetchMikrotikAdvancedRouting(), []),
+  );
 
   if (loading) {
     return (
@@ -2615,6 +3345,13 @@ export default function MikrotikRouter() {
           >
             <Globe className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">Routes</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="advanced-routing"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+          >
+            <GitBranch className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Advanced</span>
           </TabsTrigger>
           <TabsTrigger
             value="dhcp"
@@ -2707,6 +3444,15 @@ export default function MikrotikRouter() {
               />
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="advanced-routing" className="space-y-4">
+          <AdvancedRoutingPanel
+            data={advRouting.data}
+            loading={advRouting.loading}
+            error={advRouting.error}
+            reload={advRouting.reload}
+          />
         </TabsContent>
 
         <TabsContent value="dhcp">

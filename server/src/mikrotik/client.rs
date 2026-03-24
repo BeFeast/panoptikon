@@ -500,6 +500,70 @@ impl MikrotikClient {
             .await
     }
 
+    // ── Advanced Routing ────────────────────────────────────
+
+    /// Fetch firewall mangle rules (used for PBR packet marking).
+    pub async fn mangle_rules(&self) -> Result<Vec<MangleRule>> {
+        let val = self.get("/ip/firewall/mangle").await?;
+        let res: Vec<MangleRule> =
+            serde_json::from_value(val).context("failed to parse mangle rules")?;
+        Ok(res)
+    }
+
+    /// Create a firewall mangle rule.
+    pub async fn create_mangle_rule(&self, req: &MangleWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/ip/firewall/mangle", req)
+            .await
+    }
+
+    /// Update a firewall mangle rule by RouterOS `.id`.
+    pub async fn update_mangle_rule(&self, id: &str, req: &MangleWriteRequest) -> Result<()> {
+        self.send_json(Method::PATCH, &format!("/ip/firewall/mangle/{id}"), req)
+            .await
+    }
+
+    /// Delete a firewall mangle rule by RouterOS `.id`.
+    pub async fn delete_mangle_rule(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/ip/firewall/mangle/{id}"))
+            .await
+    }
+
+    /// Toggle a firewall mangle rule's disabled state.
+    pub async fn toggle_mangle_rule(&self, id: &str, disabled: bool) -> Result<()> {
+        let body = serde_json::json!({
+            "disabled": if disabled { "true" } else { "false" }
+        });
+        self.send_json(Method::PATCH, &format!("/ip/firewall/mangle/{id}"), &body)
+            .await
+    }
+
+    /// Fetch IP route rules (policy-based routing decisions).
+    pub async fn routing_rules(&self) -> Result<Vec<RoutingRule>> {
+        let val = self.get("/ip/route/rule").await?;
+        let res: Vec<RoutingRule> =
+            serde_json::from_value(val).context("failed to parse routing rules")?;
+        Ok(res)
+    }
+
+    /// Create an IP route rule.
+    pub async fn create_routing_rule(&self, req: &RoutingRuleWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/ip/route/rule", req).await
+    }
+
+    /// Delete an IP route rule by RouterOS `.id`.
+    pub async fn delete_routing_rule(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/ip/route/rule/{id}"))
+            .await
+    }
+
+    /// Fetch Netwatch entries (gateway health monitoring).
+    pub async fn netwatch(&self) -> Result<Vec<Netwatch>> {
+        let val = self.get("/tool/netwatch").await?;
+        let res: Vec<Netwatch> =
+            serde_json::from_value(val).context("failed to parse netwatch entries")?;
+        Ok(res)
+    }
+
     /// Fetch all queue tree entries.
     pub async fn queue_tree(&self) -> Result<Vec<QueueTree>> {
         let val = self.get("/queue/tree").await?;

@@ -67,6 +67,9 @@ import type {
   MikrotikAddressListRequest,
   MikrotikDns,
   MikrotikWireguard,
+  MikrotikAdvancedRouting,
+  MikrotikMangleRequest,
+  MikrotikRoutingRuleRequest,
   PfsenseStatus,
   PfsenseInterface,
   PfsenseFirewallRule,
@@ -991,6 +994,54 @@ export function createMikrotikAddressList(
 export function deleteMikrotikAddressList(id: string): Promise<void> {
   return apiDelete(
     `/api/v1/mikrotik/firewall/address-list/${encodeURIComponent(id)}`
+  );
+}
+
+export function fetchMikrotikAdvancedRouting(): Promise<MikrotikAdvancedRouting> {
+  return apiGet<MikrotikAdvancedRouting>("/api/v1/mikrotik/advanced-routing");
+}
+
+export function createMikrotikMangle(
+  body: MikrotikMangleRequest
+): Promise<void> {
+  return apiPost<void>("/api/v1/mikrotik/mangle", body);
+}
+
+export function updateMikrotikMangle(
+  id: string,
+  body: MikrotikMangleRequest
+): Promise<void> {
+  return apiPatch<void>(
+    `/api/v1/mikrotik/mangle/${encodeURIComponent(id)}`,
+    body
+  );
+}
+
+export function deleteMikrotikMangle(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/mikrotik/mangle/${encodeURIComponent(id)}`
+  );
+}
+
+export function toggleMikrotikMangle(
+  id: string,
+  disabled: boolean
+): Promise<void> {
+  return apiPost<void>(
+    `/api/v1/mikrotik/mangle/${encodeURIComponent(id)}/toggle`,
+    { disabled }
+  );
+}
+
+export function createMikrotikRoutingRule(
+  body: MikrotikRoutingRuleRequest
+): Promise<void> {
+  return apiPost<void>("/api/v1/mikrotik/routing-rules", body);
+}
+
+export function deleteMikrotikRoutingRule(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/mikrotik/routing-rules/${encodeURIComponent(id)}`
   );
 }
 

@@ -420,6 +420,134 @@ pub struct QueueTree {
     pub queued_bytes: Option<String>,
 }
 
+// ── Advanced Routing types ─────────────────────────────────
+
+/// MikroTik firewall mangle rule (`/rest/ip/firewall/mangle`).
+/// Used for policy-based routing (packet marking).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MangleRule {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub chain: Option<String>,
+    pub action: Option<String>,
+    pub protocol: Option<String>,
+    #[serde(rename = "src-address")]
+    pub src_address: Option<String>,
+    #[serde(rename = "dst-address")]
+    pub dst_address: Option<String>,
+    #[serde(rename = "src-port")]
+    pub src_port: Option<String>,
+    #[serde(rename = "dst-port")]
+    pub dst_port: Option<String>,
+    #[serde(rename = "in-interface")]
+    pub in_interface: Option<String>,
+    #[serde(rename = "out-interface")]
+    pub out_interface: Option<String>,
+    #[serde(rename = "new-routing-mark")]
+    pub new_routing_mark: Option<String>,
+    #[serde(rename = "new-connection-mark")]
+    pub new_connection_mark: Option<String>,
+    #[serde(rename = "new-packet-mark")]
+    pub new_packet_mark: Option<String>,
+    pub passthrough: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<String>,
+    pub bytes: Option<String>,
+    pub packets: Option<String>,
+}
+
+/// MikroTik mangle rule write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct MangleWriteRequest {
+    pub chain: String,
+    pub action: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "src-address")]
+    pub src_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dst-address")]
+    pub dst_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "src-port")]
+    pub src_port: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dst-port")]
+    pub dst_port: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "in-interface")]
+    pub in_interface: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "out-interface")]
+    pub out_interface: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "new-routing-mark")]
+    pub new_routing_mark: Option<String>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "new-connection-mark"
+    )]
+    pub new_connection_mark: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "new-packet-mark")]
+    pub new_packet_mark: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub passthrough: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<String>,
+}
+
+/// MikroTik IP route rule (`/rest/ip/route/rule`).
+/// Used for policy-based routing decisions.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RoutingRule {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    #[serde(rename = "src-address")]
+    pub src_address: Option<String>,
+    #[serde(rename = "dst-address")]
+    pub dst_address: Option<String>,
+    #[serde(rename = "routing-mark")]
+    pub routing_mark: Option<String>,
+    pub action: Option<String>,
+    pub table: Option<String>,
+    pub interface: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<String>,
+}
+
+/// MikroTik routing rule write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct RoutingRuleWriteRequest {
+    #[serde(skip_serializing_if = "Option::is_none", rename = "src-address")]
+    pub src_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "dst-address")]
+    pub dst_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "routing-mark")]
+    pub routing_mark: Option<String>,
+    pub action: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub table: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub interface: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub disabled: Option<String>,
+}
+
+/// MikroTik Netwatch entry (`/rest/tool/netwatch`).
+/// Used for gateway health monitoring.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Netwatch {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub host: Option<String>,
+    #[serde(rename = "type")]
+    pub check_type: Option<String>,
+    pub interval: Option<String>,
+    pub timeout: Option<String>,
+    pub status: Option<String>,
+    pub since: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<String>,
+}
+
 /// MikroTik WireGuard peer (`/rest/interface/wireguard/peers`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WgPeer {
