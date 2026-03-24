@@ -1675,6 +1675,69 @@ export function fetchVpnStatus(): Promise<
   return apiGet<import("./types").VpnStatusResponse>("/api/v1/vpn-status");
 }
 
+// ─── OpenVPN Management ──────────────────────────────────────
+
+export function fetchOvpnServer(): Promise<
+  import("./types").OvpnServerResponse
+> {
+  return apiGet<import("./types").OvpnServerResponse>("/api/v1/openvpn/server");
+}
+
+export function updateOvpnServer(body: {
+  enabled?: boolean;
+  port?: number;
+  mode?: string;
+  protocol?: string;
+  certificate?: string;
+  default_profile?: string;
+  cipher?: string;
+  auth?: string;
+  netmask?: string;
+  require_client_certificate?: boolean;
+}): Promise<void> {
+  return request("/api/v1/openvpn/server", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function fetchOvpnClients(): Promise<
+  import("./types").OvpnClientResponse[]
+> {
+  return apiGet<import("./types").OvpnClientResponse[]>(
+    "/api/v1/openvpn/clients",
+  );
+}
+
+export function createOvpnClient(body: {
+  name: string;
+  password: string;
+  service?: string;
+  profile?: string;
+  local_address?: string;
+  remote_address?: string;
+  comment?: string;
+}): Promise<void> {
+  return request("/api/v1/openvpn/clients", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteOvpnClient(id: string): Promise<void> {
+  return request(`/api/v1/openvpn/clients/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
+
+export function fetchCertificates(): Promise<
+  import("./types").CertificateResponse[]
+> {
+  return apiGet<import("./types").CertificateResponse[]>(
+    "/api/v1/certificates",
+  );
+}
+
 // ─── QoS / Traffic Shaping ───────────────────────────────────
 
 export function fetchQosSummary(): Promise<

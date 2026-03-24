@@ -1,7 +1,8 @@
 //! VPN Status Dashboard API endpoints.
 //!
 //! Provides a unified view of VPN tunnel status from MikroTik
-//! routers — WireGuard peer connectivity, handshake recency, and transfer stats.
+//! routers — WireGuard peer connectivity, handshake recency, transfer stats,
+//! and OpenVPN connected clients.
 
 use axum::{extract::State, http::StatusCode, Json};
 use serde::Serialize;
@@ -60,6 +61,9 @@ pub struct VpnPeerStatus {
     pub tx_bytes: Option<u64>,
     /// "online" if handshake within last 3 minutes, "offline" otherwise.
     pub connectivity: String,
+    /// Uptime string for OpenVPN clients (e.g. "1h30m").
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub uptime: Option<String>,
 }
 
 /// Per-interface status.
@@ -75,6 +79,8 @@ pub struct VpnInterfaceStatus {
     pub peers_total: usize,
     /// "mikrotik"
     pub source: String,
+    /// "wireguard" or "openvpn"
+    pub vpn_type: String,
 }
 
 /// Overall VPN status summary.
@@ -86,6 +92,7 @@ pub struct VpnStatusResponse {
     pub online_peers: usize,
     pub total_rx_bytes: u64,
     pub total_tx_bytes: u64,
+    pub openvpn_available: bool,
 }
 
 // ── Handler ────────────────────────────────────────────────
@@ -97,6 +104,7 @@ pub async fn vpn_status(
     let mikrotik = mikrotik_client(&state).await;
     // mikrotik_available is determined after we check for WireGuard interfaces
     let mut mikrotik_available = false;
+    let mut openvpn_available = false;
 
     let now = chrono::Utc::now().timestamp();
     // 3 minutes = 180 seconds threshold for "online"
@@ -105,7 +113,7 @@ pub async fn vpn_status(
     let mut interfaces: Vec<VpnInterfaceStatus> = Vec::new();
 
     // ── MikroTik WireGuard ──
-    if let Some(client) = mikrotik {
+    if let Some(ref client) = mikrotik {
         let wg_ifaces = client.wireguard_interfaces().await.unwrap_or_default();
         // Only mark MikroTik as available if it has WireGuard interfaces
         mikrotik_available = !wg_ifaces.is_empty();
@@ -153,6 +161,7 @@ pub async fn vpn_status(
                         rx_bytes,
                         tx_bytes,
                         connectivity,
+                        uptime: None,
                     }
                 })
                 .collect();
@@ -174,6 +183,59 @@ pub async fn vpn_status(
                 peers_online,
                 peers_total,
                 source: "mikrotik".to_string(),
+                vpn_type: "wireguard".to_string(),
+            });
+        }
+    }
+
+    // ── MikroTik OpenVPN ──
+    if let Some(ref client) = mikrotik {
+        let ovpn_server = client.ovpn_server().await.ok();
+        let server_enabled = ovpn_server
+            .as_ref()
+            .and_then(|s| s.enabled.as_deref())
+            .map(|v| v == "true" || v == "yes")
+            .unwrap_or(false);
+
+        if server_enabled {
+            openvpn_available = true;
+
+            let active_sessions = client.ppp_active().await.unwrap_or_default();
+            let ovpn_sessions: Vec<VpnPeerStatus> = active_sessions
+                .iter()
+                .filter(|s| s.service.as_deref() == Some("ovpn"))
+                .map(|s| VpnPeerStatus {
+                    name: s.name.clone().unwrap_or_default(),
+                    public_key: None,
+                    endpoint: s.caller_id.clone(),
+                    allowed_ips: s.address.clone().map(|a| vec![a]).unwrap_or_default(),
+                    last_handshake: None,
+                    rx_bytes: None,
+                    tx_bytes: None,
+                    connectivity: "online".to_string(),
+                    uptime: s.uptime.clone(),
+                })
+                .collect();
+
+            let peers_online = ovpn_sessions.len();
+            let peers_total = ovpn_sessions.len();
+
+            let port = ovpn_server
+                .as_ref()
+                .and_then(|s| s.port.as_deref())
+                .and_then(|p| p.parse().ok());
+
+            interfaces.push(VpnInterfaceStatus {
+                name: "ovpn-server".to_string(),
+                address: None,
+                port,
+                public_key: None,
+                status: Some("up".to_string()),
+                peers: ovpn_sessions,
+                peers_online,
+                peers_total,
+                source: "mikrotik".to_string(),
+                vpn_type: "openvpn".to_string(),
             });
         }
     }
@@ -198,6 +260,7 @@ pub async fn vpn_status(
         online_peers,
         total_rx_bytes,
         total_tx_bytes,
+        openvpn_available,
     }))
 }
 
