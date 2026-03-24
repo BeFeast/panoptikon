@@ -18,6 +18,7 @@ const segmentLabels: Record<string, string> = {
   nat: "NAT",
   qos: "QoS",
   "vpn-status": "VPN Status",
+  openvpn: "OpenVPN",
   ddns: "DDNS",
   "dns-logs": "DNS Logs",
   "dns-queries": "DNS Queries",

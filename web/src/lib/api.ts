@@ -1675,6 +1675,61 @@ export function fetchVpnStatus(): Promise<
   return apiGet<import("./types").VpnStatusResponse>("/api/v1/vpn-status");
 }
 
+// ─── OpenVPN Management ─────────────────────────────────────
+
+export function fetchOpenVpnOverview(): Promise<
+  import("./types").OpenVpnOverviewResponse
+> {
+  return apiGet<import("./types").OpenVpnOverviewResponse>(
+    "/api/v1/openvpn/overview"
+  );
+}
+
+export function updateOpenVpnServer(
+  body: import("./types").UpdateOpenVpnServerRequest
+): Promise<void> {
+  return apiPatch<void>("/api/v1/openvpn/server", body);
+}
+
+export function fetchOpenVpnClients(): Promise<
+  import("./types").OpenVpnClient[]
+> {
+  return apiGet<import("./types").OpenVpnClient[]>("/api/v1/openvpn/clients");
+}
+
+export function createOpenVpnClient(
+  body: import("./types").CreateOpenVpnClientRequest
+): Promise<void> {
+  return apiPost<void>("/api/v1/openvpn/clients", body);
+}
+
+export function updateOpenVpnClient(
+  id: string,
+  body: import("./types").CreateOpenVpnClientRequest
+): Promise<void> {
+  return apiPut<void>(`/api/v1/openvpn/clients/${id}`, body);
+}
+
+export function deleteOpenVpnClient(id: string): Promise<void> {
+  return apiDelete(`/api/v1/openvpn/clients/${id}`);
+}
+
+export function fetchVpnCertificates(): Promise<
+  import("./types").VpnCertificate[]
+> {
+  return apiGet<import("./types").VpnCertificate[]>(
+    "/api/v1/openvpn/certificates"
+  );
+}
+
+export function exportOpenVpnClientConfig(
+  clientName: string
+): Promise<import("./types").OpenVpnClientConfigResponse> {
+  return apiGet<import("./types").OpenVpnClientConfigResponse>(
+    `/api/v1/openvpn/export-config/${encodeURIComponent(clientName)}`
+  );
+}
+
 // ─── QoS / Traffic Shaping ───────────────────────────────────
 
 export function fetchQosSummary(): Promise<

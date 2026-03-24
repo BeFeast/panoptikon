@@ -4,8 +4,8 @@ import type { Page } from "@playwright/test";
 /**
  * E2E tests for VPN Status page (/vpn-status).
  *
- * Validates that the MikroTik tab is only shown when the router
- * actually has WireGuard interfaces configured (#476).
+ * Validates WireGuard and OpenVPN interfaces display correctly,
+ * tab visibility based on available data (#476, #664).
  */
 
 // ── Mock data ────────────────────────────────────────────────
@@ -45,10 +45,70 @@ const MOCK_VPN_WITH_MIKROTIK_WG = {
       peers_online: 1,
       peers_total: 1,
       source: "mikrotik",
+      vpn_type: "wireguard",
     },
   ],
   total_peers: 1,
   online_peers: 1,
+  total_rx_bytes: 1048576,
+  total_tx_bytes: 524288,
+};
+
+/** VPN status response with both WireGuard and OpenVPN interfaces. */
+const MOCK_VPN_WITH_OPENVPN = {
+  mikrotik_available: true,
+  interfaces: [
+    {
+      name: "wireguard1",
+      address: null,
+      port: 13231,
+      public_key: "ABCDEF1234567890ABCDEF1234567890ABCDEFGH=",
+      status: "up",
+      peers: [
+        {
+          name: "wg-peer-1",
+          public_key: "PEER1KEY1234567890ABCDEF1234567890ABCDE=",
+          endpoint: "203.0.113.1:51820",
+          allowed_ips: ["10.0.0.2/32"],
+          last_handshake: Math.floor(Date.now() / 1000) - 30,
+          rx_bytes: 1048576,
+          tx_bytes: 524288,
+          connectivity: "online",
+        },
+      ],
+      peers_online: 1,
+      peers_total: 1,
+      source: "mikrotik",
+      vpn_type: "wireguard",
+    },
+    {
+      name: "ovpn-server",
+      address: null,
+      port: 1194,
+      public_key: null,
+      status: "up",
+      peers: [
+        {
+          name: "ovpn-user1",
+          public_key: null,
+          endpoint: null,
+          allowed_ips: ["10.8.0.2"],
+          last_handshake: null,
+          rx_bytes: null,
+          tx_bytes: null,
+          connectivity: "online",
+          connected_since: "1h30m",
+          encoding: "AES-256-CBC/SHA1",
+        },
+      ],
+      peers_online: 1,
+      peers_total: 1,
+      source: "mikrotik",
+      vpn_type: "openvpn",
+    },
+  ],
+  total_peers: 2,
+  online_peers: 2,
   total_rx_bytes: 1048576,
   total_tx_bytes: 524288,
 };
@@ -121,6 +181,72 @@ test.describe("VPN Status Page — MikroTik tab visibility (#476)", () => {
 
     await page.screenshot({
       path: "tests/screenshots/vpn-status-with-mikrotik-tab.png",
+    });
+  });
+});
+
+test.describe("VPN Status Page — OpenVPN integration (#664)", () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test("shows WireGuard and OpenVPN tabs when both exist", async ({
+    page,
+  }) => {
+    await mockVpnStatus(page, MOCK_VPN_WITH_OPENVPN);
+    await page.goto("/vpn-status/");
+
+    await expect(
+      page.getByRole("heading", { name: "VPN Status", level: 1 }),
+    ).toBeVisible({ timeout: 15000 });
+
+    // Both protocol-specific tabs should be visible
+    await expect(page.getByRole("tab", { name: "WireGuard" })).toBeVisible();
+    await expect(page.getByRole("tab", { name: "OpenVPN" })).toBeVisible();
+
+    await page.screenshot({
+      path: "tests/screenshots/vpn-status-both-protocols.png",
+    });
+  });
+
+  test("OpenVPN tab shows connected clients with uptime and encoding", async ({
+    page,
+  }) => {
+    await mockVpnStatus(page, MOCK_VPN_WITH_OPENVPN);
+    await page.goto("/vpn-status/");
+
+    await expect(
+      page.getByRole("heading", { name: "VPN Status", level: 1 }),
+    ).toBeVisible({ timeout: 15000 });
+
+    // Click the OpenVPN tab
+    await page.getByRole("tab", { name: "OpenVPN" }).click();
+
+    // Verify OpenVPN client data is displayed
+    await expect(page.getByText("ovpn-server")).toBeVisible();
+    await expect(page.getByText("ovpn-user1")).toBeVisible();
+    await expect(page.getByText("10.8.0.2")).toBeVisible();
+    await expect(page.getByText("1h30m")).toBeVisible();
+    await expect(page.getByText("AES-256-CBC/SHA1")).toBeVisible();
+
+    await page.screenshot({
+      path: "tests/screenshots/vpn-status-openvpn-tab.png",
+    });
+  });
+
+  test("summary cards show correct peer counts", async ({ page }) => {
+    await mockVpnStatus(page, MOCK_VPN_WITH_OPENVPN);
+    await page.goto("/vpn-status/");
+
+    await expect(
+      page.getByRole("heading", { name: "VPN Status", level: 1 }),
+    ).toBeVisible({ timeout: 15000 });
+
+    // Check summary card values
+    await expect(page.getByText("of 2 total")).toBeVisible();
+
+    await page.screenshot({
+      path: "tests/screenshots/vpn-status-summary-cards.png",
     });
   });
 });

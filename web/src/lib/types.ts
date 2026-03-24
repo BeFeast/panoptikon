@@ -1881,6 +1881,10 @@ export interface VpnPeerStatus {
   tx_bytes: number | null;
   /** "online" if handshake within last 3 minutes, "offline" otherwise. */
   connectivity: string;
+  /** Connected since (for OpenVPN clients). */
+  connected_since?: string | null;
+  /** Encoding info (for OpenVPN clients). */
+  encoding?: string | null;
 }
 
 export interface VpnInterfaceStatus {
@@ -1894,6 +1898,8 @@ export interface VpnInterfaceStatus {
   peers_total: number;
   /** "mikrotik" */
   source: string;
+  /** "wireguard" or "openvpn" */
+  vpn_type: string;
 }
 
 export interface VpnStatusResponse {
@@ -1903,6 +1909,85 @@ export interface VpnStatusResponse {
   online_peers: number;
   total_rx_bytes: number;
   total_tx_bytes: number;
+}
+
+// ─── OpenVPN Management ─────────────────────────────────────
+
+export interface OpenVpnServerConfig {
+  enabled: boolean;
+  port: number | null;
+  mode: string | null;
+  protocol: string | null;
+  certificate: string | null;
+  default_profile: string | null;
+  auth: string | null;
+  cipher: string | null;
+  netmask: string | null;
+  max_mtu: number | null;
+  require_client_certificate: boolean;
+}
+
+export interface OpenVpnClient {
+  id: string | null;
+  name: string | null;
+  service: string | null;
+  profile: string | null;
+  local_address: string | null;
+  remote_address: string | null;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface VpnCertificate {
+  id: string | null;
+  name: string | null;
+  common_name: string | null;
+  fingerprint: string | null;
+  key_size: string | null;
+  days_valid: string | null;
+  invalid_before: string | null;
+  invalid_after: string | null;
+  ca: boolean;
+  has_private_key: boolean;
+  expired: boolean;
+  trusted: boolean;
+}
+
+export interface OpenVpnOverviewResponse {
+  mikrotik_available: boolean;
+  server: OpenVpnServerConfig | null;
+  clients: OpenVpnClient[];
+  certificates: VpnCertificate[];
+}
+
+export interface OpenVpnClientConfigResponse {
+  config: string;
+  filename: string;
+}
+
+export interface CreateOpenVpnClientRequest {
+  name: string;
+  password?: string;
+  service?: string;
+  profile?: string;
+  local_address?: string;
+  remote_address?: string;
+  comment?: string;
+  disabled?: boolean;
+}
+
+export interface UpdateOpenVpnServerRequest {
+  enabled?: boolean;
+  port?: number;
+  mode?: string;
+  protocol?: string;
+  certificate?: string;
+  default_profile?: string;
+  auth?: string;
+  cipher?: string;
+  netmask?: string;
+  max_mtu?: number;
+  require_client_certificate?: boolean;
 }
 
 export interface QosSummary {

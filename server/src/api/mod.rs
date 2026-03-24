@@ -37,6 +37,7 @@ pub mod metrics;
 pub mod mikrotik;
 pub mod nat;
 pub mod npm;
+pub mod openvpn;
 pub mod pfsense;
 pub mod qos;
 pub mod scanner;
@@ -519,6 +520,18 @@ pub fn router(state: AppState) -> Router {
         )
         // VPN Status Dashboard
         .route("/vpn-status", get(vpn_status::vpn_status))
+        // OpenVPN Management
+        .route("/openvpn/overview", get(openvpn::overview))
+        .route("/openvpn/server", patch(openvpn::update_server))
+        .route("/openvpn/clients", get(openvpn::list_clients))
+        .route("/openvpn/clients", post(openvpn::create_client))
+        .route("/openvpn/clients/:id", put(openvpn::update_client))
+        .route("/openvpn/clients/:id", delete(openvpn::delete_client))
+        .route("/openvpn/certificates", get(openvpn::list_certificates))
+        .route(
+            "/openvpn/export-config/:client_name",
+            get(openvpn::export_client_config),
+        )
         // Tailscale
         .route("/tailscale/status", get(tailscale::status))
         // NAT / Port Forwarding
