@@ -177,6 +177,8 @@ pub struct FirewallFilter {
     pub disabled: Option<String>,
     pub bytes: Option<String>,
     pub packets: Option<String>,
+    /// Time-based schedule string, e.g. "08:00:00-17:00:00,mon,tue,wed,thu,fri"
+    pub time: Option<String>,
 }
 
 /// MikroTik firewall filter write payload.
@@ -202,6 +204,20 @@ pub struct FirewallFilterWriteRequest {
     pub comment: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub disabled: Option<String>,
+    /// Time-based schedule, e.g. "08:00:00-17:00:00,mon,tue,wed,thu,fri"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub time: Option<String>,
+}
+
+/// Payload for MikroTik firewall filter move operation.
+#[derive(Debug, Clone, Serialize)]
+pub struct FirewallFilterMoveRequest {
+    /// The `.id` of the rule to move.
+    #[serde(rename = ".id")]
+    pub id: String,
+    /// The `.id` of the rule to place before, or empty for end.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub destination: Option<String>,
 }
 
 /// MikroTik firewall NAT rule (`/rest/ip/firewall/nat`).

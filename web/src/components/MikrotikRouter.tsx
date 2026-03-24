@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Router,
   Network,
@@ -27,7 +27,28 @@ import {
   GitFork,
   Waypoints,
   HeartPulse,
+  GripVertical,
+  ArrowUp,
+  ArrowDown,
+  Download,
+  Upload,
+  Timer,
 } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
 import {
   AreaChart,
@@ -87,6 +108,7 @@ import {
   toggleMikrotikFirewallNat,
   createMikrotikAddressList,
   deleteMikrotikAddressList,
+  moveMikrotikFirewallFilter,
   createMikrotikDhcpStaticMapping,
   fetchTrafficHistory,
   fetchMikrotikMangleRules,
@@ -1064,6 +1086,7 @@ const EMPTY_FILTER_FORM: MikrotikFirewallFilterRequest = {
   out_interface: undefined,
   comment: undefined,
   disabled: false,
+  time: undefined,
 };
 
 const EMPTY_NAT_FORM: MikrotikFirewallNatRequest = {
@@ -1094,7 +1117,18 @@ function filterRuleToForm(rule: MikrotikFirewallRule): MikrotikFirewallFilterReq
     out_interface: rule.out_interface ?? undefined,
     comment: rule.comment ?? undefined,
     disabled: rule.disabled,
+    time: rule.time ?? undefined,
   };
+}
+
+/** Format a packet count. */
+function formatPackets(value: string | null): string {
+  if (!value) return "—";
+  const n = parseInt(value, 10);
+  if (isNaN(n)) return value;
+  if (n < 1000) return `${n}`;
+  if (n < 1_000_000) return `${(n / 1000).toFixed(1)}K`;
+  return `${(n / 1_000_000).toFixed(1)}M`;
 }
 
 function natRuleToForm(rule: MikrotikNatRule): MikrotikFirewallNatRequest {
@@ -1156,6 +1190,7 @@ function FirewallFilterDialog({
         in_interface: form.in_interface || undefined,
         out_interface: form.out_interface || undefined,
         comment: form.comment || undefined,
+        time: form.time || undefined,
       };
       if (isEdit && editRule?.id) {
         await updateMikrotikFirewallFilter(editRule.id, body);
@@ -1273,6 +1308,18 @@ function FirewallFilterDialog({
               </div>
             </div>
           )}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5"><Timer className="h-3.5 w-3.5" /> Schedule (Time-based)</Label>
+            <Input
+              value={form.time ?? ""}
+              onChange={(e) => setForm({ ...form, time: e.target.value || undefined })}
+              placeholder="e.g. 08:00:00-17:00:00,mon,tue,wed,thu,fri"
+              className="border-slate-700 bg-slate-800"
+            />
+            <p className="text-xs text-slate-500">
+              Format: HH:MM:SS-HH:MM:SS,day1,day2,… Leave empty for always active.
+            </p>
+          </div>
           <div className="space-y-2">
             <Label>Comment</Label>
             <Input
@@ -1577,6 +1624,145 @@ function AddressListDialog({
   );
 }
 
+function SortableFilterRow({
+  rule,
+  index,
+  disabled: rowDisabled,
+  toggling,
+  deleting,
+  onToggle,
+  onEdit,
+  onDelete,
+}: {
+  rule: MikrotikFirewallRule;
+  index: number;
+  disabled: boolean;
+  toggling: string | null;
+  deleting: string | null;
+  onToggle: (rule: MikrotikFirewallRule) => void;
+  onEdit: (rule: MikrotikFirewallRule) => void;
+  onDelete: (rule: MikrotikFirewallRule) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: rule.id ?? `idx-${index}` });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={`border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors ${
+        rule.disabled ? "opacity-50" : ""
+      }`}
+    >
+      <td className="px-2 py-3">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab text-slate-500 hover:text-slate-300 active:cursor-grabbing"
+          title="Drag to reorder"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      </td>
+      <td className="px-4 py-3 text-slate-300">{rule.chain ?? "\u2014"}</td>
+      <td className="px-4 py-3">
+        <ActionBadge action={rule.action} />
+      </td>
+      <td className="px-4 py-3 text-slate-300">{rule.protocol ?? "any"}</td>
+      <td className="px-4 py-3">
+        <span className="font-mono tabular-nums text-xs text-slate-400">
+          {rule.src_address ?? "any"}
+        </span>
+      </td>
+      <td className="px-4 py-3">
+        <span className="font-mono tabular-nums text-xs text-slate-400">
+          {rule.dst_address ?? "any"}
+        </span>
+      </td>
+      <td className="px-4 py-3 text-slate-300">{rule.dst_port ?? "\u2014"}</td>
+      <td className="px-4 py-3">
+        <div className="flex flex-col gap-0.5">
+          <span className="tabular-nums text-xs text-cyan-400" title={`${rule.packets ?? 0} packets`}>
+            {formatPackets(rule.packets)} pkts
+          </span>
+          <span className="tabular-nums text-xs text-slate-500" title={`${rule.bytes ?? 0} bytes`}>
+            {formatBytes(rule.bytes)}
+          </span>
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        {rule.time ? (
+          <span className="flex items-center gap-1 text-xs text-amber-400" title={rule.time}>
+            <Timer className="h-3 w-3" />
+            {rule.time.split(",")[0]}
+          </span>
+        ) : (
+          <span className="text-xs text-slate-600">—</span>
+        )}
+      </td>
+      <td className="px-4 py-3">
+        <span className="text-slate-500 text-xs">{rule.comment ?? ""}</span>
+      </td>
+      <td className="px-4 py-3">
+        <Badge
+          variant="outline"
+          className={
+            rule.disabled
+              ? "border-slate-700 text-slate-500 text-xs"
+              : "border-emerald-500/30 text-emerald-400 text-xs"
+          }
+        >
+          {rule.disabled ? "disabled" : "enabled"}
+        </Badge>
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex items-center justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-slate-400 hover:bg-slate-800 hover:text-white"
+            onClick={() => onToggle(rule)}
+            disabled={!rule.id || toggling === rule.id}
+            title={rule.disabled ? "Enable" : "Disable"}
+          >
+            <Power className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-slate-400 hover:bg-slate-800 hover:text-white"
+            onClick={() => onEdit(rule)}
+            disabled={!rule.id}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+            onClick={() => onDelete(rule)}
+            disabled={!rule.id || deleting === rule.id}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 function FirewallPanel({
   data,
   loading,
@@ -1598,6 +1784,59 @@ function FirewallPanel({
   const [confirmDeleteAddr, setConfirmDeleteAddr] = useState<MikrotikAddressListEntry | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [filterSearch, setFilterSearch] = useState("");
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  );
+
+  const filteredRules = useMemo(() => {
+    if (!data?.filter_rules.length) return [];
+    if (!filterSearch.trim()) return data.filter_rules;
+    const q = filterSearch.toLowerCase();
+    return data.filter_rules.filter(
+      (r) =>
+        (r.chain ?? "").toLowerCase().includes(q) ||
+        (r.action ?? "").toLowerCase().includes(q) ||
+        (r.protocol ?? "").toLowerCase().includes(q) ||
+        (r.src_address ?? "").toLowerCase().includes(q) ||
+        (r.dst_address ?? "").toLowerCase().includes(q) ||
+        (r.dst_port ?? "").toLowerCase().includes(q) ||
+        (r.comment ?? "").toLowerCase().includes(q) ||
+        (r.time ?? "").toLowerCase().includes(q)
+    );
+  }, [data?.filter_rules, filterSearch]);
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !data?.filter_rules) return;
+
+    const oldIndex = data.filter_rules.findIndex(
+      (r) => (r.id ?? `idx-${data.filter_rules.indexOf(r)}`) === active.id
+    );
+    const newIndex = data.filter_rules.findIndex(
+      (r) => (r.id ?? `idx-${data.filter_rules.indexOf(r)}`) === over.id
+    );
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const ruleId = data.filter_rules[oldIndex].id;
+    if (!ruleId) return;
+
+    // Destination = the rule to place before, or null for end
+    const destination =
+      newIndex < data.filter_rules.length
+        ? data.filter_rules[newIndex].id
+        : null;
+
+    try {
+      await moveMikrotikFirewallFilter(ruleId, destination);
+      toast.success("Rule reordered.");
+      await reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Reorder failed.");
+    }
+  };
 
   const handleToggleFilter = async (rule: MikrotikFirewallRule) => {
     if (!rule.id) return;
@@ -1686,12 +1925,15 @@ function FirewallPanel({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                  <th className="w-8 px-2 py-3" />
                   <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
                   <th className="px-4 py-3 font-medium text-slate-400">Action</th>
                   <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
                   <th className="px-4 py-3 font-medium text-slate-400">Src</th>
                   <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
                   <th className="px-4 py-3 font-medium text-slate-400">Port</th>
+                  <th className="px-4 py-3 font-medium text-slate-400">Stats</th>
+                  <th className="px-4 py-3 font-medium text-slate-400">Schedule</th>
                   <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
                   <th className="px-4 py-3 font-medium text-slate-400">Status</th>
                   <th className="px-4 py-3 font-medium text-slate-400">Actions</th>
@@ -1700,12 +1942,15 @@ function FirewallPanel({
               <tbody>
                 {Array.from({ length: 3 }).map((_, i) => (
                   <tr key={i} className="border-b border-slate-800 last:border-b-0">
+                    <td className="px-2 py-3"><Skeleton className="h-4 w-4" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-4 w-14" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-4 w-10" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-3 w-20" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-3 w-20" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-4 w-10" /></td>
+                    <td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
+                    <td className="px-4 py-3"><Skeleton className="h-3 w-16" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-3 w-24" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-8 w-20" /></td>
@@ -1759,105 +2004,75 @@ function FirewallPanel({
               Add Rule
             </Button>
           </div>
+          {(data?.filter_rules.length ?? 0) > 0 && (
+            <div className="relative mt-2">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Input
+                value={filterSearch}
+                onChange={(e) => setFilterSearch(e.target.value)}
+                placeholder="Search rules…"
+                className="border-slate-700 bg-slate-800 pl-9 text-sm"
+              />
+            </div>
+          )}
         </CardHeader>
         <CardContent>
           {!data?.filter_rules.length ? (
             <p className="py-4 text-sm text-slate-500">No filter rules configured.</p>
           ) : (
-            <div className="overflow-x-auto rounded-md border border-slate-800">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-800 bg-slate-950 text-left">
-                    <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
-                    <th className="px-4 py-3 font-medium text-slate-400">Action</th>
-                    <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
-                    <th className="px-4 py-3 font-medium text-slate-400">Src</th>
-                    <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
-                    <th className="px-4 py-3 font-medium text-slate-400">Port</th>
-                    <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
-                    <th className="px-4 py-3 font-medium text-slate-400">Status</th>
-                    <th className="px-4 py-3 text-right font-medium text-slate-400">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.filter_rules.map((rule, i) => (
-                    <tr
-                      key={rule.id ?? i}
-                      className={`border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors ${
-                        rule.disabled ? "opacity-50" : ""
-                      }`}
-                    >
-                      <td className="px-4 py-3 text-slate-300">{rule.chain ?? "\u2014"}</td>
-                      <td className="px-4 py-3">
-                        <ActionBadge action={rule.action} />
-                      </td>
-                      <td className="px-4 py-3 text-slate-300">{rule.protocol ?? "any"}</td>
-                      <td className="px-4 py-3">
-                        <span className="font-mono tabular-nums text-xs text-slate-400">
-                          {rule.src_address ?? "any"}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="overflow-x-auto rounded-md border border-slate-800">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                      <th className="w-8 px-2 py-3" />
+                      <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
+                      <th className="px-4 py-3 font-medium text-slate-400">Action</th>
+                      <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
+                      <th className="px-4 py-3 font-medium text-slate-400">Src</th>
+                      <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
+                      <th className="px-4 py-3 font-medium text-slate-400">Port</th>
+                      <th className="px-4 py-3 font-medium text-slate-400">
+                        <span className="flex items-center gap-1">
+                          <BarChart3 className="h-3.5 w-3.5" /> Stats
                         </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="font-mono tabular-nums text-xs text-slate-400">
-                          {rule.dst_address ?? "any"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-slate-300">{rule.dst_port ?? "\u2014"}</td>
-                      <td className="px-4 py-3">
-                        <span className="text-slate-500">{rule.comment ?? ""}</span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge
-                          variant="outline"
-                          className={
-                            rule.disabled
-                              ? "border-slate-700 text-slate-500 text-xs"
-                              : "border-emerald-500/30 text-emerald-400 text-xs"
-                          }
-                        >
-                          {rule.disabled ? "disabled" : "enabled"}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-slate-400 hover:bg-slate-800 hover:text-white"
-                            onClick={() => handleToggleFilter(rule)}
-                            disabled={!rule.id || toggling === rule.id}
-                            title={rule.disabled ? "Enable" : "Disable"}
-                          >
-                            <Power className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-slate-400 hover:bg-slate-800 hover:text-white"
-                            onClick={() => {
-                              setEditFilter(rule);
-                              setFilterDialogOpen(true);
-                            }}
-                            disabled={!rule.id}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
-                            onClick={() => setConfirmDeleteFilter(rule)}
-                            disabled={!rule.id || deleting === rule.id}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </td>
+                      </th>
+                      <th className="px-4 py-3 font-medium text-slate-400">Schedule</th>
+                      <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
+                      <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+                      <th className="px-4 py-3 text-right font-medium text-slate-400">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <SortableContext
+                    items={filteredRules.map((r, i) => r.id ?? `idx-${i}`)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <tbody>
+                      {filteredRules.map((rule, i) => (
+                        <SortableFilterRow
+                          key={rule.id ?? i}
+                          rule={rule}
+                          index={i}
+                          disabled={rule.disabled}
+                          toggling={toggling}
+                          deleting={deleting}
+                          onToggle={handleToggleFilter}
+                          onEdit={(r) => {
+                            setEditFilter(r);
+                            setFilterDialogOpen(true);
+                          }}
+                          onDelete={setConfirmDeleteFilter}
+                        />
+                      ))}
+                    </tbody>
+                  </SortableContext>
+                </table>
+              </div>
+            </DndContext>
           )}
         </CardContent>
       </Card>

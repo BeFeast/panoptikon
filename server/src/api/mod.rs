@@ -328,6 +328,10 @@ pub fn router(state: AppState) -> Router {
             post(mikrotik::toggle_firewall_filter),
         )
         .route(
+            "/mikrotik/firewall/filter/move",
+            post(mikrotik::move_filter),
+        )
+        .route(
             "/mikrotik/firewall/nat",
             post(mikrotik::create_firewall_nat),
         )

@@ -450,6 +450,12 @@ impl MikrotikClient {
             .await
     }
 
+    /// Move a firewall filter rule to a new position.
+    pub async fn move_firewall_filter(&self, req: &FirewallFilterMoveRequest) -> Result<()> {
+        self.send_json(Method::POST, "/ip/firewall/filter/move", req)
+            .await
+    }
+
     /// Toggle a firewall filter rule's disabled state.
     pub async fn toggle_firewall_filter(&self, id: &str, disabled: bool) -> Result<()> {
         let body = serde_json::json!({

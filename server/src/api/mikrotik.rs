@@ -166,6 +166,13 @@ pub struct MikrotikFirewallRule {
     pub disabled: bool,
     pub bytes: Option<String>,
     pub packets: Option<String>,
+    pub time: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MoveFilterRequest {
+    pub id: String,
+    pub destination: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -208,6 +215,7 @@ pub struct MikrotikFirewallFilterRequest {
     pub out_interface: Option<String>,
     pub comment: Option<String>,
     pub disabled: Option<bool>,
+    pub time: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -718,6 +726,7 @@ pub async fn firewall(
             disabled: is_true(&f.disabled),
             bytes: f.bytes,
             packets: f.packets,
+            time: f.time,
         })
         .collect();
 
@@ -884,6 +893,7 @@ fn to_filter_write(body: &MikrotikFirewallFilterRequest) -> FirewallFilterWriteR
         disabled: body
             .disabled
             .map(|d| if d { "true" } else { "false" }.to_string()),
+        time: body.time.clone(),
     }
 }
 
@@ -1040,6 +1050,53 @@ pub async fn toggle_firewall_filter(
             )
             .await;
             tracing::error!("MikroTik firewall filter toggle error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// POST /api/v1/mikrotik/firewall/filter/move
+pub async fn move_filter(
+    State(state): State<AppState>,
+    Json(body): Json<MoveFilterRequest>,
+) -> Result<StatusCode, StatusCode> {
+    if body.id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let dest_label = body.destination.as_deref().unwrap_or("end");
+    let desc = format!("move MikroTik filter rule {} before {dest_label}", body.id);
+    let cmds = vec![format!(
+        "POST /ip/firewall/filter/move .id={} destination={dest_label}",
+        body.id
+    )];
+
+    let req = crate::mikrotik::types::FirewallFilterMoveRequest {
+        id: body.id.clone(),
+        destination: body.destination.clone(),
+    };
+
+    match client.move_firewall_filter(&req).await {
+        Ok(()) => {
+            state.mikrotik_cache.clear();
+            audit::log_success(&state.db, "mikrotik_firewall_filter_move", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_firewall_filter_move",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik firewall filter move error: {e}");
             Err(StatusCode::BAD_GATEWAY)
         }
     }

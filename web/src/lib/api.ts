@@ -963,6 +963,16 @@ export function toggleMikrotikFirewallFilter(
   );
 }
 
+export function moveMikrotikFirewallFilter(
+  id: string,
+  destination: string | null
+): Promise<void> {
+  return apiPost<void>("/api/v1/mikrotik/firewall/filter/move", {
+    id,
+    destination,
+  });
+}
+
 export function createMikrotikFirewallNat(
   body: MikrotikFirewallNatRequest
 ): Promise<void> {
