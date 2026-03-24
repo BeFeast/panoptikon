@@ -31,6 +31,7 @@ const segmentLabels: Record<string, string> = {
   "alert-rules": "Alert Rules",
   "audit-log": "Audit Log",
   "config-backup": "Config Backup",
+  openvpn: "OpenVPN",
   dns: "DNS",
   "dns-blocklists": "DNS Blocklists",
   password: "Password",

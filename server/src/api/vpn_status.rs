@@ -77,10 +77,23 @@ pub struct VpnInterfaceStatus {
     pub source: String,
 }
 
+/// Per-connected OpenVPN client status.
+#[derive(Debug, Serialize)]
+pub struct OpenVpnClientStatus {
+    pub common_name: String,
+    pub real_address: Option<String>,
+    pub virtual_address: Option<String>,
+    pub bytes_received: Option<u64>,
+    pub bytes_sent: Option<u64>,
+    pub connected_since: Option<String>,
+}
+
 /// Overall VPN status summary.
 #[derive(Debug, Serialize)]
 pub struct VpnStatusResponse {
     pub mikrotik_available: bool,
+    pub openvpn_available: bool,
+    pub openvpn_clients: Vec<OpenVpnClientStatus>,
     pub interfaces: Vec<VpnInterfaceStatus>,
     pub total_peers: usize,
     pub online_peers: usize,
@@ -97,6 +110,8 @@ pub async fn vpn_status(
     let mikrotik = mikrotik_client(&state).await;
     // mikrotik_available is determined after we check for WireGuard interfaces
     let mut mikrotik_available = false;
+    let mut openvpn_available = false;
+    let mut openvpn_clients: Vec<OpenVpnClientStatus> = Vec::new();
 
     let now = chrono::Utc::now().timestamp();
     // 3 minutes = 180 seconds threshold for "online"
@@ -104,8 +119,30 @@ pub async fn vpn_status(
 
     let mut interfaces: Vec<VpnInterfaceStatus> = Vec::new();
 
-    // ── MikroTik WireGuard ──
+    // ── MikroTik WireGuard + OpenVPN ──
     if let Some(client) = mikrotik {
+        // ── OpenVPN connected clients ──
+        let ovpn_settings = get_setting(&state, "mikrotik_enabled")
+            .await
+            .map(|v| v == "1" || v == "true")
+            .unwrap_or(false);
+        if ovpn_settings {
+            if let Ok(ovpn_ifaces) = client.ovpn_server_interfaces().await {
+                openvpn_available = !ovpn_ifaces.is_empty();
+                for iface in ovpn_ifaces {
+                    if iface.running.as_deref() == Some("true") {
+                        openvpn_clients.push(OpenVpnClientStatus {
+                            common_name: iface.name.unwrap_or_default(),
+                            real_address: iface.mac_address.clone(),
+                            virtual_address: None,
+                            bytes_received: None,
+                            bytes_sent: None,
+                            connected_since: None,
+                        });
+                    }
+                }
+            }
+        }
         let wg_ifaces = client.wireguard_interfaces().await.unwrap_or_default();
         // Only mark MikroTik as available if it has WireGuard interfaces
         mikrotik_available = !wg_ifaces.is_empty();
@@ -193,6 +230,8 @@ pub async fn vpn_status(
 
     Ok(Json(VpnStatusResponse {
         mikrotik_available,
+        openvpn_available,
+        openvpn_clients,
         interfaces,
         total_peers,
         online_peers,

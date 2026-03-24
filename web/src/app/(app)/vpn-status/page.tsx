@@ -34,7 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageTransition } from "@/components/PageTransition";
 import { fetchVpnStatus } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { VpnInterfaceStatus, VpnStatusResponse } from "@/lib/types";
+import type { VpnInterfaceStatus, VpnStatusResponse, OpenVpnClientStatus } from "@/lib/types";
 
 const surfaceClass =
   "border-slate-800 bg-gradient-to-b from-slate-900/80 to-slate-900/55 shadow-[0_12px_30px_rgba(2,6,23,0.35)]";
@@ -67,7 +67,7 @@ export default function VpnStatusPage() {
   const [data, setData] = useState<VpnStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useHashTab("overview", ["overview", "mikrotik"]);
+  const [activeTab, setActiveTab] = useHashTab("overview", ["overview", "mikrotik", "openvpn"]);
   const defaultTabSet = useRef(false);
 
   const load = useCallback(async () => {
@@ -139,7 +139,7 @@ export default function VpnStatusPage() {
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-white">VPN Status</h1>
               <p className="text-sm text-slate-400">
-                WireGuard tunnels, peer connectivity, and transfer stats.
+                WireGuard and OpenVPN tunnels, peer connectivity, and transfer stats.
               </p>
             </div>
           </div>
@@ -203,6 +203,14 @@ export default function VpnStatusPage() {
                 className="rounded-lg px-4 data-[state=active]:bg-slate-800 data-[state=active]:text-white"
               >
                 MikroTik
+              </TabsTrigger>
+            )}
+            {data?.openvpn_available && (
+              <TabsTrigger
+                value="openvpn"
+                className="rounded-lg px-4 data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+              >
+                OpenVPN
               </TabsTrigger>
             )}
           </TabsList>
@@ -288,6 +296,68 @@ export default function VpnStatusPage() {
                 <InterfaceCard key={`${iface.source}-${iface.name}`} iface={iface} />
               ))
             )}
+          </TabsContent>
+
+          <TabsContent value="openvpn" className="space-y-4 pt-2">
+            <Card className={surfaceClass}>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base text-white">OpenVPN Connected Clients</CardTitle>
+                <CardDescription className="text-sm text-slate-400">
+                  Active OpenVPN sessions from MikroTik OVPN server interfaces.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto border-t border-slate-800/70">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-slate-800/70 hover:bg-transparent">
+                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Client</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Address</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Virtual IP</TableHead>
+                        <TableHead className="text-right text-xs uppercase tracking-wide text-slate-500">RX</TableHead>
+                        <TableHead className="text-right text-xs uppercase tracking-wide text-slate-500">TX</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Connected Since</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(data?.openvpn_clients ?? []).length === 0 ? (
+                        <TableRow className="border-slate-800/70 hover:bg-transparent">
+                          <TableCell colSpan={6} className="py-9 text-center text-sm text-slate-500">
+                            No active OpenVPN sessions.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        data?.openvpn_clients.map((client: OpenVpnClientStatus, idx: number) => (
+                          <TableRow
+                            key={`${client.common_name}-${idx}`}
+                            className="border-slate-800/70 hover:bg-slate-800/35"
+                          >
+                            <TableCell className="font-medium text-white">
+                              {client.common_name || "Unknown"}
+                            </TableCell>
+                            <TableCell className="font-mono text-xs text-slate-400">
+                              {client.real_address ?? "—"}
+                            </TableCell>
+                            <TableCell className="font-mono text-xs text-slate-400">
+                              {client.virtual_address ?? "—"}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-xs text-slate-400">
+                              {formatBytes(client.bytes_received)}
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-xs text-slate-400">
+                              {formatBytes(client.bytes_sent)}
+                            </TableCell>
+                            <TableCell className="text-slate-400">
+                              {client.connected_since ?? "—"}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

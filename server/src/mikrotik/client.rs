@@ -737,6 +737,36 @@ impl MikrotikClient {
         self.send_no_body(Method::DELETE, &format!("/queue/tree/{id}"))
             .await
     }
+
+    /// Fetch OpenVPN server settings.
+    pub async fn ovpn_server_settings(&self) -> Result<OvpnServerSettings> {
+        let val = self.get("/interface/ovpn-server/server").await?;
+        let res: OvpnServerSettings =
+            serde_json::from_value(val).context("failed to parse OVPN server settings")?;
+        Ok(res)
+    }
+
+    /// Update OpenVPN server settings.
+    pub async fn update_ovpn_server_settings(&self, body: &serde_json::Value) -> Result<()> {
+        self.send_json(Method::POST, "/interface/ovpn-server/server/set", body)
+            .await
+    }
+
+    /// Fetch OpenVPN server interfaces (connected clients).
+    pub async fn ovpn_server_interfaces(&self) -> Result<Vec<OvpnServerInterface>> {
+        let val = self.get("/interface/ovpn-server").await?;
+        let res: Vec<OvpnServerInterface> =
+            serde_json::from_value(val).context("failed to parse OVPN server interfaces")?;
+        Ok(res)
+    }
+
+    /// Fetch certificates from the MikroTik certificate store.
+    pub async fn certificates(&self) -> Result<Vec<MtCertificate>> {
+        let val = self.get("/certificate").await?;
+        let res: Vec<MtCertificate> =
+            serde_json::from_value(val).context("failed to parse certificates")?;
+        Ok(res)
+    }
 }
 
 #[cfg(test)]

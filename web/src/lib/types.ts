@@ -1957,13 +1957,62 @@ export interface VpnInterfaceStatus {
   source: string;
 }
 
+export interface OpenVpnClientStatus {
+  common_name: string;
+  real_address: string | null;
+  virtual_address: string | null;
+  bytes_received: number | null;
+  bytes_sent: number | null;
+  connected_since: string | null;
+}
+
 export interface VpnStatusResponse {
   mikrotik_available: boolean;
+  openvpn_available: boolean;
+  openvpn_clients: OpenVpnClientStatus[];
   interfaces: VpnInterfaceStatus[];
   total_peers: number;
   online_peers: number;
   total_rx_bytes: number;
   total_tx_bytes: number;
+}
+
+// ─── OpenVPN Settings ──────────────────────────────────────
+
+export interface OvpnServerSettingsResponse {
+  mikrotik_available: boolean;
+  enabled: boolean;
+  port: number | null;
+  default_profile: string | null;
+  certificate: string | null;
+  auth: string | null;
+  cipher: string | null;
+  protocol: string | null;
+  require_client_certificate: boolean;
+  mode: string | null;
+}
+
+export interface OvpnCertificate {
+  name: string;
+  common_name: string | null;
+  key_type: string | null;
+  key_size: string | null;
+  days_valid: string | null;
+  fingerprint: string | null;
+  ca: boolean;
+  has_private_key: boolean;
+  trusted: boolean;
+  invalid_before: string | null;
+  invalid_after: string | null;
+  expired: boolean;
+  revoked: boolean;
+  serial_number: string | null;
+}
+
+export interface OvpnStatusResponse {
+  mikrotik_available: boolean;
+  settings: OvpnServerSettingsResponse | null;
+  certificates: OvpnCertificate[];
 }
 
 export interface QosSummary {

@@ -13,6 +13,8 @@ import type { Page } from "@playwright/test";
 /** VPN status response with no MikroTik WireGuard interfaces. */
 const MOCK_VPN_NO_MIKROTIK_WG = {
   mikrotik_available: false,
+  openvpn_available: false,
+  openvpn_clients: [],
   interfaces: [],
   total_peers: 0,
   online_peers: 0,
@@ -23,6 +25,8 @@ const MOCK_VPN_NO_MIKROTIK_WG = {
 /** VPN status response with MikroTik WireGuard interfaces. */
 const MOCK_VPN_WITH_MIKROTIK_WG = {
   mikrotik_available: true,
+  openvpn_available: false,
+  openvpn_clients: [],
   interfaces: [
     {
       name: "wireguard1",
@@ -121,6 +125,58 @@ test.describe("VPN Status Page — MikroTik tab visibility (#476)", () => {
 
     await page.screenshot({
       path: "tests/screenshots/vpn-status-with-mikrotik-tab.png",
+    });
+  });
+
+  test("hides OpenVPN tab when no OpenVPN interfaces exist", async ({
+    page,
+  }) => {
+    await mockVpnStatus(page, MOCK_VPN_WITH_MIKROTIK_WG);
+    await page.goto("/vpn-status/");
+
+    await expect(
+      page.getByRole("heading", { name: "VPN Status", level: 1 }),
+    ).toBeVisible({ timeout: 15000 });
+
+    // OpenVPN tab should NOT be visible
+    await expect(
+      page.getByRole("tab", { name: "OpenVPN" }),
+    ).not.toBeVisible();
+  });
+
+  test("shows OpenVPN tab when OpenVPN clients exist", async ({ page }) => {
+    const mockWithOpenvpn = {
+      ...MOCK_VPN_WITH_MIKROTIK_WG,
+      openvpn_available: true,
+      openvpn_clients: [
+        {
+          common_name: "ovpn-client-1",
+          real_address: "192.168.1.100",
+          virtual_address: "10.8.0.2",
+          bytes_received: 2097152,
+          bytes_sent: 1048576,
+          connected_since: "2024-01-01 12:00:00",
+        },
+      ],
+    };
+    await mockVpnStatus(page, mockWithOpenvpn);
+    await page.goto("/vpn-status/");
+
+    await expect(
+      page.getByRole("heading", { name: "VPN Status", level: 1 }),
+    ).toBeVisible({ timeout: 15000 });
+
+    // OpenVPN tab should be visible
+    await expect(
+      page.getByRole("tab", { name: "OpenVPN" }),
+    ).toBeVisible();
+
+    // Click OpenVPN tab and verify client data is shown
+    await page.getByRole("tab", { name: "OpenVPN" }).click();
+    await expect(page.getByText("ovpn-client-1")).toBeVisible();
+
+    await page.screenshot({
+      path: "tests/screenshots/vpn-status-openvpn-tab.png",
     });
   });
 });

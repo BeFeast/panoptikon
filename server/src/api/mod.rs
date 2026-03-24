@@ -37,6 +37,7 @@ pub mod metrics;
 pub mod mikrotik;
 pub mod nat;
 pub mod npm;
+pub mod openvpn;
 pub mod pfsense;
 pub mod qos;
 pub mod scanner;
@@ -543,6 +544,13 @@ pub fn router(state: AppState) -> Router {
         .route(
             "/qos/mikrotik/queue-tree/:id",
             delete(qos::delete_mikrotik_queue_tree),
+        )
+        // OpenVPN Management
+        .route("/openvpn/status", get(openvpn::openvpn_status))
+        .route("/openvpn/server", patch(openvpn::update_openvpn_server))
+        .route(
+            "/openvpn/export-client-config",
+            get(openvpn::export_client_config),
         )
         // VPN Status Dashboard
         .route("/vpn-status", get(vpn_status::vpn_status))

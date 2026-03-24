@@ -46,6 +46,11 @@ export const settingsNav: SettingsNavGroup[] = [
         description: "Secure remote access via WireGuard mesh VPN.",
       },
       {
+        href: "/settings/openvpn",
+        title: "OpenVPN",
+        description: "Configure OpenVPN server on MikroTik and export client configs.",
+      },
+      {
         href: "/settings/webhook",
         title: "Webhook Notifications",
         description: "POST alerts to Discord, Slack, ntfy.sh, or any URL.",
