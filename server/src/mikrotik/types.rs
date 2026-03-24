@@ -796,3 +796,114 @@ pub struct WgPeer {
     pub disabled: Option<String>,
     pub comment: Option<String>,
 }
+
+/// MikroTik OpenVPN server configuration (`/rest/interface/ovpn-server/server`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OvpnServerConfig {
+    pub enabled: Option<String>,
+    pub port: Option<String>,
+    pub mode: Option<String>,
+    pub protocol: Option<String>,
+    #[serde(rename = "netmask")]
+    pub netmask: Option<String>,
+    #[serde(rename = "mac-address")]
+    pub mac_address: Option<String>,
+    pub certificate: Option<String>,
+    #[serde(rename = "default-profile")]
+    pub default_profile: Option<String>,
+    pub cipher: Option<String>,
+    pub auth: Option<String>,
+    #[serde(rename = "keepalive-timeout")]
+    pub keepalive_timeout: Option<String>,
+    #[serde(rename = "max-mtu")]
+    pub max_mtu: Option<String>,
+    #[serde(rename = "tls-version")]
+    pub tls_version: Option<String>,
+    #[serde(rename = "require-client-certificate")]
+    pub require_client_certificate: Option<String>,
+    #[serde(rename = "redirect-gateway")]
+    pub redirect_gateway: Option<String>,
+}
+
+/// MikroTik active OVPN server connection (`/rest/interface/ovpn-server`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OvpnServerConnection {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub user: Option<String>,
+    #[serde(rename = "client-address")]
+    pub client_address: Option<String>,
+    pub encoding: Option<String>,
+    pub uptime: Option<String>,
+    pub running: Option<String>,
+    pub disabled: Option<String>,
+}
+
+/// MikroTik PPP secret (`/rest/ppp/secret`) — used for OpenVPN user accounts.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PppSecret {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub password: Option<String>,
+    pub service: Option<String>,
+    pub profile: Option<String>,
+    #[serde(rename = "local-address")]
+    pub local_address: Option<String>,
+    #[serde(rename = "remote-address")]
+    pub remote_address: Option<String>,
+    pub disabled: Option<String>,
+    pub comment: Option<String>,
+}
+
+/// MikroTik PPP secret write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct PppSecretWriteRequest {
+    pub name: String,
+    pub password: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub profile: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "local-address")]
+    pub local_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "remote-address")]
+    pub remote_address: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<String>,
+}
+
+/// MikroTik certificate (`/rest/certificate`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MtCertificate {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    #[serde(rename = "common-name")]
+    pub common_name: Option<String>,
+    pub fingerprint: Option<String>,
+    #[serde(rename = "key-type")]
+    pub key_type: Option<String>,
+    #[serde(rename = "key-size")]
+    pub key_size: Option<String>,
+    #[serde(rename = "days-valid")]
+    pub days_valid: Option<String>,
+    #[serde(rename = "trusted")]
+    pub trusted: Option<String>,
+    #[serde(rename = "ca")]
+    pub ca: Option<String>,
+    pub issuer: Option<String>,
+    #[serde(rename = "serial-number")]
+    pub serial_number: Option<String>,
+    #[serde(rename = "invalid-before")]
+    pub invalid_before: Option<String>,
+    #[serde(rename = "invalid-after")]
+    pub invalid_after: Option<String>,
+    #[serde(rename = "private-key")]
+    pub private_key: Option<String>,
+    pub expired: Option<String>,
+    pub revoked: Option<String>,
+    #[serde(rename = "authority")]
+    pub authority: Option<String>,
+}

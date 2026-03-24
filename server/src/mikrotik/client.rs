@@ -737,6 +737,49 @@ impl MikrotikClient {
         self.send_no_body(Method::DELETE, &format!("/queue/tree/{id}"))
             .await
     }
+
+    /// Fetch OpenVPN server configuration.
+    pub async fn ovpn_server_config(&self) -> Result<OvpnServerConfig> {
+        let val = self.get("/interface/ovpn-server/server").await?;
+        let res: OvpnServerConfig =
+            serde_json::from_value(val).context("failed to parse OVPN server config")?;
+        Ok(res)
+    }
+
+    /// Fetch active OpenVPN server connections (connected clients).
+    pub async fn ovpn_server_connections(&self) -> Result<Vec<OvpnServerConnection>> {
+        let val = self.get("/interface/ovpn-server").await?;
+        let res: Vec<OvpnServerConnection> =
+            serde_json::from_value(val).context("failed to parse OVPN server connections")?;
+        Ok(res)
+    }
+
+    /// Fetch PPP secrets (VPN user accounts).
+    pub async fn ppp_secrets(&self) -> Result<Vec<PppSecret>> {
+        let val = self.get("/ppp/secret").await?;
+        let res: Vec<PppSecret> =
+            serde_json::from_value(val).context("failed to parse PPP secrets")?;
+        Ok(res)
+    }
+
+    /// Create a PPP secret (VPN user).
+    pub async fn create_ppp_secret(&self, req: &PppSecretWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/ppp/secret", req).await
+    }
+
+    /// Delete a PPP secret by RouterOS `.id`.
+    pub async fn delete_ppp_secret(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/ppp/secret/{id}"))
+            .await
+    }
+
+    /// Fetch certificates from the router's certificate store.
+    pub async fn certificates(&self) -> Result<Vec<MtCertificate>> {
+        let val = self.get("/certificate").await?;
+        let res: Vec<MtCertificate> =
+            serde_json::from_value(val).context("failed to parse certificates")?;
+        Ok(res)
+    }
 }
 
 #[cfg(test)]

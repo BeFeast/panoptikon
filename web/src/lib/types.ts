@@ -1955,15 +1955,79 @@ export interface VpnInterfaceStatus {
   peers_total: number;
   /** "mikrotik" */
   source: string;
+  /** "wireguard" or "openvpn" */
+  vpn_type: string;
+  /** Uptime for OpenVPN connections */
+  uptime: string | null;
 }
 
 export interface VpnStatusResponse {
   mikrotik_available: boolean;
+  openvpn_available: boolean;
   interfaces: VpnInterfaceStatus[];
   total_peers: number;
   online_peers: number;
   total_rx_bytes: number;
   total_tx_bytes: number;
+}
+
+// ─── OpenVPN Management ─────────────────────────────────────
+
+export interface OvpnServerResponse {
+  available: boolean;
+  enabled: boolean;
+  port: number | null;
+  mode: string | null;
+  protocol: string | null;
+  certificate: string | null;
+  cipher: string | null;
+  auth: string | null;
+  default_profile: string | null;
+  require_client_certificate: boolean;
+  redirect_gateway: string | null;
+}
+
+export interface OvpnClientEntry {
+  id: string;
+  name: string;
+  service: string | null;
+  profile: string | null;
+  local_address: string | null;
+  remote_address: string | null;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface OvpnClientsResponse {
+  available: boolean;
+  clients: OvpnClientEntry[];
+}
+
+export interface OvpnExportResponse {
+  config: string;
+  filename: string;
+}
+
+export interface MtCertificateEntry {
+  id: string;
+  name: string;
+  common_name: string | null;
+  key_type: string | null;
+  key_size: string | null;
+  days_valid: string | null;
+  trusted: boolean;
+  ca: boolean;
+  issuer: string | null;
+  invalid_before: string | null;
+  invalid_after: string | null;
+  has_private_key: boolean;
+  expired: boolean;
+  fingerprint: string | null;
+}
+
+export interface CertificatesResponse {
+  available: boolean;
+  certificates: MtCertificateEntry[];
 }
 
 export interface QosSummary {
