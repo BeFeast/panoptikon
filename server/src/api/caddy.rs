@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use tracing::{error, info, warn};
 
-use super::AppState;
+use super::{AppError, AppState};
 
 // ─── DTOs ──────────────────────────────────────────────────
 
@@ -222,7 +222,7 @@ pub async fn status(State(state): State<AppState>) -> Json<CaddyStatus> {
 }
 
 /// GET /api/v1/caddy/proxy-hosts — list all proxy hosts from SQLite.
-pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<CaddyProxyHost>>, StatusCode> {
+pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<CaddyProxyHost>>, AppError> {
     let rows = sqlx::query(
         "SELECT id, domain, forward_host, forward_port, forward_scheme, \
          enabled, tls_enabled, created_at, updated_at \
@@ -232,7 +232,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<CaddyProxyHo
     .await
     .map_err(|e| {
         error!("Failed to list caddy proxy hosts: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let hosts: Vec<CaddyProxyHost> = rows
@@ -257,7 +257,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<CaddyProxyHo
 pub async fn create(
     State(state): State<AppState>,
     Json(body): Json<CaddyProxyHostRequest>,
-) -> Result<(StatusCode, Json<CaddyProxyHost>), StatusCode> {
+) -> Result<(StatusCode, Json<CaddyProxyHost>), AppError> {
     let id = uuid::Uuid::new_v4().to_string();
 
     sqlx::query(
@@ -274,7 +274,7 @@ pub async fn create(
     .await
     .map_err(|e| {
         error!("Failed to create caddy proxy host: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     // Sync to Caddy after insert.
@@ -289,7 +289,7 @@ pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<CaddyProxyHostRequest>,
-) -> Result<Json<CaddyProxyHost>, StatusCode> {
+) -> Result<Json<CaddyProxyHost>, AppError> {
     let affected = sqlx::query(
         "UPDATE caddy_proxy_hosts \
          SET domain = ?, forward_host = ?, forward_port = ?, forward_scheme = ?, \
@@ -306,12 +306,12 @@ pub async fn update(
     .await
     .map_err(|e| {
         error!("Failed to update caddy proxy host: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?
     .rows_affected();
 
     if affected == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     sync_to_caddy(&state).await;
@@ -324,19 +324,19 @@ pub async fn update(
 pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let affected = sqlx::query("DELETE FROM caddy_proxy_hosts WHERE id = ?")
         .bind(&id)
         .execute(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to delete caddy proxy host: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?
         .rows_affected();
 
     if affected == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     sync_to_caddy(&state).await;
@@ -349,7 +349,7 @@ pub async fn toggle(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<ToggleRequest>,
-) -> Result<Json<CaddyProxyHost>, StatusCode> {
+) -> Result<Json<CaddyProxyHost>, AppError> {
     let affected = sqlx::query(
         "UPDATE caddy_proxy_hosts SET enabled = ?, updated_at = datetime('now') WHERE id = ?",
     )
@@ -359,12 +359,12 @@ pub async fn toggle(
     .await
     .map_err(|e| {
         error!("Failed to toggle caddy proxy host: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?
     .rows_affected();
 
     if affected == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     sync_to_caddy(&state).await;
@@ -418,7 +418,7 @@ pub struct ToggleRequest {
 }
 
 /// Helper: fetch a single proxy host by ID.
-async fn fetch_host_by_id(state: &AppState, id: &str) -> Result<CaddyProxyHost, StatusCode> {
+async fn fetch_host_by_id(state: &AppState, id: &str) -> Result<CaddyProxyHost, AppError> {
     let row = sqlx::query(
         "SELECT id, domain, forward_host, forward_port, forward_scheme, \
          enabled, tls_enabled, created_at, updated_at \
@@ -429,9 +429,9 @@ async fn fetch_host_by_id(state: &AppState, id: &str) -> Result<CaddyProxyHost, 
     .await
     .map_err(|e| {
         error!("Failed to fetch caddy proxy host: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?
-    .ok_or(StatusCode::NOT_FOUND)?;
+    .ok_or(AppError::NotFound)?;
 
     Ok(CaddyProxyHost {
         id: row.get("id"),

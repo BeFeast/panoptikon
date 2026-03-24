@@ -6,7 +6,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use similar::{ChangeTag, TextDiff};
 
-use super::AppState;
+use super::{AppError, AppState};
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -128,7 +128,7 @@ struct BackupRow {
 pub async fn list(
     State(state): State<AppState>,
     Query(params): Query<ListQuery>,
-) -> Result<Json<ConfigBackupListResponse>, StatusCode> {
+) -> Result<Json<ConfigBackupListResponse>, AppError> {
     let page = params.page.unwrap_or(1).max(1);
     let per_page = params.per_page.unwrap_or(25).clamp(1, 100);
     let offset = (page - 1) * per_page;
@@ -138,7 +138,7 @@ pub async fn list(
         .await
         .map_err(|e| {
             tracing::error!("config_backups count failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     let rows = sqlx::query_as::<_, BackupSummaryRow>(
@@ -151,7 +151,7 @@ pub async fn list(
     .await
     .map_err(|e| {
         tracing::error!("config_backups list failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let items = rows
@@ -172,7 +172,7 @@ pub async fn list(
 pub async fn get_one(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-) -> Result<Json<ConfigBackup>, StatusCode> {
+) -> Result<Json<ConfigBackup>, AppError> {
     let row = sqlx::query_as::<_, BackupRow>(
         "SELECT id, created_at, label, config_text, size_bytes, created_by \
          FROM config_backups WHERE id = ?",
@@ -182,9 +182,9 @@ pub async fn get_one(
     .await
     .map_err(|e| {
         tracing::error!("config_backups get_one failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?
-    .ok_or(StatusCode::NOT_FOUND)?;
+    .ok_or(AppError::NotFound)?;
 
     Ok(Json(ConfigBackup {
         id: row.id,
@@ -202,29 +202,29 @@ pub async fn get_one(
 pub async fn create(
     State(_state): State<AppState>,
     Json(_body): Json<CreateBackupRequest>,
-) -> Result<(StatusCode, Json<ConfigBackup>), StatusCode> {
+) -> Result<(StatusCode, Json<ConfigBackup>), AppError> {
     // Config backup creation requires a router connection.
     // This feature is currently disabled until router-agnostic config
     // backup support is implemented.
-    Err(StatusCode::SERVICE_UNAVAILABLE)
+    Err(AppError::ServiceUnavailable("Not implemented".into()))
 }
 
 /// DELETE /api/v1/config-backups/:id — remove a backup snapshot.
 pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let result = sqlx::query("DELETE FROM config_backups WHERE id = ?")
         .bind(id)
         .execute(&state.db)
         .await
         .map_err(|e| {
             tracing::error!("config_backups delete failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     if result.rows_affected() == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     Ok(StatusCode::NO_CONTENT)
@@ -235,8 +235,8 @@ pub async fn delete(
 /// Currently disabled — requires a supported router connection.
 pub async fn show_current(
     State(_state): State<AppState>,
-) -> Result<Json<ShowConfigResponse>, StatusCode> {
-    Err(StatusCode::SERVICE_UNAVAILABLE)
+) -> Result<Json<ShowConfigResponse>, AppError> {
+    Err(AppError::ServiceUnavailable("Not implemented".into()))
 }
 
 /// GET /api/v1/config-backups/:id/diff — unified diff of backup vs current running config.
@@ -245,8 +245,8 @@ pub async fn show_current(
 pub async fn diff(
     State(_state): State<AppState>,
     Path(_id): Path<i64>,
-) -> Result<Json<ConfigDiffResponse>, StatusCode> {
-    Err(StatusCode::SERVICE_UNAVAILABLE)
+) -> Result<Json<ConfigDiffResponse>, AppError> {
+    Err(AppError::ServiceUnavailable("Not implemented".into()))
 }
 
 /// GET /api/v1/config-backups/pending — show pending (uncommitted) changes.
@@ -254,8 +254,8 @@ pub async fn diff(
 /// Currently disabled — requires a supported router connection.
 pub async fn pending(
     State(_state): State<AppState>,
-) -> Result<Json<PendingChangesResponse>, StatusCode> {
-    Err(StatusCode::SERVICE_UNAVAILABLE)
+) -> Result<Json<PendingChangesResponse>, AppError> {
+    Err(AppError::ServiceUnavailable("Not implemented".into()))
 }
 
 /// POST /api/v1/config-backups/commit — commit pending changes.
@@ -263,8 +263,8 @@ pub async fn pending(
 /// Currently disabled — requires a supported router connection.
 pub async fn commit(
     State(_state): State<AppState>,
-) -> Result<Json<ConfigActionResponse>, StatusCode> {
-    Err(StatusCode::SERVICE_UNAVAILABLE)
+) -> Result<Json<ConfigActionResponse>, AppError> {
+    Err(AppError::ServiceUnavailable("Not implemented".into()))
 }
 
 /// POST /api/v1/config-backups/discard — discard uncommitted candidate changes.
@@ -272,8 +272,8 @@ pub async fn commit(
 /// Currently disabled — requires a supported router connection.
 pub async fn discard(
     State(_state): State<AppState>,
-) -> Result<Json<ConfigActionResponse>, StatusCode> {
-    Err(StatusCode::SERVICE_UNAVAILABLE)
+) -> Result<Json<ConfigActionResponse>, AppError> {
+    Err(AppError::ServiceUnavailable("Not implemented".into()))
 }
 
 /// POST /api/v1/config-backups/:id/restore — roll back to a previous snapshot.
@@ -283,8 +283,8 @@ pub async fn restore(
     State(_state): State<AppState>,
     Path(_id): Path<i64>,
     _body: Option<Json<RestoreRequest>>,
-) -> Result<Json<ConfigActionResponse>, StatusCode> {
-    Err(StatusCode::SERVICE_UNAVAILABLE)
+) -> Result<Json<ConfigActionResponse>, AppError> {
+    Err(AppError::ServiceUnavailable("Not implemented".into()))
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────

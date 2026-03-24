@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use tracing::{error, info};
 
-use super::AppState;
+use super::{AppError, AppState};
 
 // ─── DTOs ──────────────────────────────────────────────────
 
@@ -99,7 +99,7 @@ pub struct DdnsStatus {
 // ─── Handlers: DDNS CRUD ─────────────────────────────────
 
 /// GET /api/v1/ddns — list all DDNS entries.
-pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<DdnsEntry>>, StatusCode> {
+pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<DdnsEntry>>, AppError> {
     let rows = sqlx::query(
         "SELECT id, provider, hostname, username, password, api_token, zone, \
          interface_name, ip_source, protocol, enabled, router_type, \
@@ -111,7 +111,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<DdnsEntry>>,
     .await
     .map_err(|e| {
         error!("Failed to list DDNS entries: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let entries: Vec<DdnsEntry> = rows
@@ -149,7 +149,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<DdnsEntry>>,
 pub async fn create(
     State(state): State<AppState>,
     Json(body): Json<DdnsEntryRequest>,
-) -> Result<(StatusCode, Json<DdnsEntry>), StatusCode> {
+) -> Result<(StatusCode, Json<DdnsEntry>), AppError> {
     let id = uuid::Uuid::new_v4().to_string();
 
     sqlx::query(
@@ -174,7 +174,7 @@ pub async fn create(
     .await
     .map_err(|e| {
         error!("Failed to create DDNS entry: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     info!(id = %id, provider = %body.provider, hostname = %body.hostname, "Created DDNS entry");
@@ -188,7 +188,7 @@ pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<DdnsEntryRequest>,
-) -> Result<Json<DdnsEntry>, StatusCode> {
+) -> Result<Json<DdnsEntry>, AppError> {
     // Build dynamic update — only set password/api_token if provided
     let result = sqlx::query(
         "UPDATE ddns_entries SET \
@@ -212,11 +212,11 @@ pub async fn update(
     .await
     .map_err(|e| {
         error!("Failed to update DDNS entry {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     if result.rows_affected() == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     // Update password if provided
@@ -228,7 +228,7 @@ pub async fn update(
             .await
             .map_err(|e| {
                 error!("Failed to update DDNS password for {id}: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?;
     }
 
@@ -241,7 +241,7 @@ pub async fn update(
             .await
             .map_err(|e| {
                 error!("Failed to update DDNS api_token for {id}: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?;
     }
 
@@ -255,18 +255,18 @@ pub async fn update(
 pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let result = sqlx::query("DELETE FROM ddns_entries WHERE id = ?")
         .bind(&id)
         .execute(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to delete DDNS entry {id}: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     if result.rows_affected() == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     info!(id = %id, "Deleted DDNS entry");
@@ -278,7 +278,7 @@ pub async fn toggle(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<ToggleRequest>,
-) -> Result<Json<DdnsEntry>, StatusCode> {
+) -> Result<Json<DdnsEntry>, AppError> {
     let result = sqlx::query(
         "UPDATE ddns_entries SET enabled = ?, updated_at = datetime('now') WHERE id = ?",
     )
@@ -288,11 +288,11 @@ pub async fn toggle(
     .await
     .map_err(|e| {
         error!("Failed to toggle DDNS entry {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     if result.rows_affected() == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     info!(id = %id, enabled = body.enabled, "Toggled DDNS entry");
@@ -302,13 +302,13 @@ pub async fn toggle(
 }
 
 /// GET /api/v1/ddns/status — aggregate status summary.
-pub async fn status(State(state): State<AppState>) -> Result<Json<DdnsStatus>, StatusCode> {
+pub async fn status(State(state): State<AppState>) -> Result<Json<DdnsStatus>, AppError> {
     let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM ddns_entries")
         .fetch_one(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to count DDNS entries: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     let enabled: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM ddns_entries WHERE enabled = 1")
@@ -316,7 +316,7 @@ pub async fn status(State(state): State<AppState>) -> Result<Json<DdnsStatus>, S
         .await
         .map_err(|e| {
             error!("Failed to count enabled DDNS entries: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     let healthy: i64 = sqlx::query_scalar(
@@ -326,7 +326,7 @@ pub async fn status(State(state): State<AppState>) -> Result<Json<DdnsStatus>, S
     .await
     .map_err(|e| {
         error!("Failed to count healthy DDNS entries: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let failing: i64 = sqlx::query_scalar(
@@ -336,7 +336,7 @@ pub async fn status(State(state): State<AppState>) -> Result<Json<DdnsStatus>, S
     .await
     .map_err(|e| {
         error!("Failed to count failing DDNS entries: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     // Check if MikroTik is configured
@@ -362,7 +362,7 @@ pub async fn status(State(state): State<AppState>) -> Result<Json<DdnsStatus>, S
 // ─── Helpers ──────────────────────────────────────────────
 
 /// Fetch a single DDNS entry by ID (for returning after create/update).
-async fn fetch_by_id(state: &AppState, id: &str) -> Result<DdnsEntry, StatusCode> {
+async fn fetch_by_id(state: &AppState, id: &str) -> Result<DdnsEntry, AppError> {
     let r = sqlx::query(
         "SELECT id, provider, hostname, username, password, api_token, zone, \
          interface_name, ip_source, protocol, enabled, router_type, \
@@ -375,9 +375,9 @@ async fn fetch_by_id(state: &AppState, id: &str) -> Result<DdnsEntry, StatusCode
     .await
     .map_err(|e| {
         error!("Failed to fetch DDNS entry {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?
-    .ok_or(StatusCode::NOT_FOUND)?;
+    .ok_or(AppError::NotFound)?;
 
     let password: Option<String> = r.get("password");
     let api_token: Option<String> = r.get("api_token");

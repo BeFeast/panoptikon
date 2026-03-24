@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use tracing::{error, info, warn};
 
-use super::AppState;
+use super::{AppError, AppState};
 
 // ─── DTOs ──────────────────────────────────────────────────
 
@@ -97,7 +97,7 @@ pub struct UnboundConfigResponse {
 // ─── Handlers: Blocklists CRUD ─────────────────────────────
 
 /// GET /api/v1/dns-blocklists — list all blocklist sources.
-pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<DnsBlocklist>>, StatusCode> {
+pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<DnsBlocklist>>, AppError> {
     let rows = sqlx::query(
         "SELECT id, name, url, enabled, format, domain_count, \
          last_downloaded_at, last_error, refresh_interval_hours, \
@@ -108,7 +108,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<DnsBlocklist
     .await
     .map_err(|e| {
         error!("Failed to list DNS blocklists: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let lists: Vec<DnsBlocklist> = rows
@@ -135,7 +135,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<DnsBlocklist
 pub async fn create(
     State(state): State<AppState>,
     Json(body): Json<DnsBlocklistRequest>,
-) -> Result<(StatusCode, Json<DnsBlocklist>), StatusCode> {
+) -> Result<(StatusCode, Json<DnsBlocklist>), AppError> {
     let id = uuid::Uuid::new_v4().to_string();
 
     sqlx::query(
@@ -152,7 +152,7 @@ pub async fn create(
     .await
     .map_err(|e| {
         error!("Failed to create DNS blocklist: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let bl = fetch_blocklist_by_id(&state, &id).await?;
@@ -164,7 +164,7 @@ pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<DnsBlocklistRequest>,
-) -> Result<Json<DnsBlocklist>, StatusCode> {
+) -> Result<Json<DnsBlocklist>, AppError> {
     let affected = sqlx::query(
         "UPDATE dns_blocklists \
          SET name = ?, url = ?, enabled = ?, format = ?, \
@@ -181,12 +181,12 @@ pub async fn update(
     .await
     .map_err(|e| {
         error!("Failed to update DNS blocklist: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?
     .rows_affected();
 
     if affected == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     let bl = fetch_blocklist_by_id(&state, &id).await?;
@@ -197,19 +197,19 @@ pub async fn update(
 pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let affected = sqlx::query("DELETE FROM dns_blocklists WHERE id = ?")
         .bind(&id)
         .execute(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to delete DNS blocklist: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?
         .rows_affected();
 
     if affected == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     Ok(StatusCode::NO_CONTENT)
@@ -220,7 +220,7 @@ pub async fn toggle(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<ToggleRequest>,
-) -> Result<Json<DnsBlocklist>, StatusCode> {
+) -> Result<Json<DnsBlocklist>, AppError> {
     let affected = sqlx::query(
         "UPDATE dns_blocklists SET enabled = ?, updated_at = datetime('now') WHERE id = ?",
     )
@@ -230,12 +230,12 @@ pub async fn toggle(
     .await
     .map_err(|e| {
         error!("Failed to toggle DNS blocklist: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?
     .rows_affected();
 
     if affected == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     let bl = fetch_blocklist_by_id(&state, &id).await?;
@@ -251,16 +251,16 @@ pub struct ToggleRequest {
 pub async fn download(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<DownloadResponse>, StatusCode> {
+) -> Result<Json<DownloadResponse>, AppError> {
     let row = sqlx::query("SELECT url, format FROM dns_blocklists WHERE id = ?")
         .bind(&id)
         .fetch_optional(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to fetch blocklist for download: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?
-        .ok_or(StatusCode::NOT_FOUND)?;
+        .ok_or(AppError::NotFound)?;
 
     let url: String = row.get("url");
     let format: String = row.get("format");
@@ -271,7 +271,7 @@ pub async fn download(
         .build()
         .map_err(|e| {
             error!("Failed to build HTTP client: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     let body_text = match client.get(&url).send().await {
@@ -306,7 +306,7 @@ pub async fn download(
     // Replace cached domains in a transaction.
     let mut tx = state.db.begin().await.map_err(|e| {
         error!("Failed to begin transaction: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     sqlx::query("DELETE FROM dns_blocked_domains WHERE blocklist_id = ?")
@@ -315,7 +315,7 @@ pub async fn download(
         .await
         .map_err(|e| {
             error!("Failed to clear old domains: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     // Insert domains in batches.
@@ -338,7 +338,7 @@ pub async fn download(
         }
         query.execute(&mut *tx).await.map_err(|e| {
             error!("Failed to insert blocked domains: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
     }
 
@@ -355,12 +355,12 @@ pub async fn download(
     .await
     .map_err(|e| {
         error!("Failed to update blocklist metadata: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     tx.commit().await.map_err(|e| {
         error!("Failed to commit transaction: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     info!("Downloaded blocklist {id}: {domain_count} domains from {url}");
@@ -377,7 +377,7 @@ pub async fn download(
 /// GET /api/v1/dns-blocklists/overrides — list all domain overrides.
 pub async fn list_overrides(
     State(state): State<AppState>,
-) -> Result<Json<Vec<DnsDomainOverride>>, StatusCode> {
+) -> Result<Json<Vec<DnsDomainOverride>>, AppError> {
     let rows = sqlx::query(
         "SELECT id, domain, action, created_at \
          FROM dns_domain_overrides ORDER BY domain",
@@ -386,7 +386,7 @@ pub async fn list_overrides(
     .await
     .map_err(|e| {
         error!("Failed to list domain overrides: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let overrides: Vec<DnsDomainOverride> = rows
@@ -406,9 +406,11 @@ pub async fn list_overrides(
 pub async fn create_override(
     State(state): State<AppState>,
     Json(body): Json<DnsDomainOverrideRequest>,
-) -> Result<(StatusCode, Json<DnsDomainOverride>), StatusCode> {
+) -> Result<(StatusCode, Json<DnsDomainOverride>), AppError> {
     if body.action != "whitelist" && body.action != "blacklist" {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation(
+            "action must be 'whitelist' or 'blacklist'".into(),
+        ));
     }
 
     let id = uuid::Uuid::new_v4().to_string();
@@ -425,7 +427,7 @@ pub async fn create_override(
     .await
     .map_err(|e| {
         error!("Failed to create domain override: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     // Fetch the actual inserted/updated row.
@@ -437,7 +439,7 @@ pub async fn create_override(
     .await
     .map_err(|e| {
         error!("Failed to fetch domain override: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let ovr = DnsDomainOverride {
@@ -454,19 +456,19 @@ pub async fn create_override(
 pub async fn delete_override(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let affected = sqlx::query("DELETE FROM dns_domain_overrides WHERE id = ?")
         .bind(&id)
         .execute(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to delete domain override: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?
         .rows_affected();
 
     if affected == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     Ok(StatusCode::NO_CONTENT)
@@ -475,13 +477,13 @@ pub async fn delete_override(
 // ─── Handlers: Stats & Config ───────────────────────────────
 
 /// GET /api/v1/dns-blocklists/stats — blocklist dashboard stats.
-pub async fn stats(State(state): State<AppState>) -> Result<Json<BlocklistStats>, StatusCode> {
+pub async fn stats(State(state): State<AppState>) -> Result<Json<BlocklistStats>, AppError> {
     let total_blocklists: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM dns_blocklists")
         .fetch_one(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to count blocklists: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     let enabled_blocklists: i64 =
@@ -490,7 +492,7 @@ pub async fn stats(State(state): State<AppState>) -> Result<Json<BlocklistStats>
             .await
             .map_err(|e| {
                 error!("Failed to count enabled blocklists: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?;
 
     let total_blocked_domains: i64 = sqlx::query_scalar(
@@ -501,7 +503,7 @@ pub async fn stats(State(state): State<AppState>) -> Result<Json<BlocklistStats>
     .await
     .map_err(|e| {
         error!("Failed to count blocked domains: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let whitelist_count: i64 =
@@ -510,7 +512,7 @@ pub async fn stats(State(state): State<AppState>) -> Result<Json<BlocklistStats>
             .await
             .map_err(|e| {
                 error!("Failed to count whitelisted domains: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?;
 
     let blacklist_count: i64 =
@@ -519,7 +521,7 @@ pub async fn stats(State(state): State<AppState>) -> Result<Json<BlocklistStats>
             .await
             .map_err(|e| {
                 error!("Failed to count blacklisted domains: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?;
 
     let last_updated: Option<String> =
@@ -528,7 +530,7 @@ pub async fn stats(State(state): State<AppState>) -> Result<Json<BlocklistStats>
             .await
             .map_err(|e| {
                 error!("Failed to get last updated: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?;
 
     Ok(Json(BlocklistStats {
@@ -544,7 +546,7 @@ pub async fn stats(State(state): State<AppState>) -> Result<Json<BlocklistStats>
 /// GET /api/v1/dns-blocklists/unbound-config — generate Unbound local-zone config.
 pub async fn unbound_config(
     State(state): State<AppState>,
-) -> Result<Json<UnboundConfigResponse>, StatusCode> {
+) -> Result<Json<UnboundConfigResponse>, AppError> {
     // Get all unique blocked domains from enabled blocklists.
     let blocked: Vec<(String,)> = sqlx::query_as(
         "SELECT DISTINCT d.domain FROM dns_blocked_domains d \
@@ -556,7 +558,7 @@ pub async fn unbound_config(
     .await
     .map_err(|e| {
         error!("Failed to fetch blocked domains: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     // Get whitelisted domains (to exclude).
@@ -566,7 +568,7 @@ pub async fn unbound_config(
             .await
             .map_err(|e| {
                 error!("Failed to fetch whitelisted domains: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?;
 
     let whitelist_set: std::collections::HashSet<String> =
@@ -579,7 +581,7 @@ pub async fn unbound_config(
             .await
             .map_err(|e| {
                 error!("Failed to fetch blacklisted domains: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?;
 
     // Build Unbound local-zone config.
@@ -681,7 +683,7 @@ async fn set_blocklist_error(state: &AppState, id: &str, error_msg: &str) {
 }
 
 /// Fetch a single blocklist by ID.
-async fn fetch_blocklist_by_id(state: &AppState, id: &str) -> Result<DnsBlocklist, StatusCode> {
+async fn fetch_blocklist_by_id(state: &AppState, id: &str) -> Result<DnsBlocklist, AppError> {
     let row = sqlx::query(
         "SELECT id, name, url, enabled, format, domain_count, \
          last_downloaded_at, last_error, refresh_interval_hours, \
@@ -693,9 +695,9 @@ async fn fetch_blocklist_by_id(state: &AppState, id: &str) -> Result<DnsBlocklis
     .await
     .map_err(|e| {
         error!("Failed to fetch DNS blocklist: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?
-    .ok_or(StatusCode::NOT_FOUND)?;
+    .ok_or(AppError::NotFound)?;
 
     Ok(DnsBlocklist {
         id: row.get("id"),

@@ -26,6 +26,12 @@ pub enum AppError {
     Unauthorized,
     /// Input validation failed (400).
     Validation(String),
+    /// Resource conflict (409).
+    Conflict(String),
+    /// Unprocessable entity (422).
+    UnprocessableEntity(String),
+    /// Precondition required (428).
+    PreconditionRequired(String),
     /// Internal server error (500).
     Internal(String),
     /// Upstream service returned an error (502).
@@ -50,6 +56,17 @@ impl IntoResponse for AppError {
                 "Authentication required".to_string(),
             ),
             AppError::Validation(msg) => (StatusCode::BAD_REQUEST, "validation_error", msg),
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, "conflict", msg),
+            AppError::UnprocessableEntity(msg) => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "unprocessable_entity",
+                msg,
+            ),
+            AppError::PreconditionRequired(msg) => (
+                StatusCode::PRECONDITION_REQUIRED,
+                "precondition_required",
+                msg,
+            ),
             AppError::Database(e) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 "database_error",

@@ -6,7 +6,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 
-use super::AppState;
+use super::{AppError, AppState};
 
 /// An alert as returned by the API.
 #[derive(Debug, Serialize, Deserialize)]
@@ -71,7 +71,7 @@ impl Alert {
 pub async fn list(
     State(state): State<AppState>,
     Query(params): Query<ListAlertsQuery>,
-) -> Result<Json<Vec<Alert>>, StatusCode> {
+) -> Result<Json<Vec<Alert>>, AppError> {
     let limit = params.limit.unwrap_or(50);
     let unread_only = params.unread_only.unwrap_or(false);
 
@@ -125,7 +125,7 @@ pub async fn list(
         .await
         .map_err(|e| {
             tracing::error!("Failed to list alerts: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     let alerts: Vec<Alert> = rows
@@ -140,18 +140,18 @@ pub async fn list(
 pub async fn mark_read(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let result = sqlx::query("UPDATE alerts SET is_read = 1 WHERE id = ?")
         .bind(&id)
         .execute(&state.db)
         .await
         .map_err(|e| {
             tracing::error!("Failed to mark alert {id} as read: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     if result.rows_affected() == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     Ok(StatusCode::NO_CONTENT)
@@ -161,31 +161,31 @@ pub async fn mark_read(
 pub async fn mark_unread(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let result = sqlx::query("UPDATE alerts SET is_read = 0 WHERE id = ?")
         .bind(&id)
         .execute(&state.db)
         .await
         .map_err(|e| {
             tracing::error!("Failed to mark alert {id} as unread: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     if result.rows_affected() == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     Ok(StatusCode::NO_CONTENT)
 }
 
 /// POST /api/v1/alerts/mark-all-read — mark all unread alerts as read.
-pub async fn mark_all_read(State(state): State<AppState>) -> Result<StatusCode, StatusCode> {
+pub async fn mark_all_read(State(state): State<AppState>) -> Result<StatusCode, AppError> {
     sqlx::query("UPDATE alerts SET is_read = 1 WHERE is_read = 0")
         .execute(&state.db)
         .await
         .map_err(|e| {
             tracing::error!("Failed to mark all alerts as read: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -196,7 +196,7 @@ pub async fn acknowledge(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<AcknowledgeBody>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let result = sqlx::query(
         r#"UPDATE alerts SET acknowledged_at = datetime('now'), acknowledged_by = ?, is_read = 1 WHERE id = ?"#,
     )
@@ -206,11 +206,11 @@ pub async fn acknowledge(
     .await
     .map_err(|e| {
         tracing::error!("Failed to acknowledge alert {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     if result.rows_affected() == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     Ok(StatusCode::NO_CONTENT)
@@ -220,31 +220,31 @@ pub async fn acknowledge(
 pub async fn delete_one(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let result = sqlx::query("DELETE FROM alerts WHERE id = ?")
         .bind(&id)
         .execute(&state.db)
         .await
         .map_err(|e| {
             tracing::error!("Failed to delete alert {id}: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     if result.rows_affected() == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     Ok(StatusCode::NO_CONTENT)
 }
 
 /// DELETE /api/v1/alerts — delete all alerts.
-pub async fn delete_all(State(state): State<AppState>) -> Result<StatusCode, StatusCode> {
+pub async fn delete_all(State(state): State<AppState>) -> Result<StatusCode, AppError> {
     sqlx::query("DELETE FROM alerts")
         .execute(&state.db)
         .await
         .map_err(|e| {
             tracing::error!("Failed to delete all alerts: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -262,7 +262,7 @@ pub async fn mute_device(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Query(params): Query<MuteQuery>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let hours = params.hours.unwrap_or(1);
 
     let result = if hours <= 0 {
@@ -282,11 +282,11 @@ pub async fn mute_device(
     }
     .map_err(|e| {
         tracing::error!("Failed to mute device {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     if result.rows_affected() == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     Ok(StatusCode::NO_CONTENT)

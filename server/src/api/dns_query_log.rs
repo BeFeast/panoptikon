@@ -1,11 +1,10 @@
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
     Json,
 };
 use serde::{Deserialize, Serialize};
 
-use super::AppState;
+use super::{AppError, AppState};
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -132,7 +131,7 @@ struct DnsQueryRow {
 pub async fn list(
     State(state): State<AppState>,
     Query(params): Query<DnsQueryLogQuery>,
-) -> Result<Json<DnsQueryLogResponse>, StatusCode> {
+) -> Result<Json<DnsQueryLogResponse>, AppError> {
     let page = params.page.unwrap_or(1).max(1);
     let per_page = params.per_page.unwrap_or(50).clamp(1, 200);
     let offset = (page - 1) * per_page;
@@ -180,7 +179,7 @@ pub async fn list(
     }
     let total = count_query.fetch_one(&state.db).await.map_err(|e| {
         tracing::error!("dns_query_log count failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     // List query with LEFT JOIN to get device name.
@@ -214,7 +213,7 @@ pub async fn list(
         .await
         .map_err(|e| {
             tracing::error!("dns_query_log list failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     let items: Vec<DnsQueryEntry> = rows
@@ -246,7 +245,7 @@ pub async fn list(
 pub async fn stats(
     State(state): State<AppState>,
     Query(params): Query<DnsStatsQuery>,
-) -> Result<Json<DnsQueryStats>, StatusCode> {
+) -> Result<Json<DnsQueryStats>, AppError> {
     let hours = params.hours.unwrap_or(24).clamp(1, 168);
     let interval = format!("-{hours} hours");
 
@@ -260,7 +259,7 @@ pub async fn stats(
     .await
     .map_err(|e| {
         tracing::error!("dns stats totals failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     // Unique domains.
@@ -273,7 +272,7 @@ pub async fn stats(
     .await
     .map_err(|e| {
         tracing::error!("dns stats unique domains failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     // Unique clients.
@@ -286,7 +285,7 @@ pub async fn stats(
     .await
     .map_err(|e| {
         tracing::error!("dns stats unique clients failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     // Top queried domains (top 10).
@@ -381,7 +380,7 @@ pub async fn stats(
 pub async fn ingest(
     State(state): State<AppState>,
     Json(body): Json<IngestDnsRequest>,
-) -> Result<Json<IngestDnsResponse>, StatusCode> {
+) -> Result<Json<IngestDnsResponse>, AppError> {
     let mut inserted: u64 = 0;
 
     for q in &body.queries {

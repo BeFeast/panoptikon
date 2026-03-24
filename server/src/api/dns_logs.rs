@@ -1,11 +1,10 @@
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
     Json,
 };
 use serde::{Deserialize, Serialize};
 
-use super::AppState;
+use super::{AppError, AppState};
 
 // ─── Response types ──────────────────────────────────────
 
@@ -99,7 +98,7 @@ pub struct DnsLogBulkIngestRequest {
 pub async fn list(
     State(state): State<AppState>,
     Query(params): Query<DnsLogQueryParams>,
-) -> Result<Json<DnsQueryLogResponse>, StatusCode> {
+) -> Result<Json<DnsQueryLogResponse>, AppError> {
     let limit = params.limit.unwrap_or(100).min(1000);
     let offset = params.offset.unwrap_or(0);
 
@@ -197,7 +196,7 @@ pub async fn list(
 pub async fn stats(
     State(state): State<AppState>,
     Query(params): Query<DnsStatsQueryParams>,
-) -> Result<Json<DnsStatsResponse>, StatusCode> {
+) -> Result<Json<DnsStatsResponse>, AppError> {
     let mut conditions = Vec::new();
     let mut bind_values: Vec<String> = Vec::new();
 
@@ -235,7 +234,7 @@ pub async fn stats(
     }
     let summary = summary_query.fetch_one(&state.db).await.map_err(|e| {
         tracing::error!("DNS stats summary query failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     // Top queried domains.
@@ -334,7 +333,7 @@ pub async fn stats(
 pub async fn ingest(
     State(state): State<AppState>,
     Json(body): Json<DnsLogBulkIngestRequest>,
-) -> Result<Json<IngestResponse>, (StatusCode, String)> {
+) -> Result<Json<IngestResponse>, AppError> {
     let mut inserted = 0i64;
 
     for entry in &body.entries {
@@ -382,13 +381,13 @@ pub async fn ingest(
 }
 
 /// DELETE /api/v1/dns-logs — purge all DNS query logs.
-pub async fn purge(State(state): State<AppState>) -> Result<Json<PurgeResponse>, StatusCode> {
+pub async fn purge(State(state): State<AppState>) -> Result<Json<PurgeResponse>, AppError> {
     let result = sqlx::query("DELETE FROM dns_query_log")
         .execute(&state.db)
         .await
         .map_err(|e| {
             tracing::error!("DNS log purge failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     Ok(Json(PurgeResponse {

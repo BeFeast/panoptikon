@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tracing::{debug, warn};
 
-use super::AppState;
+use super::{AppError, AppState};
 
 // ---------- Rate limiting ----------
 
@@ -281,9 +281,11 @@ pub struct ChangePasswordRequest {
 pub async fn change_password(
     State(state): State<AppState>,
     Json(body): Json<ChangePasswordRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     if body.new_password.len() < 8 {
-        return Err(StatusCode::UNPROCESSABLE_ENTITY);
+        return Err(AppError::UnprocessableEntity(
+            "Password must be at least 8 characters".into(),
+        ));
     }
 
     // Fetch current hash.
@@ -293,26 +295,26 @@ pub async fn change_password(
             .await
             .map_err(|e| {
                 tracing::error!("Failed to query settings: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?
             .and_then(|r| r.try_get("value").ok());
 
-    let current_hash = row.ok_or(StatusCode::NOT_FOUND)?;
+    let current_hash = row.ok_or(AppError::NotFound)?;
 
     // Verify current password.
     let valid = bcrypt::verify(&body.current_password, &current_hash).map_err(|e| {
         tracing::error!("Password verification error: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
     if !valid {
         warn!("Change-password: wrong current password");
-        return Err(StatusCode::UNAUTHORIZED);
+        return Err(AppError::Unauthorized);
     }
 
     // Hash new password and update.
     let new_hash = bcrypt::hash(&body.new_password, bcrypt::DEFAULT_COST).map_err(|e| {
         tracing::error!("Failed to hash new password: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     sqlx::query("UPDATE settings SET value = ? WHERE key = 'admin_password_hash'")
@@ -321,7 +323,7 @@ pub async fn change_password(
         .await
         .map_err(|e| {
             tracing::error!("Failed to update password: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     // Invalidate all existing sessions so the new password takes effect immediately.
@@ -330,7 +332,7 @@ pub async fn change_password(
         .await
         .map_err(|e| {
             tracing::error!("Failed to clear sessions: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     tracing::info!("Admin password changed, all sessions invalidated");
@@ -365,13 +367,13 @@ pub async fn logout(State(state): State<AppState>, req: Request) -> impl IntoRes
 pub async fn status(
     State(state): State<AppState>,
     req: Request,
-) -> Result<Json<AuthStatusResponse>, StatusCode> {
+) -> Result<Json<AuthStatusResponse>, AppError> {
     let needs_setup = sqlx::query("SELECT 1 FROM settings WHERE key = 'admin_password_hash'")
         .fetch_optional(&state.db)
         .await
         .map_err(|e| {
             tracing::error!("Failed to query settings: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?
         .is_none();
 
@@ -382,7 +384,7 @@ pub async fn status(
             .await
             .map_err(|e| {
                 tracing::error!("Failed to check session: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?
             .is_some()
     } else {

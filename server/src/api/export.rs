@@ -1,12 +1,12 @@
 use axum::{
     body::Body,
     extract::{Query, State},
-    http::{header, Response, StatusCode},
+    http::{header, Response},
 };
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 
-use super::AppState;
+use super::{AppError, AppState};
 
 #[derive(Debug, Deserialize)]
 pub struct ExportQuery {
@@ -141,16 +141,15 @@ fn download_response(
     content_type: &str,
     filename: &str,
     body: String,
-) -> Result<Response<Body>, StatusCode> {
+) -> Result<Response<Body>, AppError> {
     Response::builder()
-        .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, content_type)
         .header(
             header::CONTENT_DISPOSITION,
             format!("attachment; filename=\"{filename}\""),
         )
         .body(Body::from(body))
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+        .map_err(|e| AppError::Internal(e.to_string()))
 }
 
 fn format_alerts_csv(items: &[ExportAlert]) -> String {
@@ -228,7 +227,7 @@ fn format_assets_csv(items: &[ExportAsset]) -> String {
 pub async fn devices_export(
     State(state): State<AppState>,
     Query(query): Query<ExportQuery>,
-) -> Result<Response<Body>, StatusCode> {
+) -> Result<Response<Body>, AppError> {
     let format = query
         .format
         .unwrap_or_else(|| "csv".to_string())
@@ -260,7 +259,7 @@ pub async fn devices_export(
     .await
     .map_err(|e| {
         tracing::error!("devices_export query failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let devices: Vec<ExportDevice> = rows
@@ -300,7 +299,7 @@ pub async fn devices_export(
 pub async fn traffic_export(
     State(state): State<AppState>,
     Query(query): Query<TrafficExportQuery>,
-) -> Result<Response<Body>, StatusCode> {
+) -> Result<Response<Body>, AppError> {
     let format = query
         .format
         .unwrap_or_else(|| "csv".to_string())
@@ -334,7 +333,7 @@ pub async fn traffic_export(
     .await
     .map_err(|e| {
         tracing::error!("traffic_export query failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let samples: Vec<ExportTrafficSample> = rows
@@ -372,7 +371,7 @@ pub async fn traffic_export(
 pub async fn alerts_export(
     State(state): State<AppState>,
     Query(query): Query<ExportQuery>,
-) -> Result<Response<Body>, StatusCode> {
+) -> Result<Response<Body>, AppError> {
     let format = query
         .format
         .unwrap_or_else(|| "csv".to_string())
@@ -399,7 +398,7 @@ pub async fn alerts_export(
     .await
     .map_err(|e| {
         tracing::error!("alerts_export query failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let alerts: Vec<ExportAlert> = rows
@@ -440,7 +439,7 @@ pub async fn alerts_export(
 pub async fn assets_export(
     State(state): State<AppState>,
     Query(query): Query<ExportQuery>,
-) -> Result<Response<Body>, StatusCode> {
+) -> Result<Response<Body>, AppError> {
     let format = query
         .format
         .unwrap_or_else(|| "csv".to_string())
@@ -472,7 +471,7 @@ pub async fn assets_export(
     .await
     .map_err(|e| {
         tracing::error!("assets_export query failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let assets: Vec<ExportAsset> = rows

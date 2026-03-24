@@ -268,7 +268,7 @@ const GET_ONE_QUERY: &str = "\
 pub async fn list(
     State(state): State<AppState>,
     Query(params): Query<ListQuery>,
-) -> Result<Json<Vec<Asset>>, StatusCode> {
+) -> Result<Json<Vec<Asset>>, AppError> {
     // Start with the base query, then apply filters dynamically.
     let mut sql = String::from(LIST_QUERY);
     let mut binds: Vec<String> = Vec::new();
@@ -319,7 +319,7 @@ pub async fn list(
 
     let rows = query.fetch_all(&state.db).await.map_err(|e| {
         error!("Failed to list assets: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let assets: Vec<Asset> = rows

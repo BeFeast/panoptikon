@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use tracing::{error, info};
 
-use super::AppState;
+use super::{AppError, AppState};
 
 /// A user as returned by the API (password hash never exposed).
 #[derive(Debug, Serialize)]
@@ -52,7 +52,7 @@ fn user_from_row(row: sqlx::sqlite::SqliteRow) -> Result<User, sqlx::Error> {
 }
 
 /// GET /api/v1/users — list all users.
-pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<User>>, StatusCode> {
+pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<User>>, AppError> {
     let rows = sqlx::query(
         "SELECT id, username, role, email, created_at, updated_at FROM users ORDER BY created_at ASC",
     )
@@ -60,7 +60,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<User>>, Stat
     .await
     .map_err(|e| {
         error!("Failed to list users: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let users: Vec<User> = rows
@@ -75,40 +75,32 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<User>>, Stat
 pub async fn create(
     State(state): State<AppState>,
     Json(body): Json<CreateUserRequest>,
-) -> Result<(StatusCode, Json<User>), (StatusCode, String)> {
+) -> Result<(StatusCode, Json<User>), AppError> {
     let username = body.username.trim();
     if username.is_empty() || username.len() < 2 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "Username must be at least 2 characters".to_string(),
+        return Err(AppError::Validation(
+            "Username must be at least 2 characters".into(),
         ));
     }
 
     if body.password.len() < 8 {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            "Password must be at least 8 characters".to_string(),
+        return Err(AppError::Validation(
+            "Password must be at least 8 characters".into(),
         ));
     }
 
     let role = body.role.as_deref().unwrap_or("operator");
     if !VALID_ROLES.contains(&role) {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            format!(
-                "Invalid role '{}'. Valid roles: {}",
-                role,
-                VALID_ROLES.join(", ")
-            ),
-        ));
+        return Err(AppError::Validation(format!(
+            "Invalid role '{}'. Valid roles: {}",
+            role,
+            VALID_ROLES.join(", ")
+        )));
     }
 
     let password_hash = bcrypt::hash(&body.password, bcrypt::DEFAULT_COST).map_err(|e| {
         error!("Failed to hash password: {e}");
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Failed to hash password".to_string(),
-        )
+        AppError::Internal("Failed to hash password".into())
     })?;
 
     let id = uuid::Uuid::new_v4().to_string();
@@ -125,16 +117,10 @@ pub async fn create(
     .await
     .map_err(|e| {
         if e.to_string().contains("UNIQUE") {
-            (
-                StatusCode::CONFLICT,
-                format!("Username '{username}' already exists"),
-            )
+            AppError::Conflict(format!("Username '{username}' already exists"))
         } else {
             error!("Failed to create user: {e}");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Database error: {e}"),
-            )
+            AppError::Internal(format!("Database error: {e}"))
         }
     })?;
 
@@ -148,18 +134,11 @@ pub async fn create(
     .await
     .map_err(|e| {
         error!("Failed to fetch created user: {e}");
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Database error: {e}"),
-        )
+        AppError::Internal(format!("Database error: {e}"))
     })?;
 
-    let user = user_from_row(row).map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to parse row: {e}"),
-        )
-    })?;
+    let user =
+        user_from_row(row).map_err(|e| AppError::Internal(format!("Failed to parse row: {e}")))?;
 
     Ok((StatusCode::CREATED, Json(user)))
 }
@@ -169,19 +148,19 @@ pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<UpdateUserRequest>,
-) -> Result<Json<User>, (StatusCode, String)> {
+) -> Result<Json<User>, AppError> {
     let exists: bool = sqlx::query_scalar::<_, i32>("SELECT 1 FROM users WHERE id = ?")
         .bind(&id)
         .fetch_optional(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to check user existence: {e}");
-            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+            AppError::Internal(e.to_string())
         })?
         .is_some();
 
     if !exists {
-        return Err((StatusCode::NOT_FOUND, "User not found".to_string()));
+        return Err(AppError::NotFound);
     }
 
     let mut sets: Vec<String> = Vec::new();
@@ -190,9 +169,8 @@ pub async fn update(
     if let Some(ref username) = body.username {
         let username = username.trim();
         if username.len() < 2 {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                "Username must be at least 2 characters".to_string(),
+            return Err(AppError::Validation(
+                "Username must be at least 2 characters".into(),
             ));
         }
         sets.push("username = ?".to_string());
@@ -201,14 +179,13 @@ pub async fn update(
 
     if let Some(ref password) = body.password {
         if password.len() < 8 {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                "Password must be at least 8 characters".to_string(),
+            return Err(AppError::Validation(
+                "Password must be at least 8 characters".into(),
             ));
         }
         let hash = bcrypt::hash(password, bcrypt::DEFAULT_COST).map_err(|e| {
             error!("Failed to hash password: {e}");
-            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+            AppError::Internal(e.to_string())
         })?;
         sets.push("password_hash = ?".to_string());
         binds.push(hash);
@@ -216,14 +193,11 @@ pub async fn update(
 
     if let Some(ref role) = body.role {
         if !VALID_ROLES.contains(&role.as_str()) {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                format!(
-                    "Invalid role '{}'. Valid roles: {}",
-                    role,
-                    VALID_ROLES.join(", ")
-                ),
-            ));
+            return Err(AppError::Validation(format!(
+                "Invalid role '{}'. Valid roles: {}",
+                role,
+                VALID_ROLES.join(", ")
+            )));
         }
         sets.push("role = ?".to_string());
         binds.push(role.to_string());
@@ -235,7 +209,7 @@ pub async fn update(
     }
 
     if sets.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "No fields to update".to_string()));
+        return Err(AppError::Validation("No fields to update".into()));
     }
 
     sets.push("updated_at = datetime('now')".to_string());
@@ -249,10 +223,10 @@ pub async fn update(
 
     query.execute(&state.db).await.map_err(|e| {
         if e.to_string().contains("UNIQUE") {
-            (StatusCode::CONFLICT, "Username already exists".to_string())
+            AppError::Conflict("Username already exists".into())
         } else {
             error!("Failed to update user {id}: {e}");
-            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+            AppError::Internal(e.to_string())
         }
     })?;
 
@@ -266,15 +240,11 @@ pub async fn update(
     .await
     .map_err(|e| {
         error!("Failed to fetch updated user: {e}");
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        AppError::Internal(e.to_string())
     })?;
 
-    let user = user_from_row(row).map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to parse row: {e}"),
-        )
-    })?;
+    let user =
+        user_from_row(row).map_err(|e| AppError::Internal(format!("Failed to parse row: {e}")))?;
 
     Ok(Json(user))
 }
@@ -283,14 +253,14 @@ pub async fn update(
 pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, (StatusCode, String)> {
+) -> Result<StatusCode, AppError> {
     // Prevent deleting the last admin user.
     let admin_count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users WHERE role = 'admin'")
         .fetch_one(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to count admins: {e}");
-            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+            AppError::Internal(e.to_string())
         })?;
 
     let user_role: Option<String> = sqlx::query_scalar("SELECT role FROM users WHERE id = ?")
@@ -299,14 +269,13 @@ pub async fn delete(
         .await
         .map_err(|e| {
             error!("Failed to get user role: {e}");
-            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+            AppError::Internal(e.to_string())
         })?;
 
     if let Some(ref role) = user_role {
         if role == "admin" && admin_count <= 1 {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                "Cannot delete the last admin user".to_string(),
+            return Err(AppError::Validation(
+                "Cannot delete the last admin user".into(),
             ));
         }
     }
@@ -326,10 +295,10 @@ pub async fn delete(
             info!(user_id = %id, "User deleted");
             Ok(StatusCode::NO_CONTENT)
         }
-        Ok(_) => Err((StatusCode::NOT_FOUND, "User not found".to_string())),
+        Ok(_) => Err(AppError::NotFound),
         Err(e) => {
             error!("Failed to delete user {id}: {e}");
-            Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+            Err(AppError::Internal(e.to_string()))
         }
     }
 }
