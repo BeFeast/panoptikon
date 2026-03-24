@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  ArrowDownToLine,
   ArrowRightLeft,
+  ArrowUpFromLine,
   Loader2,
   Network,
   Pencil,
@@ -34,6 +36,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -47,6 +50,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PageTransition } from "@/components/PageTransition";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import {
@@ -57,18 +68,26 @@ import {
   updateMikrotikNatRule,
 } from "@/lib/api";
 import { cn } from "@/lib/utils";
-import type { MikrotikNatRuleWithId, NatSummary } from "@/lib/types";
+import type {
+  CreateMikrotikNatRuleRequest,
+  MikrotikNatRuleWithId,
+  NatSummary,
+} from "@/lib/types";
 import { toast } from "sonner";
 
 const surfaceClass =
   "border-slate-800/70 bg-gradient-to-b from-slate-900/80 to-slate-900/55 shadow-[0_12px_30px_rgba(2,6,23,0.35)]";
 
+type NatTab = "all" | "dnat" | "snat";
+
 export default function NatPage() {
   const [summary, setSummary] = useState<NatSummary | null>(null);
   const [mtRules, setMtRules] = useState<MikrotikNatRuleWithId[] | null>(null);
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<NatTab>("all");
 
   const [showAddMt, setShowAddMt] = useState(false);
+  const [addPreset, setAddPreset] = useState<"dnat" | "snat" | "onetoone" | undefined>();
   const [editMtRule, setEditMtRule] = useState<MikrotikNatRuleWithId | null>(null);
   const [pendingDeleteMt, setPendingDeleteMt] = useState<MikrotikNatRuleWithId | null>(null);
 
@@ -97,16 +116,31 @@ export default function NatPage() {
 
   const filteredMt = useMemo(() => {
     if (!mtRules) return null;
-    if (!search.trim()) return mtRules;
-    const q = search.toLowerCase();
-    return mtRules.filter(
-      (r) =>
-        (r.comment ?? "").toLowerCase().includes(q) ||
-        (r.to_addresses ?? "").toLowerCase().includes(q) ||
-        (r.dst_port ?? "").toLowerCase().includes(q) ||
-        (r.action ?? "").toLowerCase().includes(q),
-    );
-  }, [mtRules, search]);
+    let result = mtRules;
+
+    // Filter by tab
+    if (activeTab === "dnat") {
+      result = result.filter((r) => r.chain === "dstnat");
+    } else if (activeTab === "snat") {
+      result = result.filter((r) => r.chain === "srcnat");
+    }
+
+    // Filter by search
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (r) =>
+          (r.comment ?? "").toLowerCase().includes(q) ||
+          (r.to_addresses ?? "").toLowerCase().includes(q) ||
+          (r.src_address ?? "").toLowerCase().includes(q) ||
+          (r.dst_address ?? "").toLowerCase().includes(q) ||
+          (r.dst_port ?? "").toLowerCase().includes(q) ||
+          (r.action ?? "").toLowerCase().includes(q),
+      );
+    }
+
+    return result;
+  }, [mtRules, search, activeTab]);
 
   async function handleDeleteMt() {
     if (!pendingDeleteMt || !pendingDeleteMt.id) return;
@@ -122,6 +156,32 @@ export default function NatPage() {
     }
   }
 
+  /** Detect 1:1 NAT: dst-nat with dst_address → to_addresses, no port mapping */
+  function isOneToOne(rule: MikrotikNatRuleWithId) {
+    return (
+      rule.chain === "dstnat" &&
+      rule.action === "dst-nat" &&
+      rule.dst_address &&
+      rule.to_addresses &&
+      !rule.dst_port &&
+      !rule.to_ports
+    );
+  }
+
+  function ruleTypeLabel(rule: MikrotikNatRuleWithId) {
+    if (isOneToOne(rule)) return "1:1 NAT";
+    if (rule.chain === "srcnat") return "SNAT";
+    if (rule.chain === "dstnat") return "DNAT";
+    return rule.chain ?? "other";
+  }
+
+  function ruleTypeBadgeClass(rule: MikrotikNatRuleWithId) {
+    if (isOneToOne(rule)) return "border-violet-500/30 bg-violet-500/10 text-violet-300";
+    if (rule.chain === "srcnat") return "border-amber-500/30 bg-amber-500/10 text-amber-300";
+    if (rule.chain === "dstnat") return "border-blue-500/30 bg-blue-500/10 text-blue-300";
+    return "border-slate-700 bg-slate-900/70 text-slate-400";
+  }
+
   return (
     <PageTransition>
       <div className="space-y-8">
@@ -133,10 +193,10 @@ export default function NatPage() {
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-semibold tracking-tight text-white">NAT / Port Forwarding</h1>
-                <HelpTooltip text="Manage MikroTik NAT and port-forwarding rules from the same command-center style UI." />
+                <HelpTooltip text="Manage MikroTik NAT rules — port forwarding (DNAT), outbound NAT (SNAT), 1:1 NAT, and NAT reflection." />
               </div>
               <p className="text-sm text-slate-400">
-                Inspect rule chains, targets, and translation endpoints.
+                Port forwarding, outbound NAT, 1:1 NAT, and hairpin rules.
               </p>
             </div>
           </div>
@@ -155,37 +215,95 @@ export default function NatPage() {
           </Button>
         </section>
 
-        <section className="grid gap-5 sm:grid-cols-1 lg:max-w-md">
+        {/* Summary cards */}
+        <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:max-w-2xl">
           <SummaryCard
-            title="MikroTik NAT Rules"
+            title="Total NAT Rules"
             value={summary?.mikrotik_rule_count ?? null}
             available={summary?.mikrotik_available ?? null}
-            icon={<Network className="h-4 w-4 text-amber-300" />}
+            icon={<Network className="h-4 w-4 text-cyan-300" />}
+            iconClass="border-cyan-500/30 bg-cyan-500/15"
+          />
+          <SummaryCard
+            title="DNAT (Inbound)"
+            value={summary?.dnat_count ?? null}
+            available={summary?.mikrotik_available ?? null}
+            icon={<ArrowDownToLine className="h-4 w-4 text-blue-300" />}
+            iconClass="border-blue-500/30 bg-blue-500/15"
+          />
+          <SummaryCard
+            title="SNAT (Outbound)"
+            value={summary?.snat_count ?? null}
+            available={summary?.mikrotik_available ?? null}
+            icon={<ArrowUpFromLine className="h-4 w-4 text-amber-300" />}
             iconClass="border-amber-500/30 bg-amber-500/15"
           />
         </section>
 
-        <section className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div className="relative max-w-md flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-            <Input
-              placeholder="Filter by comment, action, destination port..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="border-slate-800 bg-slate-950/70 pl-10 text-white placeholder:text-slate-600"
-            />
-          </div>
+        {/* Filter tabs + search + add buttons */}
+        <section className="space-y-3">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as NatTab)}>
+              <TabsList className="h-auto rounded-xl border border-slate-800/80 bg-slate-900/70 p-1">
+                <TabsTrigger
+                  value="all"
+                  className="rounded-lg px-4 data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+                >
+                  All Rules
+                </TabsTrigger>
+                <TabsTrigger
+                  value="dnat"
+                  className="rounded-lg px-4 data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+                >
+                  DNAT
+                </TabsTrigger>
+                <TabsTrigger
+                  value="snat"
+                  className="rounded-lg px-4 data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+                >
+                  SNAT
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
 
-          <Button
-            size="sm"
-            onClick={() => setShowAddMt(true)}
-            className="bg-blue-600 text-white hover:bg-blue-500"
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Add Rule
-          </Button>
+            <div className="flex items-center gap-2">
+              <div className="relative max-w-xs flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <Input
+                  placeholder="Filter rules..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="border-slate-800 bg-slate-950/70 pl-10 text-white placeholder:text-slate-600"
+                />
+              </div>
+
+              <Select
+                onValueChange={(v) => {
+                  if (v === "dnat") {
+                    setAddPreset("dnat");
+                  } else if (v === "snat") {
+                    setAddPreset("snat");
+                  } else if (v === "onetoone") {
+                    setAddPreset("onetoone");
+                  }
+                  setShowAddMt(true);
+                }}
+              >
+                <SelectTrigger className="w-auto gap-1.5 border-slate-700 bg-blue-600 text-white hover:bg-blue-500 [&>svg]:text-white">
+                  <Plus className="h-3.5 w-3.5" />
+                  <SelectValue placeholder="Add Rule" />
+                </SelectTrigger>
+                <SelectContent className="border-slate-700 bg-slate-900 text-slate-200">
+                  <SelectItem value="dnat">Port Forward (DNAT)</SelectItem>
+                  <SelectItem value="snat">Outbound NAT (SNAT)</SelectItem>
+                  <SelectItem value="onetoone">1:1 NAT</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </section>
 
+        {/* Rules table */}
         <Card className={surfaceClass}>
           <CardHeader className="pb-3">
             <CardTitle className="text-base text-white">MikroTik NAT Rules</CardTitle>
@@ -210,9 +328,11 @@ export default function NatPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-slate-800/70 hover:bg-transparent">
-                      <TableHead className="text-xs uppercase tracking-wide text-slate-500">Chain</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wide text-slate-500">Type</TableHead>
                       <TableHead className="text-xs uppercase tracking-wide text-slate-500">Action</TableHead>
                       <TableHead className="text-xs uppercase tracking-wide text-slate-500">Protocol</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wide text-slate-500">Src Address</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wide text-slate-500">Dst Address</TableHead>
                       <TableHead className="text-xs uppercase tracking-wide text-slate-500">Dst Port</TableHead>
                       <TableHead className="text-xs uppercase tracking-wide text-slate-500">To Address</TableHead>
                       <TableHead className="text-xs uppercase tracking-wide text-slate-500">To Port</TableHead>
@@ -228,7 +348,17 @@ export default function NatPage() {
                         key={rule.id ?? idx}
                         className="border-slate-800/70 hover:bg-slate-800/35"
                       >
-                        <TableCell className="text-slate-200">{rule.chain ?? "-"}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "rounded-md border text-[11px] uppercase",
+                              ruleTypeBadgeClass(rule),
+                            )}
+                          >
+                            {ruleTypeLabel(rule)}
+                          </Badge>
+                        </TableCell>
 
                         <TableCell>
                           <Badge
@@ -237,9 +367,11 @@ export default function NatPage() {
                               "rounded-md border text-[11px] uppercase",
                               rule.action === "dst-nat"
                                 ? "border-blue-500/30 bg-blue-500/10 text-blue-300"
-                                : rule.action === "masquerade"
-                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
-                                  : "border-slate-700 bg-slate-900/70 text-slate-400",
+                                : rule.action === "src-nat"
+                                  ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
+                                  : rule.action === "masquerade"
+                                    ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
+                                    : "border-slate-700 bg-slate-900/70 text-slate-400",
                             )}
                           >
                             {rule.action ?? "-"}
@@ -247,10 +379,12 @@ export default function NatPage() {
                         </TableCell>
 
                         <TableCell className="text-slate-300">{rule.protocol ?? "any"}</TableCell>
+                        <TableCell className="font-mono text-xs text-slate-300">{rule.src_address ?? "-"}</TableCell>
+                        <TableCell className="font-mono text-xs text-slate-300">{rule.dst_address ?? "-"}</TableCell>
                         <TableCell className="font-mono text-xs text-slate-300">{rule.dst_port ?? "-"}</TableCell>
                         <TableCell className="font-mono text-xs text-slate-300">{rule.to_addresses ?? "-"}</TableCell>
                         <TableCell className="font-mono text-xs text-slate-300">{rule.to_ports ?? "-"}</TableCell>
-                        <TableCell className="max-w-[220px] truncate text-slate-400" title={rule.comment ?? undefined}>
+                        <TableCell className="max-w-[180px] truncate text-slate-400" title={rule.comment ?? undefined}>
                           {rule.comment ?? "-"}
                         </TableCell>
 
@@ -301,9 +435,14 @@ export default function NatPage() {
           </CardContent>
         </Card>
 
+        {/* Add dialog */}
         <MikrotikNatDialog
           open={showAddMt}
-          onOpenChange={setShowAddMt}
+          onOpenChange={(open) => {
+            setShowAddMt(open);
+            if (!open) setAddPreset(undefined);
+          }}
+          preset={addPreset}
           onSave={async (data) => {
             try {
               await createMikrotikNatRule(data);
@@ -311,12 +450,14 @@ export default function NatPage() {
               loadMt();
               load();
               setShowAddMt(false);
+              setAddPreset(undefined);
             } catch (err) {
               toast.error(err instanceof Error ? err.message : "Failed to create rule");
             }
           }}
         />
 
+        {/* Edit dialog */}
         <MikrotikNatDialog
           open={!!editMtRule}
           onOpenChange={(open) => {
@@ -337,6 +478,7 @@ export default function NatPage() {
           }}
         />
 
+        {/* Delete confirmation */}
         <AlertDialog
           open={!!pendingDeleteMt}
           onOpenChange={(open) => {
@@ -367,6 +509,8 @@ export default function NatPage() {
     </PageTransition>
   );
 }
+
+/* ── Summary Card ───────────────────────────────────────── */
 
 function SummaryCard({
   title,
@@ -403,33 +547,32 @@ function SummaryCard({
   );
 }
 
+/* ── NAT Rule Create/Edit Dialog ────────────────────────── */
+
 function MikrotikNatDialog({
   open,
   onOpenChange,
   existing,
+  preset,
   onSave,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   existing?: MikrotikNatRuleWithId | null;
-  onSave: (data: {
-    chain: string;
-    action: string;
-    protocol?: string;
-    dst_port?: string;
-    to_addresses?: string;
-    to_ports?: string;
-    comment?: string;
-    disabled?: boolean;
-  }) => Promise<void>;
+  preset?: "dnat" | "snat" | "onetoone";
+  onSave: (data: CreateMikrotikNatRuleRequest) => Promise<void>;
 }) {
   const [saving, setSaving] = useState(false);
   const [chain, setChain] = useState("dstnat");
   const [action, setAction] = useState("dst-nat");
   const [protocol, setProtocol] = useState("tcp");
+  const [srcAddress, setSrcAddress] = useState("");
+  const [dstAddress, setDstAddress] = useState("");
   const [dstPort, setDstPort] = useState("");
   const [toAddresses, setToAddresses] = useState("");
   const [toPorts, setToPorts] = useState("");
+  const [inInterface, setInInterface] = useState("");
+  const [outInterface, setOutInterface] = useState("");
   const [comment, setComment] = useState("");
   const [disabled, setDisabled] = useState(false);
 
@@ -439,23 +582,57 @@ function MikrotikNatDialog({
         setChain(existing.chain ?? "dstnat");
         setAction(existing.action ?? "dst-nat");
         setProtocol(existing.protocol ?? "");
+        setSrcAddress(existing.src_address ?? "");
+        setDstAddress(existing.dst_address ?? "");
         setDstPort(existing.dst_port ?? "");
         setToAddresses(existing.to_addresses ?? "");
         setToPorts(existing.to_ports ?? "");
+        setInInterface("");
+        setOutInterface(existing.out_interface ?? "");
         setComment(existing.comment ?? "");
         setDisabled(existing.disabled);
+      } else if (preset === "snat") {
+        setChain("srcnat");
+        setAction("src-nat");
+        setProtocol("");
+        setSrcAddress("");
+        setDstAddress("");
+        setDstPort("");
+        setToAddresses("");
+        setToPorts("");
+        setInInterface("");
+        setOutInterface("");
+        setComment("");
+        setDisabled(false);
+      } else if (preset === "onetoone") {
+        setChain("dstnat");
+        setAction("dst-nat");
+        setProtocol("");
+        setSrcAddress("");
+        setDstAddress("");
+        setDstPort("");
+        setToAddresses("");
+        setToPorts("");
+        setInInterface("");
+        setOutInterface("");
+        setComment("1:1 NAT");
+        setDisabled(false);
       } else {
         setChain("dstnat");
         setAction("dst-nat");
         setProtocol("tcp");
+        setSrcAddress("");
+        setDstAddress("");
         setDstPort("");
         setToAddresses("");
         setToPorts("");
+        setInInterface("");
+        setOutInterface("");
         setComment("");
         setDisabled(false);
       }
     }
-  }, [open, existing]);
+  }, [open, existing, preset]);
 
   const handleSubmit = async () => {
     if (!chain || !action) return;
@@ -465,9 +642,13 @@ function MikrotikNatDialog({
         chain,
         action,
         protocol: protocol || undefined,
+        src_address: srcAddress || undefined,
+        dst_address: dstAddress || undefined,
         dst_port: dstPort || undefined,
         to_addresses: toAddresses || undefined,
         to_ports: toPorts || undefined,
+        in_interface: inInterface || undefined,
+        out_interface: outInterface || undefined,
         comment: comment || undefined,
         disabled,
       });
@@ -476,89 +657,189 @@ function MikrotikNatDialog({
     }
   };
 
+  const dialogTitle = existing
+    ? "Edit NAT Rule"
+    : preset === "snat"
+      ? "Add Outbound NAT Rule (SNAT)"
+      : preset === "onetoone"
+        ? "Add 1:1 NAT Rule"
+        : "Add Port Forward Rule (DNAT)";
+
+  const dialogDescription = existing
+    ? "Modify the NAT rule configuration on the MikroTik router."
+    : preset === "snat"
+      ? "Create an outbound NAT (source NAT) rule to translate internal source addresses."
+      : preset === "onetoone"
+        ? "Map an entire external IP address to an internal host (no port translation)."
+        : "Forward incoming traffic on a specific port to an internal host.";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-slate-900 border-slate-800 sm:max-w-lg">
+      <DialogContent className="bg-slate-900 border-slate-800 sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-white">
-            {existing ? "Edit MikroTik NAT Rule" : "Add MikroTik NAT Rule"}
-          </DialogTitle>
+          <DialogTitle className="text-white">{dialogTitle}</DialogTitle>
+          <DialogDescription className="text-slate-400">{dialogDescription}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Chain + Action */}
           <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1.5">
               <Label className="text-slate-400">Chain</Label>
-              <Input
-                value={chain}
-                onChange={(e) => setChain(e.target.value)}
-                placeholder="dstnat"
-                className="bg-slate-950 border-slate-800 text-slate-200"
-              />
+              <Select value={chain} onValueChange={setChain}>
+                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-slate-700 bg-slate-900 text-slate-200">
+                  <SelectItem value="dstnat">dstnat</SelectItem>
+                  <SelectItem value="srcnat">srcnat</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-1.5">
               <Label className="text-slate-400">Action</Label>
+              <Select value={action} onValueChange={setAction}>
+                <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="border-slate-700 bg-slate-900 text-slate-200">
+                  <SelectItem value="dst-nat">dst-nat</SelectItem>
+                  <SelectItem value="src-nat">src-nat</SelectItem>
+                  <SelectItem value="masquerade">masquerade</SelectItem>
+                  <SelectItem value="netmap">netmap</SelectItem>
+                  <SelectItem value="redirect">redirect</SelectItem>
+                  <SelectItem value="accept">accept</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Protocol */}
+          <div className="space-y-1.5">
+            <Label className="text-slate-400">Protocol</Label>
+            <Select value={protocol || "__none__"} onValueChange={(v) => setProtocol(v === "__none__" ? "" : v)}>
+              <SelectTrigger className="bg-slate-950 border-slate-800 text-slate-200">
+                <SelectValue placeholder="Any" />
+              </SelectTrigger>
+              <SelectContent className="border-slate-700 bg-slate-900 text-slate-200">
+                <SelectItem value="__none__">Any</SelectItem>
+                <SelectItem value="tcp">TCP</SelectItem>
+                <SelectItem value="udp">UDP</SelectItem>
+                <SelectItem value="icmp">ICMP</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Source / Destination Addresses */}
+          <div className="grid grid-cols-2 gap-5">
+            <div className="space-y-1.5">
+              <Label className="text-slate-400">
+                Src Address
+                <HelpTooltip text="Source IP or CIDR to match. Leave empty for any." />
+              </Label>
               <Input
-                value={action}
-                onChange={(e) => setAction(e.target.value)}
-                placeholder="dst-nat"
+                value={srcAddress}
+                onChange={(e) => setSrcAddress(e.target.value)}
+                placeholder="e.g. 192.168.1.0/24"
+                className="bg-slate-950 border-slate-800 text-slate-200"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-slate-400">
+                Dst Address
+                <HelpTooltip text="Destination IP to match. For 1:1 NAT, this is the external IP." />
+              </Label>
+              <Input
+                value={dstAddress}
+                onChange={(e) => setDstAddress(e.target.value)}
+                placeholder="e.g. 203.0.113.10"
                 className="bg-slate-950 border-slate-800 text-slate-200"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-5">
-            <div className="space-y-1.5">
-              <Label className="text-slate-400">Protocol</Label>
-              <Input
-                value={protocol}
-                onChange={(e) => setProtocol(e.target.value)}
-                placeholder="tcp"
-                className="bg-slate-950 border-slate-800 text-slate-200"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-slate-400">Dst Port</Label>
-              <Input
-                value={dstPort}
-                onChange={(e) => setDstPort(e.target.value)}
-                placeholder="8080"
-                className="bg-slate-950 border-slate-800 text-slate-200"
-              />
-            </div>
+          {/* Dst Port */}
+          <div className="space-y-1.5">
+            <Label className="text-slate-400">
+              Dst Port
+              <HelpTooltip text="Destination port to match. Leave empty for 1:1 NAT (all ports)." />
+            </Label>
+            <Input
+              value={dstPort}
+              onChange={(e) => setDstPort(e.target.value)}
+              placeholder="e.g. 8080 or 80-443"
+              className="bg-slate-950 border-slate-800 text-slate-200"
+            />
           </div>
 
+          {/* To Addresses / To Ports */}
           <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1.5">
-              <Label className="text-slate-400">To Addresses</Label>
+              <Label className="text-slate-400">
+                To Addresses
+                <HelpTooltip text="Translate to this IP. For DNAT/1:1: internal host. For SNAT: outbound IP." />
+              </Label>
               <Input
                 value={toAddresses}
                 onChange={(e) => setToAddresses(e.target.value)}
-                placeholder="192.168.1.100"
+                placeholder="e.g. 192.168.1.100"
                 className="bg-slate-950 border-slate-800 text-slate-200"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-slate-400">To Ports</Label>
+              <Label className="text-slate-400">
+                To Ports
+                <HelpTooltip text="Translate to this port. Leave empty for 1:1 NAT." />
+              </Label>
               <Input
                 value={toPorts}
                 onChange={(e) => setToPorts(e.target.value)}
-                placeholder="80"
+                placeholder="e.g. 80"
                 className="bg-slate-950 border-slate-800 text-slate-200"
               />
             </div>
           </div>
 
+          {/* Interfaces */}
+          <div className="grid grid-cols-2 gap-5">
+            <div className="space-y-1.5">
+              <Label className="text-slate-400">
+                In Interface
+                <HelpTooltip text="Match traffic arriving on this interface (e.g. ether1-wan)." />
+              </Label>
+              <Input
+                value={inInterface}
+                onChange={(e) => setInInterface(e.target.value)}
+                placeholder="e.g. ether1"
+                className="bg-slate-950 border-slate-800 text-slate-200"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-slate-400">
+                Out Interface
+                <HelpTooltip text="Match traffic leaving via this interface." />
+              </Label>
+              <Input
+                value={outInterface}
+                onChange={(e) => setOutInterface(e.target.value)}
+                placeholder="e.g. bridge1"
+                className="bg-slate-950 border-slate-800 text-slate-200"
+              />
+            </div>
+          </div>
+
+          {/* Comment */}
           <div className="space-y-1.5">
             <Label className="text-slate-400">Comment</Label>
             <Input
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Web server"
+              placeholder="Web server port forward"
               className="bg-slate-950 border-slate-800 text-slate-200"
             />
           </div>
 
+          {/* Disabled toggle */}
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
@@ -572,6 +853,7 @@ function MikrotikNatDialog({
             </Label>
           </div>
 
+          {/* Action buttons */}
           <div className="flex justify-end gap-2 pt-2">
             <Button
               variant="outline"

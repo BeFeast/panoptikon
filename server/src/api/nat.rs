@@ -84,9 +84,13 @@ pub struct CreateMikrotikNatRuleRequest {
     pub chain: String,
     pub action: String,
     pub protocol: Option<String>,
+    pub src_address: Option<String>,
+    pub dst_address: Option<String>,
     pub dst_port: Option<String>,
     pub to_addresses: Option<String>,
     pub to_ports: Option<String>,
+    pub in_interface: Option<String>,
+    pub out_interface: Option<String>,
     pub comment: Option<String>,
     pub disabled: Option<bool>,
 }
@@ -138,13 +142,13 @@ pub async fn mikrotik_create(
         chain: body.chain,
         action: body.action,
         protocol: body.protocol,
-        src_address: None,
-        dst_address: None,
+        src_address: body.src_address,
+        dst_address: body.dst_address,
         dst_port: body.dst_port,
         to_addresses: body.to_addresses,
         to_ports: body.to_ports,
-        in_interface: None,
-        out_interface: None,
+        in_interface: body.in_interface,
+        out_interface: body.out_interface,
         comment: body.comment,
         disabled: body
             .disabled
@@ -174,13 +178,13 @@ pub async fn mikrotik_update(
         chain: body.chain,
         action: body.action,
         protocol: body.protocol,
-        src_address: None,
-        dst_address: None,
+        src_address: body.src_address,
+        dst_address: body.dst_address,
         dst_port: body.dst_port,
         to_addresses: body.to_addresses,
         to_ports: body.to_ports,
-        in_interface: None,
-        out_interface: None,
+        in_interface: body.in_interface,
+        out_interface: body.out_interface,
         comment: body.comment,
         disabled: body
             .disabled
@@ -220,20 +224,38 @@ pub async fn mikrotik_delete(
 pub struct NatSummary {
     pub mikrotik_available: bool,
     pub mikrotik_rule_count: usize,
+    pub dnat_count: usize,
+    pub snat_count: usize,
 }
 
 /// GET /api/v1/nat/summary — overview of NAT rule counts.
 pub async fn summary(State(state): State<AppState>) -> Json<NatSummary> {
     let mt_client = mikrotik_client(&state).await;
 
-    let mt_count = if let Some(ref client) = mt_client {
-        client.firewall_nat().await.map(|v| v.len()).unwrap_or(0)
+    let (mt_count, dnat_count, snat_count) = if let Some(ref client) = mt_client {
+        match client.firewall_nat().await {
+            Ok(rules) => {
+                let total = rules.len();
+                let dnat = rules
+                    .iter()
+                    .filter(|r| r.chain.as_deref() == Some("dstnat"))
+                    .count();
+                let snat = rules
+                    .iter()
+                    .filter(|r| r.chain.as_deref() == Some("srcnat"))
+                    .count();
+                (total, dnat, snat)
+            }
+            Err(_) => (0, 0, 0),
+        }
     } else {
-        0
+        (0, 0, 0)
     };
 
     Json(NatSummary {
         mikrotik_available: mt_client.is_some(),
         mikrotik_rule_count: mt_count,
+        dnat_count,
+        snat_count,
     })
 }
