@@ -1401,6 +1401,7 @@ export interface AlertRule {
   threshold_value: number | null;
   notify_telegram: boolean;
   notify_in_app: boolean;
+  notify_email: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -1411,6 +1412,7 @@ export interface CreateAlertRuleRequest {
   threshold_value?: number | null;
   notify_telegram?: boolean;
   notify_in_app?: boolean;
+  notify_email?: boolean;
 }
 
 export interface UpdateAlertRuleRequest {
@@ -1418,6 +1420,7 @@ export interface UpdateAlertRuleRequest {
   threshold_value?: number | null;
   notify_telegram?: boolean;
   notify_in_app?: boolean;
+  notify_email?: boolean;
 }
 
 // ─── Caddy Reverse Proxy ─────────────────────────────────
@@ -2222,4 +2225,27 @@ export interface ResolveResult {
   candidates: number;
   /** Which sources were successfully queried. */
   sources_queried: string[];
+}
+
+// ─── Users (RBAC) ──────────────────────────────────────
+
+export type UserRole = "admin" | "operator" | "readonly";
+
+export interface User {
+  id: string;
+  username: string;
+  role: UserRole;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateUserRequest {
+  username: string;
+  password: string;
+  role?: UserRole;
+}
+
+export interface UpdateUserRequest {
+  role?: UserRole;
+  password?: string;
 }

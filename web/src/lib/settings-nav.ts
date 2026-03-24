@@ -61,6 +61,16 @@ export const settingsNav: SettingsNavGroup[] = [
         title: "Cloudflare Tunnel",
         description: "Configure Cloudflare Tunnel API token and tunnel ID.",
       },
+      {
+        href: "/settings/smtp",
+        title: "Email Notifications",
+        description: "Configure SMTP email alerts alongside webhooks.",
+      },
+      {
+        href: "/settings/snmp",
+        title: "SNMP",
+        description: "Configure SNMP agent, traps, and managed router settings.",
+      },
     ],
   },
   {
@@ -107,6 +117,11 @@ export const settingsNav: SettingsNavGroup[] = [
         href: "/settings/password",
         title: "Change Password",
         description: "Update your login password.",
+      },
+      {
+        href: "/settings/users",
+        title: "User Management",
+        description: "Manage users and role-based access control.",
       },
     ],
   },

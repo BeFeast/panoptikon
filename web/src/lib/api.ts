@@ -100,6 +100,9 @@ import type {
   DnsIngestEntry,
   DnsIngestResponse,
   DnsPurgeResponse,
+  User,
+  CreateUserRequest,
+  UpdateUserRequest,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -1848,4 +1851,25 @@ export function triggerNetworkScan(): Promise<
   return apiPost<import("./types").ScanSummary>(
     "/api/v1/scanner/trigger"
   );
+}
+
+// ─── Users (RBAC) ─────────────────────────────────────────
+
+export function fetchUsers(): Promise<User[]> {
+  return apiGet<User[]>("/api/v1/users");
+}
+
+export function createUser(body: CreateUserRequest): Promise<User> {
+  return apiPost<User>("/api/v1/users", body);
+}
+
+export function updateUser(
+  id: string,
+  body: UpdateUserRequest
+): Promise<User> {
+  return apiPut<User>(`/api/v1/users/${id}`, body);
+}
+
+export function deleteUser(id: string): Promise<void> {
+  return apiDelete(`/api/v1/users/${id}`);
 }

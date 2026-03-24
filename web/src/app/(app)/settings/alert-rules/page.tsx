@@ -281,6 +281,21 @@ export default function AlertRulesPage() {
                           In-app notification
                         </Label>
                       </div>
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          id={`email-${rule.id}`}
+                          checked={rule.notify_email}
+                          onCheckedChange={(checked) =>
+                            handleUpdate(rule.id, { notify_email: checked })
+                          }
+                        />
+                        <Label
+                          htmlFor={`email-${rule.id}`}
+                          className="text-xs text-slate-400"
+                        >
+                          Email
+                        </Label>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

@@ -21,6 +21,7 @@ pub struct AlertRule {
     pub threshold_value: Option<i64>,
     pub notify_telegram: bool,
     pub notify_in_app: bool,
+    pub notify_email: bool,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -33,6 +34,7 @@ pub struct CreateAlertRuleRequest {
     pub threshold_value: Option<i64>,
     pub notify_telegram: Option<bool>,
     pub notify_in_app: Option<bool>,
+    pub notify_email: Option<bool>,
 }
 
 /// Request body for updating an alert rule.
@@ -42,6 +44,7 @@ pub struct UpdateAlertRuleRequest {
     pub threshold_value: Option<i64>,
     pub notify_telegram: Option<bool>,
     pub notify_in_app: Option<bool>,
+    pub notify_email: Option<bool>,
 }
 
 fn rule_from_row(row: sqlx::sqlite::SqliteRow) -> Result<AlertRule, sqlx::Error> {
@@ -52,6 +55,7 @@ fn rule_from_row(row: sqlx::sqlite::SqliteRow) -> Result<AlertRule, sqlx::Error>
         threshold_value: row.try_get("threshold_value").unwrap_or(None),
         notify_telegram: row.try_get::<i32, _>("notify_telegram").unwrap_or(1) != 0,
         notify_in_app: row.try_get::<i32, _>("notify_in_app").unwrap_or(1) != 0,
+        notify_email: row.try_get::<i32, _>("notify_email").unwrap_or(0) != 0,
         created_at: row.try_get("created_at")?,
         updated_at: row.try_get("updated_at")?,
     })
@@ -60,7 +64,7 @@ fn rule_from_row(row: sqlx::sqlite::SqliteRow) -> Result<AlertRule, sqlx::Error>
 /// GET /api/v1/alert-rules — list all alert rules.
 pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<AlertRule>>, StatusCode> {
     let rows = sqlx::query(
-        "SELECT id, rule_type, enabled, threshold_value, notify_telegram, notify_in_app, created_at, updated_at \
+        "SELECT id, rule_type, enabled, threshold_value, notify_telegram, notify_in_app, notify_email, created_at, updated_at \
          FROM alert_rules ORDER BY created_at ASC",
     )
     .fetch_all(&state.db)
@@ -99,10 +103,11 @@ pub async fn create(
     let enabled = body.enabled.unwrap_or(true);
     let notify_telegram = body.notify_telegram.unwrap_or(true);
     let notify_in_app = body.notify_in_app.unwrap_or(true);
+    let notify_email = body.notify_email.unwrap_or(false);
 
     sqlx::query(
-        "INSERT INTO alert_rules (id, rule_type, enabled, threshold_value, notify_telegram, notify_in_app) \
-         VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO alert_rules (id, rule_type, enabled, threshold_value, notify_telegram, notify_in_app, notify_email) \
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(rule_type)
@@ -110,6 +115,7 @@ pub async fn create(
     .bind(body.threshold_value)
     .bind(notify_telegram as i32)
     .bind(notify_in_app as i32)
+    .bind(notify_email as i32)
     .execute(&state.db)
     .await
     .map_err(|e| {
@@ -123,7 +129,7 @@ pub async fn create(
     info!(rule_id = %id, rule_type = rule_type, "Alert rule created");
 
     let row = sqlx::query(
-        "SELECT id, rule_type, enabled, threshold_value, notify_telegram, notify_in_app, created_at, updated_at \
+        "SELECT id, rule_type, enabled, threshold_value, notify_telegram, notify_in_app, notify_email, created_at, updated_at \
          FROM alert_rules WHERE id = ?",
     )
     .bind(&id)
@@ -186,6 +192,10 @@ pub async fn update(
         sets.push("notify_in_app = ?".to_string());
         binds.push((in_app as i32).to_string());
     }
+    if let Some(email) = body.notify_email {
+        sets.push("notify_email = ?".to_string());
+        binds.push((email as i32).to_string());
+    }
 
     sets.push("updated_at = datetime('now')".to_string());
 
@@ -204,7 +214,7 @@ pub async fn update(
     info!(rule_id = %id, "Alert rule updated");
 
     let row = sqlx::query(
-        "SELECT id, rule_type, enabled, threshold_value, notify_telegram, notify_in_app, created_at, updated_at \
+        "SELECT id, rule_type, enabled, threshold_value, notify_telegram, notify_in_app, notify_email, created_at, updated_at \
          FROM alert_rules WHERE id = ?",
     )
     .bind(&id)

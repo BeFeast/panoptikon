@@ -49,6 +49,7 @@ pub mod tailscale;
 pub mod topology;
 pub mod traffic;
 pub mod unbound;
+pub mod users;
 pub mod vpn_status;
 pub mod xiaomi;
 pub mod xiaomi_mesh;
@@ -541,6 +542,11 @@ pub fn router(state: AppState) -> Router {
         .route("/dns-logs", delete(dns_logs::purge))
         .route("/dns-logs/stats", get(dns_logs::stats))
         .route("/dns-logs/ingest", post(dns_logs::ingest))
+        // Users (RBAC)
+        .route("/users", get(users::list))
+        .route("/users", post(users::create))
+        .route("/users/:id", put(users::update))
+        .route("/users/:id", delete(users::delete))
         // Search
         .route("/search", get(search::search))
         // Export

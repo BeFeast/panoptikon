@@ -64,6 +64,20 @@ pub struct SettingsResponse {
     pub default_router: Option<String>,
     // --- Advanced / Legacy ---
     pub show_legacy_routers: bool,
+    // --- SMTP Email Notifications ---
+    pub smtp_host: Option<String>,
+    pub smtp_port: Option<u16>,
+    pub smtp_username: Option<String>,
+    pub smtp_password_set: bool,
+    pub smtp_tls: bool,
+    pub smtp_from: Option<String>,
+    pub smtp_to: Option<String>,
+    // --- SNMP Management ---
+    pub snmp_community: Option<String>,
+    pub snmp_version: Option<String>,
+    pub snmp_port: Option<u16>,
+    pub snmp_trap_enabled: bool,
+    pub snmp_trap_target: Option<String>,
 }
 
 /// Request body for updating settings.
@@ -120,6 +134,20 @@ pub struct UpdateSettingsRequest {
     pub default_router: Option<String>,
     // --- Advanced / Legacy ---
     pub show_legacy_routers: Option<bool>,
+    // --- SMTP Email Notifications ---
+    pub smtp_host: Option<String>,
+    pub smtp_port: Option<u16>,
+    pub smtp_username: Option<String>,
+    pub smtp_password: Option<String>,
+    pub smtp_tls: Option<bool>,
+    pub smtp_from: Option<String>,
+    pub smtp_to: Option<String>,
+    // --- SNMP Management ---
+    pub snmp_community: Option<String>,
+    pub snmp_version: Option<String>,
+    pub snmp_port: Option<u16>,
+    pub snmp_trap_enabled: Option<bool>,
+    pub snmp_trap_target: Option<String>,
 }
 
 /// Helper: read a string setting from the settings table.
@@ -265,6 +293,38 @@ pub async fn get_settings(
         .map(|v| v == "1" || v == "true")
         .unwrap_or(false);
 
+    // SMTP Email Notifications settings.
+    let smtp_host = get_setting(&state, "smtp_host").await;
+    let smtp_port = get_setting(&state, "smtp_port")
+        .await
+        .and_then(|v| v.parse().ok())
+        .or(Some(587));
+    let smtp_username = get_setting(&state, "smtp_username").await;
+    let smtp_password_set = get_setting(&state, "smtp_password").await.is_some();
+    let smtp_tls = get_setting(&state, "smtp_tls")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(true);
+    let smtp_from = get_setting(&state, "smtp_from").await;
+    let smtp_to = get_setting(&state, "smtp_to").await;
+
+    // SNMP Management settings.
+    let snmp_community = get_setting(&state, "snmp_community")
+        .await
+        .or(Some("public".to_string()));
+    let snmp_version = get_setting(&state, "snmp_version")
+        .await
+        .or(Some("v2c".to_string()));
+    let snmp_port = get_setting(&state, "snmp_port")
+        .await
+        .and_then(|v| v.parse().ok())
+        .or(Some(161));
+    let snmp_trap_enabled = get_setting(&state, "snmp_trap_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(false);
+    let snmp_trap_target = get_setting(&state, "snmp_trap_target").await;
+
     Ok(Json(SettingsResponse {
         webhook_url,
         scan_interval_seconds,
@@ -305,6 +365,18 @@ pub async fn get_settings(
         pfsense_private_key_set,
         default_router,
         show_legacy_routers,
+        smtp_host,
+        smtp_port,
+        smtp_username,
+        smtp_password_set,
+        smtp_tls,
+        smtp_from,
+        smtp_to,
+        snmp_community,
+        snmp_version,
+        snmp_port,
+        snmp_trap_enabled,
+        snmp_trap_target,
     }))
 }
 
@@ -565,6 +637,68 @@ pub async fn update_settings(
             show_legacy_routers = enabled,
             "Show legacy routers toggle updated"
         );
+    }
+
+    // --- SMTP Email Notifications settings ---
+    if let Some(ref host) = body.smtp_host {
+        upsert_setting(&state, "smtp_host", host).await?;
+        info!(smtp_host = %host, "SMTP host updated");
+    }
+
+    if let Some(port) = body.smtp_port {
+        upsert_setting(&state, "smtp_port", &port.to_string()).await?;
+        info!(smtp_port = port, "SMTP port updated");
+    }
+
+    if let Some(ref username) = body.smtp_username {
+        upsert_setting(&state, "smtp_username", username).await?;
+        info!(smtp_username = %username, "SMTP username updated");
+    }
+
+    if let Some(ref password) = body.smtp_password {
+        upsert_setting(&state, "smtp_password", password).await?;
+        info!("SMTP password updated");
+    }
+
+    if let Some(tls) = body.smtp_tls {
+        upsert_setting(&state, "smtp_tls", if tls { "1" } else { "0" }).await?;
+        info!(smtp_tls = tls, "SMTP TLS toggle updated");
+    }
+
+    if let Some(ref from) = body.smtp_from {
+        upsert_setting(&state, "smtp_from", from).await?;
+        info!(smtp_from = %from, "SMTP from address updated");
+    }
+
+    if let Some(ref to) = body.smtp_to {
+        upsert_setting(&state, "smtp_to", to).await?;
+        info!(smtp_to = %to, "SMTP to address updated");
+    }
+
+    // --- SNMP Management settings ---
+    if let Some(ref community) = body.snmp_community {
+        upsert_setting(&state, "snmp_community", community).await?;
+        info!(snmp_community = %community, "SNMP community updated");
+    }
+
+    if let Some(ref version) = body.snmp_version {
+        upsert_setting(&state, "snmp_version", version).await?;
+        info!(snmp_version = %version, "SNMP version updated");
+    }
+
+    if let Some(port) = body.snmp_port {
+        upsert_setting(&state, "snmp_port", &port.to_string()).await?;
+        info!(snmp_port = port, "SNMP port updated");
+    }
+
+    if let Some(enabled) = body.snmp_trap_enabled {
+        upsert_setting(&state, "snmp_trap_enabled", if enabled { "1" } else { "0" }).await?;
+        info!(snmp_trap_enabled = enabled, "SNMP trap toggle updated");
+    }
+
+    if let Some(ref target) = body.snmp_trap_target {
+        upsert_setting(&state, "snmp_trap_target", target).await?;
+        info!(snmp_trap_target = %target, "SNMP trap target updated");
     }
 
     // Return current state.

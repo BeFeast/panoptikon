@@ -103,6 +103,12 @@ const PFSENSE_HOSTNAME_HOTFIX_MIGRATION: &str =
 /// Migration 031: Store raw fastfetch payload.
 const FASTFETCH_DATA_MIGRATION: &str = include_str!("migrations/031_fastfetch_data.sql");
 
+/// Migration 032: Users table for multi-user RBAC support.
+const USERS_MIGRATION: &str = include_str!("migrations/032_users.sql");
+
+/// Migration 033: SMTP/SNMP settings and notify_email on alert_rules.
+const SMTP_SNMP_MIGRATION: &str = include_str!("migrations/033_smtp_snmp.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -780,6 +786,66 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 031_fastfetch_data.sql");
     }
 
+    // Migration 032: Users table for multi-user RBAC.
+    let applied_32: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 32")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_32 {
+        for statement in USERS_MIGRATION.split(';') {
+            let code = statement
+                .lines()
+                .skip_while(|l| {
+                    let t = l.trim();
+                    t.is_empty() || t.starts_with("--")
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let stmt = code.trim();
+            if stmt.is_empty() {
+                continue;
+            }
+            sqlx::query(stmt).execute(pool).await?;
+        }
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (32)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 032_users.sql");
+    }
+
+    // Migration 033: SMTP/SNMP settings and notify_email on alert_rules.
+    let applied_33: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 33")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_33 {
+        for statement in SMTP_SNMP_MIGRATION.split(';') {
+            let code = statement
+                .lines()
+                .skip_while(|l| {
+                    let t = l.trim();
+                    t.is_empty() || t.starts_with("--")
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let stmt = code.trim();
+            if stmt.is_empty() {
+                continue;
+            }
+            sqlx::query(stmt).execute(pool).await?;
+        }
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (33)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 033_smtp_snmp.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -841,6 +907,7 @@ mod tests {
             "dns_blocked_domains",
             "ddns_entries",
             "external_hostnames",
+            "users",
         ];
 
         for table in &expected_tables {
