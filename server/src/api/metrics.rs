@@ -4,13 +4,14 @@
 //! No external crate dependency — formats the text manually.
 
 use axum::extract::State;
-use axum::http::{header, StatusCode};
+use axum::http::header;
 use axum::response::{IntoResponse, Response};
 
+use super::error::AppError;
 use super::AppState;
 
 /// GET /metrics — Prometheus scrape endpoint (no auth).
-pub async fn handler(State(state): State<AppState>) -> Result<Response, StatusCode> {
+pub async fn handler(State(state): State<AppState>) -> Result<Response, AppError> {
     let mut out = String::with_capacity(4096);
 
     // ── Devices ────────────────────────────────────────────────────────

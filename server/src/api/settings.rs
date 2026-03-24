@@ -2,6 +2,7 @@ use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
+use super::error::AppError;
 use super::AppState;
 use crate::{netflow, webhook};
 
@@ -164,7 +165,7 @@ async fn get_setting(state: &AppState, key: &str) -> Option<String> {
 /// GET /api/v1/settings — return current settings.
 pub async fn get_settings(
     State(state): State<AppState>,
-) -> Result<Json<SettingsResponse>, StatusCode> {
+) -> Result<Json<SettingsResponse>, AppError> {
     let webhook_url = webhook::get_webhook_url(&state.db).await;
 
     // Network Scanner settings (fall back to config defaults).
@@ -387,7 +388,7 @@ pub async fn get_settings(
 pub async fn update_settings(
     State(state): State<AppState>,
     Json(body): Json<UpdateSettingsRequest>,
-) -> Result<Json<SettingsResponse>, StatusCode> {
+) -> Result<Json<SettingsResponse>, AppError> {
     if let Some(ref url) = body.webhook_url {
         upsert_setting(&state, "webhook_url", url).await?;
         info!(webhook_url = %url, "Webhook URL updated");
@@ -712,13 +713,10 @@ pub async fn update_settings(
 ///
 /// Uses the same format auto-detection as real alerts, so the test message
 /// will appear correctly in Discord, ntfy.sh, Telegram, or generic endpoints.
-pub async fn test_webhook(
-    State(state): State<AppState>,
-) -> Result<StatusCode, (StatusCode, String)> {
-    let url = webhook::get_webhook_url(&state.db).await.ok_or((
-        StatusCode::BAD_REQUEST,
-        "No webhook URL configured".to_string(),
-    ))?;
+pub async fn test_webhook(State(state): State<AppState>) -> Result<StatusCode, AppError> {
+    let url = webhook::get_webhook_url(&state.db)
+        .await
+        .ok_or(AppError::Validation("No webhook URL configured".into()))?;
 
     let data = serde_json::json!({
         "message": "Panoptikon webhook test — if you see this, webhooks are working!",
@@ -731,11 +729,12 @@ pub async fn test_webhook(
 }
 
 /// POST /api/v1/settings/test-email — send a test email.
-pub async fn test_email(State(state): State<AppState>) -> Result<StatusCode, (StatusCode, String)> {
-    let config = crate::email::get_smtp_config(&state.db).await.ok_or((
-        StatusCode::BAD_REQUEST,
-        "SMTP not fully configured. Set host, from, and to email first.".to_string(),
-    ))?;
+pub async fn test_email(State(state): State<AppState>) -> Result<StatusCode, AppError> {
+    let config = crate::email::get_smtp_config(&state.db)
+        .await
+        .ok_or(AppError::Validation(
+            "SMTP not fully configured. Set host, from, and to email first.".into(),
+        ))?;
 
     let data = serde_json::json!({
         "message": "Panoptikon email test — if you see this, email alerts are working!",
@@ -770,21 +769,21 @@ pub struct DbSizeResponse {
 }
 
 /// GET /api/v1/settings/db-size — return the current database file size.
-pub async fn db_size(State(state): State<AppState>) -> Result<Json<DbSizeResponse>, StatusCode> {
+pub async fn db_size(State(state): State<AppState>) -> Result<Json<DbSizeResponse>, AppError> {
     // Use SQLite's page_count * page_size to get the logical size.
     let page_count: i64 = sqlx::query_scalar("PRAGMA page_count")
         .fetch_one(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to get page_count: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
     let page_size: i64 = sqlx::query_scalar("PRAGMA page_size")
         .fetch_one(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to get page_size: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     let size_bytes = (page_count * page_size) as u64;
@@ -792,7 +791,7 @@ pub async fn db_size(State(state): State<AppState>) -> Result<Json<DbSizeRespons
 }
 
 /// POST /api/v1/settings/vacuum — manually trigger a database VACUUM.
-pub async fn vacuum(State(state): State<AppState>) -> Result<StatusCode, (StatusCode, String)> {
+pub async fn vacuum(State(state): State<AppState>) -> Result<StatusCode, AppError> {
     info!("Manual VACUUM requested");
 
     // Checkpoint WAL first.
@@ -801,19 +800,13 @@ pub async fn vacuum(State(state): State<AppState>) -> Result<StatusCode, (Status
         .await
     {
         error!("WAL checkpoint failed: {e}");
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("WAL checkpoint failed: {e}"),
-        ));
+        return Err(AppError::Internal(format!("WAL checkpoint failed: {e}")));
     }
 
     // Run VACUUM.
     if let Err(e) = sqlx::query("VACUUM").execute(&state.db).await {
         error!("VACUUM failed: {e}");
-        return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("VACUUM failed: {e}"),
-        ));
+        return Err(AppError::Internal(format!("VACUUM failed: {e}")));
     }
 
     // Update last_vacuum_at.
@@ -829,7 +822,7 @@ pub async fn vacuum(State(state): State<AppState>) -> Result<StatusCode, (Status
 }
 
 /// Helper to upsert a key-value pair into the settings table.
-async fn upsert_setting(state: &AppState, key: &str, value: &str) -> Result<(), StatusCode> {
+async fn upsert_setting(state: &AppState, key: &str, value: &str) -> Result<(), AppError> {
     sqlx::query(
         r#"INSERT INTO settings (key, value) VALUES (?, ?)
            ON CONFLICT(key) DO UPDATE SET value = excluded.value"#,
@@ -840,7 +833,7 @@ async fn upsert_setting(state: &AppState, key: &str, value: &str) -> Result<(), 
     .await
     .map_err(|e| {
         error!("Failed to save setting '{key}': {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
     Ok(())
 }

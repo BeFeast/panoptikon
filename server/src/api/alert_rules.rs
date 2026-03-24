@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use tracing::{error, info};
 
+use super::error::AppError;
 use super::AppState;
 
 /// Valid rule_type values.
@@ -62,7 +63,7 @@ fn rule_from_row(row: sqlx::sqlite::SqliteRow) -> Result<AlertRule, sqlx::Error>
 }
 
 /// GET /api/v1/alert-rules — list all alert rules.
-pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<AlertRule>>, StatusCode> {
+pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<AlertRule>>, AppError> {
     let rows = sqlx::query(
         "SELECT id, rule_type, enabled, threshold_value, notify_telegram, notify_email, notify_in_app, created_at, updated_at \
          FROM alert_rules ORDER BY created_at ASC",
@@ -71,7 +72,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<AlertRule>>,
     .await
     .map_err(|e| {
         error!("Failed to list alert rules: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let rules: Vec<AlertRule> = rows
@@ -86,17 +87,14 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<AlertRule>>,
 pub async fn create(
     State(state): State<AppState>,
     Json(body): Json<CreateAlertRuleRequest>,
-) -> Result<(StatusCode, Json<AlertRule>), (StatusCode, String)> {
+) -> Result<(StatusCode, Json<AlertRule>), AppError> {
     let rule_type = body.rule_type.trim();
     if !VALID_RULE_TYPES.contains(&rule_type) {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            format!(
-                "invalid rule_type '{}'. Valid types: {}",
-                rule_type,
-                VALID_RULE_TYPES.join(", ")
-            ),
-        ));
+        return Err(AppError::Validation(format!(
+            "invalid rule_type '{}'. Valid types: {}",
+            rule_type,
+            VALID_RULE_TYPES.join(", ")
+        )));
     }
 
     let id = uuid::Uuid::new_v4().to_string();
@@ -120,10 +118,7 @@ pub async fn create(
     .await
     .map_err(|e| {
         error!("Failed to create alert rule: {e}");
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Database error: {e}"),
-        )
+        AppError::Internal(e.to_string())
     })?;
 
     info!(rule_id = %id, rule_type = rule_type, "Alert rule created");
@@ -137,18 +132,10 @@ pub async fn create(
     .await
     .map_err(|e| {
         error!("Failed to fetch created alert rule: {e}");
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Database error: {e}"),
-        )
+        AppError::Internal(e.to_string())
     })?;
 
-    let rule = rule_from_row(row).map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to parse row: {e}"),
-        )
-    })?;
+    let rule = rule_from_row(row).map_err(|e| AppError::Internal(e.to_string()))?;
 
     Ok((StatusCode::CREATED, Json(rule)))
 }
@@ -158,19 +145,19 @@ pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<UpdateAlertRuleRequest>,
-) -> Result<Json<AlertRule>, StatusCode> {
+) -> Result<Json<AlertRule>, AppError> {
     let exists: bool = sqlx::query_scalar::<_, i32>("SELECT 1 FROM alert_rules WHERE id = ?")
         .bind(&id)
         .fetch_optional(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to check alert rule existence: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?
         .is_some();
 
     if !exists {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     let mut sets: Vec<String> = Vec::new();
@@ -208,7 +195,7 @@ pub async fn update(
 
     query.execute(&state.db).await.map_err(|e| {
         error!("Failed to update alert rule {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     info!(rule_id = %id, "Alert rule updated");
@@ -222,19 +209,22 @@ pub async fn update(
     .await
     .map_err(|e| {
         error!("Failed to fetch updated alert rule: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let rule = rule_from_row(row).map_err(|e| {
         error!("Failed to parse alert rule row: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     Ok(Json(rule))
 }
 
 /// DELETE /api/v1/alert-rules/:id — delete an alert rule.
-pub async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> StatusCode {
+pub async fn delete(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, AppError> {
     match sqlx::query("DELETE FROM alert_rules WHERE id = ?")
         .bind(&id)
         .execute(&state.db)
@@ -242,12 +232,12 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> St
     {
         Ok(r) if r.rows_affected() > 0 => {
             info!(rule_id = %id, "Alert rule deleted");
-            StatusCode::NO_CONTENT
+            Ok(StatusCode::NO_CONTENT)
         }
-        Ok(_) => StatusCode::NOT_FOUND,
+        Ok(_) => Err(AppError::NotFound),
         Err(e) => {
             error!("Failed to delete alert rule {id}: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            Err(AppError::Internal(e.to_string()))
         }
     }
 }

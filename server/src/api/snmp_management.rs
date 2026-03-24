@@ -1,7 +1,8 @@
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
+use super::error::AppError;
 use super::AppState;
 
 /// SNMP configuration as returned by the API.
@@ -43,7 +44,7 @@ async fn get_setting(state: &AppState, key: &str) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
-async fn upsert_setting(state: &AppState, key: &str, value: &str) -> Result<(), StatusCode> {
+async fn upsert_setting(state: &AppState, key: &str, value: &str) -> Result<(), AppError> {
     sqlx::query(
         r#"INSERT INTO settings (key, value) VALUES (?, ?)
            ON CONFLICT(key) DO UPDATE SET value = excluded.value"#,
@@ -54,7 +55,7 @@ async fn upsert_setting(state: &AppState, key: &str, value: &str) -> Result<(), 
     .await
     .map_err(|e| {
         error!("Failed to save SNMP setting '{key}': {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
     Ok(())
 }
@@ -94,7 +95,7 @@ async fn load_config(state: &AppState) -> SnmpConfig {
 }
 
 /// GET /api/v1/snmp/config — return SNMP configuration and availability.
-pub async fn get_config(State(state): State<AppState>) -> Result<Json<SnmpStatus>, StatusCode> {
+pub async fn get_config(State(state): State<AppState>) -> Result<Json<SnmpStatus>, AppError> {
     let available = crate::scanner::snmp::is_available().await;
     let config = load_config(&state).await;
 
@@ -105,7 +106,7 @@ pub async fn get_config(State(state): State<AppState>) -> Result<Json<SnmpStatus
 pub async fn update_config(
     State(state): State<AppState>,
     Json(body): Json<UpdateSnmpConfigRequest>,
-) -> Result<Json<SnmpStatus>, StatusCode> {
+) -> Result<Json<SnmpStatus>, AppError> {
     if let Some(enabled) = body.enabled {
         upsert_setting(&state, "snmp_scan_enabled", if enabled { "1" } else { "0" }).await?;
         info!(snmp_enabled = enabled, "SNMP enabled toggle updated");
@@ -119,7 +120,7 @@ pub async fn update_config(
     if let Some(ref version) = body.version {
         let valid_versions = ["1", "2c", "3"];
         if !valid_versions.contains(&version.as_str()) {
-            return Err(StatusCode::BAD_REQUEST);
+            return Err(AppError::Validation("Invalid SNMP version".into()));
         }
         upsert_setting(&state, "snmp_version", version).await?;
         info!(snmp_version = %version, "SNMP version updated");

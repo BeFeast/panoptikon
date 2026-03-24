@@ -17,6 +17,7 @@ pub struct ApiErrorBody {
 /// Implements [`IntoResponse`] so handlers can return `Result<T, AppError>`
 /// and axum will convert errors into structured JSON responses with the
 /// appropriate HTTP status code.
+#[derive(Debug)]
 pub enum AppError {
     /// Database query failed.
     Database(sqlx::Error),
@@ -34,6 +35,10 @@ pub enum AppError {
     ServiceUnavailable(String),
     /// Rate limit exceeded (429).
     TooManyRequests(String),
+    /// Resource conflict (409).
+    Conflict(String),
+    /// Precondition required (428).
+    PreconditionRequired(String),
 }
 
 impl IntoResponse for AppError {
@@ -63,6 +68,12 @@ impl IntoResponse for AppError {
             AppError::TooManyRequests(msg) => {
                 (StatusCode::TOO_MANY_REQUESTS, "too_many_requests", msg)
             }
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, "conflict", msg),
+            AppError::PreconditionRequired(msg) => (
+                StatusCode::PRECONDITION_REQUIRED,
+                "precondition_required",
+                msg,
+            ),
         };
         (status, Json(ApiErrorBody { code, message })).into_response()
     }

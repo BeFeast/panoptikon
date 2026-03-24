@@ -1,6 +1,6 @@
 use axum::{
     extract::{ConnectInfo, State},
-    http::{header, StatusCode},
+    http::header,
     response::{IntoResponse, Response},
     Json,
 };
@@ -8,7 +8,7 @@ use serde::Deserialize;
 use std::net::SocketAddr;
 use tracing::info;
 
-use super::AppState;
+use super::{AppError, AppState};
 
 /// Request body for initial setup.
 #[derive(Debug, Deserialize)]
@@ -24,34 +24,32 @@ pub async fn setup(
     State(state): State<AppState>,
     ConnectInfo(addr): ConnectInfo<SocketAddr>,
     Json(body): Json<SetupRequest>,
-) -> Result<Response, Response> {
+) -> Result<Response, AppError> {
     // Check if setup has already been completed (password already exists).
     let already_set: bool = sqlx::query("SELECT 1 FROM settings WHERE key = 'admin_password_hash'")
         .fetch_optional(&state.db)
         .await
         .map_err(|e| {
             tracing::error!("Failed to query settings: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            AppError::Internal(e.to_string())
         })?
         .is_some();
 
     if already_set {
-        return Err((StatusCode::CONFLICT, "Setup already completed").into_response());
+        return Err(AppError::Conflict("Setup already completed".into()));
     }
 
     // Validate password.
     if body.password.len() < 8 {
-        return Err((
-            StatusCode::UNPROCESSABLE_ENTITY,
-            "Password must be at least 8 characters",
-        )
-            .into_response());
+        return Err(AppError::Validation(
+            "Password must be at least 8 characters".into(),
+        ));
     }
 
     // Hash and store the admin password.
     let hash = bcrypt::hash(&body.password, bcrypt::DEFAULT_COST).map_err(|e| {
         tracing::error!("Failed to hash password: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        AppError::Internal(e.to_string())
     })?;
 
     sqlx::query("INSERT INTO settings (key, value) VALUES ('admin_password_hash', ?)")
@@ -60,7 +58,7 @@ pub async fn setup(
         .await
         .map_err(|e| {
             tracing::error!("Failed to store password: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            AppError::Internal(e.to_string())
         })?;
 
     // Mark setup as complete.
@@ -80,7 +78,7 @@ pub async fn setup(
         .await
         .map_err(|e| {
             tracing::error!("Failed to create session: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            AppError::Internal(e.to_string())
         })?;
 
     let cookie = format!(
@@ -100,7 +98,7 @@ pub async fn setup(
 }
 
 /// Helper to upsert a setting.
-async fn upsert_setting(state: &AppState, key: &str, value: &str) -> Result<(), Response> {
+async fn upsert_setting(state: &AppState, key: &str, value: &str) -> Result<(), AppError> {
     sqlx::query(
         "INSERT INTO settings (key, value) VALUES (?, ?) \
          ON CONFLICT(key) DO UPDATE SET value = excluded.value",
@@ -111,7 +109,7 @@ async fn upsert_setting(state: &AppState, key: &str, value: &str) -> Result<(), 
     .await
     .map_err(|e| {
         tracing::error!("Failed to save setting '{key}': {e}");
-        StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        AppError::Internal(e.to_string())
     })?;
     Ok(())
 }

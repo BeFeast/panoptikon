@@ -3,9 +3,10 @@
 //! These endpoints proxy requests to a Xiaomi router via its MiWiFi API,
 //! handling SHA256 auth + stok token management transparently.
 
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 
+use super::error::AppError;
 use super::AppState;
 use crate::xiaomi::client::XiaomiClient;
 
@@ -179,9 +180,7 @@ pub struct XiaomiFirmwareResponse {
 // ── Handlers ───────────────────────────────────────────────
 
 /// GET /xiaomi/status — system status (CPU, memory, temp, speeds).
-pub async fn status(
-    State(state): State<AppState>,
-) -> Result<Json<XiaomiStatusResponse>, StatusCode> {
+pub async fn status(State(state): State<AppState>) -> Result<Json<XiaomiStatusResponse>, AppError> {
     let client = match xiaomi_client(&state).await {
         Some(c) => c,
         None => {
@@ -264,12 +263,10 @@ fn parse_online_value(v: &serde_json::Value) -> Option<i32> {
 }
 
 /// GET /xiaomi/topology — mesh topology graph (no auth required).
-pub async fn topology(
-    State(state): State<AppState>,
-) -> Result<Json<XiaomiTopoResponse>, StatusCode> {
+pub async fn topology(State(state): State<AppState>) -> Result<Json<XiaomiTopoResponse>, AppError> {
     let client = match xiaomi_client(&state).await {
         Some(c) => c,
-        None => return Err(StatusCode::SERVICE_UNAVAILABLE),
+        None => return Err(AppError::ServiceUnavailable("Service unavailable".into())),
     };
 
     match client.topo_graph().await {
@@ -364,7 +361,7 @@ pub async fn topology(
         }
         Err(e) => {
             tracing::error!(error = %e, "MiWiFi topology request failed");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(e.to_string()))
         }
     }
 }
@@ -372,10 +369,10 @@ pub async fn topology(
 /// GET /xiaomi/devices — all connected devices.
 pub async fn devices(
     State(state): State<AppState>,
-) -> Result<Json<Vec<XiaomiDeviceResponse>>, StatusCode> {
+) -> Result<Json<Vec<XiaomiDeviceResponse>>, AppError> {
     let client = match xiaomi_client(&state).await {
         Some(c) => c,
-        None => return Err(StatusCode::SERVICE_UNAVAILABLE),
+        None => return Err(AppError::ServiceUnavailable("Service unavailable".into())),
     };
 
     match client.device_list().await {
@@ -398,7 +395,7 @@ pub async fn devices(
         )),
         Err(e) => {
             tracing::error!(error = %e, "MiWiFi device list request failed");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(e.to_string()))
         }
     }
 }
@@ -406,10 +403,10 @@ pub async fn devices(
 /// GET /xiaomi/new-status — hardware info + connected count.
 pub async fn new_status(
     State(state): State<AppState>,
-) -> Result<Json<XiaomiNewStatusResponse>, StatusCode> {
+) -> Result<Json<XiaomiNewStatusResponse>, AppError> {
     let client = match xiaomi_client(&state).await {
         Some(c) => c,
-        None => return Err(StatusCode::SERVICE_UNAVAILABLE),
+        None => return Err(AppError::ServiceUnavailable("Service unavailable".into())),
     };
 
     match client.new_status().await {
@@ -423,7 +420,7 @@ pub async fn new_status(
         })),
         Err(e) => {
             tracing::error!(error = %e, "MiWiFi new status request failed");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(e.to_string()))
         }
     }
 }
@@ -431,10 +428,10 @@ pub async fn new_status(
 /// GET /xiaomi/wifi-devices — WiFi clients with signal + band.
 pub async fn wifi_devices(
     State(state): State<AppState>,
-) -> Result<Json<Vec<XiaomiWifiDeviceResponse>>, StatusCode> {
+) -> Result<Json<Vec<XiaomiWifiDeviceResponse>>, AppError> {
     let client = match xiaomi_client(&state).await {
         Some(c) => c,
-        None => return Err(StatusCode::SERVICE_UNAVAILABLE),
+        None => return Err(AppError::ServiceUnavailable("Service unavailable".into())),
     };
 
     match client.wifi_devices().await {
@@ -451,7 +448,7 @@ pub async fn wifi_devices(
         )),
         Err(e) => {
             tracing::error!(error = %e, "MiWiFi wifi devices request failed");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(e.to_string()))
         }
     }
 }
@@ -459,10 +456,10 @@ pub async fn wifi_devices(
 /// GET /xiaomi/wan-info — WAN connection details.
 pub async fn wan_info(
     State(state): State<AppState>,
-) -> Result<Json<XiaomiWanInfoResponse>, StatusCode> {
+) -> Result<Json<XiaomiWanInfoResponse>, AppError> {
     let client = match xiaomi_client(&state).await {
         Some(c) => c,
-        None => return Err(StatusCode::SERVICE_UNAVAILABLE),
+        None => return Err(AppError::ServiceUnavailable("Service unavailable".into())),
     };
 
     match client.wan_info().await {
@@ -491,7 +488,7 @@ pub async fn wan_info(
         }
         Err(e) => {
             tracing::error!(error = %e, "MiWiFi WAN info request failed");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(e.to_string()))
         }
     }
 }
@@ -499,10 +496,10 @@ pub async fn wan_info(
 /// GET /xiaomi/lan-info — LAN IP, subnet, port status.
 pub async fn lan_info(
     State(state): State<AppState>,
-) -> Result<Json<XiaomiLanInfoResponse>, StatusCode> {
+) -> Result<Json<XiaomiLanInfoResponse>, AppError> {
     let client = match xiaomi_client(&state).await {
         Some(c) => c,
-        None => return Err(StatusCode::SERVICE_UNAVAILABLE),
+        None => return Err(AppError::ServiceUnavailable("Service unavailable".into())),
     };
 
     match client.lan_info().await {
@@ -521,7 +518,7 @@ pub async fn lan_info(
         })),
         Err(e) => {
             tracing::error!(error = %e, "MiWiFi LAN info request failed");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(e.to_string()))
         }
     }
 }
@@ -636,17 +633,17 @@ pub(crate) fn deduplicate_wifi_bands(
 /// re-infer it from channel numbers.
 pub async fn wifi_bands(
     State(state): State<AppState>,
-) -> Result<Json<Vec<XiaomiWifiBandResponse>>, StatusCode> {
+) -> Result<Json<Vec<XiaomiWifiBandResponse>>, AppError> {
     let client = match xiaomi_client(&state).await {
         Some(c) => c,
-        None => return Err(StatusCode::SERVICE_UNAVAILABLE),
+        None => return Err(AppError::ServiceUnavailable("Service unavailable".into())),
     };
 
     match client.wifi_detail_all().await {
         Ok(bands) => Ok(Json(deduplicate_wifi_bands(bands))),
         Err(e) => {
             tracing::error!(error = %e, "MiWiFi wifi bands request failed");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(e.to_string()))
         }
     }
 }
@@ -654,7 +651,7 @@ pub async fn wifi_bands(
 /// GET /xiaomi/firmware — firmware version, hardware info, update check.
 pub async fn firmware(
     State(state): State<AppState>,
-) -> Result<Json<XiaomiFirmwareResponse>, StatusCode> {
+) -> Result<Json<XiaomiFirmwareResponse>, AppError> {
     let client = match xiaomi_client(&state).await {
         Some(c) => c,
         None => {

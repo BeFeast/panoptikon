@@ -1,7 +1,7 @@
+use super::error::AppError;
 use crate::api::AppState;
 use axum::{
     extract::{Path, Query, State},
-    http::StatusCode,
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -83,7 +83,7 @@ pub async fn device_traffic(
     State(state): State<AppState>,
     Path(device_id): Path<String>,
     Query(q): Query<DeviceTrafficQuery>,
-) -> Result<Json<Vec<DeviceTrafficPoint>>, StatusCode> {
+) -> Result<Json<Vec<DeviceTrafficPoint>>, AppError> {
     let range = q.range.as_deref().unwrap_or("1h");
 
     let points = match range {
@@ -98,7 +98,7 @@ pub async fn device_traffic(
         Ok(p) => Ok(Json(p)),
         Err(e) => {
             error!("device_traffic query failed: {e}");
-            Err(StatusCode::INTERNAL_SERVER_ERROR)
+            Err(AppError::Internal(e.to_string()))
         }
     }
 }

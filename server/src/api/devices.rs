@@ -252,7 +252,7 @@ impl Device {
 }
 
 /// GET /api/v1/devices — list all devices.
-pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Device>>, StatusCode> {
+pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Device>>, AppError> {
     let rows = sqlx::query(
         r#"
         SELECT d.id, d.mac, d.name, d.hostname, d.vendor, d.icon, d.notes,
@@ -286,7 +286,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Device>>, St
     .await
     .map_err(|e| {
         tracing::error!("Failed to list devices: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let mut devices: Vec<Device> = rows
@@ -475,7 +475,7 @@ fn generate_manual_mac() -> String {
 pub async fn create(
     State(state): State<AppState>,
     Json(body): Json<CreateDevice>,
-) -> Result<(StatusCode, Json<Device>), StatusCode> {
+) -> Result<(StatusCode, Json<Device>), AppError> {
     let id = uuid::Uuid::new_v4().to_string();
     let now = chrono::Utc::now().to_rfc3339();
     let is_manual = body.is_manual.unwrap_or(false);
@@ -522,7 +522,7 @@ pub async fn create(
     .await
     .map_err(|e| {
         tracing::error!("Failed to create device: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     // If an IP was provided, insert it into device_ips for display
@@ -541,7 +541,7 @@ pub async fn create(
             .await
             .map_err(|e| {
                 tracing::error!("Failed to insert device IP: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?;
             ips.push(ip.clone());
         }
@@ -600,7 +600,7 @@ pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<UpdateDevice>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let now = chrono::Utc::now().to_rfc3339();
 
     let result = sqlx::query(
@@ -656,11 +656,11 @@ pub async fn update(
     .await
     .map_err(|e| {
         tracing::error!("Failed to update device {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     if result.rows_affected() == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     Ok(StatusCode::NO_CONTENT)
@@ -670,7 +670,7 @@ pub async fn update(
 pub async fn reset_custom(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let now = chrono::Utc::now().to_rfc3339();
 
     let result = sqlx::query(
@@ -701,11 +701,11 @@ pub async fn reset_custom(
     .await
     .map_err(|e| {
         tracing::error!("Failed to reset custom fields for device {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     if result.rows_affected() == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     Ok(StatusCode::NO_CONTENT)
@@ -730,7 +730,7 @@ pub async fn events(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Query(params): Query<EventsQuery>,
-) -> Result<Json<Vec<DeviceEvent>>, StatusCode> {
+) -> Result<Json<Vec<DeviceEvent>>, AppError> {
     let limit = params.limit.unwrap_or(50).min(500);
 
     let rows = sqlx::query(
@@ -742,7 +742,7 @@ pub async fn events(
     .await
     .map_err(|e| {
         tracing::error!("Failed to fetch device events for {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let events: Vec<DeviceEvent> = rows
@@ -776,7 +776,7 @@ pub async fn uptime(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Query(params): Query<UptimeQuery>,
-) -> Result<Json<UptimeStats>, StatusCode> {
+) -> Result<Json<UptimeStats>, AppError> {
     let days = params.days.unwrap_or(7).clamp(1, 365);
     let total_seconds = days * 86400;
 
@@ -792,7 +792,7 @@ pub async fn uptime(
     .await
     .map_err(|e| {
         tracing::error!("Failed to fetch uptime data for {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let now = chrono::Utc::now();
@@ -807,7 +807,7 @@ pub async fn uptime(
     .await
     .map_err(|e| {
         tracing::error!("Failed to fetch prior event for {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?
     .map(|row| row.try_get("event_type").unwrap_or_default());
 
@@ -891,7 +891,7 @@ pub fn build_magic_packet(mac: &str) -> Result<[u8; 102], String> {
 pub async fn wake(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     // Fetch the device to get its MAC address
     let row = sqlx::query(r#"SELECT mac FROM devices WHERE id = ?"#)
         .bind(&id)
@@ -899,38 +899,40 @@ pub async fn wake(
         .await
         .map_err(|e| {
             tracing::error!("Failed to fetch device {id} for WoL: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?
-        .ok_or(StatusCode::NOT_FOUND)?;
+        .ok_or(AppError::NotFound)?;
 
     let mac: String = row.try_get("mac").map_err(|e| {
         tracing::error!("Failed to read MAC for device {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     if mac.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation(
+            "Device has no MAC address".to_string(),
+        ));
     }
 
     let packet = build_magic_packet(&mac).map_err(|e| {
         tracing::warn!("Invalid MAC for WoL on device {id}: {e}");
-        StatusCode::BAD_REQUEST
+        AppError::Validation(e)
     })?;
 
     // Send magic packet via UDP broadcast
     let socket = UdpSocket::bind("0.0.0.0:0").map_err(|e| {
         tracing::error!("Failed to bind UDP socket for WoL: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     socket.set_broadcast(true).map_err(|e| {
         tracing::error!("Failed to set SO_BROADCAST for WoL: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     socket.send_to(&packet, "255.255.255.255:9").map_err(|e| {
         tracing::error!("Failed to send WoL magic packet for device {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     tracing::info!("Sent WoL magic packet for device {id} (MAC: {mac})");
@@ -1025,7 +1027,7 @@ pub fn parse_nmap_output(output: &str) -> Vec<PortEntry> {
 pub async fn trigger_scan(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<impl IntoResponse, impl IntoResponse> {
+) -> Result<impl IntoResponse, AppError> {
     // Check device exists and get its IP
     let ip: String = match sqlx::query_scalar(
         r#"SELECT ip FROM device_ips WHERE device_id = ? AND is_current = 1 LIMIT 1"#,
@@ -1044,22 +1046,15 @@ pub async fn trigger_scan(
                     .unwrap_or(0)
                     > 0;
             if !exists {
-                return Err((
-                    StatusCode::NOT_FOUND,
-                    Json(serde_json::json!({"error": "Device not found"})),
-                ));
+                return Err(AppError::NotFound);
             }
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({"error": "Device has no current IP address"})),
+            return Err(AppError::Validation(
+                "Device has no current IP address".to_string(),
             ));
         }
         Err(e) => {
             tracing::error!("Failed to fetch device IP for scan: {e}");
-            return Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": "Internal server error"})),
-            ));
+            return Err(AppError::Internal(e.to_string()));
         }
     };
 
@@ -1078,13 +1073,9 @@ pub async fn trigger_scan(
             let elapsed = (now - last_time).num_seconds();
             if elapsed < 60 {
                 let retry_after = 60 - elapsed;
-                return Err((
-                    StatusCode::TOO_MANY_REQUESTS,
-                    Json(serde_json::json!({
-                        "error": "Rate limited. Try again later.",
-                        "retry_after": retry_after,
-                    })),
-                ));
+                return Err(AppError::TooManyRequests(format!(
+                    "Rate limited. Try again in {retry_after} seconds."
+                )));
             }
         }
     }
@@ -1092,10 +1083,7 @@ pub async fn trigger_scan(
     // Validate IP
     let parsed_ip: std::net::IpAddr = ip.parse().map_err(|_| {
         tracing::error!("Invalid IP address for scan: {ip}");
-        (
-            StatusCode::BAD_REQUEST,
-            Json(serde_json::json!({"error": "Invalid IP address"})),
-        )
+        AppError::Validation("Invalid IP address".to_string())
     })?;
 
     // Run port scan — nmap if available, TCP connect fallback otherwise
@@ -1126,10 +1114,7 @@ pub async fn trigger_scan(
     .await
     .map_err(|e| {
         tracing::error!("Failed to store port scan result: {e}");
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": "Failed to store scan result"})),
-        )
+        AppError::Internal(e.to_string())
     })?;
 
     Ok((
@@ -1148,7 +1133,7 @@ pub async fn trigger_scan(
 pub async fn get_scan(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<Option<PortScanResult>>, StatusCode> {
+) -> Result<Json<Option<PortScanResult>>, AppError> {
     let row = sqlx::query(
         r#"SELECT scanned_at, result_json FROM port_scans WHERE device_id = ? ORDER BY scanned_at DESC LIMIT 1"#,
     )
@@ -1157,7 +1142,7 @@ pub async fn get_scan(
     .await
     .map_err(|e| {
         tracing::error!("Failed to fetch port scan for device {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     match row {
@@ -1196,7 +1181,7 @@ pub async fn update_enrichment(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<EnrichmentCorrection>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let now = chrono::Utc::now().to_rfc3339();
 
     let result = sqlx::query(
@@ -1222,11 +1207,11 @@ pub async fn update_enrichment(
     .await
     .map_err(|e| {
         tracing::error!("Failed to update enrichment for device {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     if result.rows_affected() == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     Ok(StatusCode::NO_CONTENT)

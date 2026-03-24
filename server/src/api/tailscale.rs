@@ -3,11 +3,12 @@
 //! Queries the Tailscale daemon's local API via its Unix socket to retrieve
 //! the current node status, connected peers, subnet routes, and exit node state.
 
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
+use super::error::AppError;
 use super::AppState;
 
 // ── Default socket path ─────────────────────────────────────
@@ -146,7 +147,7 @@ async fn ts_api_get(socket: &str, path: &str) -> Result<Vec<u8>, String> {
 /// GET /api/v1/tailscale/status
 pub async fn status(
     State(state): State<AppState>,
-) -> Result<Json<TailscaleStatusResponse>, (StatusCode, String)> {
+) -> Result<Json<TailscaleStatusResponse>, AppError> {
     let sock = get_setting(&state, "tailscale_socket")
         .await
         .unwrap_or_else(|| socket_path(&state));
@@ -173,12 +174,8 @@ pub async fn status(
         }
     };
 
-    let ts: TsStatus = serde_json::from_slice(&body).map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Failed to parse Tailscale status: {e}"),
-        )
-    })?;
+    let ts: TsStatus = serde_json::from_slice(&body)
+        .map_err(|e| AppError::Internal(format!("Failed to parse Tailscale status: {e}")))?;
 
     let backend_state = ts.backend_state.unwrap_or_default();
     let connected = backend_state == "Running";

@@ -10,6 +10,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
+use super::error::AppError;
 use super::AppState;
 use crate::mikrotik::client::MikrotikClient;
 use crate::mikrotik::types::{QueueTreeWriteRequest, SimpleQueueWriteRequest};
@@ -129,10 +130,10 @@ pub struct QosSummaryResponse {
 /// GET /api/v1/qos/mikrotik/simple-queues
 pub async fn mikrotik_simple_queues(
     State(state): State<AppState>,
-) -> Result<Json<Vec<MikrotikSimpleQueueResponse>>, StatusCode> {
+) -> Result<Json<Vec<MikrotikSimpleQueueResponse>>, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("Service unavailable".into()))?;
 
     if let Some(cached) = state.mikrotik_cache.get("simple-queues") {
         if let Ok(resp) = serde_json::from_value(cached) {
@@ -142,7 +143,7 @@ pub async fn mikrotik_simple_queues(
 
     let queues = client.simple_queues().await.map_err(|e| {
         tracing::error!("MikroTik simple queues error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let result: Vec<MikrotikSimpleQueueResponse> = queues
@@ -177,14 +178,14 @@ pub async fn mikrotik_simple_queues(
 pub async fn create_mikrotik_simple_queue(
     State(state): State<AppState>,
     Json(body): Json<MikrotikSimpleQueueUpsertRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     if body.name.trim().is_empty() || body.target.trim().is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("Bad request".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("Service unavailable".into()))?;
 
     let req = SimpleQueueWriteRequest {
         name: body.name.trim().to_string(),
@@ -203,7 +204,7 @@ pub async fn create_mikrotik_simple_queue(
 
     client.create_simple_queue(&req).await.map_err(|e| {
         tracing::error!("MikroTik simple queue create error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -214,15 +215,15 @@ pub async fn update_mikrotik_simple_queue(
     Path(id): Path<String>,
     State(state): State<AppState>,
     Json(body): Json<MikrotikSimpleQueueUpsertRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("Bad request".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("Service unavailable".into()))?;
 
     let req = SimpleQueueWriteRequest {
         name: body.name.trim().to_string(),
@@ -241,7 +242,7 @@ pub async fn update_mikrotik_simple_queue(
 
     client.update_simple_queue(id, &req).await.map_err(|e| {
         tracing::error!("MikroTik simple queue update error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -251,19 +252,19 @@ pub async fn update_mikrotik_simple_queue(
 pub async fn delete_mikrotik_simple_queue(
     Path(id): Path<String>,
     State(state): State<AppState>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("Bad request".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("Service unavailable".into()))?;
 
     client.delete_simple_queue(id).await.map_err(|e| {
         tracing::error!("MikroTik simple queue delete error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -272,10 +273,10 @@ pub async fn delete_mikrotik_simple_queue(
 /// GET /api/v1/qos/mikrotik/queue-tree
 pub async fn mikrotik_queue_tree(
     State(state): State<AppState>,
-) -> Result<Json<Vec<MikrotikQueueTreeResponse>>, StatusCode> {
+) -> Result<Json<Vec<MikrotikQueueTreeResponse>>, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("Service unavailable".into()))?;
 
     if let Some(cached) = state.mikrotik_cache.get("queue-tree") {
         if let Ok(resp) = serde_json::from_value(cached) {
@@ -285,7 +286,7 @@ pub async fn mikrotik_queue_tree(
 
     let tree = client.queue_tree().await.map_err(|e| {
         tracing::error!("MikroTik queue tree error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let result: Vec<MikrotikQueueTreeResponse> = tree
@@ -336,14 +337,14 @@ pub struct MikrotikQueueTreeUpsertRequest {
 pub async fn create_mikrotik_queue_tree(
     State(state): State<AppState>,
     Json(body): Json<MikrotikQueueTreeUpsertRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     if body.name.trim().is_empty() || body.parent.trim().is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("Bad request".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("Service unavailable".into()))?;
 
     let req = QueueTreeWriteRequest {
         name: body.name.trim().to_string(),
@@ -362,7 +363,7 @@ pub async fn create_mikrotik_queue_tree(
 
     client.create_queue_tree(&req).await.map_err(|e| {
         tracing::error!("MikroTik queue tree create error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -373,15 +374,15 @@ pub async fn update_mikrotik_queue_tree(
     Path(id): Path<String>,
     State(state): State<AppState>,
     Json(body): Json<MikrotikQueueTreeUpsertRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("Bad request".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("Service unavailable".into()))?;
 
     let req = QueueTreeWriteRequest {
         name: body.name.trim().to_string(),
@@ -400,7 +401,7 @@ pub async fn update_mikrotik_queue_tree(
 
     client.update_queue_tree(id, &req).await.map_err(|e| {
         tracing::error!("MikroTik queue tree update error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -410,19 +411,19 @@ pub async fn update_mikrotik_queue_tree(
 pub async fn delete_mikrotik_queue_tree(
     Path(id): Path<String>,
     State(state): State<AppState>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("Bad request".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("Service unavailable".into()))?;
 
     client.delete_queue_tree(id).await.map_err(|e| {
         tracing::error!("MikroTik queue tree delete error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -433,7 +434,7 @@ pub async fn delete_mikrotik_queue_tree(
 /// GET /api/v1/qos/summary
 pub async fn qos_summary(
     State(state): State<AppState>,
-) -> Result<Json<QosSummaryResponse>, StatusCode> {
+) -> Result<Json<QosSummaryResponse>, AppError> {
     let mikrotik_available = mikrotik_client(&state).await.is_some();
 
     let mut mikrotik_simple_queue_count = 0;

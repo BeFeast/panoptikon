@@ -268,7 +268,7 @@ const GET_ONE_QUERY: &str = "\
 pub async fn list(
     State(state): State<AppState>,
     Query(params): Query<ListQuery>,
-) -> Result<Json<Vec<Asset>>, StatusCode> {
+) -> Result<Json<Vec<Asset>>, AppError> {
     // Start with the base query, then apply filters dynamically.
     let mut sql = String::from(LIST_QUERY);
     let mut binds: Vec<String> = Vec::new();
@@ -319,7 +319,7 @@ pub async fn list(
 
     let rows = query.fetch_all(&state.db).await.map_err(|e| {
         error!("Failed to list assets: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let assets: Vec<Asset> = rows
@@ -524,7 +524,10 @@ pub async fn update(
 }
 
 /// DELETE /api/v1/assets/:id — delete an asset.
-pub async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> StatusCode {
+pub async fn delete(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, AppError> {
     match sqlx::query("DELETE FROM assets WHERE id = ?")
         .bind(&id)
         .execute(&state.db)
@@ -532,12 +535,12 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> St
     {
         Ok(r) if r.rows_affected() > 0 => {
             info!(asset_id = %id, "Asset deleted");
-            StatusCode::NO_CONTENT
+            Ok(StatusCode::NO_CONTENT)
         }
-        Ok(_) => StatusCode::NOT_FOUND,
+        Ok(_) => Err(AppError::NotFound),
         Err(e) => {
             error!("Failed to delete asset {id}: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            Err(AppError::Internal(e.to_string()))
         }
     }
 }

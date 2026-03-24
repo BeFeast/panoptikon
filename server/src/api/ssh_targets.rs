@@ -186,13 +186,13 @@ const GET_ONE_QUERY: &str = "\
 // ─── Handlers ────────────────────────────────────────────
 
 /// GET /api/v1/ssh-targets — list all SSH targets with latest report.
-pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<SshTarget>>, StatusCode> {
+pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<SshTarget>>, AppError> {
     let rows = sqlx::query(LIST_QUERY)
         .fetch_all(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to list SSH targets: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     let targets: Vec<SshTarget> = rows
@@ -342,7 +342,10 @@ pub async fn update(
 }
 
 /// DELETE /api/v1/ssh-targets/:id — delete an SSH target and its reports.
-pub async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> StatusCode {
+pub async fn delete(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, AppError> {
     match sqlx::query("DELETE FROM ssh_targets WHERE id = ?")
         .bind(&id)
         .execute(&state.db)
@@ -350,12 +353,12 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> St
     {
         Ok(r) if r.rows_affected() > 0 => {
             info!(target_id = %id, "SSH target deleted");
-            StatusCode::NO_CONTENT
+            Ok(StatusCode::NO_CONTENT)
         }
-        Ok(_) => StatusCode::NOT_FOUND,
+        Ok(_) => Err(AppError::NotFound),
         Err(e) => {
             error!("Failed to delete SSH target {id}: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            Err(AppError::Internal(e.to_string()))
         }
     }
 }
@@ -365,7 +368,7 @@ pub async fn list_reports(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Query(params): Query<ReportsQuery>,
-) -> Result<Json<Vec<SshReportRow>>, StatusCode> {
+) -> Result<Json<Vec<SshReportRow>>, AppError> {
     let limit = params.limit.clamp(1, 500);
 
     let rows = sqlx::query(
@@ -379,7 +382,7 @@ pub async fn list_reports(
     .await
     .map_err(|e| {
         error!("Failed to list SSH reports for {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let reports: Vec<SshReportRow> = rows

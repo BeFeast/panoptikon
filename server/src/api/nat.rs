@@ -11,6 +11,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
+use super::error::AppError;
 use super::AppState;
 use crate::mikrotik::client::MikrotikClient;
 use crate::mikrotik::types::FirewallNatWriteRequest;
@@ -98,14 +99,16 @@ pub struct CreateMikrotikNatRuleRequest {
 /// GET /api/v1/nat/mikrotik/rules — list all MikroTik NAT rules.
 pub async fn mikrotik_list(
     State(state): State<AppState>,
-) -> Result<Json<Vec<MikrotikNatRuleResponse>>, StatusCode> {
+) -> Result<Json<Vec<MikrotikNatRuleResponse>>, AppError> {
     let Some(client) = mikrotik_client(&state).await else {
-        return Err(StatusCode::SERVICE_UNAVAILABLE);
+        return Err(AppError::ServiceUnavailable(
+            "MikroTik not available".into(),
+        ));
     };
 
     let nat_rules = client.firewall_nat().await.map_err(|e| {
         error!("Failed to fetch MikroTik NAT rules: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let rules: Vec<MikrotikNatRuleResponse> = nat_rules
@@ -133,9 +136,11 @@ pub async fn mikrotik_list(
 pub async fn mikrotik_create(
     State(state): State<AppState>,
     Json(body): Json<CreateMikrotikNatRuleRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let Some(client) = mikrotik_client(&state).await else {
-        return Err(StatusCode::SERVICE_UNAVAILABLE);
+        return Err(AppError::ServiceUnavailable(
+            "MikroTik not available".into(),
+        ));
     };
 
     let req = FirewallNatWriteRequest {
@@ -157,7 +162,7 @@ pub async fn mikrotik_create(
 
     client.create_firewall_nat(&req).await.map_err(|e| {
         error!("Failed to create MikroTik NAT rule: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     info!("MikroTik NAT rule created");
@@ -169,9 +174,11 @@ pub async fn mikrotik_update(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<CreateMikrotikNatRuleRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let Some(client) = mikrotik_client(&state).await else {
-        return Err(StatusCode::SERVICE_UNAVAILABLE);
+        return Err(AppError::ServiceUnavailable(
+            "MikroTik not available".into(),
+        ));
     };
 
     let req = FirewallNatWriteRequest {
@@ -193,7 +200,7 @@ pub async fn mikrotik_update(
 
     client.update_firewall_nat(&id, &req).await.map_err(|e| {
         error!("Failed to update MikroTik NAT rule {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     info!("MikroTik NAT rule {id} updated");
@@ -204,14 +211,16 @@ pub async fn mikrotik_update(
 pub async fn mikrotik_delete(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let Some(client) = mikrotik_client(&state).await else {
-        return Err(StatusCode::SERVICE_UNAVAILABLE);
+        return Err(AppError::ServiceUnavailable(
+            "MikroTik not available".into(),
+        ));
     };
 
     client.delete_firewall_nat(&id).await.map_err(|e| {
         error!("Failed to delete MikroTik NAT rule {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     info!("MikroTik NAT rule {id} deleted");

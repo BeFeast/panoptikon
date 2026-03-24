@@ -43,7 +43,7 @@ pub async fn list_reports(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Query(params): Query<ReportsQuery>,
-) -> Result<Json<Vec<AgentReportRow>>, StatusCode> {
+) -> Result<Json<Vec<AgentReportRow>>, AppError> {
     let limit = params.limit.clamp(1, 500);
 
     let rows = sqlx::query_as::<_, (i64, Option<f64>, Option<i64>, Option<i64>, String)>(
@@ -59,7 +59,7 @@ pub async fn list_reports(
     .await
     .map_err(|e| {
         error!("Failed to list reports for agent {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let reports: Vec<AgentReportRow> = rows
@@ -82,7 +82,7 @@ pub async fn list_reports(
 pub async fn get_fastfetch(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
+) -> Result<Json<serde_json::Value>, AppError> {
     let row: Option<Option<String>> = sqlx::query_scalar(
         "SELECT ds.fastfetch_json \
          FROM agents a \
@@ -94,14 +94,14 @@ pub async fn get_fastfetch(
     .await
     .map_err(|e| {
         error!("Failed to fetch fastfetch data for agent {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     match row.flatten() {
         Some(json_str) => {
             let val: serde_json::Value = serde_json::from_str(&json_str).map_err(|e| {
                 error!("Failed to parse stored fastfetch JSON: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?;
             Ok(Json(val))
         }
@@ -322,7 +322,7 @@ impl Agent {
 }
 
 /// GET /api/v1/agents — list all agents.
-pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Agent>>, StatusCode> {
+pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Agent>>, AppError> {
     let rows = sqlx::query(
         "SELECT a.id, a.device_id, a.name, a.platform, a.version, a.is_online, \
                 a.last_report_at, a.created_at, \
@@ -345,7 +345,7 @@ pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<Agent>>, Sta
     .await
     .map_err(|e| {
         error!("Failed to list agents: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let agents: Vec<Agent> = rows
@@ -398,12 +398,12 @@ pub async fn get_one(
 pub async fn register(
     State(state): State<AppState>,
     Json(body): Json<RegisterAgent>,
-) -> Result<(StatusCode, Json<RegisterAgentResponse>), StatusCode> {
+) -> Result<(StatusCode, Json<RegisterAgentResponse>), AppError> {
     let id = uuid::Uuid::new_v4().to_string();
     let api_key = format!("pnk_{}", uuid::Uuid::new_v4().to_string().replace('-', ""));
     let api_key_hash = bcrypt::hash(&api_key, bcrypt::DEFAULT_COST).map_err(|e| {
         error!("Failed to hash API key: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     sqlx::query("INSERT INTO agents (id, api_key_hash, name) VALUES (?, ?, ?)")
@@ -414,7 +414,7 @@ pub async fn register(
         .await
         .map_err(|e| {
             error!("Failed to register agent: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     info!(agent_id = %id, "New agent registered");
@@ -436,7 +436,7 @@ pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<UpdateAgent>,
-) -> Result<Json<Agent>, StatusCode> {
+) -> Result<Json<Agent>, AppError> {
     sqlx::query("UPDATE agents SET name = ? WHERE id = ?")
         .bind(&body.name)
         .bind(&id)
@@ -444,7 +444,7 @@ pub async fn update(
         .await
         .map_err(|e| {
             error!("Failed to update agent {id}: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     // Return updated agent
@@ -469,27 +469,30 @@ pub async fn update(
     .bind(&id)
     .fetch_optional(&state.db)
     .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-    .ok_or(StatusCode::NOT_FOUND)?;
+    .map_err(|e| AppError::Internal(e.to_string()))?
+    .ok_or(AppError::NotFound)?;
 
     Agent::from_row(row).map(Json).map_err(|e| {
         error!("Failed to parse agent row after update: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })
 }
 
 /// DELETE /api/v1/agents/:id — remove an agent.
-pub async fn delete(State(state): State<AppState>, Path(id): Path<String>) -> StatusCode {
+pub async fn delete(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> Result<StatusCode, AppError> {
     match sqlx::query("DELETE FROM agents WHERE id = ?")
         .bind(&id)
         .execute(&state.db)
         .await
     {
-        Ok(r) if r.rows_affected() > 0 => StatusCode::NO_CONTENT,
-        Ok(_) => StatusCode::NOT_FOUND,
+        Ok(r) if r.rows_affected() > 0 => Ok(StatusCode::NO_CONTENT),
+        Ok(_) => Err(AppError::NotFound),
         Err(e) => {
             error!("Failed to delete agent {id}: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            Err(AppError::Internal(e.to_string()))
         }
     }
 }
@@ -515,9 +518,11 @@ pub struct BulkDeleteResponse {
 pub async fn bulk_delete(
     State(state): State<AppState>,
     Json(body): Json<BulkDeleteRequest>,
-) -> Result<Json<BulkDeleteResponse>, StatusCode> {
+) -> Result<Json<BulkDeleteResponse>, AppError> {
     if body.ids.is_empty() && body.name_pattern.is_none() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation(
+            "ids or name_pattern is required".to_string(),
+        ));
     }
 
     let mut total_deleted: u64 = 0;
@@ -536,7 +541,7 @@ pub async fn bulk_delete(
         }
         let _ = q.execute(&state.db).await.map_err(|e| {
             error!("Failed to delete agent_reports in bulk: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
         let agents_query = format!("DELETE FROM agents WHERE id IN ({placeholders})");
@@ -546,7 +551,7 @@ pub async fn bulk_delete(
         }
         let result = q.execute(&state.db).await.map_err(|e| {
             error!("Failed to bulk-delete agents by ID: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
         total_deleted += result.rows_affected();
     }
@@ -562,7 +567,7 @@ pub async fn bulk_delete(
         .await
         .map_err(|e| {
             error!("Failed to delete agent_reports by pattern: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
         let result = sqlx::query("DELETE FROM agents WHERE name LIKE ?")
@@ -571,7 +576,7 @@ pub async fn bulk_delete(
             .await
             .map_err(|e| {
                 error!("Failed to bulk-delete agents by pattern: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?;
         total_deleted += result.rows_affected();
     }

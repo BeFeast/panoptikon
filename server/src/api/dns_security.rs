@@ -5,10 +5,11 @@
 //! - `dot_servers`       — JSON array of DoT upstream server objects
 //! - `dnssec_enabled`    — "true" / "false"
 
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
+use super::error::AppError;
 use super::AppState;
 
 // ─── DTOs ──────────────────────────────────────────────────
@@ -68,7 +69,7 @@ async fn get_setting(state: &AppState, key: &str) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
-async fn set_setting(state: &AppState, key: &str, value: &str) -> Result<(), StatusCode> {
+async fn set_setting(state: &AppState, key: &str, value: &str) -> Result<(), AppError> {
     sqlx::query("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value")
         .bind(key)
         .bind(value)
@@ -76,7 +77,7 @@ async fn set_setting(state: &AppState, key: &str, value: &str) -> Result<(), Sta
         .await
         .map_err(|e| {
             error!("Failed to set setting {key}: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
     Ok(())
 }
@@ -86,7 +87,7 @@ async fn set_setting(state: &AppState, key: &str, value: &str) -> Result<(), Sta
 /// GET /api/v1/dns-security — return current DoT + DNSSEC settings.
 pub async fn get_dns_security(
     State(state): State<AppState>,
-) -> Result<Json<DnsSecurityResponse>, StatusCode> {
+) -> Result<Json<DnsSecurityResponse>, AppError> {
     let dot_enabled = get_setting(&state, "dot_enabled")
         .await
         .map(|v| v == "true")
@@ -113,7 +114,7 @@ pub async fn get_dns_security(
 pub async fn update_dns_security(
     State(state): State<AppState>,
     Json(body): Json<DnsSecurityUpdateRequest>,
-) -> Result<Json<DnsSecurityResponse>, StatusCode> {
+) -> Result<Json<DnsSecurityResponse>, AppError> {
     if let Some(enabled) = body.dot_enabled {
         set_setting(
             &state,
@@ -127,7 +128,7 @@ pub async fn update_dns_security(
     if let Some(ref servers) = body.dot_servers {
         let json = serde_json::to_string(servers).map_err(|e| {
             error!("Failed to serialize DoT servers: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
         set_setting(&state, "dot_servers", &json).await?;
         info!(count = servers.len(), "Updated DoT upstream servers");

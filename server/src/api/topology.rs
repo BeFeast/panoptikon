@@ -4,6 +4,7 @@ use sqlx::Row;
 use std::time::Duration;
 use tracing::error;
 
+use super::error::AppError;
 use super::AppState;
 use crate::mikrotik::client::MikrotikClient;
 
@@ -23,7 +24,7 @@ pub struct NodePosition {
 /// GET /api/v1/topology/positions — return all saved node positions.
 pub async fn get_positions(
     State(state): State<AppState>,
-) -> Result<Json<Vec<NodePosition>>, StatusCode> {
+) -> Result<Json<Vec<NodePosition>>, AppError> {
     let rows = sqlx::query_as::<_, (String, f64, f64, i32)>(
         "SELECT node_id, x, y, pinned FROM topology_positions",
     )
@@ -31,7 +32,7 @@ pub async fn get_positions(
     .await
     .map_err(|e| {
         error!("Failed to fetch topology positions: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let positions = rows
@@ -57,7 +58,7 @@ pub struct SavePositionsRequest {
 pub async fn save_positions(
     State(state): State<AppState>,
     Json(body): Json<SavePositionsRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     for pos in &body.positions {
         sqlx::query(
             "INSERT INTO topology_positions (node_id, x, y, pinned) VALUES (?, ?, ?, ?)
@@ -71,7 +72,7 @@ pub async fn save_positions(
         .await
         .map_err(|e| {
             error!("Failed to save topology position for '{}': {e}", pos.node_id);
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
     }
 
@@ -79,13 +80,13 @@ pub async fn save_positions(
 }
 
 /// DELETE /api/v1/topology/positions — clear all saved positions (reset layout).
-pub async fn delete_positions(State(state): State<AppState>) -> Result<StatusCode, StatusCode> {
+pub async fn delete_positions(State(state): State<AppState>) -> Result<StatusCode, AppError> {
     sqlx::query("DELETE FROM topology_positions")
         .execute(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to clear topology positions: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -200,7 +201,7 @@ async fn mikrotik_client(state: &AppState) -> Option<MikrotikClient> {
 ///
 /// Aggregates devices (from DB), traffic data, DHCP leases and bridge hosts
 /// (from MikroTik, if configured), router interfaces, and saved positions.
-pub async fn graph(State(state): State<AppState>) -> Result<Json<TopologyGraph>, StatusCode> {
+pub async fn graph(State(state): State<AppState>) -> Result<Json<TopologyGraph>, AppError> {
     // 1. Fetch devices with traffic data from the database
     let rows = sqlx::query(
         r#"
@@ -228,7 +229,7 @@ pub async fn graph(State(state): State<AppState>) -> Result<Json<TopologyGraph>,
     .await
     .map_err(|e| {
         error!("Failed to fetch topology devices: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     // Fetch current IPs

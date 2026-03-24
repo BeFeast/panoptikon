@@ -1,11 +1,11 @@
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
     Json,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 
+use super::error::AppError;
 use super::AppState;
 
 /// Query parameters for the global search endpoint.
@@ -91,7 +91,7 @@ impl SearchResponse {
 pub async fn search(
     State(state): State<AppState>,
     Query(params): Query<SearchQuery>,
-) -> Result<Json<SearchResponse>, StatusCode> {
+) -> Result<Json<SearchResponse>, AppError> {
     let q = params.q.unwrap_or_default();
 
     // Return empty results for short queries
