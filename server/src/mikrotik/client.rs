@@ -737,6 +737,77 @@ impl MikrotikClient {
         self.send_no_body(Method::DELETE, &format!("/queue/tree/{id}"))
             .await
     }
+
+    // ── OpenVPN ──────────────────────────────────────────
+
+    /// Fetch OpenVPN server configuration.
+    pub async fn ovpn_server_config(&self) -> Result<OvpnServerConfig> {
+        let val = self.get("/interface/ovpn-server/server").await?;
+        let res: OvpnServerConfig =
+            serde_json::from_value(val).context("failed to parse OVPN server config")?;
+        Ok(res)
+    }
+
+    /// Update OpenVPN server configuration.
+    pub async fn update_ovpn_server_config(&self, req: &serde_json::Value) -> Result<()> {
+        self.send_json(Method::POST, "/interface/ovpn-server/server/set", req)
+            .await
+    }
+
+    /// Fetch active OpenVPN server bindings (connected clients).
+    pub async fn ovpn_server_bindings(&self) -> Result<Vec<OvpnServerBinding>> {
+        let val = self.get("/interface/ovpn-server").await?;
+        let res: Vec<OvpnServerBinding> =
+            serde_json::from_value(val).context("failed to parse OVPN server bindings")?;
+        Ok(res)
+    }
+
+    // ── PPP (OpenVPN client accounts) ────────────────────
+
+    /// Fetch PPP secrets (user accounts used by OpenVPN, L2TP, etc).
+    pub async fn ppp_secrets(&self) -> Result<Vec<PppSecret>> {
+        let val = self.get("/ppp/secret").await?;
+        let res: Vec<PppSecret> =
+            serde_json::from_value(val).context("failed to parse PPP secrets")?;
+        Ok(res)
+    }
+
+    /// Create a PPP secret.
+    pub async fn create_ppp_secret(&self, req: &serde_json::Value) -> Result<Value> {
+        self.post("/ppp/secret", req).await
+    }
+
+    /// Delete a PPP secret by RouterOS `.id`.
+    pub async fn delete_ppp_secret(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/ppp/secret/{id}"))
+            .await
+    }
+
+    /// Fetch active PPP connections.
+    pub async fn ppp_active(&self) -> Result<Vec<PppActive>> {
+        let val = self.get("/ppp/active").await?;
+        let res: Vec<PppActive> =
+            serde_json::from_value(val).context("failed to parse PPP active connections")?;
+        Ok(res)
+    }
+
+    /// Fetch PPP profiles.
+    pub async fn ppp_profiles(&self) -> Result<Vec<PppProfile>> {
+        let val = self.get("/ppp/profile").await?;
+        let res: Vec<PppProfile> =
+            serde_json::from_value(val).context("failed to parse PPP profiles")?;
+        Ok(res)
+    }
+
+    // ── Certificates / PKI ───────────────────────────────
+
+    /// Fetch all certificates.
+    pub async fn certificates(&self) -> Result<Vec<MtCertificate>> {
+        let val = self.get("/certificate").await?;
+        let res: Vec<MtCertificate> =
+            serde_json::from_value(val).context("failed to parse certificates")?;
+        Ok(res)
+    }
 }
 
 #[cfg(test)]

@@ -67,7 +67,7 @@ export default function VpnStatusPage() {
   const [data, setData] = useState<VpnStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useHashTab("overview", ["overview", "mikrotik"]);
+  const [activeTab, setActiveTab] = useHashTab("overview", ["overview", "mikrotik", "openvpn"]);
   const defaultTabSet = useRef(false);
 
   const load = useCallback(async () => {
@@ -123,6 +123,11 @@ export default function VpnStatusPage() {
     [filteredInterfaces],
   );
 
+  const openvpnInterfaces = useMemo(
+    () => filteredInterfaces?.filter((i) => i.source === "openvpn") ?? [],
+    [filteredInterfaces],
+  );
+
   const overviewInterfaces = useMemo(() => {
     if (!data) return [];
     return data.interfaces;
@@ -139,7 +144,7 @@ export default function VpnStatusPage() {
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-white">VPN Status</h1>
               <p className="text-sm text-slate-400">
-                WireGuard tunnels, peer connectivity, and transfer stats.
+                WireGuard &amp; OpenVPN tunnels, peer connectivity, and transfer stats.
               </p>
             </div>
           </div>
@@ -205,6 +210,14 @@ export default function VpnStatusPage() {
                 MikroTik
               </TabsTrigger>
             )}
+            {data?.openvpn_available && (
+              <TabsTrigger
+                value="openvpn"
+                className="rounded-lg px-4 data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+              >
+                OpenVPN
+              </TabsTrigger>
+            )}
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4 pt-2">
@@ -244,6 +257,22 @@ export default function VpnStatusPage() {
                         No router is configured. Configure router credentials in Settings.
                       </div>
                     )
+                  )}
+                  {data?.openvpn_available && (
+                    <div className="rounded-lg border border-slate-800/80 bg-slate-950/50 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">
+                        OpenVPN coverage
+                      </p>
+                      <p className="mt-1 text-slate-200">
+                        <span className="font-semibold text-white">
+                          {openvpnInterfaces.length}
+                        </span>{" "}
+                        server{openvpnInterfaces.length === 1 ? "" : "s"},{" "}
+                        <span className="font-semibold text-emerald-300">
+                          {openvpnInterfaces.reduce((sum, i) => sum + i.peers_online, 0)} connected
+                        </span>
+                      </p>
+                    </div>
                   )}
                 </div>
               </CardContent>
@@ -285,6 +314,32 @@ export default function VpnStatusPage() {
               </Card>
             ) : (
               mikrotikInterfaces.map((iface) => (
+                <InterfaceCard key={`${iface.source}-${iface.name}`} iface={iface} />
+              ))
+            )}
+          </TabsContent>
+
+          <TabsContent value="openvpn" className="space-y-4 pt-2">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Input
+                placeholder="Filter connected clients..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="border-slate-800 bg-slate-950/70 pl-10 text-white placeholder:text-slate-600"
+              />
+            </div>
+
+            {openvpnInterfaces.length === 0 ? (
+              <Card className={surfaceClass}>
+                <CardContent className="py-12 text-center text-slate-500">
+                  {search
+                    ? "No clients match your filter."
+                    : "No OpenVPN connected clients."}
+                </CardContent>
+              </Card>
+            ) : (
+              openvpnInterfaces.map((iface) => (
                 <InterfaceCard key={`${iface.source}-${iface.name}`} iface={iface} />
               ))
             )}

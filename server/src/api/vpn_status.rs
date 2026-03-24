@@ -81,6 +81,7 @@ pub struct VpnInterfaceStatus {
 #[derive(Debug, Serialize)]
 pub struct VpnStatusResponse {
     pub mikrotik_available: bool,
+    pub openvpn_available: bool,
     pub interfaces: Vec<VpnInterfaceStatus>,
     pub total_peers: usize,
     pub online_peers: usize,
@@ -97,6 +98,7 @@ pub async fn vpn_status(
     let mikrotik = mikrotik_client(&state).await;
     // mikrotik_available is determined after we check for WireGuard interfaces
     let mut mikrotik_available = false;
+    let mut openvpn_available = false;
 
     let now = chrono::Utc::now().timestamp();
     // 3 minutes = 180 seconds threshold for "online"
@@ -105,7 +107,7 @@ pub async fn vpn_status(
     let mut interfaces: Vec<VpnInterfaceStatus> = Vec::new();
 
     // ── MikroTik WireGuard ──
-    if let Some(client) = mikrotik {
+    if let Some(ref client) = mikrotik {
         let wg_ifaces = client.wireguard_interfaces().await.unwrap_or_default();
         // Only mark MikroTik as available if it has WireGuard interfaces
         mikrotik_available = !wg_ifaces.is_empty();
@@ -178,6 +180,60 @@ pub async fn vpn_status(
         }
     }
 
+    // ── MikroTik OpenVPN (PPP active sessions) ──
+    if let Some(ref client) = mikrotik {
+        let ovpn_cfg = client.ovpn_server_config().await.ok();
+        let ovpn_enabled = ovpn_cfg
+            .as_ref()
+            .and_then(|c| c.enabled.as_deref())
+            .map(|v| v == "true" || v == "yes")
+            .unwrap_or(false);
+
+        if ovpn_enabled {
+            openvpn_available = true;
+            let active = client.ppp_active().await.unwrap_or_default();
+            // Filter to ovpn service sessions only
+            let ovpn_sessions: Vec<_> = active
+                .iter()
+                .filter(|s| s.service.as_deref() == Some("ovpn"))
+                .collect();
+
+            let peers: Vec<VpnPeerStatus> = ovpn_sessions
+                .iter()
+                .map(|s| VpnPeerStatus {
+                    name: s.name.clone().unwrap_or_default(),
+                    public_key: None,
+                    endpoint: s.caller_id.clone(),
+                    allowed_ips: s.address.clone().map(|a| vec![a]).unwrap_or_default(),
+                    last_handshake: Some(now), // active = currently connected
+                    rx_bytes: None,
+                    tx_bytes: None,
+                    connectivity: "online".to_string(),
+                })
+                .collect();
+
+            let peers_online = peers.len();
+            let peers_total = peers.len();
+
+            let port = ovpn_cfg
+                .as_ref()
+                .and_then(|c| c.port.as_deref())
+                .and_then(|s| s.parse().ok());
+
+            interfaces.push(VpnInterfaceStatus {
+                name: "ovpn-server".to_string(),
+                address: None,
+                port,
+                public_key: None,
+                status: Some("up".to_string()),
+                peers,
+                peers_online,
+                peers_total,
+                source: "openvpn".to_string(),
+            });
+        }
+    }
+
     let total_peers: usize = interfaces.iter().map(|i| i.peers_total).sum();
     let online_peers: usize = interfaces.iter().map(|i| i.peers_online).sum();
     let total_rx_bytes: u64 = interfaces
@@ -193,6 +249,7 @@ pub async fn vpn_status(
 
     Ok(Json(VpnStatusResponse {
         mikrotik_available,
+        openvpn_available,
         interfaces,
         total_peers,
         online_peers,
