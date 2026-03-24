@@ -1751,6 +1751,30 @@ export function fetchVpnStatus(): Promise<
   return apiGet<import("./types").VpnStatusResponse>("/api/v1/vpn-status");
 }
 
+// ─── OpenVPN Management ──────────────────────────────────────
+
+export function fetchOpenVpnStatus(): Promise<
+  import("./types").OpenVpnStatusResponse
+> {
+  return apiGet<import("./types").OpenVpnStatusResponse>(
+    "/api/v1/openvpn/status",
+  );
+}
+
+export function updateOpenVpnServer(
+  req: import("./types").UpdateOpenVpnServerRequest,
+): Promise<{ ok: boolean }> {
+  return apiPatch<{ ok: boolean }>("/api/v1/openvpn/server", req);
+}
+
+export function exportOpenVpnClientConfig(): Promise<
+  import("./types").ClientConfigResponse
+> {
+  return apiGet<import("./types").ClientConfigResponse>(
+    "/api/v1/openvpn/export-client-config",
+  );
+}
+
 // ─── QoS / Traffic Shaping ───────────────────────────────────
 
 export function fetchQosSummary(): Promise<

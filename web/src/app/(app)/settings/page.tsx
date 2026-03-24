@@ -20,6 +20,7 @@ import {
   Mail,
   Radio,
   Users,
+  Shield,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageTransition } from "@/components/PageTransition";
@@ -102,6 +103,10 @@ const iconMap: Record<string, { icon: React.ReactNode; iconBg: string }> = {
   "/settings/users": {
     icon: <Users className="h-4 w-4 text-blue-400" />,
     iconBg: "bg-blue-500/10",
+  },
+  "/settings/openvpn": {
+    icon: <Shield className="h-4 w-4 text-green-400" />,
+    iconBg: "bg-green-500/10",
   },
 };
 

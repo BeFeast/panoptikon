@@ -38,6 +38,7 @@ const segmentLabels: Record<string, string> = {
   scanner: "Scanner",
   speedtest: "Speedtest",
   tailscale: "Tailscale",
+  openvpn: "OpenVPN",
   webhook: "Webhook",
   "xiaomi-mesh": "Xiaomi Mesh",
   npm: "NPM",

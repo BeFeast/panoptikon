@@ -1959,11 +1959,74 @@ export interface VpnInterfaceStatus {
 
 export interface VpnStatusResponse {
   mikrotik_available: boolean;
+  openvpn_available: boolean;
   interfaces: VpnInterfaceStatus[];
   total_peers: number;
   online_peers: number;
   total_rx_bytes: number;
   total_tx_bytes: number;
+}
+
+// ─── OpenVPN Management ─────────────────────────────────
+
+export interface OpenVpnServerConfig {
+  available: boolean;
+  enabled: boolean;
+  port: number | null;
+  mode: string | null;
+  protocol: string | null;
+  cipher: string | null;
+  auth: string | null;
+  certificate: string | null;
+  default_profile: string | null;
+  require_client_certificate: boolean;
+}
+
+export interface OpenVpnCertificateInfo {
+  id: string;
+  name: string;
+  common_name: string | null;
+  key_size: string | null;
+  days_valid: string | null;
+  fingerprint: string | null;
+  invalid_before: string | null;
+  invalid_after: string | null;
+  has_private_key: boolean;
+  is_authority: boolean;
+  is_ca: boolean;
+  expired: boolean;
+  trusted: boolean;
+}
+
+export interface OpenVpnConnectedClientInfo {
+  name: string;
+  client_address: string | null;
+  encoding: string | null;
+  uptime: string | null;
+  status: string;
+}
+
+export interface OpenVpnStatusResponse {
+  server: OpenVpnServerConfig;
+  certificates: OpenVpnCertificateInfo[];
+  connected_clients: OpenVpnConnectedClientInfo[];
+}
+
+export interface UpdateOpenVpnServerRequest {
+  enabled?: boolean;
+  port?: number;
+  mode?: string;
+  protocol?: string;
+  cipher?: string;
+  auth?: string;
+  certificate?: string;
+  default_profile?: string;
+  require_client_certificate?: boolean;
+}
+
+export interface ClientConfigResponse {
+  config: string;
+  filename: string;
 }
 
 export interface QosSummary {

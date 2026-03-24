@@ -74,6 +74,17 @@ export const settingsNav: SettingsNavGroup[] = [
     ],
   },
   {
+    label: "VPN",
+    items: [
+      {
+        href: "/settings/openvpn",
+        title: "OpenVPN",
+        description:
+          "Configure OpenVPN server, certificates, and client export.",
+      },
+    ],
+  },
+  {
     label: "Network",
     items: [
       {

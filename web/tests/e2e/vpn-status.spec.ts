@@ -13,6 +13,7 @@ import type { Page } from "@playwright/test";
 /** VPN status response with no MikroTik WireGuard interfaces. */
 const MOCK_VPN_NO_MIKROTIK_WG = {
   mikrotik_available: false,
+  openvpn_available: false,
   interfaces: [],
   total_peers: 0,
   online_peers: 0,
@@ -23,6 +24,7 @@ const MOCK_VPN_NO_MIKROTIK_WG = {
 /** VPN status response with MikroTik WireGuard interfaces. */
 const MOCK_VPN_WITH_MIKROTIK_WG = {
   mikrotik_available: true,
+  openvpn_available: false,
   interfaces: [
     {
       name: "wireguard1",
@@ -121,6 +123,103 @@ test.describe("VPN Status Page — MikroTik tab visibility (#476)", () => {
 
     await page.screenshot({
       path: "tests/screenshots/vpn-status-with-mikrotik-tab.png",
+    });
+  });
+});
+
+// ── OpenVPN tab tests ───────────────────────────────────
+
+const MOCK_VPN_WITH_OPENVPN = {
+  mikrotik_available: true,
+  openvpn_available: true,
+  interfaces: [
+    {
+      name: "wireguard1",
+      address: null,
+      port: 13231,
+      public_key: "ABCDEF1234567890ABCDEF1234567890ABCDEFGH=",
+      status: "up",
+      peers: [],
+      peers_online: 0,
+      peers_total: 0,
+      source: "mikrotik",
+    },
+    {
+      name: "openvpn-server",
+      address: null,
+      port: 1194,
+      public_key: null,
+      status: "up",
+      peers: [
+        {
+          name: "ovpn-client-1",
+          public_key: null,
+          endpoint: "10.0.0.5",
+          allowed_ips: ["10.0.0.5"],
+          last_handshake: Math.floor(Date.now() / 1000) - 10,
+          rx_bytes: null,
+          tx_bytes: null,
+          connectivity: "online",
+        },
+      ],
+      peers_online: 1,
+      peers_total: 1,
+      source: "openvpn",
+    },
+  ],
+  total_peers: 1,
+  online_peers: 1,
+  total_rx_bytes: 0,
+  total_tx_bytes: 0,
+};
+
+test.describe("VPN Status Page — OpenVPN tab (#664)", () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test("shows OpenVPN tab when openvpn_available is true", async ({
+    page,
+  }) => {
+    await mockVpnStatus(page, MOCK_VPN_WITH_OPENVPN);
+    await page.goto("/vpn-status/");
+
+    await expect(
+      page.getByRole("heading", { name: "VPN Status", level: 1 }),
+    ).toBeVisible({ timeout: 15000 });
+
+    // OpenVPN tab should be visible
+    await expect(
+      page.getByRole("tab", { name: "OpenVPN" }),
+    ).toBeVisible();
+
+    // Click OpenVPN tab and verify client data is shown
+    await page.getByRole("tab", { name: "OpenVPN" }).click();
+    await expect(page.getByText("openvpn-server")).toBeVisible();
+    await expect(page.getByText("ovpn-client-1")).toBeVisible();
+
+    await page.screenshot({
+      path: "tests/screenshots/vpn-status-openvpn-tab.png",
+    });
+  });
+
+  test("hides OpenVPN tab when openvpn_available is false", async ({
+    page,
+  }) => {
+    await mockVpnStatus(page, MOCK_VPN_NO_MIKROTIK_WG);
+    await page.goto("/vpn-status/");
+
+    await expect(
+      page.getByRole("heading", { name: "VPN Status", level: 1 }),
+    ).toBeVisible({ timeout: 15000 });
+
+    // OpenVPN tab should NOT be visible
+    await expect(
+      page.getByRole("tab", { name: "OpenVPN" }),
+    ).not.toBeVisible();
+
+    await page.screenshot({
+      path: "tests/screenshots/vpn-status-no-openvpn-tab.png",
     });
   });
 });
