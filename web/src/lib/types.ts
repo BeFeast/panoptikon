@@ -1406,6 +1406,145 @@ export interface MikrotikWireguard {
   interfaces: MikrotikWgInterface[];
 }
 
+// ─── MikroTik Advanced Routing ───────────────────────────
+
+export interface MikrotikMangleRule {
+  id: string | null;
+  chain: string | null;
+  action: string | null;
+  src_address: string | null;
+  dst_address: string | null;
+  protocol: string | null;
+  dst_port: string | null;
+  src_port: string | null;
+  in_interface: string | null;
+  out_interface: string | null;
+  new_routing_mark: string | null;
+  new_connection_mark: string | null;
+  new_packet_mark: string | null;
+  passthrough: boolean;
+  disabled: boolean;
+  bytes: string | null;
+  packets: string | null;
+  comment: string | null;
+}
+
+export interface MikrotikMangleRequest {
+  chain: string;
+  action: string;
+  src_address?: string;
+  dst_address?: string;
+  protocol?: string;
+  dst_port?: string;
+  src_port?: string;
+  in_interface?: string;
+  out_interface?: string;
+  new_routing_mark?: string;
+  new_connection_mark?: string;
+  new_packet_mark?: string;
+  passthrough?: boolean;
+  comment?: string;
+  disabled?: boolean;
+}
+
+export interface MikrotikRoutingRule {
+  id: string | null;
+  dst_address: string | null;
+  src_address: string | null;
+  routing_mark: string | null;
+  action: string | null;
+  table: string | null;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface MikrotikRoutingRuleRequest {
+  dst_address?: string;
+  src_address?: string;
+  routing_mark?: string;
+  action: string;
+  table?: string;
+  comment?: string;
+  disabled?: boolean;
+}
+
+export interface MikrotikRoutingTable {
+  id: string | null;
+  name: string | null;
+  fib: boolean;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface MikrotikNetwatchEntry {
+  id: string | null;
+  host: string | null;
+  check_type: string | null;
+  interval: string | null;
+  timeout: string | null;
+  status: string | null;
+  since: string | null;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface MikrotikNetwatchRequest {
+  host: string;
+  check_type?: string;
+  interval?: string;
+  timeout?: string;
+  comment?: string;
+  disabled?: boolean;
+}
+
+export interface MikrotikBgpConnection {
+  id: string | null;
+  name: string | null;
+  remote_address: string | null;
+  remote_as: string | null;
+  local_role: string | null;
+  local_as: string | null;
+  routing_table: string | null;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface MikrotikOspfInstance {
+  id: string | null;
+  name: string | null;
+  router_id: string | null;
+  version: string | null;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface MikrotikOspfArea {
+  id: string | null;
+  name: string | null;
+  area_id: string | null;
+  instance: string | null;
+  disabled: boolean;
+  comment: string | null;
+}
+
+export interface MikrotikDynamicRouting {
+  bgp_connections: MikrotikBgpConnection[];
+  ospf_instances: MikrotikOspfInstance[];
+  ospf_areas: MikrotikOspfArea[];
+}
+
+export interface MikrotikIpv6Nd {
+  id: string | null;
+  interface: string | null;
+  ra_interval: string | null;
+  ra_delay: string | null;
+  ra_lifetime: string | null;
+  managed: boolean;
+  other: boolean;
+  disabled: boolean;
+  comment: string | null;
+}
+
 // ─── Alert Rules ─────────────────────────────────────────
 
 export interface AlertRule {

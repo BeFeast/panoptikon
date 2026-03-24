@@ -67,6 +67,15 @@ import type {
   MikrotikAddressListRequest,
   MikrotikDns,
   MikrotikWireguard,
+  MikrotikMangleRule,
+  MikrotikMangleRequest,
+  MikrotikRoutingRule,
+  MikrotikRoutingRuleRequest,
+  MikrotikRoutingTable,
+  MikrotikNetwatchEntry,
+  MikrotikNetwatchRequest,
+  MikrotikDynamicRouting,
+  MikrotikIpv6Nd,
   PfsenseStatus,
   PfsenseInterface,
   PfsenseFirewallRule,
@@ -1004,6 +1013,64 @@ export function fetchMikrotikDns(): Promise<MikrotikDns> {
 
 export function fetchMikrotikWireguard(): Promise<MikrotikWireguard> {
   return apiGet<MikrotikWireguard>("/api/v1/mikrotik/wireguard");
+}
+
+// ─── MikroTik Advanced Routing ────────────────────────────
+
+export function fetchMikrotikMangleRules(): Promise<MikrotikMangleRule[]> {
+  return apiGet<MikrotikMangleRule[]>("/api/v1/mikrotik/routing/mangle");
+}
+
+export function createMikrotikMangleRule(
+  body: MikrotikMangleRequest,
+): Promise<void> {
+  return apiPost<void>("/api/v1/mikrotik/routing/mangle", body);
+}
+
+export function deleteMikrotikMangleRule(id: string): Promise<void> {
+  return apiDelete(`/api/v1/mikrotik/routing/mangle/${encodeURIComponent(id)}`);
+}
+
+export function fetchMikrotikRoutingRules(): Promise<MikrotikRoutingRule[]> {
+  return apiGet<MikrotikRoutingRule[]>("/api/v1/mikrotik/routing/rules");
+}
+
+export function createMikrotikRoutingRule(
+  body: MikrotikRoutingRuleRequest,
+): Promise<void> {
+  return apiPost<void>("/api/v1/mikrotik/routing/rules", body);
+}
+
+export function deleteMikrotikRoutingRule(id: string): Promise<void> {
+  return apiDelete(`/api/v1/mikrotik/routing/rules/${encodeURIComponent(id)}`);
+}
+
+export function fetchMikrotikRoutingTables(): Promise<MikrotikRoutingTable[]> {
+  return apiGet<MikrotikRoutingTable[]>("/api/v1/mikrotik/routing/tables");
+}
+
+export function fetchMikrotikNetwatch(): Promise<MikrotikNetwatchEntry[]> {
+  return apiGet<MikrotikNetwatchEntry[]>("/api/v1/mikrotik/routing/netwatch");
+}
+
+export function createMikrotikNetwatch(
+  body: MikrotikNetwatchRequest,
+): Promise<void> {
+  return apiPost<void>("/api/v1/mikrotik/routing/netwatch", body);
+}
+
+export function deleteMikrotikNetwatch(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/mikrotik/routing/netwatch/${encodeURIComponent(id)}`,
+  );
+}
+
+export function fetchMikrotikDynamicRouting(): Promise<MikrotikDynamicRouting> {
+  return apiGet<MikrotikDynamicRouting>("/api/v1/mikrotik/routing/dynamic");
+}
+
+export function fetchMikrotikIpv6Nd(): Promise<MikrotikIpv6Nd[]> {
+  return apiGet<MikrotikIpv6Nd[]>("/api/v1/mikrotik/routing/ipv6-nd");
 }
 
 // ─── pfSense ──────────────────────────────────────────────

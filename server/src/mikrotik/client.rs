@@ -500,6 +500,114 @@ impl MikrotikClient {
             .await
     }
 
+    /// Fetch firewall mangle rules (used for policy-based routing).
+    pub async fn firewall_mangle(&self) -> Result<Vec<FirewallMangle>> {
+        let val = self.get("/ip/firewall/mangle").await?;
+        let res: Vec<FirewallMangle> =
+            serde_json::from_value(val).context("failed to parse firewall mangle rules")?;
+        Ok(res)
+    }
+
+    /// Create a firewall mangle rule.
+    pub async fn create_firewall_mangle(&self, req: &FirewallMangleWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/ip/firewall/mangle", req)
+            .await
+    }
+
+    /// Update a firewall mangle rule by RouterOS `.id`.
+    pub async fn update_firewall_mangle(
+        &self,
+        id: &str,
+        req: &FirewallMangleWriteRequest,
+    ) -> Result<()> {
+        self.send_json(Method::PATCH, &format!("/ip/firewall/mangle/{id}"), req)
+            .await
+    }
+
+    /// Delete a firewall mangle rule by RouterOS `.id`.
+    pub async fn delete_firewall_mangle(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/ip/firewall/mangle/{id}"))
+            .await
+    }
+
+    /// Fetch routing rules (policy routing).
+    pub async fn routing_rules(&self) -> Result<Vec<RoutingRule>> {
+        let val = self.get("/routing/rule").await?;
+        let res: Vec<RoutingRule> =
+            serde_json::from_value(val).context("failed to parse routing rules")?;
+        Ok(res)
+    }
+
+    /// Create a routing rule.
+    pub async fn create_routing_rule(&self, req: &RoutingRuleWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/routing/rule", req).await
+    }
+
+    /// Delete a routing rule by RouterOS `.id`.
+    pub async fn delete_routing_rule(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/routing/rule/{id}"))
+            .await
+    }
+
+    /// Fetch routing tables.
+    pub async fn routing_tables(&self) -> Result<Vec<RoutingTable>> {
+        let val = self.get("/routing/table").await?;
+        let res: Vec<RoutingTable> =
+            serde_json::from_value(val).context("failed to parse routing tables")?;
+        Ok(res)
+    }
+
+    /// Fetch netwatch entries (gateway monitoring).
+    pub async fn netwatch(&self) -> Result<Vec<Netwatch>> {
+        let val = self.get("/tool/netwatch").await?;
+        let res: Vec<Netwatch> =
+            serde_json::from_value(val).context("failed to parse netwatch entries")?;
+        Ok(res)
+    }
+
+    /// Create a netwatch entry.
+    pub async fn create_netwatch(&self, req: &NetwatchWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/tool/netwatch", req).await
+    }
+
+    /// Delete a netwatch entry by RouterOS `.id`.
+    pub async fn delete_netwatch(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/tool/netwatch/{id}"))
+            .await
+    }
+
+    /// Fetch BGP connections.
+    pub async fn bgp_connections(&self) -> Result<Vec<BgpConnection>> {
+        let val = self.get("/routing/bgp/connection").await?;
+        let res: Vec<BgpConnection> =
+            serde_json::from_value(val).context("failed to parse BGP connections")?;
+        Ok(res)
+    }
+
+    /// Fetch OSPF instances.
+    pub async fn ospf_instances(&self) -> Result<Vec<OspfInstance>> {
+        let val = self.get("/routing/ospf/instance").await?;
+        let res: Vec<OspfInstance> =
+            serde_json::from_value(val).context("failed to parse OSPF instances")?;
+        Ok(res)
+    }
+
+    /// Fetch OSPF areas.
+    pub async fn ospf_areas(&self) -> Result<Vec<OspfArea>> {
+        let val = self.get("/routing/ospf/area").await?;
+        let res: Vec<OspfArea> =
+            serde_json::from_value(val).context("failed to parse OSPF areas")?;
+        Ok(res)
+    }
+
+    /// Fetch IPv6 neighbor discovery (RA) interfaces.
+    pub async fn ipv6_nd(&self) -> Result<Vec<Ipv6Nd>> {
+        let val = self.get("/ipv6/nd").await?;
+        let res: Vec<Ipv6Nd> =
+            serde_json::from_value(val).context("failed to parse IPv6 ND entries")?;
+        Ok(res)
+    }
+
     /// Fetch all queue tree entries.
     pub async fn queue_tree(&self) -> Result<Vec<QueueTree>> {
         let val = self.get("/queue/tree").await?;
