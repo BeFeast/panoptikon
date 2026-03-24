@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -50,6 +50,7 @@ import { getDeviceIcon } from "@/lib/device-icons";
 import type { DeviceType } from "@/lib/device-type";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
+import { useApiFetch } from "@/hooks/useApiFetch";
 
 // ─── Format ISO minute string to HH:mm ─────────────────
 
@@ -418,77 +419,40 @@ function QuickActions() {
 // ─── Page ───────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [statsError, setStatsError] = useState(false);
-
-  const [alerts, setAlerts] = useState<Alert[] | null>(null);
-  const [alertsError, setAlertsError] = useState(false);
-
-  const [trafficHistory, setTrafficHistory] = useState<TrafficHistoryPoint[] | null>(null);
-  const [trafficError, setTrafficError] = useState(false);
-
-  const [devices, setDevices] = useState<Device[] | null>(null);
-  const [devicesError, setDevicesError] = useState(false);
-
   const [criticalDialogOpen, setCriticalDialogOpen] = useState(false);
 
-  // ── Independent loaders — each resolves on its own ────
+  const swrOpts = { refreshInterval: 30_000 } as const;
 
-  const loadStats = useCallback(async () => {
-    try {
-      const s = await fetchDashboardStats();
-      setStats(s);
-      setStatsError(false);
-    } catch {
-      setStatsError(true);
-    }
-  }, []);
-
-  const loadAlerts = useCallback(async () => {
-    try {
-      const a = await fetchRecentAlerts(5);
-      setAlerts(Array.isArray(a) ? a : []);
-      setAlertsError(false);
-    } catch {
-      setAlertsError(true);
-    }
-  }, []);
-
-  const loadTraffic = useCallback(async () => {
-    try {
-      const th = await fetchTrafficHistory(60);
-      setTrafficHistory(th);
-      setTrafficError(false);
-    } catch {
-      setTrafficError(true);
-    }
-  }, []);
-
-  const loadDevices = useCallback(async () => {
-    try {
-      const devs = await fetchDevices();
-      setDevices(Array.isArray(devs) ? devs : []);
-      setDevicesError(false);
-    } catch {
-      setDevicesError(true);
-    }
-  }, []);
-
-  const loadAll = useCallback(() => {
-    loadStats();
-    loadAlerts();
-    loadTraffic();
-    loadDevices();
-  }, [loadStats, loadAlerts, loadTraffic, loadDevices]);
-
-  useEffect(() => {
-    loadAll();
-    const interval = setInterval(loadAll, 30_000);
-    return () => clearInterval(interval);
-  }, [loadAll]);
+  const { data: stats, error: statsError, mutate: mutateStats } = useApiFetch<DashboardStats>(
+    "/api/v1/dashboard/stats",
+    fetchDashboardStats,
+    swrOpts,
+  );
+  const { data: alerts, error: alertsError, mutate: mutateAlerts } = useApiFetch<Alert[]>(
+    "/api/v1/dashboard/alerts",
+    () => fetchRecentAlerts(5).then((a) => (Array.isArray(a) ? a : [])),
+    swrOpts,
+  );
+  const { data: trafficHistory, error: trafficError, mutate: mutateTraffic } = useApiFetch<TrafficHistoryPoint[]>(
+    "/api/v1/dashboard/traffic",
+    () => fetchTrafficHistory(60),
+    swrOpts,
+  );
+  const { data: devices, error: devicesError, mutate: mutateDevices } = useApiFetch<Device[]>(
+    "/api/v1/dashboard/devices",
+    () => fetchDevices().then((d) => (Array.isArray(d) ? d : [])),
+    swrOpts,
+  );
 
   const devicesRef = useRef(devices);
   devicesRef.current = devices;
+
+  const revalidateAll = () => {
+    mutateStats();
+    mutateAlerts();
+    mutateTraffic();
+    mutateDevices();
+  };
 
   useWsEvent(
     ["device_online", "device_offline", "new_device", "agent_online", "agent_offline"],
@@ -506,7 +470,7 @@ export default function DashboardPage() {
           toast.info(`New device discovered: ${d.mac}`, { description: d.ip });
         }
       }
-      loadAll();
+      revalidateAll();
     }
   );
 
@@ -556,7 +520,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent className="flex items-center justify-center pb-5">
             {statsError ? (
-              <SectionError message="Failed to load" onRetry={loadStats} />
+              <SectionError message="Failed to load" onRetry={() => mutateStats()} />
             ) : stats ? (
               <button
                 type="button"
@@ -705,7 +669,7 @@ export default function DashboardPage() {
             {/* Sparkline */}
             {trafficError ? (
               <div className="flex h-[120px] items-center justify-center">
-                <SectionError message="Failed to load traffic data" onRetry={loadTraffic} />
+                <SectionError message="Failed to load traffic data" onRetry={() => mutateTraffic()} />
               </div>
             ) : trafficHistory === null ? (
               <Skeleton className="h-[120px] w-full" />
@@ -783,7 +747,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {alertsError ? (
-              <SectionError message="Failed to load alerts" onRetry={loadAlerts} />
+              <SectionError message="Failed to load alerts" onRetry={() => mutateAlerts()} />
             ) : alerts === null ? (
               <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -840,7 +804,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {devicesError ? (
-              <SectionError message="Failed to load devices" onRetry={loadDevices} />
+              <SectionError message="Failed to load devices" onRetry={() => mutateDevices()} />
             ) : devices === null ? (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
                 {Array.from({ length: 5 }).map((_, i) => (
