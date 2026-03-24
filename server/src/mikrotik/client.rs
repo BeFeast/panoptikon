@@ -737,6 +737,46 @@ impl MikrotikClient {
         self.send_no_body(Method::DELETE, &format!("/queue/tree/{id}"))
             .await
     }
+
+    // ── OpenVPN ─────────────────────────────────────────────
+
+    /// Fetch OpenVPN server configuration.
+    pub async fn ovpn_server(&self) -> Result<OvpnServer> {
+        let val = self.get("/interface/ovpn-server/server").await?;
+        serde_json::from_value(val).context("failed to parse OVPN server config")
+    }
+
+    /// Update OpenVPN server configuration.
+    pub async fn update_ovpn_server(&self, req: &serde_json::Value) -> Result<()> {
+        self.send_json(Method::POST, "/interface/ovpn-server/server/set", req)
+            .await
+    }
+
+    /// Fetch OpenVPN server bindings (connected clients).
+    pub async fn ovpn_server_bindings(&self) -> Result<Vec<OvpnServerBinding>> {
+        let val = self.get("/interface/ovpn-server").await?;
+        serde_json::from_value(val).context("failed to parse OVPN server bindings")
+    }
+
+    /// Fetch PPP secrets (VPN user accounts).
+    pub async fn ppp_secrets(&self) -> Result<Vec<PppSecret>> {
+        let val = self.get("/ppp/secret").await?;
+        serde_json::from_value(val).context("failed to parse PPP secrets")
+    }
+
+    /// Fetch PPP active connections.
+    pub async fn ppp_active(&self) -> Result<Vec<PppActive>> {
+        let val = self.get("/ppp/active").await?;
+        serde_json::from_value(val).context("failed to parse PPP active connections")
+    }
+
+    // ── Certificates / PKI ──────────────────────────────────
+
+    /// Fetch all certificates.
+    pub async fn certificates(&self) -> Result<Vec<MikrotikCertificate>> {
+        let val = self.get("/certificate").await?;
+        serde_json::from_value(val).context("failed to parse certificates")
+    }
 }
 
 #[cfg(test)]

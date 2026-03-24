@@ -61,6 +61,11 @@ export const settingsNav: SettingsNavGroup[] = [
         description: "Configure SNMP scanning for managed routers.",
       },
       {
+        href: "/settings/openvpn",
+        title: "OpenVPN",
+        description: "Configure OpenVPN server and export client configs.",
+      },
+      {
         href: "/settings/alert-rules",
         title: "Alert Rules",
         description:

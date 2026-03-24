@@ -2101,3 +2101,33 @@ export function updateSnmpConfig(data: Partial<import("./types").SnmpConfig>): P
 export function testEmail(): Promise<void> {
   return apiPost<void>("/api/v1/settings/test-email");
 }
+
+// ─── OpenVPN Management ────────────────────────────────────
+
+export function fetchOvpnStatus(): Promise<
+  import("./types").OvpnStatusResponse
+> {
+  return apiGet<import("./types").OvpnStatusResponse>("/api/v1/openvpn/status");
+}
+
+export function updateOvpnServer(
+  data: import("./types").OvpnServerUpdateRequest
+): Promise<void> {
+  return apiPatch<void>("/api/v1/openvpn/server", data);
+}
+
+export function exportOvpnClient(): Promise<
+  import("./types").OvpnClientExport
+> {
+  return apiGet<import("./types").OvpnClientExport>(
+    "/api/v1/openvpn/export-client"
+  );
+}
+
+export function fetchVpnCertificates(): Promise<
+  import("./types").CertificatesResponse
+> {
+  return apiGet<import("./types").CertificatesResponse>(
+    "/api/v1/openvpn/certificates"
+  );
+}

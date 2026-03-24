@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   Router,
   Globe,
+  Shield,
   ShieldBan,
   Radar,
   Bell,
@@ -102,6 +103,10 @@ const iconMap: Record<string, { icon: React.ReactNode; iconBg: string }> = {
   "/settings/users": {
     icon: <Users className="h-4 w-4 text-blue-400" />,
     iconBg: "bg-blue-500/10",
+  },
+  "/settings/openvpn": {
+    icon: <Shield className="h-4 w-4 text-orange-400" />,
+    iconBg: "bg-orange-500/10",
   },
 };
 

@@ -1953,12 +1953,15 @@ export interface VpnInterfaceStatus {
   peers: VpnPeerStatus[];
   peers_online: number;
   peers_total: number;
-  /** "mikrotik" */
+  /** "mikrotik" | "openvpn" */
   source: string;
+  /** "wireguard" | "openvpn" */
+  vpn_type: string;
 }
 
 export interface VpnStatusResponse {
   mikrotik_available: boolean;
+  openvpn_available: boolean;
   interfaces: VpnInterfaceStatus[];
   total_peers: number;
   online_peers: number;
@@ -2522,4 +2525,74 @@ export interface SnmpConfig {
 export interface SnmpStatus {
   available: boolean;
   config: SnmpConfig;
+}
+
+// ─── OpenVPN Management ─────────────────────────────────────
+
+export interface OvpnServerConfig {
+  available: boolean;
+  enabled: boolean;
+  port: number | null;
+  mode: string | null;
+  protocol: string | null;
+  certificate: string | null;
+  default_profile: string | null;
+  cipher: string | null;
+  auth: string | null;
+  require_client_certificate: boolean;
+  keepalive_timeout: string | null;
+  connected_clients: number;
+}
+
+export interface OvpnConnectedClient {
+  name: string;
+  client_address: string | null;
+  uptime: string | null;
+  encoding: string | null;
+  rx_bytes: number | null;
+  tx_bytes: number | null;
+}
+
+export interface OvpnStatusResponse {
+  server: OvpnServerConfig;
+  clients: OvpnConnectedClient[];
+}
+
+export interface OvpnServerUpdateRequest {
+  enabled?: boolean;
+  port?: number;
+  mode?: string;
+  protocol?: string;
+  certificate?: string;
+  default_profile?: string;
+  cipher?: string;
+  auth?: string;
+  require_client_certificate?: boolean;
+}
+
+export interface OvpnClientExport {
+  config: string;
+  filename: string;
+}
+
+export interface CertificateInfo {
+  id: string;
+  name: string;
+  common_name: string | null;
+  issuer: string | null;
+  key_size: string | null;
+  invalid_before: string | null;
+  invalid_after: string | null;
+  is_ca: boolean;
+  has_private_key: boolean;
+  expired: boolean;
+  trusted: boolean;
+  fingerprint: string | null;
+  key_type: string | null;
+  authority: string | null;
+}
+
+export interface CertificatesResponse {
+  available: boolean;
+  certificates: CertificateInfo[];
 }

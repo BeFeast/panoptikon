@@ -73,14 +73,18 @@ pub struct VpnInterfaceStatus {
     pub peers: Vec<VpnPeerStatus>,
     pub peers_online: usize,
     pub peers_total: usize,
-    /// "mikrotik"
+    /// "mikrotik" | "openvpn"
     pub source: String,
+    /// VPN type: "wireguard" | "openvpn"
+    #[serde(rename = "vpn_type")]
+    pub vpn_type: String,
 }
 
 /// Overall VPN status summary.
 #[derive(Debug, Serialize)]
 pub struct VpnStatusResponse {
     pub mikrotik_available: bool,
+    pub openvpn_available: bool,
     pub interfaces: Vec<VpnInterfaceStatus>,
     pub total_peers: usize,
     pub online_peers: usize,
@@ -97,6 +101,7 @@ pub async fn vpn_status(
     let mikrotik = mikrotik_client(&state).await;
     // mikrotik_available is determined after we check for WireGuard interfaces
     let mut mikrotik_available = false;
+    let mut openvpn_available = false;
 
     let now = chrono::Utc::now().timestamp();
     // 3 minutes = 180 seconds threshold for "online"
@@ -105,7 +110,7 @@ pub async fn vpn_status(
     let mut interfaces: Vec<VpnInterfaceStatus> = Vec::new();
 
     // ── MikroTik WireGuard ──
-    if let Some(client) = mikrotik {
+    if let Some(ref client) = mikrotik {
         let wg_ifaces = client.wireguard_interfaces().await.unwrap_or_default();
         // Only mark MikroTik as available if it has WireGuard interfaces
         mikrotik_available = !wg_ifaces.is_empty();
@@ -174,6 +179,66 @@ pub async fn vpn_status(
                 peers_online,
                 peers_total,
                 source: "mikrotik".to_string(),
+                vpn_type: "wireguard".to_string(),
+            });
+        }
+    }
+
+    // ── MikroTik OpenVPN ──
+    if let Some(ref client) = mikrotik {
+        let ovpn_srv = client.ovpn_server().await.ok();
+        let srv_enabled = ovpn_srv
+            .as_ref()
+            .and_then(|s| s.enabled.as_deref())
+            .map(|v| v == "true" || v == "yes")
+            .unwrap_or(false);
+
+        if srv_enabled {
+            openvpn_available = true;
+            let bindings = client.ovpn_server_bindings().await.unwrap_or_default();
+
+            let peers: Vec<VpnPeerStatus> = bindings
+                .iter()
+                .map(|b| {
+                    let is_running = b.running.as_deref().map(|v| v == "true").unwrap_or(false);
+                    let rx_bytes = b.rx_byte.as_deref().and_then(|s| s.parse::<u64>().ok());
+                    let tx_bytes = b.tx_byte.as_deref().and_then(|s| s.parse::<u64>().ok());
+
+                    VpnPeerStatus {
+                        name: b.name.clone().unwrap_or_default(),
+                        public_key: None,
+                        endpoint: b.client_address.clone(),
+                        allowed_ips: vec![],
+                        last_handshake: None,
+                        rx_bytes,
+                        tx_bytes,
+                        connectivity: if is_running {
+                            "online".to_string()
+                        } else {
+                            "offline".to_string()
+                        },
+                    }
+                })
+                .collect();
+
+            let peers_online = peers.iter().filter(|p| p.connectivity == "online").count();
+            let peers_total = peers.len();
+            let port = ovpn_srv
+                .as_ref()
+                .and_then(|s| s.port.as_deref())
+                .and_then(|p| p.parse().ok());
+
+            interfaces.push(VpnInterfaceStatus {
+                name: "ovpn-server".to_string(),
+                address: None,
+                port,
+                public_key: None,
+                status: Some("up".to_string()),
+                peers,
+                peers_online,
+                peers_total,
+                source: "mikrotik".to_string(),
+                vpn_type: "openvpn".to_string(),
             });
         }
     }
@@ -193,6 +258,7 @@ pub async fn vpn_status(
 
     Ok(Json(VpnStatusResponse {
         mikrotik_available,
+        openvpn_available,
         interfaces,
         total_peers,
         online_peers,
