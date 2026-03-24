@@ -16,6 +16,9 @@ import {
   Wifi,
   Network,
   Settings2,
+  Mail,
+  Radio,
+  Users,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageTransition } from "@/components/PageTransition";
@@ -82,6 +85,18 @@ const iconMap: Record<string, { icon: React.ReactNode; iconBg: string }> = {
   "/settings/cloudflare-tunnel": {
     icon: <Globe className="h-4 w-4 text-orange-400" />,
     iconBg: "bg-orange-500/10",
+  },
+  "/settings/email": {
+    icon: <Mail className="h-4 w-4 text-emerald-400" />,
+    iconBg: "bg-emerald-500/10",
+  },
+  "/settings/snmp": {
+    icon: <Radio className="h-4 w-4 text-orange-400" />,
+    iconBg: "bg-orange-500/10",
+  },
+  "/settings/users": {
+    icon: <Users className="h-4 w-4 text-blue-400" />,
+    iconBg: "bg-blue-500/10",
   },
 };
 

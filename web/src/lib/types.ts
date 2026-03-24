@@ -621,6 +621,20 @@ export interface SettingsData {
   pfsense_auth_type: string | null;
   pfsense_password_set: boolean;
   pfsense_private_key_set: boolean;
+  // SMTP Email
+  smtp_host: string | null;
+  smtp_port: number | null;
+  smtp_username: string | null;
+  smtp_password_set: boolean;
+  smtp_from_email: string | null;
+  smtp_to_email: string | null;
+  smtp_tls_enabled: boolean;
+  // SNMP
+  snmp_community: string | null;
+  snmp_version: string | null;
+  snmp_port: number | null;
+  snmp_timeout_seconds: number | null;
+  snmp_retries: number | null;
   default_router: string | null;
   // Advanced / Legacy
   show_legacy_routers: boolean;
@@ -1400,6 +1414,7 @@ export interface AlertRule {
   enabled: boolean;
   threshold_value: number | null;
   notify_telegram: boolean;
+  notify_email: boolean;
   notify_in_app: boolean;
   created_at: string;
   updated_at: string;
@@ -1410,6 +1425,7 @@ export interface CreateAlertRuleRequest {
   enabled?: boolean;
   threshold_value?: number | null;
   notify_telegram?: boolean;
+  notify_email?: boolean;
   notify_in_app?: boolean;
 }
 
@@ -1417,6 +1433,7 @@ export interface UpdateAlertRuleRequest {
   enabled?: boolean;
   threshold_value?: number | null;
   notify_telegram?: boolean;
+  notify_email?: boolean;
   notify_in_app?: boolean;
 }
 
@@ -2222,4 +2239,45 @@ export interface ResolveResult {
   candidates: number;
   /** Which sources were successfully queried. */
   sources_queried: string[];
+}
+
+// ─── Users (RBAC) ────────────────────────────────────────
+
+export interface User {
+  id: string;
+  username: string;
+  role: "admin" | "read-only" | "operator";
+  email: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateUserRequest {
+  username: string;
+  password: string;
+  role?: "admin" | "read-only" | "operator";
+  email?: string;
+}
+
+export interface UpdateUserRequest {
+  username?: string;
+  password?: string;
+  role?: "admin" | "read-only" | "operator";
+  email?: string;
+}
+
+// ─── SNMP Management ─────────────────────────────────────
+
+export interface SnmpConfig {
+  enabled: boolean;
+  community: string;
+  version: string;
+  port: number;
+  timeout_seconds: number;
+  retries: number;
+}
+
+export interface SnmpStatus {
+  available: boolean;
+  config: SnmpConfig;
 }

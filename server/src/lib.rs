@@ -18,6 +18,7 @@ pub mod ssdp;
 pub mod ssh;
 pub mod static_files;
 
+pub mod email;
 pub mod webhook;
 pub mod ws;
 pub mod xiaomi;
