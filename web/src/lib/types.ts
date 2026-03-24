@@ -2117,6 +2117,24 @@ export interface PfsenseDhcpStaticMapping {
   interface: string;
 }
 
+export interface PfsenseDhcpServer {
+  interface: string;
+  enabled: boolean;
+  range_start: string | null;
+  range_end: string | null;
+  gateway: string | null;
+  dns_servers: string[];
+  domain_name: string | null;
+  ntp_servers: string[];
+  default_lease_time: number | null;
+  max_lease_time: number | null;
+}
+
+export interface PfsenseDhcpLogEntry {
+  timestamp: string | null;
+  message: string | null;
+}
+
 export interface PfsenseGateway {
   name: string;
   interface: string;

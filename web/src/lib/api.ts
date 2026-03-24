@@ -82,6 +82,8 @@ import type {
   PfsenseNatRule,
   PfsenseAlias,
   PfsenseDhcpLease,
+  PfsenseDhcpLogEntry,
+  PfsenseDhcpServer,
   PfsenseDhcpStaticMapping,
   PfsenseGateway,
   PfsenseRoute,
@@ -1162,6 +1164,24 @@ export function deletePfsenseDhcpStaticMapping(id: string): Promise<void> {
   return apiDelete(
     `/api/v1/pfsense/dhcp/static-mappings/${encodeURIComponent(id)}`,
   );
+}
+
+export function fetchPfsenseDhcpServers(): Promise<PfsenseDhcpServer[]> {
+  return apiGet<PfsenseDhcpServer[]>("/api/v1/pfsense/dhcp/servers");
+}
+
+export function updatePfsenseDhcpServer(
+  iface: string,
+  body: Partial<Omit<PfsenseDhcpServer, "interface">>,
+): Promise<void> {
+  return apiPut<void>(
+    `/api/v1/pfsense/dhcp/servers/${encodeURIComponent(iface)}`,
+    body,
+  );
+}
+
+export function fetchPfsenseDhcpLogs(): Promise<PfsenseDhcpLogEntry[]> {
+  return apiGet<PfsenseDhcpLogEntry[]>("/api/v1/pfsense/dhcp/logs");
 }
 
 export function fetchPfsenseFirewallRules(): Promise<PfsenseFirewallRule[]> {

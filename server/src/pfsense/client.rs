@@ -371,6 +371,20 @@ impl PfsenseClient {
         self.bridge_data("dhcp_static_delete", Some(&payload))
     }
 
+    pub fn dhcp_servers(&self) -> Result<Vec<PfsenseDhcpServer>> {
+        let val = self.bridge_data("dhcp_servers", None)?;
+        serde_json::from_value(val).context("parse pfSense DHCP servers")
+    }
+
+    pub fn dhcp_server_update(&self, data: &Value) -> Result<Value> {
+        self.bridge_data("dhcp_server_update", Some(data))
+    }
+
+    pub fn dhcp_logs(&self) -> Result<Vec<PfsenseDhcpLogEntry>> {
+        let val = self.bridge_data("dhcp_logs", None)?;
+        serde_json::from_value(val).context("parse pfSense DHCP logs")
+    }
+
     pub fn firewall_rule_create(&self, data: &Value) -> Result<Value> {
         self.bridge_data("firewall_rule_create", Some(data))
     }

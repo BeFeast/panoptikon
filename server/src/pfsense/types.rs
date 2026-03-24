@@ -82,6 +82,28 @@ pub struct PfsenseDhcpStaticMapping {
     pub interface: Option<String>,
 }
 
+/// pfSense DHCP server (per-interface scope).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PfsenseDhcpServer {
+    pub interface: Option<String>,
+    pub enabled: Option<bool>,
+    pub range_start: Option<String>,
+    pub range_end: Option<String>,
+    pub gateway: Option<String>,
+    pub dns_servers: Option<Vec<String>>,
+    pub domain_name: Option<String>,
+    pub ntp_servers: Option<Vec<String>>,
+    pub default_lease_time: Option<u64>,
+    pub max_lease_time: Option<u64>,
+}
+
+/// pfSense DHCP log entry.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PfsenseDhcpLogEntry {
+    pub timestamp: Option<String>,
+    pub message: Option<String>,
+}
+
 /// pfSense firewall filter rule.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PfsenseFirewallRule {

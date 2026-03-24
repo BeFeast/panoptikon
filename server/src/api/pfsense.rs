@@ -135,6 +135,12 @@ pub struct CreateDhcpStaticMappingRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct UpdateDhcpServerRequest {
+    #[serde(flatten)]
+    pub data: Value,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct CreateDnsOverrideRequest {
     #[serde(flatten)]
     pub data: Value,
@@ -648,6 +654,103 @@ pub async fn delete_dhcp_static_mapping(
             Err(StatusCode::BAD_GATEWAY)
         }
     }
+}
+
+/// GET /api/v1/pfsense/dhcp/servers
+pub async fn dhcp_servers(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<PfsenseDhcpServer>>, StatusCode> {
+    let client = pfsense_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.pfsense_cache.get("dhcp_servers") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let result = tokio::task::spawn_blocking(move || client.dhcp_servers())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense DHCP servers error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.pfsense_cache.set("dhcp_servers".into(), val);
+    }
+    Ok(Json(result))
+}
+
+/// PUT /api/v1/pfsense/dhcp/servers/:iface
+pub async fn update_dhcp_server(
+    State(state): State<AppState>,
+    Path(iface): Path<String>,
+    Json(body): Json<UpdateDhcpServerRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = pfsense_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let mut data = body.data;
+    if let Some(obj) = data.as_object_mut() {
+        obj.insert("interface".to_string(), Value::String(iface.clone()));
+    }
+
+    let desc = format!("Update pfSense DHCP server for interface {iface}");
+    let cmds = vec![format!("dhcp_server_update {iface}")];
+
+    match tokio::task::spawn_blocking(move || client.dhcp_server_update(&data))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
+        Ok(_) => {
+            audit::log_success(&state.db, "pfsense_dhcp_server_update", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            audit::log_failure(
+                &state.db,
+                "pfsense_dhcp_server_update",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
+            tracing::error!("pfSense update DHCP server error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// GET /api/v1/pfsense/dhcp/logs
+pub async fn dhcp_logs(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<PfsenseDhcpLogEntry>>, StatusCode> {
+    let client = pfsense_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.pfsense_cache.get("dhcp_logs") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let result = tokio::task::spawn_blocking(move || client.dhcp_logs())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense DHCP logs error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.pfsense_cache.set("dhcp_logs".into(), val);
+    }
+    Ok(Json(result))
 }
 
 /// GET /api/v1/pfsense/firewall/rules
