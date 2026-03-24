@@ -217,14 +217,14 @@ export function Sidebar() {
         className={cn(
           "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
           active
-            ? "bg-blue-500/10 text-blue-500"
+            ? "bg-cyan-500/10 text-cyan-500"
             : "text-slate-400 hover:bg-slate-800/60 hover:text-white",
           sidebarCollapsed && "justify-center px-0",
         )}
       >
         {/* Active accent bar */}
         {active && (
-          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-gradient-to-b from-cyan-400 to-cyan-600" />
         )}
         <Icon className="h-[18px] w-[18px] shrink-0 transition-transform duration-150 group-hover/nav:scale-105" />
         {!sidebarCollapsed && <span>{item.label}</span>}
@@ -262,7 +262,7 @@ export function Sidebar() {
             href="/dashboard"
             className="flex items-center min-w-0"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-500 text-sm font-bold text-white">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-cyan-500 text-sm font-bold text-slate-950">
               P
             </div>
             {!sidebarCollapsed && (
@@ -322,7 +322,7 @@ export function Sidebar() {
                       <span
                         className={cn(
                           "cursor-default select-none text-[11px] font-semibold uppercase tracking-wider",
-                          hasActive ? "text-blue-400" : "text-slate-500",
+                          hasActive ? "text-cyan-400" : "text-slate-500",
                         )}
                       >
                         {group.label}
