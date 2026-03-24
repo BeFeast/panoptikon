@@ -150,6 +150,13 @@ pub async fn login(
 ) -> Result<Response, Response> {
     let client_ip = extract_client_ip(&headers, addr, &state.config.auth.trusted_proxies);
 
+    // Reject passwords below the minimum length early — valid passwords are
+    // always >= 8 characters, so a shorter input can never authenticate.
+    if body.password.len() < 8 {
+        warn!(%client_ip, "Login rejected: password below minimum length");
+        return Err(StatusCode::UNAUTHORIZED.into_response());
+    }
+
     // Atomically check rate limit and reserve a slot. This prevents TOCTOU races
     // where concurrent requests could all pass a separate check() before any
     // record_failure() is called. The slot is cleared on successful login.
