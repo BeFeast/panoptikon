@@ -615,6 +615,23 @@ impl MikrotikClient {
             serde_json::from_value(val).context("failed to parse queue tree")?;
         Ok(res)
     }
+
+    /// Create a queue tree entry.
+    pub async fn create_queue_tree(&self, req: &QueueTreeWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/queue/tree", req).await
+    }
+
+    /// Update a queue tree entry by RouterOS `.id`.
+    pub async fn update_queue_tree(&self, id: &str, req: &QueueTreeWriteRequest) -> Result<()> {
+        self.send_json(Method::PATCH, &format!("/queue/tree/{id}"), req)
+            .await
+    }
+
+    /// Delete a queue tree entry by RouterOS `.id`.
+    pub async fn delete_queue_tree(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/queue/tree/{id}"))
+            .await
+    }
 }
 
 #[cfg(test)]

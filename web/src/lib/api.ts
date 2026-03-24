@@ -1691,6 +1691,28 @@ export function fetchMikrotikQueueTree(): Promise<
   );
 }
 
+export function createMikrotikQueueTree(
+  body: import("./types").MikrotikQueueTreeRequest
+): Promise<void> {
+  return apiPost<void>("/api/v1/qos/mikrotik/queue-tree", body);
+}
+
+export function updateMikrotikQueueTree(
+  id: string,
+  body: import("./types").MikrotikQueueTreeRequest
+): Promise<void> {
+  return apiPut<void>(
+    `/api/v1/qos/mikrotik/queue-tree/${encodeURIComponent(id)}`,
+    body
+  );
+}
+
+export function deleteMikrotikQueueTree(id: string): Promise<void> {
+  return apiDelete(
+    `/api/v1/qos/mikrotik/queue-tree/${encodeURIComponent(id)}`
+  );
+}
+
 // ─── Dynamic DNS (DDNS) ──────────────────────────────────
 
 export function fetchDdnsEntries(): Promise<import("./types").DdnsEntry[]> {
