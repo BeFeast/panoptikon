@@ -10,7 +10,7 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 
-use super::{audit, AppState};
+use super::{audit, AppError, AppState};
 use crate::mikrotik::client::MikrotikClient;
 use crate::mikrotik::types::{
     DhcpNetworkWriteRequest, DhcpServerWriteRequest, DhcpStaticLeaseWriteRequest,
@@ -358,15 +358,19 @@ fn is_true(val: &Option<String>) -> bool {
     val.as_deref() == Some("true")
 }
 
-fn validate_vlan_upsert(body: &MikrotikVlanUpsertRequest) -> Result<(), StatusCode> {
+fn validate_vlan_upsert(body: &MikrotikVlanUpsertRequest) -> Result<(), AppError> {
     if !(1..=4094).contains(&body.vlan_id) {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation(
+            "VLAN ID must be between 1 and 4094".into(),
+        ));
     }
     if body.name.trim().is_empty() || body.interface.trim().is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation(
+            "VLAN name and interface are required".into(),
+        ));
     }
     if matches!(body.mtu, Some(0)) {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("MTU must be greater than 0".into()));
     }
     Ok(())
 }
@@ -380,7 +384,7 @@ fn validate_vlan_upsert(body: &MikrotikVlanUpsertRequest) -> Result<(), StatusCo
 pub async fn test_connection(
     State(state): State<AppState>,
     Json(body): Json<MikrotikTestConnectionRequest>,
-) -> Result<Json<MikrotikStatusResponse>, StatusCode> {
+) -> Result<Json<MikrotikStatusResponse>, AppError> {
     let url = body
         .url
         .as_deref()
@@ -456,7 +460,7 @@ pub async fn test_connection(
 /// GET /api/v1/mikrotik/status
 pub async fn status(
     State(state): State<AppState>,
-) -> Result<Json<MikrotikStatusResponse>, StatusCode> {
+) -> Result<Json<MikrotikStatusResponse>, AppError> {
     let Some(client) = mikrotik_client(&state).await else {
         return Ok(Json(MikrotikStatusResponse {
             configured: false,
@@ -519,10 +523,12 @@ pub async fn status(
 /// GET /api/v1/mikrotik/interfaces
 pub async fn interfaces(
     State(state): State<AppState>,
-) -> Result<Json<Vec<MikrotikInterfaceResponse>>, StatusCode> {
+) -> Result<Json<Vec<MikrotikInterfaceResponse>>, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     if let Some(cached) = state.mikrotik_cache.get("interfaces") {
         if let Ok(resp) = serde_json::from_value(cached) {
@@ -532,7 +538,7 @@ pub async fn interfaces(
 
     let ifaces = client.interfaces().await.map_err(|e| {
         tracing::error!("MikroTik interfaces error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     // Fetch IP addresses to join onto interfaces
@@ -570,10 +576,12 @@ pub async fn interfaces(
 /// GET /api/v1/mikrotik/vlans
 pub async fn vlans(
     State(state): State<AppState>,
-) -> Result<Json<Vec<MikrotikVlanResponse>>, StatusCode> {
+) -> Result<Json<Vec<MikrotikVlanResponse>>, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     if let Some(cached) = state.mikrotik_cache.get("vlans") {
         if let Ok(resp) = serde_json::from_value(cached) {
@@ -583,7 +591,7 @@ pub async fn vlans(
 
     let vlans = client.vlans().await.map_err(|e| {
         tracing::error!("MikroTik VLAN list error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let result: Vec<MikrotikVlanResponse> = vlans
@@ -607,12 +615,14 @@ pub async fn vlans(
 pub async fn create_vlan(
     State(state): State<AppState>,
     Json(body): Json<MikrotikVlanUpsertRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     validate_vlan_upsert(&body)?;
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let req = VlanWriteRequest {
         name: body.name.trim().to_string(),
@@ -623,7 +633,7 @@ pub async fn create_vlan(
 
     client.create_vlan(&req).await.map_err(|e| {
         tracing::error!("MikroTik VLAN create error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -634,16 +644,18 @@ pub async fn update_vlan(
     Path(id): Path<String>,
     State(state): State<AppState>,
     Json(body): Json<MikrotikVlanUpsertRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     validate_vlan_upsert(&body)?;
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("VLAN ID parameter is required".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let req = VlanWriteRequest {
         name: body.name.trim().to_string(),
@@ -654,7 +666,7 @@ pub async fn update_vlan(
 
     client.update_vlan(id, &req).await.map_err(|e| {
         tracing::error!("MikroTik VLAN update error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -664,19 +676,21 @@ pub async fn update_vlan(
 pub async fn delete_vlan(
     Path(id): Path<String>,
     State(state): State<AppState>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("VLAN ID parameter is required".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     client.delete_vlan(id).await.map_err(|e| {
         tracing::error!("MikroTik VLAN delete error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -685,10 +699,12 @@ pub async fn delete_vlan(
 /// GET /api/v1/mikrotik/routes
 pub async fn routes(
     State(state): State<AppState>,
-) -> Result<Json<Vec<MikrotikRouteResponse>>, StatusCode> {
+) -> Result<Json<Vec<MikrotikRouteResponse>>, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     if let Some(cached) = state.mikrotik_cache.get("routes") {
         if let Ok(resp) = serde_json::from_value(cached) {
@@ -698,7 +714,7 @@ pub async fn routes(
 
     let routes = client.ip_routes().await.map_err(|e| {
         tracing::error!("MikroTik routes error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let result: Vec<MikrotikRouteResponse> = routes
@@ -724,10 +740,12 @@ pub async fn routes(
 /// GET /api/v1/mikrotik/dhcp-leases
 pub async fn dhcp_leases(
     State(state): State<AppState>,
-) -> Result<Json<Vec<MikrotikDhcpLeaseResponse>>, StatusCode> {
+) -> Result<Json<Vec<MikrotikDhcpLeaseResponse>>, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     if let Some(cached) = state.mikrotik_cache.get("dhcp-leases") {
         if let Ok(resp) = serde_json::from_value(cached) {
@@ -737,7 +755,7 @@ pub async fn dhcp_leases(
 
     let leases = client.dhcp_leases().await.map_err(|e| {
         tracing::error!("MikroTik DHCP leases error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let result: Vec<MikrotikDhcpLeaseResponse> = leases
@@ -764,10 +782,12 @@ pub async fn dhcp_leases(
 /// GET /api/v1/mikrotik/firewall
 pub async fn firewall(
     State(state): State<AppState>,
-) -> Result<Json<MikrotikFirewallResponse>, StatusCode> {
+) -> Result<Json<MikrotikFirewallResponse>, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     if let Some(cached) = state.mikrotik_cache.get("firewall") {
         if let Ok(resp) = serde_json::from_value(cached) {
@@ -844,10 +864,12 @@ pub async fn firewall(
 }
 
 /// GET /api/v1/mikrotik/dns
-pub async fn dns(State(state): State<AppState>) -> Result<Json<MikrotikDnsResponse>, StatusCode> {
+pub async fn dns(State(state): State<AppState>) -> Result<Json<MikrotikDnsResponse>, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     if let Some(cached) = state.mikrotik_cache.get("dns") {
         if let Ok(resp) = serde_json::from_value(cached) {
@@ -857,7 +879,7 @@ pub async fn dns(State(state): State<AppState>) -> Result<Json<MikrotikDnsRespon
 
     let dns = client.dns().await.map_err(|e| {
         tracing::error!("MikroTik DNS error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let servers: Vec<String> = dns
@@ -884,10 +906,12 @@ pub async fn dns(State(state): State<AppState>) -> Result<Json<MikrotikDnsRespon
 /// GET /api/v1/mikrotik/wireguard
 pub async fn wireguard(
     State(state): State<AppState>,
-) -> Result<Json<MikrotikWireguardResponse>, StatusCode> {
+) -> Result<Json<MikrotikWireguardResponse>, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     if let Some(cached) = state.mikrotik_cache.get("wireguard") {
         if let Ok(resp) = serde_json::from_value(cached) {
@@ -971,10 +995,12 @@ fn to_filter_write(body: &MikrotikFirewallFilterRequest) -> FirewallFilterWriteR
 pub async fn create_firewall_filter(
     State(state): State<AppState>,
     Json(body): Json<MikrotikFirewallFilterRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let req = to_filter_write(&body);
     let desc = format!(
@@ -999,7 +1025,7 @@ pub async fn create_firewall_filter(
             )
             .await;
             tracing::error!("MikroTik firewall filter create error: {e}");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(msg))
         }
     }
 }
@@ -1009,15 +1035,17 @@ pub async fn update_firewall_filter(
     Path(id): Path<String>,
     State(state): State<AppState>,
     Json(body): Json<MikrotikFirewallFilterRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("Filter rule ID is required".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let req = to_filter_write(&body);
     let desc = format!("Update MikroTik filter rule {id}");
@@ -1039,7 +1067,7 @@ pub async fn update_firewall_filter(
             )
             .await;
             tracing::error!("MikroTik firewall filter update error: {e}");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(msg))
         }
     }
 }
@@ -1048,15 +1076,17 @@ pub async fn update_firewall_filter(
 pub async fn delete_firewall_filter(
     Path(id): Path<String>,
     State(state): State<AppState>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("Filter rule ID is required".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let desc = format!("Delete MikroTik filter rule {id}");
     let cmds = vec![format!("DELETE /ip/firewall/filter/{id}")];
@@ -1077,7 +1107,7 @@ pub async fn delete_firewall_filter(
             )
             .await;
             tracing::error!("MikroTik firewall filter delete error: {e}");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(msg))
         }
     }
 }
@@ -1087,15 +1117,17 @@ pub async fn toggle_firewall_filter(
     Path(id): Path<String>,
     State(state): State<AppState>,
     Json(body): Json<MikrotikToggleRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("Filter rule ID is required".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let label = if body.disabled { "disable" } else { "enable" };
     let desc = format!("{label} MikroTik filter rule {id}");
@@ -1120,7 +1152,7 @@ pub async fn toggle_firewall_filter(
             )
             .await;
             tracing::error!("MikroTik firewall filter toggle error: {e}");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(msg))
         }
     }
 }
@@ -1129,14 +1161,16 @@ pub async fn toggle_firewall_filter(
 pub async fn move_filter(
     State(state): State<AppState>,
     Json(body): Json<MoveFilterRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     if body.id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("Filter rule ID is required".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let dest_label = body.destination.as_deref().unwrap_or("end");
     let desc = format!("move MikroTik filter rule {} before {dest_label}", body.id);
@@ -1167,7 +1201,7 @@ pub async fn move_filter(
             )
             .await;
             tracing::error!("MikroTik firewall filter move error: {e}");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(msg))
         }
     }
 }
@@ -1197,10 +1231,12 @@ fn to_nat_write(body: &MikrotikFirewallNatRequest) -> FirewallNatWriteRequest {
 pub async fn create_firewall_nat(
     State(state): State<AppState>,
     Json(body): Json<MikrotikFirewallNatRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let req = to_nat_write(&body);
     let desc = format!(
@@ -1225,7 +1261,7 @@ pub async fn create_firewall_nat(
             )
             .await;
             tracing::error!("MikroTik firewall NAT create error: {e}");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(msg))
         }
     }
 }
@@ -1235,15 +1271,17 @@ pub async fn update_firewall_nat(
     Path(id): Path<String>,
     State(state): State<AppState>,
     Json(body): Json<MikrotikFirewallNatRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("NAT rule ID is required".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let req = to_nat_write(&body);
     let desc = format!("Update MikroTik NAT rule {id}");
@@ -1265,7 +1303,7 @@ pub async fn update_firewall_nat(
             )
             .await;
             tracing::error!("MikroTik firewall NAT update error: {e}");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(msg))
         }
     }
 }
@@ -1274,15 +1312,17 @@ pub async fn update_firewall_nat(
 pub async fn delete_firewall_nat(
     Path(id): Path<String>,
     State(state): State<AppState>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("NAT rule ID is required".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let desc = format!("Delete MikroTik NAT rule {id}");
     let cmds = vec![format!("DELETE /ip/firewall/nat/{id}")];
@@ -1303,7 +1343,7 @@ pub async fn delete_firewall_nat(
             )
             .await;
             tracing::error!("MikroTik firewall NAT delete error: {e}");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(msg))
         }
     }
 }
@@ -1313,15 +1353,17 @@ pub async fn toggle_firewall_nat(
     Path(id): Path<String>,
     State(state): State<AppState>,
     Json(body): Json<MikrotikToggleRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("NAT rule ID is required".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let label = if body.disabled { "disable" } else { "enable" };
     let desc = format!("{label} MikroTik NAT rule {id}");
@@ -1346,7 +1388,7 @@ pub async fn toggle_firewall_nat(
             )
             .await;
             tracing::error!("MikroTik firewall NAT toggle error: {e}");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(msg))
         }
     }
 }
@@ -1357,10 +1399,12 @@ pub async fn toggle_firewall_nat(
 pub async fn create_address_list(
     State(state): State<AppState>,
     Json(body): Json<MikrotikAddressListRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let req = FirewallAddressListWriteRequest {
         list: body.list.clone(),
@@ -1400,7 +1444,7 @@ pub async fn create_address_list(
             )
             .await;
             tracing::error!("MikroTik address list create error: {e}");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(msg))
         }
     }
 }
@@ -1410,15 +1454,19 @@ pub async fn update_address_list(
     Path(id): Path<String>,
     State(state): State<AppState>,
     Json(body): Json<MikrotikAddressListRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation(
+            "Address list entry ID is required".into(),
+        ));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let req = FirewallAddressListWriteRequest {
         list: body.list.clone(),
@@ -1452,7 +1500,7 @@ pub async fn update_address_list(
             )
             .await;
             tracing::error!("MikroTik address list update error: {e}");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(msg))
         }
     }
 }
@@ -1462,15 +1510,19 @@ pub async fn toggle_address_list(
     Path(id): Path<String>,
     State(state): State<AppState>,
     Json(body): Json<MikrotikToggleRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation(
+            "Address list entry ID is required".into(),
+        ));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let label = if body.disabled { "disable" } else { "enable" };
     let desc = format!("{label} MikroTik address list entry {id}");
@@ -1501,7 +1553,7 @@ pub async fn toggle_address_list(
             )
             .await;
             tracing::error!("MikroTik address list toggle error: {e}");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(msg))
         }
     }
 }
@@ -1510,15 +1562,19 @@ pub async fn toggle_address_list(
 pub async fn delete_address_list(
     Path(id): Path<String>,
     State(state): State<AppState>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation(
+            "Address list entry ID is required".into(),
+        ));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let desc = format!("Delete MikroTik address list entry {id}");
     let cmds = vec![format!("DELETE /ip/firewall/address-list/{id}")];
@@ -1545,7 +1601,7 @@ pub async fn delete_address_list(
             )
             .await;
             tracing::error!("MikroTik address list delete error: {e}");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(msg))
         }
     }
 }
@@ -1554,10 +1610,12 @@ pub async fn delete_address_list(
 pub async fn create_dhcp_static_mapping(
     State(state): State<AppState>,
     Json(body): Json<MikrotikCreateDhcpStaticRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let req = DhcpStaticLeaseWriteRequest {
         address: body.address.clone(),
@@ -1583,7 +1641,7 @@ pub async fn create_dhcp_static_mapping(
             let msg = e.to_string();
             audit::log_failure(&state.db, "mikrotik_dhcp_static_create", &desc, &cmds, &msg).await;
             tracing::error!("MikroTik DHCP static mapping create error: {e}");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(msg))
         }
     }
 }
@@ -1592,15 +1650,17 @@ pub async fn create_dhcp_static_mapping(
 pub async fn delete_dhcp_lease(
     Path(id): Path<String>,
     State(state): State<AppState>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("DHCP lease ID is required".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let desc = format!("Delete MikroTik DHCP lease {id}");
     let cmds = vec![format!("DELETE /ip/dhcp-server/lease/{id}")];
@@ -1614,7 +1674,7 @@ pub async fn delete_dhcp_lease(
             let msg = e.to_string();
             audit::log_failure(&state.db, "mikrotik_dhcp_lease_delete", &desc, &cmds, &msg).await;
             tracing::error!("MikroTik DHCP lease delete error: {e}");
-            Err(StatusCode::BAD_GATEWAY)
+            Err(AppError::BadGateway(msg))
         }
     }
 }
@@ -2121,10 +2181,12 @@ pub struct MikrotikRoutingTableResponse {
 /// GET /api/v1/mikrotik/routing/mangle
 pub async fn routing_mangle(
     State(state): State<AppState>,
-) -> Result<Json<Vec<MikrotikMangleResponse>>, StatusCode> {
+) -> Result<Json<Vec<MikrotikMangleResponse>>, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     if let Some(cached) = state.mikrotik_cache.get("mangle") {
         if let Ok(resp) = serde_json::from_value(cached) {
@@ -2134,7 +2196,7 @@ pub async fn routing_mangle(
 
     let rules = client.firewall_mangle().await.map_err(|e| {
         tracing::error!("MikroTik mangle rules error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let result: Vec<MikrotikMangleResponse> = rules
@@ -2171,10 +2233,12 @@ pub async fn routing_mangle(
 pub async fn create_mangle(
     State(state): State<AppState>,
     Json(body): Json<MikrotikMangleRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let req = FirewallMangleWriteRequest {
         chain: body.chain.clone(),
@@ -2200,7 +2264,7 @@ pub async fn create_mangle(
 
     client.create_firewall_mangle(&req).await.map_err(|e| {
         tracing::error!("MikroTik mangle create error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -2210,19 +2274,21 @@ pub async fn create_mangle(
 pub async fn delete_mangle(
     Path(id): Path<String>,
     State(state): State<AppState>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("Mangle rule ID is required".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     client.delete_firewall_mangle(id).await.map_err(|e| {
         tracing::error!("MikroTik mangle delete error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -2231,10 +2297,12 @@ pub async fn delete_mangle(
 /// GET /api/v1/mikrotik/routing/rules
 pub async fn routing_rules(
     State(state): State<AppState>,
-) -> Result<Json<Vec<MikrotikRoutingRuleResponse>>, StatusCode> {
+) -> Result<Json<Vec<MikrotikRoutingRuleResponse>>, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     if let Some(cached) = state.mikrotik_cache.get("routing-rules") {
         if let Ok(resp) = serde_json::from_value(cached) {
@@ -2244,7 +2312,7 @@ pub async fn routing_rules(
 
     let rules = client.routing_rules().await.map_err(|e| {
         tracing::error!("MikroTik routing rules error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let result: Vec<MikrotikRoutingRuleResponse> = rules
@@ -2271,10 +2339,12 @@ pub async fn routing_rules(
 pub async fn create_routing_rule(
     State(state): State<AppState>,
     Json(body): Json<MikrotikRoutingRuleRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let req = RoutingRuleWriteRequest {
         dst_address: body.dst_address,
@@ -2290,7 +2360,7 @@ pub async fn create_routing_rule(
 
     client.create_routing_rule(&req).await.map_err(|e| {
         tracing::error!("MikroTik routing rule create error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -2300,19 +2370,21 @@ pub async fn create_routing_rule(
 pub async fn delete_routing_rule(
     Path(id): Path<String>,
     State(state): State<AppState>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("Routing rule ID is required".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     client.delete_routing_rule(id).await.map_err(|e| {
         tracing::error!("MikroTik routing rule delete error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -2321,10 +2393,12 @@ pub async fn delete_routing_rule(
 /// GET /api/v1/mikrotik/routing/tables
 pub async fn routing_tables(
     State(state): State<AppState>,
-) -> Result<Json<Vec<MikrotikRoutingTableResponse>>, StatusCode> {
+) -> Result<Json<Vec<MikrotikRoutingTableResponse>>, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     if let Some(cached) = state.mikrotik_cache.get("routing-tables") {
         if let Ok(resp) = serde_json::from_value(cached) {
@@ -2334,7 +2408,7 @@ pub async fn routing_tables(
 
     let tables = client.routing_tables().await.map_err(|e| {
         tracing::error!("MikroTik routing tables error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let result: Vec<MikrotikRoutingTableResponse> = tables
@@ -2382,10 +2456,12 @@ pub struct MikrotikNetwatchRequest {
 /// GET /api/v1/mikrotik/routing/netwatch
 pub async fn routing_netwatch(
     State(state): State<AppState>,
-) -> Result<Json<Vec<MikrotikNetwatchResponse>>, StatusCode> {
+) -> Result<Json<Vec<MikrotikNetwatchResponse>>, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     if let Some(cached) = state.mikrotik_cache.get("netwatch") {
         if let Ok(resp) = serde_json::from_value(cached) {
@@ -2395,7 +2471,7 @@ pub async fn routing_netwatch(
 
     let entries = client.netwatch().await.map_err(|e| {
         tracing::error!("MikroTik netwatch error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let result: Vec<MikrotikNetwatchResponse> = entries
@@ -2423,10 +2499,12 @@ pub async fn routing_netwatch(
 pub async fn create_netwatch(
     State(state): State<AppState>,
     Json(body): Json<MikrotikNetwatchRequest>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     let req = NetwatchWriteRequest {
         host: body.host,
@@ -2441,7 +2519,7 @@ pub async fn create_netwatch(
 
     client.create_netwatch(&req).await.map_err(|e| {
         tracing::error!("MikroTik netwatch create error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -2451,19 +2529,21 @@ pub async fn create_netwatch(
 pub async fn delete_netwatch(
     Path(id): Path<String>,
     State(state): State<AppState>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let id = id.trim();
     if id.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation("Netwatch entry ID is required".into()));
     }
 
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     client.delete_netwatch(id).await.map_err(|e| {
         tracing::error!("MikroTik netwatch delete error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -2514,10 +2594,12 @@ pub struct MikrotikDynamicRoutingResponse {
 /// GET /api/v1/mikrotik/routing/dynamic
 pub async fn routing_dynamic(
     State(state): State<AppState>,
-) -> Result<Json<MikrotikDynamicRoutingResponse>, StatusCode> {
+) -> Result<Json<MikrotikDynamicRoutingResponse>, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     if let Some(cached) = state.mikrotik_cache.get("dynamic-routing") {
         if let Ok(resp) = serde_json::from_value(cached) {
@@ -2593,10 +2675,12 @@ pub struct MikrotikIpv6NdResponse {
 /// GET /api/v1/mikrotik/routing/ipv6-nd
 pub async fn routing_ipv6_nd(
     State(state): State<AppState>,
-) -> Result<Json<Vec<MikrotikIpv6NdResponse>>, StatusCode> {
+) -> Result<Json<Vec<MikrotikIpv6NdResponse>>, AppError> {
     let client = mikrotik_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable(
+            "MikroTik not configured".into(),
+        ))?;
 
     if let Some(cached) = state.mikrotik_cache.get("ipv6-nd") {
         if let Ok(resp) = serde_json::from_value(cached) {
@@ -2606,7 +2690,7 @@ pub async fn routing_ipv6_nd(
 
     let entries = client.ipv6_nd().await.map_err(|e| {
         tracing::error!("MikroTik IPv6 ND error: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let result: Vec<MikrotikIpv6NdResponse> = entries

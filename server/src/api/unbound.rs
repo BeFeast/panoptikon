@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use tracing::{error, info, warn};
 
+use super::AppError;
 use super::AppState;
 
 // ─── DTOs ──────────────────────────────────────────────────
@@ -125,7 +126,7 @@ async fn sync_to_unbound(state: &AppState) {
 }
 
 /// Fetch a single DNS record by ID.
-async fn fetch_record_by_id(state: &AppState, id: &str) -> Result<UnboundDnsRecord, StatusCode> {
+async fn fetch_record_by_id(state: &AppState, id: &str) -> Result<UnboundDnsRecord, AppError> {
     let row = sqlx::query(
         "SELECT id, hostname, ip_address, enabled, created_at, updated_at \
          FROM unbound_dns_records WHERE id = ?",
@@ -135,9 +136,9 @@ async fn fetch_record_by_id(state: &AppState, id: &str) -> Result<UnboundDnsReco
     .await
     .map_err(|e| {
         error!("Failed to fetch DNS record: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?
-    .ok_or(StatusCode::NOT_FOUND)?;
+    .ok_or(AppError::NotFound)?;
 
     Ok(UnboundDnsRecord {
         id: row.get("id"),
@@ -152,9 +153,7 @@ async fn fetch_record_by_id(state: &AppState, id: &str) -> Result<UnboundDnsReco
 // ─── Handlers ──────────────────────────────────────────────
 
 /// GET /api/v1/unbound/dns-records — list all DNS records.
-pub async fn list(
-    State(state): State<AppState>,
-) -> Result<Json<Vec<UnboundDnsRecord>>, StatusCode> {
+pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<UnboundDnsRecord>>, AppError> {
     let rows = sqlx::query(
         "SELECT id, hostname, ip_address, enabled, created_at, updated_at \
          FROM unbound_dns_records ORDER BY hostname",
@@ -163,7 +162,7 @@ pub async fn list(
     .await
     .map_err(|e| {
         error!("Failed to list DNS records: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let records: Vec<UnboundDnsRecord> = rows
@@ -185,7 +184,7 @@ pub async fn list(
 pub async fn create(
     State(state): State<AppState>,
     Json(body): Json<UnboundDnsRecordRequest>,
-) -> Result<(StatusCode, Json<UnboundDnsRecord>), StatusCode> {
+) -> Result<(StatusCode, Json<UnboundDnsRecord>), AppError> {
     let id = uuid::Uuid::new_v4().to_string();
 
     sqlx::query("INSERT INTO unbound_dns_records (id, hostname, ip_address) VALUES (?, ?, ?)")
@@ -196,7 +195,7 @@ pub async fn create(
         .await
         .map_err(|e| {
             error!("Failed to create DNS record: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     sync_to_unbound(&state).await;
@@ -210,7 +209,7 @@ pub async fn update(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<UnboundDnsRecordRequest>,
-) -> Result<Json<UnboundDnsRecord>, StatusCode> {
+) -> Result<Json<UnboundDnsRecord>, AppError> {
     let affected = sqlx::query(
         "UPDATE unbound_dns_records \
          SET hostname = ?, ip_address = ?, updated_at = datetime('now') \
@@ -223,12 +222,12 @@ pub async fn update(
     .await
     .map_err(|e| {
         error!("Failed to update DNS record: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?
     .rows_affected();
 
     if affected == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     sync_to_unbound(&state).await;
@@ -241,19 +240,19 @@ pub async fn update(
 pub async fn delete(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let affected = sqlx::query("DELETE FROM unbound_dns_records WHERE id = ?")
         .bind(&id)
         .execute(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to delete DNS record: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?
         .rows_affected();
 
     if affected == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     sync_to_unbound(&state).await;
@@ -266,7 +265,7 @@ pub async fn toggle(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Json(body): Json<ToggleRequest>,
-) -> Result<Json<UnboundDnsRecord>, StatusCode> {
+) -> Result<Json<UnboundDnsRecord>, AppError> {
     let affected = sqlx::query(
         "UPDATE unbound_dns_records SET enabled = ?, updated_at = datetime('now') WHERE id = ?",
     )
@@ -276,12 +275,12 @@ pub async fn toggle(
     .await
     .map_err(|e| {
         error!("Failed to toggle DNS record: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?
     .rows_affected();
 
     if affected == 0 {
-        return Err(StatusCode::NOT_FOUND);
+        return Err(AppError::NotFound);
     }
 
     sync_to_unbound(&state).await;

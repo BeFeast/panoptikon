@@ -6,7 +6,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tracing::{error, info, warn};
 
-use super::AppState;
+use super::{AppError, AppState};
 
 // ─── Cloudflare API base URL ────────────────────────────────
 const CF_API_BASE: &str = "https://api.cloudflare.com/client/v4";
@@ -201,15 +201,15 @@ pub async fn status(State(state): State<AppState>) -> Json<TunnelStatus> {
 /// Returns the hostname → service mapping from the tunnel configuration.
 pub async fn list_routes(
     State(state): State<AppState>,
-) -> Result<Json<TunnelRoutesResponse>, StatusCode> {
+) -> Result<Json<TunnelRoutesResponse>, AppError> {
     let config = load_cf_config(&state).await.ok_or_else(|| {
         warn!("Cloudflare tunnel not configured");
-        StatusCode::BAD_REQUEST
+        AppError::Validation("Cloudflare tunnel not configured".into())
     })?;
 
     let routes = fetch_ingress_routes(&config).await.map_err(|e| {
         error!("Failed to fetch tunnel routes: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     Ok(Json(TunnelRoutesResponse { routes }))
@@ -221,16 +221,16 @@ pub async fn list_routes(
 pub async fn add_route(
     State(state): State<AppState>,
     Json(body): Json<AddRouteRequest>,
-) -> Result<(StatusCode, Json<TunnelWriteResponse>), StatusCode> {
+) -> Result<(StatusCode, Json<TunnelWriteResponse>), AppError> {
     let config = load_cf_config(&state).await.ok_or_else(|| {
         warn!("Cloudflare tunnel not configured");
-        StatusCode::BAD_REQUEST
+        AppError::Validation("Cloudflare tunnel not configured".into())
     })?;
 
     // Fetch current configuration.
     let mut routes = fetch_ingress_routes(&config).await.map_err(|e| {
         error!("Failed to fetch tunnel config: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     // Check for duplicate hostname.
@@ -257,7 +257,7 @@ pub async fn add_route(
     // Write back to Cloudflare.
     write_ingress_routes(&config, &routes).await.map_err(|e| {
         error!("Failed to update tunnel config: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     info!(
@@ -281,16 +281,16 @@ pub async fn add_route(
 pub async fn delete_route(
     State(state): State<AppState>,
     Path(hostname): Path<String>,
-) -> Result<Json<TunnelWriteResponse>, StatusCode> {
+) -> Result<Json<TunnelWriteResponse>, AppError> {
     let config = load_cf_config(&state).await.ok_or_else(|| {
         warn!("Cloudflare tunnel not configured");
-        StatusCode::BAD_REQUEST
+        AppError::Validation("Cloudflare tunnel not configured".into())
     })?;
 
     // Fetch current configuration.
     let mut routes = fetch_ingress_routes(&config).await.map_err(|e| {
         error!("Failed to fetch tunnel config: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let original_len = routes.len();
@@ -306,7 +306,7 @@ pub async fn delete_route(
     // Write back to Cloudflare.
     write_ingress_routes(&config, &routes).await.map_err(|e| {
         error!("Failed to update tunnel config: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     info!(hostname = %hostname, "Removed Cloudflare Tunnel route");
@@ -324,16 +324,16 @@ pub async fn update_route(
     State(state): State<AppState>,
     Path(old_hostname): Path<String>,
     Json(body): Json<UpdateRouteRequest>,
-) -> Result<Json<TunnelWriteResponse>, StatusCode> {
+) -> Result<Json<TunnelWriteResponse>, AppError> {
     let config = load_cf_config(&state).await.ok_or_else(|| {
         warn!("Cloudflare tunnel not configured");
-        StatusCode::BAD_REQUEST
+        AppError::Validation("Cloudflare tunnel not configured".into())
     })?;
 
     // Fetch current configuration.
     let mut routes = fetch_ingress_routes(&config).await.map_err(|e| {
         error!("Failed to fetch tunnel config: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     // Find the route to update.
@@ -370,7 +370,7 @@ pub async fn update_route(
     // Write back to Cloudflare.
     write_ingress_routes(&config, &routes).await.map_err(|e| {
         error!("Failed to update tunnel config: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     info!(

@@ -3,10 +3,10 @@
 //! Provides a unified view of VPN tunnel status from MikroTik
 //! routers — WireGuard peer connectivity, handshake recency, and transfer stats.
 
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::State, Json};
 use serde::Serialize;
 
-use super::AppState;
+use super::{AppError, AppState};
 use crate::mikrotik::client::MikrotikClient;
 
 // ── Helpers ─────────────────────────────────────────────────
@@ -93,7 +93,7 @@ pub struct VpnStatusResponse {
 /// GET /api/v1/vpn-status
 pub async fn vpn_status(
     State(state): State<AppState>,
-) -> Result<Json<VpnStatusResponse>, StatusCode> {
+) -> Result<Json<VpnStatusResponse>, AppError> {
     let mikrotik = mikrotik_client(&state).await;
     // mikrotik_available is determined after we check for WireGuard interfaces
     let mut mikrotik_available = false;

@@ -1,12 +1,11 @@
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
     Json,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
-use super::AppState;
+use super::{AppError, AppState};
 
 /// A single audit log entry.
 #[derive(Debug, Serialize, Deserialize)]
@@ -41,7 +40,7 @@ pub struct AuditLogQuery {
 pub async fn list(
     State(state): State<AppState>,
     Query(params): Query<AuditLogQuery>,
-) -> Result<Json<AuditLogListResponse>, StatusCode> {
+) -> Result<Json<AuditLogListResponse>, AppError> {
     let page = params.page.unwrap_or(1).max(1);
     let per_page = params.per_page.unwrap_or(25).clamp(1, 100);
     let offset = (page - 1) * per_page;
@@ -53,7 +52,7 @@ pub async fn list(
             .await
             .map_err(|e| {
                 tracing::error!("audit_log count query failed: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?;
 
         let rows = sqlx::query_as::<_, AuditLogRow>(
@@ -67,7 +66,7 @@ pub async fn list(
         .await
         .map_err(|e| {
             tracing::error!("audit_log list query failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
         (rows, total)
@@ -77,7 +76,7 @@ pub async fn list(
             .await
             .map_err(|e| {
                 tracing::error!("audit_log count query failed: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?;
 
         let rows = sqlx::query_as::<_, AuditLogRow>(
@@ -90,7 +89,7 @@ pub async fn list(
         .await
         .map_err(|e| {
             tracing::error!("audit_log list query failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
         (rows, total)
@@ -118,14 +117,14 @@ pub async fn list(
 }
 
 /// GET /api/v1/audit-log/actions — list distinct action types for filter dropdown.
-pub async fn actions(State(state): State<AppState>) -> Result<Json<Vec<String>>, StatusCode> {
+pub async fn actions(State(state): State<AppState>) -> Result<Json<Vec<String>>, AppError> {
     let rows: Vec<(String,)> =
         sqlx::query_as("SELECT DISTINCT action FROM audit_log ORDER BY action")
             .fetch_all(&state.db)
             .await
             .map_err(|e| {
                 tracing::error!("audit_log actions query failed: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR
+                AppError::Internal(e.to_string())
             })?;
 
     Ok(Json(rows.into_iter().map(|(a,)| a).collect()))

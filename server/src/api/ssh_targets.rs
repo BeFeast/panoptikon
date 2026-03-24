@@ -186,13 +186,13 @@ const GET_ONE_QUERY: &str = "\
 // ─── Handlers ────────────────────────────────────────────
 
 /// GET /api/v1/ssh-targets — list all SSH targets with latest report.
-pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<SshTarget>>, StatusCode> {
+pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<SshTarget>>, AppError> {
     let rows = sqlx::query(LIST_QUERY)
         .fetch_all(&state.db)
         .await
         .map_err(|e| {
             error!("Failed to list SSH targets: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     let targets: Vec<SshTarget> = rows
@@ -365,7 +365,7 @@ pub async fn list_reports(
     State(state): State<AppState>,
     Path(id): Path<String>,
     Query(params): Query<ReportsQuery>,
-) -> Result<Json<Vec<SshReportRow>>, StatusCode> {
+) -> Result<Json<Vec<SshReportRow>>, AppError> {
     let limit = params.limit.clamp(1, 500);
 
     let rows = sqlx::query(
@@ -379,7 +379,7 @@ pub async fn list_reports(
     .await
     .map_err(|e| {
         error!("Failed to list SSH reports for {id}: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?;
 
     let reports: Vec<SshReportRow> = rows

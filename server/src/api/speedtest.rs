@@ -1,13 +1,12 @@
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
     Json,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use tracing::error;
 
-use super::AppState;
+use super::{AppError, AppState};
 
 /// A single row from the speedtest_history table.
 #[derive(Debug, Serialize, Deserialize)]
@@ -42,7 +41,7 @@ pub struct HistoryQuery {
 pub async fn history(
     State(state): State<AppState>,
     Query(params): Query<HistoryQuery>,
-) -> Result<Json<SpeedTestHistoryResponse>, StatusCode> {
+) -> Result<Json<SpeedTestHistoryResponse>, AppError> {
     let limit = params.limit.unwrap_or(20).min(100);
     let offset = params.offset.unwrap_or(0);
 
@@ -51,7 +50,7 @@ pub async fn history(
         .await
         .map_err(|e| {
             error!("speedtest history count failed: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR
+            AppError::Internal(e.to_string())
         })?;
 
     let items = sqlx::query_as::<_, (i64, String, f64, f64, f64, f64, f64, String, String, Option<String>)>(
@@ -66,7 +65,7 @@ pub async fn history(
     .await
     .map_err(|e| {
         error!("speedtest history query failed: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR
+        AppError::Internal(e.to_string())
     })?
     .into_iter()
     .map(|(id, tested_at, download_mbps, upload_mbps, ping_ms, jitter_ms, packet_loss, isp, server_name, result_url)| {

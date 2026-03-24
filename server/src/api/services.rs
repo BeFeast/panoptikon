@@ -4,12 +4,12 @@
 //! port-forward (dst-nat) rules in a single API call with per-step
 //! status reporting.
 
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
 use super::audit;
-use super::AppState;
+use super::{AppError, AppState};
 
 // ─── Add Service ────────────────────────────────────────────────
 
@@ -71,39 +71,20 @@ pub struct AddServiceResponse {
     pub steps: Vec<StepResult>,
 }
 
-/// JSON error body.
-#[derive(Serialize)]
-pub struct ErrorBody {
-    error: String,
-}
-
-fn error_response(status: StatusCode, msg: String) -> (StatusCode, Json<ErrorBody>) {
-    (status, Json(ErrorBody { error: msg }))
-}
-
 /// POST /api/v1/services/add — unified service provisioning wizard.
 pub async fn add_service(
     State(state): State<AppState>,
     Json(body): Json<AddServiceRequest>,
-) -> Result<Json<AddServiceResponse>, (StatusCode, Json<ErrorBody>)> {
+) -> Result<Json<AddServiceResponse>, AppError> {
     // Validate required fields
     if body.name.trim().is_empty() {
-        return Err(error_response(
-            StatusCode::BAD_REQUEST,
-            "Service name is required".into(),
-        ));
+        return Err(AppError::Validation("Service name is required".into()));
     }
     if body.internal_ip.trim().is_empty() {
-        return Err(error_response(
-            StatusCode::BAD_REQUEST,
-            "Internal IP is required".into(),
-        ));
+        return Err(AppError::Validation("Internal IP is required".into()));
     }
     if body.internal_port == 0 {
-        return Err(error_response(
-            StatusCode::BAD_REQUEST,
-            "Internal port must be > 0".into(),
-        ));
+        return Err(AppError::Validation("Internal port must be > 0".into()));
     }
 
     // Check that at least one operation is requested
@@ -111,8 +92,7 @@ pub async fn add_service(
     let has_pf = body.create_port_forward;
 
     if !has_caddy && !has_pf {
-        return Err(error_response(
-            StatusCode::BAD_REQUEST,
+        return Err(AppError::Validation(
             "At least one operation must be requested (Caddy proxy host or MikroTik port-forward)"
                 .into(),
         ));
@@ -391,12 +371,9 @@ pub struct RemoveServiceResponse {
 pub async fn remove_service(
     State(state): State<AppState>,
     Json(body): Json<RemoveServiceRequest>,
-) -> Result<Json<RemoveServiceResponse>, (StatusCode, Json<ErrorBody>)> {
+) -> Result<Json<RemoveServiceResponse>, AppError> {
     if body.resources.is_empty() {
-        return Err(error_response(
-            StatusCode::BAD_REQUEST,
-            "No resources to remove".into(),
-        ));
+        return Err(AppError::Validation("No resources to remove".into()));
     }
 
     let mut steps: Vec<StepResult> = Vec::new();

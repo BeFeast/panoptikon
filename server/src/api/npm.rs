@@ -6,6 +6,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
+use super::AppError;
 use super::AppState;
 use crate::npm::client::{
     NpmAccessListClientPayload, NpmAccessListPayload, NpmCertificate, NpmClient,
@@ -64,14 +65,14 @@ pub struct ProxyHostSummary {
 /// GET /api/v1/npm/proxy-hosts — list all proxy hosts from NPM.
 pub async fn proxy_hosts(
     State(state): State<AppState>,
-) -> Result<Json<Vec<ProxyHostSummary>>, StatusCode> {
+) -> Result<Json<Vec<ProxyHostSummary>>, AppError> {
     let client = get_npm_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let hosts = client.list_proxy_hosts().await.map_err(|e| {
         error!("NPM list proxy hosts failed: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let summaries: Vec<ProxyHostSummary> = hosts
@@ -152,29 +153,19 @@ impl From<ProxyHostRequest> for NpmProxyHostPayload {
     }
 }
 
-/// JSON error body returned on NPM API failures.
-#[derive(Serialize)]
-pub struct ErrorBody {
-    error: String,
-}
-
-fn error_response(status: StatusCode, msg: String) -> (StatusCode, Json<ErrorBody>) {
-    (status, Json(ErrorBody { error: msg }))
-}
-
 /// POST /api/v1/npm/proxy-hosts — create a new proxy host.
 pub async fn create_proxy_host(
     State(state): State<AppState>,
     Json(body): Json<ProxyHostRequest>,
-) -> Result<Json<ProxyHostSummary>, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<Json<ProxyHostSummary>, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let payload: NpmProxyHostPayload = body.into();
     let host = client.create_proxy_host(&payload).await.map_err(|e| {
         error!("NPM create proxy host failed: {e}");
-        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(Json(ProxyHostSummary {
@@ -200,15 +191,15 @@ pub async fn update_proxy_host(
     State(state): State<AppState>,
     Path(id): Path<i64>,
     Json(body): Json<ProxyHostRequest>,
-) -> Result<Json<ProxyHostSummary>, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<Json<ProxyHostSummary>, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let payload: NpmProxyHostPayload = body.into();
     let host = client.update_proxy_host(id, &payload).await.map_err(|e| {
         error!("NPM update proxy host {id} failed: {e}");
-        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(Json(ProxyHostSummary {
@@ -233,14 +224,14 @@ pub async fn update_proxy_host(
 pub async fn delete_proxy_host(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<StatusCode, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     client.delete_proxy_host(id).await.map_err(|e| {
         error!("NPM delete proxy host {id} failed: {e}");
-        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -257,10 +248,10 @@ pub async fn toggle_proxy_host(
     State(state): State<AppState>,
     Path(id): Path<i64>,
     Json(body): Json<ToggleRequest>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<StatusCode, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     if body.enabled {
         client.enable_proxy_host(id).await
@@ -269,7 +260,7 @@ pub async fn toggle_proxy_host(
     }
     .map_err(|e| {
         error!("NPM toggle proxy host {id} failed: {e}");
-        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -294,14 +285,14 @@ pub struct RedirectionHostSummary {
 /// GET /api/v1/npm/redirection-hosts — list all redirection hosts from NPM.
 pub async fn redirection_hosts(
     State(state): State<AppState>,
-) -> Result<Json<Vec<RedirectionHostSummary>>, StatusCode> {
+) -> Result<Json<Vec<RedirectionHostSummary>>, AppError> {
     let client = get_npm_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let hosts = client.list_redirection_hosts().await.map_err(|e| {
         error!("NPM list redirection hosts failed: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let summaries: Vec<RedirectionHostSummary> = hosts
@@ -342,10 +333,10 @@ pub struct RedirectionHostRequest {
 pub async fn create_redirection_host(
     State(state): State<AppState>,
     Json(body): Json<RedirectionHostRequest>,
-) -> Result<Json<RedirectionHostSummary>, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<Json<RedirectionHostSummary>, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let payload = NpmRedirectionHostPayload {
         domain_names: body.domain_names,
@@ -365,7 +356,7 @@ pub async fn create_redirection_host(
         .await
         .map_err(|e| {
             error!("NPM create redirection host failed: {e}");
-            error_response(StatusCode::BAD_GATEWAY, e.to_string())
+            AppError::BadGateway(e.to_string())
         })?;
 
     Ok(Json(RedirectionHostSummary {
@@ -386,10 +377,10 @@ pub async fn update_redirection_host(
     State(state): State<AppState>,
     Path(id): Path<i64>,
     Json(body): Json<RedirectionHostRequest>,
-) -> Result<Json<RedirectionHostSummary>, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<Json<RedirectionHostSummary>, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let payload = NpmRedirectionHostPayload {
         domain_names: body.domain_names,
@@ -409,7 +400,7 @@ pub async fn update_redirection_host(
         .await
         .map_err(|e| {
             error!("NPM update redirection host {id} failed: {e}");
-            error_response(StatusCode::BAD_GATEWAY, e.to_string())
+            AppError::BadGateway(e.to_string())
         })?;
 
     Ok(Json(RedirectionHostSummary {
@@ -429,14 +420,14 @@ pub async fn update_redirection_host(
 pub async fn delete_redirection_host(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<StatusCode, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     client.delete_redirection_host(id).await.map_err(|e| {
         error!("NPM delete redirection host {id} failed: {e}");
-        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -481,14 +472,14 @@ fn compute_cert_status(cert: &NpmCertificate) -> (String, Option<i64>) {
 /// GET /api/v1/npm/certificates — list all SSL certificates.
 pub async fn list_certificates(
     State(state): State<AppState>,
-) -> Result<Json<Vec<CertificateSummary>>, StatusCode> {
+) -> Result<Json<Vec<CertificateSummary>>, AppError> {
     let client = get_npm_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let certs = client.list_certificates().await.map_err(|e| {
         error!("NPM list certificates failed: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let summaries: Vec<CertificateSummary> = certs
@@ -524,15 +515,17 @@ pub struct CreateLetsEncryptRequest {
 pub async fn create_letsencrypt(
     State(state): State<AppState>,
     Json(body): Json<CreateLetsEncryptRequest>,
-) -> Result<Json<CertificateSummary>, StatusCode> {
+) -> Result<Json<CertificateSummary>, AppError> {
     if body.domain_names.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation(
+            "domain_names must not be empty".into(),
+        ));
     }
     let nice_name = body.domain_names.join(", ");
 
     let client = get_npm_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let cert = client
         .create_letsencrypt_cert(
@@ -544,7 +537,7 @@ pub async fn create_letsencrypt(
         .await
         .map_err(|e| {
             error!("NPM create Let's Encrypt cert failed: {e}");
-            StatusCode::BAD_GATEWAY
+            AppError::BadGateway(e.to_string())
         })?;
 
     let (status, days_remaining) = compute_cert_status(&cert);
@@ -572,21 +565,23 @@ pub struct UploadCustomCertRequest {
 pub async fn upload_custom_cert(
     State(state): State<AppState>,
     Json(body): Json<UploadCustomCertRequest>,
-) -> Result<Json<CertificateSummary>, StatusCode> {
+) -> Result<Json<CertificateSummary>, AppError> {
     if body.certificate.is_empty() || body.certificate_key.is_empty() {
-        return Err(StatusCode::BAD_REQUEST);
+        return Err(AppError::Validation(
+            "certificate and certificate_key are required".into(),
+        ));
     }
 
     let client = get_npm_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let cert = client
         .upload_custom_cert(&body.nice_name, &body.certificate, &body.certificate_key)
         .await
         .map_err(|e| {
             error!("NPM upload custom cert failed: {e}");
-            StatusCode::BAD_GATEWAY
+            AppError::BadGateway(e.to_string())
         })?;
 
     let (status, days_remaining) = compute_cert_status(&cert);
@@ -606,14 +601,14 @@ pub async fn upload_custom_cert(
 pub async fn renew_certificate(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-) -> Result<Json<CertificateSummary>, StatusCode> {
+) -> Result<Json<CertificateSummary>, AppError> {
     let client = get_npm_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let cert = client.renew_certificate(id).await.map_err(|e| {
         error!("NPM renew certificate {id} failed: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let (status, days_remaining) = compute_cert_status(&cert);
@@ -633,14 +628,14 @@ pub async fn renew_certificate(
 pub async fn delete_certificate(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<StatusCode, AppError> {
     let client = get_npm_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     client.delete_certificate(id).await.map_err(|e| {
         error!("NPM delete certificate {id} failed: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -663,14 +658,14 @@ pub struct StreamSummary {
 /// GET /api/v1/npm/streams — list all streams from NPM.
 pub async fn list_streams(
     State(state): State<AppState>,
-) -> Result<Json<Vec<StreamSummary>>, StatusCode> {
+) -> Result<Json<Vec<StreamSummary>>, AppError> {
     let client = get_npm_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let streams = client.list_streams().await.map_err(|e| {
         error!("NPM list streams failed: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let summaries: Vec<StreamSummary> = streams
@@ -709,10 +704,10 @@ fn default_true() -> bool {
 pub async fn create_stream(
     State(state): State<AppState>,
     Json(body): Json<StreamRequest>,
-) -> Result<Json<StreamSummary>, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<Json<StreamSummary>, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let payload = NpmStreamPayload {
         incoming_port: body.incoming_port,
@@ -725,7 +720,7 @@ pub async fn create_stream(
 
     let stream = client.create_stream(&payload).await.map_err(|e| {
         error!("NPM create stream failed: {e}");
-        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(Json(StreamSummary {
@@ -744,10 +739,10 @@ pub async fn update_stream(
     State(state): State<AppState>,
     Path(id): Path<i64>,
     Json(body): Json<StreamRequest>,
-) -> Result<Json<StreamSummary>, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<Json<StreamSummary>, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let payload = NpmStreamPayload {
         incoming_port: body.incoming_port,
@@ -760,7 +755,7 @@ pub async fn update_stream(
 
     let stream = client.update_stream(id, &payload).await.map_err(|e| {
         error!("NPM update stream {id} failed: {e}");
-        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(Json(StreamSummary {
@@ -778,14 +773,14 @@ pub async fn update_stream(
 pub async fn delete_stream(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<StatusCode, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     client.delete_stream(id).await.map_err(|e| {
         error!("NPM delete stream {id} failed: {e}");
-        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -796,10 +791,10 @@ pub async fn toggle_stream(
     State(state): State<AppState>,
     Path(id): Path<i64>,
     Json(body): Json<ToggleRequest>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<StatusCode, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     if body.enabled {
         client.enable_stream(id).await
@@ -808,7 +803,7 @@ pub async fn toggle_stream(
     }
     .map_err(|e| {
         error!("NPM toggle stream {id} failed: {e}");
-        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -828,14 +823,14 @@ pub struct DeadHostSummary {
 /// GET /api/v1/npm/dead-hosts — list all dead hosts from NPM.
 pub async fn dead_hosts(
     State(state): State<AppState>,
-) -> Result<Json<Vec<DeadHostSummary>>, StatusCode> {
+) -> Result<Json<Vec<DeadHostSummary>>, AppError> {
     let client = get_npm_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let hosts = client.list_dead_hosts().await.map_err(|e| {
         error!("NPM list dead hosts failed: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let summaries: Vec<DeadHostSummary> = hosts
@@ -863,10 +858,10 @@ pub struct DeadHostRequest {
 pub async fn create_dead_host(
     State(state): State<AppState>,
     Json(body): Json<DeadHostRequest>,
-) -> Result<Json<DeadHostSummary>, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<Json<DeadHostSummary>, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let payload = NpmDeadHostPayload {
         domain_names: body.domain_names,
@@ -877,7 +872,7 @@ pub async fn create_dead_host(
 
     let host = client.create_dead_host(&payload).await.map_err(|e| {
         error!("NPM create dead host failed: {e}");
-        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(Json(DeadHostSummary {
@@ -892,14 +887,14 @@ pub async fn create_dead_host(
 pub async fn delete_dead_host(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<StatusCode, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     client.delete_dead_host(id).await.map_err(|e| {
         error!("NPM delete dead host {id} failed: {e}");
-        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)
@@ -930,14 +925,14 @@ pub struct AccessListClientSummary {
 /// GET /api/v1/npm/access-lists — list all access lists.
 pub async fn list_access_lists(
     State(state): State<AppState>,
-) -> Result<Json<Vec<AccessListSummary>>, StatusCode> {
+) -> Result<Json<Vec<AccessListSummary>>, AppError> {
     let client = get_npm_client(&state)
         .await
-        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let lists = client.list_access_lists().await.map_err(|e| {
         error!("NPM list access lists failed: {e}");
-        StatusCode::BAD_GATEWAY
+        AppError::BadGateway(e.to_string())
     })?;
 
     let summaries: Vec<AccessListSummary> = lists
@@ -990,10 +985,10 @@ pub struct AccessListClientRequest {
 pub async fn create_access_list(
     State(state): State<AppState>,
     Json(body): Json<AccessListRequest>,
-) -> Result<Json<AccessListSummary>, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<Json<AccessListSummary>, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let payload = NpmAccessListPayload {
         name: body.name,
@@ -1012,7 +1007,7 @@ pub async fn create_access_list(
 
     let al = client.create_access_list(&payload).await.map_err(|e| {
         error!("NPM create access list failed: {e}");
-        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        AppError::BadGateway(e.to_string())
     })?;
 
     let client_count = al.clients.len();
@@ -1040,10 +1035,10 @@ pub async fn update_access_list(
     State(state): State<AppState>,
     Path(id): Path<i64>,
     Json(body): Json<AccessListRequest>,
-) -> Result<Json<AccessListSummary>, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<Json<AccessListSummary>, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     let payload = NpmAccessListPayload {
         name: body.name,
@@ -1062,7 +1057,7 @@ pub async fn update_access_list(
 
     let al = client.update_access_list(id, &payload).await.map_err(|e| {
         error!("NPM update access list {id} failed: {e}");
-        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        AppError::BadGateway(e.to_string())
     })?;
 
     let client_count = al.clients.len();
@@ -1089,14 +1084,14 @@ pub async fn update_access_list(
 pub async fn delete_access_list(
     State(state): State<AppState>,
     Path(id): Path<i64>,
-) -> Result<StatusCode, (StatusCode, Json<ErrorBody>)> {
-    let client = get_npm_client(&state).await.ok_or_else(|| {
-        error_response(StatusCode::SERVICE_UNAVAILABLE, "NPM not configured".into())
-    })?;
+) -> Result<StatusCode, AppError> {
+    let client = get_npm_client(&state)
+        .await
+        .ok_or(AppError::ServiceUnavailable("NPM not configured".into()))?;
 
     client.delete_access_list(id).await.map_err(|e| {
         error!("NPM delete access list {id} failed: {e}");
-        error_response(StatusCode::BAD_GATEWAY, e.to_string())
+        AppError::BadGateway(e.to_string())
     })?;
 
     Ok(StatusCode::NO_CONTENT)

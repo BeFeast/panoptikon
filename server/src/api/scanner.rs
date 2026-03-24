@@ -1,15 +1,13 @@
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::State, Json};
 
-use super::AppState;
+use super::{AppError, AppState};
 use crate::scanner::ScanSummary;
 
 /// POST /api/v1/scanner/trigger — trigger an immediate network scan.
 ///
 /// Runs ARP discovery + all enabled enrichment sources (nmap, NetBIOS, SNMP,
 /// HTTP fingerprinting) and returns a summary of what changed.
-pub async fn trigger(
-    State(state): State<AppState>,
-) -> Result<Json<ScanSummary>, (StatusCode, Json<serde_json::Value>)> {
+pub async fn trigger(State(state): State<AppState>) -> Result<Json<ScanSummary>, AppError> {
     let subnets = &state.config.scanner.subnets;
     let arp_settle = state.config.scanner.arp_settle_millis;
     let grace = state.config.scanner.offline_grace_seconds;
@@ -18,10 +16,7 @@ pub async fn trigger(
         .await
         .map_err(|e| {
             tracing::error!("Manual scan failed: {e}");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": format!("Scan failed: {e}")})),
-            )
+            AppError::Internal(format!("Scan failed: {e}"))
         })?;
 
     tracing::info!(count = discovered.len(), "Manual network scan completed");
@@ -31,10 +26,7 @@ pub async fn trigger(
             .await
             .map_err(|e| {
                 tracing::error!("Failed to process manual scan results: {e}");
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(serde_json::json!({"error": format!("Failed to process results: {e}")})),
-                )
+                AppError::Internal(format!("Failed to process results: {e}"))
             })?;
 
     tracing::info!(
