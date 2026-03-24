@@ -15,7 +15,11 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   title: "Panoptikon",
-  description: "The all-seeing eye for your home network",
+  description: "Self-hosted network operations console",
+  icons: {
+    icon: "/favicon.svg",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default function RootLayout({
