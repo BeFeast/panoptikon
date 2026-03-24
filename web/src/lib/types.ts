@@ -1807,6 +1807,7 @@ export interface MikrotikNatRuleWithId {
   dst_port: string | null;
   to_addresses: string | null;
   to_ports: string | null;
+  in_interface: string | null;
   out_interface: string | null;
   comment: string | null;
   disabled: boolean;
@@ -1816,9 +1817,13 @@ export interface CreateMikrotikNatRuleRequest {
   chain: string;
   action: string;
   protocol?: string;
+  src_address?: string;
+  dst_address?: string;
   dst_port?: string;
   to_addresses?: string;
   to_ports?: string;
+  in_interface?: string;
+  out_interface?: string;
   comment?: string;
   disabled?: boolean;
 }
