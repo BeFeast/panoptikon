@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useData } from "@/hooks/useData";
 import { useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -220,8 +221,11 @@ function parseCSVLine(line: string): string[] {
 // ─── Main list page ─────────────────────────────────────
 
 function AssetsListPage() {
-  const [assets, setAssets] = useState<Asset[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data: assets, error, reload: load, mutate } = useData<Asset[]>(
+    "/api/v1/assets",
+    () => loadAssetsWithDeviceSync({ fetchAssets, syncAssetsFromDevices }),
+    { refreshInterval: 30_000 },
+  );
   const [pendingDelete, setPendingDelete] = useState<Asset | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -233,25 +237,6 @@ function AssetsListPage() {
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [locationFilter, setLocationFilter] = useState<string>("");
-
-  const load = useCallback(async () => {
-    try {
-      const loadedAssets = await loadAssetsWithDeviceSync({
-        fetchAssets,
-        syncAssetsFromDevices,
-      });
-      setAssets(loadedAssets);
-      setError(null);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load assets");
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 30_000);
-    return () => clearInterval(interval);
-  }, [load]);
 
   // Client-side filtering
   const filtered = useMemo(() => {
@@ -291,7 +276,10 @@ function AssetsListPage() {
     setDeleting(true);
     try {
       await deleteAssetInventory(pendingDelete.id);
-      setAssets((prev) => prev?.filter((a) => a.id !== pendingDelete.id) ?? null);
+      mutate(
+        (prev) => prev?.filter((a) => a.id !== pendingDelete.id),
+        { revalidate: false },
+      );
       toast.success("Asset deleted");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Delete failed");

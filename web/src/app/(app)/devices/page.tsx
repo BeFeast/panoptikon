@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useData } from "@/hooks/useData";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowDown, ArrowUp, Battery, Box, ChevronDown, CircuitBoard, Container, Cpu, Download, ExternalLink, Gamepad2, HardDrive, HelpCircle, Laptop, Loader2, LayoutGrid, List, MemoryStick, Monitor, Network, Pencil, Pin, PinOff, Plus, Power, Printer, Radar, RotateCcw, Router, Search, Server, Smartphone, Tablet, Tv, VolumeX, Wifi, WifiOff } from "lucide-react";
@@ -71,11 +72,14 @@ type SortField = "last_seen_at" | "ip" | "hostname";
 type SortDir = "asc" | "desc";
 
 export default function DevicesPage() {
-  const [devices, setDevices] = useState<Device[] | null>(null);
+  const { data: devices, error, reload: load } = useData<Device[]>(
+    "/api/v1/devices",
+    fetchDevices,
+    { refreshInterval: 15_000 },
+  );
   const [scanningNetwork, setScanningNetwork] = useState(false);
   const [identifying, setIdentifying] = useState(false);
   const [resolving, setResolving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
@@ -89,20 +93,6 @@ export default function DevicesPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [addAssetOpen, setAddAssetOpen] = useState(false);
   const [wifiMap, setWifiMap] = useState<Record<string, DeviceWifiInfo>>({});
-
-  const load = useCallback(async () => {
-    try {
-      setDevices(await fetchDevices());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load devices");
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 15_000);
-    return () => clearInterval(interval);
-  }, [load]);
 
   // Fetch Xiaomi WiFi data for device list columns
   useEffect(() => {

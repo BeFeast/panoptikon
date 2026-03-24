@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, Check, Copy, Pencil, Plus, Terminal, Trash2, X } from "lucide-react";
@@ -41,6 +41,7 @@ import { apiDelete, apiPatch, createAgent, fetchAgents, fetchAgentReports } from
 import type { Agent, AgentCreateResponse, AgentReport } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
+import { useData } from "@/hooks/useData";
 import { PageTransition } from "@/components/PageTransition";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import { EmptyState } from "@/components/EmptyState";
@@ -49,8 +50,11 @@ import { copyToClipboard } from "@/lib/utils";
 
 export default function AgentsPage() {
   const router = useRouter();
-  const [agents, setAgents] = useState<Agent[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { data: agents, error, reload, mutate } = useData<Agent[]>(
+    "/api/v1/agents",
+    fetchAgents,
+    { refreshInterval: 10_000 },
+  );
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -77,31 +81,25 @@ export default function AgentsPage() {
     setSparklines(results);
   }, []);
 
-  const load = useCallback(async () => {
-    try {
-      const fetched = await fetchAgents();
-      setAgents(fetched);
-      loadSparklines(fetched);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load agents");
-    }
-  }, [loadSparklines]);
-
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 10_000);
-    return () => clearInterval(interval);
-  }, [load]);
+  // Load sparklines when agents data changes
+  const prevAgentsRef = useRef<Agent[] | null>(null);
+  if (agents && agents !== prevAgentsRef.current) {
+    prevAgentsRef.current = agents;
+    loadSparklines(agents);
+  }
 
   // Refetch immediately when agent state changes arrive via WebSocket
-  useWsEvent(["agent_online", "agent_offline", "agent_report"], load);
+  useWsEvent(["agent_online", "agent_offline", "agent_report"], reload);
 
   const handleDelete = async () => {
     if (!pendingDelete) return;
     setDeleting(true);
     try {
       await apiDelete(`/api/v1/agents/${pendingDelete.id}`);
-      setAgents((prev) => prev?.filter((a) => a.id !== pendingDelete.id) ?? null);
+      mutate(
+        (prev) => prev?.filter((a) => a.id !== pendingDelete.id),
+        { revalidate: false },
+      );
     } catch (err) {
       console.error("Delete failed:", err);
     } finally {
@@ -111,7 +109,7 @@ export default function AgentsPage() {
   };
 
   if (error) {
-    return <ErrorState message={error} onRetry={load} />;
+    return <ErrorState message={error} onRetry={reload} />;
   }
 
   return (
@@ -124,9 +122,7 @@ export default function AgentsPage() {
           <HelpTooltip text="Lightweight agents installed on your machines that report system info (CPU, memory, disk, OS) back to Panoptikon." />
         </div>
         <AddAgentDialog
-          onCreated={() => {
-            fetchAgents().then(setAgents).catch(() => {});
-          }}
+          onCreated={() => { reload(); }}
         />
       </div>
 
@@ -207,10 +203,12 @@ export default function AgentsPage() {
                           setRenameError(null);
                           try {
                             await apiPatch(`/api/v1/agents/${agent.id}`, { name: renameValue });
-                            setAgents((prev) =>
-                              prev?.map((a) =>
-                                a.id === agent.id ? { ...a, name: renameValue } : a
-                              ) ?? null
+                            mutate(
+                              (prev) =>
+                                prev?.map((a) =>
+                                  a.id === agent.id ? { ...a, name: renameValue } : a
+                                ),
+                              { revalidate: false },
                             );
                             setRenamingId(null);
                           } catch {

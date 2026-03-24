@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useData } from "@/hooks/useData";
 import {
   Activity,
   AlertTriangle,
@@ -418,81 +419,39 @@ function QuickActions() {
 // ─── Page ───────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [statsError, setStatsError] = useState(false);
+  const swrOpts = { refreshInterval: 30_000 };
 
-  const [alerts, setAlerts] = useState<Alert[] | null>(null);
-  const [alertsError, setAlertsError] = useState(false);
+  const { data: stats, error: statsError, reload: loadStats } = useData<DashboardStats>(
+    "/api/v1/dashboard/stats",
+    fetchDashboardStats,
+    swrOpts,
+  );
+  const { data: rawAlerts, error: alertsError, reload: loadAlerts } = useData<Alert[]>(
+    "/api/v1/dashboard/alerts",
+    () => fetchRecentAlerts(5),
+    swrOpts,
+  );
+  const alerts = rawAlerts ? (Array.isArray(rawAlerts) ? rawAlerts : []) : null;
 
-  const [trafficHistory, setTrafficHistory] = useState<TrafficHistoryPoint[] | null>(null);
-  const [trafficError, setTrafficError] = useState(false);
-
-  const [devices, setDevices] = useState<Device[] | null>(null);
-  const [devicesError, setDevicesError] = useState(false);
+  const { data: trafficHistory, error: trafficError, reload: loadTraffic } = useData<TrafficHistoryPoint[]>(
+    "/api/v1/dashboard/traffic",
+    () => fetchTrafficHistory(60),
+    swrOpts,
+  );
+  const { data: rawDevices, error: devicesError, reload: loadDevices } = useData<Device[]>(
+    "/api/v1/dashboard/devices",
+    fetchDevices,
+    swrOpts,
+  );
+  const devices = rawDevices ? (Array.isArray(rawDevices) ? rawDevices : []) : null;
 
   const [criticalDialogOpen, setCriticalDialogOpen] = useState(false);
-
-  // ── Independent loaders — each resolves on its own ────
-
-  const loadStats = useCallback(async () => {
-    try {
-      const s = await fetchDashboardStats();
-      setStats(s);
-      setStatsError(false);
-    } catch {
-      setStatsError(true);
-    }
-  }, []);
-
-  const loadAlerts = useCallback(async () => {
-    try {
-      const a = await fetchRecentAlerts(5);
-      setAlerts(Array.isArray(a) ? a : []);
-      setAlertsError(false);
-    } catch {
-      setAlertsError(true);
-    }
-  }, []);
-
-  const loadTraffic = useCallback(async () => {
-    try {
-      const th = await fetchTrafficHistory(60);
-      setTrafficHistory(th);
-      setTrafficError(false);
-    } catch {
-      setTrafficError(true);
-    }
-  }, []);
-
-  const loadDevices = useCallback(async () => {
-    try {
-      const devs = await fetchDevices();
-      setDevices(Array.isArray(devs) ? devs : []);
-      setDevicesError(false);
-    } catch {
-      setDevicesError(true);
-    }
-  }, []);
-
-  const loadAll = useCallback(() => {
-    loadStats();
-    loadAlerts();
-    loadTraffic();
-    loadDevices();
-  }, [loadStats, loadAlerts, loadTraffic, loadDevices]);
-
-  useEffect(() => {
-    loadAll();
-    const interval = setInterval(loadAll, 30_000);
-    return () => clearInterval(interval);
-  }, [loadAll]);
 
   const devicesRef = useRef(devices);
   devicesRef.current = devices;
 
-  useWsEvent(
-    ["device_online", "device_offline", "new_device", "agent_online", "agent_offline"],
-    (msg) => {
+  const handleWsEvent = useCallback(
+    (msg: { event: string; data: unknown }) => {
       if (["device_online", "device_offline", "new_device"].includes(msg.event)) {
         const d = msg.data as { device_id?: string; mac?: string; ip?: string };
         const dev = devicesRef.current?.find((x) => x.id === d.device_id);
@@ -506,8 +465,17 @@ export default function DashboardPage() {
           toast.info(`New device discovered: ${d.mac}`, { description: d.ip });
         }
       }
-      loadAll();
-    }
+      loadStats();
+      loadAlerts();
+      loadTraffic();
+      loadDevices();
+    },
+    [loadStats, loadAlerts, loadTraffic, loadDevices],
+  );
+
+  useWsEvent(
+    ["device_online", "device_offline", "new_device", "agent_online", "agent_offline"],
+    handleWsEvent,
   );
 
   // ── Compute device type breakdown ──────────────────────

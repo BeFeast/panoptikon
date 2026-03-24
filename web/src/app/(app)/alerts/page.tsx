@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Activity,
   AlertTriangle,
@@ -55,6 +55,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
+import { useData } from "@/hooks/useData";
 import {
   Tooltip,
   TooltipContent,
@@ -133,8 +134,6 @@ const ALERT_TYPES: { value: TypeFilter; label: string }[] = [
 ];
 
 export default function AlertsPage() {
-  const [alerts, setAlerts] = useState<Alert[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [ackDialogOpen, setAckDialogOpen] = useState(false);
@@ -144,28 +143,21 @@ export default function AlertsPage() {
   const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
   const [acknowledgingIds, setAcknowledgingIds] = useState<Set<string>>(new Set());
 
-  const load = useCallback(async () => {
-    try {
-      const status = statusFilter === "all" ? undefined : statusFilter;
-      const alertType = typeFilter === "all" ? undefined : typeFilter;
-      const data = await fetchAlerts(100, status, undefined, alertType);
-      setAlerts(Array.isArray(data) ? data : []);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load alerts");
-    }
-  }, [statusFilter, typeFilter]);
-
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 30_000);
-    return () => clearInterval(interval);
-  }, [load]);
+  const status = statusFilter === "all" ? undefined : statusFilter;
+  const alertType = typeFilter === "all" ? undefined : typeFilter;
+  const { data: rawAlerts, error, reload, mutate } = useData<Alert[]>(
+    `/api/v1/alerts?status=${statusFilter}&type=${typeFilter}`,
+    () => fetchAlerts(100, status, undefined, alertType),
+    { refreshInterval: 30_000 },
+  );
+  const alerts = rawAlerts ? (Array.isArray(rawAlerts) ? rawAlerts : []) : null;
 
   async function handleMarkRead(id: string) {
     try {
       await markAlertRead(id);
-      setAlerts((prev) =>
-        (prev ?? []).map((a) => (a.id === id ? { ...a, is_read: true } : a))
+      mutate(
+        (prev) => (prev ?? []).map((a) => (a.id === id ? { ...a, is_read: true } : a)),
+        { revalidate: false },
       );
     } catch {
       // silently ignore
@@ -175,8 +167,9 @@ export default function AlertsPage() {
   async function handleMarkUnread(id: string) {
     try {
       await markAlertUnread(id);
-      setAlerts((prev) =>
-        (prev ?? []).map((a) => (a.id === id ? { ...a, is_read: false } : a))
+      mutate(
+        (prev) => (prev ?? []).map((a) => (a.id === id ? { ...a, is_read: false } : a)),
+        { revalidate: false },
       );
     } catch {
       // silently ignore
@@ -204,17 +197,19 @@ export default function AlertsPage() {
           next.delete(id);
           return next;
         });
-        setAlerts((prev) =>
-          (prev ?? []).map((a) =>
-            a.id === id
-              ? {
-                  ...a,
-                  acknowledged_at: new Date().toISOString(),
-                  acknowledged_by: ackNote || null,
-                  is_read: true,
-                }
-              : a
-          )
+        mutate(
+          (prev) =>
+            (prev ?? []).map((a) =>
+              a.id === id
+                ? {
+                    ...a,
+                    acknowledged_at: new Date().toISOString(),
+                    acknowledged_by: ackNote || null,
+                    is_read: true,
+                  }
+                : a
+            ),
+          { revalidate: false },
         );
       }, 600);
     } catch {
@@ -225,7 +220,10 @@ export default function AlertsPage() {
   async function handleDeleteOne(id: string) {
     try {
       await deleteAlert(id);
-      setAlerts((prev) => (prev ?? []).filter((a) => a.id !== id));
+      mutate(
+        (prev) => (prev ?? []).filter((a) => a.id !== id),
+        { revalidate: false },
+      );
     } catch {
       // silently ignore
     }
@@ -234,7 +232,7 @@ export default function AlertsPage() {
   async function handleDeleteAll() {
     try {
       await deleteAllAlerts();
-      setAlerts([]);
+      mutate([], { revalidate: false });
       setClearAllDialogOpen(false);
     } catch {
       // silently ignore
@@ -244,8 +242,9 @@ export default function AlertsPage() {
   async function handleMarkAllRead() {
     try {
       await markAllAlertsRead();
-      setAlerts((prev) =>
-        (prev ?? []).map((a) => ({ ...a, is_read: true }))
+      mutate(
+        (prev) => (prev ?? []).map((a) => ({ ...a, is_read: true })),
+        { revalidate: false },
       );
       toast.success("All alerts marked as read");
     } catch {
@@ -268,7 +267,7 @@ export default function AlertsPage() {
   }
 
   if (error) {
-    return <ErrorState message={error} onRetry={load} />;
+    return <ErrorState message={error} onRetry={reload} />;
   }
 
   const activeCount = (alerts ?? []).filter((a) => !a.acknowledged_at).length;

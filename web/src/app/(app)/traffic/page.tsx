@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
+import { useData } from "@/hooks/useData";
 import {
   AreaChart,
   Area,
@@ -48,35 +49,29 @@ function formatTime(iso: string): string {
   }
 }
 
-export default function TrafficPage() {
-  const [history, setHistory] = useState<TrafficHistoryPoint[]>([]);
-  const [topDevices, setTopDevices] = useState<TopDevice[]>([]);
-  const [netflow, setNetflow] = useState<NetflowStatus | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedDevice, setSelectedDevice] = useState<TopDevice | null>(null);
+type TrafficData = {
+  history: TrafficHistoryPoint[];
+  topDevices: TopDevice[];
+  netflow: NetflowStatus | null;
+};
 
-  const load = useCallback(async () => {
-    try {
-      const [h, d, nf] = await Promise.all([
+export default function TrafficPage() {
+  const { data: trafficData, loading } = useData<TrafficData>(
+    "/api/v1/traffic",
+    async () => {
+      const [history, topDevices, netflow] = await Promise.all([
         fetchTrafficHistory(60),
         fetchTopDevices(10),
         fetchNetflowStatus(),
       ]);
-      setHistory(h);
-      setTopDevices(d);
-      setNetflow(nf);
-    } catch {
-      // Silently ignore errors — data will remain stale until next refresh.
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-    const interval = setInterval(load, 30_000);
-    return () => clearInterval(interval);
-  }, [load]);
+      return { history, topDevices, netflow };
+    },
+    { refreshInterval: 30_000 },
+  );
+  const history = trafficData?.history ?? [];
+  const topDevices = trafficData?.topDevices ?? [];
+  const netflow = trafficData?.netflow ?? null;
+  const [selectedDevice, setSelectedDevice] = useState<TopDevice | null>(null);
 
   return (
     <PageTransition>
