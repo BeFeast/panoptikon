@@ -51,6 +51,16 @@ export const settingsNav: SettingsNavGroup[] = [
         description: "POST alerts to Discord, Slack, ntfy.sh, or any URL.",
       },
       {
+        href: "/settings/email",
+        title: "Email Notifications",
+        description: "Configure SMTP for email alert delivery.",
+      },
+      {
+        href: "/settings/snmp",
+        title: "SNMP Management",
+        description: "Configure SNMP scanning for managed routers.",
+      },
+      {
         href: "/settings/alert-rules",
         title: "Alert Rules",
         description:
@@ -102,6 +112,11 @@ export const settingsNav: SettingsNavGroup[] = [
         title: "Config Backup",
         description:
           "Download, snapshot, and restore router configurations.",
+      },
+      {
+        href: "/settings/users",
+        title: "User Management",
+        description: "Manage users and role-based access control.",
       },
       {
         href: "/settings/password",

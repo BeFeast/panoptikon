@@ -20,6 +20,7 @@ pub struct AlertRule {
     pub enabled: bool,
     pub threshold_value: Option<i64>,
     pub notify_telegram: bool,
+    pub notify_email: bool,
     pub notify_in_app: bool,
     pub created_at: String,
     pub updated_at: String,
@@ -32,6 +33,7 @@ pub struct CreateAlertRuleRequest {
     pub enabled: Option<bool>,
     pub threshold_value: Option<i64>,
     pub notify_telegram: Option<bool>,
+    pub notify_email: Option<bool>,
     pub notify_in_app: Option<bool>,
 }
 
@@ -41,6 +43,7 @@ pub struct UpdateAlertRuleRequest {
     pub enabled: Option<bool>,
     pub threshold_value: Option<i64>,
     pub notify_telegram: Option<bool>,
+    pub notify_email: Option<bool>,
     pub notify_in_app: Option<bool>,
 }
 
@@ -51,6 +54,7 @@ fn rule_from_row(row: sqlx::sqlite::SqliteRow) -> Result<AlertRule, sqlx::Error>
         enabled: row.try_get::<i32, _>("enabled").unwrap_or(1) != 0,
         threshold_value: row.try_get("threshold_value").unwrap_or(None),
         notify_telegram: row.try_get::<i32, _>("notify_telegram").unwrap_or(1) != 0,
+        notify_email: row.try_get::<i32, _>("notify_email").unwrap_or(0) != 0,
         notify_in_app: row.try_get::<i32, _>("notify_in_app").unwrap_or(1) != 0,
         created_at: row.try_get("created_at")?,
         updated_at: row.try_get("updated_at")?,
@@ -60,7 +64,7 @@ fn rule_from_row(row: sqlx::sqlite::SqliteRow) -> Result<AlertRule, sqlx::Error>
 /// GET /api/v1/alert-rules — list all alert rules.
 pub async fn list(State(state): State<AppState>) -> Result<Json<Vec<AlertRule>>, StatusCode> {
     let rows = sqlx::query(
-        "SELECT id, rule_type, enabled, threshold_value, notify_telegram, notify_in_app, created_at, updated_at \
+        "SELECT id, rule_type, enabled, threshold_value, notify_telegram, notify_email, notify_in_app, created_at, updated_at \
          FROM alert_rules ORDER BY created_at ASC",
     )
     .fetch_all(&state.db)
@@ -98,17 +102,19 @@ pub async fn create(
     let id = uuid::Uuid::new_v4().to_string();
     let enabled = body.enabled.unwrap_or(true);
     let notify_telegram = body.notify_telegram.unwrap_or(true);
+    let notify_email = body.notify_email.unwrap_or(false);
     let notify_in_app = body.notify_in_app.unwrap_or(true);
 
     sqlx::query(
-        "INSERT INTO alert_rules (id, rule_type, enabled, threshold_value, notify_telegram, notify_in_app) \
-         VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO alert_rules (id, rule_type, enabled, threshold_value, notify_telegram, notify_email, notify_in_app) \
+         VALUES (?, ?, ?, ?, ?, ?, ?)",
     )
     .bind(&id)
     .bind(rule_type)
     .bind(enabled as i32)
     .bind(body.threshold_value)
     .bind(notify_telegram as i32)
+    .bind(notify_email as i32)
     .bind(notify_in_app as i32)
     .execute(&state.db)
     .await
@@ -123,7 +129,7 @@ pub async fn create(
     info!(rule_id = %id, rule_type = rule_type, "Alert rule created");
 
     let row = sqlx::query(
-        "SELECT id, rule_type, enabled, threshold_value, notify_telegram, notify_in_app, created_at, updated_at \
+        "SELECT id, rule_type, enabled, threshold_value, notify_telegram, notify_email, notify_in_app, created_at, updated_at \
          FROM alert_rules WHERE id = ?",
     )
     .bind(&id)
@@ -182,6 +188,10 @@ pub async fn update(
         sets.push("notify_telegram = ?".to_string());
         binds.push((telegram as i32).to_string());
     }
+    if let Some(email) = body.notify_email {
+        sets.push("notify_email = ?".to_string());
+        binds.push((email as i32).to_string());
+    }
     if let Some(in_app) = body.notify_in_app {
         sets.push("notify_in_app = ?".to_string());
         binds.push((in_app as i32).to_string());
@@ -204,7 +214,7 @@ pub async fn update(
     info!(rule_id = %id, "Alert rule updated");
 
     let row = sqlx::query(
-        "SELECT id, rule_type, enabled, threshold_value, notify_telegram, notify_in_app, created_at, updated_at \
+        "SELECT id, rule_type, enabled, threshold_value, notify_telegram, notify_email, notify_in_app, created_at, updated_at \
          FROM alert_rules WHERE id = ?",
     )
     .bind(&id)

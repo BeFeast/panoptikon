@@ -121,6 +121,7 @@ fn extract_client_ip(headers: &HeaderMap, addr: SocketAddr, trusted_proxies: &[S
 /// Login request body.
 #[derive(Debug, Deserialize)]
 pub struct LoginRequest {
+    pub username: Option<String>,
     pub password: String,
 }
 
@@ -163,59 +164,94 @@ pub async fn login(
         return Err(resp);
     }
 
-    // Retrieve the stored admin password hash from settings.
-    let row: Option<String> =
-        sqlx::query("SELECT value FROM settings WHERE key = 'admin_password_hash'")
-            .fetch_optional(&state.db)
-            .await
-            .map_err(|e| {
-                tracing::error!("Failed to query settings: {e}");
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            })?
-            .and_then(|r| r.try_get("value").ok());
+    // Multi-user support: if a username is provided, authenticate against
+    // the users table. Otherwise fall back to legacy admin_password_hash.
+    let user_id: Option<String>;
 
-    let hash = match row {
-        Some(hash) => hash,
-        None => {
-            // No password set — setup hasn't been completed yet.
-            // The user must go through POST /api/v1/setup first.
-            state.rate_limiter.clear(&client_ip);
-            return Err(StatusCode::PRECONDITION_REQUIRED.into_response());
+    if let Some(ref username) = body.username {
+        // Multi-user auth: look up user by username.
+        let user_row: Option<(String, String)> =
+            sqlx::query_as("SELECT id, password_hash FROM users WHERE username = ?")
+                .bind(username)
+                .fetch_optional(&state.db)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to query users: {e}");
+                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                })?;
+
+        match user_row {
+            Some((uid, hash)) => {
+                let valid = bcrypt::verify(&body.password, &hash).map_err(|e| {
+                    tracing::error!("Password verification error: {e}");
+                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                })?;
+                if !valid {
+                    warn!(%client_ip, username = %username, "Failed login attempt (wrong password)");
+                    return Err(StatusCode::UNAUTHORIZED.into_response());
+                }
+                user_id = Some(uid);
+            }
+            None => {
+                warn!(%client_ip, username = %username, "Failed login attempt (unknown user)");
+                return Err(StatusCode::UNAUTHORIZED.into_response());
+            }
         }
-    };
+    } else {
+        // Legacy single-admin auth via admin_password_hash setting.
+        let row: Option<String> =
+            sqlx::query("SELECT value FROM settings WHERE key = 'admin_password_hash'")
+                .fetch_optional(&state.db)
+                .await
+                .map_err(|e| {
+                    tracing::error!("Failed to query settings: {e}");
+                    StatusCode::INTERNAL_SERVER_ERROR.into_response()
+                })?
+                .and_then(|r| r.try_get("value").ok());
 
-    // Verify password against stored hash.
-    let valid = bcrypt::verify(&body.password, &hash).map_err(|e| {
-        tracing::error!("Password verification error: {e}");
-        StatusCode::INTERNAL_SERVER_ERROR.into_response()
-    })?;
+        let hash = match row {
+            Some(hash) => hash,
+            None => {
+                state.rate_limiter.clear(&client_ip);
+                return Err(StatusCode::PRECONDITION_REQUIRED.into_response());
+            }
+        };
 
-    if !valid {
-        // Slot was already reserved by try_login_attempt(); no separate record needed.
-        warn!(%client_ip, "Failed login attempt");
-        return Err(StatusCode::UNAUTHORIZED.into_response());
+        let valid = bcrypt::verify(&body.password, &hash).map_err(|e| {
+            tracing::error!("Password verification error: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
+        })?;
+
+        if !valid {
+            warn!(%client_ip, "Failed login attempt");
+            return Err(StatusCode::UNAUTHORIZED.into_response());
+        }
+        user_id = None; // Legacy admin session
     }
 
     // Generate session token and store it in the database.
     let token = uuid::Uuid::new_v4().to_string();
-    // Ensure at least 1 second; a zero expiry would create an immediately-invalid session.
     let expiry_secs = state.config.auth.session_expiry_seconds.max(1);
     let expiry_modifier = format!("+{expiry_secs} seconds");
 
-    sqlx::query("INSERT INTO sessions (token, expires_at) VALUES (?, datetime('now', ?))")
-        .bind(&token)
-        .bind(&expiry_modifier)
-        .execute(&state.db)
-        .await
-        .map_err(|e| {
-            tracing::error!("Failed to store session: {e}");
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        })?;
+    sqlx::query(
+        "INSERT INTO sessions (token, expires_at, user_id) VALUES (?, datetime('now', ?), ?)",
+    )
+    .bind(&token)
+    .bind(&expiry_modifier)
+    .bind(&user_id)
+    .execute(&state.db)
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to store session: {e}");
+        StatusCode::INTERNAL_SERVER_ERROR.into_response()
+    })?;
 
     // Clear rate-limiter only after session is successfully persisted.
     state.rate_limiter.clear(&client_ip);
 
-    tracing::info!(%client_ip, "Admin logged in, session created");
+    let login_user = body.username.as_deref().unwrap_or("admin");
+    tracing::info!(%client_ip, user = login_user, "User logged in, session created");
 
     // Build Set-Cookie header.
     let cookie = format!(

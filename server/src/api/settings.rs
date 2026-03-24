@@ -60,6 +60,20 @@ pub struct SettingsResponse {
     pub pfsense_auth_type: Option<String>,
     pub pfsense_password_set: bool,
     pub pfsense_private_key_set: bool,
+    // --- SMTP Email ---
+    pub smtp_host: Option<String>,
+    pub smtp_port: Option<u16>,
+    pub smtp_username: Option<String>,
+    pub smtp_password_set: bool,
+    pub smtp_from_email: Option<String>,
+    pub smtp_to_email: Option<String>,
+    pub smtp_tls_enabled: bool,
+    // --- SNMP ---
+    pub snmp_community: Option<String>,
+    pub snmp_version: Option<String>,
+    pub snmp_port: Option<u16>,
+    pub snmp_timeout_seconds: Option<u64>,
+    pub snmp_retries: Option<u64>,
     // --- Default Router ---
     pub default_router: Option<String>,
     // --- Advanced / Legacy ---
@@ -116,6 +130,20 @@ pub struct UpdateSettingsRequest {
     pub pfsense_auth_type: Option<String>,
     pub pfsense_password: Option<String>,
     pub pfsense_private_key: Option<String>,
+    // --- SMTP Email ---
+    pub smtp_host: Option<String>,
+    pub smtp_port: Option<u16>,
+    pub smtp_username: Option<String>,
+    pub smtp_password: Option<String>,
+    pub smtp_from_email: Option<String>,
+    pub smtp_to_email: Option<String>,
+    pub smtp_tls_enabled: Option<bool>,
+    // --- SNMP ---
+    pub snmp_community: Option<String>,
+    pub snmp_version: Option<String>,
+    pub snmp_port: Option<u16>,
+    pub snmp_timeout_seconds: Option<u64>,
+    pub snmp_retries: Option<u64>,
     // --- Default Router ---
     pub default_router: Option<String>,
     // --- Advanced / Legacy ---
@@ -254,6 +282,41 @@ pub async fn get_settings(
     let pfsense_password_set = get_setting(&state, "pfsense_password").await.is_some();
     let pfsense_private_key_set = get_setting(&state, "pfsense_private_key").await.is_some();
 
+    // SMTP Email settings.
+    let smtp_host = get_setting(&state, "smtp_host").await;
+    let smtp_port = get_setting(&state, "smtp_port")
+        .await
+        .and_then(|v| v.parse().ok())
+        .or(Some(587));
+    let smtp_username = get_setting(&state, "smtp_username").await;
+    let smtp_password_set = get_setting(&state, "smtp_password").await.is_some();
+    let smtp_from_email = get_setting(&state, "smtp_from_email").await;
+    let smtp_to_email = get_setting(&state, "smtp_to_email").await;
+    let smtp_tls_enabled = get_setting(&state, "smtp_tls_enabled")
+        .await
+        .map(|v| v == "1" || v == "true")
+        .unwrap_or(true);
+
+    // SNMP settings.
+    let snmp_community = get_setting(&state, "snmp_community")
+        .await
+        .or(Some("public".to_string()));
+    let snmp_version = get_setting(&state, "snmp_version")
+        .await
+        .or(Some("2c".to_string()));
+    let snmp_port = get_setting(&state, "snmp_port")
+        .await
+        .and_then(|v| v.parse().ok())
+        .or(Some(161));
+    let snmp_timeout_seconds = get_setting(&state, "snmp_timeout_seconds")
+        .await
+        .and_then(|v| v.parse().ok())
+        .or(Some(5));
+    let snmp_retries = get_setting(&state, "snmp_retries")
+        .await
+        .and_then(|v| v.parse().ok())
+        .or(Some(1));
+
     // Default Router setting.
     let default_router = get_setting(&state, "default_router")
         .await
@@ -303,6 +366,18 @@ pub async fn get_settings(
         pfsense_auth_type,
         pfsense_password_set,
         pfsense_private_key_set,
+        smtp_host,
+        smtp_port,
+        smtp_username,
+        smtp_password_set,
+        smtp_from_email,
+        smtp_to_email,
+        smtp_tls_enabled,
+        snmp_community,
+        snmp_version,
+        snmp_port,
+        snmp_timeout_seconds,
+        snmp_retries,
         default_router,
         show_legacy_routers,
     }))
@@ -547,6 +622,68 @@ pub async fn update_settings(
         info!("pfSense private key updated");
     }
 
+    // --- SMTP Email settings ---
+    if let Some(ref host) = body.smtp_host {
+        upsert_setting(&state, "smtp_host", host).await?;
+        info!(smtp_host = %host, "SMTP host updated");
+    }
+
+    if let Some(port) = body.smtp_port {
+        upsert_setting(&state, "smtp_port", &port.to_string()).await?;
+        info!(smtp_port = port, "SMTP port updated");
+    }
+
+    if let Some(ref username) = body.smtp_username {
+        upsert_setting(&state, "smtp_username", username).await?;
+        info!("SMTP username updated");
+    }
+
+    if let Some(ref password) = body.smtp_password {
+        upsert_setting(&state, "smtp_password", password).await?;
+        info!("SMTP password updated");
+    }
+
+    if let Some(ref from_email) = body.smtp_from_email {
+        upsert_setting(&state, "smtp_from_email", from_email).await?;
+        info!(smtp_from_email = %from_email, "SMTP from email updated");
+    }
+
+    if let Some(ref to_email) = body.smtp_to_email {
+        upsert_setting(&state, "smtp_to_email", to_email).await?;
+        info!(smtp_to_email = %to_email, "SMTP to email updated");
+    }
+
+    if let Some(enabled) = body.smtp_tls_enabled {
+        upsert_setting(&state, "smtp_tls_enabled", if enabled { "1" } else { "0" }).await?;
+        info!(smtp_tls_enabled = enabled, "SMTP TLS toggle updated");
+    }
+
+    // --- SNMP settings ---
+    if let Some(ref community) = body.snmp_community {
+        upsert_setting(&state, "snmp_community", community).await?;
+        info!("SNMP community updated");
+    }
+
+    if let Some(ref version) = body.snmp_version {
+        upsert_setting(&state, "snmp_version", version).await?;
+        info!(snmp_version = %version, "SNMP version updated");
+    }
+
+    if let Some(port) = body.snmp_port {
+        upsert_setting(&state, "snmp_port", &port.to_string()).await?;
+        info!(snmp_port = port, "SNMP port updated");
+    }
+
+    if let Some(timeout) = body.snmp_timeout_seconds {
+        upsert_setting(&state, "snmp_timeout_seconds", &timeout.to_string()).await?;
+        info!(snmp_timeout_seconds = timeout, "SNMP timeout updated");
+    }
+
+    if let Some(retries) = body.snmp_retries {
+        upsert_setting(&state, "snmp_retries", &retries.to_string()).await?;
+        info!(snmp_retries = retries, "SNMP retries updated");
+    }
+
     // --- Default Router ---
     if let Some(ref router) = body.default_router {
         upsert_setting(&state, "default_router", router).await?;
@@ -589,6 +726,22 @@ pub async fn test_webhook(
 
     // For test, we actually await the result so we can report success/failure.
     webhook::send_alert_webhook(&url, "test", &data).await;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// POST /api/v1/settings/test-email — send a test email.
+pub async fn test_email(State(state): State<AppState>) -> Result<StatusCode, (StatusCode, String)> {
+    let config = crate::email::get_smtp_config(&state.db).await.ok_or((
+        StatusCode::BAD_REQUEST,
+        "SMTP not fully configured. Set host, from, and to email first.".to_string(),
+    ))?;
+
+    let data = serde_json::json!({
+        "message": "Panoptikon email test — if you see this, email alerts are working!",
+    });
+
+    crate::email::send_alert_email(&config, "test", &data).await;
 
     Ok(StatusCode::NO_CONTENT)
 }

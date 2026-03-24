@@ -100,6 +100,10 @@ import type {
   DnsIngestEntry,
   DnsIngestResponse,
   DnsPurgeResponse,
+  User,
+  CreateUserRequest,
+  UpdateUserRequest,
+  SnmpStatus,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -1848,4 +1852,38 @@ export function triggerNetworkScan(): Promise<
   return apiPost<import("./types").ScanSummary>(
     "/api/v1/scanner/trigger"
   );
+}
+
+// ─── Users (RBAC) ───────────────────────────────────────────
+
+export function fetchUsers(): Promise<User[]> {
+  return apiGet<User[]>("/api/v1/users");
+}
+
+export function createUser(data: CreateUserRequest): Promise<User> {
+  return apiPost<User>("/api/v1/users", data);
+}
+
+export function updateUser(id: string, data: UpdateUserRequest): Promise<User> {
+  return apiPut<User>(`/api/v1/users/${id}`, data);
+}
+
+export function deleteUser(id: string): Promise<void> {
+  return apiDelete(`/api/v1/users/${id}`);
+}
+
+// ─── SNMP Management ────────────────────────────────────────
+
+export function fetchSnmpConfig(): Promise<SnmpStatus> {
+  return apiGet<SnmpStatus>("/api/v1/snmp/config");
+}
+
+export function updateSnmpConfig(data: Partial<import("./types").SnmpConfig>): Promise<SnmpStatus> {
+  return apiPatch<SnmpStatus>("/api/v1/snmp/config", data);
+}
+
+// ─── Email (SMTP) ───────────────────────────────────────────
+
+export function testEmail(): Promise<void> {
+  return apiPost<void>("/api/v1/settings/test-email");
 }

@@ -43,12 +43,14 @@ pub mod search;
 pub mod services;
 pub mod settings;
 pub mod setup;
+pub mod snmp_management;
 pub mod speedtest;
 pub mod ssh_targets;
 pub mod tailscale;
 pub mod topology;
 pub mod traffic;
 pub mod unbound;
+pub mod users;
 pub mod vpn_status;
 pub mod xiaomi;
 pub mod xiaomi_mesh;
@@ -191,6 +193,7 @@ pub fn router(state: AppState) -> Router {
         .route("/settings", get(settings::get_settings))
         .route("/settings", patch(settings::update_settings))
         .route("/settings/test-webhook", post(settings::test_webhook))
+        .route("/settings/test-email", post(settings::test_email))
         .route("/settings/netflow-status", get(settings::netflow_status))
         .route("/settings/db-size", get(settings::db_size))
         .route("/settings/vacuum", post(settings::vacuum))
@@ -541,6 +544,14 @@ pub fn router(state: AppState) -> Router {
         .route("/dns-logs", delete(dns_logs::purge))
         .route("/dns-logs/stats", get(dns_logs::stats))
         .route("/dns-logs/ingest", post(dns_logs::ingest))
+        // Users (RBAC)
+        .route("/users", get(users::list))
+        .route("/users", post(users::create))
+        .route("/users/:id", put(users::update))
+        .route("/users/:id", delete(users::delete))
+        // SNMP management
+        .route("/snmp/config", get(snmp_management::get_config))
+        .route("/snmp/config", patch(snmp_management::update_config))
         // Search
         .route("/search", get(search::search))
         // Export
