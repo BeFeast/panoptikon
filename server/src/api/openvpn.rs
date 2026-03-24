@@ -324,14 +324,15 @@ verb 3
     );
 
     let filename = format!("{name}.ovpn");
+    let disposition = format!("attachment; filename=\"{filename}\"");
     Ok((
         StatusCode::OK,
         [
-            (header::CONTENT_TYPE, "application/x-openvpn-profile"),
             (
-                header::CONTENT_DISPOSITION,
-                &format!("attachment; filename=\"{filename}\""),
+                header::CONTENT_TYPE,
+                "application/x-openvpn-profile".to_string(),
             ),
+            (header::CONTENT_DISPOSITION, disposition),
         ],
         ovpn_config,
     ))
