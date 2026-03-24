@@ -236,6 +236,120 @@ try {
         }
         respond(true, $result);
 
+    case 'dhcp_pools':
+        $dhcpd = config_get_path('dhcpd');
+        $result = [];
+        if (is_array($dhcpd)) {
+            foreach ($dhcpd as $ifname => $ifcfg) {
+                $enabled = !isset($ifcfg['enable']) || $ifcfg['enable'] !== '';
+                $range_start = isset($ifcfg['range']['from']) ? $ifcfg['range']['from'] : null;
+                $range_end = isset($ifcfg['range']['to']) ? $ifcfg['range']['to'] : null;
+                $gateway = isset($ifcfg['gateway']) ? $ifcfg['gateway'] : null;
+                $domain = isset($ifcfg['domain']) ? $ifcfg['domain'] : null;
+                $default_lease = isset($ifcfg['defaultleasetime']) ? $ifcfg['defaultleasetime'] : null;
+                $max_lease = isset($ifcfg['maxleasetime']) ? $ifcfg['maxleasetime'] : null;
+
+                $dns = [];
+                if (isset($ifcfg['dnsserver']) && is_array($ifcfg['dnsserver'])) {
+                    $dns = $ifcfg['dnsserver'];
+                } elseif (isset($ifcfg['dnsserver']) && is_string($ifcfg['dnsserver'])) {
+                    $dns = array_filter(explode(',', $ifcfg['dnsserver']));
+                }
+
+                $ntp = [];
+                if (isset($ifcfg['ntpserver']) && is_array($ifcfg['ntpserver'])) {
+                    $ntp = $ifcfg['ntpserver'];
+                } elseif (isset($ifcfg['ntpserver']) && is_string($ifcfg['ntpserver'])) {
+                    $ntp = array_filter(explode(',', $ifcfg['ntpserver']));
+                }
+
+                $id = substr(hash('sha256', 'pool_' . $ifname), 0, 16);
+                $result[] = [
+                    'id' => $id,
+                    'interface' => $ifname,
+                    'range_start' => $range_start,
+                    'range_end' => $range_end,
+                    'gateway' => $gateway,
+                    'dns_servers' => array_values($dns),
+                    'domain' => $domain,
+                    'ntp_servers' => array_values($ntp),
+                    'default_lease_time' => $default_lease,
+                    'max_lease_time' => $max_lease,
+                    'enabled' => $enabled,
+                ];
+            }
+        }
+        respond(true, $result);
+
+    case 'dhcp_pool_update':
+        $iface = isset($payload['interface']) ? $payload['interface'] : null;
+        if (!$iface) respond(false, null, 'Missing interface parameter');
+        $path = "dhcpd/{$iface}";
+        $ifcfg = config_get_path($path);
+        if (!is_array($ifcfg)) $ifcfg = [];
+
+        if (isset($payload['range_start']) && isset($payload['range_end'])) {
+            $ifcfg['range'] = [
+                'from' => $payload['range_start'],
+                'to' => $payload['range_end'],
+            ];
+        }
+        if (array_key_exists('gateway', $payload)) {
+            $ifcfg['gateway'] = $payload['gateway'] ?: '';
+        }
+        if (array_key_exists('domain', $payload)) {
+            $ifcfg['domain'] = $payload['domain'] ?: '';
+        }
+        if (array_key_exists('dns_servers', $payload)) {
+            $ifcfg['dnsserver'] = is_array($payload['dns_servers']) ? $payload['dns_servers'] : [];
+        }
+        if (array_key_exists('ntp_servers', $payload)) {
+            $ifcfg['ntpserver'] = is_array($payload['ntp_servers']) ? $payload['ntp_servers'] : [];
+        }
+        if (array_key_exists('default_lease_time', $payload)) {
+            $ifcfg['defaultleasetime'] = $payload['default_lease_time'] ?: '';
+        }
+        if (array_key_exists('max_lease_time', $payload)) {
+            $ifcfg['maxleasetime'] = $payload['max_lease_time'] ?: '';
+        }
+        if (array_key_exists('enabled', $payload)) {
+            $ifcfg['enable'] = $payload['enabled'] ? '' : null;
+            if (!$payload['enabled']) unset($ifcfg['enable']);
+        }
+
+        config_set_path($path, $ifcfg);
+        write_config("Panoptikon: updated DHCP pool config for {$iface}");
+        services_dhcpd_configure();
+        $id = substr(hash('sha256', 'pool_' . $iface), 0, 16);
+        respond(true, ['id' => $id, 'interface' => $iface]);
+
+    case 'dhcp_logs':
+        $log_lines = [];
+        $log_file = '/var/log/dhcpd.log';
+        if (!file_exists($log_file)) $log_file = '/var/log/system.log';
+        if (file_exists($log_file)) {
+            $raw = shell_exec("tail -n 200 " . escapeshellarg($log_file) . " | grep -i dhcp 2>/dev/null");
+            if ($raw) {
+                $lines = array_filter(explode("\n", trim($raw)));
+                foreach (array_slice($lines, -100) as $line) {
+                    $iface = null;
+                    if (preg_match('/\b(lan|wan|opt\d+)\b/i', $line, $m)) {
+                        $iface = strtolower($m[1]);
+                    }
+                    $ts = null;
+                    if (preg_match('/^(\w{3}\s+\d+\s+[\d:]+)/', $line, $m)) {
+                        $ts = $m[1];
+                    }
+                    $log_lines[] = [
+                        'timestamp' => $ts,
+                        'message' => $line,
+                        'interface' => $iface,
+                    ];
+                }
+            }
+        }
+        respond(true, $log_lines);
+
     case 'dhcp_static_create':
         $iface = isset($payload['interface']) ? $payload['interface'] : 'lan';
         $mac = isset($payload['mac']) ? $payload['mac'] : null;

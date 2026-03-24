@@ -71,6 +71,30 @@ pub struct PfsenseDhcpLease {
     pub interface: Option<String>,
 }
 
+/// pfSense DHCP pool (server scope) configuration.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PfsenseDhcpPool {
+    pub id: Option<String>,
+    pub interface: Option<String>,
+    pub range_start: Option<String>,
+    pub range_end: Option<String>,
+    pub gateway: Option<String>,
+    pub dns_servers: Option<Vec<String>>,
+    pub domain: Option<String>,
+    pub ntp_servers: Option<Vec<String>>,
+    pub default_lease_time: Option<String>,
+    pub max_lease_time: Option<String>,
+    pub enabled: Option<bool>,
+}
+
+/// pfSense DHCP log entry.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PfsenseDhcpLogEntry {
+    pub timestamp: Option<String>,
+    pub message: Option<String>,
+    pub interface: Option<String>,
+}
+
 /// pfSense DHCP static mapping.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PfsenseDhcpStaticMapping {

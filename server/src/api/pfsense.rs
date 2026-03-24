@@ -135,6 +135,12 @@ pub struct CreateDhcpStaticMappingRequest {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct UpdateDhcpPoolRequest {
+    #[serde(flatten)]
+    pub data: Value,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct CreateDnsOverrideRequest {
     #[serde(flatten)]
     pub data: Value,
@@ -1483,4 +1489,93 @@ pub async fn audit_log(State(state): State<AppState>) -> Result<Json<Vec<Value>>
         .collect();
 
     Ok(Json(entries))
+}
+
+// ── DHCP Pool Configuration ──────────────────────────────
+
+/// GET /api/v1/pfsense/dhcp/pools
+pub async fn dhcp_pools(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<PfsenseDhcpPool>>, StatusCode> {
+    let client = pfsense_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.pfsense_cache.get("dhcp_pools") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let result = tokio::task::spawn_blocking(move || client.dhcp_pools())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense DHCP pools error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.pfsense_cache.set("dhcp_pools".into(), val);
+    }
+    Ok(Json(result))
+}
+
+/// PUT /api/v1/pfsense/dhcp/pools/:id
+pub async fn update_dhcp_pool(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<UpdateDhcpPoolRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = pfsense_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let desc = format!("Update pfSense DHCP pool {id}");
+    let cmds = vec![format!("dhcp_pool_update {id}")];
+
+    let data = body.data;
+    match tokio::task::spawn_blocking(move || client.dhcp_pool_update(&data))
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+    {
+        Ok(_) => {
+            state.pfsense_cache.clear();
+            audit::log_success(&state.db, "pfsense_dhcp_pool_update", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            audit::log_failure(
+                &state.db,
+                "pfsense_dhcp_pool_update",
+                &desc,
+                &cmds,
+                &e.to_string(),
+            )
+            .await;
+            tracing::error!("pfSense update DHCP pool error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+// ── DHCP Logs ────────────────────────────────────────────
+
+/// GET /api/v1/pfsense/dhcp/logs
+pub async fn dhcp_logs(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<PfsenseDhcpLogEntry>>, StatusCode> {
+    let client = pfsense_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let result = tokio::task::spawn_blocking(move || client.dhcp_logs())
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .map_err(|e| {
+            tracing::error!("pfSense DHCP logs error: {e}");
+            StatusCode::BAD_GATEWAY
+        })?;
+
+    Ok(Json(result))
 }

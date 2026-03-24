@@ -431,6 +431,9 @@ pub fn router(state: AppState) -> Router {
             "/pfsense/dhcp/static-mappings/:id",
             delete(pfsense::delete_dhcp_static_mapping),
         )
+        .route("/pfsense/dhcp/pools", get(pfsense::dhcp_pools))
+        .route("/pfsense/dhcp/pools/:id", put(pfsense::update_dhcp_pool))
+        .route("/pfsense/dhcp/logs", get(pfsense::dhcp_logs))
         .route("/pfsense/firewall/rules", get(pfsense::firewall_rules))
         .route(
             "/pfsense/firewall/rules",

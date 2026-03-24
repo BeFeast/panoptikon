@@ -316,6 +316,20 @@ impl PfsenseClient {
         serde_json::from_value(val).context("parse pfSense DHCP static mappings")
     }
 
+    pub fn dhcp_pools(&self) -> Result<Vec<PfsenseDhcpPool>> {
+        let val = self.bridge_data("dhcp_pools", None)?;
+        serde_json::from_value(val).context("parse pfSense DHCP pools")
+    }
+
+    pub fn dhcp_pool_update(&self, data: &Value) -> Result<Value> {
+        self.bridge_data("dhcp_pool_update", Some(data))
+    }
+
+    pub fn dhcp_logs(&self) -> Result<Vec<PfsenseDhcpLogEntry>> {
+        let val = self.bridge_data("dhcp_logs", None)?;
+        serde_json::from_value(val).context("parse pfSense DHCP logs")
+    }
+
     pub fn firewall_rules(&self) -> Result<Vec<PfsenseFirewallRule>> {
         let val = self.bridge_data("firewall_rules", None)?;
         serde_json::from_value(val).context("parse pfSense firewall rules")
