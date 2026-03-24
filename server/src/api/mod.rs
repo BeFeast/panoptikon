@@ -310,6 +310,41 @@ pub fn router(state: AppState) -> Router {
             "/mikrotik/dhcp-static-mappings",
             post(mikrotik::create_dhcp_static_mapping),
         )
+        // MikroTik DHCP server pool configuration
+        .route("/mikrotik/dhcp-servers", get(mikrotik::dhcp_servers))
+        .route("/mikrotik/dhcp-servers", post(mikrotik::create_dhcp_server))
+        .route(
+            "/mikrotik/dhcp-servers/:id",
+            patch(mikrotik::update_dhcp_server),
+        )
+        .route(
+            "/mikrotik/dhcp-servers/:id",
+            delete(mikrotik::delete_dhcp_server),
+        )
+        .route("/mikrotik/dhcp-pools", get(mikrotik::dhcp_pools))
+        .route("/mikrotik/dhcp-pools", post(mikrotik::create_dhcp_pool))
+        .route(
+            "/mikrotik/dhcp-pools/:id",
+            patch(mikrotik::update_dhcp_pool),
+        )
+        .route(
+            "/mikrotik/dhcp-pools/:id",
+            delete(mikrotik::delete_dhcp_pool),
+        )
+        .route("/mikrotik/dhcp-networks", get(mikrotik::dhcp_networks))
+        .route(
+            "/mikrotik/dhcp-networks",
+            post(mikrotik::create_dhcp_network),
+        )
+        .route(
+            "/mikrotik/dhcp-networks/:id",
+            patch(mikrotik::update_dhcp_network),
+        )
+        .route(
+            "/mikrotik/dhcp-networks/:id",
+            delete(mikrotik::delete_dhcp_network),
+        )
+        .route("/mikrotik/logs/dhcp", get(mikrotik::dhcp_logs))
         .route("/mikrotik/firewall", get(mikrotik::firewall))
         .route(
             "/mikrotik/firewall/filter",

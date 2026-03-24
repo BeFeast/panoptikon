@@ -13,9 +13,10 @@ use serde::{Deserialize, Serialize};
 use super::{audit, AppState};
 use crate::mikrotik::client::MikrotikClient;
 use crate::mikrotik::types::{
-    DhcpStaticLeaseWriteRequest, FirewallAddressListWriteRequest, FirewallFilterWriteRequest,
-    FirewallMangleWriteRequest, FirewallNatWriteRequest, NetwatchWriteRequest,
-    RoutingRuleWriteRequest, VlanWriteRequest,
+    DhcpNetworkWriteRequest, DhcpServerWriteRequest, DhcpStaticLeaseWriteRequest,
+    FirewallAddressListWriteRequest, FirewallFilterWriteRequest, FirewallMangleWriteRequest,
+    FirewallNatWriteRequest, IpPoolWriteRequest, NetwatchWriteRequest, RoutingRuleWriteRequest,
+    VlanWriteRequest,
 };
 
 // ── Helper: build a MikroTik client from DB settings ───────
@@ -141,6 +142,73 @@ pub struct MikrotikCreateDhcpStaticRequest {
     pub address: String,
     pub mac_address: String,
     pub comment: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikDhcpServerResponse {
+    pub id: Option<String>,
+    pub name: String,
+    pub interface: Option<String>,
+    pub address_pool: Option<String>,
+    pub lease_time: Option<String>,
+    pub disabled: bool,
+    pub dynamic: bool,
+    pub invalid: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikDhcpServerUpsertRequest {
+    pub name: String,
+    pub interface: String,
+    pub address_pool: String,
+    pub lease_time: Option<String>,
+    pub disabled: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikIpPoolResponse {
+    pub id: Option<String>,
+    pub name: String,
+    pub ranges: Option<String>,
+    pub comment: Option<String>,
+    pub dynamic: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikIpPoolUpsertRequest {
+    pub name: String,
+    pub ranges: String,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikDhcpNetworkResponse {
+    pub id: Option<String>,
+    pub address: String,
+    pub gateway: Option<String>,
+    pub dns_server: Option<String>,
+    pub domain: Option<String>,
+    pub ntp_server: Option<String>,
+    pub comment: Option<String>,
+    pub dynamic: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikDhcpNetworkUpsertRequest {
+    pub address: String,
+    pub gateway: Option<String>,
+    pub dns_server: Option<String>,
+    pub domain: Option<String>,
+    pub ntp_server: Option<String>,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikLogEntryResponse {
+    pub id: Option<String>,
+    pub time: Option<String>,
+    pub topics: Option<String>,
+    pub message: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -1547,6 +1615,510 @@ pub async fn delete_dhcp_lease(
             Err(StatusCode::BAD_GATEWAY)
         }
     }
+}
+
+// ── DHCP Server Pool Configuration ────────────────────────
+
+/// GET /api/v1/mikrotik/dhcp-servers
+pub async fn dhcp_servers(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<MikrotikDhcpServerResponse>>, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.mikrotik_cache.get("dhcp-servers") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let servers = client.dhcp_servers().await.map_err(|e| {
+        tracing::error!("MikroTik DHCP servers error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let result: Vec<MikrotikDhcpServerResponse> = servers
+        .into_iter()
+        .map(|s| MikrotikDhcpServerResponse {
+            id: s.id,
+            name: s.name.unwrap_or_default(),
+            interface: s.interface,
+            address_pool: s.address_pool,
+            lease_time: s.lease_time,
+            disabled: is_true(&s.disabled),
+            dynamic: is_true(&s.dynamic),
+            invalid: is_true(&s.invalid),
+        })
+        .collect();
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.mikrotik_cache.set("dhcp-servers".into(), val);
+    }
+    Ok(Json(result))
+}
+
+/// POST /api/v1/mikrotik/dhcp-servers
+pub async fn create_dhcp_server(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikDhcpServerUpsertRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = DhcpServerWriteRequest {
+        name: body.name.clone(),
+        interface: body.interface.clone(),
+        address_pool: body.address_pool.clone(),
+        lease_time: body.lease_time.clone(),
+        disabled: body
+            .disabled
+            .map(|d| if d { "true" } else { "false" }.into()),
+    };
+
+    let desc = format!(
+        "Create MikroTik DHCP server '{}' on {}",
+        body.name, body.interface
+    );
+    let cmds = vec![format!(
+        "POST /ip/dhcp-server name={} interface={} address-pool={}",
+        body.name, body.interface, body.address_pool
+    )];
+
+    match client.create_dhcp_server(&req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_dhcp_server_create", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_dhcp_server_create", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik DHCP server create error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// PATCH /api/v1/mikrotik/dhcp-servers/:id
+pub async fn update_dhcp_server(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikDhcpServerUpsertRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = DhcpServerWriteRequest {
+        name: body.name.clone(),
+        interface: body.interface.clone(),
+        address_pool: body.address_pool.clone(),
+        lease_time: body.lease_time.clone(),
+        disabled: body
+            .disabled
+            .map(|d| if d { "true" } else { "false" }.into()),
+    };
+
+    let desc = format!("Update MikroTik DHCP server {id}");
+    let cmds = vec![format!("PATCH /ip/dhcp-server/{id}")];
+
+    match client.update_dhcp_server(id, &req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_dhcp_server_update", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_dhcp_server_update", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik DHCP server update error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// DELETE /api/v1/mikrotik/dhcp-servers/:id
+pub async fn delete_dhcp_server(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let desc = format!("Delete MikroTik DHCP server {id}");
+    let cmds = vec![format!("DELETE /ip/dhcp-server/{id}")];
+
+    match client.delete_dhcp_server(id).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_dhcp_server_delete", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_dhcp_server_delete", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik DHCP server delete error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// GET /api/v1/mikrotik/dhcp-pools
+pub async fn dhcp_pools(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<MikrotikIpPoolResponse>>, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.mikrotik_cache.get("dhcp-pools") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let pools = client.ip_pools().await.map_err(|e| {
+        tracing::error!("MikroTik IP pools error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let result: Vec<MikrotikIpPoolResponse> = pools
+        .into_iter()
+        .map(|p| MikrotikIpPoolResponse {
+            id: p.id,
+            name: p.name.unwrap_or_default(),
+            ranges: p.ranges,
+            comment: p.comment,
+            dynamic: is_true(&p.dynamic),
+        })
+        .collect();
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.mikrotik_cache.set("dhcp-pools".into(), val);
+    }
+    Ok(Json(result))
+}
+
+/// POST /api/v1/mikrotik/dhcp-pools
+pub async fn create_dhcp_pool(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikIpPoolUpsertRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = IpPoolWriteRequest {
+        name: body.name.clone(),
+        ranges: body.ranges.clone(),
+        comment: body.comment.clone(),
+    };
+
+    let desc = format!(
+        "Create MikroTik IP pool '{}' ranges={}",
+        body.name, body.ranges
+    );
+    let cmds = vec![format!(
+        "POST /ip/pool name={} ranges={}",
+        body.name, body.ranges
+    )];
+
+    match client.create_ip_pool(&req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_ip_pool_create", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_ip_pool_create", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik IP pool create error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// PATCH /api/v1/mikrotik/dhcp-pools/:id
+pub async fn update_dhcp_pool(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikIpPoolUpsertRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = IpPoolWriteRequest {
+        name: body.name.clone(),
+        ranges: body.ranges.clone(),
+        comment: body.comment.clone(),
+    };
+
+    let desc = format!("Update MikroTik IP pool {id}");
+    let cmds = vec![format!("PATCH /ip/pool/{id}")];
+
+    match client.update_ip_pool(id, &req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_ip_pool_update", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_ip_pool_update", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik IP pool update error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// DELETE /api/v1/mikrotik/dhcp-pools/:id
+pub async fn delete_dhcp_pool(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let desc = format!("Delete MikroTik IP pool {id}");
+    let cmds = vec![format!("DELETE /ip/pool/{id}")];
+
+    match client.delete_ip_pool(id).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_ip_pool_delete", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(&state.db, "mikrotik_ip_pool_delete", &desc, &cmds, &msg).await;
+            tracing::error!("MikroTik IP pool delete error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// GET /api/v1/mikrotik/dhcp-networks
+pub async fn dhcp_networks(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<MikrotikDhcpNetworkResponse>>, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.mikrotik_cache.get("dhcp-networks") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let networks = client.dhcp_networks().await.map_err(|e| {
+        tracing::error!("MikroTik DHCP networks error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let result: Vec<MikrotikDhcpNetworkResponse> = networks
+        .into_iter()
+        .map(|n| MikrotikDhcpNetworkResponse {
+            id: n.id,
+            address: n.address.unwrap_or_default(),
+            gateway: n.gateway,
+            dns_server: n.dns_server,
+            domain: n.domain,
+            ntp_server: n.ntp_server,
+            comment: n.comment,
+            dynamic: is_true(&n.dynamic),
+        })
+        .collect();
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.mikrotik_cache.set("dhcp-networks".into(), val);
+    }
+    Ok(Json(result))
+}
+
+/// POST /api/v1/mikrotik/dhcp-networks
+pub async fn create_dhcp_network(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikDhcpNetworkUpsertRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = DhcpNetworkWriteRequest {
+        address: body.address.clone(),
+        gateway: body.gateway.clone(),
+        dns_server: body.dns_server.clone(),
+        domain: body.domain.clone(),
+        ntp_server: body.ntp_server.clone(),
+        comment: body.comment.clone(),
+    };
+
+    let desc = format!("Create MikroTik DHCP network {}", body.address);
+    let cmds = vec![format!(
+        "POST /ip/dhcp-server/network address={}",
+        body.address
+    )];
+
+    match client.create_dhcp_network(&req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_dhcp_network_create", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_dhcp_network_create",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik DHCP network create error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// PATCH /api/v1/mikrotik/dhcp-networks/:id
+pub async fn update_dhcp_network(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikDhcpNetworkUpsertRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = DhcpNetworkWriteRequest {
+        address: body.address.clone(),
+        gateway: body.gateway.clone(),
+        dns_server: body.dns_server.clone(),
+        domain: body.domain.clone(),
+        ntp_server: body.ntp_server.clone(),
+        comment: body.comment.clone(),
+    };
+
+    let desc = format!("Update MikroTik DHCP network {id}");
+    let cmds = vec![format!("PATCH /ip/dhcp-server/network/{id}")];
+
+    match client.update_dhcp_network(id, &req).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_dhcp_network_update", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_dhcp_network_update",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik DHCP network update error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// DELETE /api/v1/mikrotik/dhcp-networks/:id
+pub async fn delete_dhcp_network(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let desc = format!("Delete MikroTik DHCP network {id}");
+    let cmds = vec![format!("DELETE /ip/dhcp-server/network/{id}")];
+
+    match client.delete_dhcp_network(id).await {
+        Ok(()) => {
+            audit::log_success(&state.db, "mikrotik_dhcp_network_delete", &desc, &cmds).await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_dhcp_network_delete",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik DHCP network delete error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// GET /api/v1/mikrotik/logs/dhcp
+pub async fn dhcp_logs(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<MikrotikLogEntryResponse>>, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.mikrotik_cache.get("dhcp-logs") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let entries = client.logs(Some("dhcp")).await.map_err(|e| {
+        tracing::error!("MikroTik DHCP logs error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let result: Vec<MikrotikLogEntryResponse> = entries
+        .into_iter()
+        .map(|e| MikrotikLogEntryResponse {
+            id: e.id,
+            time: e.time,
+            topics: e.topics,
+            message: e.message,
+        })
+        .collect();
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.mikrotik_cache.set("dhcp-logs".into(), val);
+    }
+    Ok(Json(result))
 }
 
 // ── Advanced Routing: Policy-Based Routing (Mangle + Routing Rules) ──

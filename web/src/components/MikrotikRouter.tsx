@@ -125,6 +125,19 @@ import {
   deleteMikrotikNetwatch,
   fetchMikrotikDynamicRouting,
   fetchMikrotikIpv6Nd,
+  fetchMikrotikDhcpServers,
+  createMikrotikDhcpServer,
+  updateMikrotikDhcpServer,
+  deleteMikrotikDhcpServer,
+  fetchMikrotikDhcpPools,
+  createMikrotikDhcpPool,
+  updateMikrotikDhcpPool,
+  deleteMikrotikDhcpPool,
+  fetchMikrotikDhcpNetworks,
+  createMikrotikDhcpNetwork,
+  updateMikrotikDhcpNetwork,
+  deleteMikrotikDhcpNetwork,
+  fetchMikrotikDhcpLogs,
 } from "@/lib/api";
 import { formatBps } from "@/lib/format";
 import { useData } from "@/hooks/useData";
@@ -151,6 +164,10 @@ import type {
   MikrotikDns,
   MikrotikWireguard,
   TrafficHistoryPoint,
+  MikrotikDhcpServer,
+  MikrotikIpPool,
+  MikrotikDhcpNetwork,
+  MikrotikLogEntry,
 } from "@/lib/types";
 
 function formatBytes(bytes: string | null): string {
@@ -1053,6 +1070,642 @@ function DhcpLeasesTable({
           })}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+// ── DHCP Panel (full pool configuration) ──────────────────
+
+type UseDataResult<T> = {
+  data: T | null;
+  loading: boolean;
+  error: string | null;
+  reload: () => Promise<void>;
+};
+
+function DhcpPanel({
+  leases,
+  servers,
+  pools,
+  networks,
+  logs,
+}: {
+  leases: UseDataResult<MikrotikDhcpLease[]>;
+  servers: UseDataResult<MikrotikDhcpServer[]>;
+  pools: UseDataResult<MikrotikIpPool[]>;
+  networks: UseDataResult<MikrotikDhcpNetwork[]>;
+  logs: UseDataResult<MikrotikLogEntry[]>;
+}) {
+  const [subTab, setSubTab] = useState("leases");
+  // Server form
+  const [showServerDialog, setShowServerDialog] = useState(false);
+  const [editServer, setEditServer] = useState<MikrotikDhcpServer | null>(null);
+  const [serverForm, setServerForm] = useState({ name: "", interface: "", address_pool: "", lease_time: "" });
+  const [deleteServer, setDeleteServer] = useState<MikrotikDhcpServer | null>(null);
+  const [savingServer, setSavingServer] = useState(false);
+  // Pool form
+  const [showPoolDialog, setShowPoolDialog] = useState(false);
+  const [editPool, setEditPool] = useState<MikrotikIpPool | null>(null);
+  const [poolForm, setPoolForm] = useState({ name: "", ranges: "", comment: "" });
+  const [deletePool, setDeletePool] = useState<MikrotikIpPool | null>(null);
+  const [savingPool, setSavingPool] = useState(false);
+  // Network form
+  const [showNetDialog, setShowNetDialog] = useState(false);
+  const [editNet, setEditNet] = useState<MikrotikDhcpNetwork | null>(null);
+  const [netForm, setNetForm] = useState({ address: "", gateway: "", dns_server: "", domain: "", ntp_server: "", comment: "" });
+  const [deleteNet, setDeleteNet] = useState<MikrotikDhcpNetwork | null>(null);
+  const [savingNet, setSavingNet] = useState(false);
+
+  const openCreateServer = () => {
+    setEditServer(null);
+    setServerForm({ name: "", interface: "", address_pool: "", lease_time: "" });
+    setShowServerDialog(true);
+  };
+  const openEditServer = (s: MikrotikDhcpServer) => {
+    setEditServer(s);
+    setServerForm({
+      name: s.name,
+      interface: s.interface ?? "",
+      address_pool: s.address_pool ?? "",
+      lease_time: s.lease_time ?? "",
+    });
+    setShowServerDialog(true);
+  };
+  const handleSaveServer = async () => {
+    if (!serverForm.name || !serverForm.interface || !serverForm.address_pool) return;
+    setSavingServer(true);
+    try {
+      const body = {
+        name: serverForm.name,
+        interface: serverForm.interface,
+        address_pool: serverForm.address_pool,
+        lease_time: serverForm.lease_time || undefined,
+      };
+      if (editServer?.id) {
+        await updateMikrotikDhcpServer(editServer.id, body);
+        toast.success("DHCP server updated");
+      } else {
+        await createMikrotikDhcpServer(body);
+        toast.success("DHCP server created");
+      }
+      setShowServerDialog(false);
+      await servers.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save DHCP server");
+    } finally {
+      setSavingServer(false);
+    }
+  };
+  const handleDeleteServer = async () => {
+    if (!deleteServer?.id) return;
+    try {
+      await deleteMikrotikDhcpServer(deleteServer.id);
+      toast.success("DHCP server deleted");
+      setDeleteServer(null);
+      await servers.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete DHCP server");
+    }
+  };
+
+  const openCreatePool = () => {
+    setEditPool(null);
+    setPoolForm({ name: "", ranges: "", comment: "" });
+    setShowPoolDialog(true);
+  };
+  const openEditPool = (p: MikrotikIpPool) => {
+    setEditPool(p);
+    setPoolForm({ name: p.name, ranges: p.ranges ?? "", comment: p.comment ?? "" });
+    setShowPoolDialog(true);
+  };
+  const handleSavePool = async () => {
+    if (!poolForm.name || !poolForm.ranges) return;
+    setSavingPool(true);
+    try {
+      const body = {
+        name: poolForm.name,
+        ranges: poolForm.ranges,
+        comment: poolForm.comment || undefined,
+      };
+      if (editPool?.id) {
+        await updateMikrotikDhcpPool(editPool.id, body);
+        toast.success("IP pool updated");
+      } else {
+        await createMikrotikDhcpPool(body);
+        toast.success("IP pool created");
+      }
+      setShowPoolDialog(false);
+      await pools.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save IP pool");
+    } finally {
+      setSavingPool(false);
+    }
+  };
+  const handleDeletePool = async () => {
+    if (!deletePool?.id) return;
+    try {
+      await deleteMikrotikDhcpPool(deletePool.id);
+      toast.success("IP pool deleted");
+      setDeletePool(null);
+      await pools.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete IP pool");
+    }
+  };
+
+  const openCreateNet = () => {
+    setEditNet(null);
+    setNetForm({ address: "", gateway: "", dns_server: "", domain: "", ntp_server: "", comment: "" });
+    setShowNetDialog(true);
+  };
+  const openEditNet = (n: MikrotikDhcpNetwork) => {
+    setEditNet(n);
+    setNetForm({
+      address: n.address,
+      gateway: n.gateway ?? "",
+      dns_server: n.dns_server ?? "",
+      domain: n.domain ?? "",
+      ntp_server: n.ntp_server ?? "",
+      comment: n.comment ?? "",
+    });
+    setShowNetDialog(true);
+  };
+  const handleSaveNet = async () => {
+    if (!netForm.address) return;
+    setSavingNet(true);
+    try {
+      const body = {
+        address: netForm.address,
+        gateway: netForm.gateway || undefined,
+        dns_server: netForm.dns_server || undefined,
+        domain: netForm.domain || undefined,
+        ntp_server: netForm.ntp_server || undefined,
+        comment: netForm.comment || undefined,
+      };
+      if (editNet?.id) {
+        await updateMikrotikDhcpNetwork(editNet.id, body);
+        toast.success("DHCP network updated");
+      } else {
+        await createMikrotikDhcpNetwork(body);
+        toast.success("DHCP network created");
+      }
+      setShowNetDialog(false);
+      await networks.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to save DHCP network");
+    } finally {
+      setSavingNet(false);
+    }
+  };
+  const handleDeleteNet = async () => {
+    if (!deleteNet?.id) return;
+    try {
+      await deleteMikrotikDhcpNetwork(deleteNet.id);
+      toast.success("DHCP network deleted");
+      setDeleteNet(null);
+      await networks.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete DHCP network");
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <Tabs value={subTab} onValueChange={setSubTab}>
+        <TabsList className="bg-slate-800">
+          <TabsTrigger value="leases" className="gap-1.5 text-xs">
+            <List className="h-3.5 w-3.5" />
+            Leases
+          </TabsTrigger>
+          <TabsTrigger value="servers" className="gap-1.5 text-xs">
+            <Server className="h-3.5 w-3.5" />
+            Servers
+          </TabsTrigger>
+          <TabsTrigger value="pools" className="gap-1.5 text-xs">
+            <Layers className="h-3.5 w-3.5" />
+            Pools
+          </TabsTrigger>
+          <TabsTrigger value="networks" className="gap-1.5 text-xs">
+            <Network className="h-3.5 w-3.5" />
+            Options
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="gap-1.5 text-xs">
+            <Activity className="h-3.5 w-3.5" />
+            Logs
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Leases sub-tab */}
+        <TabsContent value="leases">
+          <Card className="border-slate-800 bg-slate-900">
+            <CardHeader>
+              <CardTitle className="text-base text-white">DHCP Leases</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DhcpLeasesTable
+                data={leases.data}
+                loading={leases.loading}
+                error={leases.error}
+                reload={leases.reload}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Servers sub-tab */}
+        <TabsContent value="servers">
+          <Card className="border-slate-800 bg-slate-900">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base text-white">DHCP Servers</CardTitle>
+              <Button size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-700" onClick={openCreateServer}>
+                <Plus className="h-3.5 w-3.5" />
+                Add Server
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {servers.loading ? (
+                <Skeleton className="h-24 w-full" />
+              ) : servers.error ? (
+                <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                  <p className="text-xs text-rose-400">{servers.error}</p>
+                </div>
+              ) : !servers.data?.length ? (
+                <p className="py-4 text-sm text-slate-500">No DHCP servers configured.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-md border border-slate-800">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                        <th className="px-4 py-3 font-medium text-slate-400">Name</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Address Pool</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Lease Time</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Status</th>
+                        <th className="px-4 py-3 font-medium text-slate-400 w-24" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {servers.data.map((s, idx) => (
+                        <tr key={s.id ?? idx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors">
+                          <td className="px-4 py-3 font-medium text-white">{s.name}</td>
+                          <td className="px-4 py-3 text-slate-300">{s.interface ?? "\u2014"}</td>
+                          <td className="px-4 py-3 text-slate-300">{s.address_pool ?? "\u2014"}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-slate-400">{s.lease_time ?? "\u2014"}</td>
+                          <td className="px-4 py-3">
+                            <Badge variant="outline" className={s.disabled ? "border-rose-500/30 bg-rose-500/10 text-rose-400 text-xs" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"}>
+                              {s.disabled ? "Disabled" : "Active"}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 flex gap-1">
+                            {!s.dynamic && (
+                              <>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-blue-400" onClick={() => openEditServer(s)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-rose-400" onClick={() => setDeleteServer(s)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Pools sub-tab */}
+        <TabsContent value="pools">
+          <Card className="border-slate-800 bg-slate-900">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base text-white">IP Address Pools</CardTitle>
+              <Button size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-700" onClick={openCreatePool}>
+                <Plus className="h-3.5 w-3.5" />
+                Add Pool
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {pools.loading ? (
+                <Skeleton className="h-24 w-full" />
+              ) : pools.error ? (
+                <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                  <p className="text-xs text-rose-400">{pools.error}</p>
+                </div>
+              ) : !pools.data?.length ? (
+                <p className="py-4 text-sm text-slate-500">No IP pools configured.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-md border border-slate-800">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                        <th className="px-4 py-3 font-medium text-slate-400">Name</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Ranges</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
+                        <th className="px-4 py-3 font-medium text-slate-400 w-24" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pools.data.map((p, idx) => (
+                        <tr key={p.id ?? idx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors">
+                          <td className="px-4 py-3 font-medium text-white">{p.name}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-slate-300">{p.ranges ?? "\u2014"}</td>
+                          <td className="px-4 py-3 text-slate-400">{p.comment ?? "\u2014"}</td>
+                          <td className="px-4 py-3 flex gap-1">
+                            {!p.dynamic && (
+                              <>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-blue-400" onClick={() => openEditPool(p)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-rose-400" onClick={() => setDeletePool(p)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Network Options sub-tab */}
+        <TabsContent value="networks">
+          <Card className="border-slate-800 bg-slate-900">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="text-base text-white">DHCP Network Options</CardTitle>
+              <Button size="sm" className="gap-1.5 bg-blue-600 hover:bg-blue-700" onClick={openCreateNet}>
+                <Plus className="h-3.5 w-3.5" />
+                Add Network
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {networks.loading ? (
+                <Skeleton className="h-24 w-full" />
+              ) : networks.error ? (
+                <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                  <p className="text-xs text-rose-400">{networks.error}</p>
+                </div>
+              ) : !networks.data?.length ? (
+                <p className="py-4 text-sm text-slate-500">No DHCP networks configured.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-md border border-slate-800">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                        <th className="px-4 py-3 font-medium text-slate-400">Network</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Gateway</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">DNS Server</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Domain</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">NTP Server</th>
+                        <th className="px-4 py-3 font-medium text-slate-400 w-24" />
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {networks.data.map((n, idx) => (
+                        <tr key={n.id ?? idx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors">
+                          <td className="px-4 py-3 font-mono text-xs font-medium text-white">{n.address}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-slate-300">{n.gateway ?? "\u2014"}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-slate-300">{n.dns_server ?? "\u2014"}</td>
+                          <td className="px-4 py-3 text-slate-300">{n.domain ?? "\u2014"}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-slate-300">{n.ntp_server ?? "\u2014"}</td>
+                          <td className="px-4 py-3 flex gap-1">
+                            {!n.dynamic && (
+                              <>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-blue-400" onClick={() => openEditNet(n)}>
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-rose-400" onClick={() => setDeleteNet(n)}>
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Logs sub-tab */}
+        <TabsContent value="logs">
+          <Card className="border-slate-800 bg-slate-900">
+            <CardHeader>
+              <CardTitle className="text-base text-white">DHCP Logs</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {logs.loading ? (
+                <Skeleton className="h-24 w-full" />
+              ) : logs.error ? (
+                <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
+                  <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
+                  <p className="text-xs text-rose-400">{logs.error}</p>
+                </div>
+              ) : !logs.data?.length ? (
+                <p className="py-4 text-sm text-slate-500">No DHCP log entries found.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-md border border-slate-800 max-h-96 overflow-y-auto">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 z-10">
+                      <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                        <th className="px-4 py-3 font-medium text-slate-400 w-40">Time</th>
+                        <th className="px-4 py-3 font-medium text-slate-400 w-32">Topics</th>
+                        <th className="px-4 py-3 font-medium text-slate-400">Message</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {logs.data.map((entry, idx) => (
+                        <tr key={entry.id ?? idx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors">
+                          <td className="px-4 py-2 font-mono text-xs text-slate-400 whitespace-nowrap">{entry.time ?? "\u2014"}</td>
+                          <td className="px-4 py-2 text-xs text-slate-500">{entry.topics ?? "\u2014"}</td>
+                          <td className="px-4 py-2 text-xs text-slate-300">{entry.message ?? "\u2014"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {/* Server create/edit dialog */}
+      <Dialog open={showServerDialog} onOpenChange={setShowServerDialog}>
+        <DialogContent className="border-slate-800 bg-slate-900">
+          <DialogHeader>
+            <DialogTitle className="text-white">{editServer ? "Edit DHCP Server" : "Add DHCP Server"}</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {editServer ? "Update the DHCP server configuration." : "Create a new DHCP server instance."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label className="text-slate-300">Name</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="dhcp1" value={serverForm.name} onChange={(e) => setServerForm({ ...serverForm, name: e.target.value })} />
+            </div>
+            <div className="grid gap-2">
+              <Label className="text-slate-300">Interface</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="bridge" value={serverForm.interface} onChange={(e) => setServerForm({ ...serverForm, interface: e.target.value })} />
+            </div>
+            <div className="grid gap-2">
+              <Label className="text-slate-300">Address Pool</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="dhcp-pool" value={serverForm.address_pool} onChange={(e) => setServerForm({ ...serverForm, address_pool: e.target.value })} />
+            </div>
+            <div className="grid gap-2">
+              <Label className="text-slate-300">Lease Time</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="00:10:00 (optional)" value={serverForm.lease_time} onChange={(e) => setServerForm({ ...serverForm, lease_time: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-slate-700 text-slate-300" onClick={() => setShowServerDialog(false)}>Cancel</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700" disabled={savingServer || !serverForm.name || !serverForm.interface || !serverForm.address_pool} onClick={handleSaveServer}>
+              {savingServer ? "Saving\u2026" : editServer ? "Update" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Server delete confirm */}
+      <AlertDialog open={!!deleteServer} onOpenChange={(open) => !open && setDeleteServer(null)}>
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete DHCP Server</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Delete DHCP server <span className="font-medium text-white">{deleteServer?.name}</span> on interface{" "}
+              <span className="font-medium text-white">{deleteServer?.interface}</span>? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 text-slate-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDeleteServer}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Pool create/edit dialog */}
+      <Dialog open={showPoolDialog} onOpenChange={setShowPoolDialog}>
+        <DialogContent className="border-slate-800 bg-slate-900">
+          <DialogHeader>
+            <DialogTitle className="text-white">{editPool ? "Edit IP Pool" : "Add IP Pool"}</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {editPool ? "Update the IP address pool." : "Create a new IP address pool for DHCP."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label className="text-slate-300">Name</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="dhcp-pool" value={poolForm.name} onChange={(e) => setPoolForm({ ...poolForm, name: e.target.value })} />
+            </div>
+            <div className="grid gap-2">
+              <Label className="text-slate-300">Ranges</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="192.168.1.100-192.168.1.200" value={poolForm.ranges} onChange={(e) => setPoolForm({ ...poolForm, ranges: e.target.value })} />
+            </div>
+            <div className="grid gap-2">
+              <Label className="text-slate-300">Comment</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="Optional comment" value={poolForm.comment} onChange={(e) => setPoolForm({ ...poolForm, comment: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-slate-700 text-slate-300" onClick={() => setShowPoolDialog(false)}>Cancel</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700" disabled={savingPool || !poolForm.name || !poolForm.ranges} onClick={handleSavePool}>
+              {savingPool ? "Saving\u2026" : editPool ? "Update" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pool delete confirm */}
+      <AlertDialog open={!!deletePool} onOpenChange={(open) => !open && setDeletePool(null)}>
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete IP Pool</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Delete IP pool <span className="font-medium text-white">{deletePool?.name}</span> with ranges{" "}
+              <span className="font-mono text-white">{deletePool?.ranges}</span>? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 text-slate-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDeletePool}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Network create/edit dialog */}
+      <Dialog open={showNetDialog} onOpenChange={setShowNetDialog}>
+        <DialogContent className="border-slate-800 bg-slate-900">
+          <DialogHeader>
+            <DialogTitle className="text-white">{editNet ? "Edit DHCP Network" : "Add DHCP Network"}</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              {editNet ? "Update DHCP options for this network." : "Configure DHCP options for a network subnet."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label className="text-slate-300">Network Address (CIDR)</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="192.168.1.0/24" value={netForm.address} onChange={(e) => setNetForm({ ...netForm, address: e.target.value })} />
+            </div>
+            <div className="grid gap-2">
+              <Label className="text-slate-300">Gateway</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="192.168.1.1" value={netForm.gateway} onChange={(e) => setNetForm({ ...netForm, gateway: e.target.value })} />
+            </div>
+            <div className="grid gap-2">
+              <Label className="text-slate-300">DNS Server</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="8.8.8.8,8.8.4.4" value={netForm.dns_server} onChange={(e) => setNetForm({ ...netForm, dns_server: e.target.value })} />
+            </div>
+            <div className="grid gap-2">
+              <Label className="text-slate-300">Domain Name</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="example.local" value={netForm.domain} onChange={(e) => setNetForm({ ...netForm, domain: e.target.value })} />
+            </div>
+            <div className="grid gap-2">
+              <Label className="text-slate-300">NTP Server</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="pool.ntp.org" value={netForm.ntp_server} onChange={(e) => setNetForm({ ...netForm, ntp_server: e.target.value })} />
+            </div>
+            <div className="grid gap-2">
+              <Label className="text-slate-300">Comment</Label>
+              <Input className="border-slate-700 bg-slate-800 text-white" placeholder="Optional comment" value={netForm.comment} onChange={(e) => setNetForm({ ...netForm, comment: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-slate-700 text-slate-300" onClick={() => setShowNetDialog(false)}>Cancel</Button>
+            <Button className="bg-blue-600 hover:bg-blue-700" disabled={savingNet || !netForm.address} onClick={handleSaveNet}>
+              {savingNet ? "Saving\u2026" : editNet ? "Update" : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Network delete confirm */}
+      <AlertDialog open={!!deleteNet} onOpenChange={(open) => !open && setDeleteNet(null)}>
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete DHCP Network</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Delete DHCP network <span className="font-mono text-white">{deleteNet?.address}</span>? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700 text-slate-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDeleteNet}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -3537,6 +4190,10 @@ export default function MikrotikRouter() {
   const vlans = useData(useCallback(() => fetchMikrotikVlans(), []));
   const routes = useData(useCallback(() => fetchMikrotikRoutes(), []));
   const dhcp = useData(useCallback(() => fetchMikrotikDhcpLeases(), []));
+  const dhcpServers = useData(useCallback(() => fetchMikrotikDhcpServers(), []));
+  const dhcpPools = useData(useCallback(() => fetchMikrotikDhcpPools(), []));
+  const dhcpNetworks = useData(useCallback(() => fetchMikrotikDhcpNetworks(), []));
+  const dhcpLogs = useData(useCallback(() => fetchMikrotikDhcpLogs(), []));
   const fw = useData(useCallback(() => fetchMikrotikFirewall(), []));
   const dns = useData(useCallback(() => fetchMikrotikDns(), []));
   const wg = useData(useCallback(() => fetchMikrotikWireguard(), []));
@@ -3718,21 +4375,13 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="dhcp">
-          <Card className="border-slate-800 bg-slate-900">
-            <CardHeader>
-              <CardTitle className="text-base text-white">
-                DHCP Leases
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <DhcpLeasesTable
-                data={dhcp.data}
-                loading={dhcp.loading}
-                error={dhcp.error}
-                reload={dhcp.reload}
-              />
-            </CardContent>
-          </Card>
+          <DhcpPanel
+            leases={dhcp}
+            servers={dhcpServers}
+            pools={dhcpPools}
+            networks={dhcpNetworks}
+            logs={dhcpLogs}
+          />
         </TabsContent>
 
         <TabsContent value="dns">

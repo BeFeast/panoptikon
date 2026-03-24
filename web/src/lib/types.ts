@@ -1291,6 +1291,66 @@ export interface MikrotikDhcpStaticMappingRequest {
   comment?: string;
 }
 
+export interface MikrotikDhcpServer {
+  id: string | null;
+  name: string;
+  interface: string | null;
+  address_pool: string | null;
+  lease_time: string | null;
+  disabled: boolean;
+  dynamic: boolean;
+  invalid: boolean;
+}
+
+export interface MikrotikDhcpServerRequest {
+  name: string;
+  interface: string;
+  address_pool: string;
+  lease_time?: string;
+  disabled?: boolean;
+}
+
+export interface MikrotikIpPool {
+  id: string | null;
+  name: string;
+  ranges: string | null;
+  comment: string | null;
+  dynamic: boolean;
+}
+
+export interface MikrotikIpPoolRequest {
+  name: string;
+  ranges: string;
+  comment?: string;
+}
+
+export interface MikrotikDhcpNetwork {
+  id: string | null;
+  address: string;
+  gateway: string | null;
+  dns_server: string | null;
+  domain: string | null;
+  ntp_server: string | null;
+  comment: string | null;
+  dynamic: boolean;
+}
+
+export interface MikrotikDhcpNetworkRequest {
+  address: string;
+  gateway?: string;
+  dns_server?: string;
+  domain?: string;
+  ntp_server?: string;
+  comment?: string;
+}
+
+export interface MikrotikLogEntry {
+  id: string | null;
+  time: string | null;
+  topics: string | null;
+  message: string | null;
+}
+
 export interface MikrotikFirewallRule {
   id: string | null;
   chain: string | null;
