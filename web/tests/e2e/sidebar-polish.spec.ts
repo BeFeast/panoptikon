@@ -24,7 +24,7 @@ test.describe('Sidebar polish — accent bar, hover, separators', () => {
 
     // Verify it has the gradient background classes
     await expect(accentBar).toHaveClass(/bg-gradient-to-b/, { timeout: 10000 });
-    await expect(accentBar).toHaveClass(/from-blue-400/, { timeout: 10000 });
+    await expect(accentBar).toHaveClass(/from-cyan-400/, { timeout: 10000 });
 
     await page.screenshot({ path: 'tests/screenshots/sidebar-accent-bar.png', fullPage: true });
   });
