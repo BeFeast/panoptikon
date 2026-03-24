@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useHashTab } from "@/hooks/useHashTab";
 import {
   ArrowRightLeft,
   ExternalLink,
@@ -2148,6 +2149,7 @@ function AccessListsTable({
 // ─── Main Page ──────────────────────────────────────────
 
 export default function NpmPage() {
+  const [npmTab, setNpmTab] = useHashTab("redirections", ["redirections", "proxy-hosts", "streams", "dead-hosts", "access-lists"]);
   const [status, setStatus] = useState<NpmConnectionStatus | null>(null);
   const [proxyHosts, setProxyHosts] = useState<NpmProxyHost[]>([]);
   const [redirectionHosts, setRedirectionHosts] = useState<
@@ -2307,7 +2309,7 @@ export default function NpmPage() {
       )}
 
       {configured && (
-        <Tabs defaultValue="redirections" className="w-full">
+        <Tabs value={npmTab} onValueChange={setNpmTab} className="w-full">
           <TabsList className="border-slate-800 bg-slate-900">
             <TabsTrigger value="redirections" className="gap-1.5">
               <ArrowRightLeft className="h-3.5 w-3.5" />

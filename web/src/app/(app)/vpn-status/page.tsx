@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useHashTab } from "@/hooks/useHashTab";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
@@ -66,7 +67,7 @@ export default function VpnStatusPage() {
   const [data, setData] = useState<VpnStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useHashTab("overview", ["overview", "mikrotik"]);
   const defaultTabSet = useRef(false);
 
   const load = useCallback(async () => {
@@ -88,13 +89,14 @@ export default function VpnStatusPage() {
   }, [load]);
 
   // Default to MikroTik tab when available (once, on first data load)
+  // Skip if hash already specifies a tab.
   useEffect(() => {
     if (!data || defaultTabSet.current) return;
     defaultTabSet.current = true;
-    if (data.mikrotik_available) {
+    if (data.mikrotik_available && !window.location.hash.slice(1)) {
       setActiveTab("mikrotik");
     }
-  }, [data]);
+  }, [data, setActiveTab]);
 
   const filteredInterfaces = useMemo(() => {
     if (!data) return null;

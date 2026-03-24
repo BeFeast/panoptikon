@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { useHashTab } from "@/hooks/useHashTab";
 import {
   Monitor,
   Network,
@@ -26,6 +27,7 @@ import { ConfigTab } from "./tabs/ConfigTab";
 import { ServicesTab } from "./tabs/ServicesTab";
 
 export default function PfSenseRouter() {
+  const [tab, setTab] = useHashTab("system", ["system", "interfaces", "firewall", "dhcp", "dns", "services", "routing", "config"]);
   const fetcher = useCallback(() => fetchPfsenseStatus(), []);
   const { data: status, loading } = useData(fetcher);
 
@@ -43,7 +45,7 @@ export default function PfSenseRouter() {
     <div className="space-y-6">
       <PfSenseStatusHeader status={status} />
 
-      <Tabs defaultValue="system" className="w-full">
+      <Tabs value={tab} onValueChange={setTab} className="w-full">
         <TabsList className="border-slate-800 bg-slate-900">
           <TabsTrigger value="system" className="gap-1.5">
             <Monitor className="h-3.5 w-3.5" />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useHashTab } from "@/hooks/useHashTab";
 import {
   ArrowLeft,
   Plus,
@@ -76,6 +77,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 
 export default function DnsBlocklistsPage() {
+  const [blocklistTab, setBlocklistTab] = useHashTab("blocklists", ["blocklists", "overrides"]);
   const [blocklists, setBlocklists] = useState<DnsBlocklist[] | null>(null);
   const [statsData, setStatsData] = useState<DnsBlocklistStats | null>(null);
   const [overrides, setOverrides] = useState<DnsBlocklistDomainOverride[] | null>(null);
@@ -350,7 +352,7 @@ export default function DnsBlocklistsPage() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="blocklists">
+        <Tabs value={blocklistTab} onValueChange={setBlocklistTab}>
           <TabsList className="border-slate-800 bg-slate-900">
             <TabsTrigger value="blocklists" className="data-[state=active]:bg-slate-800">
               Blocklists
