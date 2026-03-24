@@ -84,7 +84,7 @@ export default function LoginPage() {
             <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-xl bg-blue-500 shadow-lg shadow-blue-500/20">
               <Shield className="h-7 w-7 text-white" />
             </div>
-            <h1 className="bg-gradient-to-r from-blue-400 via-blue-300 to-cyan-400 bg-clip-text text-2xl font-bold text-transparent">
+            <h1 className="font-display bg-gradient-to-r from-blue-400 via-blue-300 to-cyan-400 bg-clip-text text-2xl font-bold text-transparent">
               Panoptikon
             </h1>
             <p className="text-sm text-slate-500">
