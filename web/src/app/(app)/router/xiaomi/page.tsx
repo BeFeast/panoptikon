@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useHashTab } from "@/hooks/useHashTab";
 import Link from "next/link";
 import { Router, Settings } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +15,7 @@ import { PageTransition } from "@/components/PageTransition";
 import { RouterSelector } from "@/components/RouterSelector";
 
 export default function XiaomiRouterPage() {
+  const [tab, setTab] = useHashTab("system", ["system", "mesh"]);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [xiaomiEnabled, setXiaomiEnabled] = useState(false);
 
@@ -41,7 +43,7 @@ export default function XiaomiRouterPage() {
             <Skeleton className="h-96 w-full" />
           </div>
         ) : xiaomiEnabled ? (
-          <Tabs defaultValue="system" className="space-y-4">
+          <Tabs value={tab} onValueChange={setTab} className="space-y-4">
             <TabsList className="bg-slate-900 border border-slate-800">
               <TabsTrigger value="system">System</TabsTrigger>
               <TabsTrigger value="mesh">Mesh Topology</TabsTrigger>

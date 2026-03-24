@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useHashTab } from "@/hooks/useHashTab";
 import {
   ArrowDownToLine,
   ArrowRightLeft,
@@ -84,7 +85,7 @@ export default function NatPage() {
   const [summary, setSummary] = useState<NatSummary | null>(null);
   const [mtRules, setMtRules] = useState<MikrotikNatRuleWithId[] | null>(null);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<NatTab>("all");
+  const [activeTab, setActiveTab] = useHashTab<NatTab>("all", ["all", "dnat", "snat"]);
 
   const [showAddMt, setShowAddMt] = useState(false);
   const [addPreset, setAddPreset] = useState<"dnat" | "snat" | "onetoone" | undefined>();

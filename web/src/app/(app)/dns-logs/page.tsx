@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useHashTab } from "@/hooks/useHashTab";
 import {
   Search,
   ShieldBan,
@@ -70,7 +71,7 @@ function formatTime(iso: string): string {
 }
 
 export default function DnsLogsPage() {
-  const [tab, setTab] = useState("log");
+  const [tab, setTab] = useHashTab("log", ["log", "stats"]);
   const [logData, setLogData] = useState<DnsQueryLogResponse | null>(null);
   const [stats, setStats] = useState<DnsStatsResponse | null>(null);
   const [loading, setLoading] = useState(true);

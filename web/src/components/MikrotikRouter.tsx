@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useHashTab } from "@/hooks/useHashTab";
 import {
   Router,
   Network,
@@ -4072,7 +4073,7 @@ function DynamicRoutingTab({
 export default function MikrotikRouter() {
   const [status, setStatus] = useState<MikrotikStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("system");
+  const [tab, setTab] = useHashTab("system", ["system", "interfaces", "vlans", "routes", "dhcp", "dns", "firewall", "vpn", "traffic", "policy-routing", "gateway-monitoring", "dynamic-routing"]);
 
   useEffect(() => {
     fetchMikrotikStatus()

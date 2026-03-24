@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useHashTab } from "@/hooks/useHashTab";
 import {
   AlertCircle,
   Gauge,
@@ -80,7 +81,7 @@ export default function QosPage() {
   const [mtQueues, setMtQueues] = useState<MikrotikSimpleQueue[] | null>(null);
   const [mtTree, setMtTree] = useState<MikrotikQueueTree[] | null>(null);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("overview");
+  const [activeTab, setActiveTab] = useHashTab("overview", ["overview", "mikrotik"]);
   const [liveRefresh, setLiveRefresh] = useState(false);
   const liveRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
