@@ -352,6 +352,37 @@ pub fn router(state: AppState) -> Router {
         )
         .route("/mikrotik/dns", get(mikrotik::dns))
         .route("/mikrotik/wireguard", get(mikrotik::wireguard))
+        // MikroTik advanced routing
+        .route("/mikrotik/routing/mangle", get(mikrotik::routing_mangle))
+        .route("/mikrotik/routing/mangle", post(mikrotik::create_mangle))
+        .route(
+            "/mikrotik/routing/mangle/:id",
+            delete(mikrotik::delete_mangle),
+        )
+        .route("/mikrotik/routing/rules", get(mikrotik::routing_rules))
+        .route(
+            "/mikrotik/routing/rules",
+            post(mikrotik::create_routing_rule),
+        )
+        .route(
+            "/mikrotik/routing/rules/:id",
+            delete(mikrotik::delete_routing_rule),
+        )
+        .route("/mikrotik/routing/tables", get(mikrotik::routing_tables))
+        .route(
+            "/mikrotik/routing/netwatch",
+            get(mikrotik::routing_netwatch),
+        )
+        .route(
+            "/mikrotik/routing/netwatch",
+            post(mikrotik::create_netwatch),
+        )
+        .route(
+            "/mikrotik/routing/netwatch/:id",
+            delete(mikrotik::delete_netwatch),
+        )
+        .route("/mikrotik/routing/dynamic", get(mikrotik::routing_dynamic))
+        .route("/mikrotik/routing/ipv6-nd", get(mikrotik::routing_ipv6_nd))
         // Xiaomi MiWiFi
         .route("/xiaomi/status", get(xiaomi::status))
         .route("/xiaomi/topology", get(xiaomi::topology))

@@ -14,7 +14,8 @@ use super::{audit, AppState};
 use crate::mikrotik::client::MikrotikClient;
 use crate::mikrotik::types::{
     DhcpStaticLeaseWriteRequest, FirewallAddressListWriteRequest, FirewallFilterWriteRequest,
-    FirewallNatWriteRequest, VlanWriteRequest,
+    FirewallMangleWriteRequest, FirewallNatWriteRequest, NetwatchWriteRequest,
+    RoutingRuleWriteRequest, VlanWriteRequest,
 };
 
 // ── Helper: build a MikroTik client from DB settings ───────
@@ -1388,4 +1389,591 @@ pub async fn delete_dhcp_lease(
             Err(StatusCode::BAD_GATEWAY)
         }
     }
+}
+
+// ── Advanced Routing: Policy-Based Routing (Mangle + Routing Rules) ──
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikMangleResponse {
+    pub id: Option<String>,
+    pub chain: Option<String>,
+    pub action: Option<String>,
+    pub src_address: Option<String>,
+    pub dst_address: Option<String>,
+    pub protocol: Option<String>,
+    pub dst_port: Option<String>,
+    pub src_port: Option<String>,
+    pub in_interface: Option<String>,
+    pub out_interface: Option<String>,
+    pub new_routing_mark: Option<String>,
+    pub new_connection_mark: Option<String>,
+    pub new_packet_mark: Option<String>,
+    pub passthrough: bool,
+    pub disabled: bool,
+    pub bytes: Option<String>,
+    pub packets: Option<String>,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikMangleRequest {
+    pub chain: String,
+    pub action: String,
+    pub src_address: Option<String>,
+    pub dst_address: Option<String>,
+    pub protocol: Option<String>,
+    pub dst_port: Option<String>,
+    pub src_port: Option<String>,
+    pub in_interface: Option<String>,
+    pub out_interface: Option<String>,
+    pub new_routing_mark: Option<String>,
+    pub new_connection_mark: Option<String>,
+    pub new_packet_mark: Option<String>,
+    pub passthrough: Option<bool>,
+    pub comment: Option<String>,
+    pub disabled: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikRoutingRuleResponse {
+    pub id: Option<String>,
+    pub dst_address: Option<String>,
+    pub src_address: Option<String>,
+    pub routing_mark: Option<String>,
+    pub action: Option<String>,
+    pub table: Option<String>,
+    pub disabled: bool,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikRoutingRuleRequest {
+    pub dst_address: Option<String>,
+    pub src_address: Option<String>,
+    pub routing_mark: Option<String>,
+    pub action: String,
+    pub table: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<bool>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikRoutingTableResponse {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub fib: bool,
+    pub disabled: bool,
+    pub comment: Option<String>,
+}
+
+/// GET /api/v1/mikrotik/routing/mangle
+pub async fn routing_mangle(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<MikrotikMangleResponse>>, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.mikrotik_cache.get("mangle") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let rules = client.firewall_mangle().await.map_err(|e| {
+        tracing::error!("MikroTik mangle rules error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let result: Vec<MikrotikMangleResponse> = rules
+        .into_iter()
+        .map(|r| MikrotikMangleResponse {
+            id: r.id,
+            chain: r.chain,
+            action: r.action,
+            src_address: r.src_address,
+            dst_address: r.dst_address,
+            protocol: r.protocol,
+            dst_port: r.dst_port,
+            src_port: r.src_port,
+            in_interface: r.in_interface,
+            out_interface: r.out_interface,
+            new_routing_mark: r.new_routing_mark,
+            new_connection_mark: r.new_connection_mark,
+            new_packet_mark: r.new_packet_mark,
+            passthrough: is_true(&r.passthrough),
+            disabled: is_true(&r.disabled),
+            bytes: r.bytes,
+            packets: r.packets,
+            comment: r.comment,
+        })
+        .collect();
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.mikrotik_cache.set("mangle".into(), val);
+    }
+    Ok(Json(result))
+}
+
+/// POST /api/v1/mikrotik/routing/mangle
+pub async fn create_mangle(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikMangleRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = FirewallMangleWriteRequest {
+        chain: body.chain.clone(),
+        action: body.action.clone(),
+        src_address: body.src_address,
+        dst_address: body.dst_address,
+        protocol: body.protocol,
+        dst_port: body.dst_port,
+        src_port: body.src_port,
+        in_interface: body.in_interface,
+        out_interface: body.out_interface,
+        new_routing_mark: body.new_routing_mark,
+        new_connection_mark: body.new_connection_mark,
+        new_packet_mark: body.new_packet_mark,
+        passthrough: body
+            .passthrough
+            .map(|p| if p { "true" } else { "false" }.to_string()),
+        comment: body.comment,
+        disabled: body
+            .disabled
+            .map(|d| if d { "true" } else { "false" }.to_string()),
+    };
+
+    client.create_firewall_mangle(&req).await.map_err(|e| {
+        tracing::error!("MikroTik mangle create error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// DELETE /api/v1/mikrotik/routing/mangle/:id
+pub async fn delete_mangle(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    client.delete_firewall_mangle(id).await.map_err(|e| {
+        tracing::error!("MikroTik mangle delete error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// GET /api/v1/mikrotik/routing/rules
+pub async fn routing_rules(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<MikrotikRoutingRuleResponse>>, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.mikrotik_cache.get("routing-rules") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let rules = client.routing_rules().await.map_err(|e| {
+        tracing::error!("MikroTik routing rules error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let result: Vec<MikrotikRoutingRuleResponse> = rules
+        .into_iter()
+        .map(|r| MikrotikRoutingRuleResponse {
+            id: r.id,
+            dst_address: r.dst_address,
+            src_address: r.src_address,
+            routing_mark: r.routing_mark,
+            action: r.action,
+            table: r.table,
+            disabled: is_true(&r.disabled),
+            comment: r.comment,
+        })
+        .collect();
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.mikrotik_cache.set("routing-rules".into(), val);
+    }
+    Ok(Json(result))
+}
+
+/// POST /api/v1/mikrotik/routing/rules
+pub async fn create_routing_rule(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikRoutingRuleRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = RoutingRuleWriteRequest {
+        dst_address: body.dst_address,
+        src_address: body.src_address,
+        routing_mark: body.routing_mark,
+        action: body.action,
+        table: body.table,
+        comment: body.comment,
+        disabled: body
+            .disabled
+            .map(|d| if d { "true" } else { "false" }.to_string()),
+    };
+
+    client.create_routing_rule(&req).await.map_err(|e| {
+        tracing::error!("MikroTik routing rule create error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// DELETE /api/v1/mikrotik/routing/rules/:id
+pub async fn delete_routing_rule(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    client.delete_routing_rule(id).await.map_err(|e| {
+        tracing::error!("MikroTik routing rule delete error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// GET /api/v1/mikrotik/routing/tables
+pub async fn routing_tables(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<MikrotikRoutingTableResponse>>, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.mikrotik_cache.get("routing-tables") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let tables = client.routing_tables().await.map_err(|e| {
+        tracing::error!("MikroTik routing tables error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let result: Vec<MikrotikRoutingTableResponse> = tables
+        .into_iter()
+        .map(|t| MikrotikRoutingTableResponse {
+            id: t.id,
+            name: t.name,
+            fib: is_true(&t.fib),
+            disabled: is_true(&t.disabled),
+            comment: t.comment,
+        })
+        .collect();
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.mikrotik_cache.set("routing-tables".into(), val);
+    }
+    Ok(Json(result))
+}
+
+// ── Gateway Monitoring (Netwatch) ─────────────────────────
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikNetwatchResponse {
+    pub id: Option<String>,
+    pub host: Option<String>,
+    pub check_type: Option<String>,
+    pub interval: Option<String>,
+    pub timeout: Option<String>,
+    pub status: Option<String>,
+    pub since: Option<String>,
+    pub disabled: bool,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct MikrotikNetwatchRequest {
+    pub host: String,
+    pub check_type: Option<String>,
+    pub interval: Option<String>,
+    pub timeout: Option<String>,
+    pub comment: Option<String>,
+    pub disabled: Option<bool>,
+}
+
+/// GET /api/v1/mikrotik/routing/netwatch
+pub async fn routing_netwatch(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<MikrotikNetwatchResponse>>, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.mikrotik_cache.get("netwatch") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let entries = client.netwatch().await.map_err(|e| {
+        tracing::error!("MikroTik netwatch error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let result: Vec<MikrotikNetwatchResponse> = entries
+        .into_iter()
+        .map(|n| MikrotikNetwatchResponse {
+            id: n.id,
+            host: n.host,
+            check_type: n.check_type,
+            interval: n.interval,
+            timeout: n.timeout,
+            status: n.status,
+            since: n.since,
+            disabled: is_true(&n.disabled),
+            comment: n.comment,
+        })
+        .collect();
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.mikrotik_cache.set("netwatch".into(), val);
+    }
+    Ok(Json(result))
+}
+
+/// POST /api/v1/mikrotik/routing/netwatch
+pub async fn create_netwatch(
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikNetwatchRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = NetwatchWriteRequest {
+        host: body.host,
+        check_type: body.check_type,
+        interval: body.interval,
+        timeout: body.timeout,
+        comment: body.comment,
+        disabled: body
+            .disabled
+            .map(|d| if d { "true" } else { "false" }.to_string()),
+    };
+
+    client.create_netwatch(&req).await.map_err(|e| {
+        tracing::error!("MikroTik netwatch create error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// DELETE /api/v1/mikrotik/routing/netwatch/:id
+pub async fn delete_netwatch(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    client.delete_netwatch(id).await.map_err(|e| {
+        tracing::error!("MikroTik netwatch delete error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+// ── Dynamic Routing: BGP + OSPF ───────────────────────────
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikBgpConnectionResponse {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub remote_address: Option<String>,
+    pub remote_as: Option<String>,
+    pub local_role: Option<String>,
+    pub local_as: Option<String>,
+    pub routing_table: Option<String>,
+    pub disabled: bool,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikOspfInstanceResponse {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub router_id: Option<String>,
+    pub version: Option<String>,
+    pub disabled: bool,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikOspfAreaResponse {
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub area_id: Option<String>,
+    pub instance: Option<String>,
+    pub disabled: bool,
+    pub comment: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikDynamicRoutingResponse {
+    pub bgp_connections: Vec<MikrotikBgpConnectionResponse>,
+    pub ospf_instances: Vec<MikrotikOspfInstanceResponse>,
+    pub ospf_areas: Vec<MikrotikOspfAreaResponse>,
+}
+
+/// GET /api/v1/mikrotik/routing/dynamic
+pub async fn routing_dynamic(
+    State(state): State<AppState>,
+) -> Result<Json<MikrotikDynamicRoutingResponse>, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.mikrotik_cache.get("dynamic-routing") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    // BGP connections — may fail on routers without routing package
+    let bgp = client.bgp_connections().await.unwrap_or_default();
+    let ospf_inst = client.ospf_instances().await.unwrap_or_default();
+    let ospf_area = client.ospf_areas().await.unwrap_or_default();
+
+    let result = MikrotikDynamicRoutingResponse {
+        bgp_connections: bgp
+            .into_iter()
+            .map(|b| MikrotikBgpConnectionResponse {
+                id: b.id,
+                name: b.name,
+                remote_address: b.remote_address,
+                remote_as: b.remote_as,
+                local_role: b.local_role,
+                local_as: b.local_as,
+                routing_table: b.routing_table,
+                disabled: is_true(&b.disabled),
+                comment: b.comment,
+            })
+            .collect(),
+        ospf_instances: ospf_inst
+            .into_iter()
+            .map(|o| MikrotikOspfInstanceResponse {
+                id: o.id,
+                name: o.name,
+                router_id: o.router_id,
+                version: o.version,
+                disabled: is_true(&o.disabled),
+                comment: o.comment,
+            })
+            .collect(),
+        ospf_areas: ospf_area
+            .into_iter()
+            .map(|a| MikrotikOspfAreaResponse {
+                id: a.id,
+                name: a.name,
+                area_id: a.area_id,
+                instance: a.instance,
+                disabled: is_true(&a.disabled),
+                comment: a.comment,
+            })
+            .collect(),
+    };
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.mikrotik_cache.set("dynamic-routing".into(), val);
+    }
+    Ok(Json(result))
+}
+
+// ── IPv6 Router Advertisements ────────────────────────────
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MikrotikIpv6NdResponse {
+    pub id: Option<String>,
+    pub interface: Option<String>,
+    pub ra_interval: Option<String>,
+    pub ra_delay: Option<String>,
+    pub ra_lifetime: Option<String>,
+    pub managed: bool,
+    pub other: bool,
+    pub disabled: bool,
+    pub comment: Option<String>,
+}
+
+/// GET /api/v1/mikrotik/routing/ipv6-nd
+pub async fn routing_ipv6_nd(
+    State(state): State<AppState>,
+) -> Result<Json<Vec<MikrotikIpv6NdResponse>>, StatusCode> {
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    if let Some(cached) = state.mikrotik_cache.get("ipv6-nd") {
+        if let Ok(resp) = serde_json::from_value(cached) {
+            return Ok(Json(resp));
+        }
+    }
+
+    let entries = client.ipv6_nd().await.map_err(|e| {
+        tracing::error!("MikroTik IPv6 ND error: {e}");
+        StatusCode::BAD_GATEWAY
+    })?;
+
+    let result: Vec<MikrotikIpv6NdResponse> = entries
+        .into_iter()
+        .map(|n| MikrotikIpv6NdResponse {
+            id: n.id,
+            interface: n.interface,
+            ra_interval: n.ra_interval,
+            ra_delay: n.ra_delay,
+            ra_lifetime: n.ra_lifetime,
+            managed: is_true(&n.managed),
+            other: is_true(&n.other),
+            disabled: is_true(&n.disabled),
+            comment: n.comment,
+        })
+        .collect();
+
+    if let Ok(val) = serde_json::to_value(&result) {
+        state.mikrotik_cache.set("ipv6-nd".into(), val);
+    }
+    Ok(Json(result))
 }

@@ -24,6 +24,9 @@ import {
   Power,
   List,
   Pin,
+  GitFork,
+  Waypoints,
+  HeartPulse,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -86,6 +89,18 @@ import {
   deleteMikrotikAddressList,
   createMikrotikDhcpStaticMapping,
   fetchTrafficHistory,
+  fetchMikrotikMangleRules,
+  createMikrotikMangleRule,
+  deleteMikrotikMangleRule,
+  fetchMikrotikRoutingRules,
+  createMikrotikRoutingRule,
+  deleteMikrotikRoutingRule,
+  fetchMikrotikRoutingTables,
+  fetchMikrotikNetwatch,
+  createMikrotikNetwatch,
+  deleteMikrotikNetwatch,
+  fetchMikrotikDynamicRouting,
+  fetchMikrotikIpv6Nd,
 } from "@/lib/api";
 import { formatBps } from "@/lib/format";
 import { useData } from "@/hooks/useData";
@@ -98,6 +113,12 @@ import type {
   MikrotikDhcpLease,
   MikrotikFirewall,
   MikrotikFirewallRule,
+  MikrotikMangleRule,
+  MikrotikRoutingRule,
+  MikrotikRoutingTable,
+  MikrotikNetwatchEntry,
+  MikrotikDynamicRouting,
+  MikrotikIpv6Nd,
   MikrotikNatRule,
   MikrotikAddressListEntry,
   MikrotikFirewallFilterRequest,
@@ -2525,6 +2546,665 @@ function TrafficTab() {
   );
 }
 
+// ── Policy Routing Tab ────────────────────────────────────
+
+function PolicyRoutingTab({
+  mangle,
+  routingRules,
+  routingTables,
+}: {
+  mangle: { data: MikrotikMangleRule[] | null; loading: boolean; error: string | null; reload: () => void };
+  routingRules: { data: MikrotikRoutingRule[] | null; loading: boolean; error: string | null; reload: () => void };
+  routingTables: { data: MikrotikRoutingTable[] | null; loading: boolean; error: string | null };
+}) {
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({
+    chain: "prerouting",
+    action: "mark-routing",
+    src_address: "",
+    dst_address: "",
+    protocol: "",
+    new_routing_mark: "",
+    comment: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<MikrotikMangleRule | null>(null);
+
+  const handleCreate = async () => {
+    setSaving(true);
+    try {
+      await createMikrotikMangleRule({
+        chain: form.chain,
+        action: form.action,
+        src_address: form.src_address || undefined,
+        dst_address: form.dst_address || undefined,
+        protocol: form.protocol || undefined,
+        new_routing_mark: form.new_routing_mark || undefined,
+        comment: form.comment || undefined,
+      });
+      toast.success("Mangle rule created");
+      setShowCreate(false);
+      setForm({ chain: "prerouting", action: "mark-routing", src_address: "", dst_address: "", protocol: "", new_routing_mark: "", comment: "" });
+      mangle.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create rule");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget?.id) return;
+    try {
+      await deleteMikrotikMangleRule(deleteTarget.id);
+      toast.success("Mangle rule deleted");
+      setDeleteTarget(null);
+      mangle.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete rule");
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Routing Tables */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <CardTitle className="text-base text-white">Routing Tables</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {routingTables.loading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : routingTables.error ? (
+            <p className="text-sm text-rose-400">{routingTables.error}</p>
+          ) : !routingTables.data?.length ? (
+            <p className="text-sm text-slate-500">No custom routing tables</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                    <th className="px-3 py-2">Name</th>
+                    <th className="px-3 py-2">FIB</th>
+                    <th className="px-3 py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {routingTables.data.map((t, i) => (
+                    <tr key={t.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <td className="px-3 py-2 text-white">{t.name ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-300">{t.fib ? "Yes" : "No"}</td>
+                      <td className="px-3 py-2">
+                        <Badge variant="outline" className={t.disabled ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}>
+                          {t.disabled ? "Disabled" : "Active"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Mangle Rules (PBR) */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base text-white">Mangle Rules (Policy Routing)</CardTitle>
+          <Button size="sm" variant="outline" className="border-slate-700" onClick={() => setShowCreate(true)}>
+            <Plus className="mr-1 h-3.5 w-3.5" /> Add Rule
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {mangle.loading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : mangle.error ? (
+            <p className="text-sm text-rose-400">{mangle.error}</p>
+          ) : !mangle.data?.length ? (
+            <p className="text-sm text-slate-500">No mangle rules configured</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                    <th className="px-3 py-2">Chain</th>
+                    <th className="px-3 py-2">Action</th>
+                    <th className="px-3 py-2">Src Address</th>
+                    <th className="px-3 py-2">Dst Address</th>
+                    <th className="px-3 py-2">Protocol</th>
+                    <th className="px-3 py-2">Routing Mark</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {mangle.data.map((r, i) => (
+                    <tr key={r.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <td className="px-3 py-2 text-white">{r.chain ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-300">{r.action ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-300">{r.src_address ?? "any"}</td>
+                      <td className="px-3 py-2 text-slate-300">{r.dst_address ?? "any"}</td>
+                      <td className="px-3 py-2 text-slate-300">{r.protocol ?? "any"}</td>
+                      <td className="px-3 py-2 text-blue-400">{r.new_routing_mark ?? "—"}</td>
+                      <td className="px-3 py-2">
+                        <Badge variant="outline" className={r.disabled ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}>
+                          {r.disabled ? "Disabled" : "Active"}
+                        </Badge>
+                      </td>
+                      <td className="px-3 py-2">
+                        {r.id && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-500 hover:text-rose-400" onClick={() => setDeleteTarget(r)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Routing Rules */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <CardTitle className="text-base text-white">Routing Rules</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {routingRules.loading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : routingRules.error ? (
+            <p className="text-sm text-rose-400">{routingRules.error}</p>
+          ) : !routingRules.data?.length ? (
+            <p className="text-sm text-slate-500">No routing rules configured</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                    <th className="px-3 py-2">Src Address</th>
+                    <th className="px-3 py-2">Dst Address</th>
+                    <th className="px-3 py-2">Routing Mark</th>
+                    <th className="px-3 py-2">Action</th>
+                    <th className="px-3 py-2">Table</th>
+                    <th className="px-3 py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {routingRules.data.map((r, i) => (
+                    <tr key={r.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <td className="px-3 py-2 text-slate-300">{r.src_address ?? "any"}</td>
+                      <td className="px-3 py-2 text-slate-300">{r.dst_address ?? "any"}</td>
+                      <td className="px-3 py-2 text-blue-400">{r.routing_mark ?? "—"}</td>
+                      <td className="px-3 py-2 text-white">{r.action ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-300">{r.table ?? "—"}</td>
+                      <td className="px-3 py-2">
+                        <Badge variant="outline" className={r.disabled ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}>
+                          {r.disabled ? "Disabled" : "Active"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create Mangle Dialog */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="border-slate-800 bg-slate-900">
+          <DialogHeader>
+            <DialogTitle className="text-white">Create Mangle Rule</DialogTitle>
+            <DialogDescription className="text-slate-400">Add a policy routing mangle rule</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-slate-300">Chain</Label>
+              <Input className="border-slate-700 bg-slate-950 text-white" value={form.chain} onChange={(e) => setForm({ ...form, chain: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Action</Label>
+              <Input className="border-slate-700 bg-slate-950 text-white" value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Source Address</Label>
+              <Input className="border-slate-700 bg-slate-950 text-white" placeholder="e.g. 192.168.1.0/24" value={form.src_address} onChange={(e) => setForm({ ...form, src_address: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Destination Address</Label>
+              <Input className="border-slate-700 bg-slate-950 text-white" placeholder="e.g. 0.0.0.0/0" value={form.dst_address} onChange={(e) => setForm({ ...form, dst_address: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Protocol</Label>
+              <Input className="border-slate-700 bg-slate-950 text-white" placeholder="e.g. tcp, udp" value={form.protocol} onChange={(e) => setForm({ ...form, protocol: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">New Routing Mark</Label>
+              <Input className="border-slate-700 bg-slate-950 text-white" placeholder="e.g. wan2-mark" value={form.new_routing_mark} onChange={(e) => setForm({ ...form, new_routing_mark: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Comment</Label>
+              <Input className="border-slate-700 bg-slate-950 text-white" value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-slate-700" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={saving}>{saving ? "Creating…" : "Create"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete Mangle Rule?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              This will remove the mangle rule for {deleteTarget?.src_address ?? "any"} → {deleteTarget?.dst_address ?? "any"} with mark &quot;{deleteTarget?.new_routing_mark ?? "—"}&quot;.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+// ── Gateway Monitoring Tab ────────────────────────────────
+
+function GatewayMonitoringTab({
+  netwatch,
+}: {
+  netwatch: { data: MikrotikNetwatchEntry[] | null; loading: boolean; error: string | null; reload: () => void };
+}) {
+  const [showCreate, setShowCreate] = useState(false);
+  const [form, setForm] = useState({ host: "", check_type: "icmp", interval: "10s", timeout: "1000ms", comment: "" });
+  const [saving, setSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<MikrotikNetwatchEntry | null>(null);
+
+  const handleCreate = async () => {
+    setSaving(true);
+    try {
+      await createMikrotikNetwatch({
+        host: form.host,
+        check_type: form.check_type || undefined,
+        interval: form.interval || undefined,
+        timeout: form.timeout || undefined,
+        comment: form.comment || undefined,
+      });
+      toast.success("Netwatch entry created");
+      setShowCreate(false);
+      setForm({ host: "", check_type: "icmp", interval: "10s", timeout: "1000ms", comment: "" });
+      netwatch.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create entry");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget?.id) return;
+    try {
+      await deleteMikrotikNetwatch(deleteTarget.id);
+      toast.success("Netwatch entry deleted");
+      setDeleteTarget(null);
+      netwatch.reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to delete entry");
+    }
+  };
+
+  const upCount = netwatch.data?.filter((n) => n.status === "up").length ?? 0;
+  const downCount = netwatch.data?.filter((n) => n.status === "down").length ?? 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <InfoStatCard
+          icon={<HeartPulse className="h-5 w-5 text-emerald-400" />}
+          iconColorClass="bg-emerald-500/10"
+          label="Gateways Up"
+          value={String(upCount)}
+        />
+        <InfoStatCard
+          icon={<HeartPulse className="h-5 w-5 text-rose-400" />}
+          iconColorClass="bg-rose-500/10"
+          label="Gateways Down"
+          value={String(downCount)}
+        />
+        <InfoStatCard
+          icon={<Activity className="h-5 w-5 text-blue-400" />}
+          iconColorClass="bg-blue-500/10"
+          label="Total Monitors"
+          value={String(netwatch.data?.length ?? 0)}
+        />
+        <InfoStatCard
+          icon={<Globe className="h-5 w-5 text-amber-400" />}
+          iconColorClass="bg-amber-500/10"
+          label="Disabled"
+          value={String(netwatch.data?.filter((n) => n.disabled).length ?? 0)}
+        />
+      </div>
+
+      {/* Netwatch Table */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="text-base text-white">Gateway Health Monitors</CardTitle>
+          <Button size="sm" variant="outline" className="border-slate-700" onClick={() => setShowCreate(true)}>
+            <Plus className="mr-1 h-3.5 w-3.5" /> Add Monitor
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {netwatch.loading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : netwatch.error ? (
+            <p className="text-sm text-rose-400">{netwatch.error}</p>
+          ) : !netwatch.data?.length ? (
+            <p className="text-sm text-slate-500">No gateway monitors configured</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                    <th className="px-3 py-2">Host</th>
+                    <th className="px-3 py-2">Type</th>
+                    <th className="px-3 py-2">Interval</th>
+                    <th className="px-3 py-2">Timeout</th>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Since</th>
+                    <th className="px-3 py-2">Comment</th>
+                    <th className="px-3 py-2"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {netwatch.data.map((n, i) => (
+                    <tr key={n.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <td className="px-3 py-2 font-mono text-white">{n.host ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-300">{n.check_type ?? "icmp"}</td>
+                      <td className="px-3 py-2 text-slate-300">{n.interval ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-300">{n.timeout ?? "—"}</td>
+                      <td className="px-3 py-2">
+                        {n.disabled ? (
+                          <Badge variant="outline" className="border-slate-600 text-slate-500">Disabled</Badge>
+                        ) : n.status === "up" ? (
+                          <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400">Up</Badge>
+                        ) : n.status === "down" ? (
+                          <Badge variant="outline" className="border-rose-500/30 bg-rose-500/10 text-rose-400">Down</Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-slate-600 text-slate-500">{n.status ?? "Unknown"}</Badge>
+                        )}
+                      </td>
+                      <td className="px-3 py-2 text-slate-400">{n.since ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-500">{n.comment ?? ""}</td>
+                      <td className="px-3 py-2">
+                        {n.id && (
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-500 hover:text-rose-400" onClick={() => setDeleteTarget(n)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Create Dialog */}
+      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+        <DialogContent className="border-slate-800 bg-slate-900">
+          <DialogHeader>
+            <DialogTitle className="text-white">Add Gateway Monitor</DialogTitle>
+            <DialogDescription className="text-slate-400">Monitor a gateway IP for health checks</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-slate-300">Host / Gateway IP</Label>
+              <Input className="border-slate-700 bg-slate-950 text-white" placeholder="e.g. 8.8.8.8" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Check Type</Label>
+              <Input className="border-slate-700 bg-slate-950 text-white" value={form.check_type} onChange={(e) => setForm({ ...form, check_type: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Interval</Label>
+              <Input className="border-slate-700 bg-slate-950 text-white" value={form.interval} onChange={(e) => setForm({ ...form, interval: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Timeout</Label>
+              <Input className="border-slate-700 bg-slate-950 text-white" value={form.timeout} onChange={(e) => setForm({ ...form, timeout: e.target.value })} />
+            </div>
+            <div>
+              <Label className="text-slate-300">Comment</Label>
+              <Input className="border-slate-700 bg-slate-950 text-white" value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" className="border-slate-700" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button onClick={handleCreate} disabled={saving || !form.host.trim()}>{saving ? "Creating…" : "Create"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">Delete Gateway Monitor?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              This will remove the health monitor for {deleteTarget?.host ?? "unknown"}.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-700">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
+
+// ── Dynamic Routing Tab ───────────────────────────────────
+
+function DynamicRoutingTab({
+  dynamic,
+  ipv6Nd,
+}: {
+  dynamic: { data: MikrotikDynamicRouting | null; loading: boolean; error: string | null };
+  ipv6Nd: { data: MikrotikIpv6Nd[] | null; loading: boolean; error: string | null };
+}) {
+  return (
+    <div className="space-y-6">
+      {/* BGP Connections */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <CardTitle className="text-base text-white">BGP Connections</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {dynamic.loading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : dynamic.error ? (
+            <p className="text-sm text-rose-400">{dynamic.error}</p>
+          ) : !dynamic.data?.bgp_connections.length ? (
+            <p className="text-sm text-slate-500">No BGP connections configured</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                    <th className="px-3 py-2">Name</th>
+                    <th className="px-3 py-2">Remote Address</th>
+                    <th className="px-3 py-2">Remote AS</th>
+                    <th className="px-3 py-2">Local AS</th>
+                    <th className="px-3 py-2">Local Role</th>
+                    <th className="px-3 py-2">Routing Table</th>
+                    <th className="px-3 py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dynamic.data.bgp_connections.map((b, i) => (
+                    <tr key={b.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <td className="px-3 py-2 text-white">{b.name ?? "—"}</td>
+                      <td className="px-3 py-2 font-mono text-slate-300">{b.remote_address ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-300">{b.remote_as ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-300">{b.local_as ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-300">{b.local_role ?? "—"}</td>
+                      <td className="px-3 py-2 text-blue-400">{b.routing_table ?? "main"}</td>
+                      <td className="px-3 py-2">
+                        <Badge variant="outline" className={b.disabled ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}>
+                          {b.disabled ? "Disabled" : "Active"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* OSPF Instances */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <CardTitle className="text-base text-white">OSPF Instances</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {dynamic.loading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : !dynamic.data?.ospf_instances.length ? (
+            <p className="text-sm text-slate-500">No OSPF instances configured</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                    <th className="px-3 py-2">Name</th>
+                    <th className="px-3 py-2">Router ID</th>
+                    <th className="px-3 py-2">Version</th>
+                    <th className="px-3 py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dynamic.data.ospf_instances.map((o, i) => (
+                    <tr key={o.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <td className="px-3 py-2 text-white">{o.name ?? "—"}</td>
+                      <td className="px-3 py-2 font-mono text-slate-300">{o.router_id ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-300">{o.version ?? "—"}</td>
+                      <td className="px-3 py-2">
+                        <Badge variant="outline" className={o.disabled ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}>
+                          {o.disabled ? "Disabled" : "Active"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* OSPF Areas */}
+      {dynamic.data?.ospf_areas && dynamic.data.ospf_areas.length > 0 && (
+        <Card className="border-slate-800 bg-slate-900">
+          <CardHeader>
+            <CardTitle className="text-base text-white">OSPF Areas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                    <th className="px-3 py-2">Name</th>
+                    <th className="px-3 py-2">Area ID</th>
+                    <th className="px-3 py-2">Instance</th>
+                    <th className="px-3 py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dynamic.data.ospf_areas.map((a, i) => (
+                    <tr key={a.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <td className="px-3 py-2 text-white">{a.name ?? "—"}</td>
+                      <td className="px-3 py-2 font-mono text-slate-300">{a.area_id ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-300">{a.instance ?? "—"}</td>
+                      <td className="px-3 py-2">
+                        <Badge variant="outline" className={a.disabled ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}>
+                          {a.disabled ? "Disabled" : "Active"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* IPv6 Router Advertisements */}
+      <Card className="border-slate-800 bg-slate-900">
+        <CardHeader>
+          <CardTitle className="text-base text-white">IPv6 Router Advertisements</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {ipv6Nd.loading ? (
+            <Skeleton className="h-24 w-full" />
+          ) : ipv6Nd.error ? (
+            <p className="text-sm text-rose-400">{ipv6Nd.error}</p>
+          ) : !ipv6Nd.data?.length ? (
+            <p className="text-sm text-slate-500">No IPv6 ND interfaces configured</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                    <th className="px-3 py-2">Interface</th>
+                    <th className="px-3 py-2">RA Interval</th>
+                    <th className="px-3 py-2">RA Lifetime</th>
+                    <th className="px-3 py-2">Managed</th>
+                    <th className="px-3 py-2">Other</th>
+                    <th className="px-3 py-2">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ipv6Nd.data.map((n, i) => (
+                    <tr key={n.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <td className="px-3 py-2 text-white">{n.interface ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-300">{n.ra_interval ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-300">{n.ra_lifetime ?? "—"}</td>
+                      <td className="px-3 py-2 text-slate-300">{n.managed ? "Yes" : "No"}</td>
+                      <td className="px-3 py-2 text-slate-300">{n.other ? "Yes" : "No"}</td>
+                      <td className="px-3 py-2">
+                        <Badge variant="outline" className={n.disabled ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}>
+                          {n.disabled ? "Disabled" : "Active"}
+                        </Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────
 
 export default function MikrotikRouter() {
@@ -2559,6 +3239,12 @@ export default function MikrotikRouter() {
   const fw = useData(useCallback(() => fetchMikrotikFirewall(), []));
   const dns = useData(useCallback(() => fetchMikrotikDns(), []));
   const wg = useData(useCallback(() => fetchMikrotikWireguard(), []));
+  const mangleRules = useData(useCallback(() => fetchMikrotikMangleRules(), []));
+  const routingRulesData = useData(useCallback(() => fetchMikrotikRoutingRules(), []));
+  const routingTablesData = useData(useCallback(() => fetchMikrotikRoutingTables(), []));
+  const netwatchData = useData(useCallback(() => fetchMikrotikNetwatch(), []));
+  const dynamicRouting = useData(useCallback(() => fetchMikrotikDynamicRouting(), []));
+  const ipv6NdData = useData(useCallback(() => fetchMikrotikIpv6Nd(), []));
 
   if (loading) {
     return (
@@ -2650,6 +3336,27 @@ export default function MikrotikRouter() {
           >
             <BarChart3 className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">Traffic</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="policy-routing"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+          >
+            <GitFork className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Policy Routing</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="gateway-monitoring"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+          >
+            <HeartPulse className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Gateways</span>
+          </TabsTrigger>
+          <TabsTrigger
+            value="dynamic-routing"
+            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+          >
+            <Waypoints className="sm:mr-1.5 h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Dynamic Routing</span>
           </TabsTrigger>
         </TabsList>
 
@@ -2772,6 +3479,22 @@ export default function MikrotikRouter() {
 
         <TabsContent value="traffic">
           <TrafficTab />
+        </TabsContent>
+
+        <TabsContent value="policy-routing">
+          <PolicyRoutingTab
+            mangle={mangleRules}
+            routingRules={routingRulesData}
+            routingTables={routingTablesData}
+          />
+        </TabsContent>
+
+        <TabsContent value="gateway-monitoring">
+          <GatewayMonitoringTab netwatch={netwatchData} />
+        </TabsContent>
+
+        <TabsContent value="dynamic-routing">
+          <DynamicRoutingTab dynamic={dynamicRouting} ipv6Nd={ipv6NdData} />
         </TabsContent>
       </Tabs>
     </div>
