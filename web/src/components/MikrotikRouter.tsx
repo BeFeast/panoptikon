@@ -107,7 +107,9 @@ import {
   deleteMikrotikFirewallNat,
   toggleMikrotikFirewallNat,
   createMikrotikAddressList,
+  updateMikrotikAddressList,
   deleteMikrotikAddressList,
+  toggleMikrotikAddressList,
   moveMikrotikFirewallFilter,
   createMikrotikDhcpStaticMapping,
   fetchTrafficHistory,
@@ -1534,18 +1536,31 @@ function FirewallNatDialog({
 function AddressListDialog({
   open,
   onOpenChange,
+  editEntry,
   onSaved,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  editEntry: MikrotikAddressListEntry | null;
   onSaved: () => void;
 }) {
   const [form, setForm] = useState<MikrotikAddressListRequest>({ list: "", address: "" });
   const [saving, setSaving] = useState(false);
+  const isEdit = editEntry !== null;
 
   useEffect(() => {
-    if (open) setForm({ list: "", address: "" });
-  }, [open]);
+    if (open) {
+      if (editEntry) {
+        setForm({
+          list: editEntry.list ?? "",
+          address: editEntry.address ?? "",
+          comment: editEntry.comment ?? undefined,
+        });
+      } else {
+        setForm({ list: "", address: "" });
+      }
+    }
+  }, [open, editEntry]);
 
   const handleSave = async () => {
     if (!form.list.trim() || !form.address.trim()) {
@@ -1554,12 +1569,18 @@ function AddressListDialog({
     }
     setSaving(true);
     try {
-      await createMikrotikAddressList({
+      const payload = {
         list: form.list.trim(),
         address: form.address.trim(),
         comment: form.comment?.trim() || undefined,
-      });
-      toast.success("Address list entry added.");
+      };
+      if (isEdit && editEntry.id) {
+        await updateMikrotikAddressList(editEntry.id, payload);
+        toast.success("Address list entry updated.");
+      } else {
+        await createMikrotikAddressList(payload);
+        toast.success("Address list entry added.");
+      }
       onOpenChange(false);
       onSaved();
     } catch (e) {
@@ -1573,9 +1594,13 @@ function AddressListDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md border-slate-800 bg-slate-900 text-slate-100">
         <DialogHeader>
-          <DialogTitle className="text-white">Add Address List Entry</DialogTitle>
+          <DialogTitle className="text-white">
+            {isEdit ? "Edit Address List Entry" : "Add Address List Entry"}
+          </DialogTitle>
           <DialogDescription className="text-slate-400">
-            Add an address to a MikroTik address list.
+            {isEdit
+              ? "Update this address list entry on MikroTik."
+              : "Add an address to a MikroTik address list."}
           </DialogDescription>
         </DialogHeader>
         <div className="grid gap-4 py-2">
@@ -1616,7 +1641,7 @@ function AddressListDialog({
             disabled={saving}
             className="bg-pink-600 text-white hover:bg-pink-700"
           >
-            {saving ? "Adding\u2026" : "Add"}
+            {saving ? "Saving\u2026" : isEdit ? "Save" : "Add"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1781,6 +1806,7 @@ function FirewallPanel({
   const [editNat, setEditNat] = useState<MikrotikNatRule | null>(null);
   const [confirmDeleteNat, setConfirmDeleteNat] = useState<MikrotikNatRule | null>(null);
   const [addrDialogOpen, setAddrDialogOpen] = useState(false);
+  const [editAddr, setEditAddr] = useState<MikrotikAddressListEntry | null>(null);
   const [confirmDeleteAddr, setConfirmDeleteAddr] = useState<MikrotikAddressListEntry | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -1911,6 +1937,20 @@ function FirewallPanel({
       toast.error(e instanceof Error ? e.message : "Delete failed.");
     } finally {
       setDeleting(null);
+    }
+  };
+
+  const handleToggleAddr = async (entry: MikrotikAddressListEntry) => {
+    if (!entry.id) return;
+    setToggling(entry.id);
+    try {
+      await toggleMikrotikAddressList(entry.id, !entry.disabled);
+      toast.success(entry.disabled ? "Entry enabled." : "Entry disabled.");
+      await reload();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Toggle failed.");
+    } finally {
+      setToggling(null);
     }
   };
 
@@ -2206,7 +2246,10 @@ function FirewallPanel({
             <Button
               size="sm"
               className="bg-pink-600 text-white hover:bg-pink-700"
-              onClick={() => setAddrDialogOpen(true)}
+              onClick={() => {
+                setEditAddr(null);
+                setAddrDialogOpen(true);
+              }}
             >
               <Plus className="mr-1.5 h-3.5 w-3.5" />
               Add Entry
@@ -2234,6 +2277,7 @@ function FirewallPanel({
                           <th className="px-4 py-2 font-medium text-slate-400">Address</th>
                           <th className="px-4 py-2 font-medium text-slate-400">Comment</th>
                           <th className="px-4 py-2 font-medium text-slate-400">Type</th>
+                          <th className="px-4 py-2 font-medium text-slate-400">Status</th>
                           <th className="px-4 py-2 text-right font-medium text-slate-400">Actions</th>
                         </tr>
                       </thead>
@@ -2241,7 +2285,9 @@ function FirewallPanel({
                         {entries.map((entry, i) => (
                           <tr
                             key={entry.id ?? i}
-                            className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                            className={`border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors ${
+                              entry.disabled ? "opacity-50" : ""
+                            }`}
                           >
                             <td className="px-4 py-2">
                               <span className="font-mono tabular-nums text-xs text-slate-300">
@@ -2263,17 +2309,53 @@ function FirewallPanel({
                                 {entry.dynamic ? "dynamic" : "static"}
                               </Badge>
                             </td>
+                            <td className="px-4 py-2">
+                              <Badge
+                                variant="outline"
+                                className={
+                                  entry.disabled
+                                    ? "border-slate-700 text-slate-500 text-xs"
+                                    : "border-emerald-500/30 text-emerald-400 text-xs"
+                                }
+                              >
+                                {entry.disabled ? "disabled" : "enabled"}
+                              </Badge>
+                            </td>
                             <td className="px-4 py-2 text-right">
                               {!entry.dynamic && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
-                                  onClick={() => setConfirmDeleteAddr(entry)}
-                                  disabled={!entry.id || deleting === entry.id}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-slate-400 hover:bg-slate-800 hover:text-white"
+                                    onClick={() => handleToggleAddr(entry)}
+                                    disabled={!entry.id || toggling === entry.id}
+                                    title={entry.disabled ? "Enable" : "Disable"}
+                                  >
+                                    <Power className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-slate-400 hover:bg-slate-800 hover:text-white"
+                                    onClick={() => {
+                                      setEditAddr(entry);
+                                      setAddrDialogOpen(true);
+                                    }}
+                                    disabled={!entry.id}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                                    onClick={() => setConfirmDeleteAddr(entry)}
+                                    disabled={!entry.id || deleting === entry.id}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
                               )}
                             </td>
                           </tr>
@@ -2309,7 +2391,11 @@ function FirewallPanel({
       />
       <AddressListDialog
         open={addrDialogOpen}
-        onOpenChange={setAddrDialogOpen}
+        onOpenChange={(open) => {
+          setAddrDialogOpen(open);
+          if (!open) setEditAddr(null);
+        }}
+        editEntry={editAddr}
         onSaved={reload}
       />
 

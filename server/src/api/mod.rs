@@ -353,7 +353,15 @@ pub fn router(state: AppState) -> Router {
         )
         .route(
             "/mikrotik/firewall/address-list/:id",
+            patch(mikrotik::update_address_list),
+        )
+        .route(
+            "/mikrotik/firewall/address-list/:id",
             delete(mikrotik::delete_address_list),
+        )
+        .route(
+            "/mikrotik/firewall/address-list/:id/toggle",
+            post(mikrotik::toggle_address_list),
         )
         .route("/mikrotik/dns", get(mikrotik::dns))
         .route("/mikrotik/wireguard", get(mikrotik::wireguard))

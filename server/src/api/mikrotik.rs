@@ -1335,6 +1335,107 @@ pub async fn create_address_list(
     }
 }
 
+/// PATCH /api/v1/mikrotik/firewall/address-list/:id
+pub async fn update_address_list(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikAddressListRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let req = FirewallAddressListWriteRequest {
+        list: body.list.clone(),
+        address: body.address.clone(),
+        comment: body.comment.clone(),
+        disabled: None,
+    };
+
+    let desc = format!("Update MikroTik address list entry {id}");
+    let cmds = vec![format!("PATCH /ip/firewall/address-list/{id}")];
+
+    match client.update_firewall_address_list(id, &req).await {
+        Ok(()) => {
+            audit::log_success(
+                &state.db,
+                "mikrotik_firewall_address_list_update",
+                &desc,
+                &cmds,
+            )
+            .await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_firewall_address_list_update",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik address list update error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
+/// POST /api/v1/mikrotik/firewall/address-list/:id/toggle
+pub async fn toggle_address_list(
+    Path(id): Path<String>,
+    State(state): State<AppState>,
+    Json(body): Json<MikrotikToggleRequest>,
+) -> Result<StatusCode, StatusCode> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Err(StatusCode::BAD_REQUEST);
+    }
+
+    let client = mikrotik_client(&state)
+        .await
+        .ok_or(StatusCode::SERVICE_UNAVAILABLE)?;
+
+    let label = if body.disabled { "disable" } else { "enable" };
+    let desc = format!("{label} MikroTik address list entry {id}");
+    let cmds = vec![format!(
+        "PATCH /ip/firewall/address-list/{id} disabled={}",
+        body.disabled
+    )];
+
+    match client.toggle_firewall_address_list(id, body.disabled).await {
+        Ok(()) => {
+            audit::log_success(
+                &state.db,
+                "mikrotik_firewall_address_list_toggle",
+                &desc,
+                &cmds,
+            )
+            .await;
+            Ok(StatusCode::NO_CONTENT)
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            audit::log_failure(
+                &state.db,
+                "mikrotik_firewall_address_list_toggle",
+                &desc,
+                &cmds,
+                &msg,
+            )
+            .await;
+            tracing::error!("MikroTik address list toggle error: {e}");
+            Err(StatusCode::BAD_GATEWAY)
+        }
+    }
+}
+
 /// DELETE /api/v1/mikrotik/firewall/address-list/:id
 pub async fn delete_address_list(
     Path(id): Path<String>,

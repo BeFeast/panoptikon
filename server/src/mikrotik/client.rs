@@ -500,10 +500,37 @@ impl MikrotikClient {
             .await
     }
 
+    /// Update a firewall address list entry by RouterOS `.id`.
+    pub async fn update_firewall_address_list(
+        &self,
+        id: &str,
+        req: &FirewallAddressListWriteRequest,
+    ) -> Result<()> {
+        self.send_json(
+            Method::PATCH,
+            &format!("/ip/firewall/address-list/{id}"),
+            req,
+        )
+        .await
+    }
+
     /// Delete a firewall address list entry by RouterOS `.id`.
     pub async fn delete_firewall_address_list(&self, id: &str) -> Result<()> {
         self.send_no_body(Method::DELETE, &format!("/ip/firewall/address-list/{id}"))
             .await
+    }
+
+    /// Toggle a firewall address list entry's disabled state.
+    pub async fn toggle_firewall_address_list(&self, id: &str, disabled: bool) -> Result<()> {
+        let body = serde_json::json!({
+            "disabled": if disabled { "true" } else { "false" }
+        });
+        self.send_json(
+            Method::PATCH,
+            &format!("/ip/firewall/address-list/{id}"),
+            &body,
+        )
+        .await
     }
 
     /// Fetch firewall mangle rules (used for policy-based routing).
