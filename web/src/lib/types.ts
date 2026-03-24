@@ -1892,17 +1892,88 @@ export interface VpnInterfaceStatus {
   peers: VpnPeerStatus[];
   peers_online: number;
   peers_total: number;
-  /** "mikrotik" */
+  /** "mikrotik" or "mikrotik-ovpn" */
   source: string;
+  /** "wireguard" or "openvpn" */
+  vpn_type: string;
+}
+
+export interface OvpnConnectedClient {
+  name: string;
+  user: string | null;
+  client_address: string | null;
+  encoding: string | null;
+  uptime: string | null;
+  running: boolean;
 }
 
 export interface VpnStatusResponse {
   mikrotik_available: boolean;
+  openvpn_available: boolean;
   interfaces: VpnInterfaceStatus[];
+  openvpn_clients: OvpnConnectedClient[];
   total_peers: number;
   online_peers: number;
   total_rx_bytes: number;
   total_tx_bytes: number;
+}
+
+// ─── OpenVPN Management ─────────────────────────────────
+
+export interface OvpnServerConfig {
+  enabled: boolean;
+  port: number | null;
+  default_profile: string | null;
+  protocol: string | null;
+  cipher: string | null;
+  auth: string | null;
+  certificate: string | null;
+  require_client_certificate: boolean;
+  mode: string | null;
+  netmask: string | null;
+}
+
+export interface OvpnClientAccount {
+  id: string;
+  name: string;
+  service: string | null;
+  profile: string | null;
+  local_address: string | null;
+  remote_address: string | null;
+  comment: string | null;
+  disabled: boolean;
+}
+
+export interface OvpnActiveConnection {
+  id: string;
+  name: string;
+  user: string | null;
+  client_address: string | null;
+  encoding: string | null;
+  uptime: string | null;
+  running: boolean;
+}
+
+export interface MtCertificate {
+  id: string;
+  name: string | null;
+  common_name: string | null;
+  key_type: string | null;
+  key_size: string | null;
+  fingerprint: string | null;
+  invalid_before: string | null;
+  invalid_after: string | null;
+  has_private_key: boolean;
+  ca: boolean;
+  trusted: boolean;
+  expired: boolean;
+  authority: boolean;
+  subject_alt_name: string | null;
+}
+
+export interface OvpnClientConfigExport {
+  config: string;
+  filename: string;
 }
 
 export interface QosSummary {
