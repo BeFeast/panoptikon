@@ -1727,6 +1727,25 @@ export function fetchDdnsStatus(): Promise<import("./types").DdnsStatus> {
   return apiGet<import("./types").DdnsStatus>("/api/v1/ddns/status");
 }
 
+// ─── DNS Security (DoT + DNSSEC) ─────────────────────────────
+
+export function fetchDnsSecurity(): Promise<
+  import("./types").DnsSecuritySettings
+> {
+  return apiGet<import("./types").DnsSecuritySettings>(
+    "/api/v1/dns-security"
+  );
+}
+
+export function updateDnsSecurity(
+  body: import("./types").DnsSecurityUpdateRequest
+): Promise<import("./types").DnsSecuritySettings> {
+  return apiPatch<import("./types").DnsSecuritySettings>(
+    "/api/v1/dns-security",
+    body
+  );
+}
+
 // ─── NAT / Port Forwarding ───────────────────────────────────
 
 export function fetchNatSummary(): Promise<import("./types").NatSummary> {

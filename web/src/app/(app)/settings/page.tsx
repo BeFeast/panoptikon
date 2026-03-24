@@ -12,6 +12,7 @@ import {
   Lock,
   ChevronRight,
   ShieldAlert,
+  ShieldCheck,
   Server,
   Wifi,
   Network,
@@ -61,6 +62,10 @@ const iconMap: Record<string, { icon: React.ReactNode; iconBg: string }> = {
   "/settings/dns-blocklists": {
     icon: <ShieldBan className="h-4 w-4 text-rose-400" />,
     iconBg: "bg-rose-500/10",
+  },
+  "/settings/dns-security": {
+    icon: <ShieldCheck className="h-4 w-4 text-emerald-400" />,
+    iconBg: "bg-emerald-500/10",
   },
   "/settings/retention": {
     icon: <Database className="h-4 w-4 text-amber-400" />,
