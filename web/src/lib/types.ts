@@ -1942,6 +1942,8 @@ export interface VpnPeerStatus {
   tx_bytes: number | null;
   /** "online" if handshake within last 3 minutes, "offline" otherwise. */
   connectivity: string;
+  /** For OpenVPN clients: uptime string. */
+  uptime?: string | null;
 }
 
 export interface VpnInterfaceStatus {
@@ -1953,17 +1955,65 @@ export interface VpnInterfaceStatus {
   peers: VpnPeerStatus[];
   peers_online: number;
   peers_total: number;
-  /** "mikrotik" */
+  /** "mikrotik" for WireGuard, "mikrotik-openvpn" for OpenVPN */
   source: string;
+  /** "wireguard" or "openvpn" */
+  vpn_type?: string | null;
 }
 
 export interface VpnStatusResponse {
   mikrotik_available: boolean;
+  openvpn_available: boolean;
   interfaces: VpnInterfaceStatus[];
   total_peers: number;
   online_peers: number;
   total_rx_bytes: number;
   total_tx_bytes: number;
+}
+
+export interface OvpnServerResponse {
+  available: boolean;
+  enabled: boolean;
+  port: number | null;
+  mode: string | null;
+  protocol: string | null;
+  certificate: string | null;
+  auth: string | null;
+  cipher: string | null;
+  default_profile: string | null;
+}
+
+export interface OvpnConnectedClient {
+  name: string;
+  client_address: string | null;
+  uptime: string | null;
+  encoding: string | null;
+  caller_id: string | null;
+}
+
+export interface OvpnClientsResponse {
+  available: boolean;
+  clients: OvpnConnectedClient[];
+}
+
+export interface OvpnCertificate {
+  name: string | null;
+  common_name: string | null;
+  fingerprint: string | null;
+  key_type: string | null;
+  expires_after: string | null;
+  trusted: boolean;
+  has_private_key: boolean;
+  ca: boolean;
+}
+
+export interface OvpnCertificatesResponse {
+  available: boolean;
+  certificates: OvpnCertificate[];
+}
+
+export interface OvpnClientConfigResponse {
+  config: string;
 }
 
 export interface QosSummary {

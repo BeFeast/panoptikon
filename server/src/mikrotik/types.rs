@@ -771,6 +771,135 @@ pub struct Ipv6Nd {
     pub comment: Option<String>,
 }
 
+/// MikroTik OpenVPN server settings (`/rest/interface/ovpn-server/server`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OvpnServer {
+    pub enabled: Option<String>,
+    pub port: Option<String>,
+    pub mode: Option<String>,
+    #[serde(rename = "default-profile")]
+    pub default_profile: Option<String>,
+    pub certificate: Option<String>,
+    #[serde(rename = "require-client-certificate")]
+    pub require_client_certificate: Option<String>,
+    pub auth: Option<String>,
+    pub cipher: Option<String>,
+    pub protocol: Option<String>,
+    #[serde(rename = "netmask")]
+    pub netmask: Option<String>,
+}
+
+/// MikroTik OpenVPN server write payload.
+#[derive(Debug, Clone, Serialize)]
+pub struct OvpnServerWriteRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub enabled: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub port: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mode: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "default-profile")]
+    pub default_profile: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub certificate: Option<String>,
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "require-client-certificate"
+    )]
+    pub require_client_certificate: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub auth: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cipher: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub protocol: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub netmask: Option<String>,
+}
+
+/// Active OpenVPN server connection/interface (`/rest/interface/ovpn-server`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OvpnServerBinding {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    #[serde(rename = "client-address")]
+    pub client_address: Option<String>,
+    pub uptime: Option<String>,
+    pub encoding: Option<String>,
+    pub user: Option<String>,
+    pub running: Option<String>,
+    pub disabled: Option<String>,
+}
+
+/// MikroTik PPP secret (`/rest/ppp/secret`) — used for OpenVPN user auth.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PppSecret {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub service: Option<String>,
+    pub profile: Option<String>,
+    #[serde(rename = "local-address")]
+    pub local_address: Option<String>,
+    #[serde(rename = "remote-address")]
+    pub remote_address: Option<String>,
+    pub routes: Option<String>,
+    pub disabled: Option<String>,
+    pub comment: Option<String>,
+}
+
+/// MikroTik PPP active connections (`/rest/ppp/active`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PppActive {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    pub service: Option<String>,
+    #[serde(rename = "caller-id")]
+    pub caller_id: Option<String>,
+    pub address: Option<String>,
+    pub uptime: Option<String>,
+    pub encoding: Option<String>,
+}
+
+/// MikroTik certificate (`/rest/certificate`).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MtCertificate {
+    #[serde(rename = ".id")]
+    pub id: Option<String>,
+    pub name: Option<String>,
+    #[serde(rename = "common-name")]
+    pub common_name: Option<String>,
+    pub fingerprint: Option<String>,
+    #[serde(rename = "key-type")]
+    pub key_type: Option<String>,
+    #[serde(rename = "key-size")]
+    pub key_size: Option<String>,
+    #[serde(rename = "days-valid")]
+    pub days_valid: Option<String>,
+    #[serde(rename = "trusted")]
+    pub trusted: Option<String>,
+    #[serde(rename = "invalid-before")]
+    pub invalid_before: Option<String>,
+    #[serde(rename = "invalid-after")]
+    pub invalid_after: Option<String>,
+    #[serde(rename = "expires-after")]
+    pub expires_after: Option<String>,
+    #[serde(rename = "private-key")]
+    pub private_key: Option<String>,
+    pub ca: Option<String>,
+    pub issuer: Option<String>,
+    #[serde(rename = "serial-number")]
+    pub serial_number: Option<String>,
+    #[serde(rename = "subject-alt-name")]
+    pub subject_alt_name: Option<String>,
+    #[serde(rename = "authority-key-id")]
+    pub authority_key_id: Option<String>,
+    #[serde(rename = "subject-key-id")]
+    pub subject_key_id: Option<String>,
+}
+
 /// MikroTik WireGuard peer (`/rest/interface/wireguard/peers`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WgPeer {

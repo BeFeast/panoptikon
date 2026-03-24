@@ -419,6 +419,52 @@ impl MikrotikClient {
         Ok(res)
     }
 
+    /// Fetch OpenVPN server settings.
+    pub async fn ovpn_server(&self) -> Result<OvpnServer> {
+        let val = self.get("/interface/ovpn-server/server").await?;
+        let res: OvpnServer =
+            serde_json::from_value(val).context("failed to parse OVPN server settings")?;
+        Ok(res)
+    }
+
+    /// Update OpenVPN server settings.
+    pub async fn update_ovpn_server(&self, req: &OvpnServerWriteRequest) -> Result<()> {
+        self.send_json(Method::PATCH, "/interface/ovpn-server/server", req)
+            .await
+    }
+
+    /// Fetch active OpenVPN server connections (bindings).
+    pub async fn ovpn_server_bindings(&self) -> Result<Vec<OvpnServerBinding>> {
+        let val = self.get("/interface/ovpn-server").await?;
+        let res: Vec<OvpnServerBinding> =
+            serde_json::from_value(val).context("failed to parse OVPN server bindings")?;
+        Ok(res)
+    }
+
+    /// Fetch PPP secrets (VPN user accounts).
+    pub async fn ppp_secrets(&self) -> Result<Vec<PppSecret>> {
+        let val = self.get("/ppp/secret").await?;
+        let res: Vec<PppSecret> =
+            serde_json::from_value(val).context("failed to parse PPP secrets")?;
+        Ok(res)
+    }
+
+    /// Fetch active PPP connections.
+    pub async fn ppp_active(&self) -> Result<Vec<PppActive>> {
+        let val = self.get("/ppp/active").await?;
+        let res: Vec<PppActive> =
+            serde_json::from_value(val).context("failed to parse PPP active connections")?;
+        Ok(res)
+    }
+
+    /// Fetch MikroTik certificates.
+    pub async fn certificates(&self) -> Result<Vec<MtCertificate>> {
+        let val = self.get("/certificate").await?;
+        let res: Vec<MtCertificate> =
+            serde_json::from_value(val).context("failed to parse certificates")?;
+        Ok(res)
+    }
+
     /// Fetch WireGuard interfaces.
     pub async fn wireguard_interfaces(&self) -> Result<Vec<WgInterface>> {
         let val = self.get("/interface/wireguard").await?;
