@@ -113,6 +113,10 @@ import type {
   CreateUserRequest,
   UpdateUserRequest,
   SnmpStatus,
+  DotUpstream,
+  DotUpstreamRequest,
+  DnssecConfig,
+  DnsSecurityStatus,
 } from "./types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
@@ -1953,4 +1957,49 @@ export function updateSnmpConfig(data: Partial<import("./types").SnmpConfig>): P
 
 export function testEmail(): Promise<void> {
   return apiPost<void>("/api/v1/settings/test-email");
+}
+
+// ─── DNS Security (DoT, DNSSEC) ─────────────────────────────
+
+export function fetchDotUpstreams(): Promise<DotUpstream[]> {
+  return apiGet<DotUpstream[]>("/api/v1/dns-security/dot-upstreams");
+}
+
+export function createDotUpstream(
+  body: DotUpstreamRequest
+): Promise<DotUpstream> {
+  return apiPost<DotUpstream>("/api/v1/dns-security/dot-upstreams", body);
+}
+
+export function updateDotUpstream(
+  id: string,
+  body: DotUpstreamRequest
+): Promise<DotUpstream> {
+  return apiPut<DotUpstream>(`/api/v1/dns-security/dot-upstreams/${id}`, body);
+}
+
+export function deleteDotUpstream(id: string): Promise<void> {
+  return apiDelete(`/api/v1/dns-security/dot-upstreams/${id}`);
+}
+
+export function toggleDotUpstream(
+  id: string,
+  enabled: boolean
+): Promise<DotUpstream> {
+  return apiPost<DotUpstream>(
+    `/api/v1/dns-security/dot-upstreams/${id}/toggle`,
+    { enabled }
+  );
+}
+
+export function fetchDnssecConfig(): Promise<DnssecConfig> {
+  return apiGet<DnssecConfig>("/api/v1/dns-security/dnssec");
+}
+
+export function updateDnssecConfig(enabled: boolean): Promise<DnssecConfig> {
+  return apiPatch<DnssecConfig>("/api/v1/dns-security/dnssec", { enabled });
+}
+
+export function fetchDnsSecurityStatus(): Promise<DnsSecurityStatus> {
+  return apiGet<DnsSecurityStatus>("/api/v1/dns-security/status");
 }

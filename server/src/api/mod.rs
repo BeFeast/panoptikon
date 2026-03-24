@@ -29,6 +29,7 @@ pub mod devices;
 pub mod dns_blocklists;
 pub mod dns_logs;
 pub mod dns_query_log;
+pub mod dns_security;
 pub mod error;
 pub mod export;
 pub mod mesh;
@@ -567,6 +568,30 @@ pub fn router(state: AppState) -> Router {
         .route("/ddns/:id", put(ddns::update))
         .route("/ddns/:id", delete(ddns::delete))
         .route("/ddns/:id/toggle", post(ddns::toggle))
+        // DNS Security (DoT, DNSSEC)
+        .route(
+            "/dns-security/dot-upstreams",
+            get(dns_security::list_dot_upstreams),
+        )
+        .route(
+            "/dns-security/dot-upstreams",
+            post(dns_security::create_dot_upstream),
+        )
+        .route(
+            "/dns-security/dot-upstreams/:id",
+            put(dns_security::update_dot_upstream),
+        )
+        .route(
+            "/dns-security/dot-upstreams/:id",
+            delete(dns_security::delete_dot_upstream),
+        )
+        .route(
+            "/dns-security/dot-upstreams/:id/toggle",
+            post(dns_security::toggle_dot_upstream),
+        )
+        .route("/dns-security/dnssec", get(dns_security::get_dnssec))
+        .route("/dns-security/dnssec", patch(dns_security::update_dnssec))
+        .route("/dns-security/status", get(dns_security::status))
         // Audit log
         .route("/audit-log", get(audit::list))
         .route("/audit-log/actions", get(audit::actions))

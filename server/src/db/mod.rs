@@ -106,6 +106,9 @@ const FASTFETCH_DATA_MIGRATION: &str = include_str!("migrations/031_fastfetch_da
 /// Migration 032: RBAC multi-user, SMTP email notifications, SNMP management.
 const RBAC_SMTP_SNMP_MIGRATION: &str = include_str!("migrations/032_rbac_smtp_snmp.sql");
 
+/// Migration 033: DNS security — DoT upstreams table.
+const DNS_SECURITY_MIGRATION: &str = include_str!("migrations/033_dns_security.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -813,6 +816,22 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 032_rbac_smtp_snmp.sql");
     }
 
+    // Migration 033: DNS security — DoT upstreams.
+    let applied_33: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 33")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_33 {
+        sqlx::raw_sql(DNS_SECURITY_MIGRATION).execute(pool).await?;
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (33)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 033_dns_security.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -875,6 +894,7 @@ mod tests {
             "ddns_entries",
             "external_hostnames",
             "users",
+            "dns_dot_upstreams",
         ];
 
         for table in &expected_tables {

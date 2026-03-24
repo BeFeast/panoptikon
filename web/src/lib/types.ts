@@ -2420,3 +2420,34 @@ export interface SnmpStatus {
   available: boolean;
   config: SnmpConfig;
 }
+
+// ─── DNS Security (DoT, DNSSEC) ─────────────────────────
+
+export interface DotUpstream {
+  id: string;
+  name: string;
+  address: string;
+  port: number;
+  tls_hostname: string | null;
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DotUpstreamRequest {
+  name: string;
+  address: string;
+  port: number;
+  tls_hostname?: string;
+  enabled: boolean;
+}
+
+export interface DnssecConfig {
+  enabled: boolean;
+}
+
+export interface DnsSecurityStatus {
+  dot_upstreams: number;
+  dot_enabled: number;
+  dnssec_enabled: boolean;
+}
