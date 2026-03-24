@@ -2,7 +2,9 @@
 
 *The all-seeing eye for your home network.*
 
-**Panoptikon** is a self-hosted web application for monitoring all devices on your local network and managing routers with a MikroTik-first strategy (plus legacy VyOS support). It combines device discovery (ARP scanning), router management, and lightweight agent-based telemetry into a single binary with a polished, dark-themed web UI inspired by Ubiquiti UniFi.
+Panoptikon gives your homelab a local-first control surface for discovery, telemetry, and router operations — without shipping your network metadata to someone else's cloud.
+
+**Panoptikon** is a self-hosted network operations dashboard that combines discovery, router management, asset intelligence, and lightweight telemetry in one operator-focused interface.
 
 ---
 
@@ -84,14 +86,14 @@ panoptikon/
 
 ## Router Integration
 
-Panoptikon supports two router platforms:
+Panoptikon provides a control plane for two router platforms:
 
 - **MikroTik (primary/default)** — connects via the RouterOS 7+ REST API. Configure in **Settings → Router → MikroTik**.
 - **VyOS (legacy/optional)** — connects via the VyOS HTTP API. Hidden by default for new users. To expose it, enable **Settings → Advanced → Show legacy routers**, then configure in **Settings → Router → VyOS (Legacy)**.
 
 ## Prometheus Integration
 
-Panoptikon exposes metrics at `GET /metrics` in [Prometheus text exposition format](https://prometheus.io/docs/instrumenting/exposition_formats/). No authentication is required for this endpoint.
+Panoptikon exposes operator-facing metrics at `GET /metrics` in [Prometheus text exposition format](https://prometheus.io/docs/instrumenting/exposition_formats/) — giving you network visibility in your existing monitoring stack. No authentication is required for this endpoint.
 
 **Exported metrics:**
 
@@ -127,7 +129,7 @@ docker build -t panoptikon .
 docker-compose up -d
 ```
 
-The multi-stage Dockerfile builds the Rust server, Next.js frontend, and packages them into a minimal `debian:bookworm-slim` runtime image with `nmap` and `iperf3` pre-installed.
+The multi-stage Dockerfile builds the Rust server and Next.js frontend into a minimal `debian:bookworm-slim` runtime image — self-hosted, single-binary, no external dependencies beyond what ships in the container.
 
 **Important notes:**
 
@@ -135,6 +137,13 @@ The multi-stage Dockerfile builds the Rust server, Next.js frontend, and package
 - **`NET_RAW` capability** is required for nmap raw socket scanning.
 - **`NET_ADMIN` capability** is required for ARP table access and network administration.
 - Data (SQLite database) is persisted in a Docker volume mounted at `/data`.
+
+## Philosophy
+
+- **Self-hosted by default** — your network data stays on your network.
+- **Privacy-first and operator-controlled** — no cloud accounts, no phone-home telemetry.
+- **Transparent over magical** — configuration is explicit; behavior is predictable.
+- **Powerful without becoming brittle** — one binary, one database, minimal moving parts.
 
 ## License
 
