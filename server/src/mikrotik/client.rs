@@ -638,6 +638,63 @@ impl MikrotikClient {
         self.send_no_body(Method::DELETE, &format!("/queue/tree/{id}"))
             .await
     }
+
+    /// Fetch OpenVPN server configuration.
+    pub async fn ovpn_server(&self) -> Result<OvpnServer> {
+        let val = self.get("/interface/ovpn-server/server").await?;
+        let res: OvpnServer =
+            serde_json::from_value(val).context("failed to parse OVPN server config")?;
+        Ok(res)
+    }
+
+    /// Update OpenVPN server configuration.
+    pub async fn update_ovpn_server(&self, req: &OvpnServerWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/interface/ovpn-server/server/set", req)
+            .await
+    }
+
+    /// Fetch active OpenVPN server interfaces (connected clients).
+    pub async fn ovpn_server_interfaces(&self) -> Result<Vec<OvpnServerInterface>> {
+        let val = self.get("/interface/ovpn-server").await?;
+        let res: Vec<OvpnServerInterface> =
+            serde_json::from_value(val).context("failed to parse OVPN server interfaces")?;
+        Ok(res)
+    }
+
+    /// Fetch PPP secrets (user accounts for OpenVPN/PPTP/L2TP).
+    pub async fn ppp_secrets(&self) -> Result<Vec<PppSecret>> {
+        let val = self.get("/ppp/secret").await?;
+        let res: Vec<PppSecret> =
+            serde_json::from_value(val).context("failed to parse PPP secrets")?;
+        Ok(res)
+    }
+
+    /// Create a PPP secret.
+    pub async fn create_ppp_secret(&self, req: &PppSecretWriteRequest) -> Result<()> {
+        self.send_json(Method::POST, "/ppp/secret", req).await
+    }
+
+    /// Delete a PPP secret by RouterOS `.id`.
+    pub async fn delete_ppp_secret(&self, id: &str) -> Result<()> {
+        self.send_no_body(Method::DELETE, &format!("/ppp/secret/{id}"))
+            .await
+    }
+
+    /// Fetch PPP active connections.
+    pub async fn ppp_active(&self) -> Result<Vec<PppActive>> {
+        let val = self.get("/ppp/active").await?;
+        let res: Vec<PppActive> =
+            serde_json::from_value(val).context("failed to parse PPP active connections")?;
+        Ok(res)
+    }
+
+    /// Fetch certificates from the MikroTik certificate store.
+    pub async fn certificates(&self) -> Result<Vec<MtCertificate>> {
+        let val = self.get("/certificate").await?;
+        let res: Vec<MtCertificate> =
+            serde_json::from_value(val).context("failed to parse certificates")?;
+        Ok(res)
+    }
 }
 
 #[cfg(test)]
