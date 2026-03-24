@@ -29,6 +29,7 @@ pub mod devices;
 pub mod dns_blocklists;
 pub mod dns_logs;
 pub mod dns_query_log;
+pub mod dns_security;
 pub mod error;
 pub mod export;
 pub mod mesh;
@@ -538,6 +539,9 @@ pub fn router(state: AppState) -> Router {
             "/dns-blocklists/:id/download",
             post(dns_blocklists::download),
         )
+        // DNS Security (DoT + DNSSEC)
+        .route("/dns-security", get(dns_security::get_dns_security))
+        .route("/dns-security", patch(dns_security::update_dns_security))
         // DNS query log
         .route("/dns-queries", get(dns_query_log::list))
         .route("/dns-queries/stats", get(dns_query_log::stats))

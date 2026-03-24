@@ -1941,6 +1941,27 @@ export interface DdnsStatus {
   mikrotik_configured: boolean;
 }
 
+// ─── DNS Security (DoT + DNSSEC) ────────────────────────────
+
+export interface DotServer {
+  address: string;
+  port: number;
+  name: string;
+  enabled: boolean;
+}
+
+export interface DnsSecuritySettings {
+  dot_enabled: boolean;
+  dot_servers: DotServer[];
+  dnssec_enabled: boolean;
+}
+
+export interface DnsSecurityUpdateRequest {
+  dot_enabled?: boolean;
+  dot_servers?: DotServer[];
+  dnssec_enabled?: boolean;
+}
+
 // ─── NAT Management ─────────────────────────────────────────
 
 export interface NatSummary {

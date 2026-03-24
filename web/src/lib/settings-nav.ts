@@ -91,6 +91,11 @@ export const settingsNav: SettingsNavGroup[] = [
         title: "DNS Blocklists",
         description: "Block ads and trackers via DNS blocklists.",
       },
+      {
+        href: "/settings/dns-security",
+        title: "DNS Security",
+        description: "Configure DNS-over-TLS (DoT) and DNSSEC validation.",
+      },
     ],
   },
   {
