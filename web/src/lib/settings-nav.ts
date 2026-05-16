@@ -8,6 +8,7 @@ export interface SettingsNavItem {
   href: string;
   title: string;
   description: string;
+  keywords?: string[];
 }
 
 export interface SettingsNavGroup {
@@ -19,11 +20,19 @@ export interface SettingsNavGroup {
 export const settingsNav: SettingsNavGroup[] = [
   {
     label: "Integrations",
+    subtitle: "Router clients, edge services, and external notifications.",
     items: [
       {
         href: "/settings/router",
         title: "Router",
         description: "Configure MikroTik router integration.",
+        keywords: ["routeros", "primary router"],
+      },
+      {
+        href: "/settings/pfsense",
+        title: "pfSense",
+        description: "Configure pfSense router integration via SSH.",
+        keywords: ["router", "firewall", "legacy migration"],
       },
       {
         href: "/settings/xiaomi-mesh",
@@ -31,14 +40,19 @@ export const settingsNav: SettingsNavGroup[] = [
         description: "Configure Xiaomi mesh router integration.",
       },
       {
-        href: "/settings/pfsense",
-        title: "pfSense",
-        description: "Configure pfSense router integration via SSH.",
-      },
-      {
         href: "/settings/dns",
         title: "Unbound DNS",
         description: "Manage local DNS A records via Unbound.",
+      },
+      {
+        href: "/caddy",
+        title: "Caddy",
+        description: "Manage reverse proxy hosts and edge routing.",
+      },
+      {
+        href: "/settings/cloudflare-tunnel",
+        title: "Cloudflare Tunnel",
+        description: "Configure Cloudflare Tunnel API token and tunnel ID.",
       },
       {
         href: "/settings/tailscale",
@@ -65,11 +79,6 @@ export const settingsNav: SettingsNavGroup[] = [
         title: "Alert Rules",
         description:
           "Configure rules for device offline, bandwidth, and new devices.",
-      },
-      {
-        href: "/settings/cloudflare-tunnel",
-        title: "Cloudflare Tunnel",
-        description: "Configure Cloudflare Tunnel API token and tunnel ID.",
       },
     ],
   },
