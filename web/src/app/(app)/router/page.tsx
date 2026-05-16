@@ -25,15 +25,15 @@ export default function RouterRedirect() {
           router.replace("/router/mikrotik");
           return;
         }
-        if (settings.pfsense_enabled && !settings.mikrotik_enabled) {
-          router.replace("/router/pfsense");
-          return;
-        }
         if (
           settings.default_router === "xiaomi" &&
           settings.xiaomi_mesh_enabled
         ) {
           router.replace("/router/xiaomi");
+          return;
+        }
+        if (settings.pfsense_enabled && !settings.mikrotik_enabled) {
+          router.replace("/router/pfsense");
           return;
         }
         if (
