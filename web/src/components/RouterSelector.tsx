@@ -10,6 +10,11 @@ interface RouterSelectorProps {
   active: ActiveRouter;
 }
 
+const primaryActive =
+  "border-cyan-400/40 bg-cyan-400/15 text-cyan-100 hover:bg-cyan-400/20";
+const inactive =
+  "border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white";
+
 export function RouterSelector({ active }: RouterSelectorProps) {
   return (
     <div className="flex min-w-0 flex-wrap gap-2">
@@ -17,11 +22,7 @@ export function RouterSelector({ active }: RouterSelectorProps) {
         variant={active === "mikrotik" ? "default" : "outline"}
         size="sm"
         asChild
-        className={
-          active === "mikrotik"
-            ? "bg-cyan-600 text-white hover:bg-cyan-500"
-            : "border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white"
-        }
+        className={active === "mikrotik" ? primaryActive : inactive}
       >
         <Link href="/router/mikrotik">
           <Router className="mr-1.5 h-3.5 w-3.5" />
@@ -32,11 +33,7 @@ export function RouterSelector({ active }: RouterSelectorProps) {
         variant={active === "pfsense" ? "default" : "outline"}
         size="sm"
         asChild
-        className={
-          active === "pfsense"
-            ? "bg-blue-600 text-white hover:bg-blue-500"
-            : "border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white"
-        }
+        className={active === "pfsense" ? primaryActive : inactive}
       >
         <Link href="/router/pfsense">
           <Shield className="mr-1.5 h-3.5 w-3.5" />
@@ -49,7 +46,7 @@ export function RouterSelector({ active }: RouterSelectorProps) {
         asChild
         className={
           active === "xiaomi"
-            ? "bg-orange-600 text-white hover:bg-orange-500"
+            ? "border-orange-400/40 bg-orange-400/12 text-orange-100 hover:bg-orange-400/20"
             : "border-slate-800 bg-slate-950 text-slate-500 hover:bg-slate-800 hover:text-white"
         }
       >

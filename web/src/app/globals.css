@@ -5,24 +5,24 @@
 @layer base {
   :root {
     /* Panoptikon brand palette — graphite + signal cyan */
-    --background: 218 44% 5%;
+    --background: 220 42% 4%;
     --foreground: 216 44% 94%;
-    --card: 218 43% 10%;
+    --card: 220 35% 8%;
     --card-foreground: 216 44% 94%;
-    --popover: 218 43% 10%;
+    --popover: 220 35% 8%;
     --popover-foreground: 216 44% 94%;
     --primary: 188 85% 53%;
     --primary-foreground: 218 44% 5%;
-    --secondary: 216 43% 18%;
+    --secondary: 218 30% 14%;
     --secondary-foreground: 216 44% 94%;
-    --muted: 216 43% 18%;
+    --muted: 218 28% 13%;
     --muted-foreground: 214 22% 73%;
     --accent: 38 92% 50%;
     --accent-foreground: 218 44% 5%;
     --destructive: 348 89% 60%;
     --destructive-foreground: 0 0% 100%;
-    --border: 218 35% 23%;
-    --input: 218 35% 23%;
+    --border: 214 29% 16%;
+    --input: 214 29% 16%;
     --ring: 188 85% 53%;
     --radius: 0.5rem;
 
@@ -38,14 +38,21 @@
 
   body {
     @apply text-foreground;
-    background-color: #070B12;
+    background-color: #050914;
     background-image:
-      radial-gradient(circle at 14% -16%, rgba(34, 211, 238, 0.08) 0%, transparent 34%),
-      radial-gradient(circle at 88% -26%, rgba(30, 41, 59, 0.24) 0%, transparent 38%),
-      linear-gradient(180deg, #070B12 0%, #0E1624 100%);
+      linear-gradient(rgba(148, 163, 184, 0.032) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.026) 1px, transparent 1px),
+      linear-gradient(180deg, #050914 0%, #09111d 54%, #060a13 100%);
+    background-size: 32px 32px, 32px 32px, auto;
     background-attachment: fixed;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+.mesh-shell {
+  background:
+    linear-gradient(180deg, rgba(8, 14, 26, 0.88), rgba(5, 9, 20, 0.95)),
+    repeating-linear-gradient(90deg, rgba(34, 211, 238, 0.035) 0 1px, transparent 1px 96px);
 }
 
 /* Tabular nums for IPs, MACs, bandwidth values */
