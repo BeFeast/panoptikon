@@ -19,10 +19,14 @@ export default function RouterRedirect() {
           return;
         }
         if (
-          settings.default_router === "xiaomi" &&
-          settings.xiaomi_mesh_enabled
+          settings.default_router === "mikrotik" &&
+          settings.mikrotik_enabled
         ) {
-          router.replace("/router/xiaomi");
+          router.replace("/router/mikrotik");
+          return;
+        }
+        if (settings.pfsense_enabled && !settings.mikrotik_enabled) {
+          router.replace("/router/pfsense");
           return;
         }
       } catch {
@@ -34,8 +38,10 @@ export default function RouterRedirect() {
   }, [router]);
 
   return (
-    <div className="flex items-center justify-center h-64">
-      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+    <div className="flex min-h-64 items-center justify-center">
+      <div className="rounded-md border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-slate-400">
+        Selecting router workspace...
+      </div>
     </div>
   );
 }

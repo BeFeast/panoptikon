@@ -32,7 +32,7 @@ export function InfoStatCard({
   return (
     <Card
       className={cn(
-        "border-slate-800/50 bg-slate-900/60 shadow-none",
+        "col-span-1 border-slate-800/50 bg-slate-950/70 shadow-none",
         className,
       )}
     >
