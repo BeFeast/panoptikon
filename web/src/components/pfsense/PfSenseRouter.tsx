@@ -25,13 +25,17 @@ import { DnsTab } from "./tabs/DnsTab";
 import { RoutingTab } from "./tabs/RoutingTab";
 import { ConfigTab } from "./tabs/ConfigTab";
 import { ServicesTab } from "./tabs/ServicesTab";
+import { RouterWorkspaceState } from "@/components/router/RouterWorkspace";
+
+const tabTriggerClass =
+  "gap-1.5 data-[state=active]:bg-slate-800 data-[state=active]:text-white";
 
 export default function PfSenseRouter() {
   const [tab, setTab] = useHashTab("system", ["system", "interfaces", "firewall", "dhcp", "dns", "services", "routing", "config"]);
   const fetcher = useCallback(() => fetchPfsenseStatus(), []);
-  const { data: status, loading } = useData(fetcher);
+  const { data: status, loading, error } = useData(fetcher);
 
-  if (loading || !status) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <Skeleton className="h-10 w-80" />
@@ -41,41 +45,81 @@ export default function PfSenseRouter() {
     );
   }
 
+  if (!status) {
+    return (
+      <RouterWorkspaceState
+        title="pfSense status is unavailable"
+        description="The pfSense integration is enabled, but the status API did not return router data."
+        detail={error}
+        settingsHref="/settings/pfsense"
+        settingsLabel="Check Connection"
+        tone="rose"
+      />
+    );
+  }
+
+  if (!status.configured || !status.reachable) {
+    if (status.configured && !status.reachable) {
+      return (
+        <div className="space-y-5">
+          <PfSenseStatusHeader status={status} />
+          <RouterWorkspaceState
+            title="pfSense router is unreachable"
+            description="The integration is enabled, but the firewall did not respond. Last-known status fields remain visible below when available."
+            settingsHref="/settings/pfsense"
+            settingsLabel="Check Connection"
+            tone="rose"
+          />
+          <SystemTab status={status} />
+        </div>
+      );
+    }
+
+    return (
+      <RouterWorkspaceState
+        title="pfSense router is not configured"
+        description="Enable the pfSense integration and provide firewall connection settings before managing interfaces, services, DHCP, DNS, firewall, routing, and config backups."
+        settingsHref="/settings/pfsense"
+        settingsLabel="Configure pfSense"
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       <PfSenseStatusHeader status={status} />
 
-      <Tabs value={tab} onValueChange={setTab} className="w-full">
-        <TabsList className="border-slate-800 bg-slate-900">
-          <TabsTrigger value="system" className="gap-1.5">
+      <Tabs value={tab} onValueChange={setTab} className="w-full min-w-0">
+        <TabsList className="h-auto w-full justify-start gap-1 border border-slate-800 bg-slate-950 p-1">
+          <TabsTrigger value="system" className={tabTriggerClass}>
             <Monitor className="h-3.5 w-3.5" />
             System
           </TabsTrigger>
-          <TabsTrigger value="interfaces" className="gap-1.5">
+          <TabsTrigger value="interfaces" className={tabTriggerClass}>
             <Network className="h-3.5 w-3.5" />
             Interfaces
           </TabsTrigger>
-          <TabsTrigger value="firewall" className="gap-1.5">
+          <TabsTrigger value="firewall" className={tabTriggerClass}>
             <Shield className="h-3.5 w-3.5" />
             Firewall
           </TabsTrigger>
-          <TabsTrigger value="dhcp" className="gap-1.5">
+          <TabsTrigger value="dhcp" className={tabTriggerClass}>
             <Server className="h-3.5 w-3.5" />
             DHCP
           </TabsTrigger>
-          <TabsTrigger value="dns" className="gap-1.5">
+          <TabsTrigger value="dns" className={tabTriggerClass}>
             <Globe className="h-3.5 w-3.5" />
             DNS
           </TabsTrigger>
-          <TabsTrigger value="services" className="gap-1.5">
+          <TabsTrigger value="services" className={tabTriggerClass}>
             <Cog className="h-3.5 w-3.5" />
             Services
           </TabsTrigger>
-          <TabsTrigger value="routing" className="gap-1.5">
+          <TabsTrigger value="routing" className={tabTriggerClass}>
             <GitFork className="h-3.5 w-3.5" />
             Routing
           </TabsTrigger>
-          <TabsTrigger value="config" className="gap-1.5">
+          <TabsTrigger value="config" className={tabTriggerClass}>
             <FileArchive className="h-3.5 w-3.5" />
             Config & Audit
           </TabsTrigger>
