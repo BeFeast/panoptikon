@@ -104,7 +104,7 @@ test.describe("Card Layout Quality (#538)", () => {
 
     // RouterSelector (MikroTik / Xiaomi buttons) is always present.
     await expect(
-      page.getByRole("link", { name: /MikroTik/i }),
+      page.locator("main").getByRole("link", { name: "MikroTik" }),
     ).toBeVisible({ timeout: 15000 });
 
     // Wait for the page body to resolve beyond the skeleton state.

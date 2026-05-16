@@ -140,6 +140,7 @@ import {
 } from "@/lib/api";
 import { formatBps } from "@/lib/format";
 import { useData } from "@/hooks/useData";
+import { RouterWorkspaceState } from "@/components/router/RouterWorkspace";
 import type {
   MikrotikStatus,
   MikrotikInterface,
@@ -194,42 +195,49 @@ function formatMemory(bytes: string | null): string {
 
 function StatusHeader({ status }: { status: MikrotikStatus }) {
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pink-500/10">
-          <Router className="h-5 w-5 text-pink-400" />
+    <div className="rounded-md border border-slate-800 bg-slate-950/90 p-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-cyan-500/20 bg-cyan-500/10">
+            <Router className="h-5 w-5 text-cyan-300" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-cyan-300/80">
+              RouterOS workspace
+            </p>
+            <h1 className="truncate text-2xl font-semibold tracking-tight text-white">
+              MikroTik Router
+            </h1>
+            <p className="truncate text-xs text-slate-500">
+              {status.board_name ?? "RouterOS"}{" "}
+              {status.version && (
+                <span className="text-slate-600">&middot; RouterOS {status.version}</span>
+              )}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">MikroTik Router</h1>
-          <p className="text-xs text-slate-500">
-            {status.board_name ?? "RouterOS"}{" "}
-            {status.version && (
-              <span className="text-slate-600">&middot; RouterOS {status.version}</span>
-            )}
-          </p>
+        <div className="flex flex-wrap items-center gap-2">
+          {status.reachable ? (
+            <Badge
+              variant="outline"
+              className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+            >
+              &#9679; Connected
+            </Badge>
+          ) : (
+            <Badge
+              variant="outline"
+              className="border-rose-500/30 bg-rose-500/10 text-rose-400"
+            >
+              &#9679; Unreachable
+            </Badge>
+          )}
+          {status.uptime && (
+            <Badge variant="outline" className="border-slate-800 text-slate-400">
+              Uptime: {status.uptime}
+            </Badge>
+          )}
         </div>
-      </div>
-      <div className="flex items-center gap-2">
-        {status.reachable ? (
-          <Badge
-            variant="outline"
-            className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-          >
-            &#9679; Connected
-          </Badge>
-        ) : (
-          <Badge
-            variant="outline"
-            className="border-rose-500/30 bg-rose-500/10 text-rose-400"
-          >
-            &#9679; Unreachable
-          </Badge>
-        )}
-        {status.uptime && (
-          <Badge variant="outline" className="border-slate-800 text-slate-400">
-            Uptime: {status.uptime}
-          </Badge>
-        )}
       </div>
     </div>
   );
@@ -253,8 +261,8 @@ function SystemTab({ status }: { status: MikrotikStatus }) {
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
       <InfoStatCard
-        icon={<Monitor className="h-5 w-5 text-pink-400" />}
-        iconColorClass="bg-pink-500/10"
+        icon={<Monitor className="h-5 w-5 text-cyan-400" />}
+        iconColorClass="bg-cyan-500/10"
         label="Version"
         value={status.version ?? "\u2014"}
       />
@@ -4119,15 +4127,29 @@ export default function MikrotikRouter() {
   }
 
   if (!status?.configured || !status?.reachable) {
+    if (status?.configured && !status.reachable) {
+      return (
+        <div className="space-y-5">
+          <StatusHeader status={status} />
+          <RouterWorkspaceState
+            title="MikroTik router is unreachable"
+            description="The integration is enabled, but RouterOS did not respond. Last-known status fields remain visible below when the API returns them."
+            settingsHref="/settings/router"
+            settingsLabel="Check Connection"
+            tone="rose"
+          />
+          <SystemTab status={status} />
+        </div>
+      );
+    }
+
     return (
-      <div className="flex flex-col items-center gap-4 py-12 text-center">
-        <AlertCircle className="h-10 w-10 text-amber-400" />
-        <p className="text-sm text-slate-400">
-          {!status?.configured
-            ? "MikroTik router is not configured. Enable it in Settings."
-            : "MikroTik router is unreachable. Check connection settings."}
-        </p>
-      </div>
+      <RouterWorkspaceState
+        title="MikroTik router is not configured"
+        description="Enable the MikroTik integration and provide RouterOS credentials before managing interfaces, VLANs, DHCP, DNS, firewall, and routing."
+        settingsHref="/settings/router"
+        settingsLabel="Configure Router"
+      />
     );
   }
 
@@ -4135,8 +4157,8 @@ export default function MikrotikRouter() {
     <div className="space-y-6">
       <StatusHeader status={status} />
 
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="border-slate-800 bg-slate-950">
+      <Tabs value={tab} onValueChange={setTab} className="min-w-0">
+        <TabsList className="h-auto w-full justify-start gap-1 border border-slate-800 bg-slate-950 p-1">
           <TabsTrigger
             value="system"
             className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"

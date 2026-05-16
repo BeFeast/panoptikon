@@ -265,14 +265,14 @@ test.describe("Section Spacing (#571)", () => {
     const container = page.locator(".space-y-8").first();
     await expect(container).toBeVisible();
 
-    // Cards grid should have gap-5 (20px).
-    // Use .grid.gap-5 to target the settings cards grid specifically.
-    const grid = page.locator(".grid.gap-5").first();
+    // Cards grid should preserve visible separation in the tighter mesh layout.
+    // Use .grid.gap-3 to target the settings cards grid specifically.
+    const grid = page.locator(".space-y-8 .grid.gap-3").first();
     const gap = await grid.evaluate((el) =>
       window.getComputedStyle(el).gap,
     );
     const gapValue = parseInt(gap, 10);
-    expect(gapValue).toBeGreaterThanOrEqual(20);
+    expect(gapValue).toBeGreaterThanOrEqual(12);
 
     await page.screenshot({
       path: "tests/screenshots/section-spacing-settings.png",

@@ -42,6 +42,27 @@ test.describe('Navigation & Layout', () => {
     await page.screenshot({ path: 'tests/screenshots/settings-page.png', fullPage: true });
   });
 
+  test('router subroutes expose MikroTik and pfSense without activating parent Router link', async ({ page }) => {
+    const sidebar = page.locator('aside');
+    const routerLink = sidebar.getByRole('link', { name: /^Router$/ });
+    const mikrotikLink = sidebar.getByRole('link', { name: 'MikroTik' });
+    const pfsenseLink = sidebar.getByRole('link', { name: 'pfSense' });
+
+    await expect(routerLink).toBeVisible();
+    await expect(mikrotikLink).toBeVisible();
+    await expect(pfsenseLink).toBeVisible();
+
+    await mikrotikLink.click();
+    await page.waitForURL('**/router/mikrotik**', { timeout: 10000 });
+    await expect(mikrotikLink).toHaveClass(/text-cyan-500/);
+    await expect(routerLink).not.toHaveClass(/text-cyan-500/);
+
+    await pfsenseLink.click();
+    await page.waitForURL('**/router/pfsense**', { timeout: 10000 });
+    await expect(pfsenseLink).toHaveClass(/text-cyan-500/);
+    await expect(routerLink).not.toHaveClass(/text-cyan-500/);
+  });
+
   test('unauthenticated access redirects to login', async ({ page }) => {
     // Clear cookies and try to access dashboard
     await page.context().clearCookies();

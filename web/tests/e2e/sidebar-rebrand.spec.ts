@@ -13,7 +13,7 @@ test.describe('Sidebar rebrand — cyan accents instead of blue', () => {
     await expect(sidebar).toBeVisible({ timeout: 15000 });
 
     // Logo tile should be visible with cyan background
-    const logoTile = sidebar.locator('div.bg-cyan-500');
+    const logoTile = sidebar.locator('div[class*="bg-cyan-400"]');
     await expect(logoTile).toBeVisible({ timeout: 10000 });
     await expect(logoTile).toContainText('P');
 

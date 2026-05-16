@@ -41,6 +41,7 @@ test.describe("Settings save/load — MikroTik and Xiaomi", () => {
     await expect(enableSwitch).toHaveAttribute("aria-checked", "false");
 
     await enableSwitch.click();
+    await expect(enableSwitch).toHaveAttribute("aria-checked", "true");
     await urlInput.fill(DEFAULT_MIKROTIK_URL);
     await userInput.fill("admin");
 

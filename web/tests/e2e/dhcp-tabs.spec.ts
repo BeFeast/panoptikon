@@ -5,18 +5,22 @@ import { test, expect, login } from "../../e2e/fixtures";
  * (where no real pfSense instance is available).
  */
 async function mockPfsenseApis(page: import("@playwright/test").Page) {
+  // Mock remaining pfSense endpoints first; Playwright evaluates route
+  // handlers in reverse registration order, so specific mocks below win.
+  await page.route("**/api/v1/pfsense/**", (route) =>
+    route.fulfill({ json: [] }),
+  );
+
   // Settings: pfSense enabled
   await page.route("**/api/v1/settings", async (route) => {
-    const response = await route.fetch().catch(() => null);
-    if (response && response.ok()) {
-      const body = await response.json();
-      body.pfsense_enabled = true;
-      await route.fulfill({ json: body });
-    } else {
-      await route.fulfill({
-        json: { pfsense_enabled: true },
-      });
-    }
+    await route.fulfill({
+      json: {
+        mikrotik_enabled: false,
+        pfsense_enabled: true,
+        xiaomi_mesh_enabled: false,
+        default_router: "pfsense",
+      },
+    });
   });
 
   // pfSense status
@@ -68,11 +72,6 @@ async function mockPfsenseApis(page: import("@playwright/test").Page) {
         },
       ],
     }),
-  );
-
-  // Mock remaining pfSense endpoints so the page doesn't hang
-  await page.route("**/api/v1/pfsense/**", (route) =>
-    route.fulfill({ json: [] }),
   );
 }
 

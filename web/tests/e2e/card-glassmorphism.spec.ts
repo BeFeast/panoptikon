@@ -5,8 +5,8 @@ import { test, expect, login } from "../../e2e/fixtures";
  *
  * Verifies upgraded glassmorphic card surfaces:
  * - Increased backdrop blur (backdrop-blur-xl)
- * - Top-edge inner glow via pseudo-element
- * - Hover border glow (blue-500/20)
+ * - Top-edge hairline glow via pseudo-element
+ * - Hover border glow (cyan-400/20)
  * - Selected state left accent bar
  */
 test.describe("Card Glassmorphism 2.0 (#592)", () => {
@@ -23,8 +23,8 @@ test.describe("Card Glassmorphism 2.0 (#592)", () => {
     // Wait for cards to render
     await page.waitForTimeout(2000);
 
-    // Find a card element with the updated backdrop-blur-xl class (use rounded-xl to skip TopBar)
-    const card = page.locator('[class*="backdrop-blur-xl"][class*="rounded-xl"]').first();
+    // Find a card element with the updated backdrop-blur-xl class (use rounded-lg to skip TopBar)
+    const card = page.locator('[class*="backdrop-blur-xl"][class*="rounded-lg"]').first();
     await expect(card).toBeVisible({ timeout: 10000 });
 
     // Verify the computed backdrop-filter includes a large blur value
@@ -48,17 +48,20 @@ test.describe("Card Glassmorphism 2.0 (#592)", () => {
 
     await page.waitForTimeout(2000);
 
-    // The card should have a ::before pseudo-element with the gradient glow (use rounded-xl to skip TopBar)
-    const card = page.locator('[class*="backdrop-blur-xl"][class*="rounded-xl"]').first();
+    // The card should have a ::before pseudo-element with the top-edge glow (use rounded-lg to skip TopBar)
+    const card = page.locator('[class*="backdrop-blur-xl"][class*="rounded-lg"]').first();
     await expect(card).toBeVisible({ timeout: 10000 });
 
-    // Check the ::before pseudo-element exists and has a gradient background
-    const beforeBg = await card.evaluate((el) => {
+    // Check the ::before pseudo-element exists and has a visible cyan hairline.
+    const beforeStyle = await card.evaluate((el) => {
       const style = window.getComputedStyle(el, "::before");
-      return style.backgroundImage;
+      return {
+        backgroundColor: style.backgroundColor,
+        height: style.height,
+      };
     });
-    // Should contain a linear-gradient (the top-edge glow)
-    expect(beforeBg).toContain("gradient");
+    expect(beforeStyle.height).toBe("1px");
+    expect(beforeStyle.backgroundColor).toContain("rgb");
 
     await page.screenshot({
       path: "tests/screenshots/card-glassmorphism-glow.png",
@@ -74,7 +77,7 @@ test.describe("Card Glassmorphism 2.0 (#592)", () => {
 
     await page.waitForTimeout(2000);
 
-    const card = page.locator('[class*="backdrop-blur-xl"][class*="rounded-xl"]').first();
+    const card = page.locator('[class*="backdrop-blur-xl"][class*="rounded-lg"]').first();
     await expect(card).toBeVisible({ timeout: 10000 });
 
     // Card should have transition property for border-color
@@ -85,7 +88,7 @@ test.describe("Card Glassmorphism 2.0 (#592)", () => {
 
     // Verify the hover class is present in the className
     const hasHoverBorder = await card.evaluate((el) =>
-      el.className.includes("hover:border-blue-500/20"),
+      el.className.includes("hover:border-cyan-400/20"),
     );
     expect(hasHoverBorder).toBe(true);
 

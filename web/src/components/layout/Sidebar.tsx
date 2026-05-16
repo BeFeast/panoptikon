@@ -44,6 +44,7 @@ interface NavItem {
   href: string;
   label: string;
   icon: LucideIcon;
+  exact?: boolean;
 }
 
 interface NavGroup {
@@ -71,7 +72,9 @@ export const navGroups: NavGroup[] = [
     key: "routing",
     label: "Routing & Proxy",
     items: [
-      { href: "/router", label: "Router", icon: Router },
+      { href: "/router", label: "Router", icon: Router, exact: true },
+      { href: "/router/mikrotik", label: "MikroTik", icon: Router },
+      { href: "/router/pfsense", label: "pfSense", icon: Shield },
       { href: "/caddy", label: "Caddy", icon: Shield },
       { href: "/services", label: "Services", icon: Workflow },
       { href: "/nat", label: "NAT", icon: ArrowRightLeft },
@@ -106,6 +109,12 @@ export const navItems: NavItem[] = [
   ...navGroups.flatMap((g) => g.items),
   { href: "/settings", label: "Settings", icon: Settings },
 ];
+
+export function isNavItemActive(pathname: string | null, item: NavItem) {
+  if (!pathname) return false;
+  if (item.exact) return pathname === item.href;
+  return pathname === item.href || pathname.startsWith(`${item.href}/`);
+}
 
 /** Settings link — always visible at the bottom, outside groups. */
 const settingsItem: NavItem = {
@@ -208,14 +217,14 @@ export function Sidebar() {
 
   /** Render a single navigation link. */
   function renderNavLink(item: NavItem) {
-    const active = pathname?.startsWith(item.href);
+    const active = isNavItemActive(pathname, item);
     const Icon = item.icon;
 
     const linkContent = (
       <Link
         href={item.href}
         className={cn(
-          "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
+          "group/nav relative flex items-center gap-3 rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150",
           active
             ? "bg-cyan-500/10 text-cyan-500"
             : "text-slate-400 hover:bg-slate-800/60 hover:text-white",
@@ -226,7 +235,7 @@ export function Sidebar() {
         {active && (
           <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-gradient-to-b from-cyan-400 to-cyan-600" />
         )}
-        <Icon className="h-[18px] w-[18px] shrink-0 transition-transform duration-150 group-hover/nav:scale-105" />
+        <Icon className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover/nav:scale-105" />
         {!sidebarCollapsed && <span>{item.label}</span>}
       </Link>
     );
@@ -252,21 +261,21 @@ export function Sidebar() {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "hidden md:flex flex-col border-r border-slate-800 bg-slate-950 transition-all duration-200",
+          "hidden md:flex flex-col border-r border-slate-800/90 bg-slate-950/92 transition-all duration-200",
           sidebarCollapsed ? "w-16" : "w-60",
         )}
       >
         {/* Logo + collapse toggle */}
-        <div className="flex h-[3.75rem] items-center justify-between border-b border-slate-800/75 px-3">
+        <div className="flex h-14 items-center justify-between border-b border-slate-800/90 px-3">
           <Link
             href="/dashboard"
             className="flex items-center min-w-0"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-cyan-500 text-sm font-bold text-slate-950">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-cyan-300/40 bg-cyan-400/12 text-sm font-bold text-cyan-200">
               P
             </div>
             {!sidebarCollapsed && (
-              <span className="ml-2 font-display text-lg font-semibold text-white">
+              <span className="ml-2 font-display text-base font-semibold text-white">
                 Panoptikon
               </span>
             )}
@@ -295,7 +304,7 @@ export function Sidebar() {
               navGroups.map((group) => {
                 const isCollapsed = groupCollapsed[group.key] ?? false;
                 const hasActive = group.items.some((i) =>
-                  pathname?.startsWith(i.href),
+                  isNavItemActive(pathname, i),
                 );
 
                 return (
@@ -321,7 +330,7 @@ export function Sidebar() {
                       </button>
                       <span
                         className={cn(
-                          "cursor-default select-none text-[11px] font-semibold uppercase tracking-wider",
+                          "cursor-default select-none text-[10px] font-semibold uppercase tracking-normal",
                           hasActive ? "text-cyan-400" : "text-slate-500",
                         )}
                       >

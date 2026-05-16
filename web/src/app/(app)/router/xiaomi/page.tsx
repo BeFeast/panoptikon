@@ -12,7 +12,7 @@ import { fetchSettings } from "@/lib/api";
 import XiaomiRouter from "@/components/XiaomiRouter";
 import XiaomiMeshTopology from "@/components/XiaomiMeshTopology";
 import { PageTransition } from "@/components/PageTransition";
-import { RouterSelector } from "@/components/RouterSelector";
+import { RouterWorkspace } from "@/components/router/RouterWorkspace";
 
 export default function XiaomiRouterPage() {
   const [tab, setTab] = useHashTab("system", ["system", "mesh"]);
@@ -34,9 +34,7 @@ export default function XiaomiRouterPage() {
 
   return (
     <PageTransition>
-      <div className="space-y-8">
-        <RouterSelector active="xiaomi" />
-
+      <RouterWorkspace active="xiaomi">
         {!settingsLoaded ? (
           <div className="space-y-8">
             <Skeleton className="h-10 w-64" />
@@ -81,7 +79,7 @@ export default function XiaomiRouterPage() {
             </Card>
           </div>
         )}
-      </div>
+      </RouterWorkspace>
     </PageTransition>
   );
 }

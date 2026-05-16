@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Router } from "lucide-react";
+import { Network, Router, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type ActiveRouter = "mikrotik" | "xiaomi" | "pfsense";
@@ -10,22 +10,34 @@ interface RouterSelectorProps {
   active: ActiveRouter;
 }
 
+const primaryActive =
+  "border-cyan-400/40 bg-cyan-400/15 text-cyan-100 hover:bg-cyan-400/20";
+const inactive =
+  "border-slate-800 bg-slate-950 text-slate-400 hover:bg-slate-800 hover:text-white";
+
 export function RouterSelector({ active }: RouterSelectorProps) {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex min-w-0 flex-wrap gap-2">
       <Button
         variant={active === "mikrotik" ? "default" : "outline"}
         size="sm"
         asChild
-        className={
-          active === "mikrotik"
-            ? "bg-pink-600 text-white hover:bg-pink-500"
-            : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
-        }
+        className={active === "mikrotik" ? primaryActive : inactive}
       >
         <Link href="/router/mikrotik">
           <Router className="mr-1.5 h-3.5 w-3.5" />
           MikroTik
+        </Link>
+      </Button>
+      <Button
+        variant={active === "pfsense" ? "default" : "outline"}
+        size="sm"
+        asChild
+        className={active === "pfsense" ? primaryActive : inactive}
+      >
+        <Link href="/router/pfsense">
+          <Shield className="mr-1.5 h-3.5 w-3.5" />
+          pfSense
         </Link>
       </Button>
       <Button
@@ -34,28 +46,13 @@ export function RouterSelector({ active }: RouterSelectorProps) {
         asChild
         className={
           active === "xiaomi"
-            ? "bg-orange-600 text-white hover:bg-orange-500"
-            : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
+            ? "border-orange-400/40 bg-orange-400/12 text-orange-100 hover:bg-orange-400/20"
+            : "border-slate-800 bg-slate-950 text-slate-500 hover:bg-slate-800 hover:text-white"
         }
       >
         <Link href="/router/xiaomi">
-          <Router className="mr-1.5 h-3.5 w-3.5" />
+          <Network className="mr-1.5 h-3.5 w-3.5" />
           Xiaomi
-        </Link>
-      </Button>
-      <Button
-        variant={active === "pfsense" ? "default" : "outline"}
-        size="sm"
-        asChild
-        className={
-          active === "pfsense"
-            ? "bg-blue-600 text-white hover:bg-blue-500"
-            : "border-slate-800 text-slate-400 hover:bg-slate-800 hover:text-white"
-        }
-      >
-        <Link href="/router/pfsense">
-          <Router className="mr-1.5 h-3.5 w-3.5" />
-          pfSense
         </Link>
       </Button>
     </div>

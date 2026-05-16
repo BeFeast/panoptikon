@@ -4,7 +4,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * E2E tests for card border fix (#656).
  *
  * Verifies that cards on VPN Status, QoS, and DNS Logs pages
- * render with clean rounded-xl borders and overflow-hidden
+ * render with clean rounded-lg borders and overflow-hidden
  * (no bracket/parenthesis-shaped artifacts).
  */
 test.describe("Card border fix — no bracket artifacts (#656)", () => {
@@ -20,9 +20,9 @@ test.describe("Card border fix — no bracket artifacts (#656)", () => {
       page.getByRole("heading", { name: "VPN Status", level: 1 }),
     ).toBeVisible({ timeout: 15000 });
 
-    // Find a Card element (rounded-xl + border + overflow-hidden)
+    // Find a Card element (rounded-lg + border + overflow-hidden)
     const card = page
-      .locator('[class*="rounded-xl"][class*="overflow-hidden"][class*="border"]')
+      .locator('[class*="rounded-lg"][class*="overflow-hidden"][class*="border"]')
       .first();
     await expect(card).toBeVisible({ timeout: 10000 });
 
@@ -61,7 +61,7 @@ test.describe("Card border fix — no bracket artifacts (#656)", () => {
     ).toBeVisible({ timeout: 15000 });
 
     const card = page
-      .locator('[class*="rounded-xl"][class*="overflow-hidden"][class*="border"]')
+      .locator('[class*="rounded-lg"][class*="overflow-hidden"][class*="border"]')
       .first();
     await expect(card).toBeVisible({ timeout: 10000 });
 
@@ -86,7 +86,7 @@ test.describe("Card border fix — no bracket artifacts (#656)", () => {
 
     // Stats cards within the grid
     const card = page
-      .locator('[data-testid="dns-stats-grid"] [class*="rounded-xl"][class*="overflow-hidden"]')
+      .locator('[data-testid="dns-stats-grid"] [class*="rounded-lg"][class*="overflow-hidden"]')
       .first();
     await expect(card).toBeVisible({ timeout: 10000 });
 
