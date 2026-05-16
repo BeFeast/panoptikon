@@ -295,12 +295,10 @@ fn apply_ttl_hints(ttl: u8, result: &mut EnrichmentResult) {
 
     match ttl {
         // TTL around 64 (within 1 hop)
-        57..=64 => {
+        57..=64 if result.source.is_empty() => {
             // Could be Linux, macOS, iOS, Android — too ambiguous for os_family alone
             // but we can note it's a Unix-like system
-            if result.source.is_empty() {
-                result.source = "ttl".to_string();
-            }
+            result.source = "ttl".to_string();
         }
         // TTL around 128 (within 1 hop)
         121..=128 => {

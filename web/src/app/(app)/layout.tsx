@@ -20,7 +20,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <SWRProvider>
     <WebSocketProvider>
       <TooltipProvider delayDuration={300}>
-        <div className="flex h-screen overflow-clip">
+        <div className="mesh-shell flex h-screen overflow-clip">
           <Sidebar />
           <div className="flex min-w-0 flex-1 flex-col overflow-clip">
             <TopBar mobileMenu={<MobileSidebar />} />
