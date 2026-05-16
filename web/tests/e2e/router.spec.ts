@@ -24,7 +24,7 @@ test.describe("Router Page — MikroTik", () => {
 
     // RouterSelector should be visible with the MikroTik button active
     await expect(
-      page.getByRole("link", { name: /MikroTik/ }),
+      page.locator("main").getByRole("link", { name: "MikroTik" }),
     ).toBeVisible({ timeout: 15000 });
 
     await page.screenshot({
@@ -147,7 +147,7 @@ test.describe("Router Page — MikroTik", () => {
     // We verify the page at least renders — either the status header with
     // tabs (including Interfaces), or the unreachable/not-configured message.
     await expect(
-      page.getByText(/Interfaces|unreachable|Unreachable|Not Configured/),
+      page.getByText(/Interfaces|unreachable|Unreachable|Not Configured/).first(),
     ).toBeVisible({ timeout: 15000 });
 
     await page.screenshot({
@@ -181,7 +181,7 @@ test.describe("Router Page — MikroTik", () => {
 
     // Wait for the page to resolve — either System tab (connected) or unreachable msg
     const systemTab = page.getByRole("tab", { name: "System" });
-    const fallback = page.getByText(/unreachable|Unreachable|Not Configured/);
+    const fallback = page.getByText(/unreachable|Unreachable|Not Configured/).first();
     await expect(systemTab.or(fallback)).toBeVisible({ timeout: 25000 });
 
     // If System tab is visible, verify info card widths are uniform
@@ -223,7 +223,7 @@ test.describe("Router Page — MikroTik", () => {
 
     // RouterSelector should still be visible on mobile
     await expect(
-      page.getByRole("link", { name: /MikroTik/ }),
+      page.locator("main").getByRole("link", { name: "MikroTik" }),
     ).toBeVisible({ timeout: 15000 });
 
     await page.screenshot({
@@ -250,7 +250,7 @@ test.describe("Router Page — /router redirects to MikroTik", () => {
 
     // Should land on MikroTik page with RouterSelector visible
     await expect(
-      page.getByRole("link", { name: /MikroTik/ }),
+      page.locator("main").getByRole("link", { name: "MikroTik" }),
     ).toBeVisible({ timeout: 15000 });
 
     await page.screenshot({
@@ -311,7 +311,7 @@ test.describe("Router Page — Xiaomi (#491)", () => {
 
     // RouterSelector should show MikroTik and Xiaomi buttons
     await expect(
-      page.getByRole("link", { name: /MikroTik/ }),
+      page.locator("main").getByRole("link", { name: "MikroTik" }),
     ).toBeVisible({ timeout: 15000 });
     // Use exact match to avoid matching "Configure Xiaomi Mesh" link shown in not-configured state
     await expect(

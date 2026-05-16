@@ -16,8 +16,8 @@ test.describe('UI regression fixes (#628)', () => {
     const sidebar = page.locator('aside');
     await expect(sidebar).toBeVisible({ timeout: 15000 });
 
-    // Group label text should be 11px font-semibold (not 10px font-medium)
-    const groupLabels = sidebar.locator('span.uppercase.tracking-wider');
+    // Group label text should be readable and semibold in the refreshed sidebar.
+    const groupLabels = sidebar.locator('span.uppercase.font-semibold');
     const count = await groupLabels.count();
     expect(count).toBeGreaterThanOrEqual(1);
 

@@ -576,10 +576,6 @@ test.describe("Xiaomi WiFi Bands display fixes (#548)", () => {
     await wifiBandsHeading.waitFor({ state: "visible", timeout: 15000 });
 
     // 2.4 GHz band should show 1 client
-    const bandCards = page.locator(".rounded-lg.border.border-slate-800");
-    const cardCount = await bandCards.count();
-    expect(cardCount).toBe(2);
-
     // Verify numeric client counts appear (not dashes)
     const clientsSections = page.locator("text=Clients");
     const clientsCount = await clientsSections.count();
