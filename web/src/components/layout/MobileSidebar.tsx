@@ -27,7 +27,7 @@ export function MobileSidebar() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex h-9 w-9 items-center justify-center rounded-md text-slate-400 hover:bg-slate-800 hover:text-white transition-colors md:hidden"
+        className="flex h-9 w-9 items-center justify-center rounded-md border border-slate-800/70 text-slate-400 transition-colors hover:border-cyan-500/30 hover:bg-cyan-500/10 hover:text-white md:hidden"
         aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
@@ -41,7 +41,7 @@ export function MobileSidebar() {
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           {/* Logo */}
           <div className="flex h-14 shrink-0 items-center border-b border-slate-800 px-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-500 text-sm font-bold text-white">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-cyan-300/40 bg-cyan-500 text-sm font-bold text-slate-950">
               P
             </div>
             <span className="ml-2 text-lg font-semibold text-white">
@@ -62,7 +62,7 @@ export function MobileSidebar() {
                   <div
                     className={cn(
                       "flex w-full items-center gap-1 px-3 py-1.5",
-                      group.key !== "network" && "mt-3 border-t border-dotted border-slate-800/60 pt-2",
+                      group.key !== "network" && "mt-3 border-t border-slate-800/70 pt-2",
                     )}
                   >
                     <button
@@ -81,7 +81,7 @@ export function MobileSidebar() {
                     <span
                       className={cn(
                         "cursor-default select-none text-[11px] font-semibold uppercase tracking-wider",
-                        hasActive ? "text-blue-400" : "text-slate-500",
+                        hasActive ? "text-cyan-400" : "text-slate-500",
                       )}
                     >
                       {group.label}
@@ -108,12 +108,12 @@ export function MobileSidebar() {
                             className={cn(
                               "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
                               active
-                                ? "bg-blue-500/10 text-blue-500"
+                                ? "bg-cyan-500/10 text-cyan-500"
                                 : "text-slate-400 hover:bg-slate-800/60 hover:text-white",
                             )}
                           >
                             {active && (
-                              <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
+                              <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-gradient-to-b from-cyan-400 to-cyan-600" />
                             )}
                             <Icon className="h-[18px] w-[18px] shrink-0 transition-transform duration-150 group-hover/nav:scale-105" />
                             <span>{item.label}</span>
@@ -134,12 +134,12 @@ export function MobileSidebar() {
                 className={cn(
                   "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
                   pathname?.startsWith("/settings")
-                    ? "bg-blue-500/10 text-blue-500"
+                    ? "bg-cyan-500/10 text-cyan-500"
                     : "text-slate-400 hover:bg-slate-800/60 hover:text-white",
                 )}
               >
                 {pathname?.startsWith("/settings") && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-gradient-to-b from-blue-400 to-blue-600" />
+                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-gradient-to-b from-cyan-400 to-cyan-600" />
                 )}
                 <Settings className="h-[18px] w-[18px] shrink-0 transition-transform duration-150 group-hover/nav:scale-105" />
                 <span>Settings</span>
@@ -161,7 +161,7 @@ export function MobileSidebar() {
               <span className="text-xs text-slate-500">
                 {wsConnected ? "Live" : "Disconnected"}
               </span>
-              <p className="ml-auto text-[10px] text-slate-700">
+              <p className="ml-auto font-mono text-[10px] tabular-nums text-slate-600">
                 Panoptikon {serverVersion ?? "..."}
               </p>
             </div>

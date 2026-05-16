@@ -18,13 +18,6 @@ export default function RouterRedirect() {
           router.replace("/router/pfsense");
           return;
         }
-        if (
-          settings.default_router === "xiaomi" &&
-          settings.xiaomi_mesh_enabled
-        ) {
-          router.replace("/router/xiaomi");
-          return;
-        }
       } catch {
         // fall through to default
       }

@@ -20,12 +20,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <SWRProvider>
     <WebSocketProvider>
       <TooltipProvider delayDuration={300}>
-        <div className="flex h-screen overflow-clip">
+        <div className="flex h-screen overflow-clip bg-slate-950/70">
           <Sidebar />
-          <div className="flex min-w-0 flex-1 flex-col overflow-clip">
+          <div className="flex min-w-0 flex-1 flex-col overflow-clip bg-[linear-gradient(180deg,rgba(15,23,42,0.45),rgba(2,6,23,0.18))]">
             <TopBar mobileMenu={<MobileSidebar />} />
             <Breadcrumbs />
-            <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-3 pb-8 pt-4 md:px-6 md:pb-10 md:pt-6">
+            <main className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-3 pb-8 pt-3 md:px-5 md:pb-10 md:pt-5">
               <div className="mx-auto w-full max-w-[1700px]">{children}</div>
             </main>
           </div>

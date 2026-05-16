@@ -13,6 +13,8 @@ const segmentLabels: Record<string, string> = {
   mesh: "Mesh",
   traffic: "Traffic",
   router: "Router",
+  mikrotik: "MikroTik",
+  pfsense: "pfSense",
   caddy: "Caddy",
   services: "Services",
   nat: "NAT",
@@ -66,7 +68,7 @@ export function Breadcrumbs() {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 md:px-6 animate-in slide-in-from-left-2 fade-in duration-300"
+      className="flex items-center gap-1 border-b border-slate-900/80 bg-slate-950/35 px-3 py-1.5 text-xs text-slate-500 animate-in slide-in-from-left-2 fade-in duration-300 md:px-5"
     >
       {segments.map((segment, i) => {
         const href = "/" + segments.slice(0, i + 1).join("/");

@@ -71,7 +71,8 @@ export const navGroups: NavGroup[] = [
     key: "routing",
     label: "Routing & Proxy",
     items: [
-      { href: "/router", label: "Router", icon: Router },
+      { href: "/router/mikrotik", label: "MikroTik", icon: Router },
+      { href: "/router/pfsense", label: "pfSense", icon: Shield },
       { href: "/caddy", label: "Caddy", icon: Shield },
       { href: "/services", label: "Services", icon: Workflow },
       { href: "/nat", label: "NAT", icon: ArrowRightLeft },
@@ -252,28 +253,28 @@ export function Sidebar() {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "hidden md:flex flex-col border-r border-slate-800 bg-slate-950 transition-all duration-200",
+          "hidden md:flex flex-col border-r border-slate-800/80 bg-slate-950/95 transition-all duration-200",
           sidebarCollapsed ? "w-16" : "w-60",
         )}
       >
         {/* Logo + collapse toggle */}
-        <div className="flex h-[3.75rem] items-center justify-between border-b border-slate-800/75 px-3">
+        <div className="flex h-[3.75rem] items-center justify-between border-b border-slate-800/80 px-3">
           <Link
             href="/dashboard"
             className="flex items-center min-w-0"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-cyan-500 text-sm font-bold text-slate-950">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-cyan-300/40 bg-cyan-500 text-sm font-bold text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.18)]">
               P
             </div>
             {!sidebarCollapsed && (
-              <span className="ml-2 font-display text-lg font-semibold text-white">
+              <span className="ml-2 font-display text-lg font-semibold tracking-normal text-white">
                 Panoptikon
               </span>
             )}
           </Link>
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-800/60 hover:text-slate-300"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-transparent text-slate-500 transition-colors hover:border-slate-700 hover:bg-slate-900 hover:text-slate-300"
             aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {sidebarCollapsed ? (
@@ -303,12 +304,12 @@ export function Sidebar() {
                     <div
                       className={cn(
                         "flex w-full items-center gap-1 px-3 py-1.5",
-                        group.key !== "network" && "mt-3 border-t border-dotted border-slate-800/60 pt-2",
+                        group.key !== "network" && "mt-3 border-t border-slate-800/70 pt-2",
                       )}
                     >
                       <button
                         onClick={() => toggleGroup(group.key)}
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors text-slate-500 hover:bg-slate-800/60 hover:text-slate-300"
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded border border-transparent text-slate-500 transition-colors hover:border-slate-700 hover:bg-slate-900 hover:text-slate-300"
                         aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.label}`}
                         aria-expanded={!isCollapsed}
                       >
@@ -347,7 +348,7 @@ export function Sidebar() {
           {/* Settings — always visible, pinned after groups */}
           <div
             className={cn(
-              "mt-1 border-t border-slate-800/50 pt-1",
+              "mt-1 border-t border-slate-800/70 pt-1",
               sidebarCollapsed && "border-t-0",
             )}
           >
@@ -356,7 +357,7 @@ export function Sidebar() {
         </nav>
 
         {/* Version + connection status */}
-        <div className="border-t border-slate-800/50 p-2">
+        <div className="border-t border-slate-800/70 p-2">
           {!sidebarCollapsed ? (
             <div className="flex items-center gap-1.5 px-3 py-1">
               <Tooltip>
@@ -370,14 +371,11 @@ export function Sidebar() {
                     )}
                   />
                 </TooltipTrigger>
-                <TooltipContent
-                  side="top"
-                  className="border-slate-800 bg-slate-900"
-                >
-                  <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
+                <TooltipContent side="top" className="border-slate-800 bg-slate-900">
+                  <p>{wsConnected ? "Live: connected" : "Disconnected"}</p>
                 </TooltipContent>
               </Tooltip>
-              <p className="text-[10px] text-slate-700">
+              <p className="font-mono text-[10px] tabular-nums text-slate-600">
                 Panoptikon {serverVersion ?? "..."}
               </p>
             </div>
@@ -394,11 +392,8 @@ export function Sidebar() {
                     )}
                   />
                 </TooltipTrigger>
-                <TooltipContent
-                  side="right"
-                  className="border-slate-800 bg-slate-900"
-                >
-                  <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
+                <TooltipContent side="right" className="border-slate-800 bg-slate-900">
+                  <p>{wsConnected ? "Live: connected" : "Disconnected"}</p>
                 </TooltipContent>
               </Tooltip>
             </div>

@@ -5,14 +5,14 @@ test.describe('TopBar polish (#602)', () => {
     await login(page);
   });
 
-  test('search input has blue glow on focus', async ({ page }) => {
+  test('search input has cyan focus treatment', async ({ page }) => {
     const searchInput = page.getByPlaceholder('Search devices, IPs, MACs');
     await expect(searchInput).toBeVisible();
 
     // Focus the search input
     await searchInput.click();
 
-    // Verify the focused input has the blue ring/glow classes applied
+    // Verify the focused input has the cyan ring treatment applied.
     // Playwright evaluates computed styles, so we check the box-shadow
     const boxShadow = await searchInput.evaluate((el) => {
       return window.getComputedStyle(el).boxShadow;

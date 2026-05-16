@@ -45,7 +45,8 @@ const PAGES: PageItem[] = [
   { label: 'Agents', href: '/agents', icon: Cpu },
   { label: 'Traffic', href: '/traffic', icon: Activity },
   { label: 'Alerts', href: '/alerts', icon: Bell },
-  { label: 'Router', href: '/router', icon: Router },
+  { label: 'MikroTik Router', href: '/router/mikrotik', icon: Router },
+  { label: 'pfSense Router', href: '/router/pfsense', icon: Router },
   { label: 'Settings', href: '/settings', icon: Settings },
 ]
 
@@ -127,7 +128,7 @@ export function CommandPalette() {
     '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-2 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-slate-500'
 
   const itemClass =
-    'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-slate-300 outline-none aria-selected:bg-blue-500/15 aria-selected:text-white cursor-pointer transition-colors'
+    'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-slate-300 outline-none aria-selected:bg-cyan-500/10 aria-selected:text-white cursor-pointer transition-colors'
 
   const groupDividerClass = `border-t border-slate-800 mt-1 pt-1 ${groupHeadingClass}`
 
@@ -138,7 +139,7 @@ export function CommandPalette() {
       label="Command palette"
       className="flex flex-col flex-1 min-h-0"
       overlayClassName="fixed inset-0 z-[99] bg-black/70 backdrop-blur-sm"
-      contentClassName="fixed left-1/2 top-[15vh] -translate-x-1/2 z-[100] w-[min(560px,calc(100vw-2rem))] max-h-[min(480px,60vh)] flex flex-col overflow-hidden rounded-2xl border border-slate-600/80 bg-slate-900 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.8)]"
+      contentClassName="fixed left-1/2 top-[15vh] -translate-x-1/2 z-[100] w-[min(560px,calc(100vw-2rem))] max-h-[min(480px,60vh)] flex flex-col overflow-hidden rounded-md border border-slate-700/80 bg-slate-950 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.8)]"
       shouldFilter={!hasResults}
     >
       {/* Search input */}
@@ -147,9 +148,9 @@ export function CommandPalette() {
         <Command.Input
           value={query}
           onValueChange={setQuery}
-          placeholder="Search pages, devices, actions…"
+          placeholder="Search pages, devices, actions..."
           autoFocus
-          className="flex-1 bg-transparent text-base text-white placeholder-slate-500 outline-none"
+          className="flex-1 bg-transparent font-mono text-base tabular-nums text-white placeholder-slate-500 outline-none"
         />
         <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-slate-600 bg-slate-800 px-1.5 py-0.5 text-[11px] font-medium text-slate-400">
           ESC
@@ -292,7 +293,7 @@ export function CommandPalette() {
           </Command.Item>
         </Command.Group>
 
-        {/* ── Pages (navigation) — last when search results exist ── */}
+        {/* Pages (navigation), last when search results exist */}
         <Command.Group heading="Pages" className={groupDividerClass}>
           {PAGES.map((page) => (
             <Command.Item
