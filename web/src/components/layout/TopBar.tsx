@@ -224,7 +224,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
   let runningIndex = 0;
 
   return (
-    <header className="sticky top-0 z-40 flex h-[3.75rem] items-center justify-between gap-3 border-b border-slate-800/75 bg-slate-950/70 px-3 backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/60 md:px-6">
+    <header className="sticky top-0 z-40 flex h-[3.75rem] items-center justify-between gap-3 border-b border-slate-800/80 bg-[#060a11]/85 px-3 backdrop-blur-xl supports-[backdrop-filter]:bg-[#060a11]/75 md:px-5">
       {/* Mobile menu button */}
       {mobileMenu}
 
@@ -240,12 +240,12 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
             if (results && query.length >= 2) setIsOpen(true);
           }}
           placeholder="Search devices, IPs, MACs...  ⌘K"
-          className="h-8 w-full rounded-lg border border-slate-800/80 bg-slate-900 px-3 text-sm text-white placeholder-slate-500 transition-all duration-300 focus:border-blue-500/40 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:shadow-[0_0_15px_rgba(59,130,246,0.15)]"
+          className="h-8 w-full rounded-md border border-slate-800/90 bg-slate-950/85 px-3 text-sm text-white placeholder-slate-500 transition-all duration-200 focus:border-cyan-400/45 focus:outline-none focus:ring-2 focus:ring-cyan-400/15 focus:shadow-[0_0_16px_rgba(34,211,238,0.12)]"
         />
 
         {/* Search Results Dropdown */}
         {isOpen && (
-          <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-xl border border-slate-800/80 bg-slate-950/95 shadow-2xl backdrop-blur-md">
+          <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-lg border border-slate-800/80 bg-slate-950/95 shadow-2xl backdrop-blur-md">
             {noResults && (
               <div className="px-4 py-3 text-sm text-slate-500">
                 No results for &ldquo;{query}&rdquo;
@@ -433,7 +433,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
         <div className="relative" ref={bellRef}>
           <button
             onClick={() => setBellOpen((v) => !v)}
-            className="relative flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-800/85 hover:text-white"
+            className="relative flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-slate-900/90 hover:text-white"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
@@ -445,14 +445,14 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
           </button>
 
           {bellOpen && (
-            <div className="absolute right-0 top-full z-50 mt-1 w-80 rounded-xl border border-slate-800/80 bg-slate-950/95 shadow-2xl backdrop-blur-md">
+            <div className="absolute right-0 top-full z-50 mt-1 w-80 max-w-[calc(100vw-1rem)] rounded-lg border border-slate-800/80 bg-slate-950/95 shadow-2xl backdrop-blur-md">
               <div className="flex items-center justify-between border-b border-slate-800 px-4 py-2.5">
                 <span className="text-sm font-semibold text-white">Notifications</span>
                 <div className="flex items-center gap-3">
                   {unreadCount > 0 && (
                     <button
                       onClick={handleMarkAllRead}
-                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                      className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
                     >
                       Mark all read
                     </button>
@@ -508,7 +508,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                     setBellOpen(false);
                     router.push("/alerts");
                   }}
-                  className="flex w-full items-center justify-center px-4 py-2.5 text-sm text-blue-400 hover:text-blue-300 hover:bg-slate-800/60 transition-colors"
+                  className="flex w-full items-center justify-center px-4 py-2.5 text-sm text-cyan-400 hover:text-cyan-300 hover:bg-slate-800/60 transition-colors"
                 >
                   View all alerts
                 </button>
@@ -520,7 +520,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
         {/* ── User Avatar Menu ── */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-sm font-medium text-white hover:bg-blue-600 transition-colors">
+            <button className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-300/30 bg-cyan-400 text-sm font-semibold text-slate-950 transition-colors hover:bg-cyan-300">
               A
             </button>
           </DropdownMenuTrigger>
@@ -562,7 +562,7 @@ function SeverityBadge({ severity }: { severity: string }) {
   const colors: Record<string, string> = {
     CRITICAL: "bg-rose-500/20 text-rose-400 border-rose-500/30",
     WARNING: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    INFO: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+    INFO: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
   };
   const cls = colors[severity] || colors.WARNING;
   return (

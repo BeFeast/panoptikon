@@ -13,6 +13,8 @@ const segmentLabels: Record<string, string> = {
   mesh: "Mesh",
   traffic: "Traffic",
   router: "Router",
+  mikrotik: "MikroTik",
+  pfsense: "pfSense",
   caddy: "Caddy",
   services: "Services",
   nat: "NAT",

@@ -19,6 +19,7 @@ import {
   LayoutDashboard,
   MonitorSmartphone,
   Network,
+  RadioTower,
   Router,
   Search,
   Server,
@@ -71,7 +72,9 @@ export const navGroups: NavGroup[] = [
     key: "routing",
     label: "Routing & Proxy",
     items: [
-      { href: "/router", label: "Router", icon: Router },
+      { href: "/router", label: "Router Overview", icon: Router },
+      { href: "/router/mikrotik", label: "MikroTik", icon: RadioTower },
+      { href: "/router/pfsense", label: "pfSense", icon: Shield },
       { href: "/caddy", label: "Caddy", icon: Shield },
       { href: "/services", label: "Services", icon: Workflow },
       { href: "/nat", label: "NAT", icon: ArrowRightLeft },
@@ -208,17 +211,21 @@ export function Sidebar() {
 
   /** Render a single navigation link. */
   function renderNavLink(item: NavItem) {
-    const active = pathname?.startsWith(item.href);
+    const active =
+      pathname === item.href ||
+      (item.href !== "/router" &&
+        item.href !== "/dashboard" &&
+        pathname?.startsWith(`${item.href}/`));
     const Icon = item.icon;
 
     const linkContent = (
       <Link
         href={item.href}
         className={cn(
-          "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
+          "group/nav relative flex h-9 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors duration-150",
           active
-            ? "bg-cyan-500/10 text-cyan-500"
-            : "text-slate-400 hover:bg-slate-800/60 hover:text-white",
+            ? "bg-cyan-400/10 text-cyan-300"
+            : "text-slate-400 hover:bg-slate-900/80 hover:text-slate-100",
           sidebarCollapsed && "justify-center px-0",
         )}
       >
@@ -252,17 +259,17 @@ export function Sidebar() {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "hidden md:flex flex-col border-r border-slate-800 bg-slate-950 transition-all duration-200",
+          "hidden md:flex flex-col border-r border-slate-800/80 bg-[#060a11]/95 transition-all duration-200",
           sidebarCollapsed ? "w-16" : "w-60",
         )}
       >
         {/* Logo + collapse toggle */}
-        <div className="flex h-[3.75rem] items-center justify-between border-b border-slate-800/75 px-3">
+        <div className="flex h-[3.75rem] items-center justify-between border-b border-slate-800/80 px-3">
           <Link
             href="/dashboard"
             className="flex items-center min-w-0"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-cyan-500 text-sm font-bold text-slate-950">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-cyan-300/30 bg-cyan-400 text-sm font-bold text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.18)]">
               P
             </div>
             {!sidebarCollapsed && (
@@ -273,7 +280,7 @@ export function Sidebar() {
           </Link>
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-800/60 hover:text-slate-300"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-900 hover:text-slate-200"
             aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {sidebarCollapsed ? (
@@ -347,7 +354,7 @@ export function Sidebar() {
           {/* Settings — always visible, pinned after groups */}
           <div
             className={cn(
-              "mt-1 border-t border-slate-800/50 pt-1",
+              "mt-1 border-t border-slate-800/70 pt-1",
               sidebarCollapsed && "border-t-0",
             )}
           >
@@ -356,7 +363,7 @@ export function Sidebar() {
         </nav>
 
         {/* Version + connection status */}
-        <div className="border-t border-slate-800/50 p-2">
+        <div className="border-t border-slate-800/70 p-2">
           {!sidebarCollapsed ? (
             <div className="flex items-center gap-1.5 px-3 py-1">
               <Tooltip>

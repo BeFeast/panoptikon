@@ -30,13 +30,18 @@ describe("settingsNav visibility gating", () => {
     expect(cfItem!.title).toBe("Cloudflare Tunnel");
   });
 
-  it("Router integration is in the primary Integrations section", () => {
-    const routerItem = integrationsGroup!.items.find(
+  it("MikroTik and pfSense integrations are in the primary Integrations section", () => {
+    const mikrotikItem = integrationsGroup!.items.find(
       (i) => i.href === "/settings/router",
     );
-    expect(routerItem).toBeDefined();
-    expect(routerItem!.title).toBe("Router");
-    expect(routerItem!.description).toMatch(/MikroTik/);
+    const pfsenseItem = integrationsGroup!.items.find(
+      (i) => i.href === "/settings/pfsense",
+    );
+    expect(mikrotikItem).toBeDefined();
+    expect(mikrotikItem!.title).toBe("MikroTik");
+    expect(mikrotikItem!.description).toMatch(/MikroTik/);
+    expect(pfsenseItem).toBeDefined();
+    expect(pfsenseItem!.title).toBe("pfSense");
   });
 
   it("VyOS does not appear anywhere in settings nav", () => {

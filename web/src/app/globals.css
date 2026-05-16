@@ -38,13 +38,25 @@
 
   body {
     @apply text-foreground;
-    background-color: #070B12;
+    background-color: #05080d;
     background-image:
-      radial-gradient(circle at 14% -16%, rgba(34, 211, 238, 0.08) 0%, transparent 34%),
-      radial-gradient(circle at 88% -26%, rgba(30, 41, 59, 0.24) 0%, transparent 38%),
-      linear-gradient(180deg, #070B12 0%, #0E1624 100%);
+      linear-gradient(rgba(34, 211, 238, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(34, 211, 238, 0.035) 1px, transparent 1px),
+      linear-gradient(180deg, #05080d 0%, #0a111d 48%, #07101a 100%);
+    background-size: 32px 32px, 32px 32px, 100% 100%;
     background-attachment: fixed;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  ::selection {
+    background: hsl(var(--primary) / 0.28);
+    color: hsl(var(--foreground));
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: 0;
   }
 }
 

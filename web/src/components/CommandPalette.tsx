@@ -13,10 +13,12 @@ import {
   MonitorSmartphone,
   Package,
   Plus,
+  RadioTower,
   Radar,
   Router,
   Search,
   Settings,
+  Shield,
   Terminal,
 } from 'lucide-react'
 import { searchAll } from '@/lib/api'
@@ -45,7 +47,9 @@ const PAGES: PageItem[] = [
   { label: 'Agents', href: '/agents', icon: Cpu },
   { label: 'Traffic', href: '/traffic', icon: Activity },
   { label: 'Alerts', href: '/alerts', icon: Bell },
-  { label: 'Router', href: '/router', icon: Router },
+  { label: 'Router Overview', href: '/router', icon: Router },
+  { label: 'MikroTik', href: '/router/mikrotik', icon: RadioTower },
+  { label: 'pfSense', href: '/router/pfsense', icon: Shield },
   { label: 'Settings', href: '/settings', icon: Settings },
 ]
 
@@ -127,7 +131,7 @@ export function CommandPalette() {
     '[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pb-2 [&_[cmdk-group-heading]]:pt-3 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-slate-500'
 
   const itemClass =
-    'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-slate-300 outline-none aria-selected:bg-blue-500/15 aria-selected:text-white cursor-pointer transition-colors'
+    'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-slate-300 outline-none aria-selected:bg-cyan-400/10 aria-selected:text-white cursor-pointer transition-colors'
 
   const groupDividerClass = `border-t border-slate-800 mt-1 pt-1 ${groupHeadingClass}`
 
@@ -138,12 +142,12 @@ export function CommandPalette() {
       label="Command palette"
       className="flex flex-col flex-1 min-h-0"
       overlayClassName="fixed inset-0 z-[99] bg-black/70 backdrop-blur-sm"
-      contentClassName="fixed left-1/2 top-[15vh] -translate-x-1/2 z-[100] w-[min(560px,calc(100vw-2rem))] max-h-[min(480px,60vh)] flex flex-col overflow-hidden rounded-2xl border border-slate-600/80 bg-slate-900 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.8)]"
+      contentClassName="fixed left-1/2 top-[15vh] -translate-x-1/2 z-[100] w-[min(560px,calc(100vw-2rem))] max-h-[min(480px,60vh)] flex flex-col overflow-hidden rounded-lg border border-slate-700/80 bg-slate-950 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.85)]"
       shouldFilter={!hasResults}
     >
       {/* Search input */}
-      <div className="flex items-center gap-3 border-b border-slate-700/80 px-4 py-3">
-        <Search className="h-5 w-5 shrink-0 text-slate-400" />
+      <div className="flex items-center gap-3 border-b border-slate-800/80 px-4 py-3">
+        <Search className="h-5 w-5 shrink-0 text-cyan-400/80" />
         <Command.Input
           value={query}
           onValueChange={setQuery}

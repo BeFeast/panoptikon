@@ -22,18 +22,18 @@ export const settingsNav: SettingsNavGroup[] = [
     items: [
       {
         href: "/settings/router",
-        title: "Router",
+        title: "MikroTik",
         description: "Configure MikroTik router integration.",
-      },
-      {
-        href: "/settings/xiaomi-mesh",
-        title: "Xiaomi Mesh",
-        description: "Configure Xiaomi mesh router integration.",
       },
       {
         href: "/settings/pfsense",
         title: "pfSense",
         description: "Configure pfSense router integration via SSH.",
+      },
+      {
+        href: "/settings/xiaomi-mesh",
+        title: "Xiaomi Mesh",
+        description: "Configure Xiaomi mesh router integration.",
       },
       {
         href: "/settings/dns",
