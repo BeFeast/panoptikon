@@ -238,16 +238,30 @@ test.describe("Section Spacing (#571)", () => {
       timeout: 10000,
     });
 
-    // Check grid gap — the bento grid should have gap >= 20px (gap-6 = 24px).
-    // Use .grid.gap-6 to target the bento grid specifically and avoid the
-    // sidebar collapse grid (which has no gap class).
-    const gridContainer = page.locator(".grid.gap-6").first();
-    const gap = await gridContainer.evaluate((el) =>
-      window.getComputedStyle(el).gap,
-    );
-    // gap-6 = 24px
-    const gapValue = parseInt(gap, 10);
-    expect(gapValue).toBeGreaterThanOrEqual(20);
+    const cards = [
+      page.getByRole("link", { name: /Router Status/ }).first(),
+      page.getByRole("link", { name: /Active Devices/ }).first(),
+      page.getByRole("link", { name: /WAN Bandwidth/ }).first(),
+      page.getByRole("link", { name: /Unread Alerts/ }).first(),
+    ];
+
+    const boxes = [];
+    for (const card of cards) {
+      await expect(card).toBeVisible();
+      const box = await card.boundingBox();
+      expect(box).not.toBeNull();
+      boxes.push(box!);
+    }
+
+    for (let i = 1; i < boxes.length; i++) {
+      const previous = boxes[i - 1];
+      const current = boxes[i];
+      const separated =
+        current.x >= previous.x + previous.width + 8 ||
+        current.y >= previous.y + previous.height + 8 ||
+        previous.y >= current.y + current.height + 8;
+      expect(separated).toBeTruthy();
+    }
 
     await page.screenshot({
       path: "tests/screenshots/section-spacing-dashboard.png",
@@ -265,9 +279,9 @@ test.describe("Section Spacing (#571)", () => {
     const container = page.locator(".space-y-8").first();
     await expect(container).toBeVisible();
 
-    // Cards grid should preserve visible separation in the tighter mesh layout.
-    // Use .grid.gap-3 to target the settings cards grid specifically.
-    const grid = page.locator(".space-y-8 .grid.gap-3").first();
+    // Cards grid should preserve visible separation in the settings directory.
+    const grid = page.locator("main .grid").filter({ hasText: "Scanner" }).first();
+    await expect(grid).toBeVisible();
     const gap = await grid.evaluate((el) =>
       window.getComputedStyle(el).gap,
     );

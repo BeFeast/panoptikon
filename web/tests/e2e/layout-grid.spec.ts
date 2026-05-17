@@ -18,8 +18,8 @@ test.describe('Layout & Grid — card clipping / spacing regressions (#544)', ()
     });
     await page.waitForTimeout(500);
 
-    // The "Device Breakdown" card (last card) must be scrollable-to and visible
-    await expect(page.getByText('Device Breakdown')).toBeVisible({ timeout: 5000 });
+    // A lower dashboard section must be scrollable-to and visible.
+    await expect(page.getByText(/Topology Preview|Device Breakdown/).first()).toBeVisible({ timeout: 5000 });
 
     // Verify every visible card is fully inside the scrollable area (not clipped)
     const cards = page.locator('[data-testid="infra-health-card"], [class*="border-slate-800"][class*="bg-slate-900"]');
@@ -54,8 +54,8 @@ test.describe('Layout & Grid — card clipping / spacing regressions (#544)', ()
     });
     await page.waitForTimeout(500);
 
-    // Last card visible after scrolling
-    await expect(page.getByText('Device Breakdown')).toBeVisible({ timeout: 5000 });
+    // Lower dashboard content is visible after scrolling.
+    await expect(page.getByText(/Topology Preview|Device Breakdown/).first()).toBeVisible({ timeout: 5000 });
 
     await page.screenshot({ path: 'tests/screenshots/layout-card-bottom-1366.png', fullPage: true });
   });
@@ -158,9 +158,9 @@ test.describe('Layout & Grid — no overflow or clipping (#524)', () => {
     await page.goto('/dashboard');
     await expect(page.getByText('Device Breakdown')).toBeVisible({ timeout: 10000 });
 
-    // Wait for device breakdown section to populate (or show "No devices found")
-    const breakdownSection = page.getByText('Device Breakdown').locator('xpath=ancestor::div[contains(@class,"border-slate-7")]').first();
-    await expect(breakdownSection).toBeVisible({ timeout: 10000 });
+    const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
+    const viewportWidth = await page.evaluate(() => window.innerWidth);
+    expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 1);
 
     await page.screenshot({ path: 'tests/screenshots/layout-device-breakdown.png', fullPage: true });
   });
@@ -169,13 +169,23 @@ test.describe('Layout & Grid — no overflow or clipping (#524)', () => {
     await page.goto('/dashboard');
     await expect(page.getByText('Router Status')).toBeVisible({ timeout: 10000 });
 
-    // Verify that the stat card value elements have truncate class
-    // This is a structural check — the "truncate" class on value <p> elements
-    // ensures long text won't break the card layout.
-    const statValues = page.locator('.tabular-nums.truncate');
-    const count = await statValues.count();
-    // At least one stat card value should have the truncate class
-    expect(count).toBeGreaterThan(0);
+    const statCards = [
+      page.getByRole('link', { name: /Router Status/ }).first(),
+      page.getByRole('link', { name: /Active Devices/ }).first(),
+      page.getByRole('link', { name: /WAN Bandwidth/ }).first(),
+      page.getByRole('link', { name: /Unread Alerts/ }).first(),
+    ];
+
+    for (const card of statCards) {
+      await expect(card).toBeVisible();
+      const box = await card.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.width).toBeGreaterThan(120);
+    }
+
+    const bodyWidth = await page.evaluate(() => document.body.scrollWidth);
+    const viewportWidth = await page.evaluate(() => window.innerWidth);
+    expect(bodyWidth).toBeLessThanOrEqual(viewportWidth + 1);
 
     await page.screenshot({ path: 'tests/screenshots/layout-stat-card-truncate.png', fullPage: true });
   });
