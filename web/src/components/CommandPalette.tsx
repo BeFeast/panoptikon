@@ -171,7 +171,7 @@ export function CommandPalette() {
               <Command.Item
                 key={`device-${d.id}`}
                 value={`device ${d.name ?? ''} ${d.ip_address ?? ''} ${d.mac_address ?? ''}`}
-                onSelect={() => navigate(`/devices?highlight=${d.id}`)}
+                onSelect={() => navigate(`/devices?selected=${d.id}`)}
                 className={itemClass}
               >
                 <Monitor className="h-4 w-4 shrink-0 text-slate-400" />
