@@ -124,11 +124,11 @@ export default function AgentsPage() {
       </div>
 
       {/* Agents table */}
-      <div className="rounded-lg border border-slate-800 bg-slate-900">
+      <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95">
         {agents === null ? (
           <Table>
             <TableHeader>
-              <TableRow className="border-slate-800 hover:bg-transparent">
+              <TableRow className="border-mesh-border-strong hover:bg-transparent">
                 <TableHead className="text-slate-500">Name</TableHead>
                 <TableHead className="text-slate-500">Hostname</TableHead>
                 <TableHead className="text-slate-500">OS</TableHead>
@@ -142,7 +142,7 @@ export default function AgentsPage() {
             </TableHeader>
             <TableBody>
               {Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={i} className="border-slate-800">
+                <TableRow key={i} className="border-mesh-border-strong">
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-5 w-24" /></TableCell>
@@ -171,7 +171,7 @@ export default function AgentsPage() {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="border-slate-800 hover:bg-transparent">
+              <TableRow className="border-mesh-border-strong hover:bg-transparent">
                 <TableHead className="text-slate-500">Name</TableHead>
                 <TableHead className="text-slate-500">Hostname</TableHead>
                 <TableHead className="text-slate-500">OS</TableHead>
@@ -187,7 +187,7 @@ export default function AgentsPage() {
               {agents.map((agent) => (
                 <TableRow
                   key={agent.id}
-                  className="border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors"
+                  className="border-mesh-border-strong cursor-pointer hover:bg-mesh-surface-2/55 transition-colors"
                   onClick={() => router.push(`/agents/detail?id=${agent.id}`)}
                 >
                   <TableCell className="font-medium text-white">
@@ -218,7 +218,7 @@ export default function AgentsPage() {
                             autoFocus
                             value={renameValue}
                             onChange={(e) => setRenameValue(e.target.value)}
-                            className="h-7 w-40 bg-slate-950 border-blue-500 text-white text-sm px-2"
+                            className="h-7 w-40 bg-mesh-surface-1 border-blue-500 text-white text-sm px-2"
                           />
                           <button type="submit" className="text-emerald-400 hover:text-emerald-300 transition-colors">
                             <Check size={14} />
@@ -307,7 +307,7 @@ export default function AgentsPage() {
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={!!pendingDelete} onOpenChange={(v) => { if (!v) setPendingDelete(null); }}>
-        <AlertDialogContent className="border-slate-800 bg-slate-950">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
           <AlertDialogHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10">
@@ -324,7 +324,7 @@ export default function AgentsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
-              className="border-slate-800 bg-transparent text-slate-400 hover:bg-slate-800/50 hover:text-white"
+              className="border-mesh-border-strong bg-transparent text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white"
               disabled={deleting}
             >
               Cancel
@@ -413,7 +413,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
           Add Agent
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-full max-w-[680px] border-slate-800 bg-slate-950">
+      <DialogContent className="w-full max-w-[680px] border-mesh-border-strong bg-mesh-surface-1/95">
         <DialogHeader>
           <DialogTitle className="text-white">
             {result ? "Agent Created" : "Add New Agent"}
@@ -454,7 +454,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
             <div className="space-y-2">
               <Label className="text-slate-400">Install Command</Label>
               <Tabs defaultValue="linux-amd64">
-                <TabsList className="bg-slate-900">
+                <TabsList className="bg-mesh-surface-1">
                   <TabsTrigger value="linux-amd64">Linux x86_64</TabsTrigger>
                   <TabsTrigger value="linux-arm64">Linux ARM64</TabsTrigger>
                   <TabsTrigger value="darwin-arm64">macOS ARM (M1+)</TabsTrigger>
@@ -522,12 +522,12 @@ function CopyBlock({ text }: { text: string }) {
   };
 
   return (
-    <div className="overflow-hidden rounded-md border border-slate-800 bg-slate-950">
+    <div className="overflow-hidden rounded-md border border-mesh-border-strong bg-mesh-surface-1/95">
       {/* Header bar: copy button lives here, completely separate from scroll area */}
-      <div className="flex items-center justify-end border-b border-slate-800 px-3 py-1.5">
+      <div className="flex items-center justify-end border-b border-mesh-border px-3 py-1.5">
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-slate-800/50 hover:text-white"
+          className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
         >
           {copied ? (
             <Check className="h-3 w-3 text-emerald-400" />

@@ -6,7 +6,7 @@ import type { PfsenseStatus } from "@/lib/types";
 
 export function PfSenseStatusHeader({ status }: { status: PfsenseStatus }) {
   return (
-    <div className="rounded-md border border-slate-800 bg-slate-950/90 p-4">
+    <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-blue-500/20 bg-blue-500/10">
@@ -44,7 +44,7 @@ export function PfSenseStatusHeader({ status }: { status: PfsenseStatus }) {
             </Badge>
           )}
           {status.uptime && (
-            <Badge variant="outline" className="border-slate-800 text-slate-400">
+            <Badge variant="outline" className="border-mesh-border-strong text-slate-400">
               Uptime: {status.uptime}
             </Badge>
           )}

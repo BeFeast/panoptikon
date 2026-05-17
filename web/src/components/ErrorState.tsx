@@ -16,7 +16,7 @@ export function ErrorState({
 }) {
   return (
     <div className="flex flex-col items-center justify-center rounded-md border border-rose-500/20 bg-rose-500/5 px-5 py-12 text-center">
-      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md border border-rose-500/30 bg-slate-950">
+      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md border border-rose-500/30 bg-mesh-surface-1">
         <AlertCircle className="h-5 w-5 text-rose-300" />
       </div>
       <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-200">Something went wrong</p>
@@ -25,7 +25,7 @@ export function ErrorState({
         <Button
           variant="outline"
           size="sm"
-          className="mt-5 border-slate-700 bg-slate-950 text-slate-300 hover:bg-slate-900 hover:text-white"
+          className="mt-5 border-mesh-border-strong bg-mesh-surface-1 text-slate-300 hover:bg-mesh-surface-2 hover:text-white"
           onClick={onRetry}
         >
           Try again

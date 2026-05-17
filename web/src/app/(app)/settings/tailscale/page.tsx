@@ -89,7 +89,7 @@ export default function TailscaleSettingsPage() {
                 className={
                   isConnected
                     ? "border-emerald-500/30 text-emerald-400"
-                    : "border-slate-700 text-slate-500"
+                    : "border-mesh-border-strong text-slate-500"
                 }
               >
                 {data.backend_state || "Unknown"}
@@ -100,7 +100,7 @@ export default function TailscaleSettingsPage() {
             variant="outline"
             size="sm"
             onClick={load}
-            className="border-slate-800 text-slate-300 hover:bg-slate-800"
+            className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
           >
             <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
             Refresh
@@ -127,7 +127,7 @@ export default function TailscaleSettingsPage() {
             title="Tailscale IP"
             value={data?.tailscale_ips?.[0] ?? null}
             loading={loading && !data}
-            icon={<Globe className="h-4 w-4 text-cyan-400" />}
+            icon={<Globe className="h-4 w-4 text-mesh-accent" />}
             isText
           />
           <SummaryCard
@@ -147,9 +147,9 @@ export default function TailscaleSettingsPage() {
 
         {/* Node Info Card */}
         {data && isConnected && (
-          <Card className="border-slate-800 bg-slate-900">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
             <CardHeader>
-              <CardTitle className="text-white">This Node</CardTitle>
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">This Node</CardTitle>
               <CardDescription className="text-slate-400">
                 Local Tailscale node information for this Panoptikon instance.
               </CardDescription>
@@ -188,16 +188,16 @@ export default function TailscaleSettingsPage() {
 
         {/* Not Connected State */}
         {!loading && !isConnected && (
-          <Card className="border-slate-800 bg-slate-900">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
             <CardContent className="py-12 text-center">
               <WifiOff className="mx-auto mb-3 h-10 w-10 text-slate-600" />
               <p className="text-sm text-slate-400">
                 Tailscale is not connected. Make sure the{" "}
-                <code className="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-300">
+                <code className="rounded bg-mesh-surface-2/55 px-1.5 py-0.5 text-xs text-slate-300">
                   panoptikon-tailscale
                 </code>{" "}
                 container is running and{" "}
-                <code className="rounded bg-slate-800 px-1.5 py-0.5 text-xs text-slate-300">
+                <code className="rounded bg-mesh-surface-2/55 px-1.5 py-0.5 text-xs text-slate-300">
                   TS_AUTHKEY
                 </code>{" "}
                 is set in your environment.
@@ -208,9 +208,9 @@ export default function TailscaleSettingsPage() {
 
         {/* Peers Table */}
         {data && isConnected && (
-          <Card className="border-slate-800 bg-slate-900">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
             <CardHeader>
-              <CardTitle className="text-white">Connected Peers</CardTitle>
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Connected Peers</CardTitle>
               <CardDescription className="text-slate-400">
                 Devices on your Tailscale network. Data refreshes every 30
                 seconds.
@@ -219,7 +219,7 @@ export default function TailscaleSettingsPage() {
             <CardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-slate-800 hover:bg-transparent">
+                  <TableRow className="border-mesh-border-strong hover:bg-transparent">
                     <TableHead className="text-slate-400">Status</TableHead>
                     <TableHead className="text-slate-400">Hostname</TableHead>
                     <TableHead className="text-slate-400">OS</TableHead>
@@ -237,7 +237,7 @@ export default function TailscaleSettingsPage() {
                 </TableHeader>
                 <TableBody>
                   {sortedPeers.length === 0 ? (
-                    <TableRow className="border-slate-800 hover:bg-transparent">
+                    <TableRow className="border-mesh-border-strong hover:bg-transparent">
                       <TableCell
                         colSpan={7}
                         className="py-8 text-center text-slate-500"
@@ -258,11 +258,11 @@ export default function TailscaleSettingsPage() {
 
         {/* Loading skeleton */}
         {loading && !data && (
-          <Card className="border-slate-800 bg-slate-900">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
             <CardContent className="space-y-3 py-6">
-              <Skeleton className="h-4 w-3/4 bg-slate-800" />
-              <Skeleton className="h-4 w-1/2 bg-slate-800" />
-              <Skeleton className="h-4 w-2/3 bg-slate-800" />
+              <Skeleton className="h-4 w-3/4 bg-mesh-surface-2/55" />
+              <Skeleton className="h-4 w-1/2 bg-mesh-surface-2/55" />
+              <Skeleton className="h-4 w-2/3 bg-mesh-surface-2/55" />
             </CardContent>
           </Card>
         )}
@@ -289,15 +289,15 @@ function SummaryCard({
   isText?: boolean;
 }) {
   return (
-    <Card className="border-slate-800 bg-slate-900">
+    <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
       <CardContent className="flex items-center gap-5 p-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-800">
+        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-mesh-surface-2/55">
           {icon}
         </div>
         <div className="min-w-0">
           <p className="text-xs text-slate-500">{title}</p>
           {loading ? (
-            <Skeleton className="mt-1 h-6 w-16 bg-slate-800" />
+            <Skeleton className="mt-1 h-6 w-16 bg-mesh-surface-2/55" />
           ) : isText ? (
             <p className="truncate text-lg font-bold text-white">
               {value ?? "—"}
@@ -327,7 +327,7 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 function PeerRow({ peer }: { peer: TailscalePeer }) {
   return (
-    <TableRow className="border-slate-800 hover:bg-slate-800/30">
+    <TableRow className="border-mesh-border-strong hover:bg-mesh-surface-2/55">
       <TableCell>
         <div className="flex items-center gap-2">
           {peer.online ? (
@@ -340,7 +340,7 @@ function PeerRow({ peer }: { peer: TailscalePeer }) {
             className={
               peer.online
                 ? "border-emerald-500/30 text-emerald-400"
-                : "border-slate-700 text-slate-500"
+                : "border-mesh-border-strong text-slate-500"
             }
           >
             {peer.online ? "online" : "offline"}

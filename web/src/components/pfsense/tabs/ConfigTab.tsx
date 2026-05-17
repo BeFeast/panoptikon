@@ -90,7 +90,7 @@ export function ConfigTab() {
   return (
     <div className="space-y-6">
       {/* Config Backups */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
             <FileArchive className="h-4 w-4 text-blue-400" />
@@ -113,7 +113,7 @@ export function ConfigTab() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-3 py-2">Timestamp</th>
                     <th className="px-3 py-2">Description</th>
                     <th className="px-3 py-2">Size</th>
@@ -129,7 +129,7 @@ export function ConfigTab() {
                     </tr>
                   ) : (
                     (snapshots ?? []).map((s) => (
-                      <tr key={s.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <tr key={s.id} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                         <td className="px-3 py-2 text-white">{new Date(s.timestamp).toLocaleString()}</td>
                         <td className="px-3 py-2 text-slate-400">{s.description ?? "\u2014"}</td>
                         <td className="px-3 py-2 text-slate-400">{formatBytes(s.size_bytes)}</td>
@@ -167,7 +167,7 @@ export function ConfigTab() {
       </Card>
 
       {/* Audit Log */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
             <FileArchive className="h-4 w-4 text-blue-400" />
@@ -181,7 +181,7 @@ export function ConfigTab() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-3 py-2">Timestamp</th>
                     <th className="px-3 py-2">Action</th>
                     <th className="px-3 py-2">Description</th>
@@ -197,7 +197,7 @@ export function ConfigTab() {
                     </tr>
                   ) : (
                     (audit ?? []).map((a) => (
-                      <tr key={a.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <tr key={a.id} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                         <td className="px-3 py-2 text-slate-300">{new Date(a.timestamp).toLocaleString()}</td>
                         <td className="px-3 py-2 font-medium text-white">{a.action}</td>
                         <td className="px-3 py-2 text-slate-400">{a.description}</td>
@@ -226,13 +226,13 @@ export function ConfigTab() {
 
       {/* Diff Dialog */}
       <Dialog open={!!diffData} onOpenChange={(o) => !o && setDiffData(null)}>
-        <DialogContent className="max-h-[80vh] border-slate-800 bg-slate-900 sm:max-w-3xl">
+        <DialogContent className="max-h-[80vh] border-mesh-border-strong bg-mesh-surface-1 sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle className="text-white">Config Diff</DialogTitle>
           </DialogHeader>
           {diffData && (
             <div className="max-h-[60vh] overflow-auto">
-              <pre className="rounded-lg bg-slate-950 p-4 text-xs leading-relaxed text-slate-300">
+              <pre className="rounded-lg bg-mesh-surface-1 p-4 text-xs leading-relaxed text-slate-300">
                 {diffData.diff || "No differences found"}
               </pre>
             </div>
@@ -242,7 +242,7 @@ export function ConfigTab() {
 
       {/* Restore Confirm */}
       <AlertDialog open={!!restoreTarget} onOpenChange={(o) => !o && setRestoreTarget(null)}>
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Restore Config</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -251,7 +251,7 @@ export function ConfigTab() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-800 text-slate-400">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-mesh-border-strong text-slate-400">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-amber-600 hover:bg-amber-700" onClick={handleRestore}>
               Restore
             </AlertDialogAction>

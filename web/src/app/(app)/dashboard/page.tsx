@@ -7,7 +7,9 @@ import {
   ArrowRight,
   CheckCircle2,
   Circle,
+  Cpu,
   ExternalLink,
+  Gauge,
   Info,
   MonitorSmartphone,
   Network,
@@ -15,6 +17,7 @@ import {
   Radar,
   Rocket,
   Router,
+  Search,
   Shield,
   Server,
   WifiOff,
@@ -35,7 +38,9 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  fetchAgents,
   fetchDashboardStats,
+  fetchDnsQueryStats,
   fetchRecentAlerts,
   fetchTrafficHistory,
   fetchDevices,
@@ -44,9 +49,11 @@ import {
   fetchTopologyGraph,
 } from "@/lib/api";
 import type {
+  Agent,
   Alert,
   CriticalDevice,
   DashboardStats,
+  DnsQueryStats,
   TrafficHistoryPoint,
   Device,
   TopDevice,
@@ -75,6 +82,16 @@ function formatTime(iso: string): string {
   }
 }
 
+// ─── Compact integer formatting (12300 → "12.3k") ──────
+
+function formatCompactCount(n: number): string {
+  if (!Number.isFinite(n) || n < 0) return "—";
+  if (n < 1_000) return String(n);
+  if (n < 1_000_000) return `${(n / 1_000).toFixed(1)}k`;
+  if (n < 1_000_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  return `${(n / 1_000_000_000).toFixed(1)}B`;
+}
+
 // ─── Alert severity → color mapping ────────────────────
 
 function severityDotColor(severity: Alert["severity"]): string {
@@ -90,7 +107,7 @@ function severityDotColor(severity: Alert["severity"]): string {
 
 function panelClassName(extra?: string) {
   return cn(
-    "border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]",
+    "border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]",
     extra,
   );
 }
@@ -109,7 +126,7 @@ function SectionTitle({
   return (
     <div className="flex min-w-0 items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-2">
-        {icon && <span className="shrink-0 text-cyan-400">{icon}</span>}
+        {icon && <span className="shrink-0 text-mesh-accent">{icon}</span>}
         <CardTitle className="truncate text-[11px] font-medium uppercase tracking-wider text-slate-500">
           {title}
         </CardTitle>
@@ -117,7 +134,7 @@ function SectionTitle({
       {href && (
         <Link
           href={href}
-          className="flex shrink-0 items-center gap-1 text-xs text-cyan-400 transition-colors hover:text-cyan-300"
+          className="flex shrink-0 items-center gap-1 text-xs text-mesh-accent transition-colors hover:text-cyan-300"
         >
           {action} <ArrowRight className="h-3 w-3" />
         </Link>
@@ -149,7 +166,7 @@ function CriticalDevicesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-cyan-900/45 bg-[#08111e] text-white sm:max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="border-mesh-border-strong bg-mesh-surface-1 text-white sm:max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-white">Critical Devices</DialogTitle>
           <DialogDescription className="text-slate-400">
@@ -178,7 +195,7 @@ function CriticalDevicesDialog({
                 <Link
                   key={dev.id}
                   href={`/devices?id=${dev.id}`}
-                  className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-cyan-950/35 transition-colors group"
+                  className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-mesh-surface-2/55 transition-colors group"
                   onClick={() => onOpenChange(false)}
                 >
                   <span
@@ -262,9 +279,9 @@ function StatCard({
   const inner = (
     <Card
       className={cn(
-        "h-full min-h-[8.25rem] border-cyan-900/45 bg-[#0b1220]/70",
+        "h-full min-h-[8.25rem] border-mesh-border-strong bg-mesh-surface-1/70",
         href &&
-          "transition-[border-color,background-color,box-shadow] hover:border-cyan-700/50 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(8,145,178,0.45)]",
+          "transition-[border-color,background-color,box-shadow] hover:border-mesh-accent/40 hover:bg-mesh-surface-2 hover:shadow-[0_18px_36px_-26px_rgba(56,189,248,0.40)]",
       )}
     >
       <CardHeader className="flex flex-row items-start justify-between pb-3">
@@ -295,7 +312,7 @@ function StatCard({
 
 function StatCardSkeleton() {
   return (
-    <Card className="h-full min-h-[8.25rem] border-cyan-900/45 bg-[#0b1220]/70">
+    <Card className="h-full min-h-[8.25rem] border-mesh-border-strong bg-mesh-surface-1/70">
       <CardHeader className="pb-3">
         <Skeleton className="h-3.5 w-24" />
       </CardHeader>
@@ -389,14 +406,14 @@ function WelcomeCard({
             <Link
               key={step.label}
               href={step.href}
-              className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-cyan-950/35"
+              className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-mesh-surface-2/55"
             >
               {step.done ? (
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
                 </span>
               ) : (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full border border-cyan-900/45 bg-slate-900/50">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full border border-mesh-border-strong bg-mesh-surface-1">
                   <Circle className="h-3 w-3 text-slate-600" />
                 </span>
               )}
@@ -485,7 +502,7 @@ function QuickActions() {
         <Link
           key={action.label}
           href={action.href}
-          className="inline-flex items-center gap-2 rounded-full border border-cyan-900/45 bg-[#0b1220]/70 px-4 py-2 text-sm text-slate-300 transition-all hover:border-cyan-700/50 hover:bg-cyan-950/80 hover:text-white"
+          className="inline-flex items-center gap-2 rounded-full border border-mesh-border-strong bg-mesh-surface-1/70 px-4 py-2 text-sm text-slate-300 transition-all hover:border-mesh-accent/40 hover:bg-mesh-surface-2 hover:text-white"
         >
           {action.icon}
           {action.label}
@@ -557,13 +574,13 @@ function RouterHealthSection({
                 : isConfigured
                   ? "border-rose-500/25 bg-rose-500/10 text-rose-300"
                   : "border-amber-500/25 bg-amber-500/10 text-amber-300"
-              : "border-cyan-900/45 bg-[#08111e]/60 text-slate-400";
+              : "border-mesh-border-strong bg-mesh-surface-1/90 text-slate-400";
 
             return (
               <Link
                 key={card.type}
                 href={card.href}
-                className="rounded-md border border-slate-800 bg-slate-900/35 p-3 transition-colors hover:border-cyan-700/50 hover:bg-slate-900/70"
+                className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-3 transition-colors hover:border-mesh-accent/40 hover:bg-mesh-surface-2"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -577,13 +594,13 @@ function RouterHealthSection({
                   </span>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                  <div className="rounded border border-cyan-900/35 bg-slate-950/50 px-2 py-1.5">
+                  <div className="rounded border border-mesh-border bg-mesh-surface-1 px-2 py-1.5">
                     <p className="text-slate-600">WAN RX</p>
                     <p className="mt-0.5 truncate tabular-nums text-slate-300">
                       {card.primary ? formatBps(stats.wan_rx_bps) : "—"}
                     </p>
                   </div>
-                  <div className="rounded border border-cyan-900/35 bg-slate-950/50 px-2 py-1.5">
+                  <div className="rounded border border-mesh-border bg-mesh-surface-1 px-2 py-1.5">
                     <p className="text-slate-600">WAN TX</p>
                     <p className="mt-0.5 truncate tabular-nums text-slate-300">
                       {card.primary ? formatBps(stats.wan_tx_bps) : "—"}
@@ -631,13 +648,13 @@ function TopologyPreview({
         ) : topology === null ? (
           <Skeleton className="h-56 w-full" />
         ) : topology.devices.length === 0 ? (
-          <div className="flex h-56 items-center justify-center rounded-md border border-dashed border-slate-800 text-sm text-slate-600">
+          <div className="flex h-56 items-center justify-center rounded-md border border-dashed border-mesh-border-strong text-sm text-slate-600">
             No topology data yet
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="relative h-56 overflow-hidden rounded-md border border-slate-800 bg-[radial-gradient(circle_at_center,rgba(8,145,178,0.12),transparent_34%),linear-gradient(rgba(15,23,42,0.8)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.8)_1px,transparent_1px)] bg-[size:100%_100%,24px_24px,24px_24px]">
-              <div className="absolute left-1/2 top-1/2 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-cyan-400/30 bg-slate-950 text-cyan-300 shadow-[0_0_28px_rgba(8,145,178,0.18)]">
+            <div className="relative h-56 overflow-hidden rounded-md border border-mesh-border-strong bg-[radial-gradient(circle_at_center,rgba(8,145,178,0.12),transparent_34%),linear-gradient(rgba(15,23,42,0.8)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.8)_1px,transparent_1px)] bg-[size:100%_100%,24px_24px,24px_24px]">
+              <div className="absolute left-1/2 top-1/2 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-cyan-400/30 bg-mesh-surface-1 text-cyan-300 shadow-[0_0_28px_rgba(8,145,178,0.18)]">
                 <Router className="h-6 w-6" />
               </div>
               {previewDevices.map((device, index) => {
@@ -649,7 +666,7 @@ function TopologyPreview({
                   <div
                     key={device.id}
                     className={cn(
-                      "absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-slate-950",
+                      "absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-mesh-surface-1",
                       device.is_online
                         ? "border-emerald-400/35 text-emerald-300"
                         : "border-rose-400/35 text-rose-300",
@@ -663,15 +680,15 @@ function TopologyPreview({
               })}
             </div>
             <div className="grid grid-cols-3 gap-2 text-xs">
-              <div className="rounded border border-slate-800 bg-slate-900/40 px-2 py-2">
+              <div className="rounded border border-mesh-border-strong bg-mesh-surface-1 px-2 py-2">
                 <p className="text-slate-600">Router</p>
                 <p className="mt-1 truncate text-slate-300">{routerDisplayName(topology.router.router_type)}</p>
               </div>
-              <div className="rounded border border-slate-800 bg-slate-900/40 px-2 py-2">
+              <div className="rounded border border-mesh-border-strong bg-mesh-surface-1 px-2 py-2">
                 <p className="text-slate-600">Online</p>
                 <p className="mt-1 tabular-nums text-emerald-300">{onlineDevices}</p>
               </div>
-              <div className="rounded border border-slate-800 bg-slate-900/40 px-2 py-2">
+              <div className="rounded border border-mesh-border-strong bg-mesh-surface-1 px-2 py-2">
                 <p className="text-slate-600">Offline</p>
                 <p className="mt-1 tabular-nums text-rose-300">{offlineDevices}</p>
               </div>
@@ -716,7 +733,7 @@ function TopDevicesTable({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[420px] text-left text-xs">
-              <thead className="border-b border-slate-800 text-[10px] uppercase tracking-wider text-slate-600">
+              <thead className="border-b border-mesh-border-strong text-[10px] uppercase tracking-wider text-slate-600">
                 <tr>
                   <th className="py-2 pr-3 font-medium">Device</th>
                   <th className="px-3 py-2 font-medium">IP</th>
@@ -724,9 +741,9 @@ function TopDevicesTable({
                   <th className="py-2 pl-3 text-right font-medium">Up</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-mesh-border">
                 {devices.map((device) => (
-                  <tr key={device.id} className="hover:bg-slate-900/45">
+                  <tr key={device.id} className="hover:bg-mesh-surface-2">
                     <td className="max-w-[13rem] py-2 pr-3">
                       <Link href={`/devices?id=${device.id}`} className="block truncate text-slate-200 hover:text-cyan-300">
                         {device.name || device.hostname || device.vendor || "Unknown"}
@@ -783,6 +800,16 @@ export default function DashboardPage() {
     fetchTopologyGraph,
     swrOpts,
   );
+  const { data: agents, error: agentsError } = useApiFetch<Agent[]>(
+    "/api/v1/agents",
+    () => fetchAgents().then((a) => (Array.isArray(a) ? a : [])),
+    swrOpts,
+  );
+  const { data: dnsStats, error: dnsStatsError } = useApiFetch<DnsQueryStats>(
+    "/api/v1/dns-queries/stats?hours=24",
+    () => fetchDnsQueryStats(24),
+    swrOpts,
+  );
 
   const devicesRef = useRef(devices);
   devicesRef.current = devices;
@@ -835,7 +862,7 @@ export default function DashboardPage() {
   return (
     <PageTransition>
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 border-b border-cyan-900/35 pb-5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-3 border-b border-mesh-border pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight text-white">Dashboard</h1>
           <p className="max-w-3xl text-sm leading-6 text-slate-400">
@@ -869,7 +896,7 @@ export default function DashboardPage() {
             ) : stats ? (
               <button
                 type="button"
-                className="group cursor-pointer rounded-xl border border-cyan-900/35 p-2 transition-colors hover:border-cyan-700/45 hover:bg-cyan-950/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/35"
+                className="group cursor-pointer rounded-xl border border-mesh-border p-2 transition-colors hover:border-mesh-accent/40 hover:bg-mesh-surface-2/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/35"
                 onClick={() => setCriticalDialogOpen(true)}
                 aria-label="View critical devices"
               >
@@ -889,7 +916,7 @@ export default function DashboardPage() {
         />
 
         {/* ── Stat Cards Row ───────────────────────────── */}
-        <StaggerItem className="xl:col-span-4"><div className="grid h-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StaggerItem className="xl:col-span-4"><div className="grid h-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
           {statsError ? (
             <>
               <StatCard
@@ -901,7 +928,7 @@ export default function DashboardPage() {
                 status="offline"
               />
               <StatCard
-                title="Active Devices"
+                title="Devices online"
                 href="/devices"
                 value="—"
                 subtitle="Cannot load stats"
@@ -909,7 +936,7 @@ export default function DashboardPage() {
                 status="offline"
               />
               <StatCard
-                title="WAN Bandwidth"
+                title="Throughput"
                 href="/traffic"
                 value="—"
                 subtitle="Cannot load stats"
@@ -922,6 +949,22 @@ export default function DashboardPage() {
                 value="—"
                 subtitle="Cannot load stats"
                 icon={<AlertTriangle className="h-4 w-4" />}
+                status="offline"
+              />
+              <StatCard
+                title="WAN Latency"
+                href="/router"
+                value="—"
+                subtitle="Cannot load stats"
+                icon={<Gauge className="h-4 w-4" />}
+                status="offline"
+              />
+              <StatCard
+                title="DNS Blocks"
+                href="/dns-queries"
+                value="—"
+                subtitle="Cannot load stats"
+                icon={<Search className="h-4 w-4" />}
                 status="offline"
               />
             </>
@@ -936,7 +979,7 @@ export default function DashboardPage() {
                 status={routerStatusLabel(stats).status}
               />
               <StatCard
-                title="Active Devices"
+                title="Devices online"
                 href="/devices"
                 value={String(stats.devices_online)}
                 subtitle={`${stats.devices_total} total known`}
@@ -944,12 +987,40 @@ export default function DashboardPage() {
                 status="online"
               />
               <StatCard
-                title="WAN Bandwidth"
+                title="Throughput"
                 href="/traffic"
-                value={`↓ ${formatBps(stats.wan_rx_bps)}`}
-                subtitle={`↑ ${formatBps(stats.wan_tx_bps)}`}
+                value={formatBps(stats.wan_rx_bps + stats.wan_tx_bps)}
+                subtitle={`↓ ${formatBps(stats.wan_rx_bps)} · ↑ ${formatBps(stats.wan_tx_bps)}`}
                 icon={<Activity className="h-4 w-4" />}
                 status="online"
+              />
+              <StatCard
+                title="Agents"
+                href="/agents"
+                value={
+                  agentsError
+                    ? "—"
+                    : agents
+                      ? String(agents.filter((a) => a.is_online).length)
+                      : "—"
+                }
+                subtitle={
+                  agentsError
+                    ? "Cannot load agents"
+                    : agents
+                      ? `of ${agents.length} registered`
+                      : "Loading…"
+                }
+                icon={<Cpu className="h-4 w-4" />}
+                status={
+                  agentsError
+                    ? "offline"
+                    : agents && agents.length > 0 && agents.every((a) => a.is_online)
+                      ? "online"
+                      : agents && agents.some((a) => !a.is_online)
+                        ? "warning"
+                        : "online"
+                }
               />
               <StatCard
                 title="Unread Alerts"
@@ -959,9 +1030,40 @@ export default function DashboardPage() {
                 icon={<AlertTriangle className="h-4 w-4" />}
                 status={stats.alerts_unread > 0 ? "warning" : "online"}
               />
+              {/* TODO: surface real WAN latency once /api/v1/dashboard/stats exposes it. */}
+              <StatCard
+                title="WAN Latency"
+                href="/router"
+                value="—"
+                subtitle="No latency probe yet"
+                icon={<Gauge className="h-4 w-4" />}
+                status="warning"
+              />
+              <StatCard
+                title="DNS Blocks"
+                href="/dns-queries"
+                value={
+                  dnsStatsError
+                    ? "—"
+                    : dnsStats
+                      ? formatCompactCount(dnsStats.blocked_queries)
+                      : "—"
+                }
+                subtitle={
+                  dnsStatsError
+                    ? "Cannot load DNS stats"
+                    : dnsStats
+                      ? `${formatCompactCount(dnsStats.total_queries)} queries · 24h`
+                      : "Loading…"
+                }
+                icon={<Search className="h-4 w-4" />}
+                status={dnsStatsError ? "offline" : "online"}
+              />
             </>
           ) : (
             <>
+              <StatCardSkeleton />
+              <StatCardSkeleton />
               <StatCardSkeleton />
               <StatCardSkeleton />
               <StatCardSkeleton />
@@ -977,7 +1079,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {/* Current aggregate speeds */}
-            <div className="mb-4 flex flex-wrap items-end gap-6 rounded-md border border-cyan-900/35 bg-[#08111e]/62 px-4 py-3">
+            <div className="mb-4 flex flex-wrap items-end gap-6 rounded-md border border-mesh-border bg-mesh-surface-1/62 px-4 py-3">
               <div className="min-w-[8rem]">
                 <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-emerald-400/85">Download</span>
                 <p className="mt-1 text-2xl font-semibold leading-none tabular-nums text-white">
@@ -985,7 +1087,7 @@ export default function DashboardPage() {
                 </p>
               </div>
               <div className="min-w-[8rem]">
-                <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-cyan-400/90">Upload</span>
+                <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-mesh-accent/90">Upload</span>
                 <p className="mt-1 text-2xl font-semibold leading-none tabular-nums text-white">
                   {statsError ? "—" : stats ? formatBps(stats.wan_tx_bps) : "—"}
                 </p>
@@ -1084,7 +1186,7 @@ export default function DashboardPage() {
                   <div
                     key={alert.id}
                     className={`flex items-center gap-2.5 rounded-lg border border-transparent px-3 py-2 ${
-                      !alert.is_read ? "border-cyan-500/15 bg-cyan-500/10" : "hover:border-cyan-900/35"
+                      !alert.is_read ? "border-cyan-500/15 bg-cyan-500/10" : "hover:border-mesh-border"
                     }`}
                   >
                     <span
@@ -1142,7 +1244,7 @@ export default function DashboardPage() {
                         {item.label}
                       </span>
                       <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-800/90">
+                        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-mesh-surface-1">
                           <div
                             className={`h-full rounded-full ${TYPE_COLORS[item.type] ?? "bg-slate-500"} transition-all duration-500`}
                             style={{

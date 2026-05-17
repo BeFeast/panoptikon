@@ -46,7 +46,7 @@ export default function RouterRedirect() {
 
   return (
     <div className="flex min-h-64 items-center justify-center">
-      <div className="rounded-md border border-cyan-900/45 bg-[#0b1220] px-4 py-3 text-sm text-slate-400">
+      <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-4 py-3 text-sm text-slate-400">
         Selecting router workspace...
       </div>
     </div>

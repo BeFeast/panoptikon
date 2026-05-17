@@ -33,7 +33,7 @@ test.describe("Card Layout Quality (#538)", () => {
       timeout: 10000,
     });
 
-    const labels = ["Router Status", "Active Devices", "WAN Bandwidth", "Unread Alerts"];
+    const labels = ["Router Status", "Devices online", "Throughput", "Unread Alerts"];
     for (const label of labels) {
       const title = page.getByText(label, { exact: true }).first();
       await expect(title).toBeVisible();
@@ -108,7 +108,9 @@ test.describe("Card Layout Quality (#538)", () => {
     // Any of: System tab (reachable), fallback message (unreachable/unconfigured),
     // or the "Not Configured" heading (disabled). Use case-insensitive match.
     const systemTab = page.getByRole("tab", { name: "System" });
-    const anyFallback = page.getByText(/not configured|unreachable/i);
+    // Match only the first fallback occurrence — the mesh refresh added a status
+    // badge (e.g. "● Unreachable") on top of the existing heading.
+    const anyFallback = page.getByText(/not configured|unreachable/i).first();
     await expect(systemTab.or(anyFallback)).toBeVisible({ timeout: 20000 });
 
     // No horizontal overflow — works in every state.

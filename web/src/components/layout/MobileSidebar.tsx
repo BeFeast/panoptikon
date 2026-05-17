@@ -27,7 +27,7 @@ export function MobileSidebar() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex h-9 w-9 items-center justify-center rounded-md text-slate-400 hover:bg-cyan-950/35 hover:text-white transition-colors md:hidden"
+        className="flex h-9 w-9 items-center justify-center rounded-md text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white transition-colors md:hidden"
         aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
@@ -36,11 +36,11 @@ export function MobileSidebar() {
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetContent
           side="left"
-          className="flex h-full w-72 flex-col border-cyan-900/50 bg-[#060b13]/95 p-0"
+          className="flex h-full w-72 flex-col border-mesh-border-strong bg-mesh-bg/95 p-0"
         >
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           {/* Logo */}
-          <div className="flex h-14 shrink-0 items-center border-b border-cyan-900/45 px-4">
+          <div className="flex h-14 shrink-0 items-center border-b border-mesh-border-strong px-4">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-cyan-300/40 bg-cyan-400/12 text-sm font-bold text-cyan-200">
               P
             </div>
@@ -62,12 +62,12 @@ export function MobileSidebar() {
                   <div
                     className={cn(
                       "flex w-full items-center gap-1 px-3 py-1.5",
-                      group.key !== "network" && "mt-3 border-t border-dotted border-slate-800/60 pt-2",
+                      group.key !== "network" && "mt-3 border-t border-dotted border-mesh-border-strong pt-2",
                     )}
                   >
                     <button
                       onClick={() => toggleGroup(group.key)}
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors text-slate-500 hover:bg-cyan-950/35 hover:text-slate-300"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors text-slate-500 hover:bg-mesh-surface-2/55 hover:text-slate-300"
                       aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.label}`}
                       aria-expanded={!isCollapsed}
                     >
@@ -109,7 +109,7 @@ export function MobileSidebar() {
                               "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
                               active
                                 ? "bg-cyan-500/10 text-cyan-400"
-                                : "text-slate-400 hover:bg-cyan-950/35 hover:text-white",
+                                : "text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white",
                             )}
                           >
                             {active && (
@@ -127,7 +127,7 @@ export function MobileSidebar() {
             })}
 
             {/* Settings — pinned after groups */}
-            <div className="mt-1 border-t border-cyan-900/35 pt-1">
+            <div className="mt-1 border-t border-mesh-border pt-1">
               <Link
                 href="/settings"
                 onClick={() => setOpen(false)}
@@ -135,7 +135,7 @@ export function MobileSidebar() {
                   "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
                   pathname?.startsWith("/settings")
                     ? "bg-cyan-500/10 text-cyan-400"
-                    : "text-slate-400 hover:bg-cyan-950/35 hover:text-white",
+                    : "text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white",
                 )}
               >
                 {pathname?.startsWith("/settings") && (
@@ -148,7 +148,7 @@ export function MobileSidebar() {
           </nav>
 
           {/* Status */}
-          <div className="shrink-0 border-t border-cyan-900/35 p-3">
+          <div className="shrink-0 border-t border-mesh-border p-3">
             <div className="flex items-center gap-1.5 px-2">
               <span
                 className={cn(

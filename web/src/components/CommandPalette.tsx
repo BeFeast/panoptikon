@@ -131,7 +131,7 @@ export function CommandPalette() {
   const itemClass =
     'flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm text-slate-300 outline-none aria-selected:bg-cyan-500/12 aria-selected:text-white cursor-pointer transition-colors'
 
-  const groupDividerClass = `border-t border-slate-800 mt-1 pt-1 ${groupHeadingClass}`
+  const groupDividerClass = `border-t border-mesh-border-strong mt-1 pt-1 ${groupHeadingClass}`
 
   return (
     <Command.Dialog
@@ -140,11 +140,11 @@ export function CommandPalette() {
       label="Command palette"
       className="flex flex-col flex-1 min-h-0"
       overlayClassName="fixed inset-0 z-[99] bg-black/70 backdrop-blur-sm"
-      contentClassName="fixed left-1/2 top-[15vh] -translate-x-1/2 z-[100] w-[min(560px,calc(100vw-2rem))] max-h-[min(480px,60vh)] flex flex-col overflow-hidden rounded-lg border border-slate-700/90 bg-slate-950 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.8)]"
+      contentClassName="fixed left-1/2 top-[15vh] -translate-x-1/2 z-[100] w-[min(560px,calc(100vw-2rem))] max-h-[min(480px,60vh)] flex flex-col overflow-hidden rounded-lg border border-mesh-border-strong bg-mesh-surface-1 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.8)]"
       shouldFilter={!hasResults}
     >
       {/* Search input */}
-      <div className="flex items-center gap-3 border-b border-slate-700/80 px-4 py-3">
+      <div className="flex items-center gap-3 border-b border-mesh-border-strong px-4 py-3">
         <Search className="h-5 w-5 shrink-0 text-slate-400" />
         <Command.Input
           value={query}
@@ -153,7 +153,7 @@ export function CommandPalette() {
           autoFocus
           className="flex-1 bg-transparent text-base text-white placeholder-slate-500 outline-none"
         />
-        <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-slate-600 bg-slate-800 px-1.5 py-0.5 text-[11px] font-medium text-slate-400">
+        <kbd className="hidden sm:inline-flex items-center gap-0.5 rounded border border-slate-600 bg-mesh-surface-1 px-1.5 py-0.5 text-[11px] font-medium text-slate-400">
           ESC
         </kbd>
       </div>

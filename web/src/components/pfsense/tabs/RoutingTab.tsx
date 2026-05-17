@@ -102,7 +102,7 @@ export function RoutingTab() {
   return (
     <div className="space-y-6">
       {/* Gateways */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
             <GitFork className="h-4 w-4 text-blue-400" />
@@ -116,7 +116,7 @@ export function RoutingTab() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-3 py-2">Name</th>
                     <th className="px-3 py-2">Interface</th>
                     <th className="px-3 py-2">Gateway IP</th>
@@ -135,7 +135,7 @@ export function RoutingTab() {
                     </tr>
                   ) : (
                     (gateways ?? []).map((g) => (
-                      <tr key={g.name} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <tr key={g.name} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                         <td className="px-3 py-2 font-medium text-white">{g.name}</td>
                         <td className="px-3 py-2 text-slate-300">{g.interface}</td>
                         <td className="px-3 py-2 font-mono text-slate-300">{g.gateway_ip}</td>
@@ -154,7 +154,7 @@ export function RoutingTab() {
       </Card>
 
       {/* Static Routes */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
             <GitFork className="h-4 w-4 text-blue-400" />
@@ -172,7 +172,7 @@ export function RoutingTab() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-3 py-2">Network</th>
                     <th className="px-3 py-2">Gateway</th>
                     <th className="px-3 py-2">Interface</th>
@@ -188,7 +188,7 @@ export function RoutingTab() {
                     </tr>
                   ) : (
                     (routes ?? []).map((r, i) => (
-                      <tr key={`${r.network}-${i}`} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <tr key={`${r.network}-${i}`} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                         <td className="px-3 py-2 font-mono text-white">{r.network}</td>
                         <td className="px-3 py-2 font-mono text-slate-300">{r.gateway}</td>
                         <td className="px-3 py-2 text-slate-400">{r.interface ?? "\u2014"}</td>
@@ -214,7 +214,7 @@ export function RoutingTab() {
 
       {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="border-slate-800 bg-slate-900">
+        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <DialogHeader>
             <DialogTitle className="text-white">Add Static Route</DialogTitle>
           </DialogHeader>
@@ -225,7 +225,7 @@ export function RoutingTab() {
                 placeholder="10.0.0.0/24"
                 value={form.network}
                 onChange={(e) => setForm({ ...form, network: e.target.value })}
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white"
               />
             </div>
             <div className="space-y-2">
@@ -234,7 +234,7 @@ export function RoutingTab() {
                 placeholder="192.168.1.1"
                 value={form.gateway}
                 onChange={(e) => setForm({ ...form, gateway: e.target.value })}
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white"
               />
             </div>
             <div className="space-y-2">
@@ -243,7 +243,7 @@ export function RoutingTab() {
                 placeholder="wan, lan..."
                 value={form.interface}
                 onChange={(e) => setForm({ ...form, interface: e.target.value })}
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white"
               />
             </div>
           </div>
@@ -264,7 +264,7 @@ export function RoutingTab() {
 
       {/* Delete Confirm */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Static Route</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -272,7 +272,7 @@ export function RoutingTab() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-800 text-slate-400">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-mesh-border-strong text-slate-400">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>
               Delete
             </AlertDialogAction>

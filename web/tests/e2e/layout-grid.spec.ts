@@ -67,7 +67,7 @@ test.describe('Layout & Grid — card clipping / spacing regressions (#544)', ()
 
     // Verify core stat card headers are present (style token may vary between
     // tracking-wider and arbitrary tracking values after UI polish updates).
-    const statLabels = ['Router Status', 'Active Devices', 'WAN Bandwidth', 'Unread Alerts'];
+    const statLabels = ['Router Status', 'Devices online', 'Throughput', 'Unread Alerts'];
     for (const label of statLabels) {
       await expect(page.getByText(label).first()).toBeVisible();
     }
@@ -171,8 +171,8 @@ test.describe('Layout & Grid — no overflow or clipping (#524)', () => {
 
     const statCards = [
       page.getByRole('link', { name: /Router Status/ }).first(),
-      page.getByRole('link', { name: /Active Devices/ }).first(),
-      page.getByRole('link', { name: /WAN Bandwidth/ }).first(),
+      page.getByRole('link', { name: /Devices online/ }).first(),
+      page.getByRole('link', { name: /Throughput/ }).first(),
       page.getByRole('link', { name: /Unread Alerts/ }).first(),
     ];
 

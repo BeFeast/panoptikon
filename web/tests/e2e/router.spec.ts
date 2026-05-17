@@ -72,7 +72,7 @@ test.describe("Router Page — MikroTik", () => {
     await expect(
       page.getByText(
         /Connected|Unreachable|unreachable|Not Configured|not configured/,
-      ),
+      ).first(),
     ).toBeVisible({ timeout: 40000 });
 
     await page.screenshot({

@@ -171,7 +171,7 @@ function MikrotikPanel() {
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            className={`border-slate-800 bg-slate-950 text-white placeholder:text-slate-600 ${
+            className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
               urlValid === "valid"
                 ? "border-emerald-500/40"
                 : urlValid === "error"
@@ -200,7 +200,7 @@ function MikrotikPanel() {
           type="text"
           value={user}
           onChange={(e) => setUser(e.target.value)}
-          className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
           placeholder="admin"
         />
       </div>
@@ -215,7 +215,7 @@ function MikrotikPanel() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
           placeholder={
             passwordSet
               ? "••••••••  (leave blank to keep current)"
@@ -241,7 +241,7 @@ function MikrotikPanel() {
           variant="outline"
           onClick={handleTest}
           disabled={!url || testStatus === "loading"}
-          className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+          className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55 disabled:opacity-40"
         >
           {testStatus === "loading" ? (
             <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -307,7 +307,7 @@ export default function RouterSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>

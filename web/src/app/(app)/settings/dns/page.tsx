@@ -164,7 +164,7 @@ export default function DnsSettingsPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/settings"
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
@@ -193,7 +193,7 @@ export default function DnsSettingsPage() {
               variant="outline"
               size="sm"
               onClick={() => setShowConfig(true)}
-              className="border-slate-800 text-slate-300 hover:bg-slate-800"
+              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
             >
               <Settings2 className="mr-1.5 h-3.5 w-3.5" />
               Configure
@@ -203,7 +203,7 @@ export default function DnsSettingsPage() {
               size="sm"
               onClick={handleTestConnection}
               disabled={testing}
-              className="border-slate-800 text-slate-300 hover:bg-slate-800"
+              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
             >
               {testing ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -230,16 +230,16 @@ export default function DnsSettingsPage() {
             placeholder="Filter by hostname or IP..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border-slate-800 bg-slate-950 pl-10 text-white placeholder:text-slate-600"
+            className="border-mesh-border-strong bg-mesh-surface-1 pl-10 text-white placeholder:text-mesh-text-mute"
           />
         </div>
 
         {/* Table */}
-        <Card className="border-slate-800 bg-slate-900">
+        <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-800 hover:bg-transparent">
+                <TableRow className="border-mesh-border-strong hover:bg-transparent">
                   <TableHead className="text-slate-400">Hostname</TableHead>
                   <TableHead className="text-slate-400">IP Address</TableHead>
                   <TableHead className="text-slate-400">Status</TableHead>
@@ -251,23 +251,23 @@ export default function DnsSettingsPage() {
               <TableBody>
                 {filtered === null ? (
                   Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={i} className="border-slate-800">
+                    <TableRow key={i} className="border-mesh-border-strong">
                       <TableCell>
-                        <Skeleton className="h-4 w-48 bg-slate-800" />
+                        <Skeleton className="h-4 w-48 bg-mesh-surface-2/55" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-4 w-32 bg-slate-800" />
+                        <Skeleton className="h-4 w-32 bg-mesh-surface-2/55" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-4 w-16 bg-slate-800" />
+                        <Skeleton className="h-4 w-16 bg-mesh-surface-2/55" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-4 w-20 bg-slate-800" />
+                        <Skeleton className="h-4 w-20 bg-mesh-surface-2/55" />
                       </TableCell>
                     </TableRow>
                   ))
                 ) : filtered.length === 0 ? (
-                  <TableRow className="border-slate-800 hover:bg-transparent">
+                  <TableRow className="border-mesh-border-strong hover:bg-transparent">
                     <TableCell
                       colSpan={4}
                       className="py-12 text-center text-slate-500"
@@ -281,7 +281,7 @@ export default function DnsSettingsPage() {
                   filtered.map((record) => (
                     <TableRow
                       key={record.id}
-                      className="border-slate-800 hover:bg-slate-800/30"
+                      className="border-mesh-border-strong hover:bg-mesh-surface-2/55"
                     >
                       <TableCell className="font-medium text-white font-mono text-sm">
                         {record.hostname}
@@ -349,7 +349,7 @@ export default function DnsSettingsPage() {
             if (!open) setPendingDelete(null);
           }}
         >
-          <AlertDialogContent className="border-slate-800 bg-slate-900">
+          <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-white">
                 Delete DNS Record
@@ -363,7 +363,7 @@ export default function DnsSettingsPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-slate-800 text-slate-300 hover:bg-slate-800">
+              <AlertDialogCancel className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
@@ -456,7 +456,7 @@ function DnsRecordFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+      <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white">
             {isEdit ? "Edit DNS Record" : "Add DNS Record"}
@@ -471,7 +471,7 @@ function DnsRecordFormDialog({
               id="hostname"
               value={hostname}
               onChange={(e) => setHostname(e.target.value)}
-              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="myserver.lan"
             />
           </div>
@@ -484,7 +484,7 @@ function DnsRecordFormDialog({
               id="ip-address"
               value={ipAddress}
               onChange={(e) => setIpAddress(e.target.value)}
-              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="192.168.1.100"
             />
           </div>
@@ -501,7 +501,7 @@ function DnsRecordFormDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="border-slate-800 text-slate-300 hover:bg-slate-800"
+              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
             >
               Cancel
             </Button>
@@ -564,7 +564,7 @@ function UnboundConfigDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+      <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white">
             Unbound Configuration
@@ -582,7 +582,7 @@ function UnboundConfigDialog({
               id="control-path"
               value={controlPath}
               onChange={(e) => setControlPath(e.target.value)}
-              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="/var/run/unbound.ctl"
               disabled={loading}
             />
@@ -596,7 +596,7 @@ function UnboundConfigDialog({
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="border-slate-800 text-slate-300 hover:bg-slate-800"
+              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
             >
               Cancel
             </Button>

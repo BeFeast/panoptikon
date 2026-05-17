@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Bell, Settings, Lock, LogOut, Monitor, Cpu, Terminal, Package } from "lucide-react";
 import { searchAll, fetchRecentAlerts, fetchDashboardStats, markAllAlertsRead, deleteAllAlerts, logout } from "@/lib/api";
 import { useWsEvent } from "@/lib/ws";
+import { useWsConnected } from "@/components/providers/WebSocketProvider";
 import { timeAgo } from "@/lib/format";
 import type { SearchResponse, SearchDevice, SearchAgent, SearchAlert, SearchSshTarget, SearchAsset, Alert } from "@/lib/types";
 import {
@@ -18,12 +19,36 @@ import {
 
 export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
   const router = useRouter();
+  const wsConnected = useWsConnected();
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Lightweight liveness ping for the "live · ws · Nms" pill from the design.
+  useEffect(() => {
+    let cancelled = false;
+    async function ping() {
+      const started = performance.now();
+      try {
+        await fetch("/api/v1/version", { credentials: "include", cache: "no-store" });
+        if (!cancelled) {
+          setLatencyMs(Math.round(performance.now() - started));
+        }
+      } catch {
+        if (!cancelled) setLatencyMs(null);
+      }
+    }
+    void ping();
+    const interval = setInterval(ping, 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   // ── Notification bell state ──
   const [bellOpen, setBellOpen] = useState(false);
@@ -224,7 +249,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
   let runningIndex = 0;
 
   return (
-    <header className="sticky top-0 z-40 flex h-[3.75rem] items-center justify-between gap-3 border-b border-cyan-900/45 bg-[#060b13]/72 px-3 shadow-[0_12px_34px_-30px_rgba(34,211,238,0.46)] backdrop-blur-xl supports-[backdrop-filter]:bg-[#060b13]/64 md:px-6">
+    <header className="sticky top-0 z-40 flex h-[3.75rem] items-center justify-between gap-3 border-b border-mesh-border-strong bg-mesh-bg/70 px-3 shadow-[0_12px_34px_-30px_rgba(56,189,248,0.30)] backdrop-blur-xl supports-[backdrop-filter]:bg-mesh-bg/60 md:px-6">
       {/* Mobile menu button */}
       {mobileMenu}
 
@@ -240,12 +265,12 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
             if (results && query.length >= 2) setIsOpen(true);
           }}
           placeholder="Search devices, IPs, MACs...  ⌘K"
-          className="h-8 w-full rounded-md border border-cyan-900/45 bg-slate-950 px-3 text-sm text-white placeholder-slate-500 transition-all duration-150 focus:border-cyan-500/45 focus:outline-none focus:ring-2 focus:ring-cyan-500/18"
+          className="h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-white placeholder-slate-500 transition-all duration-150 focus:border-cyan-500/45 focus:outline-none focus:ring-2 focus:ring-cyan-500/18"
         />
 
         {/* Search Results Dropdown */}
         {isOpen && (
-          <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-lg border border-cyan-900/45 bg-[#060b13]/95 shadow-2xl backdrop-blur-md">
+          <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-lg border border-mesh-border-strong bg-mesh-bg/95 shadow-2xl backdrop-blur-md">
             {noResults && (
               <div className="px-4 py-3 text-sm text-slate-500">
                 No results for &ldquo;{query}&rdquo;
@@ -265,8 +290,8 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                       return (
                         <button
                           key={d.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-cyan-950/35 ${
-                            activeIndex === idx ? "bg-cyan-950/35" : ""
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-mesh-surface-2/55 ${
+                            activeIndex === idx ? "bg-mesh-surface-2/55" : ""
                           }`}
                           onClick={() => navigateTo("device", d.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
@@ -297,7 +322,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                 {/* Agents */}
                 {results.agents.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-slate-800">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-mesh-border-strong">
                       Agents
                     </div>
                     {results.agents.map((a: SearchAgent) => {
@@ -305,8 +330,8 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                       return (
                         <button
                           key={a.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-cyan-950/35 ${
-                            activeIndex === idx ? "bg-cyan-950/35" : ""
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-mesh-surface-2/55 ${
+                            activeIndex === idx ? "bg-mesh-surface-2/55" : ""
                           }`}
                           onClick={() => navigateTo("agent", a.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
@@ -332,7 +357,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                 {/* SSH Hosts */}
                 {results.ssh_targets.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-slate-800">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-mesh-border-strong">
                       SSH Hosts
                     </div>
                     {results.ssh_targets.map((st: SearchSshTarget) => {
@@ -340,8 +365,8 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                       return (
                         <button
                           key={st.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-cyan-950/35 ${
-                            activeIndex === idx ? "bg-cyan-950/35" : ""
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-mesh-surface-2/55 ${
+                            activeIndex === idx ? "bg-mesh-surface-2/55" : ""
                           }`}
                           onClick={() => navigateTo("ssh_target", st.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
@@ -367,7 +392,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                 {/* Assets */}
                 {results.assets.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-slate-800">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-mesh-border-strong">
                       Assets
                     </div>
                     {results.assets.map((asset: SearchAsset) => {
@@ -375,8 +400,8 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                       return (
                         <button
                           key={asset.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-cyan-950/35 ${
-                            activeIndex === idx ? "bg-cyan-950/35" : ""
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-mesh-surface-2/55 ${
+                            activeIndex === idx ? "bg-mesh-surface-2/55" : ""
                           }`}
                           onClick={() => navigateTo("asset", asset.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
@@ -396,7 +421,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                 {/* Alerts */}
                 {results.alerts.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-slate-800">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-mesh-border-strong">
                       Alerts
                     </div>
                     {results.alerts.map((al: SearchAlert) => {
@@ -404,8 +429,8 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                       return (
                         <button
                           key={al.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-cyan-950/35 ${
-                            activeIndex === idx ? "bg-cyan-950/35" : ""
+                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-mesh-surface-2/55 ${
+                            activeIndex === idx ? "bg-mesh-surface-2/55" : ""
                           }`}
                           onClick={() => navigateTo("alert", al.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
@@ -427,13 +452,34 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
         )}
       </div>
 
+      {/* Realm context + live status pill — mirrors the design source TopBar */}
+      <div className="hidden lg:flex items-center gap-2 shrink-0 font-mono text-[11px] text-slate-400">
+        <span className="text-slate-500">core.lan</span>
+        <span className="text-slate-700">›</span>
+        <span className="text-slate-300">Overview</span>
+      </div>
+      <div
+        className="flex items-center gap-2 shrink-0 rounded-full border border-mesh-border-strong bg-mesh-surface-1/80 px-2.5 py-1 font-mono text-[11px] text-slate-300"
+        data-testid="live-status-pill"
+      >
+        <span
+          className={cnLive(wsConnected)}
+          aria-hidden="true"
+        />
+        <span>live · ws</span>
+        <span className="text-slate-600">·</span>
+        <span className="text-slate-400 tabular-nums">
+          {latencyMs == null ? "—" : `${latencyMs}ms`}
+        </span>
+      </div>
+
       {/* Right side: alerts bell + user avatar */}
       <div className="flex items-center gap-2">
         {/* ── Notification Bell ── */}
         <div className="relative" ref={bellRef}>
           <button
             onClick={() => setBellOpen((v) => !v)}
-            className="relative flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-cyan-950/50 hover:text-white"
+            className="relative flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-mesh-surface-2/75 hover:text-white"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
@@ -445,8 +491,8 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
           </button>
 
           {bellOpen && (
-            <div className="absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border border-cyan-900/45 bg-[#060b13]/95 shadow-2xl backdrop-blur-md">
-              <div className="flex items-center justify-between border-b border-cyan-900/35 px-4 py-2.5">
+            <div className="absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border border-mesh-border-strong bg-mesh-bg/95 shadow-2xl backdrop-blur-md">
+              <div className="flex items-center justify-between border-b border-mesh-border px-4 py-2.5">
                 <span className="text-sm font-semibold text-white">Notifications</span>
                 <div className="flex items-center gap-3">
                   {unreadCount > 0 && (
@@ -477,8 +523,8 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                   alerts.map((alert) => (
                     <button
                       key={alert.id}
-                      className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-cyan-950/35 border-b border-cyan-900/35 last:border-b-0 ${
-                        !alert.is_read ? "bg-slate-900/50" : ""
+                      className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-mesh-surface-2/55 border-b border-mesh-border last:border-b-0 ${
+                        !alert.is_read ? "bg-mesh-surface-1" : ""
                       }`}
                       onClick={() => {
                         setBellOpen(false);
@@ -502,13 +548,13 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                 )}
               </div>
 
-              <div className="border-t border-cyan-900/35">
+              <div className="border-t border-mesh-border">
                 <button
                   onClick={() => {
                     setBellOpen(false);
                     router.push("/alerts");
                   }}
-                  className="flex w-full items-center justify-center px-4 py-2.5 text-sm text-cyan-400 hover:text-cyan-300 hover:bg-cyan-950/35 transition-colors"
+                  className="flex w-full items-center justify-center px-4 py-2.5 text-sm text-cyan-400 hover:text-cyan-300 hover:bg-mesh-surface-2/55 transition-colors"
                 >
                   View all alerts
                 </button>
@@ -556,6 +602,12 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
       </div>
     </header>
   );
+}
+
+function cnLive(connected: boolean) {
+  return connected
+    ? "inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online-pulse"
+    : "inline-block h-1.5 w-1.5 rounded-full bg-slate-600";
 }
 
 function SeverityBadge({ severity }: { severity: string }) {

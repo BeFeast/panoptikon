@@ -46,9 +46,10 @@ test.describe("Login page visual upgrade", () => {
     await expect(page.getByText(/core\.lan/)).toBeVisible();
     await expect(page.locator("#password")).toBeVisible();
     await expect(page.getByRole("button", { name: /Sign in/i })).toBeVisible();
+    // Continue with SSO is rendered only when authStatus.sso_enabled is true (default: false).
     await expect(
       page.getByRole("button", { name: "Continue with SSO" }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(page.getByText("all systems healthy")).toBeVisible();
 
     const eyeToggle = page.locator('button[aria-label="Show password"]');
@@ -78,9 +79,10 @@ test.describe("Login page visual upgrade", () => {
     expect(box!.width).toBeLessThanOrEqual(375);
 
     await expect(page.getByRole("button", { name: /Sign in/i })).toBeVisible();
+    // Continue with SSO is rendered only when authStatus.sso_enabled is true (default: false).
     await expect(
       page.getByRole("button", { name: "Continue with SSO" }),
-    ).toBeVisible();
+    ).toHaveCount(0);
 
     await page.screenshot({
       path: "tests/screenshots/login-visual-mobile.png",

@@ -146,7 +146,7 @@ export default function AgentDetailContent() {
       {chartData.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* CPU Chart */}
-          <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
+          <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 p-4">
             <h2 className="text-sm font-medium text-slate-400 mb-3">CPU Usage %</h2>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
@@ -189,7 +189,7 @@ export default function AgentDetailContent() {
           </div>
 
           {/* RAM Chart */}
-          <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
+          <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 p-4">
             <h2 className="text-sm font-medium text-slate-400 mb-3">RAM Usage %</h2>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
@@ -240,8 +240,8 @@ export default function AgentDetailContent() {
       )}
 
       {/* Reports table */}
-      <div className="overflow-hidden rounded-md border border-slate-800 bg-slate-950/60">
-        <div className="px-4 py-3 border-b border-slate-800">
+      <div className="overflow-hidden rounded-md border border-mesh-border-strong bg-mesh-surface-1/95">
+        <div className="px-4 py-3 border-b border-mesh-border">
           <h2 className="text-sm font-medium text-slate-400">
             Recent Reports ({reports.length})
           </h2>
@@ -257,7 +257,7 @@ export default function AgentDetailContent() {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="border-slate-800 hover:bg-transparent">
+              <TableRow className="border-mesh-border-strong hover:bg-transparent">
                 <TableHead className="text-slate-500">Time</TableHead>
                 <TableHead className="text-slate-500">CPU %</TableHead>
                 <TableHead className="text-slate-500">RAM Used</TableHead>
@@ -266,7 +266,7 @@ export default function AgentDetailContent() {
             </TableHeader>
             <TableBody>
               {reports.map((report) => (
-                <TableRow key={report.id} className="border-slate-800">
+                <TableRow key={report.id} className="border-mesh-border-strong">
                   <TableCell className="text-slate-400 font-mono tabular-nums text-xs">
                     {new Date(report.reported_at).toLocaleString()}
                   </TableCell>
@@ -389,7 +389,7 @@ function HardwareInfoCard({ agent }: { agent: Agent }) {
   }
 
   return (
-    <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
+    <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 p-4">
       <h2 className="text-sm font-medium text-slate-400 mb-3">Hardware Info</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
         {items.map((item) => (

@@ -47,10 +47,10 @@ function NodeCard({
 
   return (
     <Card
-      className={`border-slate-800 bg-slate-900/50 transition-shadow hover:shadow-lg ${
+      className={`border-mesh-border-strong bg-mesh-surface-1 transition-shadow hover:shadow-lg ${
         isMain
           ? "border-amber-500/30 shadow-amber-500/5"
-          : "hover:border-slate-700"
+          : "hover:border-mesh-border-strong"
       }`}
     >
       <CardHeader className="pb-3">
@@ -103,7 +103,7 @@ function NodeCard({
           {node.model && (
             <Badge
               variant="outline"
-              className="border-slate-700 text-[10px] text-slate-500"
+              className="border-mesh-border-strong text-[10px] text-slate-500"
             >
               {node.model}
             </Badge>
@@ -111,7 +111,7 @@ function NodeCard({
           {node.hardware && node.hardware !== node.model && (
             <Badge
               variant="outline"
-              className="border-slate-700 text-[10px] text-slate-500"
+              className="border-mesh-border-strong text-[10px] text-slate-500"
             >
               {node.hardware}
             </Badge>
@@ -132,7 +132,7 @@ function NodeCard({
 
         {/* Connected devices list */}
         {connectedLeafs.length > 0 && (
-          <div className="mt-2 space-y-1 border-t border-slate-800 pt-2">
+          <div className="mt-2 space-y-1 border-t border-mesh-border-strong pt-2">
             <p className="text-[10px] font-medium uppercase tracking-wider text-slate-500">
               Connected Devices
             </p>
@@ -140,7 +140,7 @@ function NodeCard({
               {connectedLeafs.map((leaf) => (
                 <div
                   key={leaf.mac || leaf.ip}
-                  className="flex items-center justify-between rounded px-1.5 py-0.5 text-[11px] hover:bg-slate-800/50"
+                  className="flex items-center justify-between rounded px-1.5 py-0.5 text-[11px] hover:bg-mesh-surface-2"
                 >
                   <span className="truncate text-slate-300">
                     {leaf.name || leaf.mac || "Unknown"}
@@ -162,7 +162,7 @@ function NodeCard({
 
 function NodeCardSkeleton() {
   return (
-    <Card className="border-slate-800 bg-slate-900/50">
+    <Card className="border-mesh-border-strong bg-mesh-surface-1">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
           <Skeleton className="h-10 w-10 rounded-lg" />
@@ -266,7 +266,7 @@ export default function XiaomiMeshTopology() {
             variant="outline"
             size="sm"
             onClick={load}
-            className="border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800"
+            className="border-mesh-border-strong bg-mesh-surface-1 text-slate-300 hover:bg-mesh-surface-2"
           >
             <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
             Refresh
@@ -277,7 +277,7 @@ export default function XiaomiMeshTopology() {
       {/* Summary stats */}
       {!loading && data && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Card className="border-slate-800 bg-slate-900/50">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1">
             <CardContent className="flex items-center gap-3 p-4">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/20">
                 <Router className="h-4.5 w-4.5 text-blue-400" />
@@ -290,7 +290,7 @@ export default function XiaomiMeshTopology() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-slate-800 bg-slate-900/50">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1">
             <CardContent className="flex items-center gap-3 p-4">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/20">
                 <MonitorSmartphone className="h-4.5 w-4.5 text-emerald-400" />
@@ -303,7 +303,7 @@ export default function XiaomiMeshTopology() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-slate-800 bg-slate-900/50">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1">
             <CardContent className="flex items-center gap-3 p-4">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-500/20">
                 <Wifi className="h-4.5 w-4.5 text-purple-400" />
@@ -362,7 +362,7 @@ export default function XiaomiMeshTopology() {
 
       {/* Empty state */}
       {!loading && !error && data && sortedNodes.length === 0 && (
-        <Card className="border-slate-800 bg-slate-900/50">
+        <Card className="border-mesh-border-strong bg-mesh-surface-1">
           <CardContent className="flex flex-col items-center gap-3 py-12">
             <Router className="h-10 w-10 text-slate-600" />
             <p className="text-sm text-slate-400">

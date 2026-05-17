@@ -133,11 +133,11 @@ export default function SshHostsPage() {
         </div>
 
         {/* Table */}
-        <div className="rounded-lg border border-slate-800 bg-slate-900">
+        <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95">
           {targets === null ? (
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-800 hover:bg-transparent">
+                <TableRow className="border-mesh-border-strong hover:bg-transparent">
                   <TableHead className="text-slate-500">Name</TableHead>
                   <TableHead className="text-slate-500">Host</TableHead>
                   <TableHead className="text-slate-500">OS</TableHead>
@@ -152,7 +152,7 @@ export default function SshHostsPage() {
               </TableHeader>
               <TableBody>
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i} className="border-slate-800">
+                  <TableRow key={i} className="border-mesh-border-strong">
                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
@@ -178,7 +178,7 @@ export default function SshHostsPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-800 hover:bg-transparent">
+                <TableRow className="border-mesh-border-strong hover:bg-transparent">
                   <TableHead className="text-slate-500">Name</TableHead>
                   <TableHead className="text-slate-500">Host</TableHead>
                   <TableHead className="text-slate-500">OS</TableHead>
@@ -193,7 +193,7 @@ export default function SshHostsPage() {
               </TableHeader>
               <TableBody>
                 {targets.map((target) => (
-                  <TableRow key={target.id} className="border-slate-800">
+                  <TableRow key={target.id} className="border-mesh-border-strong">
                     <TableCell className="font-medium text-white">
                       {target.name}
                     </TableCell>
@@ -249,7 +249,7 @@ export default function SshHostsPage() {
                         </button>
                         <button
                           onClick={() => setEditTarget(target)}
-                          className="rounded p-1 text-slate-600 hover:bg-slate-800/60 hover:text-white transition-colors"
+                          className="rounded p-1 text-slate-600 hover:bg-mesh-surface-2/55 hover:text-white transition-colors"
                           title="Edit"
                         >
                           <Pencil size={14} />
@@ -285,7 +285,7 @@ export default function SshHostsPage() {
 
         {/* Delete confirmation */}
         <AlertDialog open={!!pendingDelete} onOpenChange={(v) => { if (!v) setPendingDelete(null); }}>
-          <AlertDialogContent className="border-slate-800 bg-slate-950">
+          <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
             <AlertDialogHeader>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10">
@@ -300,7 +300,7 @@ export default function SshHostsPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel
-                className="border-slate-800 bg-transparent text-slate-400 hover:bg-slate-800/50 hover:text-white"
+                className="border-mesh-border-strong bg-transparent text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white"
                 disabled={deleting}
               >
                 Cancel
@@ -442,7 +442,7 @@ function SshTargetFormDialog({
   };
 
   const dialogContent = (
-    <DialogContent className="w-full max-w-[520px] border-slate-800 bg-slate-950">
+    <DialogContent className="w-full max-w-[520px] border-mesh-border-strong bg-mesh-surface-1/95">
       <DialogHeader>
         <DialogTitle className="text-white">
           {isEdit ? "Edit SSH Host" : "Add SSH Host"}
@@ -496,7 +496,7 @@ function SshTargetFormDialog({
             <select
               value={authType}
               onChange={(e) => setAuthType(e.target.value as "password" | "key")}
-              className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex h-10 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             >
               <option value="password">Password</option>
               <option value="key">SSH Key</option>
@@ -528,7 +528,7 @@ function SshTargetFormDialog({
               )}
             </Label>
             <textarea
-              className="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white font-mono placeholder:text-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[100px]"
+              className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2 text-sm text-white font-mono placeholder:text-mesh-text-mute focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[100px]"
               placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
               value={privateKey}
               onChange={(e) => setPrivateKey(e.target.value)}
@@ -552,7 +552,7 @@ function SshTargetFormDialog({
                 type="checkbox"
                 checked={enabled}
                 onChange={(e) => setEnabled(e.target.checked)}
-                className="rounded border-slate-700"
+                className="rounded border-mesh-border-strong"
               />
               Enabled
             </label>

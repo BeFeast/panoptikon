@@ -240,8 +240,8 @@ test.describe("Section Spacing (#571)", () => {
 
     const cards = [
       page.getByRole("link", { name: /Router Status/ }).first(),
-      page.getByRole("link", { name: /Active Devices/ }).first(),
-      page.getByRole("link", { name: /WAN Bandwidth/ }).first(),
+      page.getByRole("link", { name: /Devices online/ }).first(),
+      page.getByRole("link", { name: /Throughput/ }).first(),
       page.getByRole("link", { name: /Unread Alerts/ }).first(),
     ];
 

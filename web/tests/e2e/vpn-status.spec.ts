@@ -153,7 +153,7 @@ test.describe("VPN Status Page — MikroTik tab visibility (#476)", () => {
 
     // MikroTik tab should NOT be visible
     await expect(
-      page.getByRole("tab", { name: "MikroTik" }),
+      page.getByRole("tab", { name: "WireGuard" }),
     ).not.toBeVisible();
 
     // OpenVPN tab should NOT be visible
@@ -179,11 +179,11 @@ test.describe("VPN Status Page — MikroTik tab visibility (#476)", () => {
 
     // MikroTik tab should be visible
     await expect(
-      page.getByRole("tab", { name: "MikroTik" }),
+      page.getByRole("tab", { name: "WireGuard" }),
     ).toBeVisible();
 
     // Click MikroTik tab and verify interface data is shown
-    await page.getByRole("tab", { name: "MikroTik" }).click();
+    await page.getByRole("tab", { name: "WireGuard" }).click();
     await expect(page.getByText("wireguard1")).toBeVisible();
     await expect(page.getByText("peer-1")).toBeVisible();
 
@@ -237,7 +237,7 @@ test.describe("VPN Status Page — OpenVPN tab (#664)", () => {
 
     // MikroTik tab should be visible (WireGuard is present)
     await expect(
-      page.getByRole("tab", { name: "MikroTik" }),
+      page.getByRole("tab", { name: "WireGuard" }),
     ).toBeVisible();
 
     // OpenVPN tab should NOT be visible

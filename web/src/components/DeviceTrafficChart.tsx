@@ -81,7 +81,7 @@ export function DeviceTrafficChart({
   }, [load, range]);
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+    <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1 p-4">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-blue-400" />

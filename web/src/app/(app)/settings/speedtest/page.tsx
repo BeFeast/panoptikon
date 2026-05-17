@@ -120,7 +120,7 @@ export default function SpeedtestSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -145,7 +145,7 @@ export default function SpeedtestSettingsPage() {
                   min={0}
                   value={speedtestAutoHours}
                   onChange={(e) => setSpeedtestAutoHours(e.target.value)}
-                  className={`border-slate-800 bg-slate-950 text-white placeholder:text-slate-600 ${
+                  className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                     autoValid === "valid"
                       ? "border-emerald-500/40"
                       : autoValid === "error"
@@ -175,7 +175,7 @@ export default function SpeedtestSettingsPage() {
                   min={1}
                   value={speedtestRetDays}
                   onChange={(e) => setSpeedtestRetDays(e.target.value)}
-                  className={`border-slate-800 bg-slate-950 text-white placeholder:text-slate-600 ${
+                  className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                     retValid === "valid"
                       ? "border-emerald-500/40"
                       : retValid === "error"

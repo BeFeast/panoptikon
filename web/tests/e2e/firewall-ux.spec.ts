@@ -46,7 +46,7 @@ test.describe("Firewall UX — rule statistics, reordering, search/filter, time-
     await expect(
       page.getByText(
         /Connected|Unreachable|unreachable|Not Configured|not configured/
-      )
+      ).first()
     ).toBeVisible({ timeout: 40000 });
 
     // Click the Firewall tab
@@ -100,7 +100,7 @@ test.describe("Firewall UX — rule statistics, reordering, search/filter, time-
     await expect(
       page.getByText(
         /Connected|Unreachable|unreachable|Not Configured|not configured/
-      )
+      ).first()
     ).toBeVisible({ timeout: 40000 });
 
     // Click the Firewall tab
@@ -167,7 +167,7 @@ test.describe("Firewall UX — rule statistics, reordering, search/filter, time-
     await expect(
       page.getByText(
         /Connected|Unreachable|unreachable|Not Configured|not configured/
-      )
+      ).first()
     ).toBeVisible({ timeout: 40000 });
 
     // Click the Firewall tab

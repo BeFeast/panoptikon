@@ -312,7 +312,7 @@ function DeviceNode({ data }: NodeProps<DeviceNodeType>) {
 
   return (
     <div
-      className="flex items-center gap-2.5 rounded-lg border bg-slate-800/90 px-3 py-2.5 shadow-md transition-shadow hover:shadow-lg hover:shadow-slate-700/20"
+      className="flex items-center gap-2.5 rounded-lg border bg-mesh-surface-1 px-3 py-2.5 shadow-md transition-shadow hover:shadow-lg hover:shadow-slate-700/20"
       style={{
         width: DEVICE_WIDTH,
         height: DEVICE_HEIGHT,
@@ -419,7 +419,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
       <SheetHeader>
         <div className="flex items-center gap-3">
           <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-800 ${
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mesh-surface-1 ${
               device.is_online ? 'ring-1 ring-emerald-500/20' : ''
             }`}
           >
@@ -454,14 +454,14 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
 
       <div className="mt-3">
         <Link href={`/devices?selected=${device.id}`}>
-          <button className="flex w-full items-center justify-center gap-2 rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-slate-700 hover:text-white">
+          <button className="flex w-full items-center justify-center gap-2 rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-slate-700 hover:text-white">
             <ExternalLink className="h-4 w-4" />
             Full Device Details
           </button>
         </Link>
       </div>
 
-      <Separator className="my-4 bg-slate-800" />
+      <Separator className="my-4 bg-mesh-surface-1" />
 
       <div className="space-y-3">
         <InfoRow
@@ -476,7 +476,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
             {ips.slice(1).map((ip) => (
               <span
                 key={ip}
-                className="mr-1.5 inline-block rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[11px] text-slate-400"
+                className="mr-1.5 inline-block rounded bg-mesh-surface-1 px-1.5 py-0.5 font-mono text-[11px] text-slate-400"
               >
                 {ip}
               </span>
@@ -499,7 +499,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
 
         {(device.os_family || effectiveType || device.device_model) && (
           <>
-            <Separator className="bg-slate-800" />
+            <Separator className="bg-mesh-surface-1" />
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
               Device Identity
             </p>
@@ -527,7 +527,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
 
         {(device.dhcp_lease_status || device.bridge_port) && (
           <>
-            <Separator className="bg-slate-800" />
+            <Separator className="bg-mesh-surface-1" />
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
               Network
             </p>
@@ -554,7 +554,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
 
         {device.mdns_services && (
           <>
-            <Separator className="bg-slate-800" />
+            <Separator className="bg-mesh-surface-1" />
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
               mDNS Services
             </p>
@@ -563,7 +563,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
                 <Badge
                   key={svc.trim()}
                   variant="outline"
-                  className="border-slate-700 text-slate-400 text-[10px]"
+                  className="border-mesh-border-strong text-slate-400 text-[10px]"
                 >
                   {svc.trim()}
                 </Badge>
@@ -574,7 +574,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
 
         {(device.location || device.owner || device.tags) && (
           <>
-            <Separator className="bg-slate-800" />
+            <Separator className="bg-mesh-surface-1" />
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
               Asset Info
             </p>
@@ -588,7 +588,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
                   <Badge
                     key={tag.trim()}
                     variant="outline"
-                    className="border-slate-700 text-slate-400 text-[10px]"
+                    className="border-mesh-border-strong text-slate-400 text-[10px]"
                   >
                     {tag.trim()}
                   </Badge>
@@ -1115,10 +1115,10 @@ function TopologyPageInner() {
           minZoom={0.1}
           maxZoom={2}
           proOptions={{ hideAttribution: true }}
-          className="bg-slate-950"
+          className="bg-mesh-surface-1"
         >
           <Controls
-            className="!border-slate-700 !bg-slate-900 [&>button]:!border-slate-700 [&>button]:!bg-slate-900 [&>button]:!text-slate-300 [&>button:hover]:!bg-slate-800"
+            className="!border-mesh-border-strong !bg-mesh-surface-1 [&>button]:!border-mesh-border-strong [&>button]:!bg-mesh-surface-1 [&>button]:!text-slate-300 [&>button:hover]:!bg-mesh-surface-1"
             showInteractive={false}
           />
           <MiniMap
@@ -1128,7 +1128,7 @@ function TopologyPageInner() {
               const data = n.data as DeviceNodeData
               return data.device?.is_online ? '#34d399' : '#475569'
             }}
-            className="!border-slate-700 !bg-slate-900/90"
+            className="!border-mesh-border-strong !bg-mesh-surface-1"
             maskColor="rgba(15, 23, 42, 0.7)"
           />
           <Background
@@ -1139,11 +1139,11 @@ function TopologyPageInner() {
           />
 
           {/* Floating toolbar */}
-          <div className="absolute left-4 top-4 z-10 max-w-[calc(100vw-2rem)] rounded-lg border border-slate-700/50 bg-slate-900/85 px-4 py-3 backdrop-blur-sm">
+          <div className="absolute left-4 top-4 z-10 max-w-[calc(100vw-2rem)] rounded-lg border border-mesh-border-strong bg-mesh-surface-1 px-4 py-3 backdrop-blur-sm">
             <div className="mb-2 flex items-center gap-2">
-              <Network className="h-4 w-4 text-cyan-400" />
+              <Network className="h-4 w-4 text-mesh-accent" />
               <h1 className="text-sm font-semibold text-white">Topology</h1>
-              <span className="rounded border border-slate-700 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-slate-500">
+              <span className="rounded border border-mesh-border-strong px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-slate-500">
                 {routerInfoRef.current?.router_type ?? 'router'}
               </span>
             </div>
@@ -1153,7 +1153,7 @@ function TopologyPageInner() {
             </span>
           </div>
 
-          <div className="absolute right-4 top-4 z-10 flex items-center gap-3 rounded-lg border border-slate-700/50 bg-slate-900/80 px-4 py-2 backdrop-blur-sm">
+          <div className="absolute right-4 top-4 z-10 flex items-center gap-3 rounded-lg border border-mesh-border-strong bg-mesh-surface-1 px-4 py-2 backdrop-blur-sm">
             <button
               onClick={autoLayout}
               className="text-slate-400 transition-colors hover:text-white"
@@ -1195,7 +1195,7 @@ function TopologyPageInner() {
 
           {stats.total === 0 && (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-4">
-              <div className="pointer-events-auto rounded-lg border border-slate-800 bg-slate-950/90 px-8 py-4 shadow-2xl">
+              <div className="pointer-events-auto rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 px-8 py-4 shadow-2xl">
                 <EmptyState
                   icon={Network}
                   title="No topology devices"
@@ -1218,7 +1218,7 @@ function TopologyPageInner() {
       >
         <SheetContent
           side="right"
-          className="w-full overflow-y-auto border-slate-800 bg-slate-950 sm:max-w-md"
+          className="w-full overflow-y-auto border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-md"
         >
           {selectedDevice && <DeviceDetailPanel device={selectedDevice} />}
         </SheetContent>

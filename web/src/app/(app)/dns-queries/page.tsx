@@ -147,7 +147,7 @@ export default function DnsQueriesPage() {
         {stats === null ? (
           <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i} className="border-slate-800 bg-slate-900">
+              <Card key={i} className="border-mesh-border-strong bg-mesh-surface-1/95">
                 <CardContent className="py-4">
                   <Skeleton className="h-4 w-20 mb-2" />
                   <Skeleton className="h-8 w-16" />
@@ -157,7 +157,7 @@ export default function DnsQueriesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-            <Card className="border-slate-800 bg-slate-900">
+            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
               <CardContent className="py-4">
                 <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
                   <Globe className="h-3.5 w-3.5" />
@@ -168,7 +168,7 @@ export default function DnsQueriesPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-slate-800 bg-slate-900">
+            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
               <CardContent className="py-4">
                 <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
                   <ShieldAlert className="h-3.5 w-3.5" />
@@ -184,7 +184,7 @@ export default function DnsQueriesPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-slate-800 bg-slate-900">
+            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
               <CardContent className="py-4">
                 <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
                   <Search className="h-3.5 w-3.5" />
@@ -195,7 +195,7 @@ export default function DnsQueriesPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-slate-800 bg-slate-900">
+            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
               <CardContent className="py-4">
                 <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
                   <Users className="h-3.5 w-3.5" />
@@ -214,7 +214,7 @@ export default function DnsQueriesPage() {
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
             {/* Top queried domains */}
             {stats.top_queried_domains.length > 0 && (
-              <Card className="border-slate-800 bg-slate-900">
+              <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-400">
                     <BarChart3 className="h-4 w-4" />
@@ -239,7 +239,7 @@ export default function DnsQueriesPage() {
 
             {/* Top blocked domains */}
             {stats.top_blocked_domains.length > 0 && (
-              <Card className="border-slate-800 bg-slate-900">
+              <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-400">
                     <Shield className="h-4 w-4" />
@@ -264,7 +264,7 @@ export default function DnsQueriesPage() {
 
             {/* Per-device stats */}
             {stats.per_device_stats.length > 0 && (
-              <Card className="border-slate-800 bg-slate-900">
+              <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
                 <CardHeader className="pb-3">
                   <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-400">
                     <Users className="h-4 w-4" />
@@ -345,14 +345,14 @@ export default function DnsQueriesPage() {
               placeholder="Filter by domain..."
               value={domainSearch}
               onChange={(e) => setDomainSearch(e.target.value)}
-              className="pl-9 bg-[#12121a] border-slate-800 text-sm"
+              className="pl-9 bg-[#12121a] border-mesh-border-strong text-sm"
             />
           </div>
         </div>
 
         {/* Query log table */}
         {logData === null ? (
-          <Card className="border-slate-800 bg-slate-900">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
             <CardContent className="py-6 space-y-3">
               {Array.from({ length: 8 }).map((_, i) => (
                 <Skeleton key={i} className="h-10 w-full" />
@@ -360,7 +360,7 @@ export default function DnsQueriesPage() {
             </CardContent>
           </Card>
         ) : logData.items.length === 0 ? (
-          <Card className="border-slate-800 bg-slate-900">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
             <CardContent>
               <EmptyState
                 icon={Globe}
@@ -372,11 +372,11 @@ export default function DnsQueriesPage() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="border-slate-800 bg-slate-900 overflow-hidden">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-slate-800 hover:bg-transparent">
+                  <TableRow className="border-mesh-border-strong hover:bg-transparent">
                     <TableHead className="text-slate-500">Time</TableHead>
                     <TableHead className="text-slate-500">Client</TableHead>
                     <TableHead className="text-slate-500">Domain</TableHead>
@@ -390,7 +390,7 @@ export default function DnsQueriesPage() {
                   {logData.items.map((entry) => (
                     <TableRow
                       key={entry.id}
-                      className="border-slate-800 hover:bg-slate-800/40"
+                      className="border-mesh-border-strong hover:bg-mesh-surface-2/55"
                     >
                       <TableCell className="text-xs text-slate-500 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
@@ -423,7 +423,7 @@ export default function DnsQueriesPage() {
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className="text-[10px] border-slate-700 text-slate-400"
+                          className="text-[10px] border-mesh-border-strong text-slate-400"
                         >
                           {entry.query_type}
                         </Badge>
@@ -442,7 +442,7 @@ export default function DnsQueriesPage() {
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={`text-[10px] border-slate-700 ${
+                          className={`text-[10px] border-mesh-border-strong ${
                             entry.response_code === "NOERROR"
                               ? "text-emerald-400 border-emerald-700/30"
                               : entry.response_code === "NXDOMAIN"
@@ -466,7 +466,7 @@ export default function DnsQueriesPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-slate-800 px-4 py-3">
+              <div className="flex items-center justify-between border-t border-mesh-border px-4 py-3">
                 <span className="text-xs text-slate-500">
                   Page {logData.page} of {totalPages} ({logData.total.toLocaleString()} entries)
                 </span>

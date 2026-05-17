@@ -21,7 +21,7 @@ test.describe('Alert card left border accent', () => {
 
     // All alert cards should have rounded-l-none (border-radius 0 on left side)
     // to prevent the curly-brace artifact from rounded-2xl base Card
-    const alertCards = page.locator('.rounded-l-none.border-slate-800');
+    const alertCards = page.locator('.rounded-l-none.border-mesh-border-strong');
     const count = await alertCards.count();
     expect(count).toBeGreaterThan(0);
 

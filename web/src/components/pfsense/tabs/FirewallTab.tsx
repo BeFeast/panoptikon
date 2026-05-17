@@ -179,7 +179,7 @@ function FilterRulesSection() {
 
   return (
     <>
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
             <Shield className="h-4 w-4 text-blue-400" />
@@ -194,7 +194,7 @@ function FilterRulesSection() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                   <th className="px-3 py-2">Action</th>
                   <th className="px-3 py-2">Interface</th>
                   <th className="px-3 py-2">Protocol</th>
@@ -216,7 +216,7 @@ function FilterRulesSection() {
                   (rules ?? []).map((r) => (
                     <tr
                       key={r.id}
-                      className={`border-b border-slate-800/50 hover:bg-slate-800/30 ${r.disabled ? "opacity-50" : ""}`}
+                      className={`border-b border-mesh-border-strong hover:bg-mesh-surface-2 ${r.disabled ? "opacity-50" : ""}`}
                     >
                       <td className="px-3 py-2"><ActionBadge action={r.action} /></td>
                       <td className="px-3 py-2 text-slate-300">{r.interface}</td>
@@ -265,7 +265,7 @@ function FilterRulesSection() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={!!editRule} onOpenChange={(o) => !o && setEditRule(null)}>
-        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editRule?.id ? "Edit Rule" : "Create Rule"}
@@ -278,7 +278,7 @@ function FilterRulesSection() {
                 <select
                   value={editRule.action}
                   onChange={(e) => setEditRule({ ...editRule, action: e.target.value as "pass" | "block" | "reject" })}
-                  className="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white"
                 >
                   <option value="pass">Pass</option>
                   <option value="block">Block</option>
@@ -290,7 +290,7 @@ function FilterRulesSection() {
                 <Input
                   value={editRule.interface}
                   onChange={(e) => setEditRule({ ...editRule, interface: e.target.value })}
-                  className="border-slate-800 bg-slate-950 text-white"
+                  className="border-mesh-border-strong bg-mesh-surface-1 text-white"
                 />
               </div>
               <div className="space-y-2">
@@ -299,7 +299,7 @@ function FilterRulesSection() {
                   placeholder="tcp, udp, icmp..."
                   value={editRule.protocol}
                   onChange={(e) => setEditRule({ ...editRule, protocol: e.target.value })}
-                  className="border-slate-800 bg-slate-950 text-white"
+                  className="border-mesh-border-strong bg-mesh-surface-1 text-white"
                 />
               </div>
               <div className="space-y-2">
@@ -308,7 +308,7 @@ function FilterRulesSection() {
                   placeholder="80, 443, 1000-2000"
                   value={editRule.port}
                   onChange={(e) => setEditRule({ ...editRule, port: e.target.value })}
-                  className="border-slate-800 bg-slate-950 text-white"
+                  className="border-mesh-border-strong bg-mesh-surface-1 text-white"
                 />
               </div>
               <div className="space-y-2">
@@ -316,7 +316,7 @@ function FilterRulesSection() {
                 <Input
                   value={editRule.source}
                   onChange={(e) => setEditRule({ ...editRule, source: e.target.value })}
-                  className="border-slate-800 bg-slate-950 text-white"
+                  className="border-mesh-border-strong bg-mesh-surface-1 text-white"
                 />
               </div>
               <div className="space-y-2">
@@ -324,7 +324,7 @@ function FilterRulesSection() {
                 <Input
                   value={editRule.destination}
                   onChange={(e) => setEditRule({ ...editRule, destination: e.target.value })}
-                  className="border-slate-800 bg-slate-950 text-white"
+                  className="border-mesh-border-strong bg-mesh-surface-1 text-white"
                 />
               </div>
               <div className="col-span-2 space-y-2">
@@ -332,7 +332,7 @@ function FilterRulesSection() {
                 <Input
                   value={editRule.description}
                   onChange={(e) => setEditRule({ ...editRule, description: e.target.value })}
-                  className="border-slate-800 bg-slate-950 text-white"
+                  className="border-mesh-border-strong bg-mesh-surface-1 text-white"
                 />
               </div>
             </div>
@@ -350,7 +350,7 @@ function FilterRulesSection() {
 
       {/* Delete Confirm */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Filter Rule</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -358,7 +358,7 @@ function FilterRulesSection() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-800 text-slate-400">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-mesh-border-strong text-slate-400">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>
               Delete
             </AlertDialogAction>
@@ -449,7 +449,7 @@ function NatSection() {
 
   return (
     <>
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
             <Shield className="h-4 w-4 text-blue-400" />
@@ -464,7 +464,7 @@ function NatSection() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                   <th className="px-3 py-2">Interface</th>
                   <th className="px-3 py-2">Protocol</th>
                   <th className="px-3 py-2">Source</th>
@@ -486,7 +486,7 @@ function NatSection() {
                   (rules ?? []).map((r) => (
                     <tr
                       key={r.id}
-                      className={`border-b border-slate-800/50 hover:bg-slate-800/30 ${r.disabled ? "opacity-50" : ""}`}
+                      className={`border-b border-mesh-border-strong hover:bg-mesh-surface-2 ${r.disabled ? "opacity-50" : ""}`}
                     >
                       <td className="px-3 py-2 text-slate-300">{r.interface}</td>
                       <td className="px-3 py-2 text-slate-400">{r.protocol ?? "*"}</td>
@@ -516,7 +516,7 @@ function NatSection() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={!!editRule} onOpenChange={(o) => !o && setEditRule(null)}>
-        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editRule?.id ? "Edit NAT Rule" : "Create NAT Rule"}
@@ -526,31 +526,31 @@ function NatSection() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-slate-300">Interface</Label>
-                <Input value={editRule.interface} onChange={(e) => setEditRule({ ...editRule, interface: e.target.value })} className="border-slate-800 bg-slate-950 text-white" />
+                <Input value={editRule.interface} onChange={(e) => setEditRule({ ...editRule, interface: e.target.value })} className="border-mesh-border-strong bg-mesh-surface-1 text-white" />
               </div>
               <div className="space-y-2">
                 <Label className="text-slate-300">Protocol</Label>
-                <Input placeholder="tcp, udp" value={editRule.protocol} onChange={(e) => setEditRule({ ...editRule, protocol: e.target.value })} className="border-slate-800 bg-slate-950 text-white" />
+                <Input placeholder="tcp, udp" value={editRule.protocol} onChange={(e) => setEditRule({ ...editRule, protocol: e.target.value })} className="border-mesh-border-strong bg-mesh-surface-1 text-white" />
               </div>
               <div className="space-y-2">
                 <Label className="text-slate-300">Source</Label>
-                <Input value={editRule.source} onChange={(e) => setEditRule({ ...editRule, source: e.target.value })} className="border-slate-800 bg-slate-950 text-white" />
+                <Input value={editRule.source} onChange={(e) => setEditRule({ ...editRule, source: e.target.value })} className="border-mesh-border-strong bg-mesh-surface-1 text-white" />
               </div>
               <div className="space-y-2">
                 <Label className="text-slate-300">Destination</Label>
-                <Input value={editRule.destination} onChange={(e) => setEditRule({ ...editRule, destination: e.target.value })} className="border-slate-800 bg-slate-950 text-white" />
+                <Input value={editRule.destination} onChange={(e) => setEditRule({ ...editRule, destination: e.target.value })} className="border-mesh-border-strong bg-mesh-surface-1 text-white" />
               </div>
               <div className="space-y-2">
                 <Label className="text-slate-300">Target</Label>
-                <Input placeholder="192.168.1.100" value={editRule.target} onChange={(e) => setEditRule({ ...editRule, target: e.target.value })} className="border-slate-800 bg-slate-950 text-white" />
+                <Input placeholder="192.168.1.100" value={editRule.target} onChange={(e) => setEditRule({ ...editRule, target: e.target.value })} className="border-mesh-border-strong bg-mesh-surface-1 text-white" />
               </div>
               <div className="space-y-2">
                 <Label className="text-slate-300">Local Port</Label>
-                <Input placeholder="80" value={editRule.local_port} onChange={(e) => setEditRule({ ...editRule, local_port: e.target.value })} className="border-slate-800 bg-slate-950 text-white" />
+                <Input placeholder="80" value={editRule.local_port} onChange={(e) => setEditRule({ ...editRule, local_port: e.target.value })} className="border-mesh-border-strong bg-mesh-surface-1 text-white" />
               </div>
               <div className="col-span-2 space-y-2">
                 <Label className="text-slate-300">Description</Label>
-                <Input value={editRule.description} onChange={(e) => setEditRule({ ...editRule, description: e.target.value })} className="border-slate-800 bg-slate-950 text-white" />
+                <Input value={editRule.description} onChange={(e) => setEditRule({ ...editRule, description: e.target.value })} className="border-mesh-border-strong bg-mesh-surface-1 text-white" />
               </div>
             </div>
           )}
@@ -564,7 +564,7 @@ function NatSection() {
       </Dialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete NAT Rule</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -572,7 +572,7 @@ function NatSection() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-800 text-slate-400">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-mesh-border-strong text-slate-400">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -645,7 +645,7 @@ function AliasesSection() {
 
   return (
     <>
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
             <Shield className="h-4 w-4 text-blue-400" />
@@ -660,7 +660,7 @@ function AliasesSection() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                   <th className="px-3 py-2">Name</th>
                   <th className="px-3 py-2">Type</th>
                   <th className="px-3 py-2">Address</th>
@@ -675,7 +675,7 @@ function AliasesSection() {
                   </tr>
                 ) : (
                   (aliases ?? []).map((a) => (
-                    <tr key={a.name} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                    <tr key={a.name} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 font-medium text-white">{a.name}</td>
                       <td className="px-3 py-2 text-slate-400">{a.alias_type}</td>
                       <td className="px-3 py-2 font-mono text-xs text-slate-300 max-w-[300px] truncate">{a.address}</td>
@@ -700,7 +700,7 @@ function AliasesSection() {
       </Card>
 
       <Dialog open={!!editAlias} onOpenChange={(o) => !o && setEditAlias(null)}>
-        <DialogContent className="border-slate-800 bg-slate-900">
+        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editAlias?.originalName ? "Edit Alias" : "Create Alias"}
@@ -710,14 +710,14 @@ function AliasesSection() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label className="text-slate-300">Name</Label>
-                <Input value={editAlias.name} onChange={(e) => setEditAlias({ ...editAlias, name: e.target.value })} className="border-slate-800 bg-slate-950 text-white" />
+                <Input value={editAlias.name} onChange={(e) => setEditAlias({ ...editAlias, name: e.target.value })} className="border-mesh-border-strong bg-mesh-surface-1 text-white" />
               </div>
               <div className="space-y-2">
                 <Label className="text-slate-300">Type</Label>
                 <select
                   value={editAlias.alias_type}
                   onChange={(e) => setEditAlias({ ...editAlias, alias_type: e.target.value })}
-                  className="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white"
                 >
                   <option value="host">Host</option>
                   <option value="network">Network</option>
@@ -727,11 +727,11 @@ function AliasesSection() {
               </div>
               <div className="space-y-2">
                 <Label className="text-slate-300">Address</Label>
-                <Input placeholder="Space-separated values" value={editAlias.address} onChange={(e) => setEditAlias({ ...editAlias, address: e.target.value })} className="border-slate-800 bg-slate-950 text-white" />
+                <Input placeholder="Space-separated values" value={editAlias.address} onChange={(e) => setEditAlias({ ...editAlias, address: e.target.value })} className="border-mesh-border-strong bg-mesh-surface-1 text-white" />
               </div>
               <div className="space-y-2">
                 <Label className="text-slate-300">Description</Label>
-                <Input value={editAlias.description} onChange={(e) => setEditAlias({ ...editAlias, description: e.target.value })} className="border-slate-800 bg-slate-950 text-white" />
+                <Input value={editAlias.description} onChange={(e) => setEditAlias({ ...editAlias, description: e.target.value })} className="border-mesh-border-strong bg-mesh-surface-1 text-white" />
               </div>
             </div>
           )}
@@ -745,7 +745,7 @@ function AliasesSection() {
       </Dialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Alias</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -753,7 +753,7 @@ function AliasesSection() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-800 text-slate-400">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-mesh-border-strong text-slate-400">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -767,7 +767,7 @@ function AliasesSection() {
 export function FirewallTab() {
   return (
     <Tabs defaultValue="rules" className="w-full">
-      <TabsList className="border-slate-800 bg-slate-900">
+      <TabsList className="border-mesh-border-strong bg-mesh-surface-1">
         <TabsTrigger value="rules">Filter Rules</TabsTrigger>
         <TabsTrigger value="nat">NAT</TabsTrigger>
         <TabsTrigger value="aliases">Aliases</TabsTrigger>

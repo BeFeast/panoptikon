@@ -43,7 +43,7 @@ test.describe("Router card polish (#555)", () => {
 
     // Wait for either System tab (connected) or fallback message
     const systemTab = page.getByRole("tab", { name: "System" });
-    const fallback = page.getByText(/not configured|unreachable/i);
+    const fallback = page.getByText(/not configured|unreachable/i).first();
     await expect(systemTab.or(fallback)).toBeVisible({ timeout: 40000 });
 
     // If System tab is rendered, verify stat cards are not interactive-looking
@@ -112,7 +112,8 @@ test.describe("Router card polish (#555)", () => {
 
     // If the status header rendered (badge visible), verify alignment
     if (await badge.isVisible()) {
-      const title = page.locator("h1").filter({ hasText: "MikroTik Router" });
+      // Use a regex anchor to avoid matching "MikroTik router is unreachable" (lowercase 'r').
+      const title = page.locator("h1").filter({ hasText: /^MikroTik Router$/ });
       await expect(title).toBeVisible();
 
       const titleBox = await title.boundingBox();

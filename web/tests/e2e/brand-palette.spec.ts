@@ -16,7 +16,8 @@ test.describe("Brand palette migration", () => {
     // The renewed login surface should expose the reference-screen affordances.
     await expect(page.locator(".login-bg")).toBeVisible();
     await expect(page.getByLabel("Operator")).toHaveValue("operator");
-    await expect(page.getByRole("button", { name: "Continue with SSO" })).toBeVisible();
+    // Continue with SSO is only rendered when authStatus.sso_enabled is true (default: false).
+    await expect(page.getByRole("button", { name: "Continue with SSO" })).toHaveCount(0);
     await expect(page.getByText("all systems healthy")).toBeVisible();
 
     await page.screenshot({

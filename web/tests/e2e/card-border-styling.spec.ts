@@ -10,10 +10,8 @@ test.describe('Card border styling — no curly-bracket borders', () => {
     await page.goto('/vpn-status/');
     await expect(page.getByRole('heading', { name: 'VPN Status', level: 1 })).toBeVisible({ timeout: 15000 });
 
-    // The page header section should use rounded-xl, not rounded-2xl
-    const vpnHeader = page.locator('section.rounded-xl').first();
-    await expect(vpnHeader).toBeVisible();
-
+    // Header section is now a flat border-b panel (mesh refresh); the
+    // curly-bracket bug is still covered by the rounded-lg radius check below.
     // Cards on this page should have compact radius (rounded-lg = 0.5rem)
     const vpnCard = page.locator('[class*="rounded-lg"][class*="border"]').first();
     const vpnRadius = await vpnCard.evaluate((el) => {
@@ -29,9 +27,7 @@ test.describe('Card border styling — no curly-bracket borders', () => {
     await page.goto('/qos/');
     await expect(page.getByRole('heading', { name: /QoS/i, level: 1 })).toBeVisible({ timeout: 15000 });
 
-    const qosHeader = page.locator('section.rounded-xl').first();
-    await expect(qosHeader).toBeVisible();
-
+    // Header section is now a flat border-b panel (mesh refresh); see note above.
     // Verify a Card element on QoS page has compact rounded-lg radius.
     const qosCard = page.locator('.rounded-lg.border').first();
     const qosRadius = await qosCard.evaluate((el) => {

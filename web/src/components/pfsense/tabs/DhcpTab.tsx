@@ -45,7 +45,7 @@ function ActiveLeasesSection() {
   if (loading) return <Skeleton className="h-48 w-full" />;
 
   return (
-    <Card className="border-slate-800 bg-slate-900">
+    <Card className="border-mesh-border-strong bg-mesh-surface-1">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-white">
           <Server className="h-4 w-4 text-blue-400" />
@@ -56,7 +56,7 @@ function ActiveLeasesSection() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+              <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                 <th className="px-3 py-2">IP</th>
                 <th className="px-3 py-2">MAC</th>
                 <th className="px-3 py-2">Hostname</th>
@@ -75,7 +75,7 @@ function ActiveLeasesSection() {
                 </tr>
               ) : (
                 (leases ?? []).map((l, i) => (
-                  <tr key={`${l.mac}-${i}`} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                  <tr key={`${l.mac}-${i}`} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                     <td className="px-3 py-2 font-mono text-white">{l.ip}</td>
                     <td className="px-3 py-2 font-mono text-slate-400">{l.mac}</td>
                     <td className="px-3 py-2 text-slate-300">{l.hostname ?? "\u2014"}</td>
@@ -147,7 +147,7 @@ function StaticMappingsSection() {
 
   return (
     <>
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
             <Server className="h-4 w-4 text-blue-400" />
@@ -166,7 +166,7 @@ function StaticMappingsSection() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                   <th className="px-3 py-2">MAC</th>
                   <th className="px-3 py-2">IP</th>
                   <th className="px-3 py-2">Hostname</th>
@@ -184,7 +184,7 @@ function StaticMappingsSection() {
                   </tr>
                 ) : (
                   (mappings ?? []).map((m) => (
-                    <tr key={m.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                    <tr key={m.id} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 font-mono text-white">{m.mac}</td>
                       <td className="px-3 py-2 font-mono text-slate-300">{m.ip}</td>
                       <td className="px-3 py-2 text-slate-300">{m.hostname ?? "\u2014"}</td>
@@ -211,7 +211,7 @@ function StaticMappingsSection() {
 
       {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="border-slate-800 bg-slate-900">
+        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <DialogHeader>
             <DialogTitle className="text-white">Add Static Mapping</DialogTitle>
           </DialogHeader>
@@ -222,7 +222,7 @@ function StaticMappingsSection() {
                 placeholder="aa:bb:cc:dd:ee:ff"
                 value={form.mac}
                 onChange={(e) => setForm({ ...form, mac: e.target.value })}
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white"
               />
             </div>
             <div className="space-y-2">
@@ -231,7 +231,7 @@ function StaticMappingsSection() {
                 placeholder="192.168.1.100"
                 value={form.ip}
                 onChange={(e) => setForm({ ...form, ip: e.target.value })}
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white"
               />
             </div>
             <div className="space-y-2">
@@ -240,7 +240,7 @@ function StaticMappingsSection() {
                 placeholder="my-device"
                 value={form.hostname}
                 onChange={(e) => setForm({ ...form, hostname: e.target.value })}
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white"
               />
             </div>
             <div className="space-y-2">
@@ -249,7 +249,7 @@ function StaticMappingsSection() {
                 placeholder="Optional description"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white"
               />
             </div>
           </div>
@@ -270,7 +270,7 @@ function StaticMappingsSection() {
 
       {/* Delete Confirm */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Static Mapping</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -278,7 +278,7 @@ function StaticMappingsSection() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-800 text-slate-400">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-mesh-border-strong text-slate-400">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>
               Delete
             </AlertDialogAction>
@@ -294,7 +294,7 @@ function StaticMappingsSection() {
 export function DhcpTab() {
   return (
     <Tabs defaultValue="leases" className="w-full">
-      <TabsList className="border-slate-800 bg-slate-900">
+      <TabsList className="border-mesh-border-strong bg-mesh-surface-1">
         <TabsTrigger value="leases">Active Leases</TabsTrigger>
         <TabsTrigger value="mappings">Static Mappings</TabsTrigger>
       </TabsList>

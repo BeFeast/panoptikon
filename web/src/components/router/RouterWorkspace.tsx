@@ -16,7 +16,7 @@ type RouterWorkspaceProps = {
 export function RouterWorkspace({ active, children }: RouterWorkspaceProps) {
   return (
     <div className="min-w-0 space-y-5">
-      <div className="rounded-md border border-slate-800/80 bg-slate-950/80 p-3">
+      <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-3">
         <RouterSelector active={active} />
       </div>
       {children}
@@ -27,7 +27,7 @@ export function RouterWorkspace({ active, children }: RouterWorkspaceProps) {
 export function RouterWorkspaceLoading() {
   return (
     <div className="space-y-5">
-      <div className="rounded-md border border-slate-800 bg-slate-950 p-4">
+      <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-2">
             <Skeleton className="h-7 w-56" />
@@ -65,7 +65,7 @@ export function RouterWorkspaceState({
       : "border-amber-500/30 bg-amber-500/10 text-amber-300";
 
   return (
-    <Card className="border-slate-800 bg-slate-950 shadow-none">
+    <Card className="border-mesh-border-strong bg-mesh-surface-1 shadow-none">
       <CardContent className="grid gap-5 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
         <div className="min-w-0 space-y-3">
           <div className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-xs ${toneClass}`}>
@@ -87,7 +87,7 @@ export function RouterWorkspaceState({
         <Button
           variant="outline"
           asChild
-          className="w-full border-slate-700 text-slate-200 hover:bg-slate-800 sm:w-auto"
+          className="w-full border-mesh-border-strong text-slate-200 hover:bg-mesh-surface-2 sm:w-auto"
         >
           <Link href={settingsHref}>
             <Settings className="mr-2 h-4 w-4" />

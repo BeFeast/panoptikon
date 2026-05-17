@@ -210,7 +210,7 @@ function PfsensePanel() {
           type="text"
           value={host}
           onChange={(e) => setHost(e.target.value)}
-          className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
           placeholder="10.10.0.1"
         />
       </div>
@@ -224,7 +224,7 @@ function PfsensePanel() {
           type="number"
           value={port}
           onChange={(e) => setPort(Number(e.target.value) || 22)}
-          className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
           placeholder="22"
         />
       </div>
@@ -238,14 +238,14 @@ function PfsensePanel() {
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
           placeholder="root"
         />
       </div>
 
       <div className="space-y-1.5">
         <Label className="text-xs text-slate-400">Authentication</Label>
-        <div className="flex gap-1 rounded-md border border-slate-800 bg-slate-950 p-1">
+        <div className="flex gap-1 rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-1">
           <button
             type="button"
             onClick={() => setAuthType("password")}
@@ -282,7 +282,7 @@ function PfsensePanel() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+            className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
             placeholder={
               passwordSet
                 ? "••••••••  (leave blank to keep current)"
@@ -301,7 +301,7 @@ function PfsensePanel() {
             type="text"
             value={privateKey}
             onChange={(e) => setPrivateKey(e.target.value)}
-            className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+            className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
             placeholder={
               privateKeySet
                 ? "(leave blank to keep current)"
@@ -333,7 +333,7 @@ function PfsensePanel() {
           variant="outline"
           onClick={handleTest}
           disabled={!host || testStatus === "loading"}
-          className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+          className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55 disabled:opacity-40"
         >
           {testStatus === "loading" ? (
             <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -399,7 +399,7 @@ export default function PfsenseSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -408,14 +408,14 @@ export default function PfsenseSettingsPage() {
           </h1>
         </div>
 
-        <Card className="border-slate-800 bg-slate-900">
+        <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
                 <Shield className="h-4 w-4 text-blue-400" />
               </div>
               <div>
-                <CardTitle className="text-base text-white">
+                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                   pfSense Connection
                 </CardTitle>
                 <CardDescription className="text-xs text-slate-500">

@@ -112,14 +112,14 @@ export default function AuditLogPage() {
           </a>
         </div>
 
-        <Card className="border-slate-800 bg-slate-900">
+        <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-500/10">
                 <FileText className="h-4 w-4 text-indigo-400" />
               </div>
               <div className="flex-1">
-                <CardTitle className="text-base text-white">
+                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                   Configuration Changes
                 </CardTitle>
                 <CardDescription className="text-xs text-slate-500">
@@ -133,7 +133,7 @@ export default function AuditLogPage() {
                 <select
                   value={actionFilter}
                   onChange={(e) => handleFilterChange(e.target.value)}
-                  className="rounded-md border border-slate-800 bg-slate-950 px-2.5 py-1.5 text-xs text-slate-300 outline-none focus:border-indigo-500"
+                  className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-2.5 py-1.5 text-xs text-slate-300 outline-none focus:border-indigo-500"
                 >
                   <option value="">All actions</option>
                   {actions.map((a) => (
@@ -157,7 +157,7 @@ export default function AuditLogPage() {
                 No audit log entries yet.
               </div>
             ) : (
-              <div className="divide-y divide-slate-800/50">
+              <div className="divide-y divide-mesh-border">
                 {items.map((entry) => {
                   const expanded = expandedId === entry.id;
                   const commands = parseCommands(entry.commands);
@@ -169,7 +169,7 @@ export default function AuditLogPage() {
                         onClick={() =>
                           setExpandedId(expanded ? null : entry.id)
                         }
-                        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-800/40"
+                        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-mesh-surface-2/70"
                       >
                         {/* Expand icon */}
                         {expanded ? (
@@ -186,7 +186,7 @@ export default function AuditLogPage() {
                         )}
 
                         {/* Action badge */}
-                        <span className="shrink-0 rounded bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-300">
+                        <span className="shrink-0 rounded bg-mesh-surface-2/55 px-2 py-0.5 text-[10px] font-medium text-slate-300">
                           {formatAction(entry.action)}
                         </span>
 
@@ -203,7 +203,7 @@ export default function AuditLogPage() {
 
                       {/* Expanded details */}
                       {expanded && (
-                        <div className="border-t border-slate-800/50 bg-slate-950/50 px-4 py-3">
+                        <div className="border-t border-mesh-border bg-mesh-surface-1/90 px-4 py-3">
                           {entry.error_msg && (
                             <div className="mb-3 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
                               <p className="text-xs text-rose-400">
@@ -221,7 +221,7 @@ export default function AuditLogPage() {
                             {commands.map((cmd, i) => (
                               <div
                                 key={i}
-                                className="rounded bg-slate-900 px-3 py-1.5 font-mono text-xs text-slate-300"
+                                className="rounded bg-mesh-surface-1/95 px-3 py-1.5 font-mono text-xs text-slate-300"
                               >
                                 {cmd}
                               </div>
@@ -237,7 +237,7 @@ export default function AuditLogPage() {
 
             {/* Pagination */}
             {total > 0 && (
-              <div className="flex items-center justify-between border-t border-slate-800 px-4 py-3">
+              <div className="flex items-center justify-between border-t border-mesh-border px-4 py-3">
                 <span className="text-xs text-slate-500">
                   {total} {total === 1 ? "entry" : "entries"}
                   {totalPages > 1 &&
