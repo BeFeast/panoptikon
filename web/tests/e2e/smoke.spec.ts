@@ -14,7 +14,7 @@ test.describe("Smoke Tests", () => {
   test("dashboard loads without errors", async ({ page }) => {
     await page.goto("/dashboard/");
     await expect(
-      page.getByRole("heading", { name: "Dashboard", level: 1 }),
+      page.locator('[data-testid="dashboard-title"]'),
     ).toBeVisible({ timeout: 15000 });
     await page.screenshot({ path: "tests/screenshots/smoke-dashboard.png" });
   });
@@ -73,7 +73,7 @@ test.describe("Smoke Tests", () => {
 
     await page.goto("/dashboard/");
     await expect(
-      page.getByRole("heading", { name: "Dashboard", level: 1 }),
+      page.locator('[data-testid="dashboard-title"]'),
     ).toBeVisible({ timeout: 15000 });
 
     // Allow network errors (external services may be down) but no JS crashes
