@@ -1,73 +1,71 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('Devices page', () => {
+test.describe('Devices page (mesh U1 layout)', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/devices/');
   });
 
-  test.skip('page loads with heading', async ({ page }) => {
-    await expect(page.getByRole('heading', { name: 'Devices', level: 1 })).toBeVisible({ timeout: 15000 });
-    await page.screenshot({ path: 'tests/screenshots/devices-page.png', fullPage: true });
+  test('page loads with mesh header', async ({ page }) => {
+    await expect(page.locator('[data-testid="devices-root"]')).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole('heading', { name: 'Devices', level: 1 })).toBeVisible();
+    // NETWORK eyebrow
+    await expect(page.getByText('Network', { exact: true }).first()).toBeVisible();
+    await page.screenshot({ path: 'tests/screenshots/devices-mesh-page.png', fullPage: true });
   });
 
-  test('devices page has filter buttons', async ({ page }) => {
-    // Button accessible names include counts once devices load (e.g. "All 42"),
-    // so use regex to match the label prefix.
-    await expect(page.getByRole('button', { name: /^All\b/ })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByRole('button', { name: /^Online\b/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Offline\b/ })).toBeVisible();
-    await expect(page.getByRole('button', { name: /^Unknown\b/ })).toBeVisible();
+  test('query bar + filter chips render', async ({ page }) => {
+    await expect(page.locator('[data-testid="query-bar"]')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('[data-testid="devices-query-input"]')).toBeVisible();
+    await expect(page.locator('[data-testid="filter-chip-all"]')).toBeVisible();
+    await expect(page.locator('[data-testid="filter-chip-online"]')).toBeVisible();
+    await expect(page.locator('[data-testid="filter-chip-offline"]')).toBeVisible();
+    await expect(page.locator('[data-testid="filter-chip-unknown"]')).toBeVisible();
   });
 
-  test('devices page has search input', async ({ page }) => {
-    const search = page.getByPlaceholder('Search name, IP, MAC, vendor…');
-    await expect(search).toBeVisible({ timeout: 15000 });
+  test('action buttons render (Rescan, Add device)', async ({ page }) => {
+    await expect(page.locator('[data-testid="devices-rescan"]')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('[data-testid="devices-add"]')).toBeVisible();
   });
 
-  test('devices page has Scan Now button', async ({ page }) => {
-    await expect(page.getByRole('button', { name: 'Scan Now' })).toBeVisible({ timeout: 15000 });
-  });
-
-  test('devices show IP addresses', async ({ page }) => {
-    // Wait for data to load (either device cards or "No devices" message)
+  test('filter chip click changes selection', async ({ page }) => {
     await page.waitForTimeout(2000);
-    await page.screenshot({ path: 'tests/screenshots/devices-loaded.png', fullPage: true });
-    
-    const pageText = await page.textContent('body') ?? '';
-    
-    // Check if there are device cards with IPs or if it shows "No devices match"
-    const ipPattern = /\d+\.\d+\.\d+\.\d+/;
-    const hasDevices = ipPattern.test(pageText);
-    const hasNoDevicesMessage = pageText.includes('No devices match');
-    
-    // Either devices with IPs or empty state - both are valid
-    expect(hasDevices || hasNoDevicesMessage).toBeTruthy();
+    await page.locator('[data-testid="filter-chip-online"]').click();
+    await expect(page.locator('[data-testid="filter-chip-online"]')).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await page.locator('[data-testid="filter-chip-all"]').click();
+    await expect(page.locator('[data-testid="filter-chip-all"]')).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
   });
 
-  test('filter buttons work', async ({ page }) => {
-    // Wait for devices to load (buttons include counts like "All 42")
+  test('search input filters by name/ip/mac', async ({ page }) => {
     await page.waitForTimeout(2000);
-    
-    // Click Online filter — use regex since accessible name includes count
-    await page.getByRole('button', { name: /^Online\b/ }).click();
-    await page.waitForTimeout(500);
-    await page.screenshot({ path: 'tests/screenshots/devices-online-filter.png', fullPage: true });
-    
-    // Click All filter to go back
-    await page.getByRole('button', { name: /^All\b/ }).click();
-    await page.waitForTimeout(500);
-    await page.screenshot({ path: 'tests/screenshots/devices-all-filter.png', fullPage: true });
+    const input = page.locator('[data-testid="devices-query-input"]');
+    await expect(input).toBeVisible();
+    await input.fill('192.168');
+    await page.waitForTimeout(400);
+    await page.screenshot({ path: 'tests/screenshots/devices-mesh-search.png', fullPage: true });
   });
 
-  test('search filters devices', async ({ page }) => {
+  test('shows IPs or empty state', async ({ page }) => {
     await page.waitForTimeout(2000);
-    
-    const search = page.getByPlaceholder('Search name, IP, MAC, vendor…');
-    await expect(search).toBeVisible({ timeout: 15000 });
-    await search.fill('192.168');
-    await page.waitForTimeout(500);
-    
-    await page.screenshot({ path: 'tests/screenshots/devices-search.png', fullPage: true });
+    const pageText = (await page.textContent('body')) ?? '';
+    const hasDevices = /\d+\.\d+\.\d+\.\d+/.test(pageText);
+    const hasEmpty = pageText.includes('No devices match');
+    expect(hasDevices || hasEmpty).toBeTruthy();
+  });
+
+  test('row click opens DetailsDrawer', async ({ page }) => {
+    await page.waitForTimeout(2500);
+    const firstRow = page.locator('[data-testid="device-row"]').first();
+    const rowCount = await page.locator('[data-testid="device-row"]').count();
+    test.skip(rowCount === 0, 'No devices available to open drawer for');
+    await firstRow.click();
+    await expect(page.locator('[data-testid="device-drawer"]')).toBeVisible({ timeout: 5000 });
+    await page.screenshot({ path: 'tests/screenshots/devices-mesh-drawer.png', fullPage: true });
   });
 });
