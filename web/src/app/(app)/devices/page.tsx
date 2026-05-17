@@ -101,6 +101,7 @@ export default function DevicesPage() {
     if (match) {
       setSelectedDevice(match);
       selectedUrlParamConsumed.current = true;
+      window.history.replaceState(window.history.state, "", "/devices");
     }
   }, []);
 

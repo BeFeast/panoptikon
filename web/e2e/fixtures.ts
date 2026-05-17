@@ -34,13 +34,21 @@ export async function setupIfNeeded(page: Page): Promise<boolean> {
     await page.locator("#confirm").fill(PASSWORD);
     await setupButton.click();
     
-    // Should redirect to dashboard after setup
-    await page.waitForURL(/\/(dashboard|login)/, { timeout: 15000 });
-    
-    if (page.url().includes("/dashboard")) {
+    // Parallel CI workers can race initial setup. If this attempt loses
+    // the race, the app may stay on setup with an error; fall through to login.
+    await Promise.race([
+      page.waitForURL(/\/(dashboard|login)/, { timeout: 15000 }).catch(() => null),
+      dashboardHeading.waitFor({ state: "visible", timeout: 15000 }).catch(() => null),
+      signInButton.waitFor({ state: "visible", timeout: 15000 }).catch(() => null),
+      page.getByText("Setup failed. Please try again.").waitFor({ state: "visible", timeout: 15000 }).catch(() => null),
+    ]);
+
+    if (page.url().includes("/dashboard") || await dashboardHeading.isVisible()) {
       return true;
     }
-    // Another worker completed setup (race), need to login now
+
+    await page.goto("/login");
+    await signInButton.waitFor({ state: "visible", timeout: 20000 });
     return false;
   }
   
