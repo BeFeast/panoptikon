@@ -15,15 +15,17 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <AlertCircle className="mb-4 h-12 w-12 text-rose-500/60" />
-      <p className="text-lg font-medium text-slate-400">Something went wrong</p>
-      <p className="mt-1 max-w-sm text-sm text-rose-400/80">{message}</p>
+    <div className="flex flex-col items-center justify-center rounded-md border border-rose-500/20 bg-rose-500/5 px-5 py-12 text-center">
+      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md border border-rose-500/30 bg-slate-950">
+        <AlertCircle className="h-5 w-5 text-rose-300" />
+      </div>
+      <p className="text-sm font-semibold uppercase tracking-[0.16em] text-slate-200">Something went wrong</p>
+      <p className="mt-2 max-w-sm text-sm text-rose-300/80">{message}</p>
       {onRetry && (
         <Button
           variant="outline"
           size="sm"
-          className="mt-5 border-slate-700 text-slate-400 hover:text-white"
+          className="mt-5 border-slate-700 bg-slate-950 text-slate-300 hover:bg-slate-900 hover:text-white"
           onClick={onRetry}
         >
           Try again

@@ -91,13 +91,28 @@ export default function DevicesPage() {
   const [wifiMap, setWifiMap] = useState<Record<string, DeviceWifiInfo>>({});
   const selectedUrlParamConsumed = useRef(false);
 
+  const selectDeviceFromUrl = useCallback((loadedDevices: Device[]) => {
+    if (selectedUrlParamConsumed.current) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const selectedId = params.get("selected") ?? params.get("id");
+    if (!selectedId) return;
+    const match = loadedDevices.find((d) => d.id === selectedId);
+    if (match) {
+      setSelectedDevice(match);
+      selectedUrlParamConsumed.current = true;
+    }
+  }, []);
+
   const load = useCallback(async () => {
     try {
-      setDevices(await fetchDevices());
+      const loadedDevices = await fetchDevices();
+      setDevices(loadedDevices);
+      selectDeviceFromUrl(loadedDevices);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load devices");
     }
-  }, []);
+  }, [selectDeviceFromUrl]);
 
   useEffect(() => {
     load();
@@ -106,17 +121,8 @@ export default function DevicesPage() {
   }, [load]);
 
   useEffect(() => {
-    if (selectedUrlParamConsumed.current) return;
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const selectedId = params.get("selected") ?? params.get("id");
-    if (!selectedId || !devices?.length) return;
-    const match = devices.find((d) => d.id === selectedId);
-    if (match) {
-      setSelectedDevice(match);
-      selectedUrlParamConsumed.current = true;
-    }
-  }, [devices]);
+    if (devices?.length) selectDeviceFromUrl(devices);
+  }, [devices, selectDeviceFromUrl]);
 
   // Fetch Xiaomi WiFi data for device list columns
   useEffect(() => {

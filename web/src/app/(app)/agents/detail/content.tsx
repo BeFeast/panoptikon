@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ArrowLeft, CircuitBoard, Cpu, HardDrive, MemoryStick, Monitor, Timer } from "lucide-react";
+import { ArrowLeft, CircuitBoard, Cpu, HardDrive, MemoryStick, Monitor, Radio, Timer } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -24,6 +24,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { fetchAgent, fetchAgentReports } from "@/lib/api";
+import { EmptyState } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
 import type { Agent, AgentReport } from "@/lib/types";
 import { formatBytes, formatPercent, timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
@@ -66,11 +68,7 @@ export default function AgentDetailContent() {
   if (!id) return null;
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-rose-400">{error}</p>
-      </div>
-    );
+    return <ErrorState message={error} onRetry={load} />;
   }
 
   if (!agent || !reports) {
@@ -148,7 +146,7 @@ export default function AgentDetailContent() {
       {chartData.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* CPU Chart */}
-          <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+          <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
             <h2 className="text-sm font-medium text-slate-400 mb-3">CPU Usage %</h2>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
@@ -179,7 +177,7 @@ export default function AgentDetailContent() {
                   <Line
                     type="monotone"
                     dataKey="cpu"
-                    stroke="#3b82f6"
+                    stroke="#22d3ee"
                     strokeWidth={2}
                     dot={false}
                     connectNulls
@@ -191,7 +189,7 @@ export default function AgentDetailContent() {
           </div>
 
           {/* RAM Chart */}
-          <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+          <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
             <h2 className="text-sm font-medium text-slate-400 mb-3">RAM Usage %</h2>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
@@ -222,7 +220,7 @@ export default function AgentDetailContent() {
                   <Line
                     type="monotone"
                     dataKey="ram"
-                    stroke="#8b5cf6"
+                    stroke="#10b981"
                     strokeWidth={2}
                     dot={false}
                     connectNulls
@@ -234,20 +232,28 @@ export default function AgentDetailContent() {
           </div>
         </div>
       ) : (
-        <div className="rounded-lg border border-slate-800 bg-slate-900 p-8 text-center">
-          <p className="text-slate-500">No report data available yet.</p>
-        </div>
+        <EmptyState
+          icon={Radio}
+          title="No report data available yet"
+          description="This agent has not submitted enough telemetry to draw CPU or RAM history."
+        />
       )}
 
       {/* Reports table */}
-      <div className="rounded-lg border border-slate-800 bg-slate-900">
+      <div className="overflow-hidden rounded-md border border-slate-800 bg-slate-950/60">
         <div className="px-4 py-3 border-b border-slate-800">
           <h2 className="text-sm font-medium text-slate-400">
             Recent Reports ({reports.length})
           </h2>
         </div>
         {reports.length === 0 ? (
-          <div className="p-8 text-center text-slate-500">No reports yet.</div>
+          <div className="p-4">
+            <EmptyState
+              icon={Radio}
+              title="No reports yet"
+              description="Reports will appear here after the agent checks in."
+            />
+          </div>
         ) : (
           <Table>
             <TableHeader>
@@ -383,11 +389,11 @@ function HardwareInfoCard({ agent }: { agent: Agent }) {
   }
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+    <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
       <h2 className="text-sm font-medium text-slate-400 mb-3">Hardware Info</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
         {items.map((item) => (
-          <div key={item.label} className="flex items-start gap-2 text-sm">
+          <div key={item.label} className="flex min-w-0 items-start gap-2 text-sm">
             <span className="mt-0.5 text-slate-500">{item.icon}</span>
             <span className="text-slate-500 shrink-0">{item.label}:</span>
             <span className="text-white truncate" title={item.value}>{item.value}</span>

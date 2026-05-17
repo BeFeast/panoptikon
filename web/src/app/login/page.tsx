@@ -71,28 +71,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="login-bg relative flex min-h-screen items-center justify-center overflow-hidden">
-      {/* Animated gradient orbs */}
-      <div className="login-orb pointer-events-none absolute -left-32 -top-32 h-[500px] w-[500px] rounded-full bg-cyan-500/10 blur-3xl" />
-      <div className="login-orb-reverse pointer-events-none absolute -bottom-40 -right-40 h-[600px] w-[600px] rounded-full bg-slate-500/8 blur-3xl" />
-      <div className="login-orb pointer-events-none absolute left-1/2 top-1/3 h-[300px] w-[300px] -translate-x-1/2 rounded-full bg-cyan-500/5 blur-3xl" />
-
+    <div className="login-bg relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-8">
       <div className="relative z-10 w-full max-w-sm px-4">
-        {/* Glow behind card */}
-        <div className="pointer-events-none absolute inset-0 -z-10 mx-auto flex items-center justify-center">
-          <div className="h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
-        </div>
-
-        <Card className="login-card-glow w-full border-slate-800 bg-slate-900/90 backdrop-blur-sm">
-          <CardHeader className="items-center pb-2">
-            {/* Logo */}
-            <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-xl bg-cyan-500 shadow-lg shadow-cyan-500/20">
-              <span className="text-2xl font-bold text-slate-950">P</span>
+        <Card className="login-card-glow w-full rounded-md border-slate-800/90 bg-slate-950/95 backdrop-blur-sm">
+          <CardHeader className="items-center border-b border-slate-800/80 pb-4">
+            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-md border border-cyan-400/50 bg-cyan-500 shadow-[0_0_28px_rgba(34,211,238,0.18)]">
+              <span className="font-display text-2xl font-bold text-slate-950">P</span>
             </div>
-            <h1 className="font-display bg-gradient-to-r from-cyan-400 via-cyan-300 to-teal-400 bg-clip-text text-2xl font-bold text-transparent">
+            <h1 className="font-display text-2xl font-bold text-white">
               Panoptikon
             </h1>
-            <p className="text-sm text-slate-500">
+            <p className="text-center text-xs uppercase tracking-[0.2em] text-cyan-300/80">
               Sign in to your network operations console
             </p>
           </CardHeader>
@@ -139,12 +128,12 @@ export default function LoginPage() {
                 </div>
 
                 {error && (
-                  <p className="rounded-md bg-rose-500/10 px-3 py-2 text-sm text-rose-400">
+                  <p className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
                     {error}
                   </p>
                 )}
 
-                <Button type="submit" className="w-full" disabled={loading}>
+                <Button type="submit" className="w-full bg-cyan-500 text-slate-950 hover:bg-cyan-400" disabled={loading}>
                   {loading ? "Signing in..." : "Sign In"}
                 </Button>
               </form>

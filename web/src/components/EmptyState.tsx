@@ -29,15 +29,17 @@ export function EmptyState({
   variant?: "default" | "success";
 }) {
   const iconColor =
-    variant === "success" ? "text-emerald-500/70" : "text-slate-600";
+    variant === "success" ? "text-emerald-400/80" : "text-cyan-300/70";
   const titleColor =
-    variant === "success" ? "text-emerald-400" : "text-slate-400";
+    variant === "success" ? "text-emerald-300" : "text-slate-200";
 
   return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <Icon className={`mb-4 h-12 w-12 ${iconColor}`} />
-      <p className={`text-lg font-medium ${titleColor}`}>{title}</p>
-      <p className="mt-1 max-w-sm text-sm text-slate-600">{description}</p>
+    <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-slate-800 bg-slate-950/45 px-5 py-12 text-center">
+      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md border border-slate-800 bg-slate-900/80">
+        <Icon className={`h-5 w-5 ${iconColor}`} />
+      </div>
+      <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${titleColor}`}>{title}</p>
+      <p className="mt-2 max-w-sm text-sm text-slate-500">{description}</p>
       {actionLabel && (actionHref || onAction) && (
         actionHref ? (
           <a href={actionHref}>

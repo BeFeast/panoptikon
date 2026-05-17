@@ -2,10 +2,10 @@ import { test, expect } from "../../e2e/fixtures";
 
 /**
  * E2E tests for the login page visual upgrade:
- * animated background, glow card, gradient text, input focus effects.
+ * static mesh background, glow card, cyan brand accents, input focus effects.
  */
 test.describe("Login page visual upgrade", () => {
-  test("login page has animated background and glow card", async ({
+  test("login page has mesh background and glow card", async ({
     page,
   }) => {
     await page.goto("/login/");
@@ -18,31 +18,37 @@ test.describe("Login page visual upgrade", () => {
       page.getByText("Sign in to your network operations console"),
     ).toBeVisible({ timeout: 15000 });
 
-    // Animated background: the outer container has login-bg class
+    // Mesh background: the outer container owns the console grid treatment.
     const bgContainer = page.locator(".login-bg");
     await expect(bgContainer).toBeVisible();
+    const backgroundImage = await bgContainer.evaluate(
+      (element) => getComputedStyle(element).backgroundImage,
+    );
+    expect(backgroundImage).toContain("linear-gradient");
+    expect(backgroundImage).toContain("radial-gradient");
 
-    // Gradient orbs exist (animated floating blurred elements)
-    const orbs = page.locator(".login-orb");
-    expect(await orbs.count()).toBeGreaterThanOrEqual(1);
+    // Legacy floating orbs should not be present in the renewed mesh direction.
+    await expect(page.locator(".login-orb")).toHaveCount(0);
 
     // Login card has glow effect class
     const glowCard = page.locator(".login-card-glow");
     await expect(glowCard).toBeVisible();
+    await expect(glowCard).toHaveClass(/rounded-md/);
+    await expect(glowCard).toHaveClass(/bg-slate-950/);
 
-    // Brand name has gradient text (transparent text color with bg-clip-text)
+    // Brand name is solid console text, with the cyan monogram carrying the accent.
     const heading = page.getByRole("heading", {
       name: "Panoptikon",
       level: 1,
     });
-    await expect(heading).toHaveClass(/bg-gradient-to-r/);
-    await expect(heading).toHaveClass(/bg-clip-text/);
+    await expect(heading).toHaveClass(/text-white/);
+    await expect(page.locator(".bg-cyan-500").first()).toBeVisible();
 
     // Password input and Sign In button are present
     await expect(page.locator("#password")).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Sign In" }),
-    ).toBeVisible();
+    const submitButton = page.getByRole("button", { name: "Sign In" });
+    await expect(submitButton).toBeVisible();
+    await expect(submitButton).toHaveClass(/bg-cyan-500/);
 
     // Input focus glow wrapper exists
     const focusGlow = page.locator(".input-focus-glow");
