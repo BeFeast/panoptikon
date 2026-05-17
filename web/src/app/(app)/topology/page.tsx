@@ -32,7 +32,6 @@ import {
 } from 'd3-force'
 import {
   Network,
-  Loader2,
   RefreshCw,
   RotateCcw,
   LayoutGrid,
@@ -40,6 +39,7 @@ import {
   ExternalLink,
   Copy,
   Check,
+  Filter as FilterIcon,
 } from 'lucide-react'
 import {
   fetchTopologyGraph,
@@ -49,17 +49,18 @@ import {
 import type { TopologyDevice, TopologyRouter } from '@/lib/types'
 import { getDeviceIcon } from '@/lib/device-icons'
 import { PageTransition } from '@/components/PageTransition'
-import { EmptyState } from '@/components/EmptyState'
-import { ErrorState } from '@/components/ErrorState'
+import { EmptyState as MeshEmptyState } from '@/components/mesh/state/EmptyState'
+import { LoadingState } from '@/components/mesh/state/LoadingState'
+import { ErrorState as MeshErrorState } from '@/components/mesh/state/ErrorState'
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
+  DetailsDrawer,
+  DetailsHeader,
+  DetailsSection,
+  DetailsField,
+  DetailsFooter,
+} from '@/components/mesh/details'
+import { StatusDot } from '@/components/mesh/StatusDot'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { useWsEvent } from '@/lib/ws'
 import Link from 'next/link'
 
@@ -92,6 +93,27 @@ type DeviceNodeType = Node<DeviceNodeData, 'deviceNode'>
 type SubnetGroupType = Node<SubnetGroupData, 'subnetGroup'>
 type TopologyNode = RouterNodeType | DeviceNodeType | SubnetGroupType
 
+// ─── Mesh palette ───────────────────────────────────────
+// Literal hex values are sourced from `/tmp/panopticon-design/panopticon/project/tokens.css`
+// (mesh direction). Using inline values is required because React Flow renders
+// SVG strokes / fills that don't pick up Tailwind classes.
+
+const MESH = {
+  accent: '#38bdf8',
+  primary: '#2563eb',
+  online: '#34d399',
+  offline: '#fb7185',
+  warning: '#fbbf24',
+  violet: '#a78bfa',
+  surface1: '#091633',
+  surface2: '#0e2148',
+  surface3: '#163065',
+  border: 'rgba(96,144,212,0.20)',
+  borderStrong: 'rgba(96,144,212,0.40)',
+  textDim: '#98aecf',
+  textMute: '#5d7799',
+} as const
+
 // ─── Helpers ────────────────────────────────────────────
 
 /** Extract /24 subnet from an IP address (e.g. "192.168.1.42" → "192.168.1.0/24") */
@@ -101,15 +123,15 @@ function getSubnet(ip: string): string {
   return `${parts[0]}.${parts[1]}.${parts[2]}.0/24`
 }
 
-/** Map of subnet → color for visual grouping */
+/** Map of subnet → mesh accent color for visual grouping */
 const SUBNET_COLORS: Record<string, { bg: string; border: string; text: string }> = {}
 const COLOR_PALETTE = [
-  { bg: 'rgba(59, 130, 246, 0.06)', border: 'rgba(59, 130, 246, 0.2)', text: '#60a5fa' },
-  { bg: 'rgba(16, 185, 129, 0.06)', border: 'rgba(16, 185, 129, 0.2)', text: '#34d399' },
-  { bg: 'rgba(168, 85, 247, 0.06)', border: 'rgba(168, 85, 247, 0.2)', text: '#c084fc' },
-  { bg: 'rgba(245, 158, 11, 0.06)', border: 'rgba(245, 158, 11, 0.2)', text: '#fbbf24' },
-  { bg: 'rgba(236, 72, 153, 0.06)', border: 'rgba(236, 72, 153, 0.2)', text: '#f472b6' },
-  { bg: 'rgba(20, 184, 166, 0.06)', border: 'rgba(20, 184, 166, 0.2)', text: '#2dd4bf' },
+  { bg: 'rgba(56,189,248,0.08)',  border: 'rgba(56,189,248,0.30)',  text: MESH.accent },
+  { bg: 'rgba(52,211,153,0.08)',  border: 'rgba(52,211,153,0.30)',  text: MESH.online },
+  { bg: 'rgba(167,139,250,0.08)', border: 'rgba(167,139,250,0.30)', text: MESH.violet },
+  { bg: 'rgba(251,191,36,0.08)',  border: 'rgba(251,191,36,0.30)',  text: MESH.warning },
+  { bg: 'rgba(37,99,235,0.08)',   border: 'rgba(37,99,235,0.30)',   text: MESH.primary },
+  { bg: 'rgba(251,113,133,0.08)', border: 'rgba(251,113,133,0.30)', text: MESH.offline },
 ]
 let colorIndex = 0
 
@@ -164,7 +186,6 @@ function computeForceLayout(
 
   const deviceCount = nodeIds.filter((n) => !n.isRouter).length
 
-  // Collect unique subnets (excluding router) for subnet clustering
   const subnets = new Map<string, string[]>()
   nodeIds.forEach((n) => {
     if (!n.isRouter && n.subnet) {
@@ -174,7 +195,6 @@ function computeForceLayout(
     }
   })
 
-  // Create angle-based subnet centers for forceX/forceY targeting
   const subnetAngle = new Map<string, number>()
   const subnetKeys = Array.from(subnets.keys()).sort()
   subnetKeys.forEach((s, i) => {
@@ -200,7 +220,6 @@ function computeForceLayout(
     target: l.target,
   }))
 
-  // Scale layout parameters based on device count for large networks
   const clusterRadius = Math.max(250, 150 + deviceCount * 4)
   const collideRadius = Math.max(DEVICE_WIDTH, DEVICE_HEIGHT) / 2 + 20
   const chargeStrength = deviceCount > 40 ? -600 : deviceCount > 20 ? -450 : -300
@@ -217,8 +236,6 @@ function computeForceLayout(
     .force('charge', forceManyBody<ForceNode>().strength(chargeStrength))
     .force('center', forceCenter(0, 0).strength(0.05))
     .force('collide', forceCollide<ForceNode>(collideRadius))
-    // Pull devices toward their subnet cluster center
-    // Online devices cluster closer to center; offline drift to periphery
     .force(
       'x',
       forceX<ForceNode>((d) => {
@@ -239,7 +256,6 @@ function computeForceLayout(
     )
     .stop()
 
-  // More iterations for larger graphs to ensure convergence
   const iterations = deviceCount > 40 ? 500 : 300
   for (let i = 0; i < iterations; i++) {
     simulation.tick()
@@ -252,7 +268,7 @@ function computeForceLayout(
   return positions
 }
 
-// ─── Custom Nodes ───────────────────────────────────────
+// ─── Custom Nodes (mesh tokens) ─────────────────────────
 
 function RouterNode({ data }: NodeProps<RouterNodeType>) {
   const routerLabel =
@@ -264,30 +280,27 @@ function RouterNode({ data }: NodeProps<RouterNodeType>) {
 
   return (
     <div
-      className="flex items-center gap-3 rounded-xl border border-mesh-primary/30 bg-gradient-to-br from-mesh-border-strong to-mesh-surface-1 px-5 py-4 shadow-lg shadow-mesh-primary/10"
+      className="flex items-center gap-3 rounded-md border border-mesh-border-strong bg-mesh-surface-2 px-5 py-4 shadow-[0_8px_20px_rgba(0,0,0,0.32)]"
       style={{ width: ROUTER_WIDTH, height: ROUTER_HEIGHT }}
     >
-      <Handle type="source" position={Position.Bottom} className="!bg-mesh-primary" />
-      <Handle type="source" position={Position.Left} id="left" className="!bg-mesh-primary" />
-      <Handle type="source" position={Position.Right} id="right" className="!bg-mesh-primary" />
-      <Handle type="source" position={Position.Top} id="top" className="!bg-mesh-primary" />
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-mesh-primary/20">
-        <Network className="h-5 w-5 text-mesh-primary" />
+      <Handle type="source" position={Position.Bottom} style={{ background: MESH.accent }} />
+      <Handle type="source" position={Position.Left} id="left" style={{ background: MESH.accent }} />
+      <Handle type="source" position={Position.Right} id="right" style={{ background: MESH.accent }} />
+      <Handle type="source" position={Position.Top} id="top" style={{ background: MESH.accent }} />
+      <div
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-mesh-border bg-mesh-surface-3"
+        style={{ color: MESH.accent }}
+      >
+        <Network className="h-5 w-5" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-white">{routerLabel}</p>
+        <p className="truncate text-sm font-semibold text-mesh-text">{routerLabel}</p>
         {data.wanIp && (
-          <p className="truncate text-xs text-mesh-text-dim">{data.wanIp}</p>
+          <p className="truncate font-mono text-[11px] text-mesh-text-mute">{data.wanIp}</p>
         )}
         <div className="mt-0.5 flex items-center gap-1.5">
-          <span
-            className={`inline-block h-2 w-2 rounded-full ${
-              data.isOnline
-                ? 'bg-[#4ade80] shadow-[0_0_6px_rgba(52,211,153,0.5)]'
-                : 'bg-[#fb7185] shadow-[0_0_6px_rgba(251,113,133,0.5)]'
-            }`}
-          />
-          <span className="text-[10px] text-mesh-text-mute">
+          <StatusDot status={data.isOnline ? 'online' : 'offline'} pulse={data.isOnline} size={6} />
+          <span className="text-[10px] uppercase tracking-[0.08em] text-mesh-text-mute">
             {data.isOnline ? 'Online' : 'Offline'}
           </span>
         </div>
@@ -312,36 +325,37 @@ function DeviceNode({ data }: NodeProps<DeviceNodeType>) {
 
   return (
     <div
-      className="flex items-center gap-2.5 rounded-lg border bg-mesh-surface-1 px-3 py-2.5 shadow-md transition-shadow hover:shadow-lg hover:shadow-mesh-border-strong/20"
+      className="flex items-center gap-2.5 rounded-md border bg-mesh-surface-1 px-3 py-2.5 shadow-[0_4px_10px_rgba(0,0,0,0.28)] transition-colors hover:bg-mesh-surface-2"
       style={{
         width: DEVICE_WIDTH,
         height: DEVICE_HEIGHT,
         borderColor: subnetColor.border,
       }}
     >
-      <Handle type="target" position={Position.Top} className="!bg-mesh-text-mute" />
-      <Handle type="target" position={Position.Left} id="left" className="!bg-mesh-text-mute" />
-      <Handle type="target" position={Position.Right} id="right" className="!bg-mesh-text-mute" />
-      <Handle type="target" position={Position.Bottom} id="bottom" className="!bg-mesh-text-mute" />
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-mesh-border-strong/60">
-        <Icon className="h-4 w-4 text-mesh-text" />
+      <Handle type="target" position={Position.Top} style={{ background: MESH.textMute }} />
+      <Handle type="target" position={Position.Left} id="left" style={{ background: MESH.textMute }} />
+      <Handle type="target" position={Position.Right} id="right" style={{ background: MESH.textMute }} />
+      <Handle type="target" position={Position.Bottom} id="bottom" style={{ background: MESH.textMute }} />
+      <div
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-mesh-border bg-mesh-surface-2"
+        style={{ color: subnetColor.text }}
+      >
+        <Icon className="h-4 w-4" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-medium text-white">{displayName}</p>
+        <p className="truncate text-xs font-medium text-mesh-text">{displayName}</p>
         <div className="flex items-center gap-1">
-          <p className="truncate text-[10px] text-mesh-text-dim">{primaryIp}</p>
+          <p className="truncate font-mono text-[10px] text-mesh-text-mute">{primaryIp}</p>
           {hasDhcp && (
-            <span className="inline-block h-1 w-1 rounded-full bg-mesh-primary" title="DHCP lease" />
+            <span
+              className="inline-block h-1 w-1 rounded-full"
+              style={{ background: MESH.accent }}
+              title="DHCP lease"
+            />
           )}
         </div>
       </div>
-      <span
-        className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${
-          device.is_online
-            ? 'bg-[#4ade80] shadow-[0_0_6px_rgba(52,211,153,0.5)]'
-            : 'bg-[#fb7185]/60'
-        }`}
-      />
+      <StatusDot status={device.is_online ? 'online' : 'offline'} pulse={device.is_online} size={7} />
     </div>
   )
 }
@@ -350,7 +364,7 @@ function SubnetGroupNode({ data }: NodeProps<SubnetGroupType>) {
   const color = getSubnetColor(data.subnet)
   return (
     <div
-      className="rounded-2xl"
+      className="rounded-md"
       style={{
         width: data.width,
         height: data.height,
@@ -358,11 +372,11 @@ function SubnetGroupNode({ data }: NodeProps<SubnetGroupType>) {
         border: `1px dashed ${color.border}`,
       }}
     >
-      <div className="flex items-center gap-2 px-4 pt-3">
-        <span className="text-xs font-medium" style={{ color: color.text }}>
+      <div className="flex items-center gap-2 px-4 pt-3 font-mono text-[10.5px]">
+        <span className="uppercase tracking-[0.10em]" style={{ color: color.text }}>
           {data.label}
         </span>
-        <span className="text-[10px] text-mesh-text-mute">
+        <span className="text-mesh-text-mute">
           {data.onlineCount}/{data.deviceCount} online
         </span>
       </div>
@@ -387,14 +401,20 @@ function getEdgeStrokeWidth(bps: number): number {
 
 // ─── Device Detail Panel ────────────────────────────────
 
-function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
+function DeviceDetailPanel({
+  device,
+  onClose,
+}: {
+  device: TopologyDevice
+  onClose: () => void
+}) {
   const [copied, setCopied] = useState<string | null>(null)
   const ips = device.ips ?? []
   const primaryIp = ips[0] ?? '—'
   const displayName =
     device.custom_name ?? device.name ?? device.hostname ?? 'Unknown Device'
   const effectiveType = device.custom_type ?? device.device_type
-  const { icon: DetailIcon, label: deviceTypeLabel } = getDeviceIcon(
+  const { label: deviceTypeLabel } = getDeviceIcon(
     device.custom_vendor ?? device.vendor,
     device.hostname,
     device.mdns_services,
@@ -414,231 +434,213 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
     })
   }
 
-  return (
+  const statusPill = (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-sm border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.10em]"
+      style={{
+        color: device.is_online ? MESH.online : MESH.offline,
+        background: device.is_online
+          ? 'rgba(52,211,153,0.10)'
+          : 'rgba(251,113,133,0.10)',
+        borderColor: device.is_online
+          ? 'rgba(52,211,153,0.30)'
+          : 'rgba(251,113,133,0.30)',
+      }}
+    >
+      <StatusDot
+        status={device.is_online ? 'online' : 'offline'}
+        pulse={device.is_online}
+        size={5}
+      />
+      {device.is_online ? 'Online' : 'Offline'}
+    </span>
+  )
+
+  const metaLine = (
     <>
-      <SheetHeader>
-        <div className="flex items-center gap-3">
-          <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mesh-surface-1 ${
-              device.is_online ? 'ring-1 ring-[#4ade80]/20' : ''
-            }`}
-          >
-            <DetailIcon
-              className={`h-5 w-5 ${
-                device.is_online ? 'text-[#4ade80]' : 'text-mesh-text-mute'
-              }`}
+      {vendorDisplay ? <span>{vendorDisplay}</span> : null}
+      {vendorDisplay ? <span className="px-1.5 text-mesh-text-faint">·</span> : null}
+      <span>{deviceTypeLabel ?? 'device'}</span>
+      {!device.is_online ? (
+        <>
+          <span className="px-1.5 text-mesh-text-faint">·</span>
+          <span>last seen {timeAgo(device.last_seen_at)}</span>
+        </>
+      ) : null}
+    </>
+  )
+
+  return (
+    <div className="flex h-full flex-col">
+      <DetailsHeader icon="plug" title={displayName} pills={statusPill} meta={metaLine} />
+
+      <div className="flex-1 space-y-4 overflow-auto p-4">
+        <DetailsSection title="Identity">
+          <div className="flex flex-col gap-2">
+            <DetailsField
+              label="IP Address"
+              value={
+                <span className="inline-flex items-center gap-1">
+                  <span className="truncate">{primaryIp}</span>
+                  <button
+                    onClick={() => handleCopy(primaryIp, 'ip')}
+                    className="ml-1 shrink-0 text-mesh-text-mute transition-colors hover:text-mesh-text"
+                    aria-label="Copy IP"
+                  >
+                    {copied === 'ip' ? (
+                      <Check className="h-3 w-3" style={{ color: MESH.online }} />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </button>
+                </span>
+              }
             />
+            {ips.length > 1 && (
+              <div className="flex flex-wrap gap-1">
+                {ips.slice(1).map((ip) => (
+                  <span
+                    key={ip}
+                    className="inline-block rounded-sm border border-mesh-border bg-mesh-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-mesh-text-dim"
+                  >
+                    {ip}
+                  </span>
+                ))}
+              </div>
+            )}
+            <DetailsField
+              label="MAC Address"
+              value={
+                <span className="inline-flex items-center gap-1">
+                  <span className="truncate">{device.mac}</span>
+                  <button
+                    onClick={() => handleCopy(device.mac, 'mac')}
+                    className="ml-1 shrink-0 text-mesh-text-mute transition-colors hover:text-mesh-text"
+                    aria-label="Copy MAC"
+                  >
+                    {copied === 'mac' ? (
+                      <Check className="h-3 w-3" style={{ color: MESH.online }} />
+                    ) : (
+                      <Copy className="h-3 w-3" />
+                    )}
+                  </button>
+                </span>
+              }
+            />
+            {device.hostname && <DetailsField label="Hostname" value={device.hostname} />}
+            {device.vendor && <DetailsField label="Vendor" value={device.vendor} />}
+            <DetailsField label="First seen" value={timeAgo(device.first_seen_at)} />
+            <DetailsField label="Last seen" value={timeAgo(device.last_seen_at)} />
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <SheetTitle className="text-white">{displayName}</SheetTitle>
-            </div>
-            <div className="flex items-center gap-2">
-              {vendorDisplay && (
-                <span className="text-xs text-mesh-text-dim">{vendorDisplay}</span>
-              )}
-              <span className="text-xs text-mesh-text-mute">{deviceTypeLabel}</span>
-            </div>
-          </div>
-        </div>
-        <SheetDescription>
-          {device.is_online ? (
-            <span className="text-[#4ade80]">Online</span>
-          ) : (
-            <span className="text-mesh-text-mute">
-              Offline — last seen {timeAgo(device.last_seen_at)}
-            </span>
-          )}
-        </SheetDescription>
-      </SheetHeader>
-
-      <div className="mt-3">
-        <Link href={`/devices?selected=${device.id}`}>
-          <button className="flex w-full items-center justify-center gap-2 rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text transition-colors hover:bg-mesh-border-strong hover:text-white">
-            <ExternalLink className="h-4 w-4" />
-            Full Device Details
-          </button>
-        </Link>
-      </div>
-
-      <Separator className="my-4 bg-mesh-surface-1" />
-
-      <div className="space-y-3">
-        <InfoRow
-          label="IP Address"
-          value={primaryIp}
-          mono
-          onCopy={() => handleCopy(primaryIp, 'ip')}
-          copied={copied === 'ip'}
-        />
-        {ips.length > 1 && (
-          <div className="pl-0">
-            {ips.slice(1).map((ip) => (
-              <span
-                key={ip}
-                className="mr-1.5 inline-block rounded bg-mesh-surface-1 px-1.5 py-0.5 font-mono text-[11px] text-mesh-text-dim"
-              >
-                {ip}
-              </span>
-            ))}
-          </div>
-        )}
-        <InfoRow
-          label="MAC Address"
-          value={device.mac}
-          mono
-          onCopy={() => handleCopy(device.mac, 'mac')}
-          copied={copied === 'mac'}
-        />
-        {device.hostname && (
-          <InfoRow label="Hostname" value={device.hostname} />
-        )}
-        {device.vendor && <InfoRow label="Vendor" value={device.vendor} />}
-        <InfoRow label="First Seen" value={timeAgo(device.first_seen_at)} />
-        <InfoRow label="Last Seen" value={timeAgo(device.last_seen_at)} />
+        </DetailsSection>
 
         {(device.os_family || effectiveType || device.device_model) && (
-          <>
-            <Separator className="bg-mesh-surface-1" />
-            <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-              Device Identity
-            </p>
-            {device.os_family && (
-              <InfoRow
-                label="OS"
-                value={
-                  device.os_version
-                    ? `${device.os_family} ${device.os_version}`
-                    : device.os_family
-                }
-              />
-            )}
-            {effectiveType && (
-              <InfoRow label="Type" value={effectiveType} />
-            )}
-            {device.device_brand && (
-              <InfoRow label="Brand" value={device.device_brand} />
-            )}
-            {device.device_model && (
-              <InfoRow label="Model" value={device.device_model} />
-            )}
-          </>
+          <DetailsSection title="Device identity">
+            <div className="flex flex-col gap-2">
+              {device.os_family && (
+                <DetailsField
+                  label="OS"
+                  value={
+                    device.os_version
+                      ? `${device.os_family} ${device.os_version}`
+                      : device.os_family
+                  }
+                />
+              )}
+              {effectiveType && <DetailsField label="Type" value={effectiveType} />}
+              {device.device_brand && (
+                <DetailsField label="Brand" value={device.device_brand} />
+              )}
+              {device.device_model && (
+                <DetailsField label="Model" value={device.device_model} />
+              )}
+            </div>
+          </DetailsSection>
         )}
 
         {(device.dhcp_lease_status || device.bridge_port) && (
-          <>
-            <Separator className="bg-mesh-surface-1" />
-            <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-              Network
-            </p>
-            {device.dhcp_lease_status && (
-              <InfoRow label="DHCP Status" value={device.dhcp_lease_status} />
-            )}
-            {device.dhcp_hostname && (
-              <InfoRow label="DHCP Hostname" value={device.dhcp_hostname} />
-            )}
-            {device.dhcp_server && (
-              <InfoRow label="DHCP Server" value={device.dhcp_server} />
-            )}
-            {device.dhcp_expires && (
-              <InfoRow label="Lease Expires" value={device.dhcp_expires} />
-            )}
-            {device.bridge_port && (
-              <InfoRow label="Bridge Port" value={device.bridge_port} />
-            )}
-            {device.bridge_name && (
-              <InfoRow label="Bridge" value={device.bridge_name} />
-            )}
-          </>
+          <DetailsSection title="Network">
+            <div className="flex flex-col gap-2">
+              {device.dhcp_lease_status && (
+                <DetailsField label="DHCP status" value={device.dhcp_lease_status} />
+              )}
+              {device.dhcp_hostname && (
+                <DetailsField label="DHCP hostname" value={device.dhcp_hostname} />
+              )}
+              {device.dhcp_server && (
+                <DetailsField label="DHCP server" value={device.dhcp_server} />
+              )}
+              {device.dhcp_expires && (
+                <DetailsField label="Lease expires" value={device.dhcp_expires} />
+              )}
+              {device.bridge_port && (
+                <DetailsField label="Bridge port" value={device.bridge_port} />
+              )}
+              {device.bridge_name && <DetailsField label="Bridge" value={device.bridge_name} />}
+            </div>
+          </DetailsSection>
         )}
 
         {device.mdns_services && (
-          <>
-            <Separator className="bg-mesh-surface-1" />
-            <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-              mDNS Services
-            </p>
+          <DetailsSection title="mDNS services">
             <div className="flex flex-wrap gap-1.5">
               {device.mdns_services.split(',').map((svc) => (
                 <Badge
                   key={svc.trim()}
                   variant="outline"
-                  className="border-mesh-border-strong text-mesh-text-dim text-[10px]"
+                  className="border-mesh-border text-[10px] text-mesh-text-dim"
                 >
                   {svc.trim()}
                 </Badge>
               ))}
             </div>
-          </>
+          </DetailsSection>
         )}
 
         {(device.location || device.owner || device.tags) && (
-          <>
-            <Separator className="bg-mesh-surface-1" />
-            <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-              Asset Info
-            </p>
-            {device.location && (
-              <InfoRow label="Location" value={device.location} />
-            )}
-            {device.owner && <InfoRow label="Owner" value={device.owner} />}
-            {device.tags && (
-              <div className="flex flex-wrap gap-1.5">
-                {device.tags.split(',').map((tag) => (
-                  <Badge
-                    key={tag.trim()}
-                    variant="outline"
-                    className="border-mesh-border-strong text-mesh-text-dim text-[10px]"
-                  >
-                    {tag.trim()}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </>
+          <DetailsSection title="Asset info">
+            <div className="flex flex-col gap-2">
+              {device.location && <DetailsField label="Location" value={device.location} />}
+              {device.owner && <DetailsField label="Owner" value={device.owner} />}
+              {device.tags && (
+                <div className="flex flex-wrap gap-1.5">
+                  {device.tags.split(',').map((tag) => (
+                    <Badge
+                      key={tag.trim()}
+                      variant="outline"
+                      className="border-mesh-border text-[10px] text-mesh-text-dim"
+                    >
+                      {tag.trim()}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </div>
+          </DetailsSection>
         )}
       </div>
-    </>
-  )
-}
 
-function InfoRow({
-  label,
-  value,
-  mono,
-  onCopy,
-  copied,
-}: {
-  label: string
-  value: string
-  mono?: boolean
-  onCopy?: () => void
-  copied?: boolean
-}) {
-  return (
-    <div className="flex items-baseline justify-between gap-4">
-      <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-        {label}
-      </span>
-      <span
-        className={`flex min-w-0 items-center gap-1 text-sm text-mesh-text ${
-          mono ? 'font-mono tabular-nums' : ''
-        }`}
-      >
-        <span className="truncate">{value}</span>
-        {onCopy && (
-          <button
-            onClick={onCopy}
-            className="ml-1 shrink-0 text-mesh-text-mute transition-colors hover:text-mesh-text-dim"
-          >
-            {copied ? (
-              <Check className="h-3 w-3 text-[#4ade80]" />
-            ) : (
-              <Copy className="h-3 w-3" />
-            )}
-          </button>
-        )}
-      </span>
+      <DetailsFooter
+        hint={`id ${device.id.slice(0, 8)}`}
+        actions={
+          <>
+            <Link
+              href={`/devices?selected=${device.id}`}
+              className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-mesh-border bg-mesh-surface-1 px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Open device
+            </Link>
+            <button
+              type="button"
+              onClick={onClose}
+              className="inline-flex h-8 items-center rounded-sm border border-mesh-border bg-mesh-surface-1 px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
+            >
+              Close
+            </button>
+          </>
+        }
+      />
     </div>
   )
 }
@@ -662,11 +664,8 @@ function TopologyPageInner() {
   const [selectedDevice, setSelectedDevice] = useState<TopologyDevice | null>(null)
   const { fitView } = useReactFlow()
 
-  // Track pinned positions locally so refreshes preserve them
   const pinnedRef = useRef<Map<string, { x: number; y: number }>>(new Map())
-  // Store the latest router info for display
   const routerInfoRef = useRef<TopologyRouter | null>(null)
-  // Store last layout inputs for re-running auto-layout
   const lastLayoutInputsRef = useRef<{
     layoutNodes: { id: string; isRouter?: boolean; isOnline?: boolean; subnet?: string }[]
     layoutLinks: { source: string; target: string }[]
@@ -678,10 +677,8 @@ function TopologyPageInner() {
         const graph = await fetchTopologyGraph()
         const { devices, router, positions } = graph
 
-        // Store router info
         routerInfoRef.current = router
 
-        // Populate pinned map from server on initial load
         if (isInitial) {
           pinnedRef.current = new Map(
             positions
@@ -690,14 +687,12 @@ function TopologyPageInner() {
           )
         }
 
-        // Derive subnet for each device
         const deviceSubnets = new Map<string, string>()
         devices.forEach((d) => {
           const ip = d.ips?.[0]
           deviceSubnets.set(d.id, ip ? getSubnet(ip) : 'unknown')
         })
 
-        // Collect subnet groups
         const subnetDevices = new Map<string, TopologyDevice[]>()
         devices.forEach((d) => {
           const subnet = deviceSubnets.get(d.id) || 'unknown'
@@ -706,7 +701,6 @@ function TopologyPageInner() {
           subnetDevices.set(subnet, existing)
         })
 
-        // Build force layout node descriptors
         const layoutNodes = [
           { id: 'router', isRouter: true, isOnline: true, subnet: undefined },
           ...devices.map((d) => ({
@@ -722,25 +716,16 @@ function TopologyPageInner() {
           target: d.id,
         }))
 
-        // Store layout inputs so auto-layout can re-run
         lastLayoutInputsRef.current = { layoutNodes, layoutLinks }
 
-        // Compute positions using d3-force (on initial load)
-        // On refresh, reuse existing positions
         let positionMap: Map<string, { x: number; y: number }>
 
         if (isInitial) {
-          positionMap = computeForceLayout(
-            layoutNodes,
-            layoutLinks,
-            pinnedRef.current,
-          )
+          positionMap = computeForceLayout(layoutNodes, layoutLinks, pinnedRef.current)
         } else {
-          // Build position map from current node positions
           positionMap = new Map()
         }
 
-        // Build device nodes
         const deviceNodes: TopologyNode[] = devices.map((device) => {
           const subnet = deviceSubnets.get(device.id) || 'unknown'
           const totalBps = (device.rx_bps || 0) + (device.tx_bps || 0)
@@ -761,7 +746,6 @@ function TopologyPageInner() {
           }
         })
 
-        // Build router node
         const routerPos = positionMap.get('router')
         const routerNode: TopologyNode = {
           id: 'router',
@@ -782,13 +766,11 @@ function TopologyPageInner() {
           zIndex: 10,
         }
 
-        // Build subnet group background nodes
         const subnetGroupNodes: TopologyNode[] = []
         if (isInitial) {
           subnetDevices.forEach((devs, subnet) => {
             if (subnet === 'unknown' || devs.length === 0) return
 
-            // Calculate bounding box from device positions
             let minX = Infinity,
               minY = Infinity,
               maxX = -Infinity,
@@ -831,7 +813,6 @@ function TopologyPageInner() {
           })
         }
 
-        // Build edges
         const allEdges: Edge[] = devices.map((device) => {
           const totalBps = (device.rx_bps || 0) + (device.tx_bps || 0)
           return {
@@ -841,9 +822,9 @@ function TopologyPageInner() {
             type: 'default',
             animated: totalBps > 100_000,
             style: {
-              stroke: device.is_online ? '#3b82f6' : '#334155',
+              stroke: device.is_online ? MESH.accent : MESH.surface3,
               strokeWidth: getEdgeStrokeWidth(totalBps),
-              opacity: device.is_online ? 0.5 : 0.15,
+              opacity: device.is_online ? 0.55 : 0.2,
             },
             zIndex: 5,
           }
@@ -853,12 +834,10 @@ function TopologyPageInner() {
           setNodes([...subnetGroupNodes, routerNode, ...deviceNodes])
           setEdges(allEdges)
         } else {
-          // On refresh, update data without changing positions
           setNodes((prev) => {
             const posMap = new Map(prev.map((n) => [n.id, n.position]))
             const updated: TopologyNode[] = []
 
-            // Keep existing subnet groups with updated counts
             subnetDevices.forEach((devs, subnet) => {
               if (subnet === 'unknown' || devs.length === 0) return
               const existingPos = posMap.get(`subnet-${subnet}`)
@@ -876,13 +855,11 @@ function TopologyPageInner() {
               }
             })
 
-            // Update router
             updated.push({
               ...routerNode,
               position: posMap.get('router') ?? routerNode.position,
             })
 
-            // Update device nodes
             deviceNodes.forEach((n) => {
               updated.push({
                 ...n,
@@ -898,9 +875,7 @@ function TopologyPageInner() {
         setLastRefresh(new Date())
         setError(null)
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : 'Failed to load topology',
-        )
+        setError(err instanceof Error ? err.message : 'Failed to load topology')
       } finally {
         setLoading(false)
       }
@@ -908,23 +883,17 @@ function TopologyPageInner() {
     [setNodes, setEdges],
   )
 
-  // Initial load
   useEffect(() => {
     buildGraph(true)
   }, [buildGraph])
 
-  // Auto-refresh every 30s
   useEffect(() => {
     const interval = setInterval(() => buildGraph(false), 30_000)
     return () => clearInterval(interval)
   }, [buildGraph])
 
-  // Real-time updates via WebSocket
-  useWsEvent(['device_online', 'device_offline', 'new_device'], () =>
-    buildGraph(false),
-  )
+  useWsEvent(['device_online', 'device_offline', 'new_device'], () => buildGraph(false))
 
-  // Persist position when a node is dragged
   const onNodeDragStop = useCallback(
     (_event: React.MouseEvent, node: TopologyNode) => {
       if (node.type === 'subnetGroup') return
@@ -946,23 +915,17 @@ function TopologyPageInner() {
     [],
   )
 
-  // Auto-layout — re-run force simulation without clearing saved positions
   const autoLayout = useCallback(() => {
     const inputs = lastLayoutInputsRef.current
     if (!inputs) return
-    // Clear pinned so simulation can freely position all nodes
     pinnedRef.current.clear()
-    const positionMap = computeForceLayout(
-      inputs.layoutNodes,
-      inputs.layoutLinks,
-    )
+    const positionMap = computeForceLayout(inputs.layoutNodes, inputs.layoutLinks)
     setNodes((prev) => {
-      // Rebuild subnet groups from new positions
       const subnetDevicePositions = new Map<string, { x: number; y: number }[]>()
       const newNodes: TopologyNode[] = []
 
       prev.forEach((node) => {
-        if (node.type === 'subnetGroup') return // rebuilt below
+        if (node.type === 'subnetGroup') return
         const pos = positionMap.get(node.id)
         if (pos) {
           const updated = {
@@ -985,11 +948,13 @@ function TopologyPageInner() {
         }
       })
 
-      // Rebuild subnet group nodes from new device positions
       const subnetGroups: TopologyNode[] = []
       subnetDevicePositions.forEach((devicePositions, subnet) => {
         if (subnet === 'unknown' || devicePositions.length === 0) return
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+        let minX = Infinity,
+          minY = Infinity,
+          maxX = -Infinity,
+          maxY = -Infinity
         devicePositions.forEach((pos) => {
           minX = Math.min(minX, pos.x)
           minY = Math.min(minY, pos.y)
@@ -1001,7 +966,8 @@ function TopologyPageInner() {
         const width = maxX - minX + DEVICE_WIDTH + padding * 2
         const height = maxY - minY + DEVICE_HEIGHT + padding * 2
         const existing = prev.find((n) => n.id === `subnet-${subnet}`)
-        const existingData = existing?.type === 'subnetGroup' ? existing.data as SubnetGroupData : null
+        const existingData =
+          existing?.type === 'subnetGroup' ? (existing.data as SubnetGroupData) : null
         subnetGroups.push({
           id: `subnet-${subnet}`,
           type: 'subnetGroup',
@@ -1025,13 +991,10 @@ function TopologyPageInner() {
 
       return [...subnetGroups, ...newNodes]
     })
-    // Re-center view after layout
     setTimeout(() => fitView({ padding: 0.15, duration: 300 }), 50)
   }, [setNodes, fitView])
 
-  // Reset layout — clear all saved positions and re-run force simulation
   const resetLayout = useCallback(async () => {
-    // Reset subnet color assignments
     Object.keys(SUBNET_COLORS).forEach((k) => delete SUBNET_COLORS[k])
     colorIndex = 0
     pinnedRef.current.clear()
@@ -1040,45 +1003,177 @@ function TopologyPageInner() {
     buildGraph(true)
   }, [buildGraph])
 
-  // Fit view — re-center and zoom to show all nodes
   const handleFitView = useCallback(() => {
     fitView({ padding: 0.15, duration: 300 })
   }, [fitView])
 
-  // Click handler — show device detail panel
-  const onNodeClick = useCallback(
-    (_event: React.MouseEvent, node: TopologyNode) => {
-      if (node.type === 'deviceNode') {
-        const data = node.data as DeviceNodeData
-        setSelectedDevice(data.device)
-      }
-    },
-    [],
-  )
+  const onNodeClick = useCallback((_event: React.MouseEvent, node: TopologyNode) => {
+    if (node.type === 'deviceNode') {
+      const data = node.data as DeviceNodeData
+      setSelectedDevice(data.device)
+    }
+  }, [])
 
-  // Count stats for header
   const stats = useMemo(() => {
     const deviceNodes = nodes.filter((n) => n.type === 'deviceNode')
     const online = deviceNodes.filter(
       (n) => (n.data as DeviceNodeData).device.is_online,
     ).length
-    const subnets = new Set(
-      deviceNodes.map((n) => (n.data as DeviceNodeData).subnet),
-    )
+    const subnets = new Set(deviceNodes.map((n) => (n.data as DeviceNodeData).subnet))
+    const subnetEntries = Array.from(subnets).filter((s) => s !== 'unknown')
     return {
       total: deviceNodes.length,
       online,
       subnets: subnets.size,
+      subnetList: subnetEntries,
     }
   }, [nodes])
+
+  const headerSubLine = (
+    <>
+      <span className="tabular-nums text-mesh-text-dim">{stats.subnets}</span>{' '}
+      subnet{stats.subnets !== 1 ? 's' : ''}
+      <span className="px-1.5 text-mesh-text-faint">·</span>
+      <span className="tabular-nums text-mesh-text-dim">{stats.total}</span> nodes
+      <span className="px-1.5 text-mesh-text-faint">·</span>
+      <span style={{ color: MESH.online }} className="tabular-nums">
+        {stats.online}
+      </span>{' '}
+      online
+      <span className="px-1.5 text-mesh-text-faint">·</span>
+      <span>auto-layout · force-directed</span>
+      {routerInfoRef.current ? (
+        <>
+          <span className="px-1.5 text-mesh-text-faint">·</span>
+          <span>{routerInfoRef.current.router_type}</span>
+        </>
+      ) : null}
+    </>
+  )
+
+  const headerActions = (
+    <>
+      <button
+        type="button"
+        onClick={resetLayout}
+        className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-mesh-border bg-mesh-surface-1 px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
+        data-testid="topology-reset-layout"
+        title="Reset layout"
+      >
+        <RotateCcw className="h-3.5 w-3.5" />
+        Reset layout
+      </button>
+      <button
+        type="button"
+        onClick={handleFitView}
+        className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-mesh-border bg-mesh-surface-1 px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
+        data-testid="topology-fit-view"
+        title="Fit view"
+      >
+        <Maximize2 className="h-3.5 w-3.5" />
+        Fit view
+      </button>
+      <button
+        type="button"
+        onClick={autoLayout}
+        className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-mesh-border bg-mesh-surface-1 px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
+        data-testid="topology-auto-layout"
+        title="Auto-layout"
+      >
+        <LayoutGrid className="h-3.5 w-3.5" />
+        Auto layout
+      </button>
+      <button
+        type="button"
+        onClick={() => buildGraph(false)}
+        className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-mesh-border bg-mesh-surface-1 px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
+        data-testid="topology-refresh"
+        title="Refresh now"
+      >
+        <RefreshCw className="h-3.5 w-3.5" />
+        Refresh
+      </button>
+      <span
+        className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-dashed border-mesh-border bg-transparent px-2.5 text-[12px] text-mesh-text-mute"
+        title="Filter (coming soon)"
+      >
+        <FilterIcon className="h-3.5 w-3.5" />
+        Filters
+      </span>
+    </>
+  )
+
+  const legend = (
+    <div
+      className="flex flex-wrap items-center gap-3 rounded-sm border border-mesh-border bg-mesh-surface-1 px-3 py-2 font-mono text-[10.5px] text-mesh-text-dim"
+      data-testid="topology-legend"
+    >
+      <span className="uppercase tracking-[0.10em] text-mesh-text-mute">Subnets</span>
+      {stats.subnetList.length === 0 ? (
+        <span className="text-mesh-text-faint">no subnet groupings yet</span>
+      ) : (
+        stats.subnetList.slice(0, 6).map((subnet) => {
+          const c = getSubnetColor(subnet)
+          return (
+            <span key={subnet} className="inline-flex items-center gap-1.5">
+              <span className="inline-block h-2 w-2 rounded-sm" style={{ background: c.text }} />
+              <span style={{ color: c.text }}>{subnet}</span>
+            </span>
+          )
+        })
+      )}
+      <span className="text-mesh-text-faint">·</span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="inline-block h-2 w-2 rounded-full" style={{ background: MESH.accent }} />
+        active link
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span
+          className="inline-block h-2 w-2 rounded-full"
+          style={{ background: MESH.surface3 }}
+        />
+        offline link
+      </span>
+      {lastRefresh ? (
+        <span className="ml-auto text-mesh-text-faint">
+          refreshed {lastRefresh.toLocaleTimeString()}
+        </span>
+      ) : null}
+    </div>
+  )
+
+  const header = (
+    <div className="flex flex-col gap-3 border-b border-mesh-border px-6 pb-4 pt-6 xl:flex-row xl:items-end xl:justify-between">
+      <div>
+        <div className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-mesh-text-mute">
+          Network
+        </div>
+        <h1 className="mt-1 mb-1.5 text-[28px] font-semibold leading-tight tracking-tight text-mesh-text">
+          Topology
+        </h1>
+        <div className="flex flex-wrap items-center gap-x-1 gap-y-1 font-mono text-[11.5px] text-mesh-text-mute">
+          {headerSubLine}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">{headerActions}</div>
+    </div>
+  )
 
   if (loading) {
     return (
       <PageTransition>
-        <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-mesh-primary" />
-            <p className="text-sm text-mesh-text-dim">Building topology…</p>
+        <div
+          data-testid="topology-root"
+          className="-m-6 flex h-[calc(100vh-56px)] flex-col bg-mesh-bg"
+        >
+          {header}
+          <div className="flex flex-1 items-center justify-center p-6">
+            <LoadingState
+              title="Building topology"
+              message="Computing force layout…"
+              tiles={3}
+              rows={4}
+            />
           </div>
         </div>
       </PageTransition>
@@ -1088,141 +1183,128 @@ function TopologyPageInner() {
   if (error) {
     return (
       <PageTransition>
-        <ErrorState
-          message={error}
-          onRetry={() => {
-            setLoading(true)
-            buildGraph(true)
-          }}
-        />
+        <div
+          data-testid="topology-root"
+          className="-m-6 flex h-[calc(100vh-56px)] flex-col bg-mesh-bg"
+        >
+          {header}
+          <div className="flex flex-1 items-center justify-center p-6">
+            <MeshErrorState
+              title="Couldn't load topology"
+              message={error}
+              onRetry={() => {
+                setLoading(true)
+                buildGraph(true)
+              }}
+            />
+          </div>
+        </div>
       </PageTransition>
     )
   }
 
   return (
     <PageTransition>
-      <div className="-m-6 h-[calc(100vh-56px)]">
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodeClick={onNodeClick}
-          onNodeDragStop={onNodeDragStop}
-          nodeTypes={nodeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.15 }}
-          minZoom={0.1}
-          maxZoom={2}
-          proOptions={{ hideAttribution: true }}
-          className="bg-mesh-surface-1"
+      <div
+        data-testid="topology-root"
+        className="-m-6 flex h-[calc(100vh-56px)] flex-col bg-mesh-bg"
+      >
+        {header}
+
+        <div
+          className="flex flex-row items-stretch gap-3 px-6 pt-3"
+          data-testid="topology-toolbar"
         >
-          <Controls
-            className="!border-mesh-border !bg-mesh-surface-1 [&>button]:!border-mesh-border [&>button]:!bg-mesh-surface-1 [&>button]:!text-mesh-text [&>button:hover]:!bg-mesh-surface-1"
-            showInteractive={false}
-          />
-          <MiniMap
-            nodeColor={(n) => {
-              if (n.type === 'routerNode') return '#3b82f6'
-              if (n.type === 'subnetGroup') return 'transparent'
-              const data = n.data as DeviceNodeData
-              return data.device?.is_online ? '#34d399' : '#475569'
-            }}
-            className="!border-mesh-border !bg-mesh-surface-1"
-            maskColor="rgba(15, 23, 42, 0.7)"
-          />
-          <Background
-            variant={BackgroundVariant.Dots}
-            color="#334155"
-            gap={24}
-            size={1}
-          />
+          {legend}
+        </div>
 
-          {/* Floating toolbar */}
-          <div className="absolute left-4 top-4 z-10 max-w-[calc(100vw-2rem)] rounded-lg border border-mesh-border bg-mesh-surface-1 px-4 py-3 backdrop-blur-sm">
-            <div className="mb-2 flex items-center gap-2">
-              <Network className="h-4 w-4 text-mesh-accent" />
-              <h1 className="text-sm font-semibold text-white">Topology</h1>
-              <span className="rounded border border-mesh-border-strong px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-mesh-text-mute">
-                {routerInfoRef.current?.router_type ?? 'router'}
-              </span>
-            </div>
-            <span className="text-[11px] text-mesh-text-dim">
-              {stats.total} devices · {stats.online} online · {stats.subnets}{' '}
-              subnet{stats.subnets !== 1 ? 's' : ''}
-            </span>
+        <div className="relative mx-6 mt-3 mb-6 flex-1 overflow-hidden rounded-md border border-mesh-border bg-mesh-surface-1 shadow-[0_8px_24px_rgba(0,0,0,0.32)]">
+          <div className="absolute inset-0" data-testid="topology-canvas">
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onNodeClick={onNodeClick}
+              onNodeDragStop={onNodeDragStop}
+              nodeTypes={nodeTypes}
+              fitView
+              fitViewOptions={{ padding: 0.15 }}
+              minZoom={0.1}
+              maxZoom={2}
+              proOptions={{ hideAttribution: true }}
+              style={{ background: MESH.surface1 }}
+            >
+              <Controls
+                showInteractive={false}
+                style={{
+                  border: `1px solid ${MESH.border}`,
+                  background: MESH.surface2,
+                  borderRadius: 4,
+                }}
+              />
+              <MiniMap
+                nodeColor={(n) => {
+                  if (n.type === 'routerNode') return MESH.primary
+                  if (n.type === 'subnetGroup') return 'transparent'
+                  const data = n.data as DeviceNodeData
+                  return data.device?.is_online ? MESH.online : MESH.surface3
+                }}
+                style={{
+                  border: `1px solid ${MESH.border}`,
+                  background: 'rgba(9,22,51,0.90)',
+                }}
+                maskColor="rgba(6,15,37,0.70)"
+              />
+              <Background
+                variant={BackgroundVariant.Dots}
+                color={MESH.surface3}
+                gap={24}
+                size={1}
+              />
+
+              {stats.total === 0 && (
+                <div
+                  className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-4"
+                  data-testid="topology-empty"
+                >
+                  <div className="pointer-events-auto">
+                    <MeshEmptyState
+                      icon={Network}
+                      title="No topology devices"
+                      message="Discovered devices will appear here after a network scan returns inventory data."
+                      action={
+                        <Link
+                          href="/devices"
+                          className="inline-flex h-8 items-center gap-1.5 rounded-sm bg-mesh-primary px-3 text-[12px] text-white transition-colors hover:bg-mesh-primary-hover"
+                        >
+                          Open devices
+                        </Link>
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+            </ReactFlow>
           </div>
-
-          <div className="absolute right-4 top-4 z-10 flex items-center gap-3 rounded-lg border border-mesh-border bg-mesh-surface-1 px-4 py-2 backdrop-blur-sm">
-            <button
-              onClick={autoLayout}
-              className="text-mesh-text-dim transition-colors hover:text-white"
-              title="Auto-layout"
-              data-testid="topology-auto-layout"
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={handleFitView}
-              className="text-mesh-text-dim transition-colors hover:text-white"
-              title="Fit view"
-              data-testid="topology-fit-view"
-            >
-              <Maximize2 className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={resetLayout}
-              className="text-mesh-text-dim transition-colors hover:text-white"
-              title="Reset layout"
-              data-testid="topology-reset-layout"
-            >
-              <RotateCcw className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={() => buildGraph(false)}
-              className="text-mesh-text-dim transition-colors hover:text-white"
-              title="Refresh now"
-              data-testid="topology-refresh"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-            </button>
-            {lastRefresh && (
-              <span className="text-[10px] text-mesh-text-mute">
-                {lastRefresh.toLocaleTimeString()}
-              </span>
-            )}
-          </div>
-
-          {stats.total === 0 && (
-            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-4">
-              <div className="pointer-events-auto rounded-lg border border-mesh-border bg-mesh-surface-1/95 px-8 py-4 shadow-2xl">
-                <EmptyState
-                  icon={Network}
-                  title="No topology devices"
-                  description="Discovered devices will appear here after a network scan returns inventory data."
-                  actionLabel="Open Devices"
-                  actionHref="/devices"
-                />
-              </div>
-            </div>
-          )}
-        </ReactFlow>
+        </div>
       </div>
 
-      {/* Device detail slide-in panel */}
-      <Sheet
+      <DetailsDrawer
         open={selectedDevice !== null}
         onOpenChange={(open) => {
           if (!open) setSelectedDevice(null)
         }}
+        data-testid="topology-node-drawer"
+        width={560}
       >
-        <SheetContent
-          side="right"
-          className="w-full overflow-y-auto border-mesh-border bg-mesh-surface-1/95 sm:max-w-md"
-        >
-          {selectedDevice && <DeviceDetailPanel device={selectedDevice} />}
-        </SheetContent>
-      </Sheet>
+        {selectedDevice && (
+          <DeviceDetailPanel
+            device={selectedDevice}
+            onClose={() => setSelectedDevice(null)}
+          />
+        )}
+      </DetailsDrawer>
     </PageTransition>
   )
 }
