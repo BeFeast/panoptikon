@@ -21,7 +21,7 @@ test.describe('Alerts page severity indicators', () => {
     }
 
     // Verify that alert cards are rendered
-    const cards = page.locator('[class*="border-slate-800"]').filter({ hasText: /.+/ });
+    const cards = page.locator('[class*="border-mesh-border-strong"]').filter({ hasText: /.+/ });
     const count = await cards.count();
     expect(count).toBeGreaterThan(0);
 

@@ -42,7 +42,7 @@ test.describe("Firewall CRUD — filter rules, NAT rules, address lists", () => 
     await expect(
       page.getByText(
         /Connected|Unreachable|unreachable|Not Configured|not configured/
-      )
+      ).first()
     ).toBeVisible({ timeout: 40000 });
 
     // Click the Firewall tab
@@ -82,7 +82,7 @@ test.describe("Firewall CRUD — filter rules, NAT rules, address lists", () => 
     await expect(
       page.getByText(
         /Connected|Unreachable|unreachable|Not Configured|not configured/
-      )
+      ).first()
     ).toBeVisible({ timeout: 40000 });
 
     const firewallTab = page.getByRole("tab", { name: /Firewall/ });
@@ -123,7 +123,7 @@ test.describe("Firewall CRUD — filter rules, NAT rules, address lists", () => 
     await expect(
       page.getByText(
         /Connected|Unreachable|unreachable|Not Configured|not configured/
-      )
+      ).first()
     ).toBeVisible({ timeout: 40000 });
 
     const firewallTab = page.getByRole("tab", { name: /Firewall/ });
@@ -176,7 +176,7 @@ test.describe("Firewall CRUD — filter rules, NAT rules, address lists", () => 
     await expect(
       page.getByText(
         /Connected|Unreachable|unreachable|Not Configured|not configured/
-      )
+      ).first()
     ).toBeVisible({ timeout: 40000 });
 
     const firewallTab = page.getByRole("tab", { name: /Firewall/ });
@@ -219,7 +219,7 @@ test.describe("Firewall CRUD — filter rules, NAT rules, address lists", () => 
     await expect(
       page.getByText(
         /Connected|Unreachable|unreachable|Not Configured|not configured/
-      )
+      ).first()
     ).toBeVisible({ timeout: 40000 });
 
     const firewallTab = page.getByRole("tab", { name: /Firewall/ });

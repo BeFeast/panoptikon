@@ -13,7 +13,7 @@ test.describe("Cloudflare Tunnel Routes — Hostname links", () => {
   test("hostnames with HTTP services render as clickable links with external-link icon", async ({
     page,
   }) => {
-    await expect(page.getByText("Tunnel Routes")).toBeVisible({
+    await expect(page.getByText("Tunnel Routes", { exact: true })).toBeVisible({
       timeout: 15000,
     });
 
@@ -58,7 +58,7 @@ test.describe("Cloudflare Tunnel Routes — Hostname links", () => {
   test("hostname link text matches value used in edit dialog", async ({
     page,
   }) => {
-    await expect(page.getByText("Tunnel Routes")).toBeVisible({
+    await expect(page.getByText("Tunnel Routes", { exact: true })).toBeVisible({
       timeout: 15000,
     });
 

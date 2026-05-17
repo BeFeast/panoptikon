@@ -4,7 +4,7 @@ import { test, expect } from "../../e2e/fixtures";
  * E2E test for Space Grotesk display font on branded surfaces.
  */
 test.describe("Display font (Space Grotesk)", () => {
-  test("login headline has font-display class", async ({ page }) => {
+  test("login headline has font-mono class", async ({ page }) => {
     await page.goto("/login/");
 
     const heading = page.getByRole("heading", {
@@ -14,7 +14,7 @@ test.describe("Display font (Space Grotesk)", () => {
     await expect(heading).toBeVisible({ timeout: 15000 });
 
     // Assert the display font class is applied
-    await expect(heading).toHaveClass(/font-display/);
+    await expect(heading).toHaveClass(/font-mono/);
 
     await page.screenshot({
       path: "tests/screenshots/display-font-login.png",
@@ -22,7 +22,7 @@ test.describe("Display font (Space Grotesk)", () => {
     });
   });
 
-  test("sidebar logo text has font-display class", async ({
+  test("sidebar logo text has font-mono class", async ({
     authenticatedPage,
   }) => {
     const page = authenticatedPage;
@@ -32,7 +32,7 @@ test.describe("Display font (Space Grotesk)", () => {
     await page.goto("/dashboard");
 
     // The sidebar "Panoptikon" text in the logo area
-    const logoText = page.locator("aside span.font-display");
+    const logoText = page.locator("aside span.font-mono");
     await expect(logoText).toBeVisible({ timeout: 15000 });
     await expect(logoText).toHaveText("Panoptikon");
 

@@ -25,7 +25,7 @@ test.describe('Sidebar section headers — toggle only via chevron', () => {
 
   test('chevron button toggles section collapse', async ({ page }) => {
     // Wait for sidebar
-    const collapseBtn = page.locator('aside').getByRole('button', { name: /Collapse Network/i });
+    const collapseBtn = page.locator('aside').getByRole('button', { name: /Collapse Overview/i });
     await expect(collapseBtn).toBeVisible({ timeout: 15000 });
 
     // Verify section is expanded — Dashboard link visible
@@ -39,7 +39,7 @@ test.describe('Sidebar section headers — toggle only via chevron', () => {
     await expect(dashboardLink).not.toBeVisible();
 
     // The button should now say "Expand"
-    const expandBtn = page.locator('aside').getByRole('button', { name: /Expand Network/i });
+    const expandBtn = page.locator('aside').getByRole('button', { name: /Expand Overview/i });
     await expect(expandBtn).toBeVisible();
 
     await page.screenshot({ path: 'tests/screenshots/sidebar-section-collapsed-via-chevron.png', fullPage: true });
@@ -69,7 +69,7 @@ test.describe('Sidebar section headers — toggle only via chevron', () => {
 
   test('chevron toggle is keyboard accessible', async ({ page }) => {
     // Wait for sidebar
-    const collapseBtn = page.locator('aside').getByRole('button', { name: /Collapse Network/i });
+    const collapseBtn = page.locator('aside').getByRole('button', { name: /Collapse Overview/i });
     await expect(collapseBtn).toBeVisible({ timeout: 15000 });
 
     // Verify aria-expanded attribute
@@ -87,7 +87,7 @@ test.describe('Sidebar section headers — toggle only via chevron', () => {
     await expect(dashboardLink).not.toBeVisible();
 
     // aria-expanded should now be false
-    const expandBtn = page.locator('aside').getByRole('button', { name: /Expand Network/i });
+    const expandBtn = page.locator('aside').getByRole('button', { name: /Expand Overview/i });
     await expect(expandBtn).toHaveAttribute('aria-expanded', 'false');
 
     await page.screenshot({ path: 'tests/screenshots/sidebar-section-keyboard-toggle.png', fullPage: true });

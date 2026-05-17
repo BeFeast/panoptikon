@@ -43,7 +43,7 @@ test.describe("Advanced Routing — MikroTik Router Tabs (#668)", () => {
     const policyTab = page.getByRole("tab", { name: "Policy Routing" });
     const fallback = page.getByText(
       /Connected|Unreachable|unreachable|Not Configured|not configured/,
-    );
+    ).first();
     await expect(policyTab.or(fallback)).toBeVisible({ timeout: 40000 });
 
     // If tabs are visible, click Policy Routing
@@ -70,7 +70,7 @@ test.describe("Advanced Routing — MikroTik Router Tabs (#668)", () => {
     const gatewayTab = page.getByRole("tab", { name: "Gateways" });
     const fallback = page.getByText(
       /Connected|Unreachable|unreachable|Not Configured|not configured/,
-    );
+    ).first();
     await expect(gatewayTab.or(fallback)).toBeVisible({ timeout: 40000 });
 
     if (await gatewayTab.isVisible()) {
@@ -94,7 +94,7 @@ test.describe("Advanced Routing — MikroTik Router Tabs (#668)", () => {
     const dynamicTab = page.getByRole("tab", { name: "Dynamic Routing" });
     const fallback = page.getByText(
       /Connected|Unreachable|unreachable|Not Configured|not configured/,
-    );
+    ).first();
     await expect(dynamicTab.or(fallback)).toBeVisible({ timeout: 40000 });
 
     if (await dynamicTab.isVisible()) {
@@ -121,7 +121,7 @@ test.describe("Advanced Routing — MikroTik Router Tabs (#668)", () => {
     const systemTab = page.getByRole("tab", { name: "System" });
     const fallback = page.getByText(
       /Connected|Unreachable|unreachable|Not Configured|not configured/,
-    );
+    ).first();
     await expect(systemTab.or(fallback)).toBeVisible({ timeout: 40000 });
 
     // If the tab bar renders (router connected or status loaded), check all tabs

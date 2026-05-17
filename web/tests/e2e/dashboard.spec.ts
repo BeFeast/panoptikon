@@ -143,8 +143,8 @@ test.describe('Dashboard', () => {
     // Should have stat cards (4 of them) — wait for stats to load
     // In error state titles: Router Status, Active Devices, WAN Bandwidth, Unread Alerts
     await expect(page.getByText('Router Status', { exact: true })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('Active Devices', { exact: true })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('WAN Bandwidth', { exact: true })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Devices online', { exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Throughput', { exact: true })).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Unread Alerts', { exact: true })).toBeVisible({ timeout: 5000 });
 
     await page.screenshot({ path: 'tests/screenshots/dashboard-stat-cards.png', fullPage: true });
@@ -335,7 +335,7 @@ test.describe('Dashboard', () => {
 
     // All stat cards should still be visible
     await expect(page.getByText('Router Status', { exact: true })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('Active Devices', { exact: true })).toBeVisible();
+    await expect(page.getByText('Devices online', { exact: true })).toBeVisible();
 
     // Quick actions should be visible
     await expect(page.getByText('Scan Network')).toBeVisible();

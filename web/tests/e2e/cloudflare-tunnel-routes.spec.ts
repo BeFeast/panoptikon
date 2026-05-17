@@ -25,7 +25,7 @@ test.describe("Cloudflare Tunnel Routes — Edit functionality", () => {
     page,
   }) => {
     // Check if the Tunnel Routes card is visible
-    await expect(page.getByText("Tunnel Routes")).toBeVisible({
+    await expect(page.getByText("Tunnel Routes", { exact: true })).toBeVisible({
       timeout: 15000,
     });
 
@@ -57,7 +57,7 @@ test.describe("Cloudflare Tunnel Routes — Edit functionality", () => {
   test("clicking edit button opens edit dialog with pre-filled values", async ({
     page,
   }) => {
-    await expect(page.getByText("Tunnel Routes")).toBeVisible({
+    await expect(page.getByText("Tunnel Routes", { exact: true })).toBeVisible({
       timeout: 15000,
     });
 
@@ -110,7 +110,7 @@ test.describe("Cloudflare Tunnel Routes — Edit functionality", () => {
   });
 
   test("edit dialog cancel does not modify route", async ({ page }) => {
-    await expect(page.getByText("Tunnel Routes")).toBeVisible({
+    await expect(page.getByText("Tunnel Routes", { exact: true })).toBeVisible({
       timeout: 15000,
     });
 

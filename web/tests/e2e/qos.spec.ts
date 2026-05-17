@@ -15,9 +15,9 @@ test.describe("QoS / Traffic Shaping", () => {
     await expect(page.getByText("MikroTik Simple Queues")).toBeVisible();
     await expect(page.getByText("MikroTik Queue Tree")).toBeVisible();
 
-    // Refresh button present
+    // Refresh button present (exact match avoids the new Auto-refresh toggle).
     await expect(
-      page.getByRole("button", { name: "Refresh" }),
+      page.getByRole("button", { name: "Refresh", exact: true }),
     ).toBeVisible();
 
     await page.screenshot({
@@ -59,10 +59,11 @@ test.describe("QoS / Traffic Shaping", () => {
     if (await mtTab.isVisible()) {
       await mtTab.click();
 
-      // Simple Queues section should be present
-      await expect(page.getByText("Simple Queues")).toBeVisible({ timeout: 10000 });
+      // Simple Queues section should be present (use .first(): the label
+      // now also appears in the summary card and tab list).
+      await expect(page.getByText("Simple Queues").first()).toBeVisible({ timeout: 10000 });
       // Queue Tree section should be present
-      await expect(page.getByText("Queue Tree")).toBeVisible();
+      await expect(page.getByText("Queue Tree").first()).toBeVisible();
 
       // Add Queue button should be present
       await expect(
