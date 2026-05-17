@@ -74,6 +74,9 @@ test.describe('Dashboard', () => {
     await expect(page.getByText('Recent Alerts')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Infrastructure Health')).toBeVisible({ timeout: 5000 });
     await expect(page.getByText('Device Breakdown')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Router Health')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Top Devices')).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText('Topology Preview')).toBeVisible({ timeout: 5000 });
 
     await page.screenshot({ path: 'tests/screenshots/dashboard-bento-grid.png', fullPage: true });
   });
@@ -118,7 +121,7 @@ test.describe('Dashboard', () => {
     expect(response.ok()).toBeTruthy();
     const data = await response.json();
 
-    expect(['mikrotik', 'none']).toContain(data.router_type);
+    expect(['mikrotik', 'pfsense', 'none']).toContain(data.router_type);
     expect(['connected', 'disconnected', 'unconfigured']).toContain(data.router_status);
 
     await page.screenshot({ path: 'tests/screenshots/dashboard-router-type-api.png' });

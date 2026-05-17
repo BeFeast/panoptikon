@@ -10,11 +10,13 @@ import {
   ExternalLink,
   Info,
   MonitorSmartphone,
+  Network,
   Pin,
   Radar,
   Rocket,
   Router,
   Shield,
+  Server,
   WifiOff,
 } from "lucide-react";
 import {
@@ -38,8 +40,18 @@ import {
   fetchTrafficHistory,
   fetchDevices,
   fetchCriticalDevices,
+  fetchTopDevices,
+  fetchTopologyGraph,
 } from "@/lib/api";
-import type { Alert, CriticalDevice, DashboardStats, TrafficHistoryPoint, Device } from "@/lib/types";
+import type {
+  Alert,
+  CriticalDevice,
+  DashboardStats,
+  TrafficHistoryPoint,
+  Device,
+  TopDevice,
+  TopologyGraph,
+} from "@/lib/types";
 import { formatBps, timeAgo } from "@/lib/format";
 import { PageTransition } from "@/components/PageTransition";
 import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
@@ -74,6 +86,44 @@ function severityDotColor(severity: Alert["severity"]): string {
     default:
       return "bg-blue-500";
   }
+}
+
+function panelClassName(extra?: string) {
+  return cn(
+    "border-slate-800/90 bg-slate-950/70 shadow-[inset_0_1px_0_rgba(148,163,184,0.04)]",
+    extra,
+  );
+}
+
+function SectionTitle({
+  icon,
+  title,
+  href,
+  action = "Details",
+}: {
+  icon?: React.ReactNode;
+  title: string;
+  href?: string;
+  action?: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-3">
+      <div className="flex min-w-0 items-center gap-2">
+        {icon && <span className="shrink-0 text-cyan-400">{icon}</span>}
+        <CardTitle className="truncate text-[11px] font-medium uppercase tracking-wider text-slate-500">
+          {title}
+        </CardTitle>
+      </div>
+      {href && (
+        <Link
+          href={href}
+          className="flex shrink-0 items-center gap-1 text-xs text-cyan-400 transition-colors hover:text-cyan-300"
+        >
+          {action} <ArrowRight className="h-3 w-3" />
+        </Link>
+      )}
+    </div>
+  );
 }
 
 // ─── Critical Devices Dialog ──────────────────────────
@@ -212,9 +262,9 @@ function StatCard({
   const inner = (
     <Card
       className={cn(
-        "h-full min-h-[8.25rem] border-slate-700/50 bg-slate-900/55",
+        "h-full min-h-[8.25rem] border-slate-800/90 bg-slate-950/70",
         href &&
-          "transition-[border-color,background-color,box-shadow] hover:border-slate-700/90 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]",
+          "transition-[border-color,background-color,box-shadow] hover:border-cyan-700/50 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(8,145,178,0.45)]",
       )}
     >
       <CardHeader className="flex flex-row items-start justify-between pb-3">
@@ -245,7 +295,7 @@ function StatCard({
 
 function StatCardSkeleton() {
   return (
-    <Card className="h-full min-h-[8.25rem] border-slate-700/50 bg-slate-900/55">
+    <Card className="h-full min-h-[8.25rem] border-slate-800/90 bg-slate-950/70">
       <CardHeader className="pb-3">
         <Skeleton className="h-3.5 w-24" />
       </CardHeader>
@@ -416,6 +466,263 @@ function QuickActions() {
   );
 }
 
+function routerDisplayName(type: string) {
+  if (type === "mikrotik") return "MikroTik";
+  if (type === "pfsense") return "pfSense";
+  return "Router";
+}
+
+function RouterHealthSection({
+  stats,
+  error,
+  onRetry,
+}: {
+  stats: DashboardStats | null;
+  error: string | null;
+  onRetry: () => void;
+}) {
+  const activeType = stats?.router_type ?? "none";
+  const isConfigured = Boolean(stats && activeType !== "none" && stats.router_status !== "unconfigured");
+  const isOnline = stats?.router_status === "connected" || stats?.router_status === "online";
+  const cards = [
+    {
+      type: "mikrotik",
+      label: "MikroTik",
+      href: "/router/mikrotik",
+      primary: stats && activeType === "mikrotik",
+    },
+    {
+      type: "pfsense",
+      label: "pfSense",
+      href: "/router/pfsense",
+      primary: stats && activeType === "pfsense",
+    },
+  ];
+
+  return (
+    <Card className={panelClassName()}>
+      <CardHeader className="pb-4">
+        <SectionTitle
+          icon={<Router className="h-4 w-4" />}
+          title="Router Health"
+          href="/router"
+          action="Open"
+        />
+      </CardHeader>
+      <CardContent className="grid gap-3 sm:grid-cols-2">
+        {error ? (
+          <div className="sm:col-span-2">
+            <SectionError message="Failed to load router health" onRetry={onRetry} />
+          </div>
+        ) : stats === null ? (
+          <>
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+          </>
+        ) : (
+          cards.map((card) => {
+            const statusLabel = card.primary
+              ? isOnline
+                ? "Connected"
+                : isConfigured
+                  ? "Unreachable"
+                  : "Unconfigured"
+              : "Standby";
+            const statusClass = card.primary
+              ? isOnline
+                ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
+                : isConfigured
+                  ? "border-rose-500/25 bg-rose-500/10 text-rose-300"
+                  : "border-amber-500/25 bg-amber-500/10 text-amber-300"
+              : "border-slate-700 bg-slate-900/60 text-slate-400";
+
+            return (
+              <Link
+                key={card.type}
+                href={card.href}
+                className="rounded-md border border-slate-800 bg-slate-900/35 p-3 transition-colors hover:border-cyan-700/50 hover:bg-slate-900/70"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium text-slate-200">{card.label}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {card.primary ? "Primary router signal" : "Available router client"}
+                    </p>
+                  </div>
+                  <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-[11px]", statusClass)}>
+                    {statusLabel}
+                  </span>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded border border-slate-800/80 bg-slate-950/50 px-2 py-1.5">
+                    <p className="text-slate-600">WAN RX</p>
+                    <p className="mt-0.5 truncate tabular-nums text-slate-300">
+                      {card.primary ? formatBps(stats.wan_rx_bps) : "—"}
+                    </p>
+                  </div>
+                  <div className="rounded border border-slate-800/80 bg-slate-950/50 px-2 py-1.5">
+                    <p className="text-slate-600">WAN TX</p>
+                    <p className="mt-0.5 truncate tabular-nums text-slate-300">
+                      {card.primary ? formatBps(stats.wan_tx_bps) : "—"}
+                    </p>
+                  </div>
+                </div>
+              </Link>
+            );
+          })
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TopologyPreview({
+  topology,
+  error,
+  onRetry,
+}: {
+  topology: TopologyGraph | null;
+  error: string | null;
+  onRetry: () => void;
+}) {
+  const onlineDevices = topology?.devices.filter((d) => d.is_online).length ?? 0;
+  const offlineDevices = topology ? topology.devices.length - onlineDevices : 0;
+  const previewDevices = topology?.devices
+    .slice()
+    .sort((a, b) => Number(b.is_online) - Number(a.is_online))
+    .slice(0, 8) ?? [];
+
+  return (
+    <Card className={panelClassName("h-full")}>
+      <CardHeader className="pb-4">
+        <SectionTitle
+          icon={<Network className="h-4 w-4" />}
+          title="Topology Preview"
+          href="/topology"
+          action="Map"
+        />
+      </CardHeader>
+      <CardContent>
+        {error ? (
+          <SectionError message="Failed to load topology" onRetry={onRetry} />
+        ) : topology === null ? (
+          <Skeleton className="h-56 w-full" />
+        ) : topology.devices.length === 0 ? (
+          <div className="flex h-56 items-center justify-center rounded-md border border-dashed border-slate-800 text-sm text-slate-600">
+            No topology data yet
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="relative h-56 overflow-hidden rounded-md border border-slate-800 bg-[radial-gradient(circle_at_center,rgba(8,145,178,0.12),transparent_34%),linear-gradient(rgba(15,23,42,0.8)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.8)_1px,transparent_1px)] bg-[size:100%_100%,24px_24px,24px_24px]">
+              <div className="absolute left-1/2 top-1/2 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-cyan-400/30 bg-slate-950 text-cyan-300 shadow-[0_0_28px_rgba(8,145,178,0.18)]">
+                <Router className="h-6 w-6" />
+              </div>
+              {previewDevices.map((device, index) => {
+                const angle = (index / Math.max(previewDevices.length, 1)) * Math.PI * 2 - Math.PI / 2;
+                const radius = 34 + (index % 2) * 10;
+                const left = 50 + Math.cos(angle) * radius;
+                const top = 50 + Math.sin(angle) * radius;
+                return (
+                  <div
+                    key={device.id}
+                    className={cn(
+                      "absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-slate-950",
+                      device.is_online
+                        ? "border-emerald-400/35 text-emerald-300"
+                        : "border-rose-400/35 text-rose-300",
+                    )}
+                    style={{ left: `${left}%`, top: `${top}%` }}
+                    title={device.name || device.hostname || device.ips[0] || "Unknown device"}
+                  >
+                    <Server className="h-4 w-4" />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="rounded border border-slate-800 bg-slate-900/40 px-2 py-2">
+                <p className="text-slate-600">Router</p>
+                <p className="mt-1 truncate text-slate-300">{routerDisplayName(topology.router.router_type)}</p>
+              </div>
+              <div className="rounded border border-slate-800 bg-slate-900/40 px-2 py-2">
+                <p className="text-slate-600">Online</p>
+                <p className="mt-1 tabular-nums text-emerald-300">{onlineDevices}</p>
+              </div>
+              <div className="rounded border border-slate-800 bg-slate-900/40 px-2 py-2">
+                <p className="text-slate-600">Offline</p>
+                <p className="mt-1 tabular-nums text-rose-300">{offlineDevices}</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function TopDevicesTable({
+  devices,
+  error,
+  onRetry,
+}: {
+  devices: TopDevice[] | null;
+  error: string | null;
+  onRetry: () => void;
+}) {
+  return (
+    <Card className={panelClassName("h-full")}>
+      <CardHeader className="pb-4">
+        <SectionTitle
+          icon={<Activity className="h-4 w-4" />}
+          title="Top Devices"
+          href="/traffic"
+          action="Traffic"
+        />
+      </CardHeader>
+      <CardContent>
+        {error ? (
+          <SectionError message="Failed to load top devices" onRetry={onRetry} />
+        ) : devices === null ? (
+          <div className="space-y-2">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-9 w-full" />
+            ))}
+          </div>
+        ) : devices.length === 0 ? (
+          <p className="py-8 text-center text-sm text-slate-600">No device traffic recorded yet.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[420px] text-left text-xs">
+              <thead className="border-b border-slate-800 text-[10px] uppercase tracking-wider text-slate-600">
+                <tr>
+                  <th className="py-2 pr-3 font-medium">Device</th>
+                  <th className="px-3 py-2 font-medium">IP</th>
+                  <th className="px-3 py-2 text-right font-medium">Down</th>
+                  <th className="py-2 pl-3 text-right font-medium">Up</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/80">
+                {devices.map((device) => (
+                  <tr key={device.id} className="hover:bg-slate-900/45">
+                    <td className="max-w-[13rem] py-2 pr-3">
+                      <Link href={`/devices?id=${device.id}`} className="block truncate text-slate-200 hover:text-cyan-300">
+                        {device.name || device.hostname || device.vendor || "Unknown"}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2 tabular-nums text-slate-500">{device.ip || "—"}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-emerald-300">{formatBps(device.rx_bps)}</td>
+                    <td className="py-2 pl-3 text-right tabular-nums text-cyan-300">{formatBps(device.tx_bps)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Page ───────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -443,6 +750,16 @@ export default function DashboardPage() {
     () => fetchDevices().then((d) => (Array.isArray(d) ? d : [])),
     swrOpts,
   );
+  const { data: topDevices, error: topDevicesError, mutate: mutateTopDevices } = useApiFetch<TopDevice[]>(
+    "/api/v1/dashboard/top-devices",
+    () => fetchTopDevices(6).then((d) => (Array.isArray(d) ? d : [])),
+    swrOpts,
+  );
+  const { data: topology, error: topologyError, mutate: mutateTopology } = useApiFetch<TopologyGraph>(
+    "/api/v1/topology/graph",
+    fetchTopologyGraph,
+    swrOpts,
+  );
 
   const devicesRef = useRef(devices);
   devicesRef.current = devices;
@@ -452,6 +769,8 @@ export default function DashboardPage() {
     mutateAlerts();
     mutateTraffic();
     mutateDevices();
+    mutateTopDevices();
+    mutateTopology();
   };
 
   useWsEvent(
@@ -492,12 +811,17 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight text-white">Dashboard</h1>
-        <p className="max-w-3xl text-sm leading-6 text-slate-400">
-          Network health, traffic, and alerts at a glance.
-        </p>
+    <div className="space-y-6">
+      <div className="flex flex-col gap-3 border-b border-slate-800/80 pb-5 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-2">
+          <h1 className="text-2xl font-semibold tracking-tight text-white">Dashboard</h1>
+          <p className="max-w-3xl text-sm leading-6 text-slate-400">
+            Network health, router status, traffic, and alerts at a glance.
+          </p>
+        </div>
+        <div className="text-xs uppercase tracking-wider text-slate-600">
+          Live refresh / 30s
+        </div>
       </div>
 
       {/* ── Quick Actions ──────────────────────────────── */}
@@ -507,16 +831,14 @@ export default function DashboardPage() {
       {stats && <WelcomeCard stats={stats} />}
 
       {/* ── Bento Grid ─────────────────────────────────── */}
-      <StaggerContainer className="grid grid-cols-1 gap-6 xl:grid-cols-5">
+      <StaggerContainer className="grid grid-cols-1 gap-4 xl:grid-cols-5">
         {/* ── Health Score Ring ─────────────────────────── */}
         <StaggerItem><Card
-          className="h-full border-slate-700/50 bg-slate-900/55 xl:col-span-1"
+          className={panelClassName("h-full xl:col-span-1")}
           data-testid="infra-health-card"
         >
           <CardHeader className="pb-4">
-            <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-              Infrastructure Health
-            </CardTitle>
+            <SectionTitle title="Infrastructure Health" icon={<Shield className="h-4 w-4" />} />
           </CardHeader>
           <CardContent className="flex items-center justify-center pb-5">
             {statsError ? (
@@ -544,7 +866,7 @@ export default function DashboardPage() {
         />
 
         {/* ── Stat Cards Row ───────────────────────────── */}
-        <StaggerItem className="xl:col-span-4"><div className="grid h-full grid-cols-2 gap-4 xl:grid-cols-4">
+        <StaggerItem className="xl:col-span-4"><div className="grid h-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {statsError ? (
             <>
               <StatCard
@@ -588,10 +910,10 @@ export default function DashboardPage() {
                 value={routerStatusLabel(stats).label}
                 subtitle={
                   stats.router_status === "connected" || stats.router_status === "online"
-                    ? `Connected to ${stats.router_type === "mikrotik" ? "MikroTik" : "router"}`
+                    ? `Connected to ${routerDisplayName(stats.router_type)}`
                     : stats.router_status === "unconfigured"
                       ? "Router not configured"
-                      : `Cannot reach ${stats.router_type === "mikrotik" ? "MikroTik" : "router"}`
+                      : `Cannot reach ${routerDisplayName(stats.router_type)}`
                 }
                 icon={<Router className="h-4 w-4" />}
                 status={routerStatusLabel(stats).status}
@@ -632,26 +954,13 @@ export default function DashboardPage() {
         </div></StaggerItem>
 
         {/* ── WAN Traffic Card with Sparkline ─────────── */}
-        <StaggerItem className="xl:col-span-3"><Card className="border-slate-700/50 bg-slate-900/55">
+        <StaggerItem className="xl:col-span-3"><Card className={panelClassName()}>
           <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Activity className="h-4 w-4 text-blue-400" />
-                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-                  WAN Traffic
-                </CardTitle>
-              </div>
-              <Link
-                href="/traffic"
-                className="flex items-center gap-1 text-xs text-blue-400 transition-colors hover:text-blue-300"
-              >
-                Details <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
+            <SectionTitle icon={<Activity className="h-4 w-4" />} title="WAN Traffic" href="/traffic" />
           </CardHeader>
           <CardContent>
             {/* Current aggregate speeds */}
-            <div className="mb-4 flex flex-wrap items-end gap-6 rounded-xl border border-slate-800/70 bg-slate-900/50 px-4 py-3">
+            <div className="mb-4 flex flex-wrap items-end gap-6 rounded-md border border-slate-800/70 bg-slate-900/35 px-4 py-3">
               <div className="min-w-[8rem]">
                 <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-emerald-400/85">Download</span>
                 <p className="mt-1 text-2xl font-semibold leading-none tabular-nums text-white">
@@ -659,7 +968,7 @@ export default function DashboardPage() {
                 </p>
               </div>
               <div className="min-w-[8rem]">
-                <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-blue-400/90">Upload</span>
+                <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-cyan-400/90">Upload</span>
                 <p className="mt-1 text-2xl font-semibold leading-none tabular-nums text-white">
                   {statsError ? "—" : stats ? formatBps(stats.wan_tx_bps) : "—"}
                 </p>
@@ -683,8 +992,8 @@ export default function DashboardPage() {
                         <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                       </linearGradient>
                       <linearGradient id="sparkTx" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <Tooltip
@@ -713,7 +1022,7 @@ export default function DashboardPage() {
                     <Area
                       type="monotone"
                       dataKey="tx_bps"
-                      stroke="#3b82f6"
+                      stroke="#06b6d4"
                       strokeWidth={1.5}
                       fill="url(#sparkTx)"
                       dot={false}
@@ -731,19 +1040,9 @@ export default function DashboardPage() {
         </Card></StaggerItem>
 
         {/* ── Alert Feed ───────────────────────────────── */}
-        <StaggerItem className="xl:col-span-2"><Card className="border-slate-700/50 bg-slate-900/55">
+        <StaggerItem className="xl:col-span-2"><Card className={panelClassName("h-full")}>
           <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-                Recent Alerts
-              </CardTitle>
-              <Link
-                href="/alerts"
-                className="flex items-center gap-1 text-xs text-blue-400 transition-colors hover:text-blue-300"
-              >
-                View all <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
+            <SectionTitle title="Recent Alerts" href="/alerts" action="View all" icon={<AlertTriangle className="h-4 w-4" />} />
           </CardHeader>
           <CardContent>
             {alertsError ? (
@@ -768,7 +1067,7 @@ export default function DashboardPage() {
                   <div
                     key={alert.id}
                     className={`flex items-center gap-2.5 rounded-lg border border-transparent px-3 py-2 ${
-                      !alert.is_read ? "border-blue-500/15 bg-blue-500/6" : "hover:border-slate-800/70"
+                      !alert.is_read ? "border-cyan-500/15 bg-cyan-500/10" : "hover:border-slate-800/70"
                     }`}
                   >
                     <span
@@ -787,20 +1086,22 @@ export default function DashboardPage() {
           </CardContent>
         </Card></StaggerItem>
 
+        <StaggerItem className="xl:col-span-2">
+          <RouterHealthSection stats={stats} error={statsError} onRetry={() => mutateStats()} />
+        </StaggerItem>
+
+        <StaggerItem className="xl:col-span-3">
+          <TopDevicesTable devices={topDevices} error={topDevicesError} onRetry={() => mutateTopDevices()} />
+        </StaggerItem>
+
+        <StaggerItem className="xl:col-span-2">
+          <TopologyPreview topology={topology} error={topologyError} onRetry={() => mutateTopology()} />
+        </StaggerItem>
+
         {/* ── Device Type Breakdown ────────────────────── */}
-        <StaggerItem className="xl:col-span-5"><Card className="border-slate-700/50 bg-slate-900/55">
+        <StaggerItem className="xl:col-span-3"><Card className={panelClassName("h-full")}>
           <CardHeader className="pb-4">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-                Device Breakdown
-              </CardTitle>
-              <Link
-                href="/devices"
-                className="flex items-center gap-1 text-xs text-blue-400 transition-colors hover:text-blue-300"
-              >
-                View all <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
+            <SectionTitle title="Device Breakdown" href="/devices" action="View all" icon={<MonitorSmartphone className="h-4 w-4" />} />
           </CardHeader>
           <CardContent>
             {devicesError ? (

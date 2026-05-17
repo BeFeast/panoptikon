@@ -246,7 +246,7 @@ export interface Alert {
 /** Shape returned by the /api/v1/dashboard/stats endpoint. */
 export interface DashboardStats {
   router_status: string;
-  router_type: string; // "mikrotik" | "none"
+  router_type: string; // "mikrotik" | "pfsense" | "none"
   devices_online: number;
   devices_total: number;
   alerts_unread: number;
@@ -340,7 +340,7 @@ export interface TopologyDevice {
 
 /** Router hub node in the topology graph. */
 export interface TopologyRouter {
-  router_type: string; // "mikrotik" | "unknown"
+  router_type: string; // "mikrotik" | "pfsense" | "unknown"
   is_online: boolean;
   wan_ip: string | null;
   hostname: string | null;
