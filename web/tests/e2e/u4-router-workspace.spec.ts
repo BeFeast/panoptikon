@@ -45,8 +45,8 @@ test.describe("U4 router workspace shell", () => {
     });
 
     // Header or empty-state must resolve (test env router is unreachable)
-    const header = page.getByTestId("router-header");
-    const empty = page.getByTestId("router-empty-state");
+    const header = page.getByTestId("router-header").first();
+    const empty = page.getByTestId("router-empty-state").first();
     await expect(header.or(empty)).toBeVisible({ timeout: 40000 });
 
     await page.screenshot({
@@ -64,8 +64,8 @@ test.describe("U4 router workspace shell", () => {
     await expect(page.getByTestId("router-workspace")).toBeVisible({
       timeout: 25000,
     });
-    const header = page.getByTestId("router-header");
-    const empty = page.getByTestId("router-empty-state");
+    const header = page.getByTestId("router-header").first();
+    const empty = page.getByTestId("router-empty-state").first();
     await expect(header.or(empty)).toBeVisible({ timeout: 30000 });
 
     await page.screenshot({
@@ -85,7 +85,7 @@ test.describe("U4 router workspace shell", () => {
     });
 
     const tabs = page.getByTestId("router-tabs");
-    const empty = page.getByTestId("router-empty-state");
+    const empty = page.getByTestId("router-empty-state").first();
     await expect(tabs.or(empty)).toBeVisible({ timeout: 30000 });
 
     if (await tabs.isVisible()) {
