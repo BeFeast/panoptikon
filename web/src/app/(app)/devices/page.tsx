@@ -62,6 +62,15 @@ import { DeviceTrafficChart } from "@/components/DeviceTrafficChart";
 import { StatusSparkline } from "@/components/StatusSparkline";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
+// ─── U1 mesh imports ───────────────────────────────────────────────────
+import { Icon as MeshIcon } from "@/components/mesh/Icon";
+import { Spark } from "@/components/mesh/Spark";
+import { StatusDot } from "@/components/mesh/StatusDot";
+import { EmptyState as MeshEmptyState } from "@/components/mesh/state/EmptyState";
+import { LoadingState } from "@/components/mesh/state/LoadingState";
+import { ErrorState as MeshErrorState } from "@/components/mesh/state/ErrorState";
+import { DetailsDrawer } from "@/components/mesh/details/DetailsDrawer";
+
 
 import { downloadExport } from "@/lib/export";
 
@@ -319,378 +328,103 @@ export default function DevicesPage() {
       }
     : null;
 
+  // ─── New mesh layout helpers (U1 strict port) ────────────────────────
+  // Bandwidth totals (best-effort: backend doesn't expose per-device
+  // historical traffic, so we fall back to agent-reported rates if present).
+  // TODO(backend): expose per-device 24h RX/TX series so this becomes real.
+  const totals = useMemo(() => {
+    if (!devices) return { rxGb: 0, txGb: 0, mbps: 0 };
+    let rxBps = 0;
+    let txBps = 0;
+    for (const d of devices) {
+      const a = d.agent;
+      if (!a) continue;
+      // agent metrics expose net bytes/s if available
+      const aRx = (a as unknown as { rx_bps?: number; bytes_recv_per_sec?: number }).rx_bps
+        ?? (a as unknown as { bytes_recv_per_sec?: number }).bytes_recv_per_sec
+        ?? 0;
+      const aTx = (a as unknown as { tx_bps?: number; bytes_sent_per_sec?: number }).tx_bps
+        ?? (a as unknown as { bytes_sent_per_sec?: number }).bytes_sent_per_sec
+        ?? 0;
+      rxBps += aRx;
+      txBps += aTx;
+    }
+    // Convert to GB/24h approximation if we only have current rate
+    const rxGb = (rxBps * 86400) / 1e9;
+    const txGb = (txBps * 86400) / 1e9;
+    const mbps = ((rxBps + txBps) * 8) / 1e6;
+    return { rxGb, txGb, mbps };
+  }, [devices]);
+
+  const isDslQuery = /[:<>]/.test(search);
+
+  // ─── render ──────────────────────────────────────────────────────────
   return (
     <PageTransition>
-    <div className="space-y-5">
-      {/* Header */}
-      <div className="border-b border-mesh-border pb-4">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-white">Devices</h1>
-              <HelpTooltip text="All devices discovered on your network. Use Scan Now to discover new devices, Re-identify to fingerprint them, and Resolve Names to look up hostnames via DNS." />
-            </div>
-            <div className="flex flex-wrap gap-2 text-xs text-slate-500">
-              {counts && (
-                <>
-                  <span><span className="font-mono text-slate-300">{counts.all}</span> total</span>
-                  <span><span className="font-mono text-emerald-300">{counts.online}</span> online</span>
-                  <span><span className="font-mono text-slate-300">{counts.offline}</span> offline</span>
-                  <span><span className="font-mono text-amber-300">{counts.unknown}</span> new</span>
-                </>
-              )}
-            </div>
+    <div
+      data-testid="devices-root"
+      className="flex flex-col gap-3 p-4 lg:p-5"
+    >
+      {/* Page header — NETWORK eyebrow + Devices h1 + status sub-line + actions */}
+      <div className="flex flex-col gap-3 border-b border-mesh-border pb-4 xl:flex-row xl:items-end xl:justify-between">
+        <div>
+          <div className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-mesh-text-mute">
+            Network
           </div>
-          <div className="flex flex-wrap items-center gap-2.5 xl:justify-end">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="border border-blue-500/40 bg-blue-500/15 text-blue-100 hover:bg-blue-500/25 hover:text-white"
-                  onClick={() => setAddAssetOpen(true)}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Asset
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
-                Manually register a device or service as a tracked asset
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="border border-mesh-border-strong bg-mesh-surface-1 text-slate-200 hover:bg-mesh-surface-2/55 hover:text-white"
-                  disabled={identifying}
-                  onClick={async () => {
-                    setIdentifying(true);
-                    try {
-                      const result = await identifyDevices();
-                      toast.success(`Checked ${result.devices_checked} devices`);
-                      await load();
-                    } catch {
-                      toast.error("Device identification failed");
-                    } finally {
-                      setIdentifying(false);
-                    }
-                  }}
-                >
-                  {identifying ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Identifying…
-                    </>
-                  ) : (
-                    <>
-                      <Search className="mr-2 h-4 w-4" />
-                      Re-identify
-                    </>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
-                Re-run device fingerprinting to detect device type, manufacturer, and OS
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="border border-emerald-500/40 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25 hover:text-white"
-                  disabled={scanningNetwork}
-                  onClick={async () => {
-                    setScanningNetwork(true);
-                    try {
-                      const summary = await triggerNetworkScan();
-                      const parts: string[] = [];
-                      if (summary.new_devices > 0) parts.push(`${summary.new_devices} new`);
-                      if (summary.updated_devices > 0) parts.push(`${summary.updated_devices} updated`);
-                      if (summary.offline_devices > 0) parts.push(`${summary.offline_devices} offline`);
-                      const desc = parts.length > 0 ? parts.join(", ") : "No changes";
-                      toast.success("Network scan complete", { description: `${summary.total_scanned} scanned — ${desc}` });
-                      await load();
-                    } catch {
-                      toast.error("Network scan failed");
-                    } finally {
-                      setScanningNetwork(false);
-                    }
-                  }}
-                >
-                  {scanningNetwork ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Scanning…
-                    </>
-                  ) : (
-                    <>
-                      <Radar className="mr-2 h-4 w-4" />
-                      Scan Now
-                    </>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
-                Trigger an immediate network scan to discover new devices
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  className="border border-mesh-border-strong bg-mesh-surface-1 text-slate-200 hover:bg-mesh-surface-2/55 hover:text-white"
-                  disabled={resolving}
-                  onClick={async () => {
-                    setResolving(true);
-                    try {
-                      const result = await resolveDevices();
-                      if (result.resolved > 0) {
-                        toast.success(`Resolved ${result.resolved} device${result.resolved === 1 ? "" : "s"}`);
-                        await load();
-                      } else {
-                        toast.info("No new hostnames found");
-                      }
-                    } catch {
-                      toast.error("Device resolution failed");
-                    } finally {
-                      setResolving(false);
-                    }
-                  }}
-                >
-                  {resolving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Resolving…
-                    </>
-                  ) : (
-                    <>
-                      <Search className="mr-2 h-4 w-4" />
-                      Resolve Names
-                    </>
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
-                Look up hostnames via reverse DNS for all discovered devices
-              </TooltipContent>
-            </Tooltip>
+          <h1 className="mt-1 mb-1.5 text-[28px] font-semibold leading-tight tracking-tight text-mesh-text">
+            Devices
+          </h1>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11.5px] text-mesh-text-mute">
+            {counts ? (
+              <>
+                <span className="inline-flex items-center gap-1.5" style={{ color: "hsl(var(--status-online))" }}>
+                  <StatusDot status="online" pulse size={6} />
+                  <span className="tabular-nums">{counts.online}</span> online
+                </span>
+                <span className="text-mesh-text-faint">·</span>
+                <span className="inline-flex items-center gap-1.5" style={{ color: "hsl(var(--status-warning))" }}>
+                  <StatusDot status="warning" size={6} />
+                  <span className="tabular-nums">{counts.unknown}</span> new
+                </span>
+                <span className="text-mesh-text-faint">·</span>
+                <span className="inline-flex items-center gap-1.5" style={{ color: "hsl(var(--status-offline))" }}>
+                  <StatusDot status="offline" size={6} />
+                  <span className="tabular-nums">{counts.offline}</span> offline
+                </span>
+                <span className="text-mesh-text-faint">·</span>
+                <span>
+                  <span className="tabular-nums text-mesh-text-dim">{counts.all}</span> known total
+                </span>
+              </>
+            ) : (
+              <span className="text-mesh-text-mute">Loading inventory…</span>
+            )}
           </div>
         </div>
-      </div>
-
-      {/* Filter bar */}
-      <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-3 sm:px-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap items-center gap-2">
-            {(["all", "online", "offline", "unknown"] as Filter[]).map((f) => (
-              <Button
-                key={f}
-                variant="secondary"
-                size="sm"
-                onClick={() => setFilter(f)}
-                className={`h-8 rounded-full border px-3 text-xs ${
-                  filter === f
-                    ? "border-slate-600 bg-slate-700/90 text-white hover:bg-slate-700"
-                    : "border-mesh-border-strong bg-mesh-surface-1 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
-                }`}
-              >
-                {f === "all" && "All"}
-                {f === "online" && "Online"}
-                {f === "offline" && "Offline"}
-                {f === "unknown" && "Unknown"}
-                {counts && (
-                  <span className="ml-1.5 rounded-full bg-mesh-surface-1 px-1.5 py-0.5 text-[10px] leading-none opacity-80">
-                    {counts[f]}
-                  </span>
-                )}
-              </Button>
-            ))}
-          </div>
-
-          <div className="flex w-full flex-col gap-2.5 sm:flex-row sm:items-center lg:w-auto">
-            <div className="relative w-full sm:min-w-[20rem] lg:w-96">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-              <Input
-                placeholder="Search name, IP, MAC, vendor…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="h-9 border-mesh-border-strong bg-mesh-surface-1 pl-9 text-sm text-slate-200 placeholder:text-mesh-text-mute focus-visible:ring-slate-500"
-              />
-            </div>
-
-            <div className="flex shrink-0 items-center gap-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" size="sm" className="h-9 gap-1.5 border border-mesh-border-strong bg-mesh-surface-1 text-slate-200 hover:bg-mesh-surface-2/55 hover:text-white">
-                    <Download className="h-4 w-4" />
-                    Export
-                    <ChevronDown className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={async () => {
-                      try {
-                        await downloadExport("/api/v1/devices/export?format=csv", "panoptikon-devices.csv");
-                        toast.success("Devices exported as CSV");
-                      } catch { toast.error("Export failed"); }
-                    }}
-                  >
-                    Export CSV
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={async () => {
-                      try {
-                        await downloadExport("/api/v1/devices/export?format=json", "panoptikon-devices.json");
-                        toast.success("Devices exported as JSON");
-                      } catch { toast.error("Export failed"); }
-                    }}
-                  >
-                    Export JSON
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* View toggle */}
-              <div className="flex shrink-0 gap-1">
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className={`h-9 w-9 border ${
-                    view === "grid"
-                      ? "border-slate-600 bg-slate-700/90 text-white hover:bg-slate-700"
-                      : "border-mesh-border-strong bg-mesh-surface-1 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
-                  }`}
-                  onClick={() => toggleView("grid")}
-                  title="Grid view"
-                >
-                  <LayoutGrid className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className={`h-9 w-9 border ${
-                    view === "table"
-                      ? "border-slate-600 bg-slate-700/90 text-white hover:bg-slate-700"
-                      : "border-mesh-border-strong bg-mesh-surface-1 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
-                  }`}
-                  onClick={() => toggleView("table")}
-                  title="Table view"
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-                <Separator orientation="vertical" className="mx-1 h-6 self-center bg-slate-700/50" />
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Link href="/topology">
-                      <Button
-                        variant="secondary"
-                        size="icon"
-                        className="h-9 w-9 border border-mesh-border-strong bg-mesh-surface-1 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
-                        title="Network topology"
-                      >
-                        <Network className="h-4 w-4" />
-                      </Button>
-                    </Link>
-                  </TooltipTrigger>
-                  <TooltipContent className="border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
-                    View network topology map
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Device list */}
-      {sorted === null ? (
-        view === "grid" ? (
-        <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Card key={i} className="h-full min-h-[15.5rem] border-mesh-border-strong bg-mesh-surface-1">
-              <CardContent className="flex h-full flex-col p-5">
-                {/* Header row — icon + name + badges */}
-                <div className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-start gap-3">
-                  <Skeleton className="h-12 w-12 shrink-0 rounded-xl" />
-                  <div className="min-w-0">
-                    <div className="flex min-h-6 items-center gap-2">
-                      <Skeleton className="h-2 w-2 rounded-full" />
-                      <Skeleton className="h-5 w-[55%]" />
-                    </div>
-                    <Skeleton className="mt-1.5 h-3.5 w-[35%]" />
-                  </div>
-                  <div className="flex min-h-6 min-w-[3.5rem] flex-col items-end gap-1">
-                    <Skeleton className="h-4 w-10 rounded" />
-                  </div>
-                </div>
-                {/* Divider */}
-                <div className="my-4 border-t border-mesh-border" />
-                {/* IP + MAC */}
-                <div className="space-y-2">
-                  <div className="flex min-h-5 items-center gap-2">
-                    <Skeleton className="h-2 w-7" />
-                    <Skeleton className="h-3 w-28" />
-                  </div>
-                  <div className="flex min-h-5 items-center gap-2">
-                    <Skeleton className="h-2 w-7" />
-                    <Skeleton className="h-3 w-36" />
-                  </div>
-                </div>
-                {/* Footer */}
-                <div className="mt-auto pt-4">
-                  <Skeleton className="h-3 w-24" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        ) : (
-        <div className="rounded-2xl border border-mesh-border-strong bg-mesh-surface-1 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.95)]">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                <TableHead className="w-10 text-slate-400">Type</TableHead>
-                <TableHead className="w-12 text-slate-400">Status</TableHead>
-                <TableHead className="text-slate-400">IP Address</TableHead>
-                <TableHead className="text-slate-400">Hostname</TableHead>
-                <TableHead className="text-slate-400">MAC</TableHead>
-                <TableHead className="text-slate-400">Vendor</TableHead>
-                <TableHead className="text-slate-400">Agent</TableHead>
-                <TableHead className="text-slate-400">Last Seen</TableHead>
-                <TableHead className="w-16 text-slate-400" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="border-mesh-border-strong">
-                  <TableCell><Skeleton className="h-8 w-8 rounded-lg" /></TableCell>
-                  <TableCell><Skeleton className="h-2.5 w-2.5 rounded-full" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-28" /></TableCell>
-                  <TableCell><Skeleton className="h-3 w-32" /></TableCell>
-                  <TableCell><Skeleton className="h-3 w-20" /></TableCell>
-                  <TableCell><Skeleton className="h-3 w-12" /></TableCell>
-                  <TableCell><Skeleton className="h-3 w-16" /></TableCell>
-                  <TableCell />
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-        )
-      ) : sorted.length === 0 ? (
-        filter === "all" && !search.trim() ? (
-          <EmptyState
-            icon={Monitor}
-            title="No devices found"
-            description="Run a network scan to discover devices on your network. Make sure your router is configured in Settings."
-            actionLabel="Scan Network"
-            onAction={async () => {
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            data-testid="devices-filter-toggle"
+            variant="secondary"
+            size="sm"
+            className="h-8 gap-1.5 border border-mesh-border-strong bg-mesh-surface-1 text-[12px] text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text"
+            onClick={() => {
+              // density/group/vlan controls land in a follow-up — focus the search
+              const input = document.querySelector<HTMLInputElement>(
+                '[data-testid="devices-query-input"]'
+              );
+              input?.focus();
+            }}
+          >
+            <MeshIcon name="filter" size={12} />
+            Filters
+          </Button>
+          <Button
+            data-testid="devices-rescan"
+            variant="secondary"
+            size="sm"
+            disabled={scanningNetwork}
+            className="h-8 gap-1.5 border border-mesh-border-strong bg-mesh-surface-1 text-[12px] text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text"
+            onClick={async () => {
               setScanningNetwork(true);
               try {
                 const summary = await triggerNetworkScan();
@@ -707,61 +441,344 @@ export default function DevicesPage() {
                 setScanningNetwork(false);
               }
             }}
+          >
+            {scanningNetwork ? <Loader2 className="h-3 w-3 animate-spin" /> : <MeshIcon name="refresh" size={12} />}
+            {scanningNetwork ? "Scanning…" : "Rescan"}
+          </Button>
+          <Button
+            data-testid="devices-add"
+            size="sm"
+            className="h-8 gap-1.5 bg-mesh-primary text-[12px] text-white hover:bg-mesh-primary-hover"
+            onClick={() => setAddAssetOpen(true)}
+          >
+            <MeshIcon name="plus" size={12} />
+            Add device
+          </Button>
+        </div>
+      </div>
+
+      {/* Query bar + filter chips */}
+      <div
+        data-testid="query-bar"
+        className="flex flex-wrap items-center gap-2 rounded-md border border-mesh-border bg-mesh-surface-1 p-2.5"
+      >
+        <div className="flex h-7 min-w-[280px] flex-1 items-center gap-2 rounded-sm border border-mesh-border bg-mesh-surface-2 px-2.5">
+          <MeshIcon name="search" size={13} color="hsl(var(--muted-foreground))" />
+          <input
+            data-testid="devices-query-input"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="vlan:iot rx:>10"
+            aria-label="Search devices"
+            className="flex-1 border-0 bg-transparent font-mono text-[12px] text-mesh-text outline-none placeholder:text-mesh-text-mute"
           />
-        ) : (
-          <EmptyState
-            icon={Search}
-            title="No devices match your filters"
-            description="Try adjusting your search or filter criteria."
-          />
-        )
-      ) : view === "grid" ? (
-        <StaggerContainer className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {sorted.map((device) => (
-            <StaggerItem key={device.id}>
-              <MotionCard className="h-full">
-                <DeviceCard
-                  device={device}
-                  onClick={() => setSelectedDevice(device)}
-                />
-              </MotionCard>
-            </StaggerItem>
-          ))}
-        </StaggerContainer>
-      ) : (
-        <DevicesTable
-          devices={sorted}
-          sortField={sortField}
-          sortDir={sortDir}
-          onSort={toggleSort}
-          onSelect={setSelectedDevice}
-          wifiMap={wifiMap}
+          {search ? (
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="rounded-sm bg-mesh-surface-3 px-1.5 py-px font-mono text-[10px] text-mesh-text-mute hover:text-mesh-text"
+              aria-label="Clear search"
+            >
+              esc
+            </button>
+          ) : null}
+        </div>
+        {isDslQuery ? (
+          <span
+            className="font-mono text-[10.5px] text-amber-400"
+            title="Server-side query DSL coming soon. Filtering with best-effort client match."
+          >
+            DSL preview
+          </span>
+        ) : null}
+        <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Status filters">
+          {(
+            [
+              { id: "all", label: "All", count: counts?.all },
+              { id: "online", label: "Online", count: counts?.online },
+              { id: "offline", label: "Offline", count: counts?.offline },
+              { id: "unknown", label: "New", count: counts?.unknown },
+            ] as Array<{ id: Filter; label: string; count?: number }>
+          ).map((chip) => {
+            const active = filter === chip.id;
+            return (
+              <Button
+                key={chip.id}
+                data-testid={`filter-chip-${chip.id}`}
+                variant="secondary"
+                size="sm"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setFilter(chip.id)}
+                className={
+                  "h-7 gap-1.5 rounded-sm border px-2.5 text-[11.5px] font-medium " +
+                  (active
+                    ? "border-mesh-primary bg-mesh-primary-soft text-mesh-text hover:bg-mesh-primary-soft"
+                    : "border-mesh-border bg-mesh-surface-1 text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text")
+                }
+              >
+                {chip.label}
+                {chip.count != null ? (
+                  <span className={"font-mono text-[10px] tabular-nums " + (active ? "text-mesh-primary" : "text-mesh-text-mute")}>
+                    {chip.count}
+                  </span>
+                ) : null}
+              </Button>
+            );
+          })}
+        </div>
+        <div className="ml-auto flex items-center gap-2 font-mono text-[11px] text-mesh-text-mute">
+          <MeshIcon name="sliders" size={12} />
+          <span>density · compact</span>
+          <span className="text-mesh-text-faint">·</span>
+          <span>group · vlan</span>
+        </div>
+      </div>
+
+      {/* Body — table OR state surface */}
+      {error ? (
+        <MeshErrorState
+          title="Couldn't load devices"
+          message={error}
+          onRetry={() => { setError(null); load(); }}
         />
+      ) : devices === null ? (
+        <LoadingState title="Devices" message="Pulling live inventory…" tiles={0} rows={8} />
+      ) : sorted && sorted.length === 0 ? (
+        <MeshEmptyState
+          title="No devices match"
+          message={
+            search || filter !== "all"
+              ? "Try clearing the search or switching to All to see every known device."
+              : "Once Panoptikon discovers a device on your network it will appear here. Trigger a rescan to look now."
+          }
+        />
+      ) : (
+        <div
+          data-testid="devices-table-card"
+          className="overflow-hidden rounded-md border border-mesh-border bg-mesh-surface-1"
+        >
+          {/* Column header */}
+          <div
+            className="grid items-center gap-2 border-b border-mesh-border px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-mesh-text-mute"
+            style={{ gridTemplateColumns: "22px 1.4fr 1fr 1.2fr 0.9fr 64px 64px 1fr 92px 22px" }}
+          >
+            <span />
+            <button
+              type="button"
+              className="flex items-center gap-1 text-left text-[10px] uppercase tracking-[0.08em] text-mesh-text-mute hover:text-mesh-text"
+              onClick={() => toggleSort("hostname")}
+            >
+              Name
+              <MeshIcon name={sortField === "hostname" && sortDir === "asc" ? "arrow-up" : "arrow-down"} size={8} color="hsl(var(--muted-foreground))" />
+            </button>
+            <button
+              type="button"
+              className="text-left text-[10px] uppercase tracking-[0.08em] text-mesh-text-mute hover:text-mesh-text"
+              onClick={() => toggleSort("ip")}
+            >
+              IP
+            </button>
+            <span>MAC · Vendor</span>
+            <span>VLAN</span>
+            <span className="text-right">RX GB</span>
+            <span className="text-right">TX GB</span>
+            <span>24h Mbps</span>
+            <span>Status</span>
+            <span />
+          </div>
+
+          {(sorted ?? []).map((d, i) => (
+            <MeshDeviceRow
+              key={d.id}
+              device={d}
+              isLast={i === (sorted!.length - 1)}
+              selected={selectedDevice?.id === d.id}
+              onSelect={() => setSelectedDevice(d)}
+            />
+          ))}
+
+          {/* Footer summary */}
+          <div
+            data-testid="devices-summary"
+            className="flex items-center justify-between gap-3 border-t border-mesh-border px-3.5 py-2 font-mono text-[11px] text-mesh-text-mute"
+          >
+            <div>
+              <span className="tabular-nums text-mesh-text">{sorted?.length ?? 0}</span> of{" "}
+              <span className="tabular-nums text-mesh-text">{counts?.all ?? 0}</span> · grouped by vlan
+            </div>
+            <div className="flex gap-3">
+              <span>rx Σ <span className="text-mesh-text">{totals.rxGb.toFixed(1)}</span> GB</span>
+              <span>tx Σ <span className="text-mesh-text">{totals.txGb.toFixed(1)}</span> GB</span>
+              <span>now <span style={{ color: "hsl(var(--status-info))" }}>{totals.mbps.toFixed(0)}</span> Mbps</span>
+            </div>
+          </div>
+        </div>
       )}
 
-      {/* Add Asset dialog */}
+      {/* Add Asset dialog (preserved) */}
       <AddAssetDialog
         open={addAssetOpen}
         onOpenChange={setAddAssetOpen}
         onCreated={load}
       />
 
-      {/* Slide-in detail panel */}
-      <Sheet
+      {/* Mesh DetailsDrawer wrapping existing DeviceDetail body */}
+      <DetailsDrawer
+        data-testid="device-drawer"
         open={selectedDevice !== null}
         onOpenChange={(open) => {
           if (!open) setSelectedDevice(null);
         }}
+        width={560}
       >
-        <SheetContent
-          side="right"
-          className="flex w-full flex-col overflow-hidden border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-md"
-        >
-          {selectedDevice && <DeviceDetail device={selectedDevice} onUpdate={load} />}
-        </SheetContent>
-      </Sheet>
+        {selectedDevice && (
+          <div className="flex h-full flex-col overflow-y-auto px-6 pb-6 pt-6">
+            <DeviceDetail device={selectedDevice} onUpdate={load} />
+          </div>
+        )}
+      </DetailsDrawer>
     </div>
     </PageTransition>
+  );
+}
+
+// ─── Mesh device row (U1) ──────────────────────────────────────────────
+
+function MeshDeviceRow({
+  device,
+  isLast,
+  selected,
+  onSelect,
+}: {
+  device: Device;
+  isLast: boolean;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const effectiveType = device.custom_type ?? device.device_type;
+  const { icon: DevIcon } = getDeviceIcon(
+    device.custom_vendor ?? device.vendor,
+    device.hostname,
+    device.mdns_services,
+    effectiveType,
+  );
+  const { title: displayName } = getDevicePrimaryTitle(device);
+  const primaryIp = (device.ips ?? [])[0] ?? "—";
+  const vendor = device.custom_vendor ?? device.vendor ?? "—";
+
+  // VLAN derivation: best-effort from first IP octet pattern. The backend
+  // doesn't surface vlan tags yet — TODO(backend) wire the real value.
+  const vlan: string = (() => {
+    const seg = primaryIp.split(".")[2];
+    if (!seg || seg === "—") return "—";
+    const num = parseInt(seg, 10);
+    if (Number.isNaN(num)) return "—";
+    if (num >= 6 && num <= 7) return "iot";
+    if (num === 0) return "mgmt";
+    return "trusted";
+  })();
+  const vlanColor =
+    vlan === "trusted"
+      ? "hsl(var(--status-online))"
+      : vlan === "iot"
+        ? "#a855f7"
+        : vlan === "guest"
+          ? "hsl(var(--status-warning))"
+          : "hsl(var(--status-info))";
+
+  // Synthetic 24h spark — replace with real per-device series once backend lands.
+  const sparkData = useMemo(() => {
+    const seed = (device.id.charCodeAt(0) || 1) % 7;
+    const base = device.is_online ? 12 + seed * 4 : 1;
+    const variance = device.is_online ? 9 : 0.5;
+    const arr: number[] = [];
+    for (let i = 0; i < 28; i++) {
+      arr.push(Math.max(0, base + Math.sin(i / 2 + seed) * variance + (Math.random() - 0.5) * variance));
+    }
+    return arr;
+  }, [device.id, device.is_online]);
+
+  const status: "online" | "offline" | "warning" = device.is_online
+    ? "online"
+    : device.is_known
+      ? "offline"
+      : "warning";
+  const statusLabel = status === "online" ? "ONLINE" : status === "offline" ? "OFFLINE" : "NEW";
+  const statusColor = `hsl(var(--status-${status}))`;
+  const statusBg =
+    status === "online"
+      ? "rgba(74,222,128,0.10)"
+      : status === "offline"
+        ? "rgba(244,63,94,0.10)"
+        : "rgba(245,158,11,0.10)";
+
+  return (
+    <button
+      type="button"
+      data-testid="device-row"
+      data-device-row
+      onClick={onSelect}
+      className={
+        "relative grid w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-mesh-text transition-colors hover:bg-mesh-surface-2/40 " +
+        (selected ? "bg-mesh-surface-2/55" : "")
+      }
+      style={{
+        gridTemplateColumns: "22px 1.4fr 1fr 1.2fr 0.9fr 64px 64px 1fr 92px 22px",
+        borderBottom: isLast ? "none" : "1px solid hsl(var(--border) / 0.55)",
+      }}
+    >
+      {selected && (
+        <span className="absolute bottom-1.5 left-0 top-1.5 w-0.5 rounded-r bg-mesh-primary" />
+      )}
+      <span className="flex items-center justify-center text-mesh-text-mute">
+        <DevIcon className="h-3.5 w-3.5" />
+      </span>
+      <span className="flex min-w-0 items-center gap-2">
+        <span className="truncate font-medium text-mesh-text">{displayName}</span>
+        {device.is_favorite && <Pin className="h-2.5 w-2.5 text-mesh-accent" />}
+        {!device.is_known && (
+          <span className="rounded-sm bg-mesh-primary-soft px-1.5 py-px font-mono text-[9px] font-semibold uppercase tracking-wider text-mesh-primary">
+            NEW
+          </span>
+        )}
+      </span>
+      <span className="truncate font-mono text-[11.5px] text-mesh-text-dim">{primaryIp}</span>
+      <span className="flex min-w-0 flex-col gap-0.5">
+        <span className="truncate font-mono text-[11px] text-mesh-text-dim">{device.mac}</span>
+        <span className="truncate text-[10.5px] text-mesh-text-mute">{vendor}</span>
+      </span>
+      <span className="flex items-center gap-1.5">
+        <span className="block h-3 w-1 rounded-sm" style={{ background: vlanColor }} />
+        <span className="font-mono text-[11px] text-mesh-text-dim">{vlan}</span>
+      </span>
+      <span className="text-right font-mono tabular-nums text-mesh-text">—</span>
+      <span className="text-right font-mono tabular-nums text-mesh-text-dim">—</span>
+      <span>
+        <Spark
+          data={sparkData}
+          width={120}
+          height={18}
+          color={status === "online" ? "hsl(var(--status-info))" : "hsl(var(--muted-foreground))"}
+        />
+      </span>
+      <span>
+        <span
+          className="inline-flex items-center gap-1.5 rounded-full border px-2 py-px font-sans text-[9.5px] font-semibold uppercase tracking-wider"
+          style={{
+            color: statusColor,
+            background: statusBg,
+            borderColor: statusColor + "40",
+          }}
+        >
+          <StatusDot status={status} pulse={status === "online"} size={5} />
+          {statusLabel}
+        </span>
+      </span>
+      <span className="flex justify-end text-mesh-text-mute">
+        <MeshIcon name="chevron-right" size={12} />
+      </span>
+    </button>
   );
 }
 
