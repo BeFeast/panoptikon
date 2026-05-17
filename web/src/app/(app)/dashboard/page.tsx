@@ -90,7 +90,7 @@ function severityDotColor(severity: Alert["severity"]): string {
 
 function panelClassName(extra?: string) {
   return cn(
-    "border-slate-800/90 bg-slate-950/70 shadow-[inset_0_1px_0_rgba(148,163,184,0.04)]",
+    "border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]",
     extra,
   );
 }
@@ -149,7 +149,7 @@ function CriticalDevicesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-slate-700 bg-slate-900 text-white sm:max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="border-cyan-900/45 bg-[#08111e] text-white sm:max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-white">Critical Devices</DialogTitle>
           <DialogDescription className="text-slate-400">
@@ -178,7 +178,7 @@ function CriticalDevicesDialog({
                 <Link
                   key={dev.id}
                   href={`/devices?id=${dev.id}`}
-                  className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-slate-800 transition-colors group"
+                  className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-cyan-950/35 transition-colors group"
                   onClick={() => onOpenChange(false)}
                 >
                   <span
@@ -262,7 +262,7 @@ function StatCard({
   const inner = (
     <Card
       className={cn(
-        "h-full min-h-[8.25rem] border-slate-800/90 bg-slate-950/70",
+        "h-full min-h-[8.25rem] border-cyan-900/45 bg-[#0b1220]/70",
         href &&
           "transition-[border-color,background-color,box-shadow] hover:border-cyan-700/50 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(8,145,178,0.45)]",
       )}
@@ -295,7 +295,7 @@ function StatCard({
 
 function StatCardSkeleton() {
   return (
-    <Card className="h-full min-h-[8.25rem] border-slate-800/90 bg-slate-950/70">
+    <Card className="h-full min-h-[8.25rem] border-cyan-900/45 bg-[#0b1220]/70">
       <CardHeader className="pb-3">
         <Skeleton className="h-3.5 w-24" />
       </CardHeader>
@@ -389,14 +389,14 @@ function WelcomeCard({
             <Link
               key={step.label}
               href={step.href}
-              className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-slate-800/60"
+              className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-cyan-950/35"
             >
               {step.done ? (
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
                 </span>
               ) : (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-700 bg-slate-800/50">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full border border-cyan-900/45 bg-slate-900/50">
                   <Circle className="h-3 w-3 text-slate-600" />
                 </span>
               )}
@@ -485,7 +485,7 @@ function QuickActions() {
         <Link
           key={action.label}
           href={action.href}
-          className="inline-flex items-center gap-2 rounded-full border border-slate-700/60 bg-slate-900/60 px-4 py-2 text-sm text-slate-300 transition-all hover:border-slate-600 hover:bg-slate-800/80 hover:text-white"
+          className="inline-flex items-center gap-2 rounded-full border border-cyan-900/45 bg-[#0b1220]/70 px-4 py-2 text-sm text-slate-300 transition-all hover:border-cyan-700/50 hover:bg-cyan-950/80 hover:text-white"
         >
           {action.icon}
           {action.label}
@@ -557,7 +557,7 @@ function RouterHealthSection({
                 : isConfigured
                   ? "border-rose-500/25 bg-rose-500/10 text-rose-300"
                   : "border-amber-500/25 bg-amber-500/10 text-amber-300"
-              : "border-slate-700 bg-slate-900/60 text-slate-400";
+              : "border-cyan-900/45 bg-[#08111e]/60 text-slate-400";
 
             return (
               <Link
@@ -577,13 +577,13 @@ function RouterHealthSection({
                   </span>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                  <div className="rounded border border-slate-800/80 bg-slate-950/50 px-2 py-1.5">
+                  <div className="rounded border border-cyan-900/35 bg-slate-950/50 px-2 py-1.5">
                     <p className="text-slate-600">WAN RX</p>
                     <p className="mt-0.5 truncate tabular-nums text-slate-300">
                       {card.primary ? formatBps(stats.wan_rx_bps) : "—"}
                     </p>
                   </div>
-                  <div className="rounded border border-slate-800/80 bg-slate-950/50 px-2 py-1.5">
+                  <div className="rounded border border-cyan-900/35 bg-slate-950/50 px-2 py-1.5">
                     <p className="text-slate-600">WAN TX</p>
                     <p className="mt-0.5 truncate tabular-nums text-slate-300">
                       {card.primary ? formatBps(stats.wan_tx_bps) : "—"}
@@ -835,7 +835,7 @@ export default function DashboardPage() {
   return (
     <PageTransition>
     <div className="space-y-6">
-      <div className="flex flex-col gap-3 border-b border-slate-800/80 pb-5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-3 border-b border-cyan-900/35 pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div className="space-y-2">
           <h1 className="text-2xl font-semibold tracking-tight text-white">Dashboard</h1>
           <p className="max-w-3xl text-sm leading-6 text-slate-400">
@@ -869,7 +869,7 @@ export default function DashboardPage() {
             ) : stats ? (
               <button
                 type="button"
-                className="group cursor-pointer rounded-xl border border-slate-800/80 p-2 transition-colors hover:border-slate-700 hover:bg-slate-800/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40"
+                className="group cursor-pointer rounded-xl border border-cyan-900/35 p-2 transition-colors hover:border-cyan-700/45 hover:bg-cyan-950/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/35"
                 onClick={() => setCriticalDialogOpen(true)}
                 aria-label="View critical devices"
               >
@@ -977,7 +977,7 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {/* Current aggregate speeds */}
-            <div className="mb-4 flex flex-wrap items-end gap-6 rounded-md border border-slate-800/70 bg-slate-900/35 px-4 py-3">
+            <div className="mb-4 flex flex-wrap items-end gap-6 rounded-md border border-cyan-900/35 bg-[#08111e]/62 px-4 py-3">
               <div className="min-w-[8rem]">
                 <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-emerald-400/85">Download</span>
                 <p className="mt-1 text-2xl font-semibold leading-none tabular-nums text-white">
@@ -1084,7 +1084,7 @@ export default function DashboardPage() {
                   <div
                     key={alert.id}
                     className={`flex items-center gap-2.5 rounded-lg border border-transparent px-3 py-2 ${
-                      !alert.is_read ? "border-cyan-500/15 bg-cyan-500/10" : "hover:border-slate-800/70"
+                      !alert.is_read ? "border-cyan-500/15 bg-cyan-500/10" : "hover:border-cyan-900/35"
                     }`}
                   >
                     <span

@@ -55,6 +55,27 @@
     repeating-linear-gradient(90deg, rgba(34, 211, 238, 0.035) 0 1px, transparent 1px 96px);
 }
 
+.app-mesh-bg {
+  background:
+    radial-gradient(circle at 12% -18%, rgba(34, 211, 238, 0.12) 0%, transparent 32%),
+    radial-gradient(circle at 86% -22%, rgba(37, 99, 235, 0.12) 0%, transparent 34%),
+    radial-gradient(circle at 52% 120%, rgba(8, 145, 178, 0.08) 0%, transparent 38%),
+    linear-gradient(135deg, #070b12 0%, #0e1624 28%, #070b12 52%, #111d2f 78%, #070b12 100%);
+  background-size: 160% 160%;
+}
+
+.app-mesh-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(125, 211, 252, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(125, 211, 252, 0.035) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), transparent 78%);
+}
+
 /* Tabular nums for IPs, MACs, bandwidth values */
 .tabular-nums {
   font-variant-numeric: tabular-nums;

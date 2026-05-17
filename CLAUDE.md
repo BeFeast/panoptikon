@@ -68,6 +68,6 @@ scripts/smoke-test.sh        # Run post-deploy health + smoke checks
 
 - Use `bun` for all JavaScript operations (never npm/yarn)
 - `cargo fmt --all` before every commit
-- Dark theme — slate color palette for UI
+- Dark theme — navy/cobalt/cyan operator-console color palette for UI
 - shadcn/ui components — no window.alert/confirm/prompt
 - Loading states use skeleton components, not spinners
