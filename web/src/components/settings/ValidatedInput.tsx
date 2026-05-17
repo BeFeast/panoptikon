@@ -37,7 +37,7 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
             ref={ref}
             id={id}
             className={cn(
-              "border-slate-800 bg-slate-950 text-white placeholder:text-slate-600",
+              "border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute",
               showValid && "border-emerald-500/40 pr-9",
               showError && "border-rose-500/40 pr-9",
               className,

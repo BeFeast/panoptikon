@@ -127,7 +127,7 @@ export default function SnmpSettingsPage() {
                 id="snmp-community"
                 value={community}
                 onChange={(e) => setCommunity(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="public"
               />
             </div>
@@ -154,7 +154,7 @@ export default function SnmpSettingsPage() {
                 id="snmp-port"
                 value={port}
                 onChange={(e) => setPort(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="161"
               />
             </div>
@@ -166,7 +166,7 @@ export default function SnmpSettingsPage() {
                 id="snmp-timeout"
                 value={timeout}
                 onChange={(e) => setTimeout_(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="5"
               />
             </div>
@@ -178,7 +178,7 @@ export default function SnmpSettingsPage() {
                 id="snmp-retries"
                 value={retries}
                 onChange={(e) => setRetries(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="1"
               />
             </div>

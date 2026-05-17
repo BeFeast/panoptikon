@@ -188,7 +188,7 @@ export default function UsersSettingsPage() {
               No users created yet. Users can log in with their own credentials once created.
             </p>
           ) : (
-            <div className="divide-y divide-slate-800">
+            <div className="divide-y divide-mesh-border">
               {users.map((user) => {
                 const roleInfo = ROLE_LABELS[user.role] ?? ROLE_LABELS.operator;
                 const Icon = roleInfo.icon;

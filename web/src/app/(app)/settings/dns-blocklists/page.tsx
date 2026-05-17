@@ -347,7 +347,7 @@ export default function DnsBlocklistsPage() {
             placeholder="Filter blocklists or domains..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border-mesh-border-strong bg-mesh-surface-1 pl-10 text-white placeholder:text-slate-600"
+            className="border-mesh-border-strong bg-mesh-surface-1 pl-10 text-white placeholder:text-mesh-text-mute"
           />
         </div>
 
@@ -778,7 +778,7 @@ function BlocklistFormDialog({
               id="bl-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="StevenBlack Hosts"
             />
           </div>
@@ -791,7 +791,7 @@ function BlocklistFormDialog({
               id="bl-url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
             />
           </div>
@@ -821,7 +821,7 @@ function BlocklistFormDialog({
                 min={1}
                 value={refreshHours}
                 onChange={(e) => setRefreshHours(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               />
             </div>
           </div>
@@ -937,7 +937,7 @@ function OverrideFormDialog({
               id="ovr-domain"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 font-mono"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute font-mono"
               placeholder="example.com"
             />
           </div>

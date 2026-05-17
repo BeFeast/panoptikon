@@ -4,32 +4,33 @@
 
 @layer base {
   :root {
-    /* Panoptikon brand palette — graphite + signal cyan */
-    --background: 220 42% 4%;
-    --foreground: 216 44% 94%;
-    --card: 220 35% 8%;
-    --card-foreground: 216 44% 94%;
-    --popover: 220 35% 8%;
-    --popover-foreground: 216 44% 94%;
-    --primary: 188 85% 53%;
-    --primary-foreground: 218 44% 5%;
-    --secondary: 218 30% 14%;
-    --secondary-foreground: 216 44% 94%;
-    --muted: 218 28% 13%;
-    --muted-foreground: 214 22% 73%;
-    --accent: 38 92% 50%;
-    --accent-foreground: 218 44% 5%;
-    --destructive: 348 89% 60%;
+    /* Panoptikon brand palette — mesh cornflower navy (tokens.css direction) */
+    --background: 220 67% 8%;        /* #060f25 */
+    --foreground: 220 71% 95%;       /* #e9f0fc */
+    --card: 220 65% 12%;             /* #091633 */
+    --card-foreground: 220 71% 95%;
+    --popover: 220 65% 12%;
+    --popover-foreground: 220 71% 95%;
+    --primary: 221 83% 53%;          /* #2563eb royal blue */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 67% 17%;        /* #0e2148 */
+    --secondary-foreground: 220 71% 95%;
+    --muted: 222 67% 17%;
+    --muted-foreground: 217 35% 70%; /* #98aecf */
+    --accent: 222 65% 24%;           /* #163065 */
+    --accent-foreground: 220 71% 95%;
+    --destructive: 351 95% 71%;      /* #fb7185 */
     --destructive-foreground: 0 0% 100%;
-    --border: 214 29% 16%;
-    --input: 214 29% 16%;
-    --ring: 188 85% 53%;
-    --radius: 0.5rem;
+    --border: 217 41% 42%;           /* mesh cornflower border — solid render */
+    --input: 217 41% 42%;
+    --ring: 199 89% 60%;             /* #38bdf8 sky accent */
+    --radius: 6px;
 
     /* Semantic status colors */
-    --status-online: 160 84% 39%;    /* emerald-500 */
-    --status-offline: 350 89% 60%;   /* rose-500 */
-    --status-warning: 43 96% 56%;    /* amber-400 */
+    --status-online: 142 71% 58%;    /* #4ade80 */
+    --status-offline: 351 95% 71%;   /* #fb7185 */
+    --status-warning: 43 96% 56%;    /* #fbbf24 */
+    --status-info: 199 89% 60%;      /* #38bdf8 */
   }
 
   * {
@@ -40,9 +41,9 @@
     @apply text-foreground;
     background-color: #060f25;
     background-image:
-      linear-gradient(rgba(148, 163, 184, 0.032) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(148, 163, 184, 0.026) 1px, transparent 1px),
-      linear-gradient(180deg, #050914 0%, #09111d 54%, #060a13 100%);
+      linear-gradient(rgba(96, 144, 212, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(96, 144, 212, 0.05) 1px, transparent 1px),
+      linear-gradient(180deg, #060f25 0%, #08142e 54%, #060f25 100%);
     background-size: 32px 32px, 32px 32px, auto;
     background-attachment: fixed;
     font-feature-settings: "rlig" 1, "calt" 1;
@@ -142,7 +143,7 @@
   bottom: 8px;
   width: 4px;
   border-radius: 0 2px 2px 0;
-  background: linear-gradient(to bottom, hsl(var(--primary)), hsl(188 85% 40%));
+  background: linear-gradient(to bottom, hsl(var(--primary)), hsl(var(--ring)));
 }
 
 /* Hide scrollbar while preserving scroll behavior */

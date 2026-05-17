@@ -365,7 +365,7 @@ function AddDotServerDialog({
               id="dot-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="Cloudflare"
             />
           </div>
@@ -377,7 +377,7 @@ function AddDotServerDialog({
               id="dot-address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="1.1.1.1"
               required
             />
@@ -391,7 +391,7 @@ function AddDotServerDialog({
               type="number"
               value={port}
               onChange={(e) => setPort(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="853"
             />
           </div>

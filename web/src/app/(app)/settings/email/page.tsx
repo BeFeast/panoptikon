@@ -155,7 +155,7 @@ export default function EmailSettingsPage() {
                 id="smtp-host"
                 value={smtpHost}
                 onChange={(e) => setSmtpHost(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="smtp.gmail.com"
               />
             </div>
@@ -167,7 +167,7 @@ export default function EmailSettingsPage() {
                 id="smtp-port"
                 value={smtpPort}
                 onChange={(e) => setSmtpPort(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="587"
               />
             </div>
@@ -190,7 +190,7 @@ export default function EmailSettingsPage() {
                 id="smtp-username"
                 value={smtpUsername}
                 onChange={(e) => setSmtpUsername(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="user@gmail.com"
               />
             </div>
@@ -203,7 +203,7 @@ export default function EmailSettingsPage() {
                 type="password"
                 value={smtpPassword}
                 onChange={(e) => setSmtpPassword(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder={savedPasswordSet ? "Leave blank to keep" : "App password"}
               />
             </div>
@@ -216,7 +216,7 @@ export default function EmailSettingsPage() {
                 type="email"
                 value={smtpFromEmail}
                 onChange={(e) => setSmtpFromEmail(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="panoptikon@example.com"
               />
             </div>
@@ -229,7 +229,7 @@ export default function EmailSettingsPage() {
                 type="email"
                 value={smtpToEmail}
                 onChange={(e) => setSmtpToEmail(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="admin@example.com"
               />
             </div>

@@ -215,7 +215,7 @@ export default function RetentionSettingsPage() {
                 min={1}
                 value={retTrafficHours}
                 onChange={(e) => setRetTrafficHours(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
+                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   trafficValid === "valid"
                     ? "border-emerald-500/40"
                     : trafficValid === "error"
@@ -246,7 +246,7 @@ export default function RetentionSettingsPage() {
                 min={1}
                 value={retAlertsDays}
                 onChange={(e) => setRetAlertsDays(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
+                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   alertsValid === "valid"
                     ? "border-emerald-500/40"
                     : alertsValid === "error"
@@ -277,7 +277,7 @@ export default function RetentionSettingsPage() {
                 min={1}
                 value={retAgentDays}
                 onChange={(e) => setRetAgentDays(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
+                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   agentValid === "valid"
                     ? "border-emerald-500/40"
                     : agentValid === "error"

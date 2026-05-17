@@ -145,7 +145,7 @@ export default function SpeedtestSettingsPage() {
                   min={0}
                   value={speedtestAutoHours}
                   onChange={(e) => setSpeedtestAutoHours(e.target.value)}
-                  className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
+                  className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                     autoValid === "valid"
                       ? "border-emerald-500/40"
                       : autoValid === "error"
@@ -175,7 +175,7 @@ export default function SpeedtestSettingsPage() {
                   min={1}
                   value={speedtestRetDays}
                   onChange={(e) => setSpeedtestRetDays(e.target.value)}
-                  className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
+                  className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                     retValid === "valid"
                       ? "border-emerald-500/40"
                       : retValid === "error"

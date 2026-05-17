@@ -64,7 +64,7 @@ export function PasswordStrengthMeter({
   return (
     <div className="space-y-2" data-testid="password-strength-meter">
       {/* Animated gradient bar */}
-      <div className="h-1 w-full overflow-hidden rounded-full bg-slate-800">
+      <div className="h-1 w-full overflow-hidden rounded-full bg-mesh-surface-1">
         <div
           className={`h-full rounded-full bg-gradient-to-r ${config.gradient} transition-all duration-500 ease-out`}
           style={{ width: `${widthPercent}%` }}

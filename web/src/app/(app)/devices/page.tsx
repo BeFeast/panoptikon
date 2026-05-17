@@ -354,7 +354,7 @@ export default function DevicesPage() {
                   Add Asset
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+              <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
                 Manually register a device or service as a tracked asset
               </TooltipContent>
             </Tooltip>
@@ -363,7 +363,7 @@ export default function DevicesPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="border border-slate-700/75 bg-slate-800/60 text-slate-200 hover:bg-mesh-surface-2/55 hover:text-white"
+                  className="border border-mesh-border-strong bg-mesh-surface-1 text-slate-200 hover:bg-mesh-surface-2/55 hover:text-white"
                   disabled={identifying}
                   onClick={async () => {
                     setIdentifying(true);
@@ -391,7 +391,7 @@ export default function DevicesPage() {
                   )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+              <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
                 Re-run device fingerprinting to detect device type, manufacturer, and OS
               </TooltipContent>
             </Tooltip>
@@ -433,7 +433,7 @@ export default function DevicesPage() {
                   )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+              <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
                 Trigger an immediate network scan to discover new devices
               </TooltipContent>
             </Tooltip>
@@ -442,7 +442,7 @@ export default function DevicesPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="border border-slate-700/75 bg-slate-800/60 text-slate-200 hover:bg-mesh-surface-2/55 hover:text-white"
+                  className="border border-mesh-border-strong bg-mesh-surface-1 text-slate-200 hover:bg-mesh-surface-2/55 hover:text-white"
                   disabled={resolving}
                   onClick={async () => {
                     setResolving(true);
@@ -474,7 +474,7 @@ export default function DevicesPage() {
                   )}
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+              <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
                 Look up hostnames via reverse DNS for all discovered devices
               </TooltipContent>
             </Tooltip>
@@ -495,7 +495,7 @@ export default function DevicesPage() {
                 className={`h-8 rounded-full border px-3 text-xs ${
                   filter === f
                     ? "border-slate-600 bg-slate-700/90 text-white hover:bg-slate-700"
-                    : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
+                    : "border-mesh-border-strong bg-mesh-surface-1 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
                 }`}
               >
                 {f === "all" && "All"}
@@ -503,7 +503,7 @@ export default function DevicesPage() {
                 {f === "offline" && "Offline"}
                 {f === "unknown" && "Unknown"}
                 {counts && (
-                  <span className="ml-1.5 rounded-full bg-slate-900/55 px-1.5 py-0.5 text-[10px] leading-none opacity-80">
+                  <span className="ml-1.5 rounded-full bg-mesh-surface-1 px-1.5 py-0.5 text-[10px] leading-none opacity-80">
                     {counts[f]}
                   </span>
                 )}
@@ -518,14 +518,14 @@ export default function DevicesPage() {
                 placeholder="Search name, IP, MAC, vendor…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-9 border-slate-700 bg-slate-900 pl-9 text-sm text-slate-200 placeholder:text-slate-500 focus-visible:ring-slate-500"
+                className="h-9 border-mesh-border-strong bg-mesh-surface-1 pl-9 text-sm text-slate-200 placeholder:text-mesh-text-mute focus-visible:ring-slate-500"
               />
             </div>
 
             <div className="flex shrink-0 items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" size="sm" className="h-9 gap-1.5 border border-slate-700/75 bg-slate-800/60 text-slate-200 hover:bg-mesh-surface-2/55 hover:text-white">
+                  <Button variant="secondary" size="sm" className="h-9 gap-1.5 border border-mesh-border-strong bg-mesh-surface-1 text-slate-200 hover:bg-mesh-surface-2/55 hover:text-white">
                     <Download className="h-4 w-4" />
                     Export
                     <ChevronDown className="h-3 w-3" />
@@ -563,7 +563,7 @@ export default function DevicesPage() {
                   className={`h-9 w-9 border ${
                     view === "grid"
                       ? "border-slate-600 bg-slate-700/90 text-white hover:bg-slate-700"
-                      : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
+                      : "border-mesh-border-strong bg-mesh-surface-1 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
                   }`}
                   onClick={() => toggleView("grid")}
                   title="Grid view"
@@ -576,7 +576,7 @@ export default function DevicesPage() {
                   className={`h-9 w-9 border ${
                     view === "table"
                       ? "border-slate-600 bg-slate-700/90 text-white hover:bg-slate-700"
-                      : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
+                      : "border-mesh-border-strong bg-mesh-surface-1 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
                   }`}
                   onClick={() => toggleView("table")}
                   title="Table view"
@@ -590,14 +590,14 @@ export default function DevicesPage() {
                       <Button
                         variant="secondary"
                         size="icon"
-                        className="h-9 w-9 border border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
+                        className="h-9 w-9 border border-mesh-border-strong bg-mesh-surface-1 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
                         title="Network topology"
                       >
                         <Network className="h-4 w-4" />
                       </Button>
                     </Link>
                   </TooltipTrigger>
-                  <TooltipContent className="border-slate-700 bg-slate-800 text-slate-200">
+                  <TooltipContent className="border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
                     View network topology map
                   </TooltipContent>
                 </Tooltip>
@@ -612,7 +612,7 @@ export default function DevicesPage() {
         view === "grid" ? (
         <div className="grid grid-cols-1 items-stretch gap-5 md:grid-cols-2 xl:grid-cols-3">
           {Array.from({ length: 8 }).map((_, i) => (
-            <Card key={i} className="h-full min-h-[15.5rem] border-slate-700/50 bg-slate-900/55">
+            <Card key={i} className="h-full min-h-[15.5rem] border-mesh-border-strong bg-mesh-surface-1">
               <CardContent className="flex h-full flex-col p-5">
                 {/* Header row — icon + name + badges */}
                 <div className="grid grid-cols-[3rem_minmax(0,1fr)_auto] items-start gap-3">
@@ -650,10 +650,10 @@ export default function DevicesPage() {
           ))}
         </div>
         ) : (
-        <div className="rounded-2xl border border-slate-700/50 bg-slate-900/55 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.95)]">
+        <div className="rounded-2xl border border-mesh-border-strong bg-mesh-surface-1 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.95)]">
           <Table>
             <TableHeader>
-              <TableRow className="border-slate-800 hover:bg-transparent">
+              <TableRow className="border-mesh-border-strong hover:bg-transparent">
                 <TableHead className="w-10 text-slate-400">Type</TableHead>
                 <TableHead className="w-12 text-slate-400">Status</TableHead>
                 <TableHead className="text-slate-400">IP Address</TableHead>
@@ -667,7 +667,7 @@ export default function DevicesPage() {
             </TableHeader>
             <TableBody>
               {Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="border-slate-800">
+                <TableRow key={i} className="border-mesh-border-strong">
                   <TableCell><Skeleton className="h-8 w-8 rounded-lg" /></TableCell>
                   <TableCell><Skeleton className="h-2.5 w-2.5 rounded-full" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
@@ -824,7 +824,7 @@ function DeviceCard({
   return (
     <Card
       data-device-row
-      className="h-full min-h-[15.5rem] cursor-pointer border-slate-700/50 bg-slate-900/55 transition-[border-color,background-color,box-shadow] hover:border-slate-600/70 hover:bg-mesh-surface-2/55 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
+      className="h-full min-h-[15.5rem] cursor-pointer border-mesh-border-strong bg-mesh-surface-1 transition-[border-color,background-color,box-shadow] hover:border-slate-600/70 hover:bg-mesh-surface-2/55 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
       onClick={onClick}
     >
       <CardContent className="flex h-full flex-col p-5">
@@ -834,7 +834,7 @@ function DeviceCard({
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${
               device.is_online
                 ? "border-emerald-500/30 bg-emerald-500/10"
-                : "border-slate-700/80 bg-slate-800/85"
+                : "border-mesh-border-strong bg-mesh-surface-1"
             }`}
           >
             <DevIcon
@@ -887,7 +887,7 @@ function DeviceCard({
               className={`border text-[10px] ${
                 device.is_online
                   ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-300"
-                  : "border-slate-700/80 bg-slate-800/70 text-slate-400"
+                  : "border-mesh-border-strong bg-mesh-surface-1 text-slate-400"
               }`}
             >
               {device.is_online ? "Online" : "Offline"}
@@ -927,7 +927,7 @@ function DeviceCard({
             {device.agent!.cpu_percent != null && (
               <div className="flex items-center gap-2">
                 <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">CPU</span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800/90">
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-mesh-surface-1">
                   <div
                     className="h-full rounded-full bg-sky-500/65 transition-all"
                     style={{ width: `${Math.min(device.agent!.cpu_percent, 100)}%` }}
@@ -941,7 +941,7 @@ function DeviceCard({
             {device.agent!.memory_percent != null && (
               <div className="flex items-center gap-2">
                 <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">RAM</span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800/90">
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-mesh-surface-1">
                   <div
                     className="h-full rounded-full bg-violet-500/65 transition-all"
                     style={{ width: `${Math.min(device.agent!.memory_percent, 100)}%` }}
@@ -1027,10 +1027,10 @@ function DevicesTable({
   };
 
   return (
-    <div className="rounded-2xl border border-slate-700/50 bg-slate-900/55 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.95)]">
+    <div className="rounded-2xl border border-mesh-border-strong bg-mesh-surface-1 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.95)]">
       <Table>
         <TableHeader>
-          <TableRow className="border-slate-800 hover:bg-transparent">
+          <TableRow className="border-mesh-border-strong hover:bg-transparent">
             <TableHead className="w-10 text-slate-400">Type</TableHead>
             <TableHead className="w-12 text-slate-400">Status</TableHead>
             <TableHead
@@ -1090,7 +1090,7 @@ function DevicesTable({
               >
                 <TableCell>
                   <div
-                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-mesh-surface-1"
                   >
                     <RowIcon
                       className={`h-4 w-4 ${
@@ -1117,7 +1117,7 @@ function DevicesTable({
                       {device.hostname ?? "—"}
                     </span>
                     {device.agent?.is_online && (
-                      <span className="shrink-0 rounded border border-slate-700/80 bg-slate-800/80 px-1.5 py-0.5 text-xs text-slate-300">
+                      <span className="shrink-0 rounded border border-mesh-border-strong bg-mesh-surface-1 px-1.5 py-0.5 text-xs text-slate-300">
                         Agent
                       </span>
                     )}
@@ -1242,7 +1242,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
       <SheetHeader className="shrink-0">
         <div className="flex items-center gap-3">
           <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-slate-800 ${
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mesh-surface-1 ${
               device.is_online ? "ring-1 ring-emerald-500/20" : ""
             }`}
           >
@@ -1317,7 +1317,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
           className={`gap-2 ${
             device.is_critical
               ? "bg-amber-600 hover:bg-amber-700 text-white"
-              : "border-slate-700 text-slate-300 hover:text-white"
+              : "border-mesh-border-strong text-slate-300 hover:text-white"
           }`}
           onClick={async () => {
             try {
@@ -1333,17 +1333,17 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
           {device.is_critical ? "Unpin" : "Pin Critical"}
         </Button>
         <Link href={`/assets?id=${device.id}`} className="flex-1">
-          <Button variant="outline" size="sm" className="w-full gap-2 border-slate-700 text-slate-300 hover:text-white">
+          <Button variant="outline" size="sm" className="w-full gap-2 border-mesh-border-strong text-slate-300 hover:text-white">
             <ExternalLink className="h-4 w-4" />
             Asset Detail
           </Button>
         </Link>
       </div>
 
-      <Separator className="my-4 bg-slate-800" />
+      <Separator className="my-4 bg-mesh-surface-1" />
 
       <Tabs defaultValue="info" className="w-full">
-        <TabsList className="mb-4 w-full bg-slate-800">
+        <TabsList className="mb-4 w-full bg-mesh-surface-1">
           <TabsTrigger value="info" className="flex-1">Info</TabsTrigger>
           <TabsTrigger value="edit" className="flex-1">Edit</TabsTrigger>
           <TabsTrigger value="system" className="flex-1">System</TabsTrigger>
@@ -1463,7 +1463,7 @@ function DeviceInfoTab({
       {/* Device identity — merged auto-detected + custom */}
       {(osDisplayString || effectiveType || effectiveVendor || effectiveModel) && (
         <>
-          <Separator className="bg-slate-800" />
+          <Separator className="bg-mesh-surface-1" />
           <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
             Device Identity
           </p>
@@ -1541,7 +1541,7 @@ function DeviceInfoTab({
       {/* mDNS Services */}
       {device.mdns_services && (
         <>
-          <Separator className="bg-slate-800" />
+          <Separator className="bg-mesh-surface-1" />
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
               mDNS Services
@@ -1564,7 +1564,7 @@ function DeviceInfoTab({
       {/* Agent info */}
       {device.agent && (
         <>
-          <Separator className="bg-slate-800" />
+          <Separator className="bg-mesh-surface-1" />
           <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
             Agent Telemetry
           </p>
@@ -1592,7 +1592,7 @@ function DeviceInfoTab({
         device.ram_manual || device.disk_manual || device.serial_number ||
         device.purchase_date || device.warranty_expiry) && (
         <>
-          <Separator className="bg-slate-800" />
+          <Separator className="bg-mesh-surface-1" />
           <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
             Asset Inventory
           </p>
@@ -1622,7 +1622,7 @@ function DeviceInfoTab({
       {/* Notes */}
       {device.notes && (
         <>
-          <Separator className="bg-slate-800" />
+          <Separator className="bg-mesh-surface-1" />
           <div>
             <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
               Notes
@@ -1665,7 +1665,7 @@ function DeviceSystemTab({ deviceId }: { deviceId: string }) {
   if (sysinfo === undefined) {
     return (
       <div className="space-y-3">
-        <Skeleton className="h-48 w-full bg-slate-800" />
+        <Skeleton className="h-48 w-full bg-mesh-surface-1" />
       </div>
     );
   }
@@ -1711,7 +1711,7 @@ function DeviceSystemTab({ deviceId }: { deviceId: string }) {
   return (
     <div className="space-y-4">
       {/* Neofetch-style terminal card */}
-      <div className="overflow-hidden rounded-lg border border-slate-700 bg-slate-950 font-mono text-[13px]">
+      <div className="overflow-hidden rounded-lg border border-mesh-border-strong bg-mesh-surface-1 font-mono text-[13px]">
         {/* Title bar */}
         <div className="flex items-center gap-1.5 border-b border-mesh-border px-3 py-2">
           <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
@@ -1736,7 +1736,7 @@ function DeviceSystemTab({ deviceId }: { deviceId: string }) {
           ))}
           {/* Color palette row */}
           <div className="mt-3 flex gap-0">
-            {["bg-slate-900", "bg-red-500", "bg-green-500", "bg-yellow-500", "bg-blue-500", "bg-purple-500", "bg-cyan-500", "bg-slate-300"].map((c) => (
+            {["bg-mesh-surface-1", "bg-red-500", "bg-green-500", "bg-yellow-500", "bg-blue-500", "bg-purple-500", "bg-cyan-500", "bg-slate-300"].map((c) => (
               <span key={c} className={`inline-block h-3 w-3 ${c}`} />
             ))}
           </div>
@@ -2109,7 +2109,7 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
             <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/95">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-slate-800 hover:bg-transparent">
+                  <TableRow className="border-mesh-border-strong hover:bg-transparent">
                     <TableHead className="text-slate-400">Port</TableHead>
                     <TableHead className="text-slate-400">Proto</TableHead>
                     <TableHead className="text-slate-400">State</TableHead>
@@ -2120,7 +2120,7 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
                   {scanResult.ports.map((port) => (
                     <TableRow
                       key={`${port.port}/${port.protocol}`}
-                      className="border-slate-800"
+                      className="border-mesh-border-strong"
                     >
                       <TableCell className="tabular-nums font-mono text-sm text-slate-300">
                         {port.port}
@@ -2269,7 +2269,7 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
             <select
               value={customType}
               onChange={(e) => setCustomType(e.target.value)}
-              className="flex h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+              className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
             >
               <option value="">{device.device_type ? `Auto: ${device.device_type}` : "Select type…"}</option>
               {DEVICE_TYPE_OPTIONS.filter(Boolean).map((t) => (
@@ -2283,7 +2283,7 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
             <select
               value={customOs}
               onChange={(e) => setCustomOs(e.target.value)}
-              className="flex h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+              className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
             >
               <option value="">{device.os_family ? `Auto: ${device.os_family}` : "Select OS…"}</option>
               {OS_OPTIONS.filter(Boolean).map((os) => (
@@ -2323,7 +2323,7 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
             <select
               value={iconOverride}
               onChange={(e) => setIconOverride(e.target.value)}
-              className="flex h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+              className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
             >
               <option value="">Auto (based on type)</option>
               {DEVICE_TYPE_OPTIONS.filter(Boolean).map((t) => (
@@ -2332,7 +2332,7 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
             </select>
           </div>
 
-          <Separator className="bg-slate-800" />
+          <Separator className="bg-mesh-surface-1" />
           <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">Asset Inventory</p>
 
           <div className="grid grid-cols-2 gap-3">
@@ -2388,7 +2388,7 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Freeform notes about this device…"
               rows={3}
-              className="flex w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-600"
+              className="flex w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-slate-300 placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-slate-600"
             />
           </div>
         </div>
@@ -2560,7 +2560,7 @@ function AddAssetDialog({
                     className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2.5 text-[11px] transition-colors ${
                       isSelected
                         ? "border-blue-500 bg-blue-500/10 text-blue-400"
-                        : "border-slate-700 bg-slate-900 text-slate-400 hover:border-slate-600 hover:text-slate-300"
+                        : "border-mesh-border-strong bg-mesh-surface-1 text-slate-400 hover:border-slate-600 hover:text-slate-300"
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -2657,7 +2657,7 @@ function AddAssetDialog({
                 <select
                   value={os}
                   onChange={(e) => setOs(e.target.value)}
-                  className="flex h-8 w-full rounded-md border border-slate-700 bg-slate-900 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+                  className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
                 >
                   <option value="">Select OS…</option>
                   {OS_OPTIONS.filter(Boolean).map((o) => (
@@ -2753,7 +2753,7 @@ function AddAssetDialog({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Additional notes about this asset…"
               rows={2}
-              className="mt-1.5 flex w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-slate-600"
+              className="mt-1.5 flex w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-slate-300 placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-slate-600"
             />
           </div>
         </div>
@@ -2843,7 +2843,7 @@ function DeviceWifiTab({ mac }: { mac: string }) {
   if (wifiInfo === undefined) {
     return (
       <div className="space-y-3">
-        <Skeleton className="h-48 w-full bg-slate-800" />
+        <Skeleton className="h-48 w-full bg-mesh-surface-1" />
       </div>
     );
   }
@@ -2908,7 +2908,7 @@ function DeviceWifiTab({ mac }: { mac: string }) {
         {/* Upload/Download Speed */}
         {(wifiInfo.upload_bps != null || wifiInfo.download_bps != null) && (
           <>
-            <Separator className="bg-slate-800" />
+            <Separator className="bg-mesh-surface-1" />
             <div className="flex items-center gap-2">
               <Network className="h-4 w-4 text-slate-500" />
               <p className="text-xs font-medium uppercase tracking-wider text-slate-500">

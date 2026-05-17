@@ -59,7 +59,7 @@ export function InterfacesTab() {
   const filtered = (interfaces ?? []).filter((i) => matchesFilter(i, filter));
 
   return (
-    <Card className="border-slate-800 bg-slate-900">
+    <Card className="border-mesh-border-strong bg-mesh-surface-1">
       <CardHeader className="flex flex-row items-center justify-between pb-4">
         <CardTitle className="flex items-center gap-2 text-white">
           <Network className="h-4 w-4 text-blue-400" />
@@ -87,7 +87,7 @@ export function InterfacesTab() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+              <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                 <th className="px-3 py-2">Name</th>
                 <th className="px-3 py-2">Description</th>
                 <th className="px-3 py-2">Type</th>
@@ -106,7 +106,7 @@ export function InterfacesTab() {
                 </tr>
               ) : (
                 filtered.map((iface) => (
-                  <tr key={iface.name} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                  <tr key={iface.name} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                     <td className="px-3 py-2 font-medium text-white">{iface.name}</td>
                     <td className="px-3 py-2 text-slate-400">{iface.descr ?? "\u2014"}</td>
                     <td className="px-3 py-2 text-slate-400">{iface.iface_type}</td>

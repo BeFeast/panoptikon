@@ -405,7 +405,7 @@ export default function ConfigBackupPage() {
                   placeholder="Optional label (e.g. Before firewall change)"
                   value={snapshotLabel}
                   onChange={(e) => setSnapshotLabel(e.target.value)}
-                  className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+                  className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 />
               </div>
               <Button
@@ -468,7 +468,7 @@ export default function ConfigBackupPage() {
                       <th className="pb-2 text-right font-medium">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/50">
+                  <tbody className="divide-y divide-mesh-border">
                     {items.map((b) => (
                       <tr key={b.id} className="group">
                         <td className="py-2.5 pr-3 text-slate-500">{b.id}</td>

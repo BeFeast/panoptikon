@@ -66,6 +66,9 @@ const config: Config = {
           "text-faint": "#3a5278",
           accent: "#38bdf8",
           primary: "#2563eb",
+          "primary-hover": "#3672f0",
+          "primary-press": "#1d4fd7",
+          "primary-soft": "rgba(37,99,235,0.16)",
         },
       },
       borderRadius: {

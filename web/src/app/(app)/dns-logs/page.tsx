@@ -167,7 +167,7 @@ export default function DnsLogsPage() {
                   Refresh
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+              <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
                 Reload the query log with the latest entries
               </TooltipContent>
             </Tooltip>

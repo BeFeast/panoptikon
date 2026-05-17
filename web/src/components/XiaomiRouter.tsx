@@ -103,7 +103,7 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
   const memUsage = status.mem_usage ? Math.round(status.mem_usage * 100) : 0;
 
   return (
-    <Card className="border-slate-800 bg-slate-900">
+    <Card className="border-mesh-border-strong bg-mesh-surface-1">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-300">
           <Cpu className="h-4 w-4 text-orange-400" />
@@ -119,7 +119,7 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
             </span>
             <span className="font-mono text-slate-200">{cpuLoad}%</span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-mesh-surface-1">
             <div
               className={`h-full rounded-full transition-all ${progressColor(cpuLoad)}`}
               style={{ width: `${cpuLoad}%` }}
@@ -135,7 +135,7 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
             </span>
             <span className="font-mono text-slate-200">{memUsage}%</span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-mesh-surface-1">
             <div
               className={`h-full rounded-full transition-all ${progressColor(memUsage)}`}
               style={{ width: `${memUsage}%` }}
@@ -145,7 +145,7 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
 
         {/* Temperature + Uptime row */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-lg bg-slate-800/50 p-3">
+          <div className="rounded-lg bg-mesh-surface-1 p-3">
             <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
               <Thermometer className="h-3.5 w-3.5" />
               Temperature
@@ -156,7 +156,7 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
               {status.temperature != null ? `${status.temperature}\u00b0C` : "\u2014"}
             </p>
           </div>
-          <div className="rounded-lg bg-slate-800/50 p-3">
+          <div className="rounded-lg bg-mesh-surface-1 p-3">
             <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
               <Clock className="h-3.5 w-3.5" />
               Uptime
@@ -169,7 +169,7 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
 
         {/* Devices + Bandwidth row */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-lg bg-slate-800/50 p-3">
+          <div className="rounded-lg bg-mesh-surface-1 p-3">
             <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
               <Users className="h-3.5 w-3.5" />
               Devices Online
@@ -181,7 +181,7 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
               </span>
             </p>
           </div>
-          <div className="rounded-lg bg-slate-800/50 p-3">
+          <div className="rounded-lg bg-mesh-surface-1 p-3">
             <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
               WAN Speed
             </div>
@@ -208,7 +208,7 @@ function WanInfoSection({ wan }: { wan: XiaomiWanInfo }) {
   const dnsServers = wan.dns?.split(",").map((d) => d.trim()) ?? [];
 
   return (
-    <Card className="border-slate-800 bg-slate-900">
+    <Card className="border-mesh-border-strong bg-mesh-surface-1">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-300">
           <Globe className="h-4 w-4 text-blue-400" />
@@ -234,7 +234,7 @@ function WanInfoSection({ wan }: { wan: XiaomiWanInfo }) {
             <p className="text-slate-200">
               <Badge
                 variant="outline"
-                className="border-slate-700 text-slate-300"
+                className="border-mesh-border-strong text-slate-300"
               >
                 {wan.wan_type ?? "\u2014"}
               </Badge>
@@ -248,7 +248,7 @@ function WanInfoSection({ wan }: { wan: XiaomiWanInfo }) {
                     <Badge
                       key={d}
                       variant="outline"
-                      className="border-slate-700 font-mono text-slate-300"
+                      className="border-mesh-border-strong font-mono text-slate-300"
                     >
                       {d}
                     </Badge>
@@ -264,7 +264,7 @@ function WanInfoSection({ wan }: { wan: XiaomiWanInfo }) {
                 className={
                   wan.ipv6_status === "enabled"
                     ? "border-emerald-700 text-emerald-400"
-                    : "border-slate-700 text-slate-400"
+                    : "border-mesh-border-strong text-slate-400"
                 }
               >
                 {wan.ipv6_status ?? "unknown"}
@@ -344,7 +344,7 @@ function WifiBandsSection({
     wifiDevices.length > 0 && wifiDevices.some((d) => d.band != null);
 
   return (
-    <Card className="border-slate-800 bg-slate-900">
+    <Card className="border-mesh-border-strong bg-mesh-surface-1">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-300">
           <Wifi className="h-4 w-4 text-violet-400" />
@@ -375,7 +375,7 @@ function WifiBandsSection({
               return (
                 <div
                   key={`${bandLabel}|${band.ssid ?? i}`}
-                  className="rounded-lg border border-slate-800 bg-slate-800/30 p-4"
+                  className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1 p-4"
                 >
                   <div className="mb-3 flex items-center justify-between">
                     <Badge className="bg-violet-500/20 text-violet-300">
@@ -386,7 +386,7 @@ function WifiBandsSection({
                       className={
                         band.status === "1"
                           ? "border-emerald-700 text-emerald-400"
-                          : "border-slate-700 text-slate-500"
+                          : "border-mesh-border-strong text-slate-500"
                       }
                     >
                       {band.status === "1" ? "Active" : "Off"}
@@ -421,7 +421,7 @@ function WifiBandsSection({
                           className={
                             band.band_steering === "1"
                               ? "border-emerald-700 text-emerald-400"
-                              : "border-slate-700 text-slate-400"
+                              : "border-mesh-border-strong text-slate-400"
                           }
                         >
                           {band.band_steering === "1" ? "On" : "Off"}
@@ -443,7 +443,7 @@ function WifiBandsSection({
 
 function FirmwareSection({ firmware }: { firmware: XiaomiFirmware }) {
   return (
-    <Card className="border-slate-800 bg-slate-900">
+    <Card className="border-mesh-border-strong bg-mesh-surface-1">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-300">
           <HardDrive className="h-4 w-4 text-mesh-accent" />

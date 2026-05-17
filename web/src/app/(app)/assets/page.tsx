@@ -490,7 +490,7 @@ ${filtered
               placeholder="Search by name, location, IP, owner, tag..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="border-slate-700 bg-slate-800/50 pl-9 pr-8"
+              className="border-mesh-border-strong bg-mesh-surface-1 pl-9 pr-8"
             />
             {search && (
               <button
@@ -505,7 +505,7 @@ ${filtered
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="flex h-10 rounded-md border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="flex h-10 rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             <option value="">All types</option>
             {availableTypes.map((t) => (
@@ -518,7 +518,7 @@ ${filtered
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="flex h-10 rounded-md border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="flex h-10 rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             <option value="">All statuses</option>
             {availableStatuses.map((s) => (
@@ -531,7 +531,7 @@ ${filtered
           <select
             value={locationFilter}
             onChange={(e) => setLocationFilter(e.target.value)}
-            className="flex h-10 rounded-md border border-slate-700 bg-slate-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="flex h-10 rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
             <option value="">All locations</option>
             {availableLocations.map((l) => (
@@ -549,11 +549,11 @@ ${filtered
         </div>
 
         {/* Table */}
-        <div className="rounded-lg border border-slate-800 bg-slate-900">
+        <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1">
           {filtered === null ? (
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-800 hover:bg-transparent">
+                <TableRow className="border-mesh-border-strong hover:bg-transparent">
                   <TableHead className="text-slate-500">Name</TableHead>
                   <TableHead className="text-slate-500">Type</TableHead>
                   <TableHead className="text-slate-500">Status</TableHead>
@@ -567,7 +567,7 @@ ${filtered
               </TableHeader>
               <TableBody>
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i} className="border-slate-800">
+                  <TableRow key={i} className="border-mesh-border-strong">
                     <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
@@ -596,7 +596,7 @@ ${filtered
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-800 hover:bg-transparent">
+                <TableRow className="border-mesh-border-strong hover:bg-transparent">
                   <TableHead className="text-slate-500">Name</TableHead>
                   <TableHead className="text-slate-500">Type</TableHead>
                   <TableHead className="text-slate-500">Status</TableHead>
@@ -626,7 +626,7 @@ ${filtered
                         ease: "easeOut",
                         delay: Math.min(index * 0.015, 0.12),
                       }}
-                      className="border-b border-slate-800 transition-colors hover:bg-slate-800/60 data-[state=selected]:bg-muted"
+                      className="border-b border-mesh-border-strong transition-colors hover:bg-mesh-surface-2 data-[state=selected]:bg-muted"
                     >
                       <TableCell className="font-medium text-white">
                         {asset.name}
@@ -664,7 +664,7 @@ ${filtered
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => setEditAsset(asset)}
-                            className="rounded p-1 text-slate-600 hover:bg-slate-800/60 hover:text-white transition-colors"
+                            className="rounded p-1 text-slate-600 hover:bg-mesh-surface-2 hover:text-white transition-colors"
                             title="Edit"
                           >
                             <Pencil size={14} />
@@ -718,7 +718,7 @@ ${filtered
             if (!v) setPendingDelete(null);
           }}
         >
-          <AlertDialogContent className="border-slate-800 bg-slate-950">
+          <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
             <AlertDialogHeader>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10">
@@ -737,7 +737,7 @@ ${filtered
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel
-                className="border-slate-800 bg-transparent text-slate-400 hover:bg-slate-800/50 hover:text-white"
+                className="border-mesh-border-strong bg-transparent text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
                 disabled={deleting}
               >
                 Cancel
@@ -855,7 +855,7 @@ function ImportCSVDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-[520px] border-slate-800 bg-slate-950">
+      <DialogContent className="w-full max-w-[520px] border-mesh-border-strong bg-mesh-surface-1">
         <DialogHeader>
           <DialogTitle className="text-white">Import Assets from CSV</DialogTitle>
           <DialogDescription>
@@ -870,7 +870,7 @@ function ImportCSVDialog({
             type="file"
             accept=".csv,text/csv"
             onChange={handleFileChange}
-            className="border-slate-700 bg-slate-800/50 file:text-slate-400"
+            className="border-mesh-border-strong bg-mesh-surface-1 file:text-slate-400"
           />
 
           {rows.length > 0 && (
@@ -984,7 +984,7 @@ function AssetFormDialog({
   };
 
   const dialogContent = (
-    <DialogContent className="w-full max-w-[560px] border-slate-800 bg-slate-950">
+    <DialogContent className="w-full max-w-[560px] border-mesh-border-strong bg-mesh-surface-1">
       <DialogHeader>
         <DialogTitle className="text-white">
           {isEdit ? "Edit Asset" : "Add Asset"}
@@ -1012,7 +1012,7 @@ function AssetFormDialog({
             <select
               value={assetType}
               onChange={(e) => setAssetType(e.target.value as AssetType)}
-              className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex h-10 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text focus:border-mesh-accent focus:outline-none focus:ring-2 focus:ring-mesh-accent/30"
             >
               {ASSET_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
@@ -1030,7 +1030,7 @@ function AssetFormDialog({
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as AssetStatus)}
-              className="flex h-10 w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex h-10 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text focus:border-mesh-accent focus:outline-none focus:ring-2 focus:ring-mesh-accent/30"
             >
               {ASSET_STATUSES.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -1099,7 +1099,7 @@ function AssetFormDialog({
         <div className="space-y-2">
           <Label>Notes</Label>
           <textarea
-            className="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[80px]"
+            className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text placeholder:text-mesh-text-mute focus:border-mesh-accent focus:outline-none focus:ring-2 focus:ring-mesh-accent/30 min-h-[80px]"
             placeholder="Any additional notes..."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}

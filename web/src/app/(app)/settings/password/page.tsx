@@ -142,7 +142,7 @@ export default function PasswordSettingsPage() {
                     type={showCurrent ? "text" : "password"}
                     value={current}
                     onChange={(e) => setCurrent(e.target.value)}
-                    className={`border-mesh-border-strong bg-mesh-surface-1 pr-10 text-white placeholder:text-slate-600 ${
+                    className={`border-mesh-border-strong bg-mesh-surface-1 pr-10 text-white placeholder:text-mesh-text-mute ${
                       currentValid === "valid" ? "border-emerald-500/40" : ""
                     }`}
                     placeholder="••••••••"
@@ -181,7 +181,7 @@ export default function PasswordSettingsPage() {
                     type={showNext ? "text" : "password"}
                     value={next}
                     onChange={(e) => setNext(e.target.value)}
-                    className={`border-mesh-border-strong bg-mesh-surface-1 pr-10 text-white placeholder:text-slate-600 ${
+                    className={`border-mesh-border-strong bg-mesh-surface-1 pr-10 text-white placeholder:text-mesh-text-mute ${
                       nextValid === "valid"
                         ? "border-emerald-500/40"
                         : nextValid === "error"
@@ -219,7 +219,7 @@ export default function PasswordSettingsPage() {
                     type="password"
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
-                    className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
+                    className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                       confirmValid === "valid"
                         ? "border-emerald-500/40"
                         : confirmValid === "error"

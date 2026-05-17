@@ -249,7 +249,7 @@ export function Sidebar() {
           <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
           <TooltipContent
             side="right"
-            className="border-slate-800 bg-slate-900 animate-in slide-in-from-left-1 duration-150"
+            className="border-mesh-border-strong bg-mesh-surface-1 animate-in slide-in-from-left-1 duration-150"
           >
             <p>{item.label}</p>
           </TooltipContent>
@@ -314,7 +314,7 @@ export function Sidebar() {
                     <div
                       className={cn(
                         "flex w-full items-center gap-1 px-3 py-1.5",
-                        groupIdx > 0 && "mt-3 border-t border-dotted border-slate-800/60 pt-2",
+                        groupIdx > 0 && "mt-3 border-t border-dotted border-mesh-border-strong pt-2",
                       )}
                     >
                       <button
@@ -358,7 +358,7 @@ export function Sidebar() {
           {/* Settings — always visible, pinned after groups */}
           <div
             className={cn(
-              "mt-1 border-t border-slate-800/50 pt-1",
+              "mt-1 border-t border-mesh-border-strong pt-1",
               sidebarCollapsed && "border-t-0",
             )}
           >
@@ -367,7 +367,7 @@ export function Sidebar() {
         </nav>
 
         {/* Version + connection status */}
-        <div className="border-t border-slate-800/50 p-2">
+        <div className="border-t border-mesh-border-strong p-2">
           {!sidebarCollapsed ? (
             <div className="flex items-center gap-1.5 px-3 py-1">
               <Tooltip>
@@ -383,7 +383,7 @@ export function Sidebar() {
                 </TooltipTrigger>
                 <TooltipContent
                   side="top"
-                  className="border-slate-800 bg-slate-900"
+                  className="border-mesh-border-strong bg-mesh-surface-1"
                 >
                   <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
                 </TooltipContent>
@@ -407,7 +407,7 @@ export function Sidebar() {
                 </TooltipTrigger>
                 <TooltipContent
                   side="right"
-                  className="border-slate-800 bg-slate-900"
+                  className="border-mesh-border-strong bg-mesh-surface-1"
                 >
                   <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
                 </TooltipContent>

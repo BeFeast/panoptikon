@@ -32,7 +32,7 @@ export function InfoStatCard({
   return (
     <Card
       className={cn(
-        "col-span-1 border-slate-800/50 bg-slate-950/70 shadow-none",
+        "col-span-1 border-mesh-border-strong bg-mesh-surface-1 shadow-none",
         className,
       )}
     >
@@ -46,11 +46,11 @@ export function InfoStatCard({
           {icon}
         </div>
         <div className="min-w-0 flex-1 space-y-0.5">
-          <p className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+          <p className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
             {label}
           </p>
           <p
-            className="truncate text-sm font-semibold text-white"
+            className="truncate text-sm font-semibold text-mesh-text"
             title={value !== "\u2014" ? value : undefined}
           >
             {value}

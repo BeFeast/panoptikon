@@ -260,7 +260,7 @@ function ProxyHostsTable({
     return (
       <div className="space-y-2 p-4">
         {[...Array(3)].map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full bg-slate-800" />
+          <Skeleton key={i} className="h-10 w-full bg-mesh-surface-1" />
         ))}
       </div>
     );
@@ -275,7 +275,7 @@ function ProxyHostsTable({
             placeholder="Filter by domain, host, or port…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border-slate-700 bg-slate-800/50 pl-9 pr-8 text-sm text-white placeholder:text-slate-500"
+            className="border-mesh-border-strong bg-mesh-surface-1 pl-9 pr-8 text-sm text-white placeholder:text-mesh-text-mute"
           />
           {search && (
             <button
@@ -608,7 +608,7 @@ function ProxyHostsTable({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-700">
+            <AlertDialogCancel className="border-mesh-border-strong">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -775,7 +775,7 @@ function RedirectionHostsTable({
     return (
       <div className="space-y-2 p-4">
         {[...Array(3)].map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full bg-slate-800" />
+          <Skeleton key={i} className="h-10 w-full bg-mesh-surface-1" />
         ))}
       </div>
     );
@@ -1056,7 +1056,7 @@ function RedirectionHostsTable({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-700">
+            <AlertDialogCancel className="border-mesh-border-strong">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -1205,7 +1205,7 @@ function StreamsTable({
     return (
       <div className="space-y-2 p-4">
         {[...Array(3)].map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full bg-slate-800" />
+          <Skeleton key={i} className="h-10 w-full bg-mesh-surface-1" />
         ))}
       </div>
     );
@@ -1456,7 +1456,7 @@ function StreamsTable({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-700">
+            <AlertDialogCancel className="border-mesh-border-strong">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -1551,7 +1551,7 @@ function DeadHostsTable({
     return (
       <div className="space-y-2 p-4">
         {[...Array(3)].map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full bg-slate-800" />
+          <Skeleton key={i} className="h-10 w-full bg-mesh-surface-1" />
         ))}
       </div>
     );
@@ -1615,7 +1615,7 @@ function DeadHostsTable({
                       className={
                         h.enabled
                           ? "border-emerald-500/30 text-emerald-400"
-                          : "border-slate-700 text-slate-500"
+                          : "border-mesh-border-strong text-slate-500"
                       }
                     >
                       {h.enabled ? "Enabled" : "Disabled"}
@@ -1722,7 +1722,7 @@ function DeadHostsTable({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-700">
+            <AlertDialogCancel className="border-mesh-border-strong">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -1880,7 +1880,7 @@ function AccessListsTable({
     return (
       <div className="space-y-2 p-4">
         {[...Array(3)].map((_, i) => (
-          <Skeleton key={i} className="h-10 w-full bg-slate-800" />
+          <Skeleton key={i} className="h-10 w-full bg-mesh-surface-1" />
         ))}
       </div>
     );
@@ -1926,7 +1926,7 @@ function AccessListsTable({
                   <td className="px-4 py-2.5">
                     <Badge
                       variant="outline"
-                      className="border-slate-700 text-slate-300"
+                      className="border-mesh-border-strong text-slate-300"
                     >
                       {al.client_count} rule{al.client_count !== 1 ? "s" : ""}
                     </Badge>
@@ -2130,7 +2130,7 @@ function AccessListsTable({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-700">
+            <AlertDialogCancel className="border-mesh-border-strong">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -2268,7 +2268,7 @@ export default function NpmPage() {
               variant="outline"
               className={
                 !configured
-                  ? "border-slate-700 text-slate-500"
+                  ? "border-mesh-border-strong text-slate-500"
                   : reachable
                     ? "border-emerald-500/30 text-emerald-400"
                     : "border-rose-500/30 text-rose-400"
@@ -2317,7 +2317,7 @@ export default function NpmPage() {
               {redirectionHosts.length > 0 && (
                 <Badge
                   variant="secondary"
-                  className="ml-1 h-5 bg-slate-800 px-1.5 text-[10px]"
+                  className="ml-1 h-5 bg-mesh-surface-1 px-1.5 text-[10px]"
                 >
                   {redirectionHosts.length}
                 </Badge>
@@ -2329,7 +2329,7 @@ export default function NpmPage() {
               {proxyHosts.length > 0 && (
                 <Badge
                   variant="secondary"
-                  className="ml-1 h-5 bg-slate-800 px-1.5 text-[10px]"
+                  className="ml-1 h-5 bg-mesh-surface-1 px-1.5 text-[10px]"
                 >
                   {proxyHosts.length}
                 </Badge>
@@ -2341,7 +2341,7 @@ export default function NpmPage() {
               {streams.length > 0 && (
                 <Badge
                   variant="secondary"
-                  className="ml-1 h-5 bg-slate-800 px-1.5 text-[10px]"
+                  className="ml-1 h-5 bg-mesh-surface-1 px-1.5 text-[10px]"
                 >
                   {streams.length}
                 </Badge>
@@ -2353,7 +2353,7 @@ export default function NpmPage() {
               {deadHosts.length > 0 && (
                 <Badge
                   variant="secondary"
-                  className="ml-1 h-5 bg-slate-800 px-1.5 text-[10px]"
+                  className="ml-1 h-5 bg-mesh-surface-1 px-1.5 text-[10px]"
                 >
                   {deadHosts.length}
                 </Badge>
@@ -2365,7 +2365,7 @@ export default function NpmPage() {
               {accessLists.length > 0 && (
                 <Badge
                   variant="secondary"
-                  className="ml-1 h-5 bg-slate-800 px-1.5 text-[10px]"
+                  className="ml-1 h-5 bg-mesh-surface-1 px-1.5 text-[10px]"
                 >
                   {accessLists.length}
                 </Badge>

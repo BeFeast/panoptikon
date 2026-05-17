@@ -141,7 +141,7 @@ export default function CloudflareTunnelSettingsPage() {
               type="password"
               value={apiToken}
               onChange={(e) => setApiToken(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder={
                 apiTokenSet
                   ? "••••••••  (leave blank to keep current)"
@@ -169,7 +169,7 @@ export default function CloudflareTunnelSettingsPage() {
                 type="text"
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
+                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   accountValid === "valid"
                     ? "border-emerald-500/40"
                     : accountValid === "error"
@@ -205,7 +205,7 @@ export default function CloudflareTunnelSettingsPage() {
                 type="text"
                 value={tunnelId}
                 onChange={(e) => setTunnelId(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
+                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   tunnelValid === "valid"
                     ? "border-emerald-500/40"
                     : tunnelValid === "error"

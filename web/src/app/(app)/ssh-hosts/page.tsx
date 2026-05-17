@@ -137,7 +137,7 @@ export default function SshHostsPage() {
           {targets === null ? (
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-800 hover:bg-transparent">
+                <TableRow className="border-mesh-border-strong hover:bg-transparent">
                   <TableHead className="text-slate-500">Name</TableHead>
                   <TableHead className="text-slate-500">Host</TableHead>
                   <TableHead className="text-slate-500">OS</TableHead>
@@ -152,7 +152,7 @@ export default function SshHostsPage() {
               </TableHeader>
               <TableBody>
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i} className="border-slate-800">
+                  <TableRow key={i} className="border-mesh-border-strong">
                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-24" /></TableCell>
@@ -178,7 +178,7 @@ export default function SshHostsPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-800 hover:bg-transparent">
+                <TableRow className="border-mesh-border-strong hover:bg-transparent">
                   <TableHead className="text-slate-500">Name</TableHead>
                   <TableHead className="text-slate-500">Host</TableHead>
                   <TableHead className="text-slate-500">OS</TableHead>
@@ -193,7 +193,7 @@ export default function SshHostsPage() {
               </TableHeader>
               <TableBody>
                 {targets.map((target) => (
-                  <TableRow key={target.id} className="border-slate-800">
+                  <TableRow key={target.id} className="border-mesh-border-strong">
                     <TableCell className="font-medium text-white">
                       {target.name}
                     </TableCell>
@@ -300,7 +300,7 @@ export default function SshHostsPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel
-                className="border-slate-800 bg-transparent text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white"
+                className="border-mesh-border-strong bg-transparent text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white"
                 disabled={deleting}
               >
                 Cancel
@@ -528,7 +528,7 @@ function SshTargetFormDialog({
               )}
             </Label>
             <textarea
-              className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2 text-sm text-white font-mono placeholder:text-slate-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[100px]"
+              className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2 text-sm text-white font-mono placeholder:text-mesh-text-mute focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[100px]"
               placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
               value={privateKey}
               onChange={(e) => setPrivateKey(e.target.value)}
@@ -552,7 +552,7 @@ function SshTargetFormDialog({
                 type="checkbox"
                 checked={enabled}
                 onChange={(e) => setEnabled(e.target.checked)}
-                className="rounded border-slate-700"
+                className="rounded border-mesh-border-strong"
               />
               Enabled
             </label>

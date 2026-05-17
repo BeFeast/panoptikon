@@ -171,7 +171,7 @@ function MikrotikPanel() {
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
+            className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
               urlValid === "valid"
                 ? "border-emerald-500/40"
                 : urlValid === "error"
@@ -200,7 +200,7 @@ function MikrotikPanel() {
           type="text"
           value={user}
           onChange={(e) => setUser(e.target.value)}
-          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
           placeholder="admin"
         />
       </div>
@@ -215,7 +215,7 @@ function MikrotikPanel() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
           placeholder={
             passwordSet
               ? "••••••••  (leave blank to keep current)"

@@ -25,7 +25,7 @@ export function HelpTooltip({ text }: { text: string }) {
       </TooltipTrigger>
       <TooltipContent
         side="right"
-        className="max-w-xs border-slate-700 bg-slate-800 text-slate-200"
+        className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200"
       >
         {text}
       </TooltipContent>

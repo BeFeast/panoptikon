@@ -9,9 +9,9 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "relative overflow-hidden rounded-lg border border-cyan-900/45 bg-[#0b1220]/64 text-card-foreground shadow-[0_10px_28px_-24px_rgba(15,23,42,0.95)] backdrop-blur-xl supports-[backdrop-filter]:bg-[#0b1220]/58",
-      "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-cyan-300/10",
-      "transition-[border-color,background-color] duration-150 ease-out hover:border-cyan-400/20",
+      "relative overflow-hidden rounded-lg border border-mesh-border-strong bg-mesh-surface-1 text-mesh-text shadow-[0_0_0_1px_rgba(96,144,212,0.20),0_1px_0_rgba(255,255,255,0.03)_inset]",
+      "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-mesh-accent/10",
+      "transition-[border-color,background-color] duration-150 ease-out hover:border-mesh-accent/40",
       selected && "card-selected",
       className
     )}
@@ -39,7 +39,7 @@ const CardTitle = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "text-sm font-semibold leading-tight tracking-normal text-slate-100",
+      "text-sm font-semibold leading-tight tracking-normal text-mesh-text",
       className
     )}
     {...props}
@@ -53,7 +53,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-xs leading-relaxed text-muted-foreground", className)}
+    className={cn("text-xs leading-relaxed text-mesh-text-dim", className)}
     {...props}
   />
 ))

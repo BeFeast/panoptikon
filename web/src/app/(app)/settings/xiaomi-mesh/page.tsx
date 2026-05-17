@@ -259,7 +259,7 @@ export default function XiaomiMeshSettingsPage() {
                 value={ip}
                 onChange={(e) => setIp(e.target.value)}
                 autoComplete="one-time-code"
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
+                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   ipValidation === "valid"
                     ? "border-emerald-500/40"
                     : ipValidation === "error"
@@ -299,7 +299,7 @@ export default function XiaomiMeshSettingsPage() {
               value={proxyHost}
               onChange={(e) => setProxyHost(e.target.value)}
               autoComplete="one-time-code"
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="e.g. 10.10.0.14:9199"
             />
             <p className="text-xs text-slate-600">
@@ -326,7 +326,7 @@ export default function XiaomiMeshSettingsPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder={
                 passwordSet
                   ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022  (leave blank to keep current)"
@@ -356,7 +356,7 @@ export default function XiaomiMeshSettingsPage() {
                 max={300}
                 value={pollInterval}
                 onChange={(e) => setPollInterval(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
+                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   intervalValidation === "valid"
                     ? "border-emerald-500/40"
                     : intervalValidation === "error"

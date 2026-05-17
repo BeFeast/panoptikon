@@ -271,7 +271,7 @@ export default function TrafficPage() {
         {loading && topDevices.length === 0 ? (
           <Table>
             <TableHeader>
-              <TableRow className="border-slate-800 hover:bg-transparent">
+              <TableRow className="border-mesh-border-strong hover:bg-transparent">
                 <TableHead className="text-slate-500">Device</TableHead>
                 <TableHead className="text-slate-500">IP</TableHead>
                 <TableHead className="text-right text-slate-500">Download</TableHead>
@@ -280,7 +280,7 @@ export default function TrafficPage() {
             </TableHeader>
             <TableBody>
               {Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="border-slate-800">
+                <TableRow key={i} className="border-mesh-border-strong">
                   <TableCell><Skeleton className="h-4 w-28" /></TableCell>
                   <TableCell><Skeleton className="h-3 w-24" /></TableCell>
                   <TableCell className="text-right"><Skeleton className="ml-auto h-4 w-16" /></TableCell>
@@ -300,7 +300,7 @@ export default function TrafficPage() {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="border-slate-800 hover:bg-transparent">
+              <TableRow className="border-mesh-border-strong hover:bg-transparent">
                 <TableHead className="text-slate-500">Device</TableHead>
                 <TableHead className="text-slate-500">IP</TableHead>
                 <TableHead className="text-right text-slate-500">
@@ -315,9 +315,9 @@ export default function TrafficPage() {
               {topDevices.map((d) => (
                 <TableRow
                   key={d.id}
-                  className={`border-slate-800 cursor-pointer ${
+                  className={`border-mesh-border-strong cursor-pointer ${
                     selectedDevice?.id === d.id
-                      ? "bg-slate-800/50"
+                      ? "bg-mesh-surface-1"
                       : "hover:bg-mesh-surface-2/55"
                   }`}
                   onClick={() =>

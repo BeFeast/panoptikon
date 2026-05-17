@@ -74,7 +74,7 @@ import type {
 
 // ─── Styled select matching the dark theme ──────────────────
 const selectCls =
-  "w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-600";
+  "w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2 text-sm text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-2 focus:ring-blue-600";
 
 // ─── Page ───────────────────────────────────────────────────
 export default function ServicesPage() {
@@ -339,7 +339,7 @@ export default function ServicesPage() {
                 loadHosts();
                 loadStatuses();
               }}
-              className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55"
+              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
             >
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
               Refresh
@@ -365,7 +365,7 @@ export default function ServicesPage() {
               {[...Array(3)].map((_, i) => (
                 <Skeleton
                   key={i}
-                  className="h-12 w-full rounded-md bg-slate-800"
+                  className="h-12 w-full rounded-md bg-mesh-surface-1"
                 />
               ))}
             </div>
@@ -381,7 +381,7 @@ export default function ServicesPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-800 hover:bg-transparent">
+                <TableRow className="border-mesh-border-strong hover:bg-transparent">
                   <TableHead className="text-slate-400">Domain</TableHead>
                   <TableHead className="text-slate-400">Upstream</TableHead>
                   <TableHead className="text-slate-400">TLS</TableHead>
@@ -395,7 +395,7 @@ export default function ServicesPage() {
                 {hosts.map((host) => (
                   <TableRow
                     key={host.id}
-                    className="border-slate-800 hover:bg-mesh-surface-2/55"
+                    className="border-mesh-border-strong hover:bg-mesh-surface-2/55"
                   >
                     <TableCell className="max-w-[250px]">
                       <div className="flex items-center gap-2 min-w-0">
@@ -422,7 +422,7 @@ export default function ServicesPage() {
                       ) : (
                         <Badge
                           variant="outline"
-                          className="border-slate-700 text-slate-500"
+                          className="border-mesh-border-strong text-slate-500"
                         >
                           HTTP
                         </Badge>
@@ -571,7 +571,7 @@ export default function ServicesPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="My App"
-                    className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
+                    className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                   />
                 </div>
 
@@ -584,7 +584,7 @@ export default function ServicesPage() {
                       value={internalIp}
                       onChange={(e) => setInternalIp(e.target.value)}
                       placeholder="10.10.0.50"
-                      className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
+                      className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -596,7 +596,7 @@ export default function ServicesPage() {
                       value={internalPort}
                       onChange={(e) => setInternalPort(e.target.value)}
                       placeholder="8080"
-                      className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
+                      className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                     />
                   </div>
                 </div>
@@ -609,7 +609,7 @@ export default function ServicesPage() {
                     value={domain}
                     onChange={(e) => setDomain(e.target.value)}
                     placeholder="myapp.oklabs.uk"
-                    className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
+                    className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                   />
                 </div>
 
@@ -641,7 +641,7 @@ export default function ServicesPage() {
                 </div>
 
                 {/* MikroTik port-forward section */}
-                <div className="rounded-md border border-slate-800 p-3">
+                <div className="rounded-md border border-mesh-border-strong p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Network className="h-4 w-4 text-slate-500" />
@@ -665,7 +665,7 @@ export default function ServicesPage() {
                           value={externalPort}
                           onChange={(e) => setExternalPort(e.target.value)}
                           placeholder="443"
-                          className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
+                          className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                         />
                       </div>
                       <div className="space-y-1.5">
@@ -693,7 +693,7 @@ export default function ServicesPage() {
                       setAddOpen(false);
                       resetAddForm();
                     }}
-                    className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55"
+                    className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
                   >
                     Cancel
                   </Button>
@@ -725,7 +725,7 @@ export default function ServicesPage() {
                 <Input
                   value={editDomain}
                   onChange={(e) => setEditDomain(e.target.value)}
-                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
+                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -736,7 +736,7 @@ export default function ServicesPage() {
                   <Input
                     value={editForwardHost}
                     onChange={(e) => setEditForwardHost(e.target.value)}
-                    className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
+                    className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -747,7 +747,7 @@ export default function ServicesPage() {
                     type="number"
                     value={editForwardPort}
                     onChange={(e) => setEditForwardPort(e.target.value)}
-                    className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
+                    className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                   />
                 </div>
               </div>
@@ -782,7 +782,7 @@ export default function ServicesPage() {
               <Button
                 variant="outline"
                 onClick={() => setEditOpen(false)}
-                className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55"
+                className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
               >
                 Cancel
               </Button>
@@ -816,7 +816,7 @@ export default function ServicesPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55">
+              <AlertDialogCancel className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction

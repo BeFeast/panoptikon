@@ -76,7 +76,7 @@ export function DnsTab() {
   return (
     <div className="space-y-6">
       {/* DNS Resolver Config */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
             <Globe className="h-4 w-4 text-blue-400" />
@@ -106,7 +106,7 @@ export function DnsTab() {
                   <span className="text-sm text-slate-400">Upstream DNS Servers:</span>
                   <div className="mt-1 flex flex-wrap gap-2">
                     {config.servers.map((s) => (
-                      <Badge key={s} variant="outline" className="border-slate-700 font-mono text-slate-300">
+                      <Badge key={s} variant="outline" className="border-mesh-border-strong font-mono text-slate-300">
                         {s}
                       </Badge>
                     ))}
@@ -121,7 +121,7 @@ export function DnsTab() {
       </Card>
 
       {/* Host Overrides */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
             <Globe className="h-4 w-4 text-blue-400" />
@@ -139,7 +139,7 @@ export function DnsTab() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-3 py-2">Host</th>
                     <th className="px-3 py-2">Domain</th>
                     <th className="px-3 py-2">IP</th>
@@ -156,7 +156,7 @@ export function DnsTab() {
                     </tr>
                   ) : (
                     (overrides ?? []).map((o) => (
-                      <tr key={o.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                      <tr key={o.id} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                         <td className="px-3 py-2 font-medium text-white">{o.host}</td>
                         <td className="px-3 py-2 text-slate-300">{o.domain}</td>
                         <td className="px-3 py-2 font-mono text-slate-300">{o.ip}</td>
@@ -183,7 +183,7 @@ export function DnsTab() {
 
       {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="border-slate-800 bg-slate-900">
+        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <DialogHeader>
             <DialogTitle className="text-white">Add Host Override</DialogTitle>
           </DialogHeader>
@@ -194,7 +194,7 @@ export function DnsTab() {
                 placeholder="myhost"
                 value={form.host}
                 onChange={(e) => setForm({ ...form, host: e.target.value })}
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white"
               />
             </div>
             <div className="space-y-2">
@@ -203,7 +203,7 @@ export function DnsTab() {
                 placeholder="local.lan"
                 value={form.domain}
                 onChange={(e) => setForm({ ...form, domain: e.target.value })}
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white"
               />
             </div>
             <div className="space-y-2">
@@ -212,7 +212,7 @@ export function DnsTab() {
                 placeholder="192.168.1.100"
                 value={form.ip}
                 onChange={(e) => setForm({ ...form, ip: e.target.value })}
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white"
               />
             </div>
             <div className="space-y-2">
@@ -221,7 +221,7 @@ export function DnsTab() {
                 placeholder="Optional description"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white"
               />
             </div>
           </div>
@@ -242,7 +242,7 @@ export function DnsTab() {
 
       {/* Delete Confirm */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Host Override</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -250,7 +250,7 @@ export function DnsTab() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-800 text-slate-400">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-mesh-border-strong text-slate-400">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>
               Delete
             </AlertDialogAction>

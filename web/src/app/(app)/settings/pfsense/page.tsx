@@ -210,7 +210,7 @@ function PfsensePanel() {
           type="text"
           value={host}
           onChange={(e) => setHost(e.target.value)}
-          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
           placeholder="10.10.0.1"
         />
       </div>
@@ -224,7 +224,7 @@ function PfsensePanel() {
           type="number"
           value={port}
           onChange={(e) => setPort(Number(e.target.value) || 22)}
-          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
           placeholder="22"
         />
       </div>
@@ -238,7 +238,7 @@ function PfsensePanel() {
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
           placeholder="root"
         />
       </div>
@@ -282,7 +282,7 @@ function PfsensePanel() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+            className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
             placeholder={
               passwordSet
                 ? "••••••••  (leave blank to keep current)"
@@ -301,7 +301,7 @@ function PfsensePanel() {
             type="text"
             value={privateKey}
             onChange={(e) => setPrivateKey(e.target.value)}
-            className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+            className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
             placeholder={
               privateKeySet
                 ? "(leave blank to keep current)"

@@ -345,7 +345,7 @@ export default function DnsQueriesPage() {
               placeholder="Filter by domain..."
               value={domainSearch}
               onChange={(e) => setDomainSearch(e.target.value)}
-              className="pl-9 bg-[#12121a] border-slate-800 text-sm"
+              className="pl-9 bg-[#12121a] border-mesh-border-strong text-sm"
             />
           </div>
         </div>
@@ -376,7 +376,7 @@ export default function DnsQueriesPage() {
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="border-slate-800 hover:bg-transparent">
+                  <TableRow className="border-mesh-border-strong hover:bg-transparent">
                     <TableHead className="text-slate-500">Time</TableHead>
                     <TableHead className="text-slate-500">Client</TableHead>
                     <TableHead className="text-slate-500">Domain</TableHead>
@@ -390,7 +390,7 @@ export default function DnsQueriesPage() {
                   {logData.items.map((entry) => (
                     <TableRow
                       key={entry.id}
-                      className="border-slate-800 hover:bg-mesh-surface-2/55"
+                      className="border-mesh-border-strong hover:bg-mesh-surface-2/55"
                     >
                       <TableCell className="text-xs text-slate-500 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
@@ -423,7 +423,7 @@ export default function DnsQueriesPage() {
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className="text-[10px] border-slate-700 text-slate-400"
+                          className="text-[10px] border-mesh-border-strong text-slate-400"
                         >
                           {entry.query_type}
                         </Badge>
@@ -442,7 +442,7 @@ export default function DnsQueriesPage() {
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className={`text-[10px] border-slate-700 ${
+                          className={`text-[10px] border-mesh-border-strong ${
                             entry.response_code === "NOERROR"
                               ? "text-emerald-400 border-emerald-700/30"
                               : entry.response_code === "NXDOMAIN"

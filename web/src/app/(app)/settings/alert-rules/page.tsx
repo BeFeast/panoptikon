@@ -243,7 +243,7 @@ export default function AlertRulesPage() {
                               threshold_value: rule.threshold_value,
                             })
                           }
-                          className="w-32 border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+                          className="w-32 border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                           placeholder={
                             rule.rule_type === "device_offline" ? "5" : "100"
                           }

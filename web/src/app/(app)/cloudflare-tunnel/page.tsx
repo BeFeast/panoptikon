@@ -268,7 +268,7 @@ export default function CloudflareTunnelPage() {
               size="sm"
               onClick={load}
               disabled={loading}
-              className="border-slate-700 bg-slate-800/60 text-slate-300 hover:bg-slate-700"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-slate-300 hover:bg-slate-700"
             >
               <RefreshCw
                 className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}
@@ -404,7 +404,7 @@ export default function CloudflareTunnelPage() {
             <CardContent>
               <Table>
                 <TableHeader>
-                  <TableRow className="border-slate-800 hover:bg-transparent">
+                  <TableRow className="border-mesh-border-strong hover:bg-transparent">
                     <TableHead className="text-slate-400">Colo</TableHead>
                     <TableHead className="text-slate-400">Origin IP</TableHead>
                     <TableHead className="text-slate-400">Opened</TableHead>
@@ -413,7 +413,7 @@ export default function CloudflareTunnelPage() {
                 </TableHeader>
                 <TableBody>
                   {status.connections.map((conn, i) => (
-                    <TableRow key={i} className="border-slate-800">
+                    <TableRow key={i} className="border-mesh-border-strong">
                       <TableCell className="font-medium text-slate-200">
                         {conn.colo_name || "Unknown"}
                       </TableCell>
@@ -468,7 +468,7 @@ export default function CloudflareTunnelPage() {
               ) : (
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-slate-800 hover:bg-transparent">
+                    <TableRow className="border-mesh-border-strong hover:bg-transparent">
                       <TableHead className="text-slate-400">
                         Hostname
                       </TableHead>
@@ -483,7 +483,7 @@ export default function CloudflareTunnelPage() {
                   </TableHeader>
                   <TableBody>
                     {routes.map((route) => (
-                      <TableRow key={route.hostname} className="border-slate-800">
+                      <TableRow key={route.hostname} className="border-mesh-border-strong">
                         <TableCell className="max-w-[200px] font-medium text-slate-200">
                           {route.service.startsWith("http") ? (
                             <TooltipProvider>
@@ -563,7 +563,7 @@ export default function CloudflareTunnelPage() {
                   placeholder="app.example.com"
                   value={formHostname}
                   onChange={(e) => setFormHostname(e.target.value)}
-                  className="border-slate-700 bg-slate-800 text-slate-100"
+                  className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
                 />
               </div>
               <div className="space-y-2">
@@ -575,7 +575,7 @@ export default function CloudflareTunnelPage() {
                   placeholder="http://localhost:8080"
                   value={formService}
                   onChange={(e) => setFormService(e.target.value)}
-                  className="border-slate-700 bg-slate-800 text-slate-100"
+                  className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
                 />
               </div>
               <div className="space-y-2">
@@ -587,14 +587,14 @@ export default function CloudflareTunnelPage() {
                   placeholder="/"
                   value={formPath}
                   onChange={(e) => setFormPath(e.target.value)}
-                  className="border-slate-700 bg-slate-800 text-slate-100"
+                  className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
                 />
               </div>
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setAddDialogOpen(false)}
-                  className="border-slate-700 text-slate-300"
+                  className="border-mesh-border-strong text-slate-300"
                 >
                   Cancel
                 </Button>
@@ -628,7 +628,7 @@ export default function CloudflareTunnelPage() {
                   placeholder="app.example.com"
                   value={editHostname}
                   onChange={(e) => setEditHostname(e.target.value)}
-                  className="border-slate-700 bg-slate-800 text-slate-100"
+                  className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
                 />
               </div>
               <div className="space-y-2">
@@ -640,7 +640,7 @@ export default function CloudflareTunnelPage() {
                   placeholder="http://localhost:8080"
                   value={editService}
                   onChange={(e) => setEditService(e.target.value)}
-                  className="border-slate-700 bg-slate-800 text-slate-100"
+                  className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
                 />
               </div>
               <div className="space-y-2">
@@ -652,14 +652,14 @@ export default function CloudflareTunnelPage() {
                   placeholder="/"
                   value={editPath}
                   onChange={(e) => setEditPath(e.target.value)}
-                  className="border-slate-700 bg-slate-800 text-slate-100"
+                  className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
                 />
               </div>
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setEditDialogOpen(false)}
-                  className="border-slate-700 text-slate-300"
+                  className="border-mesh-border-strong text-slate-300"
                 >
                   Cancel
                 </Button>
@@ -692,7 +692,7 @@ export default function CloudflareTunnelPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-slate-700 text-slate-300">
+              <AlertDialogCancel className="border-mesh-border-strong text-slate-300">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction

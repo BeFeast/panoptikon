@@ -230,7 +230,7 @@ export default function DnsSettingsPage() {
             placeholder="Filter by hostname or IP..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border-mesh-border-strong bg-mesh-surface-1 pl-10 text-white placeholder:text-slate-600"
+            className="border-mesh-border-strong bg-mesh-surface-1 pl-10 text-white placeholder:text-mesh-text-mute"
           />
         </div>
 
@@ -471,7 +471,7 @@ function DnsRecordFormDialog({
               id="hostname"
               value={hostname}
               onChange={(e) => setHostname(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="myserver.lan"
             />
           </div>
@@ -484,7 +484,7 @@ function DnsRecordFormDialog({
               id="ip-address"
               value={ipAddress}
               onChange={(e) => setIpAddress(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="192.168.1.100"
             />
           </div>
@@ -582,7 +582,7 @@ function UnboundConfigDialog({
               id="control-path"
               value={controlPath}
               onChange={(e) => setControlPath(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="/var/run/unbound.ctl"
               disabled={loading}
             />

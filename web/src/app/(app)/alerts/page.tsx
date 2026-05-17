@@ -351,7 +351,7 @@ export default function AlertsPage() {
                     Mark all read
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+                <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
                   Mark every unread alert as read
                 </TooltipContent>
               </Tooltip>
@@ -368,7 +368,7 @@ export default function AlertsPage() {
                   Clear all
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+              <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
                 Permanently delete all alerts
               </TooltipContent>
             </Tooltip>
@@ -493,7 +493,7 @@ export default function AlertsPage() {
               <span>Age</span>
               <span className="text-right">Actions</span>
             </div>
-            <div className="divide-y divide-slate-800">
+            <div className="divide-y divide-mesh-border">
               {alerts.map((alert) => (
                 <div
                   key={alert.id}
@@ -507,20 +507,20 @@ export default function AlertsPage() {
                       setSelectedAlertId(alert.id);
                     }
                   }}
-                  className={`grid w-full grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-l-none border-slate-800 px-3 py-3 text-left transition-colors hover:bg-mesh-surface-2/55 lg:grid-cols-[2.25rem_minmax(0,1fr)_6rem_7.25rem] ${
+                  className={`grid w-full grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-l-none border-mesh-border-strong px-3 py-3 text-left transition-colors hover:bg-mesh-surface-2/55 lg:grid-cols-[2.25rem_minmax(0,1fr)_6rem_7.25rem] ${
                     acknowledgingIds.has(alert.id)
                       ? "animate-ack-strike opacity-0"
                       : selectedAlert?.id === alert.id
-                        ? "bg-slate-900/90 shadow-[inset_2px_0_0_rgba(34,211,238,0.75)]"
+                        ? "bg-mesh-surface-1 shadow-[inset_2px_0_0_rgba(34,211,238,0.75)]"
                         : !alert.is_read && !alert.acknowledged_at
-                          ? "bg-slate-900/55 shadow-[inset_2px_0_0_rgba(59,130,246,0.7)]"
+                          ? "bg-mesh-surface-1 shadow-[inset_2px_0_0_rgba(59,130,246,0.7)]"
                           : ""
                   }`}
                 >
                   <span className={`flex h-8 w-8 items-center justify-center rounded-md border ${
                     alert.acknowledged_at
                       ? "border-mesh-border-strong bg-mesh-surface-1/95 text-slate-500"
-                      : "border-slate-700 bg-slate-900"
+                      : "border-mesh-border-strong bg-mesh-surface-1"
                   }`}>
                     {alertIcon(alert.type)}
                   </span>
@@ -620,12 +620,12 @@ export default function AlertsPage() {
                   </Button>
                 )}
                 {selectedAlert.is_read ? (
-                  <Button variant="outline" size="sm" className="gap-1.5 border-slate-700 text-slate-300 hover:text-white" onClick={() => handleMarkUnread(selectedAlert.id)}>
+                  <Button variant="outline" size="sm" className="gap-1.5 border-mesh-border-strong text-slate-300 hover:text-white" onClick={() => handleMarkUnread(selectedAlert.id)}>
                     <Bell className="h-3.5 w-3.5" />
                     Mark unread
                   </Button>
                 ) : (
-                  <Button variant="outline" size="sm" className="gap-1.5 border-slate-700 text-slate-300 hover:text-white" onClick={() => handleMarkRead(selectedAlert.id)}>
+                  <Button variant="outline" size="sm" className="gap-1.5 border-mesh-border-strong text-slate-300 hover:text-white" onClick={() => handleMarkRead(selectedAlert.id)}>
                     <Check className="h-3.5 w-3.5" />
                     Mark read
                   </Button>
@@ -633,7 +633,7 @@ export default function AlertsPage() {
                 {selectedAlert.device_id && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-1.5 border-slate-700 text-slate-300 hover:text-white">
+                      <Button variant="outline" size="sm" className="gap-1.5 border-mesh-border-strong text-slate-300 hover:text-white">
                         <VolumeX className="h-3.5 w-3.5" />
                         Mute
                       </Button>
@@ -650,7 +650,7 @@ export default function AlertsPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
-                <Button variant="outline" size="sm" className="gap-1.5 border-slate-700 text-slate-300 hover:text-rose-400" onClick={() => handleDeleteOne(selectedAlert.id)}>
+                <Button variant="outline" size="sm" className="gap-1.5 border-mesh-border-strong text-slate-300 hover:text-rose-400" onClick={() => handleDeleteOne(selectedAlert.id)}>
                   <Trash2 className="h-3.5 w-3.5" />
                   Delete
                 </Button>
@@ -673,7 +673,7 @@ export default function AlertsPage() {
             placeholder="Add a note (optional)..."
             value={ackNote}
             onChange={(e) => setAckNote(e.target.value)}
-            className="bg-[#12121a] border-slate-800"
+            className="bg-[#12121a] border-mesh-border-strong"
             onKeyDown={(e) => {
               if (e.key === "Enter") handleAcknowledge();
             }}

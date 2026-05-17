@@ -472,7 +472,7 @@ export default function SettingsPage() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Filter settings"
               aria-label="Filter settings"
-              className="h-10 border-mesh-border-strong bg-mesh-surface-1 pl-9 text-sm text-white placeholder:text-slate-600"
+              className="h-10 border-mesh-border-strong bg-mesh-surface-1 pl-9 text-sm text-white placeholder:text-mesh-text-mute"
             />
           </div>
         </div>

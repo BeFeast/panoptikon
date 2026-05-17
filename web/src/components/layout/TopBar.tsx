@@ -265,7 +265,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
             if (results && query.length >= 2) setIsOpen(true);
           }}
           placeholder="Search devices, IPs, MACs...  ⌘K"
-          className="h-8 w-full rounded-md border border-mesh-border-strong bg-slate-950 px-3 text-sm text-white placeholder-slate-500 transition-all duration-150 focus:border-cyan-500/45 focus:outline-none focus:ring-2 focus:ring-cyan-500/18"
+          className="h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-white placeholder-slate-500 transition-all duration-150 focus:border-cyan-500/45 focus:outline-none focus:ring-2 focus:ring-cyan-500/18"
         />
 
         {/* Search Results Dropdown */}
@@ -322,7 +322,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                 {/* Agents */}
                 {results.agents.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-slate-800">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-mesh-border-strong">
                       Agents
                     </div>
                     {results.agents.map((a: SearchAgent) => {
@@ -357,7 +357,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                 {/* SSH Hosts */}
                 {results.ssh_targets.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-slate-800">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-mesh-border-strong">
                       SSH Hosts
                     </div>
                     {results.ssh_targets.map((st: SearchSshTarget) => {
@@ -392,7 +392,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                 {/* Assets */}
                 {results.assets.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-slate-800">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-mesh-border-strong">
                       Assets
                     </div>
                     {results.assets.map((asset: SearchAsset) => {
@@ -421,7 +421,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                 {/* Alerts */}
                 {results.alerts.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-slate-800">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-mesh-border-strong">
                       Alerts
                     </div>
                     {results.alerts.map((al: SearchAlert) => {
@@ -524,7 +524,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                     <button
                       key={alert.id}
                       className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-mesh-surface-2/55 border-b border-mesh-border last:border-b-0 ${
-                        !alert.is_read ? "bg-slate-900/50" : ""
+                        !alert.is_read ? "bg-mesh-surface-1" : ""
                       }`}
                       onClick={() => {
                         setBellOpen(false);

@@ -193,7 +193,7 @@ function DdnsFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg bg-slate-900 border-slate-700 text-slate-100 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg bg-mesh-surface-1 border-mesh-border-strong text-slate-100 max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {initial ? "Edit DDNS Entry" : "Add DDNS Entry"}
@@ -204,7 +204,7 @@ function DdnsFormDialog({
             <div className="space-y-2">
               <Label>Provider</Label>
               <select
-                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100"
+                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-slate-100"
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
               >
@@ -219,7 +219,7 @@ function DdnsFormDialog({
               <div className="space-y-2">
                 <Label>Router Type</Label>
                 <select
-                  className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100"
+                  className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-slate-100"
                   value={routerType}
                   onChange={(e) => setRouterType(e.target.value)}
                 >
@@ -236,7 +236,7 @@ function DdnsFormDialog({
           <div className="space-y-2">
             <Label>Hostname *</Label>
             <Input
-              className="bg-slate-800 border-slate-700"
+              className="bg-mesh-surface-1 border-mesh-border-strong"
               placeholder="home.example.com"
               value={hostname}
               onChange={(e) => setHostname(e.target.value)}
@@ -246,7 +246,7 @@ function DdnsFormDialog({
           <div className="space-y-2">
             <Label>Zone</Label>
             <Input
-              className="bg-slate-800 border-slate-700"
+              className="bg-mesh-surface-1 border-mesh-border-strong"
               placeholder="example.com (for Cloudflare)"
               value={zone}
               onChange={(e) => setZone(e.target.value)}
@@ -257,7 +257,7 @@ function DdnsFormDialog({
             <div className="space-y-2">
               <Label>Username</Label>
               <Input
-                className="bg-slate-800 border-slate-700"
+                className="bg-mesh-surface-1 border-mesh-border-strong"
                 placeholder="Username or email"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -271,7 +271,7 @@ function DdnsFormDialog({
                 )}
               </Label>
               <Input
-                className="bg-slate-800 border-slate-700"
+                className="bg-mesh-surface-1 border-mesh-border-strong"
                 type="password"
                 placeholder={initial?.has_password ? "Leave blank to keep" : "Password"}
                 value={password}
@@ -288,7 +288,7 @@ function DdnsFormDialog({
               )}
             </Label>
             <Input
-              className="bg-slate-800 border-slate-700"
+              className="bg-mesh-surface-1 border-mesh-border-strong"
               type="password"
               placeholder={
                 initial?.has_api_token
@@ -304,7 +304,7 @@ function DdnsFormDialog({
             <div className="space-y-2">
               <Label>IP Source</Label>
               <select
-                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100"
+                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-slate-100"
                 value={ipSource}
                 onChange={(e) => setIpSource(e.target.value)}
               >
@@ -318,7 +318,7 @@ function DdnsFormDialog({
             <div className="space-y-2">
               <Label>Protocol</Label>
               <select
-                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100"
+                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-slate-100"
                 value={protocol}
                 onChange={(e) => setProtocol(e.target.value)}
               >
@@ -332,7 +332,7 @@ function DdnsFormDialog({
             <div className="space-y-2">
               <Label>Interface</Label>
               <Input
-                className="bg-slate-800 border-slate-700"
+                className="bg-mesh-surface-1 border-mesh-border-strong"
                 placeholder="eth0"
                 value={interfaceName}
                 onChange={(e) => setInterfaceName(e.target.value)}
@@ -487,7 +487,7 @@ export default function DdnsPage() {
         {statusData === null ? (
           <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
             {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-24 bg-slate-800" />
+              <Skeleton key={i} className="h-24 bg-mesh-surface-1" />
             ))}
           </div>
         ) : (
@@ -546,7 +546,7 @@ export default function DdnsPage() {
         {/* Search */}
         <div className="flex items-center gap-2">
           <Input
-            className="max-w-sm bg-slate-800 border-slate-700"
+            className="max-w-sm bg-mesh-surface-1 border-mesh-border-strong"
             placeholder="Search by hostname, provider, or IP..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -581,7 +581,7 @@ export default function DdnsPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-700">
+                <TableRow className="border-mesh-border-strong">
                   <TableHead className="text-slate-400">Provider</TableHead>
                   <TableHead className="text-slate-400">Hostname</TableHead>
                   <TableHead className="text-slate-400">Current IP</TableHead>
@@ -595,7 +595,7 @@ export default function DdnsPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map((entry) => (
-                  <TableRow key={entry.id} className="border-slate-700">
+                  <TableRow key={entry.id} className="border-mesh-border-strong">
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Badge
@@ -709,7 +709,7 @@ export default function DdnsPage() {
         open={!!pendingDelete}
         onOpenChange={(v) => !v && setPendingDelete(null)}
       >
-        <AlertDialogContent className="bg-slate-900 border-slate-700 text-slate-100">
+        <AlertDialogContent className="bg-mesh-surface-1 border-mesh-border-strong text-slate-100">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete DDNS Entry</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">

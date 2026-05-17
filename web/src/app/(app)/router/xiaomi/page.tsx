@@ -42,7 +42,7 @@ export default function XiaomiRouterPage() {
           </div>
         ) : xiaomiEnabled ? (
           <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-            <TabsList className="bg-slate-900 border border-slate-800">
+            <TabsList className="bg-mesh-surface-1 border border-mesh-border-strong">
               <TabsTrigger value="system">System</TabsTrigger>
               <TabsTrigger value="mesh">Mesh Topology</TabsTrigger>
             </TabsList>
@@ -69,7 +69,7 @@ export default function XiaomiRouterPage() {
                 <Link href="/settings/xiaomi-mesh">
                   <Button
                     variant="outline"
-                    className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55"
+                    className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
                   >
                     <Settings className="mr-2 h-4 w-4" />
                     Configure Xiaomi Mesh

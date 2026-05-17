@@ -257,7 +257,7 @@ export default function AgentDetailContent() {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="border-slate-800 hover:bg-transparent">
+              <TableRow className="border-mesh-border-strong hover:bg-transparent">
                 <TableHead className="text-slate-500">Time</TableHead>
                 <TableHead className="text-slate-500">CPU %</TableHead>
                 <TableHead className="text-slate-500">RAM Used</TableHead>
@@ -266,7 +266,7 @@ export default function AgentDetailContent() {
             </TableHeader>
             <TableBody>
               {reports.map((report) => (
-                <TableRow key={report.id} className="border-slate-800">
+                <TableRow key={report.id} className="border-mesh-border-strong">
                   <TableCell className="text-slate-400 font-mono tabular-nums text-xs">
                     {new Date(report.reported_at).toLocaleString()}
                   </TableCell>

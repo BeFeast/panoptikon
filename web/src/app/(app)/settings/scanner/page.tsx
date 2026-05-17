@@ -190,7 +190,7 @@ export default function ScannerSettingsPage() {
                 min={10}
                 value={scanInterval}
                 onChange={(e) => setScanInterval(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
+                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   intervalValid === "valid"
                     ? "border-emerald-500/40"
                     : intervalValid === "error"
@@ -221,7 +221,7 @@ export default function ScannerSettingsPage() {
               type="text"
               value={scanSubnets}
               onChange={(e) => setScanSubnets(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="10.0.0.0/24, 192.168.1.0/24"
             />
             <p className="text-[10px] text-slate-600">

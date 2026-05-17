@@ -281,7 +281,7 @@ function StatCard({
       className={cn(
         "h-full min-h-[8.25rem] border-mesh-border-strong bg-mesh-surface-1/70",
         href &&
-          "transition-[border-color,background-color,box-shadow] hover:border-mesh-accent/40 hover:bg-slate-900/72 hover:shadow-[0_18px_36px_-26px_rgba(56,189,248,0.40)]",
+          "transition-[border-color,background-color,box-shadow] hover:border-mesh-accent/40 hover:bg-mesh-surface-2 hover:shadow-[0_18px_36px_-26px_rgba(56,189,248,0.40)]",
       )}
     >
       <CardHeader className="flex flex-row items-start justify-between pb-3">
@@ -413,7 +413,7 @@ function WelcomeCard({
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
                 </span>
               ) : (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full border border-mesh-border-strong bg-slate-900/50">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full border border-mesh-border-strong bg-mesh-surface-1">
                   <Circle className="h-3 w-3 text-slate-600" />
                 </span>
               )}
@@ -580,7 +580,7 @@ function RouterHealthSection({
               <Link
                 key={card.type}
                 href={card.href}
-                className="rounded-md border border-slate-800 bg-slate-900/35 p-3 transition-colors hover:border-mesh-accent/40 hover:bg-slate-900/70"
+                className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-3 transition-colors hover:border-mesh-accent/40 hover:bg-mesh-surface-2"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -594,13 +594,13 @@ function RouterHealthSection({
                   </span>
                 </div>
                 <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                  <div className="rounded border border-mesh-border bg-slate-950/50 px-2 py-1.5">
+                  <div className="rounded border border-mesh-border bg-mesh-surface-1 px-2 py-1.5">
                     <p className="text-slate-600">WAN RX</p>
                     <p className="mt-0.5 truncate tabular-nums text-slate-300">
                       {card.primary ? formatBps(stats.wan_rx_bps) : "—"}
                     </p>
                   </div>
-                  <div className="rounded border border-mesh-border bg-slate-950/50 px-2 py-1.5">
+                  <div className="rounded border border-mesh-border bg-mesh-surface-1 px-2 py-1.5">
                     <p className="text-slate-600">WAN TX</p>
                     <p className="mt-0.5 truncate tabular-nums text-slate-300">
                       {card.primary ? formatBps(stats.wan_tx_bps) : "—"}
@@ -648,13 +648,13 @@ function TopologyPreview({
         ) : topology === null ? (
           <Skeleton className="h-56 w-full" />
         ) : topology.devices.length === 0 ? (
-          <div className="flex h-56 items-center justify-center rounded-md border border-dashed border-slate-800 text-sm text-slate-600">
+          <div className="flex h-56 items-center justify-center rounded-md border border-dashed border-mesh-border-strong text-sm text-slate-600">
             No topology data yet
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="relative h-56 overflow-hidden rounded-md border border-slate-800 bg-[radial-gradient(circle_at_center,rgba(8,145,178,0.12),transparent_34%),linear-gradient(rgba(15,23,42,0.8)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.8)_1px,transparent_1px)] bg-[size:100%_100%,24px_24px,24px_24px]">
-              <div className="absolute left-1/2 top-1/2 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-cyan-400/30 bg-slate-950 text-cyan-300 shadow-[0_0_28px_rgba(8,145,178,0.18)]">
+            <div className="relative h-56 overflow-hidden rounded-md border border-mesh-border-strong bg-[radial-gradient(circle_at_center,rgba(8,145,178,0.12),transparent_34%),linear-gradient(rgba(15,23,42,0.8)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.8)_1px,transparent_1px)] bg-[size:100%_100%,24px_24px,24px_24px]">
+              <div className="absolute left-1/2 top-1/2 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-cyan-400/30 bg-mesh-surface-1 text-cyan-300 shadow-[0_0_28px_rgba(8,145,178,0.18)]">
                 <Router className="h-6 w-6" />
               </div>
               {previewDevices.map((device, index) => {
@@ -666,7 +666,7 @@ function TopologyPreview({
                   <div
                     key={device.id}
                     className={cn(
-                      "absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-slate-950",
+                      "absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-mesh-surface-1",
                       device.is_online
                         ? "border-emerald-400/35 text-emerald-300"
                         : "border-rose-400/35 text-rose-300",
@@ -680,15 +680,15 @@ function TopologyPreview({
               })}
             </div>
             <div className="grid grid-cols-3 gap-2 text-xs">
-              <div className="rounded border border-slate-800 bg-slate-900/40 px-2 py-2">
+              <div className="rounded border border-mesh-border-strong bg-mesh-surface-1 px-2 py-2">
                 <p className="text-slate-600">Router</p>
                 <p className="mt-1 truncate text-slate-300">{routerDisplayName(topology.router.router_type)}</p>
               </div>
-              <div className="rounded border border-slate-800 bg-slate-900/40 px-2 py-2">
+              <div className="rounded border border-mesh-border-strong bg-mesh-surface-1 px-2 py-2">
                 <p className="text-slate-600">Online</p>
                 <p className="mt-1 tabular-nums text-emerald-300">{onlineDevices}</p>
               </div>
-              <div className="rounded border border-slate-800 bg-slate-900/40 px-2 py-2">
+              <div className="rounded border border-mesh-border-strong bg-mesh-surface-1 px-2 py-2">
                 <p className="text-slate-600">Offline</p>
                 <p className="mt-1 tabular-nums text-rose-300">{offlineDevices}</p>
               </div>
@@ -733,7 +733,7 @@ function TopDevicesTable({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[420px] text-left text-xs">
-              <thead className="border-b border-slate-800 text-[10px] uppercase tracking-wider text-slate-600">
+              <thead className="border-b border-mesh-border-strong text-[10px] uppercase tracking-wider text-slate-600">
                 <tr>
                   <th className="py-2 pr-3 font-medium">Device</th>
                   <th className="px-3 py-2 font-medium">IP</th>
@@ -741,9 +741,9 @@ function TopDevicesTable({
                   <th className="py-2 pl-3 text-right font-medium">Up</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/80">
+              <tbody className="divide-y divide-mesh-border">
                 {devices.map((device) => (
-                  <tr key={device.id} className="hover:bg-slate-900/45">
+                  <tr key={device.id} className="hover:bg-mesh-surface-2">
                     <td className="max-w-[13rem] py-2 pr-3">
                       <Link href={`/devices?id=${device.id}`} className="block truncate text-slate-200 hover:text-cyan-300">
                         {device.name || device.hostname || device.vendor || "Unknown"}
@@ -1244,7 +1244,7 @@ export default function DashboardPage() {
                         {item.label}
                       </span>
                       <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-slate-800/90">
+                        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-mesh-surface-1">
                           <div
                             className={`h-full rounded-full ${TYPE_COLORS[item.type] ?? "bg-slate-500"} transition-all duration-500`}
                             style={{

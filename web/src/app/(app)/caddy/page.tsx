@@ -237,7 +237,7 @@ export default function CaddyPage() {
                   size="sm"
                   onClick={handleTestConnection}
                   disabled={testing}
-                  className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55"
+                  className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
                 >
                   {testing ? (
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -247,7 +247,7 @@ export default function CaddyPage() {
                   Test Connection
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+              <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
                 Verify that Panoptikon can reach the Caddy admin API
               </TooltipContent>
             </Tooltip>
@@ -258,7 +258,7 @@ export default function CaddyPage() {
                   size="sm"
                   onClick={handleSync}
                   disabled={syncing}
-                  className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55"
+                  className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
                 >
                   {syncing ? (
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -268,7 +268,7 @@ export default function CaddyPage() {
                   Sync to Caddy
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-slate-700 bg-slate-800 text-slate-200">
+              <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
                 Push current proxy host configuration to the Caddy reverse proxy
               </TooltipContent>
             </Tooltip>
@@ -303,7 +303,7 @@ export default function CaddyPage() {
                   id="admin-url"
                   value={adminUrl}
                   onChange={(e) => setAdminUrl(e.target.value)}
-                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
+                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                   placeholder="http://localhost:2019"
                 />
               </div>
@@ -329,7 +329,7 @@ export default function CaddyPage() {
             placeholder="Filter by domain or upstream..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border-mesh-border-strong bg-mesh-surface-1/95 pl-10 text-white placeholder:text-slate-600"
+            className="border-mesh-border-strong bg-mesh-surface-1/95 pl-10 text-white placeholder:text-mesh-text-mute"
           />
         </div>
 
@@ -338,7 +338,7 @@ export default function CaddyPage() {
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow className="border-slate-800 hover:bg-transparent">
+                <TableRow className="border-mesh-border-strong hover:bg-transparent">
                   <TableHead className="text-slate-400">Domain</TableHead>
                   <TableHead className="text-slate-400">Upstream</TableHead>
                   <TableHead className="text-slate-400">TLS</TableHead>
@@ -352,26 +352,26 @@ export default function CaddyPage() {
                 {filtered === null ? (
                   // Loading skeleton
                   Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={i} className="border-slate-800">
+                    <TableRow key={i} className="border-mesh-border-strong">
                       <TableCell>
-                        <Skeleton className="h-4 w-40 bg-slate-800" />
+                        <Skeleton className="h-4 w-40 bg-mesh-surface-1" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-4 w-48 bg-slate-800" />
+                        <Skeleton className="h-4 w-48 bg-mesh-surface-1" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-4 w-12 bg-slate-800" />
+                        <Skeleton className="h-4 w-12 bg-mesh-surface-1" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-4 w-16 bg-slate-800" />
+                        <Skeleton className="h-4 w-16 bg-mesh-surface-1" />
                       </TableCell>
                       <TableCell>
-                        <Skeleton className="h-4 w-20 bg-slate-800" />
+                        <Skeleton className="h-4 w-20 bg-mesh-surface-1" />
                       </TableCell>
                     </TableRow>
                   ))
                 ) : filtered.length === 0 ? (
-                  <TableRow className="border-slate-800 hover:bg-transparent">
+                  <TableRow className="border-mesh-border-strong hover:bg-transparent">
                     <TableCell
                       colSpan={5}
                       className="py-12 text-center"
@@ -391,7 +391,7 @@ export default function CaddyPage() {
                   filtered.map((host) => (
                     <TableRow
                       key={host.id}
-                      className="border-slate-800 hover:bg-mesh-surface-2/55"
+                      className="border-mesh-border-strong hover:bg-mesh-surface-2/55"
                     >
                       <TableCell className="font-medium text-white">
                         <a
@@ -413,7 +413,7 @@ export default function CaddyPage() {
                           className={
                             host.tls_enabled
                               ? "border-emerald-500/30 text-emerald-400"
-                              : "border-slate-700 text-slate-500"
+                              : "border-mesh-border-strong text-slate-500"
                           }
                         >
                           {host.tls_enabled ? "HTTPS" : "HTTP"}
@@ -487,7 +487,7 @@ export default function CaddyPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55">
+              <AlertDialogCancel className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
@@ -606,7 +606,7 @@ function ProxyHostFormDialog({
               id="domain"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
               placeholder="app.example.com"
             />
           </div>
@@ -640,7 +640,7 @@ function ProxyHostFormDialog({
                 id="forward-host"
                 value={forwardHost}
                 onChange={(e) => setForwardHost(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="10.0.0.5"
               />
             </div>
@@ -658,7 +658,7 @@ function ProxyHostFormDialog({
                 max={65535}
                 value={forwardPort}
                 onChange={(e) => setForwardPort(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="80"
               />
             </div>
@@ -687,7 +687,7 @@ function ProxyHostFormDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55"
+              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
             >
               Cancel
             </Button>

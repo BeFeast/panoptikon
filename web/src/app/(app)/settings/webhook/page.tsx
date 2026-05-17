@@ -135,7 +135,7 @@ export default function WebhookSettingsPage() {
                 type="url"
                 value={webhookUrl}
                 onChange={(e) => setWebhookUrl(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
+                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   urlValid === "valid"
                     ? "border-emerald-500/40"
                     : urlValid === "error"

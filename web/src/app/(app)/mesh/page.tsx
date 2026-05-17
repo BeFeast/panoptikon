@@ -107,7 +107,7 @@ function MeshNodeComponent({ data }: NodeProps<MeshNodeType>) {
           ? 'border-amber-500/30 bg-gradient-to-br from-slate-800 to-slate-900 shadow-amber-500/10'
           : node.is_online
             ? 'border-blue-500/30 bg-gradient-to-br from-slate-800 to-slate-900 shadow-blue-500/10'
-            : 'border-slate-600/30 bg-slate-900 shadow-slate-700/10'
+            : 'border-slate-600/30 bg-mesh-surface-1 shadow-slate-700/10'
       }`}
       style={{ width: NODE_WIDTH, minHeight: NODE_HEIGHT }}
     >
@@ -160,7 +160,7 @@ function MeshNodeComponent({ data }: NodeProps<MeshNodeType>) {
       <div className="flex items-center gap-1.5">
         <Badge
           variant="outline"
-          className="border-slate-700 text-[10px] text-slate-500"
+          className="border-mesh-border-strong text-[10px] text-slate-500"
         >
           {node.model || node.hardware || 'Unknown'}
         </Badge>
@@ -212,7 +212,7 @@ function MeshNodeDetailPanel({ node }: { node: MeshNode }) {
         </div>
       </SheetHeader>
 
-      <Separator className="my-4 bg-slate-800" />
+      <Separator className="my-4 bg-mesh-surface-1" />
 
       <div className="space-y-3">
         <InfoRow label="IP Address" value={node.ip || '—'} mono />
@@ -432,7 +432,7 @@ export default function MeshPage() {
               <div className="flex items-center gap-3">
                 <Button
                   variant="outline"
-                  className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55"
+                  className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
                   onClick={() => {
                     setLoading(true)
                     buildGraph(true)
@@ -444,7 +444,7 @@ export default function MeshPage() {
                 <Link href="/settings/xiaomi-mesh">
                   <Button
                     variant="outline"
-                    className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55"
+                    className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
                   >
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
@@ -473,10 +473,10 @@ export default function MeshPage() {
           minZoom={0.3}
           maxZoom={2}
           proOptions={{ hideAttribution: true }}
-          className="bg-slate-950"
+          className="bg-mesh-surface-1"
         >
           <Controls
-            className="!border-slate-700 !bg-slate-900 [&>button]:!border-slate-700 [&>button]:!bg-slate-900 [&>button]:!text-slate-300 [&>button:hover]:!bg-slate-800"
+            className="!border-mesh-border-strong !bg-mesh-surface-1 [&>button]:!border-mesh-border-strong [&>button]:!bg-mesh-surface-1 [&>button]:!text-slate-300 [&>button:hover]:!bg-mesh-surface-1"
             showInteractive={false}
           />
           <MiniMap
@@ -485,7 +485,7 @@ export default function MeshPage() {
               if (data.node?.is_main) return '#f59e0b'
               return data.node?.is_online ? '#34d399' : '#475569'
             }}
-            className="!border-slate-700 !bg-slate-900/90"
+            className="!border-mesh-border-strong !bg-mesh-surface-1"
             maskColor="rgba(15, 23, 42, 0.7)"
           />
           <Background
@@ -496,7 +496,7 @@ export default function MeshPage() {
           />
 
           {/* Floating toolbar */}
-          <div className="absolute right-4 top-4 z-10 flex items-center gap-3 rounded-lg border border-slate-700/50 bg-slate-900/80 px-4 py-2 backdrop-blur-sm">
+          <div className="absolute right-4 top-4 z-10 flex items-center gap-3 rounded-lg border border-mesh-border-strong bg-mesh-surface-1 px-4 py-2 backdrop-blur-sm">
             <span className="text-[11px] text-slate-400">
               <span>{stats.total} node{stats.total !== 1 ? 's' : ''}</span>
               {' · '}

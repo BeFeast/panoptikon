@@ -515,7 +515,7 @@ function FilterInput({
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border-mesh-border-strong bg-mesh-surface-1/70 pl-10 text-slate-200 placeholder:text-slate-600 focus-visible:border-mesh-accent/45 focus-visible:ring-cyan-500/30"
+        className="border-mesh-border-strong bg-mesh-surface-1/70 pl-10 text-slate-200 placeholder:text-mesh-text-mute focus-visible:border-mesh-accent/45 focus-visible:ring-cyan-500/30"
       />
     </div>
   );

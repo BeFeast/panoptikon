@@ -62,7 +62,7 @@ export function MobileSidebar() {
                   <div
                     className={cn(
                       "flex w-full items-center gap-1 px-3 py-1.5",
-                      group.key !== "network" && "mt-3 border-t border-dotted border-slate-800/60 pt-2",
+                      group.key !== "network" && "mt-3 border-t border-dotted border-mesh-border-strong pt-2",
                     )}
                   >
                     <button

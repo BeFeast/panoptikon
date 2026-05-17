@@ -195,7 +195,7 @@ function formatMemory(bytes: string | null): string {
 
 function StatusHeader({ status }: { status: MikrotikStatus }) {
   return (
-    <div className="rounded-md border border-slate-800 bg-slate-950/90 p-4">
+    <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
           <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-cyan-500/20 bg-cyan-500/10">
@@ -233,7 +233,7 @@ function StatusHeader({ status }: { status: MikrotikStatus }) {
             </Badge>
           )}
           {status.uptime && (
-            <Badge variant="outline" className="border-slate-800 text-slate-400">
+            <Badge variant="outline" className="border-mesh-border-strong text-slate-400">
               Uptime: {status.uptime}
             </Badge>
           )}
@@ -316,7 +316,7 @@ function InterfacesTable({
   error: string | null;
 }) {
   const headerCols = (
-    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+    <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
       <th className="px-4 py-3 font-medium text-slate-400">Status</th>
       <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
       <th className="px-4 py-3 font-medium text-slate-400">Type</th>
@@ -330,12 +330,12 @@ function InterfacesTable({
 
   if (loading) {
     return (
-      <div className="overflow-x-auto rounded-md border border-slate-800">
+      <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
         <table className="w-full text-sm">
           <thead>{headerCols}</thead>
           <tbody>
             {Array.from({ length: 4 }).map((_, i) => (
-              <tr key={i} className="border-b border-slate-800 last:border-b-0">
+              <tr key={i} className="border-b border-mesh-border-strong last:border-b-0">
                 <td className="px-4 py-3"><div className="flex items-center gap-2"><Skeleton className="h-2.5 w-2.5 rounded-full" /><Skeleton className="h-5 w-10 rounded-full" /></div></td>
                 <td className="px-4 py-3"><Skeleton className="h-5 w-16" /></td>
                 <td className="px-4 py-3"><Skeleton className="h-4 w-16" /></td>
@@ -366,14 +366,14 @@ function InterfacesTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border border-slate-800">
+    <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
       <table className="w-full text-sm">
         <thead>{headerCols}</thead>
         <tbody>
           {data.map((iface) => (
             <tr
               key={iface.name}
-              className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+              className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors"
             >
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
@@ -391,7 +391,7 @@ function InterfacesTable({
                     className={
                       iface.running
                         ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
-                        : "border-slate-700 text-slate-500 text-xs"
+                        : "border-mesh-border-strong text-slate-500 text-xs"
                     }
                   >
                     {iface.running ? "up" : iface.disabled ? "disabled" : "down"}
@@ -569,7 +569,7 @@ function VlansPanel({
   };
 
   const headerCols = (
-    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+    <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
       <th className="px-4 py-3 font-medium text-slate-400">VLAN ID</th>
       <th className="px-4 py-3 font-medium text-slate-400">Name</th>
       <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
@@ -592,12 +592,12 @@ function VlansPanel({
       </div>
 
       {loading ? (
-        <div className="overflow-x-auto rounded-md border border-slate-800">
+        <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
           <table className="w-full text-sm">
             <thead>{headerCols}</thead>
             <tbody>
               {Array.from({ length: 4 }).map((_, i) => (
-                <tr key={i} className="border-b border-slate-800 last:border-b-0">
+                <tr key={i} className="border-b border-mesh-border-strong last:border-b-0">
                   <td className="px-4 py-3">
                     <Skeleton className="h-4 w-16" />
                   </td>
@@ -629,14 +629,14 @@ function VlansPanel({
       ) : !data || data.length === 0 ? (
         <p className="py-4 text-sm text-slate-500">No VLAN interfaces configured.</p>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-slate-800">
+        <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
           <table className="w-full text-sm">
             <thead>{headerCols}</thead>
             <tbody>
               {data.map((vlan, idx) => (
                 <tr
                   key={vlan.id ?? `${vlan.name ?? "vlan"}-${vlan.vlan_id ?? idx}`}
-                  className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                  className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors"
                 >
                   <td className="px-4 py-3">
                     <span className="font-mono tabular-nums font-medium text-white">
@@ -659,7 +659,7 @@ function VlansPanel({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-slate-400 hover:bg-slate-800 hover:text-white"
+                        className="h-8 w-8 text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
                         onClick={() => openEdit(vlan)}
                         disabled={!vlan.id}
                       >
@@ -693,7 +693,7 @@ function VlansPanel({
           }
         }}
       >
-        <DialogContent className="border-slate-800 bg-slate-900 text-slate-100">
+        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editing ? "Edit VLAN" : "Create VLAN"}
@@ -712,7 +712,7 @@ function VlansPanel({
                 onChange={(e) => setForm((prev) => ({ ...prev, vlan_id: e.target.value }))}
                 placeholder="10"
                 inputMode="numeric"
-                className="border-slate-700 bg-slate-950 text-slate-100"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
               />
             </div>
             <div className="space-y-2">
@@ -722,7 +722,7 @@ function VlansPanel({
                 value={form.name}
                 onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="vlan10-office"
-                className="border-slate-700 bg-slate-950 text-slate-100"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
               />
             </div>
             <div className="space-y-2">
@@ -732,7 +732,7 @@ function VlansPanel({
                 value={form.interface}
                 onChange={(e) => setForm((prev) => ({ ...prev, interface: e.target.value }))}
                 placeholder="bridge"
-                className="border-slate-700 bg-slate-950 text-slate-100"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
               />
             </div>
             <div className="space-y-2">
@@ -743,7 +743,7 @@ function VlansPanel({
                 onChange={(e) => setForm((prev) => ({ ...prev, mtu: e.target.value }))}
                 placeholder="1500"
                 inputMode="numeric"
-                className="border-slate-700 bg-slate-950 text-slate-100"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
               />
             </div>
           </div>
@@ -752,7 +752,7 @@ function VlansPanel({
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}
-              className="border-slate-700 text-slate-300 hover:bg-slate-800"
+              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2"
             >
               Cancel
             </Button>
@@ -771,7 +771,7 @@ function VlansPanel({
         open={!!confirmDelete}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
       >
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete VLAN</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -781,7 +781,7 @@ function VlansPanel({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-700 text-slate-300 hover:bg-slate-800">
+            <AlertDialogCancel className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -810,7 +810,7 @@ function RoutesTable({
   error: string | null;
 }) {
   const headerCols = (
-    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+    <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
       <th className="px-4 py-3 font-medium text-slate-400">Status</th>
       <th className="px-4 py-3 font-medium text-slate-400">Destination</th>
       <th className="px-4 py-3 font-medium text-slate-400">Gateway</th>
@@ -821,12 +821,12 @@ function RoutesTable({
 
   if (loading) {
     return (
-      <div className="overflow-x-auto rounded-md border border-slate-800">
+      <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
         <table className="w-full text-sm">
           <thead>{headerCols}</thead>
           <tbody>
             {Array.from({ length: 5 }).map((_, i) => (
-              <tr key={i} className="border-b border-slate-800 last:border-b-0">
+              <tr key={i} className="border-b border-mesh-border-strong last:border-b-0">
                 <td className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></td>
                 <td className="px-4 py-3"><Skeleton className="h-5 w-28" /></td>
                 <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
@@ -854,14 +854,14 @@ function RoutesTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border border-slate-800">
+    <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
       <table className="w-full text-sm">
         <thead>{headerCols}</thead>
         <tbody>
           {data.map((route, idx) => (
             <tr
               key={`${route.dst_address}-${idx}`}
-              className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+              className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors"
             >
               <td className="px-4 py-3">
                 <div className="flex items-center gap-1.5">
@@ -875,7 +875,7 @@ function RoutesTable({
                   ) : (
                     <Badge
                       variant="outline"
-                      className="border-slate-700 text-slate-500 text-xs"
+                      className="border-mesh-border-strong text-slate-500 text-xs"
                     >
                       {route.disabled ? "disabled" : "inactive"}
                     </Badge>
@@ -959,7 +959,7 @@ function DhcpLeasesTable({
   };
 
   const headerCols = (
-    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+    <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
       <th className="px-4 py-3 font-medium text-slate-400">IP Address</th>
       <th className="px-4 py-3 font-medium text-slate-400">MAC Address</th>
       <th className="px-4 py-3 font-medium text-slate-400">Hostname</th>
@@ -972,12 +972,12 @@ function DhcpLeasesTable({
 
   if (loading) {
     return (
-      <div className="overflow-x-auto rounded-md border border-slate-800">
+      <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
         <table className="w-full text-sm">
           <thead>{headerCols}</thead>
           <tbody>
             {Array.from({ length: 5 }).map((_, i) => (
-              <tr key={i} className="border-b border-slate-800 last:border-b-0">
+              <tr key={i} className="border-b border-mesh-border-strong last:border-b-0">
                 <td className="px-4 py-3"><Skeleton className="h-5 w-24" /></td>
                 <td className="px-4 py-3"><Skeleton className="h-3 w-32" /></td>
                 <td className="px-4 py-3"><Skeleton className="h-4 w-24" /></td>
@@ -1011,7 +1011,7 @@ function DhcpLeasesTable({
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border border-slate-800">
+    <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
       <table className="w-full text-sm">
         <thead>{headerCols}</thead>
         <tbody>
@@ -1021,7 +1021,7 @@ function DhcpLeasesTable({
             return (
               <tr
                 key={`${lease.address}-${idx}`}
-                className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors"
+                className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors"
               >
                 <td className="px-4 py-3">
                   <span className="font-mono tabular-nums font-medium text-white">
@@ -1054,7 +1054,7 @@ function DhcpLeasesTable({
                     className={
                       lease.status === "bound"
                         ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
-                        : "border-slate-700 text-slate-500 text-xs"
+                        : "border-mesh-border-strong text-slate-500 text-xs"
                     }
                   >
                     {lease.dynamic ? lease.status ?? "\u2014" : "static"}
@@ -1136,10 +1136,10 @@ function DhcpServersSection({ reload: parentReload }: { reload: () => Promise<vo
   }
 
   return (
-    <div className="overflow-x-auto rounded-md border border-slate-800">
+    <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-slate-800 bg-slate-950 text-left">
+          <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
             <th className="px-4 py-3 font-medium text-slate-400">Name</th>
             <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
             <th className="px-4 py-3 font-medium text-slate-400">Address Pool</th>
@@ -1150,7 +1150,7 @@ function DhcpServersSection({ reload: parentReload }: { reload: () => Promise<vo
         </thead>
         <tbody>
           {servers.data.map((srv, idx) => (
-            <tr key={srv.id ?? idx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors">
+            <tr key={srv.id ?? idx} className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors">
               <td className="px-4 py-3 font-medium text-white">{srv.name ?? "\u2014"}</td>
               <td className="px-4 py-3 text-slate-300">{srv.interface ?? "\u2014"}</td>
               <td className="px-4 py-3 text-slate-300">{srv.address_pool ?? "\u2014"}</td>
@@ -1158,7 +1158,7 @@ function DhcpServersSection({ reload: parentReload }: { reload: () => Promise<vo
                 {editId === srv.id ? (
                   <div className="flex items-center gap-2">
                     <Input
-                      className="h-7 w-28 bg-slate-800 border-slate-700 text-white text-xs"
+                      className="h-7 w-28 bg-mesh-surface-1 border-mesh-border-strong text-white text-xs"
                       value={editLeaseTime}
                       onChange={(e) => setEditLeaseTime(e.target.value)}
                       placeholder="e.g. 1d"
@@ -1173,7 +1173,7 @@ function DhcpServersSection({ reload: parentReload }: { reload: () => Promise<vo
               <td className="px-4 py-3">
                 <Badge
                   variant="outline"
-                  className={srv.disabled ? "border-slate-700 text-slate-500 text-xs" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"}
+                  className={srv.disabled ? "border-mesh-border-strong text-slate-500 text-xs" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"}
                 >
                   {srv.disabled ? "disabled" : "active"}
                 </Badge>
@@ -1300,10 +1300,10 @@ function DhcpNetworksSection() {
       {(!networks.data || networks.data.length === 0) ? (
         <p className="py-4 text-sm text-slate-500">No DHCP networks configured. Add one to define options for clients.</p>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-slate-800">
+        <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-950 text-left">
+              <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
                 <th className="px-4 py-3 font-medium text-slate-400">Address</th>
                 <th className="px-4 py-3 font-medium text-slate-400">Gateway</th>
                 <th className="px-4 py-3 font-medium text-slate-400">DNS</th>
@@ -1314,7 +1314,7 @@ function DhcpNetworksSection() {
             </thead>
             <tbody>
               {networks.data.map((n, idx) => (
-                <tr key={n.id ?? idx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors">
+                <tr key={n.id ?? idx} className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs text-white">{n.address ?? "\u2014"}</td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-300">{n.gateway ?? "\u2014"}</td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-300">{n.dns_server ?? "\u2014"}</td>
@@ -1340,7 +1340,7 @@ function DhcpNetworksSection() {
       )}
 
       <Dialog open={showAdd} onOpenChange={(open) => { if (!open) { setShowAdd(false); setEditId(null); } }}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-lg">
+        <DialogContent className="bg-mesh-surface-1 border-mesh-border-strong text-white sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editId ? "Edit DHCP Network" : "Add DHCP Network"}</DialogTitle>
             <DialogDescription className="text-slate-400">
@@ -1350,27 +1350,27 @@ function DhcpNetworksSection() {
           <div className="grid gap-3">
             <div>
               <Label className="text-slate-300 text-xs">Network Address (CIDR)</Label>
-              <Input className="bg-slate-800 border-slate-700 text-white" placeholder="192.168.1.0/24" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" placeholder="192.168.1.0/24" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
             </div>
             <div>
               <Label className="text-slate-300 text-xs">Gateway</Label>
-              <Input className="bg-slate-800 border-slate-700 text-white" placeholder="192.168.1.1" value={form.gateway ?? ""} onChange={(e) => setForm({ ...form, gateway: e.target.value || undefined })} />
+              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" placeholder="192.168.1.1" value={form.gateway ?? ""} onChange={(e) => setForm({ ...form, gateway: e.target.value || undefined })} />
             </div>
             <div>
               <Label className="text-slate-300 text-xs">DNS Servers (comma-separated)</Label>
-              <Input className="bg-slate-800 border-slate-700 text-white" placeholder="8.8.8.8,8.8.4.4" value={form.dns_server ?? ""} onChange={(e) => setForm({ ...form, dns_server: e.target.value || undefined })} />
+              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" placeholder="8.8.8.8,8.8.4.4" value={form.dns_server ?? ""} onChange={(e) => setForm({ ...form, dns_server: e.target.value || undefined })} />
             </div>
             <div>
               <Label className="text-slate-300 text-xs">Domain</Label>
-              <Input className="bg-slate-800 border-slate-700 text-white" placeholder="local" value={form.domain ?? ""} onChange={(e) => setForm({ ...form, domain: e.target.value || undefined })} />
+              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" placeholder="local" value={form.domain ?? ""} onChange={(e) => setForm({ ...form, domain: e.target.value || undefined })} />
             </div>
             <div>
               <Label className="text-slate-300 text-xs">NTP Server</Label>
-              <Input className="bg-slate-800 border-slate-700 text-white" placeholder="pool.ntp.org" value={form.ntp_server ?? ""} onChange={(e) => setForm({ ...form, ntp_server: e.target.value || undefined })} />
+              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" placeholder="pool.ntp.org" value={form.ntp_server ?? ""} onChange={(e) => setForm({ ...form, ntp_server: e.target.value || undefined })} />
             </div>
             <div>
               <Label className="text-slate-300 text-xs">Comment</Label>
-              <Input className="bg-slate-800 border-slate-700 text-white" value={form.comment ?? ""} onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })} />
+              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" value={form.comment ?? ""} onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })} />
             </div>
           </div>
           <DialogFooter>
@@ -1383,7 +1383,7 @@ function DhcpNetworksSection() {
       </Dialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
-        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+        <AlertDialogContent className="bg-mesh-surface-1 border-mesh-border-strong text-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete DHCP Network</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -1391,7 +1391,7 @@ function DhcpNetworksSection() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-700 text-slate-300">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-mesh-border-strong text-slate-300">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1488,10 +1488,10 @@ function DhcpPoolsSection() {
       {(!pools.data || pools.data.length === 0) ? (
         <p className="py-4 text-sm text-slate-500">No IP pools configured. Add one to define DHCP address ranges.</p>
       ) : (
-        <div className="overflow-x-auto rounded-md border border-slate-800">
+        <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 bg-slate-950 text-left">
+              <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
                 <th className="px-4 py-3 font-medium text-slate-400">Name</th>
                 <th className="px-4 py-3 font-medium text-slate-400">Ranges</th>
                 <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
@@ -1500,7 +1500,7 @@ function DhcpPoolsSection() {
             </thead>
             <tbody>
               {pools.data.map((p, idx) => (
-                <tr key={p.id ?? idx} className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors">
+                <tr key={p.id ?? idx} className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors">
                   <td className="px-4 py-3 font-medium text-white">{p.name ?? "\u2014"}</td>
                   <td className="px-4 py-3 font-mono text-xs text-slate-300">{p.ranges ?? "\u2014"}</td>
                   <td className="px-4 py-3 text-slate-400 text-xs">{p.comment ?? "\u2014"}</td>
@@ -1524,7 +1524,7 @@ function DhcpPoolsSection() {
       )}
 
       <Dialog open={showAdd} onOpenChange={(open) => { if (!open) { setShowAdd(false); setEditId(null); } }}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-white sm:max-w-md">
+        <DialogContent className="bg-mesh-surface-1 border-mesh-border-strong text-white sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editId ? "Edit IP Pool" : "Add IP Pool"}</DialogTitle>
             <DialogDescription className="text-slate-400">
@@ -1534,15 +1534,15 @@ function DhcpPoolsSection() {
           <div className="grid gap-3">
             <div>
               <Label className="text-slate-300 text-xs">Pool Name</Label>
-              <Input className="bg-slate-800 border-slate-700 text-white" placeholder="dhcp-pool1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" placeholder="dhcp-pool1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
             <div>
               <Label className="text-slate-300 text-xs">IP Ranges</Label>
-              <Input className="bg-slate-800 border-slate-700 text-white" placeholder="192.168.1.100-192.168.1.200" value={form.ranges} onChange={(e) => setForm({ ...form, ranges: e.target.value })} />
+              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" placeholder="192.168.1.100-192.168.1.200" value={form.ranges} onChange={(e) => setForm({ ...form, ranges: e.target.value })} />
             </div>
             <div>
               <Label className="text-slate-300 text-xs">Comment</Label>
-              <Input className="bg-slate-800 border-slate-700 text-white" value={form.comment ?? ""} onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })} />
+              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" value={form.comment ?? ""} onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })} />
             </div>
           </div>
           <DialogFooter>
@@ -1555,7 +1555,7 @@ function DhcpPoolsSection() {
       </Dialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
-        <AlertDialogContent className="bg-slate-900 border-slate-800 text-white">
+        <AlertDialogContent className="bg-mesh-surface-1 border-mesh-border-strong text-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete IP Pool</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -1563,7 +1563,7 @@ function DhcpPoolsSection() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-700 text-slate-300">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-mesh-border-strong text-slate-300">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1605,17 +1605,17 @@ function DhcpLogsSection() {
           Refresh
         </Button>
       </div>
-      <div className="overflow-x-auto rounded-md border border-slate-800 max-h-96 overflow-y-auto">
+      <div className="overflow-x-auto rounded-md border border-mesh-border-strong max-h-96 overflow-y-auto">
         <table className="w-full text-sm">
           <thead className="sticky top-0">
-            <tr className="border-b border-slate-800 bg-slate-950 text-left">
+            <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
               <th className="px-4 py-2 font-medium text-slate-400 w-40">Time</th>
               <th className="px-4 py-2 font-medium text-slate-400">Message</th>
             </tr>
           </thead>
           <tbody>
             {logs.data.slice(-100).reverse().map((entry, idx) => (
-              <tr key={entry.id ?? idx} className="border-b border-slate-800 last:border-b-0">
+              <tr key={entry.id ?? idx} className="border-b border-mesh-border-strong last:border-b-0">
                 <td className="px-4 py-2 font-mono text-xs text-slate-500 whitespace-nowrap">{entry.time ?? "\u2014"}</td>
                 <td className="px-4 py-2 text-xs text-slate-300">{entry.message ?? "\u2014"}</td>
               </tr>
@@ -1638,7 +1638,7 @@ function ActionBadge({ action }: { action: string | null }) {
         ? "border-rose-500/30 bg-rose-500/10 text-rose-400 text-xs"
         : lower === "reject"
           ? "border-orange-500/30 bg-orange-500/10 text-orange-400 text-xs"
-          : "border-slate-700 text-slate-400 text-xs";
+          : "border-mesh-border-strong text-slate-400 text-xs";
   return (
     <Badge variant="outline" className={cls}>
       {action ?? "\u2014"}
@@ -1782,7 +1782,7 @@ function FirewallFilterDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg border-slate-800 bg-slate-900 text-slate-100">
+      <DialogContent className="max-w-lg border-mesh-border-strong bg-mesh-surface-1 text-slate-100">
         <DialogHeader>
           <DialogTitle className="text-white">
             {isEdit ? "Edit Filter Rule" : "Create Filter Rule"}
@@ -1798,7 +1798,7 @@ function FirewallFilterDialog({
               <select
                 value={form.chain}
                 onChange={(e) => setForm({ ...form, chain: e.target.value })}
-                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white"
               >
                 <option value="forward">forward</option>
                 <option value="input">input</option>
@@ -1810,7 +1810,7 @@ function FirewallFilterDialog({
               <select
                 value={form.action}
                 onChange={(e) => setForm({ ...form, action: e.target.value })}
-                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white"
               >
                 <option value="accept">accept</option>
                 <option value="drop">drop</option>
@@ -1827,7 +1827,7 @@ function FirewallFilterDialog({
             <select
               value={form.protocol ?? ""}
               onChange={(e) => setForm({ ...form, protocol: e.target.value || undefined })}
-              className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white"
             >
               <option value="">any</option>
               <option value="tcp">tcp</option>
@@ -1845,7 +1845,7 @@ function FirewallFilterDialog({
                 value={form.src_address ?? ""}
                 onChange={(e) => setForm({ ...form, src_address: e.target.value || undefined })}
                 placeholder="e.g. 192.168.1.0/24"
-                className="border-slate-700 bg-slate-800"
+                className="border-mesh-border-strong bg-mesh-surface-1"
               />
             </div>
             <div className="space-y-2">
@@ -1854,7 +1854,7 @@ function FirewallFilterDialog({
                 value={form.dst_address ?? ""}
                 onChange={(e) => setForm({ ...form, dst_address: e.target.value || undefined })}
                 placeholder="e.g. 10.0.0.1"
-                className="border-slate-700 bg-slate-800"
+                className="border-mesh-border-strong bg-mesh-surface-1"
               />
             </div>
           </div>
@@ -1866,7 +1866,7 @@ function FirewallFilterDialog({
                   value={form.src_port ?? ""}
                   onChange={(e) => setForm({ ...form, src_port: e.target.value || undefined })}
                   placeholder="e.g. 1024-65535"
-                  className="border-slate-700 bg-slate-800"
+                  className="border-mesh-border-strong bg-mesh-surface-1"
                 />
               </div>
               <div className="space-y-2">
@@ -1875,7 +1875,7 @@ function FirewallFilterDialog({
                   value={form.dst_port ?? ""}
                   onChange={(e) => setForm({ ...form, dst_port: e.target.value || undefined })}
                   placeholder="e.g. 80,443"
-                  className="border-slate-700 bg-slate-800"
+                  className="border-mesh-border-strong bg-mesh-surface-1"
                 />
               </div>
             </div>
@@ -1886,7 +1886,7 @@ function FirewallFilterDialog({
               value={form.time ?? ""}
               onChange={(e) => setForm({ ...form, time: e.target.value || undefined })}
               placeholder="e.g. 08:00:00-17:00:00,mon,tue,wed,thu,fri"
-              className="border-slate-700 bg-slate-800"
+              className="border-mesh-border-strong bg-mesh-surface-1"
             />
             <p className="text-xs text-slate-500">
               Format: HH:MM:SS-HH:MM:SS,day1,day2,… Leave empty for always active.
@@ -1898,7 +1898,7 @@ function FirewallFilterDialog({
               value={form.comment ?? ""}
               onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })}
               placeholder="Rule description"
-              className="border-slate-700 bg-slate-800"
+              className="border-mesh-border-strong bg-mesh-surface-1"
             />
           </div>
         </div>
@@ -1981,7 +1981,7 @@ function FirewallNatDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg border-slate-800 bg-slate-900 text-slate-100">
+      <DialogContent className="max-w-lg border-mesh-border-strong bg-mesh-surface-1 text-slate-100">
         <DialogHeader>
           <DialogTitle className="text-white">
             {isEdit ? "Edit NAT Rule" : "Create NAT Rule"}
@@ -1997,7 +1997,7 @@ function FirewallNatDialog({
               <select
                 value={form.chain}
                 onChange={(e) => setForm({ ...form, chain: e.target.value })}
-                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white"
               >
                 <option value="dstnat">dstnat</option>
                 <option value="srcnat">srcnat</option>
@@ -2008,7 +2008,7 @@ function FirewallNatDialog({
               <select
                 value={form.action}
                 onChange={(e) => setForm({ ...form, action: e.target.value })}
-                className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white"
+                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white"
               >
                 <option value="dst-nat">dst-nat</option>
                 <option value="src-nat">src-nat</option>
@@ -2024,7 +2024,7 @@ function FirewallNatDialog({
             <select
               value={form.protocol ?? ""}
               onChange={(e) => setForm({ ...form, protocol: e.target.value || undefined })}
-              className="w-full rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white"
+              className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white"
             >
               <option value="">any</option>
               <option value="tcp">tcp</option>
@@ -2039,7 +2039,7 @@ function FirewallNatDialog({
                 value={form.dst_address ?? ""}
                 onChange={(e) => setForm({ ...form, dst_address: e.target.value || undefined })}
                 placeholder="e.g. 203.0.113.1"
-                className="border-slate-700 bg-slate-800"
+                className="border-mesh-border-strong bg-mesh-surface-1"
               />
             </div>
             {showPorts && (
@@ -2049,7 +2049,7 @@ function FirewallNatDialog({
                   value={form.dst_port ?? ""}
                   onChange={(e) => setForm({ ...form, dst_port: e.target.value || undefined })}
                   placeholder="e.g. 8080"
-                  className="border-slate-700 bg-slate-800"
+                  className="border-mesh-border-strong bg-mesh-surface-1"
                 />
               </div>
             )}
@@ -2061,7 +2061,7 @@ function FirewallNatDialog({
                 value={form.to_addresses ?? ""}
                 onChange={(e) => setForm({ ...form, to_addresses: e.target.value || undefined })}
                 placeholder="e.g. 192.168.1.100"
-                className="border-slate-700 bg-slate-800"
+                className="border-mesh-border-strong bg-mesh-surface-1"
               />
             </div>
             {showPorts && (
@@ -2071,7 +2071,7 @@ function FirewallNatDialog({
                   value={form.to_ports ?? ""}
                   onChange={(e) => setForm({ ...form, to_ports: e.target.value || undefined })}
                   placeholder="e.g. 80"
-                  className="border-slate-700 bg-slate-800"
+                  className="border-mesh-border-strong bg-mesh-surface-1"
                 />
               </div>
             )}
@@ -2082,7 +2082,7 @@ function FirewallNatDialog({
               value={form.comment ?? ""}
               onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })}
               placeholder="Rule description"
-              className="border-slate-700 bg-slate-800"
+              className="border-mesh-border-strong bg-mesh-surface-1"
             />
           </div>
         </div>
@@ -2162,7 +2162,7 @@ function AddressListDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md border-slate-800 bg-slate-900 text-slate-100">
+      <DialogContent className="max-w-md border-mesh-border-strong bg-mesh-surface-1 text-slate-100">
         <DialogHeader>
           <DialogTitle className="text-white">
             {isEdit ? "Edit Address List Entry" : "Add Address List Entry"}
@@ -2180,7 +2180,7 @@ function AddressListDialog({
               value={form.list}
               onChange={(e) => setForm({ ...form, list: e.target.value })}
               placeholder="e.g. blocked"
-              className="border-slate-700 bg-slate-800"
+              className="border-mesh-border-strong bg-mesh-surface-1"
             />
           </div>
           <div className="space-y-2">
@@ -2189,7 +2189,7 @@ function AddressListDialog({
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               placeholder="e.g. 10.0.0.0/8"
-              className="border-slate-700 bg-slate-800"
+              className="border-mesh-border-strong bg-mesh-surface-1"
             />
           </div>
           <div className="space-y-2">
@@ -2198,7 +2198,7 @@ function AddressListDialog({
               value={form.comment ?? ""}
               onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })}
               placeholder="Optional description"
-              className="border-slate-700 bg-slate-800"
+              className="border-mesh-border-strong bg-mesh-surface-1"
             />
           </div>
         </div>
@@ -2257,7 +2257,7 @@ function SortableFilterRow({
     <tr
       ref={setNodeRef}
       style={style}
-      className={`border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors ${
+      className={`border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors ${
         rule.disabled ? "opacity-50" : ""
       }`}
     >
@@ -2315,7 +2315,7 @@ function SortableFilterRow({
           variant="outline"
           className={
             rule.disabled
-              ? "border-slate-700 text-slate-500 text-xs"
+              ? "border-mesh-border-strong text-slate-500 text-xs"
               : "border-emerald-500/30 text-emerald-400 text-xs"
           }
         >
@@ -2327,7 +2327,7 @@ function SortableFilterRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-400 hover:bg-slate-800 hover:text-white"
+            className="h-8 w-8 text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
             onClick={() => onToggle(rule)}
             disabled={!rule.id || toggling === rule.id}
             title={rule.disabled ? "Enable" : "Disable"}
@@ -2337,7 +2337,7 @@ function SortableFilterRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-400 hover:bg-slate-800 hover:text-white"
+            className="h-8 w-8 text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
             onClick={() => onEdit(rule)}
             disabled={!rule.id}
           >
@@ -2526,15 +2526,15 @@ function FirewallPanel({
 
   if (loading) {
     return (
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="text-base text-white">Filter Rules</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto rounded-md border border-slate-800">
+          <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
                   <th className="w-8 px-2 py-3" />
                   <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
                   <th className="px-4 py-3 font-medium text-slate-400">Action</th>
@@ -2551,7 +2551,7 @@ function FirewallPanel({
               </thead>
               <tbody>
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <tr key={i} className="border-b border-slate-800 last:border-b-0">
+                  <tr key={i} className="border-b border-mesh-border-strong last:border-b-0">
                     <td className="px-2 py-3"><Skeleton className="h-4 w-4" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-4 w-14" /></td>
                     <td className="px-4 py-3"><Skeleton className="h-5 w-14 rounded-full" /></td>
@@ -2576,7 +2576,7 @@ function FirewallPanel({
 
   if (error) {
     return (
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardContent className="py-4">
           <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
             <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
@@ -2598,7 +2598,7 @@ function FirewallPanel({
   return (
     <div className="space-y-4">
       {/* Filter Rules */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base text-white">Filter Rules</CardTitle>
@@ -2621,7 +2621,7 @@ function FirewallPanel({
                 value={filterSearch}
                 onChange={(e) => setFilterSearch(e.target.value)}
                 placeholder="Search rules…"
-                className="border-slate-700 bg-slate-800 pl-9 text-sm"
+                className="border-mesh-border-strong bg-mesh-surface-1 pl-9 text-sm"
               />
             </div>
           )}
@@ -2635,10 +2635,10 @@ function FirewallPanel({
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
-              <div className="overflow-x-auto rounded-md border border-slate-800">
+              <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                    <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
                       <th className="w-8 px-2 py-3" />
                       <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
                       <th className="px-4 py-3 font-medium text-slate-400">Action</th>
@@ -2688,7 +2688,7 @@ function FirewallPanel({
       </Card>
 
       {/* NAT Rules */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base text-white">NAT Rules</CardTitle>
@@ -2709,10 +2709,10 @@ function FirewallPanel({
           {!data?.nat_rules.length ? (
             <p className="py-4 text-sm text-slate-500">No NAT rules configured.</p>
           ) : (
-            <div className="overflow-x-auto rounded-md border border-slate-800">
+            <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                  <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
                     <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
                     <th className="px-4 py-3 font-medium text-slate-400">Action</th>
                     <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
@@ -2728,7 +2728,7 @@ function FirewallPanel({
                   {data.nat_rules.map((rule, i) => (
                     <tr
                       key={rule.id ?? i}
-                      className={`border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors ${
+                      className={`border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors ${
                         rule.disabled ? "opacity-50" : ""
                       }`}
                     >
@@ -2757,7 +2757,7 @@ function FirewallPanel({
                           variant="outline"
                           className={
                             rule.disabled
-                              ? "border-slate-700 text-slate-500 text-xs"
+                              ? "border-mesh-border-strong text-slate-500 text-xs"
                               : "border-emerald-500/30 text-emerald-400 text-xs"
                           }
                         >
@@ -2769,7 +2769,7 @@ function FirewallPanel({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-slate-400 hover:bg-slate-800 hover:text-white"
+                            className="h-8 w-8 text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
                             onClick={() => handleToggleNat(rule)}
                             disabled={!rule.id || toggling === rule.id}
                             title={rule.disabled ? "Enable" : "Disable"}
@@ -2779,7 +2779,7 @@ function FirewallPanel({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-slate-400 hover:bg-slate-800 hover:text-white"
+                            className="h-8 w-8 text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
                             onClick={() => {
                               setEditNat(rule);
                               setNatDialogOpen(true);
@@ -2809,7 +2809,7 @@ function FirewallPanel({
       </Card>
 
       {/* Address Lists */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base text-white">Address Lists</CardTitle>
@@ -2836,14 +2836,14 @@ function FirewallPanel({
                   <div className="mb-1 flex items-center gap-2">
                     <List className="h-3.5 w-3.5 text-slate-400" />
                     <span className="text-sm font-medium text-slate-300">{listName}</span>
-                    <Badge variant="outline" className="border-slate-700 text-slate-500 text-xs">
+                    <Badge variant="outline" className="border-mesh-border-strong text-slate-500 text-xs">
                       {entries.length}
                     </Badge>
                   </div>
-                  <div className="overflow-x-auto rounded-md border border-slate-800">
+                  <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-slate-800 bg-slate-950 text-left">
+                        <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
                           <th className="px-4 py-2 font-medium text-slate-400">Address</th>
                           <th className="px-4 py-2 font-medium text-slate-400">Comment</th>
                           <th className="px-4 py-2 font-medium text-slate-400">Type</th>
@@ -2855,7 +2855,7 @@ function FirewallPanel({
                         {entries.map((entry, i) => (
                           <tr
                             key={entry.id ?? i}
-                            className={`border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors ${
+                            className={`border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors ${
                               entry.disabled ? "opacity-50" : ""
                             }`}
                           >
@@ -2873,7 +2873,7 @@ function FirewallPanel({
                                 className={
                                   entry.dynamic
                                     ? "border-blue-500/30 text-blue-400 text-xs"
-                                    : "border-slate-700 text-slate-400 text-xs"
+                                    : "border-mesh-border-strong text-slate-400 text-xs"
                                 }
                               >
                                 {entry.dynamic ? "dynamic" : "static"}
@@ -2884,7 +2884,7 @@ function FirewallPanel({
                                 variant="outline"
                                 className={
                                   entry.disabled
-                                    ? "border-slate-700 text-slate-500 text-xs"
+                                    ? "border-mesh-border-strong text-slate-500 text-xs"
                                     : "border-emerald-500/30 text-emerald-400 text-xs"
                                 }
                               >
@@ -2897,7 +2897,7 @@ function FirewallPanel({
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 text-slate-400 hover:bg-slate-800 hover:text-white"
+                                    className="h-7 w-7 text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
                                     onClick={() => handleToggleAddr(entry)}
                                     disabled={!entry.id || toggling === entry.id}
                                     title={entry.disabled ? "Enable" : "Disable"}
@@ -2907,7 +2907,7 @@ function FirewallPanel({
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 text-slate-400 hover:bg-slate-800 hover:text-white"
+                                    className="h-7 w-7 text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
                                     onClick={() => {
                                       setEditAddr(entry);
                                       setAddrDialogOpen(true);
@@ -2976,7 +2976,7 @@ function FirewallPanel({
           if (!open) setConfirmDeleteFilter(null);
         }}
       >
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Filter Rule</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -2984,7 +2984,7 @@ function FirewallPanel({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-700 bg-slate-800 text-slate-300">
+            <AlertDialogCancel className="border-mesh-border-strong bg-mesh-surface-1 text-slate-300">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -3003,7 +3003,7 @@ function FirewallPanel({
           if (!open) setConfirmDeleteNat(null);
         }}
       >
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete NAT Rule</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -3011,7 +3011,7 @@ function FirewallPanel({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-700 bg-slate-800 text-slate-300">
+            <AlertDialogCancel className="border-mesh-border-strong bg-mesh-surface-1 text-slate-300">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -3030,7 +3030,7 @@ function FirewallPanel({
           if (!open) setConfirmDeleteAddr(null);
         }}
       >
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Address List Entry</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -3039,7 +3039,7 @@ function FirewallPanel({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-700 bg-slate-800 text-slate-300">
+            <AlertDialogCancel className="border-mesh-border-strong bg-mesh-surface-1 text-slate-300">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
@@ -3097,7 +3097,7 @@ function DnsPanel({
               <Badge
                 key={s}
                 variant="outline"
-                className="border-slate-700 font-mono text-xs text-slate-300"
+                className="border-mesh-border-strong font-mono text-xs text-slate-300"
               >
                 {s}
               </Badge>
@@ -3108,7 +3108,7 @@ function DnsPanel({
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="border-slate-800 bg-slate-950">
+        <Card className="border-mesh-border-strong bg-mesh-surface-1">
           <CardContent className="py-3">
             <p className="text-xs text-slate-500">Allow Remote Requests</p>
             <p className="text-sm font-medium text-white">
@@ -3116,7 +3116,7 @@ function DnsPanel({
             </p>
           </CardContent>
         </Card>
-        <Card className="border-slate-800 bg-slate-950">
+        <Card className="border-mesh-border-strong bg-mesh-surface-1">
           <CardContent className="py-3">
             <p className="text-xs text-slate-500">Cache Size</p>
             <p className="text-sm font-medium text-white">
@@ -3124,7 +3124,7 @@ function DnsPanel({
             </p>
           </CardContent>
         </Card>
-        <Card className="border-slate-800 bg-slate-950">
+        <Card className="border-mesh-border-strong bg-mesh-surface-1">
           <CardContent className="py-3">
             <p className="text-xs text-slate-500">Cache Used</p>
             <p className="text-sm font-medium text-white">
@@ -3178,7 +3178,7 @@ function WireGuardPanel({
       {data.interfaces.map((iface) => (
         <div
           key={iface.name}
-          className="rounded-lg border border-slate-800 bg-slate-950 p-4"
+          className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1 p-4"
         >
           <div className="mb-3 flex items-center gap-3">
             <span className="font-mono text-sm font-medium text-white">
@@ -3189,7 +3189,7 @@ function WireGuardPanel({
               className={
                 iface.running
                   ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
-                  : "border-slate-700 text-slate-500 text-xs"
+                  : "border-mesh-border-strong text-slate-500 text-xs"
               }
             >
               {iface.running ? "running" : iface.disabled ? "disabled" : "down"}
@@ -3201,10 +3201,10 @@ function WireGuardPanel({
             )}
           </div>
           {iface.peers.length > 0 && (
-            <div className="overflow-x-auto rounded-md border border-slate-800">
+            <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-slate-800 bg-slate-900 text-left">
+                  <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
                     <th className="px-3 py-2 font-medium text-slate-400">
                       Public Key
                     </th>
@@ -3225,7 +3225,7 @@ function WireGuardPanel({
                   {iface.peers.map((peer, i) => (
                     <tr
                       key={i}
-                      className="border-b border-slate-800 last:border-b-0 hover:bg-slate-800/60 transition-colors text-slate-300"
+                      className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors text-slate-300"
                     >
                       <td className="px-3 py-2 font-mono">
                         {peer.public_key
@@ -3308,7 +3308,7 @@ function TrafficTab() {
   }, [load, range]);
 
   return (
-    <Card className="border-slate-800 bg-slate-900">
+    <Card className="border-mesh-border-strong bg-mesh-surface-1">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-base text-white">
@@ -3479,7 +3479,7 @@ function PolicyRoutingTab({
   return (
     <div className="space-y-6">
       {/* Routing Tables */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="text-base text-white">Routing Tables</CardTitle>
         </CardHeader>
@@ -3494,7 +3494,7 @@ function PolicyRoutingTab({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-3 py-2">Name</th>
                     <th className="px-3 py-2">FIB</th>
                     <th className="px-3 py-2">Status</th>
@@ -3502,7 +3502,7 @@ function PolicyRoutingTab({
                 </thead>
                 <tbody>
                   {routingTables.data.map((t, i) => (
-                    <tr key={t.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                    <tr key={t.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 text-white">{t.name ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-300">{t.fib ? "Yes" : "No"}</td>
                       <td className="px-3 py-2">
@@ -3520,10 +3520,10 @@ function PolicyRoutingTab({
       </Card>
 
       {/* Mangle Rules (PBR) */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base text-white">Mangle Rules (Policy Routing)</CardTitle>
-          <Button size="sm" variant="outline" className="border-slate-700" onClick={() => setShowCreate(true)}>
+          <Button size="sm" variant="outline" className="border-mesh-border-strong" onClick={() => setShowCreate(true)}>
             <Plus className="mr-1 h-3.5 w-3.5" /> Add Rule
           </Button>
         </CardHeader>
@@ -3538,7 +3538,7 @@ function PolicyRoutingTab({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-3 py-2">Chain</th>
                     <th className="px-3 py-2">Action</th>
                     <th className="px-3 py-2">Src Address</th>
@@ -3551,7 +3551,7 @@ function PolicyRoutingTab({
                 </thead>
                 <tbody>
                   {mangle.data.map((r, i) => (
-                    <tr key={r.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                    <tr key={r.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 text-white">{r.chain ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-300">{r.action ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-300">{r.src_address ?? "any"}</td>
@@ -3580,7 +3580,7 @@ function PolicyRoutingTab({
       </Card>
 
       {/* Routing Rules */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="text-base text-white">Routing Rules</CardTitle>
         </CardHeader>
@@ -3595,7 +3595,7 @@ function PolicyRoutingTab({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-3 py-2">Src Address</th>
                     <th className="px-3 py-2">Dst Address</th>
                     <th className="px-3 py-2">Routing Mark</th>
@@ -3606,7 +3606,7 @@ function PolicyRoutingTab({
                 </thead>
                 <tbody>
                   {routingRules.data.map((r, i) => (
-                    <tr key={r.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                    <tr key={r.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 text-slate-300">{r.src_address ?? "any"}</td>
                       <td className="px-3 py-2 text-slate-300">{r.dst_address ?? "any"}</td>
                       <td className="px-3 py-2 text-blue-400">{r.routing_mark ?? "—"}</td>
@@ -3628,7 +3628,7 @@ function PolicyRoutingTab({
 
       {/* Create Mangle Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="border-slate-800 bg-slate-900">
+        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <DialogHeader>
             <DialogTitle className="text-white">Create Mangle Rule</DialogTitle>
             <DialogDescription className="text-slate-400">Add a policy routing mangle rule</DialogDescription>
@@ -3636,35 +3636,35 @@ function PolicyRoutingTab({
           <div className="space-y-3">
             <div>
               <Label className="text-slate-300">Chain</Label>
-              <Input className="border-slate-700 bg-slate-950 text-white" value={form.chain} onChange={(e) => setForm({ ...form, chain: e.target.value })} />
+              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" value={form.chain} onChange={(e) => setForm({ ...form, chain: e.target.value })} />
             </div>
             <div>
               <Label className="text-slate-300">Action</Label>
-              <Input className="border-slate-700 bg-slate-950 text-white" value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value })} />
+              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value })} />
             </div>
             <div>
               <Label className="text-slate-300">Source Address</Label>
-              <Input className="border-slate-700 bg-slate-950 text-white" placeholder="e.g. 192.168.1.0/24" value={form.src_address} onChange={(e) => setForm({ ...form, src_address: e.target.value })} />
+              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" placeholder="e.g. 192.168.1.0/24" value={form.src_address} onChange={(e) => setForm({ ...form, src_address: e.target.value })} />
             </div>
             <div>
               <Label className="text-slate-300">Destination Address</Label>
-              <Input className="border-slate-700 bg-slate-950 text-white" placeholder="e.g. 0.0.0.0/0" value={form.dst_address} onChange={(e) => setForm({ ...form, dst_address: e.target.value })} />
+              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" placeholder="e.g. 0.0.0.0/0" value={form.dst_address} onChange={(e) => setForm({ ...form, dst_address: e.target.value })} />
             </div>
             <div>
               <Label className="text-slate-300">Protocol</Label>
-              <Input className="border-slate-700 bg-slate-950 text-white" placeholder="e.g. tcp, udp" value={form.protocol} onChange={(e) => setForm({ ...form, protocol: e.target.value })} />
+              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" placeholder="e.g. tcp, udp" value={form.protocol} onChange={(e) => setForm({ ...form, protocol: e.target.value })} />
             </div>
             <div>
               <Label className="text-slate-300">New Routing Mark</Label>
-              <Input className="border-slate-700 bg-slate-950 text-white" placeholder="e.g. wan2-mark" value={form.new_routing_mark} onChange={(e) => setForm({ ...form, new_routing_mark: e.target.value })} />
+              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" placeholder="e.g. wan2-mark" value={form.new_routing_mark} onChange={(e) => setForm({ ...form, new_routing_mark: e.target.value })} />
             </div>
             <div>
               <Label className="text-slate-300">Comment</Label>
-              <Input className="border-slate-700 bg-slate-950 text-white" value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} />
+              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" className="border-slate-700" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button variant="outline" className="border-mesh-border-strong" onClick={() => setShowCreate(false)}>Cancel</Button>
             <Button onClick={handleCreate} disabled={saving}>{saving ? "Creating…" : "Create"}</Button>
           </DialogFooter>
         </DialogContent>
@@ -3672,7 +3672,7 @@ function PolicyRoutingTab({
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Mangle Rule?</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -3680,7 +3680,7 @@ function PolicyRoutingTab({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-700">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-mesh-border-strong">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -3768,10 +3768,10 @@ function GatewayMonitoringTab({
       </div>
 
       {/* Netwatch Table */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base text-white">Gateway Health Monitors</CardTitle>
-          <Button size="sm" variant="outline" className="border-slate-700" onClick={() => setShowCreate(true)}>
+          <Button size="sm" variant="outline" className="border-mesh-border-strong" onClick={() => setShowCreate(true)}>
             <Plus className="mr-1 h-3.5 w-3.5" /> Add Monitor
           </Button>
         </CardHeader>
@@ -3786,7 +3786,7 @@ function GatewayMonitoringTab({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-3 py-2">Host</th>
                     <th className="px-3 py-2">Type</th>
                     <th className="px-3 py-2">Interval</th>
@@ -3799,7 +3799,7 @@ function GatewayMonitoringTab({
                 </thead>
                 <tbody>
                   {netwatch.data.map((n, i) => (
-                    <tr key={n.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                    <tr key={n.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 font-mono text-white">{n.host ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-300">{n.check_type ?? "icmp"}</td>
                       <td className="px-3 py-2 text-slate-300">{n.interval ?? "—"}</td>
@@ -3835,7 +3835,7 @@ function GatewayMonitoringTab({
 
       {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="border-slate-800 bg-slate-900">
+        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <DialogHeader>
             <DialogTitle className="text-white">Add Gateway Monitor</DialogTitle>
             <DialogDescription className="text-slate-400">Monitor a gateway IP for health checks</DialogDescription>
@@ -3843,27 +3843,27 @@ function GatewayMonitoringTab({
           <div className="space-y-3">
             <div>
               <Label className="text-slate-300">Host / Gateway IP</Label>
-              <Input className="border-slate-700 bg-slate-950 text-white" placeholder="e.g. 8.8.8.8" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} />
+              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" placeholder="e.g. 8.8.8.8" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} />
             </div>
             <div>
               <Label className="text-slate-300">Check Type</Label>
-              <Input className="border-slate-700 bg-slate-950 text-white" value={form.check_type} onChange={(e) => setForm({ ...form, check_type: e.target.value })} />
+              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" value={form.check_type} onChange={(e) => setForm({ ...form, check_type: e.target.value })} />
             </div>
             <div>
               <Label className="text-slate-300">Interval</Label>
-              <Input className="border-slate-700 bg-slate-950 text-white" value={form.interval} onChange={(e) => setForm({ ...form, interval: e.target.value })} />
+              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" value={form.interval} onChange={(e) => setForm({ ...form, interval: e.target.value })} />
             </div>
             <div>
               <Label className="text-slate-300">Timeout</Label>
-              <Input className="border-slate-700 bg-slate-950 text-white" value={form.timeout} onChange={(e) => setForm({ ...form, timeout: e.target.value })} />
+              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" value={form.timeout} onChange={(e) => setForm({ ...form, timeout: e.target.value })} />
             </div>
             <div>
               <Label className="text-slate-300">Comment</Label>
-              <Input className="border-slate-700 bg-slate-950 text-white" value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} />
+              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" className="border-slate-700" onClick={() => setShowCreate(false)}>Cancel</Button>
+            <Button variant="outline" className="border-mesh-border-strong" onClick={() => setShowCreate(false)}>Cancel</Button>
             <Button onClick={handleCreate} disabled={saving || !form.host.trim()}>{saving ? "Creating…" : "Create"}</Button>
           </DialogFooter>
         </DialogContent>
@@ -3871,7 +3871,7 @@ function GatewayMonitoringTab({
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Gateway Monitor?</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-400">
@@ -3879,7 +3879,7 @@ function GatewayMonitoringTab({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-700">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="border-mesh-border-strong">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -3900,7 +3900,7 @@ function DynamicRoutingTab({
   return (
     <div className="space-y-6">
       {/* BGP Connections */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="text-base text-white">BGP Connections</CardTitle>
         </CardHeader>
@@ -3915,7 +3915,7 @@ function DynamicRoutingTab({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-3 py-2">Name</th>
                     <th className="px-3 py-2">Remote Address</th>
                     <th className="px-3 py-2">Remote AS</th>
@@ -3927,7 +3927,7 @@ function DynamicRoutingTab({
                 </thead>
                 <tbody>
                   {dynamic.data.bgp_connections.map((b, i) => (
-                    <tr key={b.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                    <tr key={b.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 text-white">{b.name ?? "—"}</td>
                       <td className="px-3 py-2 font-mono text-slate-300">{b.remote_address ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-300">{b.remote_as ?? "—"}</td>
@@ -3949,7 +3949,7 @@ function DynamicRoutingTab({
       </Card>
 
       {/* OSPF Instances */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="text-base text-white">OSPF Instances</CardTitle>
         </CardHeader>
@@ -3962,7 +3962,7 @@ function DynamicRoutingTab({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-3 py-2">Name</th>
                     <th className="px-3 py-2">Router ID</th>
                     <th className="px-3 py-2">Version</th>
@@ -3971,7 +3971,7 @@ function DynamicRoutingTab({
                 </thead>
                 <tbody>
                   {dynamic.data.ospf_instances.map((o, i) => (
-                    <tr key={o.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                    <tr key={o.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 text-white">{o.name ?? "—"}</td>
                       <td className="px-3 py-2 font-mono text-slate-300">{o.router_id ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-300">{o.version ?? "—"}</td>
@@ -3991,7 +3991,7 @@ function DynamicRoutingTab({
 
       {/* OSPF Areas */}
       {dynamic.data?.ospf_areas && dynamic.data.ospf_areas.length > 0 && (
-        <Card className="border-slate-800 bg-slate-900">
+        <Card className="border-mesh-border-strong bg-mesh-surface-1">
           <CardHeader>
             <CardTitle className="text-base text-white">OSPF Areas</CardTitle>
           </CardHeader>
@@ -3999,7 +3999,7 @@ function DynamicRoutingTab({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-3 py-2">Name</th>
                     <th className="px-3 py-2">Area ID</th>
                     <th className="px-3 py-2">Instance</th>
@@ -4008,7 +4008,7 @@ function DynamicRoutingTab({
                 </thead>
                 <tbody>
                   {dynamic.data.ospf_areas.map((a, i) => (
-                    <tr key={a.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                    <tr key={a.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 text-white">{a.name ?? "—"}</td>
                       <td className="px-3 py-2 font-mono text-slate-300">{a.area_id ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-300">{a.instance ?? "—"}</td>
@@ -4027,7 +4027,7 @@ function DynamicRoutingTab({
       )}
 
       {/* IPv6 Router Advertisements */}
-      <Card className="border-slate-800 bg-slate-900">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="text-base text-white">IPv6 Router Advertisements</CardTitle>
         </CardHeader>
@@ -4042,7 +4042,7 @@ function DynamicRoutingTab({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-800 text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
                     <th className="px-3 py-2">Interface</th>
                     <th className="px-3 py-2">RA Interval</th>
                     <th className="px-3 py-2">RA Lifetime</th>
@@ -4053,7 +4053,7 @@ function DynamicRoutingTab({
                 </thead>
                 <tbody>
                   {ipv6Nd.data.map((n, i) => (
-                    <tr key={n.id ?? i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                    <tr key={n.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 text-white">{n.interface ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-300">{n.ra_interval ?? "—"}</td>
                       <td className="px-3 py-2 text-slate-300">{n.ra_lifetime ?? "—"}</td>
@@ -4158,87 +4158,87 @@ export default function MikrotikRouter() {
       <StatusHeader status={status} />
 
       <Tabs value={tab} onValueChange={setTab} className="min-w-0">
-        <TabsList className="h-auto w-full justify-start gap-1 border border-slate-800 bg-slate-950 p-1">
+        <TabsList className="h-auto w-full justify-start gap-1 border border-mesh-border-strong bg-mesh-surface-1 p-1">
           <TabsTrigger
             value="system"
-            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+            className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Activity className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">System</span>
           </TabsTrigger>
           <TabsTrigger
             value="interfaces"
-            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+            className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Network className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">Interfaces</span>
           </TabsTrigger>
           <TabsTrigger
             value="vlans"
-            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+            className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Layers className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">VLANs</span>
           </TabsTrigger>
           <TabsTrigger
             value="routes"
-            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+            className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Globe className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">Routes</span>
           </TabsTrigger>
           <TabsTrigger
             value="dhcp"
-            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+            className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Server className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">DHCP</span>
           </TabsTrigger>
           <TabsTrigger
             value="dns"
-            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+            className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Search className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">DNS</span>
           </TabsTrigger>
           <TabsTrigger
             value="firewall"
-            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+            className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Shield className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">Firewall</span>
           </TabsTrigger>
           <TabsTrigger
             value="vpn"
-            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+            className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Lock className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">VPN</span>
           </TabsTrigger>
           <TabsTrigger
             value="traffic"
-            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+            className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <BarChart3 className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">Traffic</span>
           </TabsTrigger>
           <TabsTrigger
             value="policy-routing"
-            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+            className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <GitFork className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">Policy Routing</span>
           </TabsTrigger>
           <TabsTrigger
             value="gateway-monitoring"
-            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+            className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <HeartPulse className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">Gateways</span>
           </TabsTrigger>
           <TabsTrigger
             value="dynamic-routing"
-            className="data-[state=active]:bg-slate-800 data-[state=active]:text-white"
+            className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Waypoints className="sm:mr-1.5 h-3.5 w-3.5" />
             <span className="hidden sm:inline">Dynamic Routing</span>
@@ -4250,7 +4250,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="interfaces">
-          <Card className="border-slate-800 bg-slate-900">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 Network Interfaces
@@ -4267,7 +4267,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="vlans">
-          <Card className="border-slate-800 bg-slate-900">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 VLAN Interfaces
@@ -4285,7 +4285,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="routes">
-          <Card className="border-slate-800 bg-slate-900">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 Routing Table
@@ -4302,7 +4302,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="dhcp">
-          <Card className="border-slate-800 bg-slate-900">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 DHCP Server Management
@@ -4310,20 +4310,20 @@ export default function MikrotikRouter() {
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="leases">
-                <TabsList className="border-slate-800 bg-slate-950 mb-4">
-                  <TabsTrigger value="leases" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-xs">
+                <TabsList className="border-mesh-border-strong bg-mesh-surface-1 mb-4">
+                  <TabsTrigger value="leases" className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white text-xs">
                     Leases
                   </TabsTrigger>
-                  <TabsTrigger value="servers" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-xs">
+                  <TabsTrigger value="servers" className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white text-xs">
                     Servers
                   </TabsTrigger>
-                  <TabsTrigger value="pools" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-xs">
+                  <TabsTrigger value="pools" className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white text-xs">
                     IP Pools
                   </TabsTrigger>
-                  <TabsTrigger value="networks" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-xs">
+                  <TabsTrigger value="networks" className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white text-xs">
                     Networks
                   </TabsTrigger>
-                  <TabsTrigger value="logs" className="data-[state=active]:bg-slate-800 data-[state=active]:text-white text-xs">
+                  <TabsTrigger value="logs" className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white text-xs">
                     Logs
                   </TabsTrigger>
                 </TabsList>
@@ -4353,7 +4353,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="dns">
-          <Card className="border-slate-800 bg-slate-900">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 DNS Settings
@@ -4379,7 +4379,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="vpn">
-          <Card className="border-slate-800 bg-slate-900">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 WireGuard Interfaces

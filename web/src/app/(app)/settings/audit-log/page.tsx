@@ -157,7 +157,7 @@ export default function AuditLogPage() {
                 No audit log entries yet.
               </div>
             ) : (
-              <div className="divide-y divide-slate-800/50">
+              <div className="divide-y divide-mesh-border">
                 {items.map((entry) => {
                   const expanded = expandedId === entry.id;
                   const commands = parseCommands(entry.commands);
