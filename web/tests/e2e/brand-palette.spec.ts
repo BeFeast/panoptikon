@@ -13,9 +13,11 @@ test.describe("Brand palette migration", () => {
       page.getByRole("heading", { name: "Panoptikon", level: 1 }),
     ).toBeVisible({ timeout: 15000 });
 
-    // Login background and card glow should be present
+    // The renewed login surface should expose the reference-screen affordances.
     await expect(page.locator(".login-bg")).toBeVisible();
-    await expect(page.locator(".login-card-glow")).toBeVisible();
+    await expect(page.getByLabel("Operator")).toHaveValue("operator");
+    await expect(page.getByRole("button", { name: "Continue with SSO" })).toBeVisible();
+    await expect(page.getByText("all systems healthy")).toBeVisible();
 
     await page.screenshot({
       path: "tests/screenshots/brand-palette-login.png",
