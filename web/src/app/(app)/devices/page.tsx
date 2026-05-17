@@ -81,14 +81,15 @@ export default function DevicesPage() {
   const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
   const [view, setView] = useState<ViewMode>(() => {
     if (typeof window !== "undefined") {
-      return (localStorage.getItem("devices-view-preference") as ViewMode) || "grid";
+      return (localStorage.getItem("devices-view-preference") as ViewMode) || "table";
     }
-    return "grid";
+    return "table";
   });
   const [sortField, setSortField] = useState<SortField>("last_seen_at");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [addAssetOpen, setAddAssetOpen] = useState(false);
   const [wifiMap, setWifiMap] = useState<Record<string, DeviceWifiInfo>>({});
+  const selectedUrlParamConsumed = useRef(false);
 
   const load = useCallback(async () => {
     try {
@@ -103,6 +104,19 @@ export default function DevicesPage() {
     const interval = setInterval(load, 15_000);
     return () => clearInterval(interval);
   }, [load]);
+
+  useEffect(() => {
+    if (selectedUrlParamConsumed.current) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const selectedId = params.get("selected") ?? params.get("id");
+    if (!selectedId || !devices?.length) return;
+    const match = devices.find((d) => d.id === selectedId);
+    if (match) {
+      setSelectedDevice(match);
+      selectedUrlParamConsumed.current = true;
+    }
+  }, [devices]);
 
   // Fetch Xiaomi WiFi data for device list columns
   useEffect(() => {
@@ -300,18 +314,25 @@ export default function DevicesPage() {
 
   return (
     <PageTransition>
-    <div className="space-y-8">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="rounded-2xl border border-slate-700/50 bg-slate-900/45 px-5 py-5 sm:px-6">
+      <div className="border-b border-slate-800/80 pb-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-semibold tracking-tight text-white">Devices</h1>
               <HelpTooltip text="All devices discovered on your network. Use Scan Now to discover new devices, Re-identify to fingerprint them, and Resolve Names to look up hostnames via DNS." />
             </div>
-            <p className="max-w-2xl text-sm leading-6 text-slate-300/80">
-              Discover, classify, and monitor every device on your network.
-            </p>
+            <div className="flex flex-wrap gap-2 text-xs text-slate-500">
+              {counts && (
+                <>
+                  <span><span className="font-mono text-slate-300">{counts.all}</span> total</span>
+                  <span><span className="font-mono text-emerald-300">{counts.online}</span> online</span>
+                  <span><span className="font-mono text-slate-300">{counts.offline}</span> offline</span>
+                  <span><span className="font-mono text-amber-300">{counts.unknown}</span> new</span>
+                </>
+              )}
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2.5 xl:justify-end">
             <Tooltip>
@@ -455,7 +476,7 @@ export default function DevicesPage() {
       </div>
 
       {/* Filter bar */}
-      <div className="rounded-2xl border border-slate-700/50 bg-slate-900/40 px-5 py-4 sm:px-6">
+      <div className="rounded-lg border border-slate-800 bg-slate-950/45 px-3 py-3 sm:px-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             {(["all", "online", "offline", "unknown"] as Filter[]).map((f) => (
@@ -795,6 +816,7 @@ function DeviceCard({
 
   return (
     <Card
+      data-device-row
       className="h-full min-h-[15.5rem] cursor-pointer border-slate-700/50 bg-slate-900/55 transition-[border-color,background-color,box-shadow] hover:border-slate-600/70 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
       onClick={onClick}
     >
@@ -1048,6 +1070,7 @@ function DevicesTable({
             return (
               <motion.tr
                 key={device.id}
+                data-device-row
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{

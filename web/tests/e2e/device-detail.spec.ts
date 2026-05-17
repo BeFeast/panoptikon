@@ -44,7 +44,7 @@ test.describe('Device detail page — enrichment display', () => {
     await page.screenshot({ path: 'tests/screenshots/device-detail-sheet.png' });
 
     // The sheet should contain Info tab content
-    const sheetContent = await page.textContent('[role="dialog"], [data-state="open"]') ?? '';
+    const sheetContent = await page.getByRole('dialog').textContent() ?? '';
 
     // Verify key sections exist
     const hasInfoContent =
