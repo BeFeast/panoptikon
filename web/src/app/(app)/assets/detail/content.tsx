@@ -47,6 +47,7 @@ import { formatBytes, formatPercent, timeAgo } from "@/lib/format";
 import { useWsEvent } from "@/lib/ws";
 import { getDeviceIcon } from "@/lib/device-icons";
 import { getOsDisplay } from "@/lib/os-icons";
+import { ErrorState } from "@/components/ErrorState";
 import { toast } from "sonner";
 
 // ─── Types ────────────────────────────────────────────────
@@ -170,11 +171,7 @@ export default function AssetDetailContent() {
   if (!id) return null;
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <p className="text-rose-400">{error}</p>
-      </div>
-    );
+    return <ErrorState message={error} onRetry={load} />;
   }
 
   if (!device) {
@@ -340,7 +337,7 @@ function AssetHeader({
           />
         ) : (
           <h1
-            className="text-2xl font-semibold text-white cursor-pointer hover:text-blue-400 transition-colors group flex items-center gap-2"
+            className="text-2xl font-semibold text-white cursor-pointer hover:text-cyan-300 transition-colors group flex items-center gap-2"
             onClick={() => setEdit({ field: "custom_name", value: device.custom_name || device.name || device.hostname || "" })}
           >
             {effectiveName}
@@ -399,7 +396,7 @@ function AssetHeader({
           </div>
         ) : (
           <span
-            className="flex items-center gap-1 cursor-pointer hover:text-blue-400 transition-colors group"
+            className="flex items-center gap-1 cursor-pointer hover:text-cyan-300 transition-colors group"
             onClick={() => setEdit({ field: "tags", value: device.tags || "" })}
           >
             <Tag size={14} className="text-slate-500" />
@@ -435,7 +432,7 @@ function AssetHeader({
           </div>
         ) : (
           <span
-            className="flex items-center gap-1 cursor-pointer hover:text-blue-400 transition-colors group"
+            className="flex items-center gap-1 cursor-pointer hover:text-cyan-300 transition-colors group"
             onClick={() => setEdit({ field: "location", value: device.location || "" })}
           >
             <MapPin size={14} className="text-slate-500" />
@@ -461,7 +458,7 @@ function AssetHeader({
           </div>
         ) : (
           <span
-            className="flex items-center gap-1 cursor-pointer hover:text-blue-400 transition-colors group"
+            className="flex items-center gap-1 cursor-pointer hover:text-cyan-300 transition-colors group"
             onClick={() => setEdit({ field: "owner", value: device.owner || "" })}
           >
             <User size={14} className="text-slate-500" />
@@ -540,7 +537,7 @@ function InfoGrid({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {/* Hardware Column */}
-      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+      <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
         <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
           <HardDrive size={14} />
           Hardware
@@ -597,7 +594,7 @@ function InfoGrid({
       </div>
 
       {/* Software Column */}
-      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+      <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
         <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
           <Monitor size={14} />
           Software
@@ -655,7 +652,7 @@ function InfoGrid({
       </div>
 
       {/* Network Column */}
-      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+      <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
         <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
           <Cpu size={14} />
           Network
@@ -686,7 +683,7 @@ function InfoGrid({
 
       {/* Asset Management (extra row) */}
       {(device.purchase_date || device.warranty_expiry) && (
-        <div className="rounded-lg border border-slate-800 bg-slate-900 p-4 md:col-span-2 lg:col-span-3">
+        <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4 md:col-span-2 lg:col-span-3">
           <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
             <Tag size={14} />
             Asset Management
@@ -731,7 +728,7 @@ function LiveMetricsPanel({ chartData }: { chartData: ChartPoint[] }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       {/* CPU Chart */}
-      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+      <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
         <h2 className="text-sm font-medium text-slate-400 mb-3">CPU Usage %</h2>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
@@ -762,7 +759,7 @@ function LiveMetricsPanel({ chartData }: { chartData: ChartPoint[] }) {
               <Line
                 type="monotone"
                 dataKey="cpu"
-                stroke="#3b82f6"
+                stroke="#22d3ee"
                 strokeWidth={2}
                 dot={false}
                 connectNulls
@@ -774,7 +771,7 @@ function LiveMetricsPanel({ chartData }: { chartData: ChartPoint[] }) {
       </div>
 
       {/* RAM Chart */}
-      <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+      <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
         <h2 className="text-sm font-medium text-slate-400 mb-3">RAM Usage %</h2>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
@@ -805,7 +802,7 @@ function LiveMetricsPanel({ chartData }: { chartData: ChartPoint[] }) {
               <Line
                 type="monotone"
                 dataKey="ram"
-                stroke="#8b5cf6"
+                stroke="#10b981"
                 strokeWidth={2}
                 dot={false}
                 connectNulls
@@ -832,7 +829,7 @@ function LinkedSources({
   if (!hasAny) return null;
 
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+    <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
       <h3 className="text-sm font-medium text-slate-400 mb-3">Linked Sources</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {/* Network Device */}
@@ -851,7 +848,7 @@ function LinkedSources({
           </div>
           <Link
             href={`/devices`}
-            className="mt-2 inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+            className="mt-2 inline-flex items-center gap-1 text-xs text-cyan-300 hover:text-cyan-200 transition-colors"
           >
             View in Devices <ExternalLink size={10} />
           </Link>
@@ -881,7 +878,7 @@ function LinkedSources({
             </div>
             <Link
               href={`/agents/detail?id=${device.agent.id}`}
-              className="mt-2 inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              className="mt-2 inline-flex items-center gap-1 text-xs text-cyan-300 hover:text-cyan-200 transition-colors"
             >
               Agent Detail <ExternalLink size={10} />
             </Link>
@@ -917,7 +914,7 @@ function LinkedSources({
             </div>
             <Link
               href="/ssh-hosts"
-              className="mt-2 inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              className="mt-2 inline-flex items-center gap-1 text-xs text-cyan-300 hover:text-cyan-200 transition-colors"
             >
               SSH Hosts <ExternalLink size={10} />
             </Link>
@@ -951,12 +948,12 @@ function NotesSection({
   cancelEdit: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900 p-4">
+    <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
       <h3 className="text-sm font-medium text-slate-400 mb-3">Notes</h3>
       {edit.field === "notes" ? (
         <div className="space-y-2">
           <textarea
-            className="w-full min-h-[80px] rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="w-full min-h-[80px] rounded-md border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500"
             value={edit.value}
             onChange={(e) => setEdit({ ...edit, value: e.target.value })}
             placeholder="Add notes about this asset..."
@@ -985,7 +982,7 @@ function NotesSection({
         </div>
       ) : (
         <p
-          className="text-sm text-slate-300 cursor-pointer hover:text-blue-400 transition-colors group"
+          className="text-sm text-slate-300 cursor-pointer hover:text-cyan-300 transition-colors group"
           onClick={() => setEdit({ field: "notes", value: device.notes || "" })}
         >
           {device.notes || (

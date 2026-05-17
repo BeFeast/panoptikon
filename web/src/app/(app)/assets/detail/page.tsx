@@ -2,10 +2,11 @@
 
 import { Suspense } from "react";
 import AssetDetailContent from "./content";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AssetDetailPage() {
   return (
-    <Suspense fallback={<div className="text-gray-500 py-20 text-center">Loading...</div>}>
+    <Suspense fallback={<Skeleton className="h-64 w-full" />}>
       <AssetDetailContent />
     </Suspense>
   );

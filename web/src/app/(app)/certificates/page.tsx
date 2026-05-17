@@ -62,6 +62,8 @@ import {
 } from "@/lib/api";
 import type { NpmCertificate, NpmConnectionStatus } from "@/lib/types";
 import { HelpTooltip } from "@/components/HelpTooltip";
+import { EmptyState } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
 import {
   Tooltip,
   TooltipContent,
@@ -268,29 +270,22 @@ export default function CertificatesPage() {
 
   if (!npmStatus?.configured) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-20">
-        <Shield className="h-12 w-12 text-slate-600" />
-        <h2 className="text-lg font-medium text-white">
-          Caddy Not Configured
-        </h2>
-        <p className="max-w-md text-center text-sm text-slate-400">
-          Configure your Caddy connection in Settings to manage SSL
-          certificates.
-        </p>
-      </div>
+      <EmptyState
+        icon={Shield}
+        title="Caddy Not Configured"
+        description="Configure your Caddy connection in Settings to manage SSL certificates."
+        actionLabel="Open Settings"
+        actionHref="/settings"
+      />
     );
   }
 
   if (!npmStatus.reachable) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 py-20">
-        <AlertTriangle className="h-12 w-12 text-amber-500" />
-        <h2 className="text-lg font-medium text-white">Caddy Unreachable</h2>
-        <p className="max-w-md text-center text-sm text-slate-400">
-          Could not connect to your Caddy instance. Check your settings and
-          ensure the service is running.
-        </p>
-      </div>
+      <ErrorState
+        message="Could not connect to your Caddy instance. Check your settings and ensure the service is running."
+        onRetry={loadCerts}
+      />
     );
   }
 
@@ -362,8 +357,8 @@ export default function CertificatesPage() {
       <Card className="border-slate-800 bg-slate-900">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-orange-500/10">
-              <Shield className="h-4 w-4 text-orange-400" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-md border border-cyan-500/20 bg-cyan-500/10">
+              <Shield className="h-4 w-4 text-cyan-300" />
             </div>
             <div>
               <CardTitle className="text-base text-white">
@@ -377,13 +372,11 @@ export default function CertificatesPage() {
         </CardHeader>
         <CardContent>
           {certs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <Shield className="mb-4 h-12 w-12 text-slate-600" />
-              <p className="text-lg font-medium text-slate-400">No certificates yet</p>
-              <p className="mt-1 max-w-sm text-sm text-slate-600">
-                Request a free Let&apos;s Encrypt certificate or upload your own using the buttons above. Make sure Caddy is configured in Settings first.
-              </p>
-            </div>
+            <EmptyState
+              icon={Shield}
+              title="No certificates yet"
+              description="Request a free Let's Encrypt certificate or upload your own using the buttons above."
+            />
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -539,7 +532,7 @@ export default function CertificatesPage() {
             <Button
               onClick={handleCreateLetsEncrypt}
               disabled={!leDomains.trim() || !leEmail.trim() || leSubmitting}
-              className="bg-blue-600 text-white hover:bg-blue-500"
+              className="bg-cyan-500 text-slate-950 hover:bg-cyan-400"
             >
               {leSubmitting && (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -584,7 +577,7 @@ export default function CertificatesPage() {
                 >
                   Certificate (PEM)
                 </Label>
-                <label className="cursor-pointer text-xs text-blue-400 hover:text-blue-300">
+                <label className="cursor-pointer text-xs text-cyan-300 hover:text-cyan-200">
                   <input
                     type="file"
                     accept=".pem,.crt,.cer"
@@ -601,7 +594,7 @@ export default function CertificatesPage() {
                 value={customCert}
                 onChange={(e) => setCustomCert(e.target.value)}
                 rows={4}
-                className="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                 placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
               />
             </div>
@@ -613,7 +606,7 @@ export default function CertificatesPage() {
                 >
                   Private Key (PEM)
                 </Label>
-                <label className="cursor-pointer text-xs text-blue-400 hover:text-blue-300">
+                <label className="cursor-pointer text-xs text-cyan-300 hover:text-cyan-200">
                   <input
                     type="file"
                     accept=".pem,.key"
@@ -630,7 +623,7 @@ export default function CertificatesPage() {
                 value={customKey}
                 onChange={(e) => setCustomKey(e.target.value)}
                 rows={4}
-                className="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 font-mono text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                 placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
               />
             </div>
@@ -651,7 +644,7 @@ export default function CertificatesPage() {
                 !customKey.trim() ||
                 customSubmitting
               }
-              className="bg-blue-600 text-white hover:bg-blue-500"
+              className="bg-cyan-500 text-slate-950 hover:bg-cyan-400"
             >
               {customSubmitting && (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
