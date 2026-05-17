@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Router,
   Globe,
-  AlertCircle,
   Cpu,
   Clock,
   MemoryStick,
@@ -35,6 +34,10 @@ import type {
   XiaomiWifiDevice,
   XiaomiFirmware,
 } from "@/lib/types";
+import {
+  RouterWorkspaceHeader,
+  RouterWorkspaceState,
+} from "@/components/router/RouterWorkspace";
 
 // ── Generic data loader hook ──────────────────────────────
 
@@ -546,33 +549,48 @@ export default function XiaomiRouter() {
 
   if (!status?.configured || !status?.reachable) {
     return (
-      <div className="flex flex-col items-center gap-4 py-12 text-center">
-        <AlertCircle className="h-10 w-10 text-[#fbbf24]" />
-        <p className="text-sm text-mesh-text-dim">
-          {!status?.configured
-            ? "Xiaomi router is not configured. Enable it in Settings \u2192 Integrations \u2192 Xiaomi Mesh."
-            : "Xiaomi router is unreachable. Check connection settings."}
-        </p>
-      </div>
+      <RouterWorkspaceState
+        title={
+          !status?.configured
+            ? "Xiaomi router is not configured"
+            : "Xiaomi router is unreachable"
+        }
+        description={
+          !status?.configured
+            ? "Enable the Xiaomi Mesh integration in Settings \u2192 Integrations \u2192 Xiaomi Mesh before viewing system stats, WAN, and WiFi bands."
+            : "The integration is enabled, but the router did not respond. Check connection settings and credentials."
+        }
+        settingsHref="/settings/xiaomi-mesh"
+        settingsLabel="Configure Xiaomi Mesh"
+        tone={!status?.configured ? "amber" : "rose"}
+      />
     );
   }
+
+  const meta: { label: string; value: string; mono?: boolean }[] = [
+    {
+      label: "devices",
+      value: `${status.devices_online ?? 0}/${status.devices_total ?? 0}`,
+      mono: true,
+    },
+  ];
+  if (status.cpu_cores)
+    meta.push({ label: "cpu", value: `${status.cpu_cores}c`, mono: true });
+  if (status.mem_total)
+    meta.push({ label: "ram", value: status.mem_total, mono: true });
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#fbbf24]/10">
-            <Router className="h-5 w-5 text-[#fbbf24]" />
-          </div>
-          <div>
-            <h2 className="text-lg font-semibold text-white">Xiaomi Router</h2>
-            <p className="text-xs text-mesh-text-mute">
-              {status.devices_online ?? 0} devices online
-            </p>
-          </div>
-        </div>
-      </div>
+      <RouterWorkspaceHeader
+        eyebrow="mesh workspace"
+        title="Xiaomi Router"
+        tone="amber"
+        icon={<Router className="h-5 w-5" />}
+        subtitle={`${status.devices_online ?? 0} devices online`}
+        connected={Boolean(status.reachable)}
+        meta={meta}
+      />
 
       {/* System Stats */}
       <SystemStats status={status} />

@@ -90,36 +90,39 @@ export default function PfSenseRouter() {
       <PfSenseStatusHeader status={status} />
 
       <Tabs value={tab} onValueChange={setTab} className="w-full min-w-0">
-        <TabsList className="h-auto w-full justify-start gap-1 border border-mesh-border bg-mesh-surface-1 p-1">
-          <TabsTrigger value="system" className={tabTriggerClass}>
+        <TabsList
+          className="h-auto w-full justify-start gap-1 border border-mesh-border bg-mesh-surface-1 p-1"
+          data-testid="router-tabs"
+        >
+          <TabsTrigger value="system" data-testid="router-tab-system" className={tabTriggerClass}>
             <Monitor className="h-3.5 w-3.5" />
             System
           </TabsTrigger>
-          <TabsTrigger value="interfaces" className={tabTriggerClass}>
+          <TabsTrigger value="interfaces" data-testid="router-tab-interfaces" className={tabTriggerClass}>
             <Network className="h-3.5 w-3.5" />
             Interfaces
           </TabsTrigger>
-          <TabsTrigger value="firewall" className={tabTriggerClass}>
+          <TabsTrigger value="firewall" data-testid="router-tab-firewall" className={tabTriggerClass}>
             <Shield className="h-3.5 w-3.5" />
             Firewall
           </TabsTrigger>
-          <TabsTrigger value="dhcp" className={tabTriggerClass}>
+          <TabsTrigger value="dhcp" data-testid="router-tab-dhcp" className={tabTriggerClass}>
             <Server className="h-3.5 w-3.5" />
             DHCP
           </TabsTrigger>
-          <TabsTrigger value="dns" className={tabTriggerClass}>
+          <TabsTrigger value="dns" data-testid="router-tab-dns" className={tabTriggerClass}>
             <Globe className="h-3.5 w-3.5" />
             DNS
           </TabsTrigger>
-          <TabsTrigger value="services" className={tabTriggerClass}>
+          <TabsTrigger value="services" data-testid="router-tab-services" className={tabTriggerClass}>
             <Cog className="h-3.5 w-3.5" />
             Services
           </TabsTrigger>
-          <TabsTrigger value="routing" className={tabTriggerClass}>
+          <TabsTrigger value="routing" data-testid="router-tab-routing" className={tabTriggerClass}>
             <GitFork className="h-3.5 w-3.5" />
             Routing
           </TabsTrigger>
-          <TabsTrigger value="config" className={tabTriggerClass}>
+          <TabsTrigger value="config" data-testid="router-tab-config" className={tabTriggerClass}>
             <FileArchive className="h-3.5 w-3.5" />
             Config & Audit
           </TabsTrigger>

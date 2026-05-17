@@ -140,7 +140,10 @@ import {
 } from "@/lib/api";
 import { formatBps } from "@/lib/format";
 import { useData } from "@/hooks/useData";
-import { RouterWorkspaceState } from "@/components/router/RouterWorkspace";
+import {
+  RouterWorkspaceHeader,
+  RouterWorkspaceState,
+} from "@/components/router/RouterWorkspace";
 import type {
   MikrotikStatus,
   MikrotikInterface,
@@ -194,52 +197,27 @@ function formatMemory(bytes: string | null): string {
 // ── Status Header ─────────────────────────────────────────
 
 function StatusHeader({ status }: { status: MikrotikStatus }) {
+  const subtitleParts: string[] = [];
+  if (status.board_name) subtitleParts.push(status.board_name);
+  if (status.version) subtitleParts.push(`RouterOS ${status.version}`);
+  const subtitle = subtitleParts.join(" · ") || "RouterOS";
+
+  const meta: { label: string; value: string; mono?: boolean }[] = [];
+  if (status.uptime) meta.push({ label: "uptime", value: status.uptime, mono: true });
+  if (status.architecture)
+    meta.push({ label: "arch", value: status.architecture, mono: true });
+  if (status.cpu_load) meta.push({ label: "cpu", value: `${status.cpu_load}%`, mono: true });
+
   return (
-    <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-mesh-accent/20 bg-mesh-accent/10">
-            <Router className="h-5 w-5 text-[#67e8f9]" />
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-[#67e8f9]/80">
-              RouterOS workspace
-            </p>
-            <h1 className="truncate text-2xl font-semibold tracking-tight text-white">
-              MikroTik Router
-            </h1>
-            <p className="truncate text-xs text-mesh-text-mute">
-              {status.board_name ?? "RouterOS"}{" "}
-              {status.version && (
-                <span className="text-mesh-text-mute">&middot; RouterOS {status.version}</span>
-              )}
-            </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {status.reachable ? (
-            <Badge
-              variant="outline"
-              className="border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]"
-            >
-              &#9679; Connected
-            </Badge>
-          ) : (
-            <Badge
-              variant="outline"
-              className="border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]"
-            >
-              &#9679; Unreachable
-            </Badge>
-          )}
-          {status.uptime && (
-            <Badge variant="outline" className="border-mesh-border-strong text-mesh-text-dim">
-              Uptime: {status.uptime}
-            </Badge>
-          )}
-        </div>
-      </div>
-    </div>
+    <RouterWorkspaceHeader
+      eyebrow="RouterOS workspace"
+      title="MikroTik Router"
+      tone="accent"
+      icon={<Router className="h-5 w-5" />}
+      subtitle={subtitle}
+      connected={Boolean(status.reachable)}
+      meta={meta}
+    />
   );
 }
 
@@ -4158,9 +4136,13 @@ export default function MikrotikRouter() {
       <StatusHeader status={status} />
 
       <Tabs value={tab} onValueChange={setTab} className="min-w-0">
-        <TabsList className="h-auto w-full justify-start gap-1 border border-mesh-border bg-mesh-surface-1 p-1">
+        <TabsList
+          className="h-auto w-full justify-start gap-1 border border-mesh-border bg-mesh-surface-1 p-1"
+          data-testid="router-tabs"
+        >
           <TabsTrigger
             value="system"
+            data-testid="router-tab-system"
             className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Activity className="sm:mr-1.5 h-3.5 w-3.5" />
@@ -4168,6 +4150,7 @@ export default function MikrotikRouter() {
           </TabsTrigger>
           <TabsTrigger
             value="interfaces"
+            data-testid="router-tab-interfaces"
             className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Network className="sm:mr-1.5 h-3.5 w-3.5" />
@@ -4175,6 +4158,7 @@ export default function MikrotikRouter() {
           </TabsTrigger>
           <TabsTrigger
             value="vlans"
+            data-testid="router-tab-vlans"
             className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Layers className="sm:mr-1.5 h-3.5 w-3.5" />
@@ -4182,6 +4166,7 @@ export default function MikrotikRouter() {
           </TabsTrigger>
           <TabsTrigger
             value="routes"
+            data-testid="router-tab-routes"
             className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Globe className="sm:mr-1.5 h-3.5 w-3.5" />
@@ -4189,6 +4174,7 @@ export default function MikrotikRouter() {
           </TabsTrigger>
           <TabsTrigger
             value="dhcp"
+            data-testid="router-tab-dhcp"
             className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Server className="sm:mr-1.5 h-3.5 w-3.5" />
@@ -4196,6 +4182,7 @@ export default function MikrotikRouter() {
           </TabsTrigger>
           <TabsTrigger
             value="dns"
+            data-testid="router-tab-dns"
             className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Search className="sm:mr-1.5 h-3.5 w-3.5" />
@@ -4203,6 +4190,7 @@ export default function MikrotikRouter() {
           </TabsTrigger>
           <TabsTrigger
             value="firewall"
+            data-testid="router-tab-firewall"
             className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Shield className="sm:mr-1.5 h-3.5 w-3.5" />
@@ -4210,6 +4198,7 @@ export default function MikrotikRouter() {
           </TabsTrigger>
           <TabsTrigger
             value="vpn"
+            data-testid="router-tab-vpn"
             className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Lock className="sm:mr-1.5 h-3.5 w-3.5" />
@@ -4217,6 +4206,7 @@ export default function MikrotikRouter() {
           </TabsTrigger>
           <TabsTrigger
             value="traffic"
+            data-testid="router-tab-traffic"
             className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <BarChart3 className="sm:mr-1.5 h-3.5 w-3.5" />
@@ -4224,6 +4214,7 @@ export default function MikrotikRouter() {
           </TabsTrigger>
           <TabsTrigger
             value="policy-routing"
+            data-testid="router-tab-policy-routing"
             className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <GitFork className="sm:mr-1.5 h-3.5 w-3.5" />
@@ -4231,6 +4222,7 @@ export default function MikrotikRouter() {
           </TabsTrigger>
           <TabsTrigger
             value="gateway-monitoring"
+            data-testid="router-tab-gateway-monitoring"
             className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <HeartPulse className="sm:mr-1.5 h-3.5 w-3.5" />
@@ -4238,6 +4230,7 @@ export default function MikrotikRouter() {
           </TabsTrigger>
           <TabsTrigger
             value="dynamic-routing"
+            data-testid="router-tab-dynamic-routing"
             className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
           >
             <Waypoints className="sm:mr-1.5 h-3.5 w-3.5" />

@@ -2,17 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useHashTab } from "@/hooks/useHashTab";
-import Link from "next/link";
-import { Router, Settings } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchSettings } from "@/lib/api";
 import XiaomiRouter from "@/components/XiaomiRouter";
 import XiaomiMeshTopology from "@/components/XiaomiMeshTopology";
 import { PageTransition } from "@/components/PageTransition";
-import { RouterWorkspace } from "@/components/router/RouterWorkspace";
+import {
+  RouterWorkspace,
+  RouterWorkspaceState,
+} from "@/components/router/RouterWorkspace";
 
 export default function XiaomiRouterPage() {
   const [tab, setTab] = useHashTab("system", ["system", "mesh"]);
@@ -42,9 +41,16 @@ export default function XiaomiRouterPage() {
           </div>
         ) : xiaomiEnabled ? (
           <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-            <TabsList className="bg-mesh-surface-1 border border-mesh-border">
-              <TabsTrigger value="system">System</TabsTrigger>
-              <TabsTrigger value="mesh">Mesh Topology</TabsTrigger>
+            <TabsList
+              className="bg-mesh-surface-1 border border-mesh-border"
+              data-testid="router-tabs"
+            >
+              <TabsTrigger value="system" data-testid="router-tab-system">
+                System
+              </TabsTrigger>
+              <TabsTrigger value="mesh" data-testid="router-tab-mesh">
+                Mesh Topology
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="system">
               <XiaomiRouter />
@@ -54,30 +60,12 @@ export default function XiaomiRouterPage() {
             </TabsContent>
           </Tabs>
         ) : (
-          <div className="flex min-h-[60vh] items-center justify-center">
-            <Card className="w-full max-w-md border-mesh-border bg-mesh-surface-1/95">
-              <CardContent className="flex flex-col items-center gap-4 py-12">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#fbbf24]/10">
-                  <Router className="h-8 w-8 text-[#fbbf24]" />
-                </div>
-                <h1 className="text-xl font-semibold text-white">
-                  Xiaomi Mesh Not Configured
-                </h1>
-                <p className="text-center text-sm text-mesh-text-mute">
-                  Enable Xiaomi mesh integration in Settings to use this page.
-                </p>
-                <Link href="/settings/xiaomi-mesh">
-                  <Button
-                    variant="outline"
-                    className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    Configure Xiaomi Mesh
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
+          <RouterWorkspaceState
+            title="Xiaomi Mesh Not Configured"
+            description="Enable Xiaomi mesh integration in Settings → Integrations → Xiaomi Mesh before viewing system stats and mesh topology."
+            settingsHref="/settings/xiaomi-mesh"
+            settingsLabel="Configure Xiaomi Mesh"
+          />
         )}
       </RouterWorkspace>
     </PageTransition>
