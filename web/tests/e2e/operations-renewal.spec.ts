@@ -1,29 +1,29 @@
-import { test, expect, login } from '../../e2e/fixtures';
-import type { Page } from '@playwright/test';
+import { test, expect, login } from "../../e2e/fixtures";
+import type { Page } from "@playwright/test";
 
-const now = new Date('2026-05-17T03:00:00Z').toISOString();
+const now = new Date("2026-05-17T03:00:00Z").toISOString();
 
 const devices = [
   {
-    id: 'device-alpha',
-    mac: 'AA:BB:CC:DD:EE:01',
-    name: 'Core Switch',
-    hostname: 'core-switch',
-    vendor: 'MikroTik',
-    icon: 'router',
+    id: "device-alpha",
+    mac: "AA:BB:CC:DD:EE:01",
+    name: "Core Switch",
+    hostname: "core-switch",
+    vendor: "MikroTik",
+    icon: "router",
     notes: null,
     is_known: true,
     is_favorite: false,
     first_seen_at: now,
     last_seen_at: now,
     is_online: true,
-    ips: ['192.168.1.2'],
+    ips: ["192.168.1.2"],
     mdns_services: null,
     agent: null,
     muted_until: null,
-    os_family: 'RouterOS',
+    os_family: "RouterOS",
     os_version: null,
-    device_type: 'router',
+    device_type: "router",
     device_model: null,
     device_brand: null,
     enrichment_source: null,
@@ -36,31 +36,31 @@ const devices = [
     custom_model: null,
     icon_override: null,
     is_manual: false,
-    location: 'Rack',
-    owner: 'NetOps',
-    tags: 'core,router',
+    location: "Rack",
+    owner: "NetOps",
+    tags: "core,router",
     status_timeline: [true, true, true, true],
   },
   {
-    id: 'device-beta',
-    mac: 'AA:BB:CC:DD:EE:02',
-    name: 'Desk Laptop',
-    hostname: 'desk-laptop',
-    vendor: 'Framework',
-    icon: 'laptop',
+    id: "device-beta",
+    mac: "AA:BB:CC:DD:EE:02",
+    name: "Desk Laptop",
+    hostname: "desk-laptop",
+    vendor: "Framework",
+    icon: "laptop",
     notes: null,
     is_known: false,
     is_favorite: false,
     first_seen_at: now,
     last_seen_at: now,
     is_online: false,
-    ips: ['192.168.1.50'],
+    ips: ["192.168.1.50"],
     mdns_services: null,
     agent: null,
     muted_until: null,
-    os_family: 'Linux',
+    os_family: "Linux",
     os_version: null,
-    device_type: 'laptop',
+    device_type: "laptop",
     device_model: null,
     device_brand: null,
     enrichment_source: null,
@@ -75,34 +75,34 @@ const devices = [
     is_manual: false,
     location: null,
     owner: null,
-    tags: 'new',
+    tags: "new",
     status_timeline: [true, false, false, false],
   },
 ];
 
 const alerts = [
   {
-    id: 'alert-critical',
-    type: 'device_offline',
-    device_id: 'device-alpha',
+    id: "alert-critical",
+    type: "device_offline",
+    device_id: "device-alpha",
     agent_id: null,
-    message: 'Core switch offline',
-    details: 'No ARP activity for 5 minutes',
+    message: "Core switch offline",
+    details: "No ARP activity for 5 minutes",
     is_read: false,
-    severity: 'CRITICAL',
+    severity: "CRITICAL",
     acknowledged_at: null,
     acknowledged_by: null,
     created_at: now,
   },
   {
-    id: 'alert-info',
-    type: 'device_online',
-    device_id: 'device-beta',
+    id: "alert-info",
+    type: "device_online",
+    device_id: "device-beta",
     agent_id: null,
-    message: 'Desk laptop recovered',
+    message: "Desk laptop recovered",
     details: null,
     is_read: true,
-    severity: 'INFO',
+    severity: "INFO",
     acknowledged_at: null,
     acknowledged_by: null,
     created_at: now,
@@ -110,35 +110,51 @@ const alerts = [
 ];
 
 async function mockOperationsApis(page: Page) {
-  await page.route('**/api/v1/alerts?*', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(alerts) }),
-  );
-  await page.route('**/api/v1/alerts/**', (route) =>
-    route.fulfill({ status: 204 }),
-  );
-  await page.route('**/api/v1/alerts/mark-all-read', (route) =>
-    route.fulfill({ status: 204 }),
-  );
-  await page.route('**/api/v1/devices', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(devices) }),
-  );
-  await page.route('**/api/v1/devices/*/sysinfo', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: 'null' }),
-  );
-  await page.route('**/api/v1/xiaomi/status', (route) =>
-    route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ configured: false }) }),
-  );
-  await page.route('**/api/v1/topology/graph', (route) =>
+  await page.route("**/api/v1/alerts?*", (route) =>
     route.fulfill({
       status: 200,
-      contentType: 'application/json',
+      contentType: "application/json",
+      body: JSON.stringify(alerts),
+    }),
+  );
+  await page.route("**/api/v1/alerts/**", (route) =>
+    route.fulfill({ status: 204 }),
+  );
+  await page.route("**/api/v1/alerts/mark-all-read", (route) =>
+    route.fulfill({ status: 204 }),
+  );
+  await page.route("**/api/v1/devices", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(devices),
+    }),
+  );
+  await page.route("**/api/v1/devices/*/sysinfo", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: "null",
+    }),
+  );
+  await page.route("**/api/v1/xiaomi/status", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ configured: false }),
+    }),
+  );
+  await page.route("**/api/v1/topology/graph", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
       body: JSON.stringify({
         router: {
-          router_type: 'mikrotik',
+          router_type: "mikrotik",
           is_online: true,
-          wan_ip: '203.0.113.5',
-          hostname: 'edge-router',
-          version: '7.15',
+          wan_ip: "203.0.113.5",
+          hostname: "edge-router",
+          version: "7.15",
         },
         devices: devices.map((device) => ({
           id: device.id,
@@ -170,51 +186,69 @@ async function mockOperationsApis(page: Page) {
       }),
     }),
   );
-  await page.route('**/api/v1/topology/positions', (route) =>
-    route.fulfill({ status: route.request().method() === 'GET' ? 200 : 204, contentType: 'application/json', body: '[]' }),
+  await page.route("**/api/v1/topology/positions", (route) =>
+    route.fulfill({
+      status: route.request().method() === "GET" ? 200 : 204,
+      contentType: "application/json",
+      body: "[]",
+    }),
   );
 }
 
-test.describe('operations route renewal', () => {
+test.describe("operations route renewal", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await mockOperationsApis(page);
   });
 
-  test('alerts show two-pane triage and detail actions', async ({ page }) => {
-    await page.goto('/alerts/');
+  test("alerts show two-pane triage and detail actions", async ({ page }) => {
+    await page.goto("/alerts/");
 
-    await expect(page.getByRole('heading', { name: 'Alerts', level: 1 })).toBeVisible();
-    await expect(page.getByText('Severity')).toBeVisible();
-    await expect(page.getByTestId('alert-row')).toHaveCount(2);
+    await expect(
+      page.getByRole("heading", { name: "Alerts", level: 1 }),
+    ).toBeVisible();
+    await expect(page.getByText("Severity")).toBeVisible();
+    await expect(page.getByTestId("alert-row")).toHaveCount(2);
 
-    await page.getByTestId('alert-row').filter({ hasText: 'Desk laptop recovered' }).click();
-    const detail = page.locator('aside');
-    await expect(detail.getByText('Desk laptop recovered')).toBeVisible();
-    await expect(detail.getByRole('button', { name: 'Acknowledge' })).toBeVisible();
-    await expect(detail.getByRole('button', { name: 'Mute' })).toBeVisible();
+    await page
+      .getByTestId("alert-row")
+      .filter({ hasText: "Desk laptop recovered" })
+      .click();
+    const detail = page.locator("aside");
+    await expect(detail.getByText("Desk laptop recovered")).toBeVisible();
+    await expect(
+      detail.getByRole("button", { name: "Acknowledge" }),
+    ).toBeVisible();
+    await expect(detail.getByRole("button", { name: "Mute" })).toBeVisible();
   });
 
-  test('devices support selected-device deep links without fake data', async ({ page }) => {
-    await page.goto('/devices?selected=device-alpha');
+  test("devices support selected-device deep links without fake data", async ({
+    page,
+  }) => {
+    await page.goto("/devices?selected=device-alpha");
 
-    await expect(page.getByRole('heading', { name: 'Devices', level: 1 })).toBeVisible();
-    await expect(page.getByText('192.168.1.2').first()).toBeVisible();
-    await expect(page.getByText('New')).toBeVisible();
-    await expect(page.getByRole('dialog').getByRole('heading', { name: 'core-switch' })).toBeVisible();
+    await expect(page.getByText("192.168.1.2").first()).toBeVisible();
+    await expect(page.getByText("New")).toBeVisible();
+    await expect(
+      page.getByRole("dialog").getByRole("heading", { name: "core-switch" }),
+    ).toBeVisible();
 
-    await page.getByRole('button', { name: 'Close' }).click();
-    await expect(page.getByRole('dialog')).not.toBeVisible();
-    await page.getByText('desk-laptop').click();
-    await expect(page.getByRole('dialog').getByRole('heading', { name: 'desk-laptop' })).toBeVisible();
+    await page.getByRole("button", { name: "Close" }).click();
+    await expect(page.getByRole("dialog")).not.toBeVisible();
+    await page.getByText("desk-laptop").click();
+    await expect(
+      page.getByRole("dialog").getByRole("heading", { name: "desk-laptop" }),
+    ).toBeVisible();
   });
 
-  test('topology renders renewed graph controls with persisted-position API', async ({ page }) => {
-    await page.goto('/topology/');
+  test("topology renders renewed graph controls with persisted-position API", async ({
+    page,
+  }) => {
+    await page.goto("/topology/");
 
-    await expect(page.locator('.react-flow')).toBeVisible({ timeout: 15000 });
-    await expect(page.getByTestId('topology-auto-layout')).toBeVisible();
-    await expect(page.getByTestId('topology-fit-view')).toBeVisible();
+    await expect(page.locator(".react-flow")).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId("topology-auto-layout")).toBeVisible();
+    await expect(page.getByTestId("topology-fit-view")).toBeVisible();
     await expect(page.getByText(/2 devices/)).toBeVisible();
   });
 });

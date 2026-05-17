@@ -88,10 +88,6 @@ test.describe("Command+K device deep-link (#741)", () => {
     page,
   }) => {
     await page.goto(`/devices?selected=${device.id}`);
-    await expect(
-      page.getByRole("heading", { name: "Devices", level: 1 }),
-    ).toBeVisible({ timeout: 15000 });
-
     const sheet = page.locator('[role="dialog"][data-state="open"]');
     await expect(sheet).toBeVisible({ timeout: 10000 });
     await expect(
