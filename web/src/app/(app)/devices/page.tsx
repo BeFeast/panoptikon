@@ -89,6 +89,7 @@ export default function DevicesPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [addAssetOpen, setAddAssetOpen] = useState(false);
   const [wifiMap, setWifiMap] = useState<Record<string, DeviceWifiInfo>>({});
+  const selectedUrlParamConsumed = useRef(false);
 
   const load = useCallback(async () => {
     try {
@@ -105,13 +106,17 @@ export default function DevicesPage() {
   }, [load]);
 
   useEffect(() => {
+    if (selectedUrlParamConsumed.current) return;
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     const selectedId = params.get("selected") ?? params.get("id");
-    if (!selectedId || !devices?.length || selectedDevice?.id === selectedId) return;
+    if (!selectedId || !devices?.length) return;
     const match = devices.find((d) => d.id === selectedId);
-    if (match) setSelectedDevice(match);
-  }, [devices, selectedDevice?.id]);
+    if (match) {
+      setSelectedDevice(match);
+      selectedUrlParamConsumed.current = true;
+    }
+  }, [devices]);
 
   // Fetch Xiaomi WiFi data for device list columns
   useEffect(() => {
@@ -811,6 +816,7 @@ function DeviceCard({
 
   return (
     <Card
+      data-device-row
       className="h-full min-h-[15.5rem] cursor-pointer border-slate-700/50 bg-slate-900/55 transition-[border-color,background-color,box-shadow] hover:border-slate-600/70 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
       onClick={onClick}
     >
@@ -1064,6 +1070,7 @@ function DevicesTable({
             return (
               <motion.tr
                 key={device.id}
+                data-device-row
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{

@@ -137,7 +137,6 @@ export default function AlertsPage() {
   const [ackDialogOpen, setAckDialogOpen] = useState(false);
   const [ackAlertId, setAckAlertId] = useState<string | null>(null);
   const [ackNote, setAckNote] = useState("");
-  const [muteDropdownId, setMuteDropdownId] = useState<string | null>(null);
   const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
   const [acknowledgingIds, setAcknowledgingIds] = useState<Set<string>>(new Set());
   const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
@@ -152,6 +151,11 @@ export default function AlertsPage() {
     },
     { refreshInterval: 30_000 },
   );
+
+  const selectedAlert = useMemo(() => {
+    if (!alerts?.length) return null;
+    return alerts.find((a) => a.id === selectedAlertId) ?? alerts[0];
+  }, [alerts, selectedAlertId]);
 
   async function handleMarkRead(id: string) {
     try {
@@ -256,7 +260,6 @@ export default function AlertsPage() {
   async function handleMute(deviceId: string, hours: number) {
     try {
       await muteDevice(deviceId, hours);
-      setMuteDropdownId(null);
       if (hours > 0) {
         toast.success(`Device muted for ${hours}h`);
       } else {
@@ -276,10 +279,6 @@ export default function AlertsPage() {
   const criticalCount = (alerts ?? []).filter((a) => a.severity === "CRITICAL" && !a.acknowledged_at).length;
   const warningCount = (alerts ?? []).filter((a) => a.severity === "WARNING" && !a.acknowledged_at).length;
   const infoCount = (alerts ?? []).filter((a) => a.severity === "INFO" && !a.acknowledged_at).length;
-  const selectedAlert = useMemo(() => {
-    if (!alerts?.length) return null;
-    return alerts.find((a) => a.id === selectedAlertId) ?? alerts[0];
-  }, [alerts, selectedAlertId]);
 
   return (
     <PageTransition>
@@ -499,6 +498,7 @@ export default function AlertsPage() {
                 <div
                   key={alert.id}
                   role="button"
+                  data-testid="alert-row"
                   tabIndex={0}
                   onClick={() => setSelectedAlertId(alert.id)}
                   onKeyDown={(event) => {
