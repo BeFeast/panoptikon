@@ -1,15 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Activity,
   AlertTriangle,
   Bell,
-  BellOff,
   Check,
   CheckCheck,
   ChevronDown,
-  Clock,
   Download,
   MonitorSmartphone,
   Shield,
@@ -142,6 +140,7 @@ export default function AlertsPage() {
   const [muteDropdownId, setMuteDropdownId] = useState<string | null>(null);
   const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
   const [acknowledgingIds, setAcknowledgingIds] = useState<Set<string>>(new Set());
+  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
 
   const status = statusFilter === "all" ? undefined : statusFilter;
   const alertType = typeFilter === "all" ? undefined : typeFilter;
@@ -277,6 +276,10 @@ export default function AlertsPage() {
   const criticalCount = (alerts ?? []).filter((a) => a.severity === "CRITICAL" && !a.acknowledged_at).length;
   const warningCount = (alerts ?? []).filter((a) => a.severity === "WARNING" && !a.acknowledged_at).length;
   const infoCount = (alerts ?? []).filter((a) => a.severity === "INFO" && !a.acknowledged_at).length;
+  const selectedAlert = useMemo(() => {
+    if (!alerts?.length) return null;
+    return alerts.find((a) => a.id === selectedAlertId) ?? alerts[0];
+  }, [alerts, selectedAlertId]);
 
   return (
     <PageTransition>
@@ -444,9 +447,10 @@ export default function AlertsPage() {
         </div>
       )}
 
-      {/* Alert list */}
+      {/* Alert triage */}
       {alerts === null ? (
-        <div className="space-y-3">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="border-slate-800 bg-slate-900">
               <CardContent className="flex items-center gap-4 py-4">
@@ -459,6 +463,14 @@ export default function AlertsPage() {
               </CardContent>
             </Card>
           ))}
+          </div>
+          <Card className="hidden border-slate-800 bg-slate-900 lg:block">
+            <CardContent className="space-y-3 py-4">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-32 w-full" />
+            </CardContent>
+          </Card>
         </div>
       ) : alerts.length === 0 ? (
         <Card className="border-slate-800 bg-slate-900">
@@ -474,185 +486,177 @@ export default function AlertsPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-2">
-          {alerts.map((alert) => (
-            <Card
-              key={alert.id}
-              className={`rounded-l-none border-slate-800 transition-all hover:bg-slate-800/60 hover:border-blue-500/30 ${
-                acknowledgingIds.has(alert.id)
-                  ? "animate-ack-strike opacity-0"
-                  : alert.acknowledged_at
-                    ? "bg-[#12121a] opacity-70"
-                    : !alert.is_read
-                      ? "border-l-2 border-l-blue-500 bg-slate-900"
-                      : "bg-slate-900"
-              }`}
-            >
-              <CardContent className="flex items-center gap-4 py-4">
-                {/* Icon */}
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="min-w-0 rounded-lg border border-slate-800 bg-slate-950/40">
+            <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_6rem_7.25rem] gap-3 border-b border-slate-800 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 max-md:hidden">
+              <span>Type</span>
+              <span>Message</span>
+              <span>Age</span>
+              <span className="text-right">Actions</span>
+            </div>
+            <div className="divide-y divide-slate-800">
+              {alerts.map((alert) => (
                 <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                    alert.acknowledged_at
-                      ? "bg-gray-800/50"
-                      : !alert.is_read
-                        ? "bg-blue-500/10"
-                        : "bg-gray-800"
+                  key={alert.id}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => setSelectedAlertId(alert.id)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      setSelectedAlertId(alert.id);
+                    }
+                  }}
+                  className={`grid w-full grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-l-none border-slate-800 px-3 py-3 text-left transition-colors hover:bg-slate-900/75 lg:grid-cols-[2.25rem_minmax(0,1fr)_6rem_7.25rem] ${
+                    acknowledgingIds.has(alert.id)
+                      ? "animate-ack-strike opacity-0"
+                      : selectedAlert?.id === alert.id
+                        ? "bg-slate-900/90 shadow-[inset_2px_0_0_rgba(34,211,238,0.75)]"
+                        : !alert.is_read && !alert.acknowledged_at
+                          ? "bg-slate-900/55 shadow-[inset_2px_0_0_rgba(59,130,246,0.7)]"
+                          : ""
                   }`}
                 >
-                  {alertIcon(alert.type)}
-                </div>
+                  <span className={`flex h-8 w-8 items-center justify-center rounded-md border ${
+                    alert.acknowledged_at
+                      ? "border-slate-800 bg-slate-900 text-slate-500"
+                      : "border-slate-700 bg-slate-900"
+                  }`}>
+                    {alertIcon(alert.type)}
+                  </span>
 
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
-                      {alertTypeLabel(alert.type)}
+                  <span className="min-w-0">
+                    <span className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                        {alertTypeLabel(alert.type)}
+                      </span>
+                      {severityBadge(alert.severity)}
+                      {!alert.is_read && !alert.acknowledged_at && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                      )}
+                      {alert.acknowledged_at && (
+                        <Badge variant="outline" className="border-emerald-700 px-1.5 py-0 text-[10px] text-emerald-500">
+                          ACK
+                        </Badge>
+                      )}
                     </span>
-                    {severityBadge(alert.severity)}
-                    {!alert.is_read && !alert.acknowledged_at && (
-                      <span className="h-2 w-2 rounded-full bg-blue-500" />
-                    )}
-                    {alert.acknowledged_at && (
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-green-700 text-emerald-500">
-                        <CheckCheck className="mr-0.5 h-3 w-3" />
-                        ACK
-                      </Badge>
-                    )}
-                  </div>
-                  <p
-                    className={`mt-0.5 line-clamp-2 text-sm ${
+                    <span className={`mt-0.5 block truncate text-sm ${
                       alert.acknowledged_at
                         ? "text-slate-500"
                         : !alert.is_read
-                          ? "text-gray-200"
+                          ? "text-slate-200"
                           : "text-slate-400"
-                    }`}
-                    title={alert.message}
-                  >
-                    {alert.message}
-                  </p>
-                  {alert.acknowledged_by && (
-                    <p className="mt-0.5 truncate text-xs italic text-slate-600" title={alert.acknowledged_by}>
-                      Note: {alert.acknowledged_by}
-                    </p>
-                  )}
-                </div>
+                    }`}>
+                      {alert.message}
+                    </span>
+                  </span>
 
-                {/* Time */}
-                <span className="shrink-0 text-xs text-slate-600">
-                  {timeAgo(alert.created_at)}
-                </span>
+                  <span className="shrink-0 font-mono text-[11px] text-slate-600 max-lg:hidden">
+                    {timeAgo(alert.created_at)}
+                  </span>
 
-                {/* Actions */}
-                <div className="flex items-center gap-1 shrink-0">
-                  {/* Mark read / unread toggle */}
-                  {!alert.acknowledged_at && (
-                    alert.is_read ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-slate-500 hover:text-blue-400"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMarkUnread(alert.id);
-                        }}
-                        title="Mark unread"
-                      >
-                        <Bell className="h-3.5 w-3.5" />
+                  <span className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                    {!alert.acknowledged_at && (
+                      alert.is_read ? (
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-slate-500 hover:text-blue-400" onClick={() => handleMarkUnread(alert.id)} title="Mark unread">
+                          <Bell className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : (
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-slate-500 hover:text-gray-200" onClick={() => handleMarkRead(alert.id)} title="Mark read">
+                          <Check className="h-3.5 w-3.5" />
+                        </Button>
+                      )
+                    )}
+                    {!alert.acknowledged_at && (
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-slate-500 hover:text-emerald-400" onClick={() => openAckDialog(alert.id)} title="Acknowledge">
+                        <CheckCheck className="h-3.5 w-3.5" />
                       </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-slate-500 hover:text-gray-200"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMarkRead(alert.id);
-                        }}
-                        title="Mark read"
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                      </Button>
-                    )
-                  )}
-
-                  {/* Acknowledge */}
-                  {!alert.acknowledged_at && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 px-2 text-slate-500 hover:text-emerald-400"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openAckDialog(alert.id);
-                      }}
-                      title="Acknowledge"
-                    >
-                      <CheckCheck className="h-3.5 w-3.5" />
+                    )}
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-slate-500 hover:text-rose-400" onClick={() => handleDeleteOne(alert.id)} title="Delete alert">
+                      <X className="h-3.5 w-3.5" />
                     </Button>
-                  )}
-
-                  {/* Mute device */}
-                  {alert.device_id && (
-                    <div className="relative">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-slate-500 hover:text-amber-400"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setMuteDropdownId(
-                            muteDropdownId === alert.id ? null : alert.id
-                          );
-                        }}
-                        title="Mute device"
-                      >
-                        <VolumeX className="h-3.5 w-3.5" />
-                      </Button>
-                      {muteDropdownId === alert.id && (
-                        <div className="absolute right-0 top-full z-50 mt-1 w-36 rounded-md border border-slate-800 bg-slate-800/50 py-1 shadow-lg">
-                          {[
-                            { label: "Mute 1h", hours: 1 },
-                            { label: "Mute 8h", hours: 8 },
-                            { label: "Mute 24h", hours: 24 },
-                            { label: "Unmute", hours: 0 },
-                          ].map((opt) => (
-                            <button
-                              key={opt.hours}
-                              className="flex w-full items-center gap-2 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-800 hover:text-white"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (alert.device_id) {
-                                  handleMute(alert.device_id, opt.hours);
-                                }
-                              }}
-                            >
-                              <Clock className="h-3 w-3" />
-                              {opt.label}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Delete */}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 text-slate-500 hover:text-rose-400"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteOne(alert.id);
-                    }}
-                    title="Delete alert"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              ))}
+            </div>
+          </div>
+
+          {selectedAlert && (
+            <aside className="min-w-0 rounded-lg border border-slate-800 bg-slate-950/60 p-4 lg:sticky lg:top-4 lg:self-start">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                    {alertTypeLabel(selectedAlert.type)}
+                  </p>
+                  <h2 className="mt-1 text-base font-semibold text-slate-100">
+                    Alert detail
+                  </h2>
+                </div>
+                {severityBadge(selectedAlert.severity)}
+              </div>
+
+              <p className="mt-4 text-sm leading-6 text-slate-300">
+                {selectedAlert.message}
+              </p>
+              {selectedAlert.details && (
+                <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-slate-800 bg-slate-900/70 p-3 text-xs leading-5 text-slate-400">
+                  {selectedAlert.details}
+                </pre>
+              )}
+
+              <div className="mt-4 space-y-2 border-t border-slate-800 pt-4 text-xs">
+                <TriageRow label="Created" value={new Date(selectedAlert.created_at).toLocaleString()} />
+                <TriageRow label="Status" value={selectedAlert.acknowledged_at ? "Acknowledged" : selectedAlert.is_read ? "Read" : "Unread"} />
+                {selectedAlert.device_id && <TriageRow label="Device" value={selectedAlert.device_id} mono />}
+                {selectedAlert.agent_id && <TriageRow label="Agent" value={selectedAlert.agent_id} mono />}
+                {selectedAlert.acknowledged_by && <TriageRow label="Note" value={selectedAlert.acknowledged_by} />}
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {!selectedAlert.acknowledged_at && (
+                  <Button size="sm" className="gap-1.5" onClick={() => openAckDialog(selectedAlert.id)}>
+                    <CheckCheck className="h-3.5 w-3.5" />
+                    Acknowledge
+                  </Button>
+                )}
+                {selectedAlert.is_read ? (
+                  <Button variant="outline" size="sm" className="gap-1.5 border-slate-700 text-slate-300 hover:text-white" onClick={() => handleMarkUnread(selectedAlert.id)}>
+                    <Bell className="h-3.5 w-3.5" />
+                    Mark unread
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" className="gap-1.5 border-slate-700 text-slate-300 hover:text-white" onClick={() => handleMarkRead(selectedAlert.id)}>
+                    <Check className="h-3.5 w-3.5" />
+                    Mark read
+                  </Button>
+                )}
+                {selectedAlert.device_id && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-1.5 border-slate-700 text-slate-300 hover:text-white">
+                        <VolumeX className="h-3.5 w-3.5" />
+                        Mute
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {[1, 8, 24].map((hours) => (
+                        <DropdownMenuItem key={hours} onClick={() => selectedAlert.device_id && handleMute(selectedAlert.device_id, hours)}>
+                          Mute {hours}h
+                        </DropdownMenuItem>
+                      ))}
+                      <DropdownMenuItem onClick={() => selectedAlert.device_id && handleMute(selectedAlert.device_id, 0)}>
+                        Unmute
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                <Button variant="outline" size="sm" className="gap-1.5 border-slate-700 text-slate-300 hover:text-rose-400" onClick={() => handleDeleteOne(selectedAlert.id)}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </Button>
+              </div>
+            </aside>
+          )}
         </div>
       )}
 
@@ -715,5 +719,24 @@ export default function AlertsPage() {
       </Dialog>
     </div>
     </PageTransition>
+  );
+}
+
+function TriageRow({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <span className="shrink-0 font-semibold uppercase tracking-wider text-slate-600">{label}</span>
+      <span className={`min-w-0 truncate text-right text-slate-400 ${mono ? "font-mono tabular-nums" : ""}`} title={value}>
+        {value}
+      </span>
+    </div>
   );
 }
