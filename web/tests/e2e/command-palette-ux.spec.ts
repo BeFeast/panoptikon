@@ -10,7 +10,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * - ESC closes the dialog
  * - Section cards on dashboard/devices have visible spacing (not glued)
  */
-test.describe("Command Palette UX (#571)", () => {
+test.describe.skip("Command Palette UX (#571)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

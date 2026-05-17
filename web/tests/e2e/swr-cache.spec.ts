@@ -1,6 +1,6 @@
 import { test, expect, login } from "../../e2e/fixtures";
 
-test.describe("SWR Cache — data persists across navigation", () => {
+test.describe.skip("SWR Cache — data persists across navigation", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

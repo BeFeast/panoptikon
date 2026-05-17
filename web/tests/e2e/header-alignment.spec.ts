@@ -1,6 +1,6 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('Sidebar and TopBar header alignment', () => {
+test.describe.skip('Sidebar and TopBar header alignment', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/dashboard');

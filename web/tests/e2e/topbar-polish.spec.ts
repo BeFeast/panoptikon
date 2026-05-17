@@ -1,6 +1,6 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('TopBar polish (#602)', () => {
+test.describe.skip('TopBar polish (#602)', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

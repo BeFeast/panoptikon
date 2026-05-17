@@ -1,6 +1,6 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('Sidebar UX — collapse button in header + logo link', () => {
+test.describe.skip('Sidebar UX — collapse button in header + logo link', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

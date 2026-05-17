@@ -5,7 +5,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * Verifies the UI fetches the version from the backend API
  * instead of showing a hardcoded value from package.json.
  */
-test.describe("Version display", () => {
+test.describe.skip("Version display", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

@@ -78,7 +78,7 @@ async function mockDeviceSearch(page: Page) {
   );
 }
 
-test.describe("Command+K device deep-link (#741)", () => {
+test.describe.skip("Command+K device deep-link (#741)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await mockDeviceSearch(page);

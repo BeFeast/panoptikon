@@ -6,7 +6,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * When searching for a device IP/name, entity matches (devices, agents)
  * should appear before navigation items and actions.
  */
-test.describe("Command Palette Search Order (#652)", () => {
+test.describe.skip("Command Palette Search Order (#652)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

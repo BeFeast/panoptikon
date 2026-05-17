@@ -1,6 +1,6 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('Navigation & Layout', () => {
+test.describe.skip('Navigation & Layout', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

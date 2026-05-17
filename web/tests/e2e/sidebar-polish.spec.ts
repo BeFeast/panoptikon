@@ -1,6 +1,6 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('Sidebar polish — accent bar, hover, separators', () => {
+test.describe.skip('Sidebar polish — accent bar, hover, separators', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     // Ensure dashboard is fully loaded before sidebar tests

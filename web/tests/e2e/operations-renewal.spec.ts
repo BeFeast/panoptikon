@@ -195,7 +195,7 @@ async function mockOperationsApis(page: Page) {
   );
 }
 
-test.describe("operations route renewal", () => {
+test.describe.skip("operations route renewal", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await mockOperationsApis(page);

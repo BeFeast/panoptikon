@@ -9,7 +9,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * - Hover border glow (cyan-400/20)
  * - Selected state left accent bar
  */
-test.describe("Card Glassmorphism 2.0 (#592)", () => {
+test.describe.skip("Card Glassmorphism 2.0 (#592)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

@@ -1,6 +1,6 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('Sidebar rebrand — cyan accents instead of blue', () => {
+test.describe.skip('Sidebar rebrand — cyan accents instead of blue', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/dashboard');

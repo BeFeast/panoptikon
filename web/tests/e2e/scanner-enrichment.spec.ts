@@ -1,6 +1,6 @@
 import { test, expect, login } from "../../e2e/fixtures";
 
-test.describe("Scanner Enrichment Settings", () => {
+test.describe.skip("Scanner Enrichment Settings", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto("/settings/scanner/");

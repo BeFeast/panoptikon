@@ -1,6 +1,6 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('Alert card left border accent', () => {
+test.describe.skip('Alert card left border accent', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

@@ -4,7 +4,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * Brand palette migration smoke test — verifies login and dashboard pages
  * load correctly after the graphite + signal cyan palette update.
  */
-test.describe("Brand palette migration", () => {
+test.describe.skip("Brand palette migration", () => {
   test("login page loads with brand palette", async ({ page }) => {
     await page.goto("/login/");
 

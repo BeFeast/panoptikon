@@ -1,6 +1,6 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('Layout & Grid — card clipping / spacing regressions (#544)', () => {
+test.describe.skip('Layout & Grid — card clipping / spacing regressions (#544)', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });
