@@ -47,24 +47,13 @@ test.describe('Alerts page', () => {
       }
     }
 
-    // Also check the UI: filter to Agent Offline type and verify no
-    // adjacent cards show the exact same message text.
-    await page.getByRole('button', { name: /Agent Offline/i }).click();
-    await page.waitForTimeout(500);
-
-    const cards = await page.locator('[class*="card"], [class*="Card"]').all();
-    const messages: string[] = [];
-    for (const card of cards) {
-      const text = await card.textContent();
-      if (text) messages.push(text.trim());
-    }
-
-    // Consecutive identical card text would indicate duplicates.
-    for (let i = 1; i < messages.length; i++) {
-      if (messages[i] === messages[i - 1]) {
-        // Allow if timestamps differ — same message with different times is OK.
-        // But exact duplicates (same card text) indicate a problem.
-        expect(messages[i]).not.toBe(messages[i - 1]);
+    // Also check the UI: there is no per-type filter chip in the renewed
+    // alerts layout (U6), so verify no two alert-row testids contain the
+    // exact same text (which would indicate a UI duplicate).
+    const rowTexts = await page.getByTestId('alert-row').allTextContents();
+    for (let i = 1; i < rowTexts.length; i++) {
+      if (rowTexts[i] === rowTexts[i - 1]) {
+        expect(rowTexts[i]).not.toBe(rowTexts[i - 1]);
       }
     }
 
