@@ -244,9 +244,11 @@ export interface Alert {
 // ─── Dashboard / Stats ──────────────────────────────────
 
 /** Shape returned by the /api/v1/dashboard/stats endpoint. */
+export type DashboardRouterType = "mikrotik" | "pfsense" | "none";
+
 export interface DashboardStats {
   router_status: string;
-  router_type: string; // "mikrotik" | "pfsense" | "none"
+  router_type: DashboardRouterType;
   devices_online: number;
   devices_total: number;
   alerts_unread: number;

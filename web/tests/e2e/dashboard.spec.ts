@@ -127,13 +127,14 @@ async function mockDashboardData(page: Page) {
   });
 }
 
-test.describe('Dashboard', () => {
-  test.beforeEach(async ({ page }) => {
-    // Explicitly navigate to dashboard to ensure full page load
-    await login(page);
-  });
+async function openDashboard(page: Page) {
+  await mockDashboardData(page);
+  await login(page);
+}
 
+test.describe('Dashboard', () => {
   test('dashboard page loads with stat cards', async ({ page }) => {
+    await openDashboard(page);
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
     // Wait for API calls to settle before checking stat cards
@@ -150,6 +151,7 @@ test.describe('Dashboard', () => {
   });
 
   test('stat cards show values after load', async ({ page }) => {
+    await openDashboard(page);
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
     // Wait for stat cards to resolve from skeleton to real values
@@ -168,6 +170,7 @@ test.describe('Dashboard', () => {
   });
 
   test('infrastructure health ring loads', async ({ page }) => {
+    await openDashboard(page);
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
     // Infrastructure Health card should show the health ring or "No critical devices"
@@ -180,6 +183,7 @@ test.describe('Dashboard', () => {
   });
 
   test('quick actions row is visible', async ({ page }) => {
+    await openDashboard(page);
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
     // Quick actions pills should be visible
@@ -191,8 +195,7 @@ test.describe('Dashboard', () => {
   });
 
   test('bento grid layout renders section data', async ({ page }) => {
-    await mockDashboardData(page);
-    await page.goto('/dashboard');
+    await openDashboard(page);
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
     // Wait for API calls to settle before checking bento grid
@@ -226,16 +229,19 @@ test.describe('Dashboard', () => {
   });
 
   test('dashboard has Recent Alerts section', async ({ page }) => {
+    await openDashboard(page);
     await expect(page.getByText('Recent Alerts')).toBeVisible({ timeout: 10000 });
     await page.screenshot({ path: 'tests/screenshots/dashboard-alerts.png', fullPage: true });
   });
 
   test('dashboard has Device Breakdown section', async ({ page }) => {
+    await openDashboard(page);
     await expect(page.getByText('Device Breakdown')).toBeVisible({ timeout: 10000 });
     await page.screenshot({ path: 'tests/screenshots/dashboard-devices.png', fullPage: true });
   });
 
   test('dashboard stats API responds within 2 seconds (#494)', async ({ page }) => {
+    await openDashboard(page);
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
     const start = Date.now();
@@ -256,11 +262,13 @@ test.describe('Dashboard', () => {
   });
 
   test('dashboard displays loading state or content', async ({ page }) => {
+    await openDashboard(page);
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
     await page.screenshot({ path: 'tests/screenshots/dashboard-full.png', fullPage: true });
   });
 
   test('dashboard stats API returns router_type field', async ({ page }) => {
+    await openDashboard(page);
     const response = await page.request.get('/api/v1/dashboard/stats');
     expect(response.ok()).toBeTruthy();
     const data = await response.json();
@@ -272,6 +280,7 @@ test.describe('Dashboard', () => {
   });
 
   test('dashboard stats API returns critical device counts (#518)', async ({ page }) => {
+    await openDashboard(page);
     const response = await page.request.get('/api/v1/dashboard/stats');
     expect(response.ok()).toBeTruthy();
     const data = await response.json();
@@ -288,6 +297,7 @@ test.describe('Dashboard', () => {
   });
 
   test('dashboard stats API responds within 2 seconds', async ({ page }) => {
+    await openDashboard(page);
     const start = Date.now();
     const response = await page.request.get('/api/v1/dashboard/stats');
     const elapsed = Date.now() - start;
@@ -304,7 +314,7 @@ test.describe('Dashboard', () => {
   });
 
   test('dashboard renders stat cards within 3 seconds', async ({ page }) => {
-    await page.goto('/dashboard');
+    await openDashboard(page);
     const start = Date.now();
 
     // Wait for the stat cards to fully render (not skeletons)
@@ -320,7 +330,7 @@ test.describe('Dashboard', () => {
   test('responsive layout collapses to single column on mobile', async ({ page }) => {
     // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto('/dashboard');
+    await openDashboard(page);
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
 
     // All stat cards should still be visible

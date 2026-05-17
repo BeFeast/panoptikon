@@ -425,6 +425,34 @@ function routerStatusLabel(s: DashboardStats): { label: string; status: "online"
   }
 }
 
+function routerDisplayName(routerType: DashboardStats["router_type"] | string): string {
+  switch (routerType) {
+    case "mikrotik":
+      return "MikroTik";
+    case "pfsense":
+      return "pfSense";
+    case "none":
+      return "router";
+    default:
+      console.warn(`Unknown dashboard router_type: ${routerType}`);
+      return "router";
+  }
+}
+
+function routerStatusSubtitle(stats: DashboardStats): string {
+  const routerName = routerDisplayName(stats.router_type);
+
+  switch (stats.router_status) {
+    case "connected":
+    case "online":
+      return `Connected to ${routerName}`;
+    case "unconfigured":
+      return "Router not configured";
+    default:
+      return `Cannot reach ${routerName}`;
+  }
+}
+
 // ─── Device breakdown bar colors ────────────────────────
 
 const TYPE_COLORS: Record<string, string> = {
@@ -464,12 +492,6 @@ function QuickActions() {
       ))}
     </div>
   );
-}
-
-function routerDisplayName(type: string) {
-  if (type === "mikrotik") return "MikroTik";
-  if (type === "pfsense") return "pfSense";
-  return "Router";
 }
 
 function RouterHealthSection({
@@ -908,13 +930,7 @@ export default function DashboardPage() {
                 title="Router Status"
                 href="/router"
                 value={routerStatusLabel(stats).label}
-                subtitle={
-                  stats.router_status === "connected" || stats.router_status === "online"
-                    ? `Connected to ${routerDisplayName(stats.router_type)}`
-                    : stats.router_status === "unconfigured"
-                      ? "Router not configured"
-                      : `Cannot reach ${routerDisplayName(stats.router_type)}`
-                }
+                subtitle={routerStatusSubtitle(stats)}
                 icon={<Router className="h-4 w-4" />}
                 status={routerStatusLabel(stats).status}
               />
