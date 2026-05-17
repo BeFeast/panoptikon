@@ -365,6 +365,14 @@ async fn test_auth_status_needs_setup() {
         body["needs_setup"], true,
         "should need setup on fresh DB (no password set)"
     );
+    assert_eq!(
+        body["sso_enabled"], false,
+        "SSO should be disabled by default"
+    );
+    assert!(
+        body["sso_login_url"].is_null(),
+        "SSO login URL should be absent by default"
+    );
 }
 
 // ── Test 11: Auth status after setup ────────────────────────────────
@@ -400,6 +408,35 @@ async fn test_auth_status_after_setup() {
     assert_eq!(
         body["authenticated"], true,
         "should be authenticated after setup (auto-login)"
+    );
+    assert_eq!(
+        body["sso_enabled"], false,
+        "SSO should remain disabled without auth config"
+    );
+}
+
+#[tokio::test]
+async fn test_auth_status_reports_configured_sso() {
+    let mut app_config = config::AppConfig::default();
+    app_config.auth.sso_enabled = true;
+    app_config.auth.sso_login_url = Some("/api/v1/auth/sso".to_string());
+
+    let (base_url, _pool) = spawn_test_server_with_config(app_config).await;
+    let client = http_client();
+
+    let resp = client
+        .get(format!("{base_url}/api/v1/auth/status"))
+        .send()
+        .await
+        .expect("auth status request failed");
+
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: Value = resp.json().await.expect("failed to parse JSON");
+    assert_eq!(body["sso_enabled"], true, "SSO should reflect config");
+    assert_eq!(
+        body["sso_login_url"], "/api/v1/auth/sso",
+        "SSO login URL should reflect config"
     );
 }
 

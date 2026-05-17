@@ -135,6 +135,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
   const [version, setVersion] = useState<string | null>(null);
+  const [ssoLoginUrl, setSsoLoginUrl] = useState<string | null>(null);
 
   useEffect(() => {
     fetchAuthStatus()
@@ -147,6 +148,7 @@ export default function LoginPage() {
           window.location.href = "/setup";
           return;
         }
+        setSsoLoginUrl(status.sso_enabled ? status.sso_login_url : null);
         setReady(true);
       })
       .catch(() => setReady(true));
@@ -278,19 +280,26 @@ export default function LoginPage() {
               {loading ? "Signing in" : "Sign in"}
             </button>
 
-            <div className="flex items-center gap-4 py-2 font-mono text-[16px] font-semibold text-[#38537f] max-md:text-sm">
-              <div className="h-px flex-1 bg-[#1d3760]" />
-              OR
-              <div className="h-px flex-1 bg-[#1d3760]" />
-            </div>
+            {ssoLoginUrl && (
+              <>
+                <div className="flex items-center gap-4 py-2 font-mono text-[16px] font-semibold text-[#38537f] max-md:text-sm">
+                  <div className="h-px flex-1 bg-[#1d3760]" />
+                  OR
+                  <div className="h-px flex-1 bg-[#1d3760]" />
+                </div>
 
-            <button
-              type="button"
-              className="flex h-12 w-full items-center justify-center gap-3 rounded-[5px] border-2 border-[#2c5289] bg-[#102142]/45 text-[22px] font-medium text-slate-100 transition-colors hover:border-[#3c72bc] hover:bg-[#13284f] max-md:h-12 max-md:text-lg"
-            >
-              <Command className="h-5 w-5 stroke-[1.8] max-md:h-5 max-md:w-5" />
-              Continue with SSO
-            </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.location.href = ssoLoginUrl;
+                  }}
+                  className="flex h-12 w-full items-center justify-center gap-3 rounded-[5px] border-2 border-[#2c5289] bg-[#102142]/45 text-[22px] font-medium text-slate-100 transition-colors hover:border-[#3c72bc] hover:bg-[#13284f] max-md:h-12 max-md:text-lg"
+                >
+                  <Command className="h-5 w-5 stroke-[1.8] max-md:h-5 max-md:w-5" />
+                  Continue with SSO
+                </button>
+              </>
+            )}
           </form>
         )}
 

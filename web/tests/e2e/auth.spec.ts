@@ -7,7 +7,8 @@ test.describe('Authentication', () => {
     await expect(page.getByRole('heading', { name: 'Panoptikon', level: 1 })).toBeVisible();
     await expect(page.getByLabel('Operator')).toHaveValue('operator', { timeout: 15000 });
     await expect(page.getByRole('button', { name: 'reset key' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Continue with SSO' })).toBeVisible();
+    await expect(page.getByText(/^OR$/)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Continue with SSO' })).toHaveCount(0);
     await expect(page.getByText('all systems healthy')).toBeVisible();
     await expect(page.locator('#password')).toBeVisible();
     await expect(page.getByRole('button', { name: /Sign in/i })).toBeVisible();
