@@ -270,29 +270,29 @@ function ProxyHostsTable({
     <>
       <div className="flex items-center gap-3 px-4 py-3">
         <div className="relative max-w-sm flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-mesh-text-mute" />
           <Input
             placeholder="Filter by domain, host, or port…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border-mesh-border-strong bg-mesh-surface-1 pl-9 pr-8 text-sm text-white placeholder:text-mesh-text-mute"
+            className="border-mesh-border bg-mesh-surface-1 pl-9 pr-8 text-sm text-white placeholder:text-mesh-text-mute"
           />
           {search && (
             <button
               type="button"
               onClick={() => setSearch("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-500 hover:text-white"
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-mesh-text-mute hover:text-white"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
         {search ? (
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-mesh-text-mute">
             Showing {filtered.length} of {hosts.length} hosts
           </span>
         ) : (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-mesh-text-mute">
             {hosts.length} proxy host{hosts.length !== 1 ? "s" : ""}
           </p>
         )}
@@ -303,14 +303,14 @@ function ProxyHostsTable({
       </div>
 
       {hosts.length === 0 && !search ? (
-        <p className="px-4 pb-6 text-center text-sm text-slate-500">
+        <p className="px-4 pb-6 text-center text-sm text-mesh-text-mute">
           No proxy hosts found.
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-mesh-border text-left text-xs uppercase text-slate-500">
+              <tr className="border-b border-mesh-border text-left text-xs uppercase text-mesh-text-mute">
                 <th className="px-4 py-2">Domain(s)</th>
                 <th className="px-4 py-2">Forward To</th>
                 <th className="px-4 py-2">SSL</th>
@@ -322,7 +322,7 @@ function ProxyHostsTable({
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-slate-500">
+                  <td colSpan={6} className="px-4 py-8 text-center text-sm text-mesh-text-mute">
                     No hosts match &ldquo;{search}&rdquo;
                   </td>
                 </tr>
@@ -346,27 +346,27 @@ function ProxyHostsTable({
                         ))}
                       </div>
                     </td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-slate-300">
+                    <td className="px-4 py-2.5 font-mono text-xs text-mesh-text">
                       {h.forward_scheme}://{h.forward_host}:{h.forward_port}
                     </td>
                     <td className="px-4 py-2.5">
                       {h.ssl_forced ? (
-                        <Lock className="h-3.5 w-3.5 text-emerald-400" />
+                        <Lock className="h-3.5 w-3.5 text-[#4ade80]" />
                       ) : (
-                        <span className="text-xs text-slate-600">—</span>
+                        <span className="text-xs text-mesh-text-mute">—</span>
                       )}
                     </td>
                     <td className="px-4 py-2.5">
                       {alName ? (
                         <Badge
                           variant="outline"
-                          className="border-amber-500/30 text-amber-400"
+                          className="border-[#fbbf24]/30 text-[#fbbf24]"
                         >
                           <Shield className="mr-1 h-3 w-3" />
                           {alName}
                         </Badge>
                       ) : (
-                        <span className="text-xs text-slate-600">—</span>
+                        <span className="text-xs text-mesh-text-mute">—</span>
                       )}
                     </td>
                     <td className="px-4 py-2.5">
@@ -381,7 +381,7 @@ function ProxyHostsTable({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0 text-slate-400 hover:text-white"
+                          className="h-7 w-7 p-0 text-mesh-text-dim hover:text-white"
                           onClick={() => openEdit(h)}
                         >
                           <Pencil className="h-3.5 w-3.5" />
@@ -389,7 +389,7 @@ function ProxyHostsTable({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400"
+                          className="h-7 w-7 p-0 text-mesh-text-dim hover:text-[#fb7185]"
                           disabled={deleting === h.id}
                           onClick={() => setConfirmDelete(h)}
                         >
@@ -420,7 +420,7 @@ function ProxyHostsTable({
           }
         }}
       >
-        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-lg">
+        <DialogContent className="border-mesh-border bg-mesh-surface-1/95 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editHost ? "Edit Proxy Host" : "New Proxy Host"}
@@ -437,13 +437,13 @@ function ProxyHostsTable({
             <div className="space-y-1.5">
               <Label htmlFor="proxy-domains">
                 Domain Name(s){" "}
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-mesh-text-mute">
                   (comma-separated)
                 </span>
               </Label>
               <Input
                 id="proxy-domains"
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white"
                 placeholder="app.example.com, www.example.com"
                 value={form.domain_names}
                 onChange={(e) =>
@@ -458,7 +458,7 @@ function ProxyHostsTable({
                 <Label htmlFor="proxy-fwd-host">Forward Host</Label>
                 <Input
                   id="proxy-fwd-host"
-                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
+                  className="border-mesh-border bg-mesh-surface-1/95 text-white"
                   placeholder="192.168.1.100"
                   value={form.forward_host}
                   onChange={(e) =>
@@ -470,7 +470,7 @@ function ProxyHostsTable({
                 <Label htmlFor="proxy-scheme">Scheme</Label>
                 <select
                   id="proxy-scheme"
-                  className="h-9 rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-2 text-sm text-white"
+                  className="h-9 rounded-md border border-mesh-border bg-mesh-surface-1/95 px-2 text-sm text-white"
                   value={form.forward_scheme}
                   onChange={(e) =>
                     setForm({ ...form, forward_scheme: e.target.value })
@@ -485,7 +485,7 @@ function ProxyHostsTable({
                 <Input
                   id="proxy-port"
                   type="number"
-                  className="w-24 border-mesh-border-strong bg-mesh-surface-1/95 text-white"
+                  className="w-24 border-mesh-border bg-mesh-surface-1/95 text-white"
                   placeholder="80"
                   value={form.forward_port || ""}
                   onChange={(e) =>
@@ -503,7 +503,7 @@ function ProxyHostsTable({
               <Label htmlFor="proxy-access-list">Access List</Label>
               <select
                 id="proxy-access-list"
-                className="h-9 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-2 text-sm text-white"
+                className="h-9 w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-2 text-sm text-white"
                 value={String(form.access_list_id)}
                 onChange={(e) =>
                   setForm({ ...form, access_list_id: Number(e.target.value) })
@@ -594,7 +594,7 @@ function ProxyHostsTable({
         open={!!confirmDelete}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
       >
-        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
+        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Delete Proxy Host?
@@ -613,7 +613,7 @@ function ProxyHostsTable({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-rose-600 text-white hover:bg-rose-700"
+              className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
             >
               Delete
             </AlertDialogAction>
@@ -784,7 +784,7 @@ function RedirectionHostsTable({
   return (
     <>
       <div className="flex items-center justify-between px-4 py-3">
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-mesh-text-mute">
           {hosts.length} redirection{hosts.length !== 1 ? "s" : ""}
         </p>
         <Button variant="outline" size="sm" onClick={openCreate}>
@@ -794,14 +794,14 @@ function RedirectionHostsTable({
       </div>
 
       {hosts.length === 0 ? (
-        <p className="px-4 pb-6 text-center text-sm text-slate-500">
+        <p className="px-4 pb-6 text-center text-sm text-mesh-text-mute">
           No redirection hosts found.
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-mesh-border text-left text-xs uppercase text-slate-500">
+              <tr className="border-b border-mesh-border text-left text-xs uppercase text-mesh-text-mute">
                 <th className="px-4 py-2">Source Domain(s)</th>
                 <th className="px-4 py-2">Forward To</th>
                 <th className="px-4 py-2">Code</th>
@@ -828,7 +828,7 @@ function RedirectionHostsTable({
                       ))}
                     </div>
                   </td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-slate-300">
+                  <td className="px-4 py-2.5 font-mono text-xs text-mesh-text">
                     {h.forward_scheme}://{h.forward_domain_name}
                   </td>
                   <td className="px-4 py-2.5">
@@ -836,8 +836,8 @@ function RedirectionHostsTable({
                       variant="outline"
                       className={
                         h.forward_http_code === 301
-                          ? "border-blue-500/30 text-blue-400"
-                          : "border-amber-500/30 text-amber-400"
+                          ? "border-mesh-primary/30 text-mesh-primary"
+                          : "border-[#fbbf24]/30 text-[#fbbf24]"
                       }
                     >
                       {h.forward_http_code}
@@ -845,9 +845,9 @@ function RedirectionHostsTable({
                   </td>
                   <td className="px-4 py-2.5">
                     {h.ssl_forced ? (
-                      <Lock className="h-3.5 w-3.5 text-emerald-400" />
+                      <Lock className="h-3.5 w-3.5 text-[#4ade80]" />
                     ) : (
-                      <span className="text-xs text-slate-600">—</span>
+                      <span className="text-xs text-mesh-text-mute">—</span>
                     )}
                   </td>
                   <td className="px-4 py-2.5">
@@ -862,7 +862,7 @@ function RedirectionHostsTable({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 w-7 p-0 text-slate-400 hover:text-white"
+                        className="h-7 w-7 p-0 text-mesh-text-dim hover:text-white"
                         onClick={() => openEdit(h)}
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -870,7 +870,7 @@ function RedirectionHostsTable({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400"
+                        className="h-7 w-7 p-0 text-mesh-text-dim hover:text-[#fb7185]"
                         disabled={deleting === h.id}
                         onClick={() => setConfirmDelete(h)}
                       >
@@ -899,7 +899,7 @@ function RedirectionHostsTable({
           }
         }}
       >
-        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-lg">
+        <DialogContent className="border-mesh-border bg-mesh-surface-1/95 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editHost ? "Edit Redirection" : "New Redirection"}
@@ -916,13 +916,13 @@ function RedirectionHostsTable({
             <div className="space-y-1.5">
               <Label htmlFor="redir-domains">
                 Source Domain(s){" "}
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-mesh-text-mute">
                   (comma-separated)
                 </span>
               </Label>
               <Input
                 id="redir-domains"
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white"
                 placeholder="old.example.com, legacy.example.com"
                 value={form.domain_names}
                 onChange={(e) =>
@@ -937,7 +937,7 @@ function RedirectionHostsTable({
                 <Label htmlFor="redir-scheme">Scheme</Label>
                 <select
                   id="redir-scheme"
-                  className="h-9 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-2 text-sm text-white"
+                  className="h-9 w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-2 text-sm text-white"
                   value={form.forward_scheme}
                   onChange={(e) =>
                     setForm({ ...form, forward_scheme: e.target.value })
@@ -951,7 +951,7 @@ function RedirectionHostsTable({
                 <Label htmlFor="redir-domain">Forward Domain</Label>
                 <Input
                   id="redir-domain"
-                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
+                  className="border-mesh-border bg-mesh-surface-1/95 text-white"
                   placeholder="new.example.com"
                   value={form.forward_domain_name}
                   onChange={(e) =>
@@ -966,7 +966,7 @@ function RedirectionHostsTable({
               <Label htmlFor="redir-code">HTTP Code</Label>
               <select
                 id="redir-code"
-                className="h-9 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-2 text-sm text-white"
+                className="h-9 w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-2 text-sm text-white"
                 value={form.forward_http_code}
                 onChange={(e) =>
                   setForm({
@@ -1042,7 +1042,7 @@ function RedirectionHostsTable({
         open={!!confirmDelete}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
       >
-        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
+        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Delete Redirection?
@@ -1061,7 +1061,7 @@ function RedirectionHostsTable({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-rose-600 text-white hover:bg-rose-700"
+              className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
             >
               Delete
             </AlertDialogAction>
@@ -1214,7 +1214,7 @@ function StreamsTable({
   return (
     <>
       <div className="flex items-center justify-between px-4 py-3">
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-mesh-text-mute">
           {streams.length} stream{streams.length !== 1 ? "s" : ""}
         </p>
         <Button variant="outline" size="sm" onClick={openCreate}>
@@ -1224,14 +1224,14 @@ function StreamsTable({
       </div>
 
       {streams.length === 0 ? (
-        <p className="px-4 pb-6 text-center text-sm text-slate-500">
+        <p className="px-4 pb-6 text-center text-sm text-mesh-text-mute">
           No streams found.
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-mesh-border text-left text-xs uppercase text-slate-500">
+              <tr className="border-b border-mesh-border text-left text-xs uppercase text-mesh-text-mute">
                 <th className="px-4 py-2">Incoming Port</th>
                 <th className="px-4 py-2">Forward To</th>
                 <th className="px-4 py-2">Protocol</th>
@@ -1248,7 +1248,7 @@ function StreamsTable({
                   <td className="px-4 py-2.5 font-mono text-xs text-white">
                     :{s.incoming_port}
                   </td>
-                  <td className="px-4 py-2.5 font-mono text-xs text-slate-300">
+                  <td className="px-4 py-2.5 font-mono text-xs text-mesh-text">
                     {s.forwarding_host}:{s.forwarding_port}
                   </td>
                   <td className="px-4 py-2.5">
@@ -1256,7 +1256,7 @@ function StreamsTable({
                       {s.tcp_forwarding && (
                         <Badge
                           variant="outline"
-                          className="border-blue-500/30 text-blue-400"
+                          className="border-mesh-primary/30 text-mesh-primary"
                         >
                           TCP
                         </Badge>
@@ -1264,7 +1264,7 @@ function StreamsTable({
                       {s.udp_forwarding && (
                         <Badge
                           variant="outline"
-                          className="border-purple-500/30 text-purple-400"
+                          className="border-[#c084fc]/30 text-[#c084fc]"
                         >
                           UDP
                         </Badge>
@@ -1283,7 +1283,7 @@ function StreamsTable({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 w-7 p-0 text-slate-400 hover:text-white"
+                        className="h-7 w-7 p-0 text-mesh-text-dim hover:text-white"
                         onClick={() => openEdit(s)}
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -1291,7 +1291,7 @@ function StreamsTable({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400"
+                        className="h-7 w-7 p-0 text-mesh-text-dim hover:text-[#fb7185]"
                         disabled={deleting === s.id}
                         onClick={() => setConfirmDelete(s)}
                       >
@@ -1320,7 +1320,7 @@ function StreamsTable({
           }
         }}
       >
-        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-lg">
+        <DialogContent className="border-mesh-border bg-mesh-surface-1/95 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editStream ? "Edit Stream" : "New Stream"}
@@ -1339,7 +1339,7 @@ function StreamsTable({
               <Input
                 id="stream-incoming-port"
                 type="number"
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white"
                 placeholder="8080"
                 value={form.incoming_port || ""}
                 onChange={(e) =>
@@ -1357,7 +1357,7 @@ function StreamsTable({
                 <Label htmlFor="stream-fwd-host">Forwarding Host</Label>
                 <Input
                   id="stream-fwd-host"
-                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
+                  className="border-mesh-border bg-mesh-surface-1/95 text-white"
                   placeholder="192.168.1.100"
                   value={form.forwarding_host}
                   onChange={(e) =>
@@ -1370,7 +1370,7 @@ function StreamsTable({
                 <Input
                   id="stream-fwd-port"
                   type="number"
-                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
+                  className="border-mesh-border bg-mesh-surface-1/95 text-white"
                   placeholder="8080"
                   value={form.forwarding_port || ""}
                   onChange={(e) =>
@@ -1437,7 +1437,7 @@ function StreamsTable({
         open={!!confirmDelete}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
       >
-        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
+        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Delete Stream?
@@ -1461,7 +1461,7 @@ function StreamsTable({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-rose-600 text-white hover:bg-rose-700"
+              className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
             >
               Delete
             </AlertDialogAction>
@@ -1560,7 +1560,7 @@ function DeadHostsTable({
   return (
     <>
       <div className="flex items-center justify-between px-4 py-3">
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-mesh-text-mute">
           {hosts.length} dead host{hosts.length !== 1 ? "s" : ""}
         </p>
         <Button variant="outline" size="sm" onClick={openCreate}>
@@ -1570,14 +1570,14 @@ function DeadHostsTable({
       </div>
 
       {hosts.length === 0 ? (
-        <p className="px-4 pb-6 text-center text-sm text-slate-500">
+        <p className="px-4 pb-6 text-center text-sm text-mesh-text-mute">
           No dead hosts found.
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-mesh-border text-left text-xs uppercase text-slate-500">
+              <tr className="border-b border-mesh-border text-left text-xs uppercase text-mesh-text-mute">
                 <th className="px-4 py-2">Domain(s)</th>
                 <th className="px-4 py-2">SSL</th>
                 <th className="px-4 py-2">Status</th>
@@ -1604,9 +1604,9 @@ function DeadHostsTable({
                   </td>
                   <td className="px-4 py-2.5">
                     {h.ssl_forced ? (
-                      <Lock className="h-3.5 w-3.5 text-emerald-400" />
+                      <Lock className="h-3.5 w-3.5 text-[#4ade80]" />
                     ) : (
-                      <span className="text-xs text-slate-600">—</span>
+                      <span className="text-xs text-mesh-text-mute">—</span>
                     )}
                   </td>
                   <td className="px-4 py-2.5">
@@ -1614,8 +1614,8 @@ function DeadHostsTable({
                       variant="outline"
                       className={
                         h.enabled
-                          ? "border-emerald-500/30 text-emerald-400"
-                          : "border-mesh-border-strong text-slate-500"
+                          ? "border-[#4ade80]/30 text-[#4ade80]"
+                          : "border-mesh-border-strong text-mesh-text-mute"
                       }
                     >
                       {h.enabled ? "Enabled" : "Disabled"}
@@ -1625,7 +1625,7 @@ function DeadHostsTable({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400"
+                      className="h-7 w-7 p-0 text-mesh-text-dim hover:text-[#fb7185]"
                       disabled={deleting === h.id}
                       onClick={() => setConfirmDelete(h)}
                     >
@@ -1650,7 +1650,7 @@ function DeadHostsTable({
           if (!open) setShowForm(false);
         }}
       >
-        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-lg">
+        <DialogContent className="border-mesh-border bg-mesh-surface-1/95 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-white">New Dead Host</DialogTitle>
             <DialogDescription>
@@ -1662,13 +1662,13 @@ function DeadHostsTable({
             <div className="space-y-1.5">
               <Label htmlFor="dead-domains">
                 Domain(s){" "}
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-mesh-text-mute">
                   (comma-separated)
                 </span>
               </Label>
               <Input
                 id="dead-domains"
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white"
                 placeholder="expired.example.com, old.example.com"
                 value={form.domain_names}
                 onChange={(e) =>
@@ -1708,7 +1708,7 @@ function DeadHostsTable({
         open={!!confirmDelete}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
       >
-        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
+        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Delete Dead Host?
@@ -1727,7 +1727,7 @@ function DeadHostsTable({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-rose-600 text-white hover:bg-rose-700"
+              className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
             >
               Delete
             </AlertDialogAction>
@@ -1889,7 +1889,7 @@ function AccessListsTable({
   return (
     <>
       <div className="flex items-center justify-between px-4 py-3">
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-mesh-text-mute">
           {accessLists.length} access list{accessLists.length !== 1 ? "s" : ""}
         </p>
         <Button variant="outline" size="sm" onClick={openCreate}>
@@ -1899,14 +1899,14 @@ function AccessListsTable({
       </div>
 
       {accessLists.length === 0 ? (
-        <p className="px-4 pb-6 text-center text-sm text-slate-500">
+        <p className="px-4 pb-6 text-center text-sm text-mesh-text-mute">
           No access lists found.
         </p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-mesh-border text-left text-xs uppercase text-slate-500">
+              <tr className="border-b border-mesh-border text-left text-xs uppercase text-mesh-text-mute">
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Clients</th>
                 <th className="px-4 py-2">Rules</th>
@@ -1926,7 +1926,7 @@ function AccessListsTable({
                   <td className="px-4 py-2.5">
                     <Badge
                       variant="outline"
-                      className="border-mesh-border-strong text-slate-300"
+                      className="border-mesh-border-strong text-mesh-text"
                     >
                       {al.client_count} rule{al.client_count !== 1 ? "s" : ""}
                     </Badge>
@@ -1939,8 +1939,8 @@ function AccessListsTable({
                           variant="outline"
                           className={
                             c.directive === "allow"
-                              ? "border-emerald-500/30 text-emerald-400"
-                              : "border-rose-500/30 text-rose-400"
+                              ? "border-[#4ade80]/30 text-[#4ade80]"
+                              : "border-[#fb7185]/30 text-[#fb7185]"
                           }
                         >
                           {c.directive === "allow" ? "allow" : "deny"}{" "}
@@ -1948,13 +1948,13 @@ function AccessListsTable({
                         </Badge>
                       ))}
                       {al.clients.length > 3 && (
-                        <span className="text-xs text-slate-500">
+                        <span className="text-xs text-mesh-text-mute">
                           +{al.clients.length - 3} more
                         </span>
                       )}
                     </div>
                   </td>
-                  <td className="px-4 py-2.5 text-xs text-slate-400">
+                  <td className="px-4 py-2.5 text-xs text-mesh-text-dim">
                     {al.satisfy_any ? "Any" : "All"}
                   </td>
                   <td className="px-4 py-2.5 text-right">
@@ -1962,7 +1962,7 @@ function AccessListsTable({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 w-7 p-0 text-slate-400 hover:text-white"
+                        className="h-7 w-7 p-0 text-mesh-text-dim hover:text-white"
                         onClick={() => openEdit(al)}
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -1970,7 +1970,7 @@ function AccessListsTable({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 w-7 p-0 text-slate-400 hover:text-rose-400"
+                        className="h-7 w-7 p-0 text-mesh-text-dim hover:text-[#fb7185]"
                         disabled={deleting === al.id}
                         onClick={() => setConfirmDelete(al)}
                       >
@@ -1999,7 +1999,7 @@ function AccessListsTable({
           }
         }}
       >
-        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-lg">
+        <DialogContent className="border-mesh-border bg-mesh-surface-1/95 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editList ? "Edit Access List" : "New Access List"}
@@ -2017,7 +2017,7 @@ function AccessListsTable({
               <Label htmlFor="al-name">Name</Label>
               <Input
                 id="al-name"
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white"
                 placeholder="e.g. Office IPs Only"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -2028,7 +2028,7 @@ function AccessListsTable({
             <div className="flex items-center justify-between">
               <Label htmlFor="al-satisfy" className="cursor-pointer">
                 Satisfy Any{" "}
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-mesh-text-mute">
                   (any rule match grants access)
                 </span>
               </Label>
@@ -2057,7 +2057,7 @@ function AccessListsTable({
                 {form.clients.map((client, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <select
-                      className="h-9 w-24 shrink-0 rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-2 text-sm text-white"
+                      className="h-9 w-24 shrink-0 rounded-md border border-mesh-border bg-mesh-surface-1/95 px-2 text-sm text-white"
                       value={client.directive}
                       onChange={(e) =>
                         updateClient(idx, "directive", e.target.value)
@@ -2067,7 +2067,7 @@ function AccessListsTable({
                       <option value="deny">Deny</option>
                     </select>
                     <Input
-                      className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
+                      className="border-mesh-border bg-mesh-surface-1/95 text-white"
                       placeholder="192.168.1.0/24"
                       value={client.address}
                       onChange={(e) =>
@@ -2078,7 +2078,7 @@ function AccessListsTable({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 w-7 shrink-0 p-0 text-slate-400 hover:text-rose-400"
+                        className="h-7 w-7 shrink-0 p-0 text-mesh-text-dim hover:text-[#fb7185]"
                         onClick={() => removeClient(idx)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -2115,7 +2115,7 @@ function AccessListsTable({
         open={!!confirmDelete}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
       >
-        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
+        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Delete Access List?
@@ -2135,7 +2135,7 @@ function AccessListsTable({
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-rose-600 text-white hover:bg-rose-700"
+              className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
             >
               Delete
             </AlertDialogAction>
@@ -2250,14 +2250,14 @@ export default function NpmPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
-            <Globe className="h-5 w-5 text-orange-400" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#fbbf24]/10">
+            <Globe className="h-5 w-5 text-[#fbbf24]" />
           </div>
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-white">
               Nginx Proxy Manager
             </h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-mesh-text-dim">
               Manage proxy hosts, redirections, streams, and dead hosts
             </p>
           </div>
@@ -2268,19 +2268,19 @@ export default function NpmPage() {
               variant="outline"
               className={
                 !configured
-                  ? "border-mesh-border-strong text-slate-500"
+                  ? "border-mesh-border-strong text-mesh-text-mute"
                   : reachable
-                    ? "border-emerald-500/30 text-emerald-400"
-                    : "border-rose-500/30 text-rose-400"
+                    ? "border-[#4ade80]/30 text-[#4ade80]"
+                    : "border-[#fb7185]/30 text-[#fb7185]"
               }
             >
               <span
                 className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
                   !configured
-                    ? "bg-slate-500"
+                    ? "bg-mesh-text-mute"
                     : reachable
-                      ? "bg-emerald-400"
-                      : "bg-rose-400"
+                      ? "bg-[#4ade80]"
+                      : "bg-[#fb7185]"
                 }`}
               />
               {!configured
@@ -2294,12 +2294,12 @@ export default function NpmPage() {
       </div>
 
       {!configured && (
-        <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+        <Card className="border-mesh-border bg-mesh-surface-1/95">
           <CardContent className="py-8 text-center">
-            <Globe className="mx-auto mb-3 h-10 w-10 text-slate-600" />
-            <p className="text-sm text-slate-400">
+            <Globe className="mx-auto mb-3 h-10 w-10 text-mesh-text-mute" />
+            <p className="text-sm text-mesh-text-dim">
               NPM is not configured. Go to{" "}
-              <a href="/settings" className="text-blue-400 hover:underline">
+              <a href="/settings" className="text-mesh-primary hover:underline">
                 Settings
               </a>{" "}
               to add your NPM URL and credentials.
@@ -2310,7 +2310,7 @@ export default function NpmPage() {
 
       {configured && (
         <Tabs value={npmTab} onValueChange={setNpmTab} className="w-full">
-          <TabsList className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <TabsList className="border-mesh-border bg-mesh-surface-1/95">
             <TabsTrigger value="redirections" className="gap-1.5">
               <ArrowRightLeft className="h-3.5 w-3.5" />
               Redirections
@@ -2374,10 +2374,10 @@ export default function NpmPage() {
           </TabsList>
 
           <TabsContent value="redirections">
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardHeader className="pb-0">
                 <CardTitle className="flex items-center gap-2 text-lg text-white">
-                  <ArrowRightLeft className="h-4 w-4 text-orange-400" />
+                  <ArrowRightLeft className="h-4 w-4 text-[#fbbf24]" />
                   Redirection Hosts
                 </CardTitle>
               </CardHeader>
@@ -2392,10 +2392,10 @@ export default function NpmPage() {
           </TabsContent>
 
           <TabsContent value="proxy-hosts">
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardHeader className="pb-0">
                 <CardTitle className="flex items-center gap-2 text-lg text-white">
-                  <ExternalLink className="h-4 w-4 text-blue-400" />
+                  <ExternalLink className="h-4 w-4 text-mesh-primary" />
                   Proxy Hosts
                 </CardTitle>
               </CardHeader>
@@ -2406,10 +2406,10 @@ export default function NpmPage() {
           </TabsContent>
 
           <TabsContent value="streams">
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardHeader className="pb-0">
                 <CardTitle className="flex items-center gap-2 text-lg text-white">
-                  <Radio className="h-4 w-4 text-violet-400" />
+                  <Radio className="h-4 w-4 text-[#a78bfa]" />
                   TCP/UDP Streams
                 </CardTitle>
               </CardHeader>
@@ -2424,10 +2424,10 @@ export default function NpmPage() {
           </TabsContent>
 
           <TabsContent value="dead-hosts">
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardHeader className="pb-0">
                 <CardTitle className="flex items-center gap-2 text-lg text-white">
-                  <FileX2 className="h-4 w-4 text-rose-400" />
+                  <FileX2 className="h-4 w-4 text-[#fb7185]" />
                   Dead Hosts (404 Pages)
                 </CardTitle>
               </CardHeader>
@@ -2442,10 +2442,10 @@ export default function NpmPage() {
           </TabsContent>
 
           <TabsContent value="access-lists">
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardHeader className="pb-0">
                 <CardTitle className="flex items-center gap-2 text-lg text-white">
-                  <Shield className="h-4 w-4 text-amber-400" />
+                  <Shield className="h-4 w-4 text-[#fbbf24]" />
                   Access Lists
                 </CardTitle>
               </CardHeader>

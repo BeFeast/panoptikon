@@ -406,7 +406,7 @@ export default function DevicesPage() {
             data-testid="devices-filter-toggle"
             variant="secondary"
             size="sm"
-            className="h-8 gap-1.5 border border-mesh-border-strong bg-mesh-surface-1 text-[12px] text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text"
+            className="h-8 gap-1.5 border border-mesh-border bg-mesh-surface-1 text-[12px] text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text"
             onClick={() => {
               // density/group/vlan controls land in a follow-up — focus the search
               const input = document.querySelector<HTMLInputElement>(
@@ -423,7 +423,7 @@ export default function DevicesPage() {
             variant="secondary"
             size="sm"
             disabled={scanningNetwork}
-            className="h-8 gap-1.5 border border-mesh-border-strong bg-mesh-surface-1 text-[12px] text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text"
+            className="h-8 gap-1.5 border border-mesh-border bg-mesh-surface-1 text-[12px] text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text"
             onClick={async () => {
               setScanningNetwork(true);
               try {
@@ -485,7 +485,7 @@ export default function DevicesPage() {
         </div>
         {isDslQuery ? (
           <span
-            className="font-mono text-[10.5px] text-amber-400"
+            className="font-mono text-[10.5px] text-[#fbbf24]"
             title="Server-side query DSL coming soon. Filtering with best-effort client match."
           >
             DSL preview
@@ -841,7 +841,7 @@ function DeviceCard({
   return (
     <Card
       data-device-row
-      className="h-full min-h-[15.5rem] cursor-pointer border-mesh-border-strong bg-mesh-surface-1 transition-[border-color,background-color,box-shadow] hover:border-slate-600/70 hover:bg-mesh-surface-2/55 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
+      className="h-full min-h-[15.5rem] cursor-pointer border-mesh-border-strong bg-mesh-surface-1 transition-[border-color,background-color,box-shadow] hover:border-mesh-text-mute/70 hover:bg-mesh-surface-2/55 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
       onClick={onClick}
     >
       <CardContent className="flex h-full flex-col p-5">
@@ -850,12 +850,12 @@ function DeviceCard({
           <div
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${
               device.is_online
-                ? "border-emerald-500/30 bg-emerald-500/10"
+                ? "border-[#4ade80]/30 bg-[#4ade80]/10"
                 : "border-mesh-border-strong bg-mesh-surface-1"
             }`}
           >
             <DevIcon
-              className={`h-5 w-5 ${device.is_online ? "text-emerald-300" : "text-slate-500"}`}
+              className={`h-5 w-5 ${device.is_online ? "text-[#4ade80]" : "text-mesh-text-mute"}`}
             />
           </div>
 
@@ -863,21 +863,21 @@ function DeviceCard({
             <div className="flex min-w-0 items-center gap-2">
               <span
                 className={`h-2 w-2 shrink-0 rounded-full ${
-                  device.is_online ? "bg-emerald-400/90" : "bg-slate-600"
+                  device.is_online ? "bg-[#4ade80]/90" : "bg-mesh-text-mute"
                 }`}
               />
               <span
                 className={`min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight ${
-                  isUnnamed ? "text-slate-300" : "text-white"
+                  isUnnamed ? "text-mesh-text" : "text-white"
                 }`}
                 title={displayName}
               >
                 {displayName}
               </span>
-              {device.is_critical && <Pin className="h-3.5 w-3.5 shrink-0 text-amber-400" />}
+              {device.is_critical && <Pin className="h-3.5 w-3.5 shrink-0 text-[#fbbf24]" />}
             </div>
 
-            <p className="truncate text-xs text-slate-500" title={vendorDisplay ?? undefined}>
+            <p className="truncate text-xs text-mesh-text-mute" title={vendorDisplay ?? undefined}>
               {vendorDisplay ?? "Unknown vendor"}
             </p>
 
@@ -890,7 +890,7 @@ function DeviceCard({
                   </Badge>
                 )}
                 {modelDisplay && (
-                  <span className="truncate text-[10px] text-slate-500" title={modelDisplay}>
+                  <span className="truncate text-[10px] text-mesh-text-mute" title={modelDisplay}>
                     {modelDisplay}
                   </span>
                 )}
@@ -903,19 +903,19 @@ function DeviceCard({
               variant="outline"
               className={`border text-[10px] ${
                 device.is_online
-                  ? "border-emerald-500/35 bg-emerald-500/10 text-emerald-300"
-                  : "border-mesh-border-strong bg-mesh-surface-1 text-slate-400"
+                  ? "border-[#4ade80]/35 bg-[#4ade80]/10 text-[#4ade80]"
+                  : "border-mesh-border-strong bg-mesh-surface-1 text-mesh-text-dim"
               }`}
             >
               {device.is_online ? "Online" : "Offline"}
             </Badge>
             {device.agent?.is_online && (
-              <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-[10px] text-blue-300">
+              <Badge variant="outline" className="border-mesh-primary/30 bg-mesh-primary/10 text-[10px] text-mesh-primary">
                 Agent
               </Badge>
             )}
             {!device.is_known && (
-              <Badge variant="outline" className="border-amber-500/30 bg-amber-500/10 text-[10px] text-amber-300">
+              <Badge variant="outline" className="border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[10px] text-[#fbbf24]">
                 New
               </Badge>
             )}
@@ -925,14 +925,14 @@ function DeviceCard({
         {/* ── Core network metadata ── */}
         <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl border border-mesh-border-strong bg-mesh-surface-1/95 p-3">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">IP</p>
-            <p className="mt-1 truncate font-mono text-[13px] tabular-nums text-slate-200" title={primaryIp}>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-mesh-text-mute">IP</p>
+            <p className="mt-1 truncate font-mono text-[13px] tabular-nums text-mesh-text" title={primaryIp}>
               {primaryIp}
             </p>
           </div>
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">MAC</p>
-            <p className="mt-1 truncate font-mono text-xs tabular-nums text-slate-500" title={device.mac ?? undefined}>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-mesh-text-mute">MAC</p>
+            <p className="mt-1 truncate font-mono text-xs tabular-nums text-mesh-text-mute" title={device.mac ?? undefined}>
               {device.mac ?? "—"}
             </p>
           </div>
@@ -943,28 +943,28 @@ function DeviceCard({
           <div className="mt-4 space-y-2.5 rounded-xl border border-mesh-border-strong bg-mesh-surface-1/95 p-3">
             {device.agent!.cpu_percent != null && (
               <div className="flex items-center gap-2">
-                <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">CPU</span>
+                <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-mesh-text-mute">CPU</span>
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-mesh-surface-1">
                   <div
-                    className="h-full rounded-full bg-sky-500/65 transition-all"
+                    className="h-full rounded-full bg-mesh-accent/65 transition-all"
                     style={{ width: `${Math.min(device.agent!.cpu_percent, 100)}%` }}
                   />
                 </div>
-                <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-slate-400">
+                <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-mesh-text-dim">
                   {formatPercent(device.agent!.cpu_percent)}
                 </span>
               </div>
             )}
             {device.agent!.memory_percent != null && (
               <div className="flex items-center gap-2">
-                <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">RAM</span>
+                <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-mesh-text-mute">RAM</span>
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-mesh-surface-1">
                   <div
-                    className="h-full rounded-full bg-violet-500/65 transition-all"
+                    className="h-full rounded-full bg-[#a78bfa]/65 transition-all"
                     style={{ width: `${Math.min(device.agent!.memory_percent, 100)}%` }}
                   />
                 </div>
-                <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-slate-400">
+                <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-mesh-text-dim">
                   {formatPercent(device.agent!.memory_percent)}
                 </span>
               </div>
@@ -980,14 +980,14 @@ function DeviceCard({
 
         {/* ── Footer ── */}
         <div className="mt-auto flex items-center justify-between gap-2 border-t border-mesh-border pt-4">
-          <p className={`text-[11px] ${device.is_online ? "text-emerald-300/80" : "text-slate-500"}`}>
+          <p className={`text-[11px] ${device.is_online ? "text-[#4ade80]/80" : "text-mesh-text-mute"}`}>
             {device.is_online ? "Online now" : `Last seen ${timeAgo(device.last_seen_at)}`}
           </p>
           {canWake && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 gap-1.5 px-2.5 text-[11px] text-slate-400 hover:bg-mesh-surface-2/55 hover:text-slate-200"
+              className="h-7 gap-1.5 px-2.5 text-[11px] text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text"
               disabled={waking}
               onClick={handleWake}
             >
@@ -1048,41 +1048,41 @@ function DevicesTable({
       <Table>
         <TableHeader>
           <TableRow className="border-mesh-border-strong hover:bg-transparent">
-            <TableHead className="w-10 text-slate-400">Type</TableHead>
-            <TableHead className="w-12 text-slate-400">Status</TableHead>
+            <TableHead className="w-10 text-mesh-text-dim">Type</TableHead>
+            <TableHead className="w-12 text-mesh-text-dim">Status</TableHead>
             <TableHead
-              className="cursor-pointer select-none text-slate-400 hover:text-white"
+              className="cursor-pointer select-none text-mesh-text-dim hover:text-white"
               onClick={() => onSort("ip")}
             >
               IP Address
               <SortIcon field="ip" sortField={sortField} sortDir={sortDir} />
             </TableHead>
             <TableHead
-              className="cursor-pointer select-none text-slate-400 hover:text-white"
+              className="cursor-pointer select-none text-mesh-text-dim hover:text-white"
               onClick={() => onSort("hostname")}
             >
               Hostname
               <SortIcon field="hostname" sortField={sortField} sortDir={sortDir} />
             </TableHead>
-            <TableHead className="text-slate-400">MAC</TableHead>
-            <TableHead className="text-slate-400">Vendor</TableHead>
-            <TableHead className="text-slate-400">Agent</TableHead>
+            <TableHead className="text-mesh-text-dim">MAC</TableHead>
+            <TableHead className="text-mesh-text-dim">Vendor</TableHead>
+            <TableHead className="text-mesh-text-dim">Agent</TableHead>
             {hasWifi && (
               <>
-                <TableHead className="text-slate-400">Signal</TableHead>
-                <TableHead className="text-slate-400">Band</TableHead>
-                <TableHead className="text-slate-400">Mesh Node</TableHead>
+                <TableHead className="text-mesh-text-dim">Signal</TableHead>
+                <TableHead className="text-mesh-text-dim">Band</TableHead>
+                <TableHead className="text-mesh-text-dim">Mesh Node</TableHead>
               </>
             )}
-            <TableHead className="text-slate-400">24h Status</TableHead>
+            <TableHead className="text-mesh-text-dim">24h Status</TableHead>
             <TableHead
-              className="cursor-pointer select-none text-slate-400 hover:text-white"
+              className="cursor-pointer select-none text-mesh-text-dim hover:text-white"
               onClick={() => onSort("last_seen_at")}
             >
               Last Seen
               <SortIcon field="last_seen_at" sortField={sortField} sortDir={sortDir} />
             </TableHead>
-            <TableHead className="w-16 text-slate-400" />
+            <TableHead className="w-16 text-mesh-text-dim" />
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -1111,7 +1111,7 @@ function DevicesTable({
                   >
                     <RowIcon
                       className={`h-4 w-4 ${
-                        device.is_online ? "text-emerald-300" : "text-slate-500"
+                        device.is_online ? "text-[#4ade80]" : "text-mesh-text-mute"
                       }`}
                     />
                   </div>
@@ -1120,33 +1120,33 @@ function DevicesTable({
                   <span
                     className={`inline-block h-2.5 w-2.5 rounded-full ${
                       device.is_online
-                        ? "bg-emerald-400/90"
-                        : "bg-slate-500"
+                        ? "bg-[#4ade80]/90"
+                        : "bg-mesh-text-mute"
                     }`}
                   />
                 </TableCell>
-                <TableCell className="tabular-nums font-mono text-sm text-slate-300">
+                <TableCell className="tabular-nums font-mono text-sm text-mesh-text">
                   {primaryIp}
                 </TableCell>
                 <TableCell className="max-w-[200px]">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="truncate text-sm text-slate-300">
+                    <span className="truncate text-sm text-mesh-text">
                       {device.hostname ?? "—"}
                     </span>
                     {device.agent?.is_online && (
-                      <span className="shrink-0 rounded border border-mesh-border-strong bg-mesh-surface-1 px-1.5 py-0.5 text-xs text-slate-300">
+                      <span className="shrink-0 rounded border border-mesh-border-strong bg-mesh-surface-1 px-1.5 py-0.5 text-xs text-mesh-text">
                         Agent
                       </span>
                     )}
                   </div>
                 </TableCell>
-                <TableCell className="tabular-nums font-mono text-xs text-slate-500">
+                <TableCell className="tabular-nums font-mono text-xs text-mesh-text-mute">
                   {device.mac}
                 </TableCell>
-                <TableCell className="max-w-[160px] text-xs text-slate-400">
+                <TableCell className="max-w-[160px] text-xs text-mesh-text-dim">
                   <span className="block truncate" title={vendorDisplay}>{vendorDisplay}</span>
                 </TableCell>
-                <TableCell className="text-xs text-slate-400">
+                <TableCell className="text-xs text-mesh-text-dim">
                   {device.agent && device.agent.cpu_percent != null && device.agent.memory_percent != null
                     ? `${formatPercent(device.agent.cpu_percent)} / ${formatPercent(device.agent.memory_percent)}`
                     : "—"}
@@ -1158,26 +1158,26 @@ function DevicesTable({
                       <TableCell className="text-xs">
                         {wifi?.signal_dbm != null ? (
                           <span className={
-                            wifi.signal_dbm > -50 ? "text-emerald-400" :
-                            wifi.signal_dbm > -70 ? "text-yellow-400" :
-                            "text-rose-400"
+                            wifi.signal_dbm > -50 ? "text-[#4ade80]" :
+                            wifi.signal_dbm > -70 ? "text-[#fbbf24]" :
+                            "text-[#fb7185]"
                           }>
                             {wifi.signal_dbm} dBm
                           </span>
                         ) : (
-                          <span className="text-slate-600">—</span>
+                          <span className="text-mesh-text-mute">—</span>
                         )}
                       </TableCell>
                       <TableCell className="text-xs">
                         {wifi?.band ? (
-                          <Badge variant="outline" className="text-[10px] border-sky-500/50 text-sky-400">
+                          <Badge variant="outline" className="text-[10px] border-mesh-accent/50 text-mesh-accent">
                             {wifi.band}
                           </Badge>
                         ) : (
-                          <span className="text-slate-600">—</span>
+                          <span className="text-mesh-text-mute">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-xs text-slate-400">
+                      <TableCell className="text-xs text-mesh-text-dim">
                         {wifi?.mesh_node ?? "—"}
                       </TableCell>
                     </>
@@ -1187,10 +1187,10 @@ function DevicesTable({
                   {device.status_timeline && device.status_timeline.length > 0 ? (
                     <StatusSparkline timeline={device.status_timeline} width={72} height={10} />
                   ) : (
-                    <span className="text-xs text-slate-600">—</span>
+                    <span className="text-xs text-mesh-text-mute">—</span>
                   )}
                 </TableCell>
-                <TableCell className="text-xs text-slate-500">
+                <TableCell className="text-xs text-mesh-text-mute">
                   {timeAgo(device.last_seen_at)}
                 </TableCell>
                 <TableCell>
@@ -1198,7 +1198,7 @@ function DevicesTable({
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 gap-1.5 text-xs text-slate-400 hover:text-white"
+                      className="h-7 gap-1.5 text-xs text-mesh-text-dim hover:text-white"
                       disabled={wakingId === device.id}
                       onClick={(e) => handleWake(e, device)}
                       title="Send Wake-on-LAN magic packet"
@@ -1260,12 +1260,12 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
         <div className="flex items-center gap-3">
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mesh-surface-1 ${
-              device.is_online ? "ring-1 ring-emerald-500/20" : ""
+              device.is_online ? "ring-1 ring-[#4ade80]/20" : ""
             }`}
           >
             <DetailIcon
               className={`h-5 w-5 ${
-                device.is_online ? "text-emerald-400" : "text-slate-500"
+                device.is_online ? "text-[#4ade80]" : "text-mesh-text-mute"
               }`}
             />
           </div>
@@ -1273,33 +1273,33 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
             <div className="flex items-center gap-2">
               <SheetTitle className="text-white">{displayName}</SheetTitle>
               {isUnnamed && (
-                <Badge variant="outline" className="border-slate-600 text-[10px] text-slate-400">Unknown</Badge>
+                <Badge variant="outline" className="border-mesh-text-mute text-[10px] text-mesh-text-dim">Unknown</Badge>
               )}
               {device.custom_name && (
-                <Badge variant="outline" className="border-cyan-500/50 text-mesh-accent text-[10px]">custom</Badge>
+                <Badge variant="outline" className="border-mesh-accent/50 text-mesh-accent text-[10px]">custom</Badge>
               )}
               {device.agent?.is_online && (
-                <span className="shrink-0 rounded border border-blue-500/30 bg-blue-500/20 px-1.5 py-0.5 text-xs text-blue-400">
+                <span className="shrink-0 rounded border border-mesh-primary/30 bg-mesh-primary/20 px-1.5 py-0.5 text-xs text-mesh-primary">
                   Agent
                 </span>
               )}
             </div>
             <div className="flex min-w-0 items-center gap-2">
               {device.custom_name && device.hostname && (
-                <span className="truncate text-xs text-slate-500" title={device.hostname}>{device.hostname}</span>
+                <span className="truncate text-xs text-mesh-text-mute" title={device.hostname}>{device.hostname}</span>
               )}
               {vendorDisplay && (
-                <span className="truncate text-xs text-slate-400" title={vendorDisplay}>{vendorDisplay}</span>
+                <span className="truncate text-xs text-mesh-text-dim" title={vendorDisplay}>{vendorDisplay}</span>
               )}
-              <span className="shrink-0 text-xs text-slate-500">{deviceTypeLabel}</span>
+              <span className="shrink-0 text-xs text-mesh-text-mute">{deviceTypeLabel}</span>
             </div>
           </div>
         </div>
         <SheetDescription>
           {device.is_online ? (
-            <span className="text-emerald-400">Online</span>
+            <span className="text-[#4ade80]">Online</span>
           ) : (
-            <span className="text-slate-500">
+            <span className="text-mesh-text-mute">
               Offline — last seen {timeAgo(device.last_seen_at)}
             </span>
           )}
@@ -1320,7 +1320,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
             <Power className="h-4 w-4" />
             {waking ? "Sending…" : "Wake"}
           </Button>
-          <p className="text-center text-[11px] text-slate-600">
+          <p className="text-center text-[11px] text-mesh-text-mute">
             Requires Wake-on-LAN enabled in BIOS
           </p>
         </div>
@@ -1333,8 +1333,8 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
           size="sm"
           className={`gap-2 ${
             device.is_critical
-              ? "bg-amber-600 hover:bg-amber-700 text-white"
-              : "border-mesh-border-strong text-slate-300 hover:text-white"
+              ? "bg-[#fbbf24] hover:bg-[#fbbf24] text-white"
+              : "border-mesh-border-strong text-mesh-text hover:text-white"
           }`}
           onClick={async () => {
             try {
@@ -1350,7 +1350,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
           {device.is_critical ? "Unpin" : "Pin Critical"}
         </Button>
         <Link href={`/assets?id=${device.id}`} className="flex-1">
-          <Button variant="outline" size="sm" className="w-full gap-2 border-mesh-border-strong text-slate-300 hover:text-white">
+          <Button variant="outline" size="sm" className="w-full gap-2 border-mesh-border-strong text-mesh-text hover:text-white">
             <ExternalLink className="h-4 w-4" />
             Asset Detail
           </Button>
@@ -1407,7 +1407,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
 
 function CustomBadge() {
   return (
-    <Badge variant="outline" className="ml-1 border-cyan-500/50 text-mesh-accent text-[9px] px-1 py-0">
+    <Badge variant="outline" className="ml-1 border-mesh-accent/50 text-mesh-accent text-[9px] px-1 py-0">
       custom
     </Badge>
   );
@@ -1415,7 +1415,7 @@ function CustomBadge() {
 
 function DetectedBadge() {
   return (
-    <Badge variant="outline" className="ml-1 border-teal-500/50 text-teal-400 text-[9px] px-1 py-0">
+    <Badge variant="outline" className="ml-1 border-mesh-accent/50 text-mesh-accent text-[9px] px-1 py-0">
       detected
     </Badge>
   );
@@ -1458,13 +1458,13 @@ function DeviceInfoTab({
     <div className="space-y-4">
       <InfoRow label="IP Address" value={primaryIp} mono />
       <div className="flex items-baseline justify-between gap-4">
-        <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
+        <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
           MAC Address
         </span>
-        <span className="flex min-w-0 items-center gap-1.5 font-mono tabular-nums text-sm text-slate-300">
+        <span className="flex min-w-0 items-center gap-1.5 font-mono tabular-nums text-sm text-mesh-text">
           <span className="truncate">{device.mac}</span>
           {device.is_randomized_mac && (
-            <span className="shrink-0 rounded bg-amber-500/20 px-1 py-0.5 text-[10px] font-medium text-amber-400">
+            <span className="shrink-0 rounded bg-[#fbbf24]/20 px-1 py-0.5 text-[10px] font-medium text-[#fbbf24]">
               Random
             </span>
           )}
@@ -1481,13 +1481,13 @@ function DeviceInfoTab({
       {(osDisplayString || effectiveType || effectiveVendor || effectiveModel) && (
         <>
           <Separator className="bg-mesh-surface-1" />
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+          <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
             Device Identity
           </p>
           {osDisplayString && (
             <div className="flex items-baseline justify-between gap-4">
-              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">OS</span>
-              <span className="flex min-w-0 items-center gap-1 text-sm text-slate-300">
+              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">OS</span>
+              <span className="flex min-w-0 items-center gap-1 text-sm text-mesh-text">
                 <span className="truncate" title={osDisplayString}>{osDisplayString}</span>
                 {device.custom_os ? <CustomBadge /> : (device.os_family || sysinfo?.os_name) ? <DetectedBadge /> : null}
               </span>
@@ -1495,8 +1495,8 @@ function DeviceInfoTab({
           )}
           {effectiveType && (
             <div className="flex items-baseline justify-between gap-4">
-              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">Type</span>
-              <span className="flex min-w-0 items-center gap-1 text-sm text-slate-300">
+              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">Type</span>
+              <span className="flex min-w-0 items-center gap-1 text-sm text-mesh-text">
                 <span className="truncate" title={effectiveType}>{effectiveType}</span>
                 {device.custom_type ? <CustomBadge /> : device.device_type ? <DetectedBadge /> : null}
               </span>
@@ -1504,8 +1504,8 @@ function DeviceInfoTab({
           )}
           {effectiveVendor && (
             <div className="flex items-baseline justify-between gap-4">
-              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">Brand</span>
-              <span className="flex min-w-0 items-center gap-1 text-sm text-slate-300">
+              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">Brand</span>
+              <span className="flex min-w-0 items-center gap-1 text-sm text-mesh-text">
                 <span className="truncate" title={effectiveVendor}>{effectiveVendor}</span>
                 {device.custom_vendor ? <CustomBadge /> : (device.device_brand || device.vendor) ? <DetectedBadge /> : null}
               </span>
@@ -1513,15 +1513,15 @@ function DeviceInfoTab({
           )}
           {effectiveModel && (
             <div className="flex items-baseline justify-between gap-4">
-              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">Model</span>
-              <span className="flex min-w-0 items-center gap-1 text-sm text-slate-300">
+              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">Model</span>
+              <span className="flex min-w-0 items-center gap-1 text-sm text-mesh-text">
                 <span className="truncate" title={effectiveModel}>{effectiveModel}</span>
                 {device.custom_model ? <CustomBadge /> : device.device_model ? <DetectedBadge /> : null}
               </span>
             </div>
           )}
           {device.enrichment_source && !device.custom_os && !device.custom_type && (
-            <p className="text-[10px] text-slate-600">
+            <p className="text-[10px] text-mesh-text-mute">
               Identified via {device.enrichment_source}
               {device.enrichment_corrected ? " (user-corrected)" : ""}
             </p>
@@ -1531,9 +1531,9 @@ function DeviceInfoTab({
 
       {/* Muted status */}
       {device.muted_until && new Date(device.muted_until) > new Date() && (
-        <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-          <VolumeX className="h-4 w-4 text-amber-400" />
-          <span className="text-sm text-amber-400">
+        <div className="flex items-center gap-2 rounded-md border border-[#fbbf24]/30 bg-[#fbbf24]/10 px-3 py-2">
+          <VolumeX className="h-4 w-4 text-[#fbbf24]" />
+          <span className="text-sm text-[#fbbf24]">
             Muted until {new Date(device.muted_until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           </span>
         </div>
@@ -1542,12 +1542,12 @@ function DeviceInfoTab({
       {/* All IPs */}
       {ips.length > 1 && (
         <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+          <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
             All IP Addresses
           </p>
           <div className="mt-1 space-y-0.5">
             {ips.map((ip) => (
-              <p key={ip} className="tabular-nums font-mono text-sm text-slate-300">
+              <p key={ip} className="tabular-nums font-mono text-sm text-mesh-text">
                 {ip}
               </p>
             ))}
@@ -1560,7 +1560,7 @@ function DeviceInfoTab({
         <>
           <Separator className="bg-mesh-surface-1" />
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+            <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
               mDNS Services
             </p>
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -1568,7 +1568,7 @@ function DeviceInfoTab({
                 <Badge
                   key={svc}
                   variant="outline"
-                  className="border-purple-500/50 text-purple-400 text-[11px]"
+                  className="border-[#c084fc]/50 text-[#c084fc] text-[11px]"
                 >
                   {svc.trim()}
                 </Badge>
@@ -1582,16 +1582,16 @@ function DeviceInfoTab({
       {device.agent && (
         <>
           <Separator className="bg-mesh-surface-1" />
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+          <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
             Agent Telemetry
           </p>
           <div className="flex items-center gap-2">
             {device.agent.is_online ? (
-              <Wifi className="h-4 w-4 text-emerald-400" />
+              <Wifi className="h-4 w-4 text-[#4ade80]" />
             ) : (
-              <WifiOff className="h-4 w-4 text-rose-400" />
+              <WifiOff className="h-4 w-4 text-[#fb7185]" />
             )}
-            <span className="text-sm text-slate-300">
+            <span className="text-sm text-mesh-text">
               {device.agent.is_online ? "Connected" : "Disconnected"}
             </span>
           </div>
@@ -1610,17 +1610,17 @@ function DeviceInfoTab({
         device.purchase_date || device.warranty_expiry) && (
         <>
           <Separator className="bg-mesh-surface-1" />
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+          <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
             Asset Inventory
           </p>
           {device.location && <InfoRow label="Location" value={device.location} />}
           {device.owner && <InfoRow label="Owner" value={device.owner} />}
           {device.tags && (
             <div className="flex items-baseline justify-between gap-4">
-              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">Tags</span>
+              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">Tags</span>
               <div className="flex flex-wrap justify-end gap-1">
                 {device.tags.split(",").map((tag) => (
-                  <Badge key={tag.trim()} variant="outline" className="border-slate-600 text-slate-400 text-[10px]">
+                  <Badge key={tag.trim()} variant="outline" className="border-mesh-text-mute text-mesh-text-dim text-[10px]">
                     {tag.trim()}
                   </Badge>
                 ))}
@@ -1641,10 +1641,10 @@ function DeviceInfoTab({
         <>
           <Separator className="bg-mesh-surface-1" />
           <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+            <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
               Notes
             </p>
-            <p className="mt-1 text-sm text-slate-300">{device.notes}</p>
+            <p className="mt-1 text-sm text-mesh-text">{device.notes}</p>
           </div>
         </>
       )}
@@ -1690,9 +1690,9 @@ function DeviceSystemTab({ deviceId }: { deviceId: string }) {
   if (!sysinfo) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
-        <Cpu className="mb-2 h-8 w-8 text-slate-600" />
-        <p className="text-sm text-slate-500">No system info available</p>
-        <p className="mt-1 text-xs text-slate-600">
+        <Cpu className="mb-2 h-8 w-8 text-mesh-text-mute" />
+        <p className="text-sm text-mesh-text-mute">No system info available</p>
+        <p className="mt-1 text-xs text-mesh-text-mute">
           Install an agent on this device to collect hardware inventory
         </p>
       </div>
@@ -1731,29 +1731,29 @@ function DeviceSystemTab({ deviceId }: { deviceId: string }) {
       <div className="overflow-hidden rounded-lg border border-mesh-border-strong bg-mesh-surface-1 font-mono text-[13px]">
         {/* Title bar */}
         <div className="flex items-center gap-1.5 border-b border-mesh-border px-3 py-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
-          <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
-          <span className="h-2.5 w-2.5 rounded-full bg-green-500/80" />
-          <span className="ml-2 text-xs text-slate-500">{title}</span>
+          <span className="h-2.5 w-2.5 rounded-full bg-[#fb7185]/80" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#fbbf24]/80" />
+          <span className="h-2.5 w-2.5 rounded-full bg-[#4ade80]/80" />
+          <span className="ml-2 text-xs text-mesh-text-mute">{title}</span>
         </div>
         {/* Content */}
         <div className="p-4">
           <p className="text-mesh-accent">
             {title}
-            <span className="text-slate-500">@</span>
+            <span className="text-mesh-text-mute">@</span>
             <span className="text-mesh-accent">panoptikon</span>
           </p>
-          <p className="text-slate-700">{"─".repeat(Math.min(40, title.length + 12))}</p>
+          <p className="text-mesh-border-strong">{"─".repeat(Math.min(40, title.length + 12))}</p>
           {rows.map(([label, value]) => (
             <p key={label} className="leading-relaxed">
               <span className="text-mesh-accent">{label}</span>
-              <span className="text-slate-500">: </span>
-              <span className="text-slate-300">{value}</span>
+              <span className="text-mesh-text-mute">: </span>
+              <span className="text-mesh-text">{value}</span>
             </p>
           ))}
           {/* Color palette row */}
           <div className="mt-3 flex gap-0">
-            {["bg-mesh-surface-1", "bg-red-500", "bg-green-500", "bg-yellow-500", "bg-blue-500", "bg-purple-500", "bg-cyan-500", "bg-slate-300"].map((c) => (
+            {["bg-mesh-surface-1", "bg-[#fb7185]", "bg-[#4ade80]", "bg-[#fbbf24]", "bg-mesh-primary", "bg-[#c084fc]", "bg-mesh-accent", "bg-mesh-text"].map((c) => (
               <span key={c} className={`inline-block h-3 w-3 ${c}`} />
             ))}
           </div>
@@ -1765,18 +1765,18 @@ function DeviceSystemTab({ deviceId }: { deviceId: string }) {
         <div className="space-y-1">
           <button
             onClick={() => setShowSerial(!showSerial)}
-            className="text-xs text-slate-500 underline decoration-dotted hover:text-slate-400"
+            className="text-xs text-mesh-text-mute underline decoration-dotted hover:text-mesh-text-dim"
           >
             {showSerial ? "Hide" : "Show"} serial number
           </button>
           {showSerial && (
-            <p className="font-mono text-sm text-slate-400">{sysinfo.serial_number}</p>
+            <p className="font-mono text-sm text-mesh-text-dim">{sysinfo.serial_number}</p>
           )}
         </div>
       )}
 
       {/* Last reported */}
-      <p className="text-[10px] text-slate-600">
+      <p className="text-[10px] text-mesh-text-mute">
         Last reported {timeAgo(sysinfo.reported_at)}
       </p>
     </div>
@@ -1893,23 +1893,23 @@ function DeviceStateTimeline({ events }: { events: DeviceEvent[] }) {
 
   return (
     <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 p-4 space-y-3">
-      <div className="text-sm font-medium text-slate-300">
+      <div className="text-sm font-medium text-mesh-text">
         7-Day Availability
       </div>
       <div className="space-y-1.5">
         {rows.map((row) => (
           <div key={row.label} className="flex items-center gap-3">
             <span
-              className={`w-24 text-xs truncate ${row.isToday ? "text-slate-200 font-medium" : "text-slate-500"}`}
+              className={`w-24 text-xs truncate ${row.isToday ? "text-mesh-text font-medium" : "text-mesh-text-mute"}`}
             >
               {row.label}
             </span>
-            <div className="flex-1 flex h-4 rounded-sm overflow-hidden bg-slate-700/50">
+            <div className="flex-1 flex h-4 rounded-sm overflow-hidden bg-mesh-border-strong/50">
               {row.segments.map((seg, i) => (
                 <div
                   key={i}
                   className={
-                    seg.online ? "bg-emerald-500/70" : "bg-slate-600"
+                    seg.online ? "bg-[#4ade80]/70" : "bg-mesh-text-mute"
                   }
                   style={{
                     width: `${seg.pct}%`,
@@ -1922,13 +1922,13 @@ function DeviceStateTimeline({ events }: { events: DeviceEvent[] }) {
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-4 pt-1 text-xs text-slate-500">
+      <div className="flex items-center gap-4 pt-1 text-xs text-mesh-text-mute">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500/70" />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#4ade80]/70" />
           Online
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-slate-600" />
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-mesh-text-mute" />
           Offline
         </span>
       </div>
@@ -1966,7 +1966,7 @@ function DeviceEventsTab({ deviceId }: { deviceId: string }) {
   }, [deviceId]);
 
   if (error) {
-    return <p className="text-sm text-rose-400">{error}</p>;
+    return <p className="text-sm text-[#fb7185]">{error}</p>;
   }
 
   if (events === null) {
@@ -1984,7 +1984,7 @@ function DeviceEventsTab({ deviceId }: { deviceId: string }) {
       {/* Uptime badge */}
       {uptime && (
         <div className="flex items-center gap-3 rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-4 py-3">
-          <div className="text-sm text-slate-400">7-day uptime</div>
+          <div className="text-sm text-mesh-text-dim">7-day uptime</div>
           <div className="ml-auto text-lg font-semibold text-white">
             {uptime.uptime_percent.toFixed(1)}%
           </div>
@@ -1995,7 +1995,7 @@ function DeviceEventsTab({ deviceId }: { deviceId: string }) {
       <DeviceStateTimeline events={events} />
 
       {events.length === 0 ? (
-        <p className="py-6 text-center text-sm text-slate-500">
+        <p className="py-6 text-center text-sm text-mesh-text-mute">
           No state change events recorded yet.
         </p>
       ) : (
@@ -2008,14 +2008,14 @@ function DeviceEventsTab({ deviceId }: { deviceId: string }) {
               <span
                 className={`h-2.5 w-2.5 shrink-0 rounded-full ${
                   event.event_type === "online"
-                    ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-                    : "bg-slate-500"
+                    ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
+                    : "bg-mesh-text-mute"
                 }`}
               />
-              <span className="text-sm text-slate-300 capitalize">
+              <span className="text-sm text-mesh-text capitalize">
                 {event.event_type === "online" ? "Came online" : "Went offline"}
               </span>
-              <span className="ml-auto text-xs text-slate-500">
+              <span className="ml-auto text-xs text-mesh-text-mute">
                 {timeAgo(event.occurred_at)}
               </span>
             </div>
@@ -2109,17 +2109,17 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
       </Button>
 
       {error && (
-        <p className="text-sm text-rose-400">{error}</p>
+        <p className="text-sm text-[#fb7185]">{error}</p>
       )}
 
       {scanResult && (
         <>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-mesh-text-mute">
             Last scanned: {timeAgo(scanResult.scanned_at)}
           </p>
 
           {scanResult.ports.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-500">
+            <p className="py-6 text-center text-sm text-mesh-text-mute">
               No open ports found.
             </p>
           ) : (
@@ -2127,10 +2127,10 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
               <Table>
                 <TableHeader>
                   <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                    <TableHead className="text-slate-400">Port</TableHead>
-                    <TableHead className="text-slate-400">Proto</TableHead>
-                    <TableHead className="text-slate-400">State</TableHead>
-                    <TableHead className="text-slate-400">Service</TableHead>
+                    <TableHead className="text-mesh-text-dim">Port</TableHead>
+                    <TableHead className="text-mesh-text-dim">Proto</TableHead>
+                    <TableHead className="text-mesh-text-dim">State</TableHead>
+                    <TableHead className="text-mesh-text-dim">Service</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -2139,21 +2139,21 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
                       key={`${port.port}/${port.protocol}`}
                       className="border-mesh-border-strong"
                     >
-                      <TableCell className="tabular-nums font-mono text-sm text-slate-300">
+                      <TableCell className="tabular-nums font-mono text-sm text-mesh-text">
                         {port.port}
                       </TableCell>
-                      <TableCell className="text-xs text-slate-400">
+                      <TableCell className="text-xs text-mesh-text-dim">
                         {port.protocol}
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="border-emerald-500/50 text-emerald-400 text-[10px]">
+                        <Badge variant="outline" className="border-[#4ade80]/50 text-[#4ade80] text-[10px]">
                           {port.state}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-slate-300">
+                      <TableCell className="text-sm text-mesh-text">
                         {port.service}
                         {port.version && (
-                          <span className="ml-1 text-xs text-slate-500">{port.version}</span>
+                          <span className="ml-1 text-xs text-mesh-text-mute">{port.version}</span>
                         )}
                       </TableCell>
                     </TableRow>
@@ -2166,7 +2166,7 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
       )}
 
       {!scanResult && !error && (
-        <p className="py-6 text-center text-sm text-slate-500">
+        <p className="py-6 text-center text-sm text-mesh-text-mute">
           No port scan results yet. Click &quot;Scan Ports&quot; to start.
         </p>
       )}
@@ -2261,15 +2261,15 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
     <div className="flex flex-col -mb-6">
       <div className="space-y-4 pb-4">
         <div className="flex items-center gap-2">
-          <Pencil className="h-4 w-4 text-slate-400" />
-          <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+          <Pencil className="h-4 w-4 text-mesh-text-dim" />
+          <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
             Edit Device
           </p>
         </div>
 
         <div className="space-y-3">
           <div>
-            <label className="text-[11px] text-slate-500">Custom Name</label>
+            <label className="text-[11px] text-mesh-text-mute">Custom Name</label>
             <Input
               value={customName}
               onChange={(e) => setCustomName(e.target.value)}
@@ -2277,16 +2277,16 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
               className="h-8 text-sm"
             />
             {device.hostname && (
-              <p className="mt-0.5 text-[10px] text-slate-600">Auto-detected: {device.hostname}</p>
+              <p className="mt-0.5 text-[10px] text-mesh-text-mute">Auto-detected: {device.hostname}</p>
             )}
           </div>
 
           <div>
-            <label className="text-[11px] text-slate-500">Device Type</label>
+            <label className="text-[11px] text-mesh-text-mute">Device Type</label>
             <select
               value={customType}
               onChange={(e) => setCustomType(e.target.value)}
-              className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+              className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
             >
               <option value="">{device.device_type ? `Auto: ${device.device_type}` : "Select type…"}</option>
               {DEVICE_TYPE_OPTIONS.filter(Boolean).map((t) => (
@@ -2296,11 +2296,11 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
           </div>
 
           <div>
-            <label className="text-[11px] text-slate-500">OS</label>
+            <label className="text-[11px] text-mesh-text-mute">OS</label>
             <select
               value={customOs}
               onChange={(e) => setCustomOs(e.target.value)}
-              className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+              className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
             >
               <option value="">{device.os_family ? `Auto: ${device.os_family}` : "Select OS…"}</option>
               {OS_OPTIONS.filter(Boolean).map((os) => (
@@ -2310,7 +2310,7 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
           </div>
 
           <div>
-            <label className="text-[11px] text-slate-500">Vendor / Manufacturer</label>
+            <label className="text-[11px] text-mesh-text-mute">Vendor / Manufacturer</label>
             <Input
               value={customVendor}
               onChange={(e) => setCustomVendor(e.target.value)}
@@ -2318,12 +2318,12 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
               className="h-8 text-sm"
             />
             {device.vendor && (
-              <p className="mt-0.5 text-[10px] text-slate-600">Auto-detected: {device.vendor}</p>
+              <p className="mt-0.5 text-[10px] text-mesh-text-mute">Auto-detected: {device.vendor}</p>
             )}
           </div>
 
           <div>
-            <label className="text-[11px] text-slate-500">Model</label>
+            <label className="text-[11px] text-mesh-text-mute">Model</label>
             <Input
               value={customModel}
               onChange={(e) => setCustomModel(e.target.value)}
@@ -2331,16 +2331,16 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
               className="h-8 text-sm"
             />
             {device.device_model && (
-              <p className="mt-0.5 text-[10px] text-slate-600">Auto-detected: {device.device_model}</p>
+              <p className="mt-0.5 text-[10px] text-mesh-text-mute">Auto-detected: {device.device_model}</p>
             )}
           </div>
 
           <div>
-            <label className="text-[11px] text-slate-500">Icon Override</label>
+            <label className="text-[11px] text-mesh-text-mute">Icon Override</label>
             <select
               value={iconOverride}
               onChange={(e) => setIconOverride(e.target.value)}
-              className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+              className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
             >
               <option value="">Auto (based on type)</option>
               {DEVICE_TYPE_OPTIONS.filter(Boolean).map((t) => (
@@ -2350,62 +2350,62 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
           </div>
 
           <Separator className="bg-mesh-surface-1" />
-          <p className="text-[11px] text-slate-500 font-medium uppercase tracking-wider">Asset Inventory</p>
+          <p className="text-[11px] text-mesh-text-mute font-medium uppercase tracking-wider">Asset Inventory</p>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[10px] text-slate-500">Location</label>
+              <label className="text-[10px] text-mesh-text-mute">Location</label>
               <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Server Room" className="h-8 text-sm" />
             </div>
             <div>
-              <label className="text-[10px] text-slate-500">Owner</label>
+              <label className="text-[10px] text-mesh-text-mute">Owner</label>
               <Input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="e.g. IT Dept" className="h-8 text-sm" />
             </div>
           </div>
 
           <div>
-            <label className="text-[10px] text-slate-500">Tags (comma-separated)</label>
+            <label className="text-[10px] text-mesh-text-mute">Tags (comma-separated)</label>
             <Input value={editTags} onChange={(e) => setEditTags(e.target.value)} placeholder="e.g. production, critical" className="h-8 text-sm" />
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-[10px] text-slate-500">CPU</label>
+              <label className="text-[10px] text-mesh-text-mute">CPU</label>
               <Input value={cpuManual} onChange={(e) => setCpuManual(e.target.value)} placeholder="e.g. i5-12400" className="h-8 text-sm" />
             </div>
             <div>
-              <label className="text-[10px] text-slate-500">RAM</label>
+              <label className="text-[10px] text-mesh-text-mute">RAM</label>
               <Input value={ramManual} onChange={(e) => setRamManual(e.target.value)} placeholder="e.g. 16 GB" className="h-8 text-sm" />
             </div>
             <div>
-              <label className="text-[10px] text-slate-500">Disk</label>
+              <label className="text-[10px] text-mesh-text-mute">Disk</label>
               <Input value={diskManual} onChange={(e) => setDiskManual(e.target.value)} placeholder="e.g. 512 GB" className="h-8 text-sm" />
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-[10px] text-slate-500">Purchase Date</label>
+              <label className="text-[10px] text-mesh-text-mute">Purchase Date</label>
               <Input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className="h-8 text-sm" />
             </div>
             <div>
-              <label className="text-[10px] text-slate-500">Serial #</label>
+              <label className="text-[10px] text-mesh-text-mute">Serial #</label>
               <Input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="SN123" className="h-8 text-sm" />
             </div>
             <div>
-              <label className="text-[10px] text-slate-500">Warranty</label>
+              <label className="text-[10px] text-mesh-text-mute">Warranty</label>
               <Input type="date" value={warrantyExpiry} onChange={(e) => setWarrantyExpiry(e.target.value)} className="h-8 text-sm" />
             </div>
           </div>
 
           <div>
-            <label className="text-[11px] text-slate-500">Notes</label>
+            <label className="text-[11px] text-mesh-text-mute">Notes</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Freeform notes about this device…"
               rows={3}
-              className="flex w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-slate-300 placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-slate-600"
+              className="flex w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
             />
           </div>
         </div>
@@ -2424,7 +2424,7 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
           <Button
             variant="ghost"
             size="sm"
-            className="w-full gap-1 text-xs text-slate-500 hover:text-rose-400"
+            className="w-full gap-1 text-xs text-mesh-text-mute hover:text-[#fb7185]"
             disabled={resetting}
             onClick={handleReset}
           >
@@ -2550,8 +2550,8 @@ function AddAssetDialog({
         <div className="space-y-6">
           {/* Name (required) */}
           <div>
-            <label className="text-[11px] font-medium text-slate-400">
-              Name <span className="text-rose-400">*</span>
+            <label className="text-[11px] font-medium text-mesh-text-dim">
+              Name <span className="text-[#fb7185]">*</span>
             </label>
             <Input
               value={name}
@@ -2564,7 +2564,7 @@ function AddAssetDialog({
 
           {/* Type selector with icons */}
           <div>
-            <label className="text-[11px] font-medium text-slate-400">Type</label>
+            <label className="text-[11px] font-medium text-mesh-text-dim">Type</label>
             <div className="mt-1.5 grid grid-cols-4 gap-1.5 sm:grid-cols-6">
               {ASSET_TYPE_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
@@ -2576,8 +2576,8 @@ function AddAssetDialog({
                     onClick={() => setAssetType(isSelected ? "" : opt.value)}
                     className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2.5 text-[11px] transition-colors ${
                       isSelected
-                        ? "border-blue-500 bg-blue-500/10 text-blue-400"
-                        : "border-mesh-border-strong bg-mesh-surface-1 text-slate-400 hover:border-slate-600 hover:text-slate-300"
+                        ? "border-mesh-primary bg-mesh-primary/10 text-mesh-primary"
+                        : "border-mesh-border-strong bg-mesh-surface-1 text-mesh-text-dim hover:border-mesh-text-mute hover:text-mesh-text"
                     }`}
                   >
                     <Icon className="h-4 w-4" />
@@ -2590,10 +2590,10 @@ function AddAssetDialog({
 
           {/* Network info */}
           <div>
-            <p className="text-[11px] font-medium text-slate-400">Network</p>
+            <p className="text-[11px] font-medium text-mesh-text-dim">Network</p>
             <div className="mt-1.5 grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] text-slate-500">IP Address</label>
+                <label className="text-[10px] text-mesh-text-mute">IP Address</label>
                 <Input
                   value={ip}
                   onChange={(e) => setIp(e.target.value)}
@@ -2602,7 +2602,7 @@ function AddAssetDialog({
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-500">MAC Address</label>
+                <label className="text-[10px] text-mesh-text-mute">MAC Address</label>
                 <Input
                   value={mac}
                   onChange={(e) => setMac(e.target.value)}
@@ -2615,10 +2615,10 @@ function AddAssetDialog({
 
           {/* Hardware */}
           <div>
-            <p className="text-[11px] font-medium text-slate-400">Hardware</p>
+            <p className="text-[11px] font-medium text-mesh-text-dim">Hardware</p>
             <div className="mt-1.5 grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] text-slate-500">Vendor / Manufacturer</label>
+                <label className="text-[10px] text-mesh-text-mute">Vendor / Manufacturer</label>
                 <Input
                   value={vendor}
                   onChange={(e) => setVendor(e.target.value)}
@@ -2627,7 +2627,7 @@ function AddAssetDialog({
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-500">Model</label>
+                <label className="text-[10px] text-mesh-text-mute">Model</label>
                 <Input
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
@@ -2636,7 +2636,7 @@ function AddAssetDialog({
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-500">CPU</label>
+                <label className="text-[10px] text-mesh-text-mute">CPU</label>
                 <Input
                   value={cpuManual}
                   onChange={(e) => setCpuManual(e.target.value)}
@@ -2645,7 +2645,7 @@ function AddAssetDialog({
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-500">RAM</label>
+                <label className="text-[10px] text-mesh-text-mute">RAM</label>
                 <Input
                   value={ramManual}
                   onChange={(e) => setRamManual(e.target.value)}
@@ -2654,7 +2654,7 @@ function AddAssetDialog({
                 />
               </div>
               <div className="col-span-2">
-                <label className="text-[10px] text-slate-500">Disk</label>
+                <label className="text-[10px] text-mesh-text-mute">Disk</label>
                 <Input
                   value={diskManual}
                   onChange={(e) => setDiskManual(e.target.value)}
@@ -2667,14 +2667,14 @@ function AddAssetDialog({
 
           {/* Software */}
           <div>
-            <p className="text-[11px] font-medium text-slate-400">Software</p>
+            <p className="text-[11px] font-medium text-mesh-text-dim">Software</p>
             <div className="mt-1.5 grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] text-slate-500">OS</label>
+                <label className="text-[10px] text-mesh-text-mute">OS</label>
                 <select
                   value={os}
                   onChange={(e) => setOs(e.target.value)}
-                  className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-slate-600"
+                  className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
                 >
                   <option value="">Select OS…</option>
                   {OS_OPTIONS.filter(Boolean).map((o) => (
@@ -2683,7 +2683,7 @@ function AddAssetDialog({
                 </select>
               </div>
               <div>
-                <label className="text-[10px] text-slate-500">OS Version</label>
+                <label className="text-[10px] text-mesh-text-mute">OS Version</label>
                 <Input
                   value={osVersion}
                   onChange={(e) => setOsVersion(e.target.value)}
@@ -2696,10 +2696,10 @@ function AddAssetDialog({
 
           {/* Location & ownership */}
           <div>
-            <p className="text-[11px] font-medium text-slate-400">Location &amp; Ownership</p>
+            <p className="text-[11px] font-medium text-mesh-text-dim">Location &amp; Ownership</p>
             <div className="mt-1.5 grid grid-cols-2 gap-3">
               <div>
-                <label className="text-[10px] text-slate-500">Location</label>
+                <label className="text-[10px] text-mesh-text-mute">Location</label>
                 <Input
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
@@ -2708,7 +2708,7 @@ function AddAssetDialog({
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-500">Owner</label>
+                <label className="text-[10px] text-mesh-text-mute">Owner</label>
                 <Input
                   value={owner}
                   onChange={(e) => setOwner(e.target.value)}
@@ -2717,7 +2717,7 @@ function AddAssetDialog({
                 />
               </div>
               <div className="col-span-2">
-                <label className="text-[10px] text-slate-500">Tags (comma-separated)</label>
+                <label className="text-[10px] text-mesh-text-mute">Tags (comma-separated)</label>
                 <Input
                   value={tags}
                   onChange={(e) => setTags(e.target.value)}
@@ -2730,10 +2730,10 @@ function AddAssetDialog({
 
           {/* Asset management */}
           <div>
-            <p className="text-[11px] font-medium text-slate-400">Asset Management</p>
+            <p className="text-[11px] font-medium text-mesh-text-dim">Asset Management</p>
             <div className="mt-1.5 grid grid-cols-3 gap-3">
               <div>
-                <label className="text-[10px] text-slate-500">Purchase Date</label>
+                <label className="text-[10px] text-mesh-text-mute">Purchase Date</label>
                 <Input
                   type="date"
                   value={purchaseDate}
@@ -2742,7 +2742,7 @@ function AddAssetDialog({
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-500">Serial Number</label>
+                <label className="text-[10px] text-mesh-text-mute">Serial Number</label>
                 <Input
                   value={serialNumber}
                   onChange={(e) => setSerialNumber(e.target.value)}
@@ -2751,7 +2751,7 @@ function AddAssetDialog({
                 />
               </div>
               <div>
-                <label className="text-[10px] text-slate-500">Warranty Expiry</label>
+                <label className="text-[10px] text-mesh-text-mute">Warranty Expiry</label>
                 <Input
                   type="date"
                   value={warrantyExpiry}
@@ -2764,13 +2764,13 @@ function AddAssetDialog({
 
           {/* Notes */}
           <div>
-            <label className="text-[11px] font-medium text-slate-400">Notes</label>
+            <label className="text-[11px] font-medium text-mesh-text-dim">Notes</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Additional notes about this asset…"
               rows={2}
-              className="mt-1.5 flex w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-slate-300 placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-slate-600"
+              className="mt-1.5 flex w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
             />
           </div>
         </div>
@@ -2801,9 +2801,9 @@ function AddAssetDialog({
 // ─── Device WiFi Tab ────────────────────────────────────
 
 function SignalBadge({ dbm }: { dbm: number }) {
-  let color = "bg-red-500/20 text-red-400 border-red-500/30";
-  if (dbm > -50) color = "bg-green-500/20 text-green-400 border-green-500/30";
-  else if (dbm > -70) color = "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
+  let color = "bg-[#fb7185]/20 text-[#fb7185] border-[#fb7185]/30";
+  if (dbm > -50) color = "bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/30";
+  else if (dbm > -70) color = "bg-[#fbbf24]/20 text-[#fbbf24] border-[#fbbf24]/30";
   return (
     <Badge variant="outline" className={`font-mono text-xs ${color}`}>
       {dbm} dBm
@@ -2868,9 +2868,9 @@ function DeviceWifiTab({ mac }: { mac: string }) {
   if (!wifiInfo) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-center">
-        <Wifi className="mb-2 h-8 w-8 text-slate-600" />
-        <p className="text-sm text-slate-500">No WiFi data available</p>
-        <p className="mt-1 text-xs text-slate-600">
+        <Wifi className="mb-2 h-8 w-8 text-mesh-text-mute" />
+        <p className="text-sm text-mesh-text-mute">No WiFi data available</p>
+        <p className="mt-1 text-xs text-mesh-text-mute">
           Configure Xiaomi MiWiFi integration in Settings to see WiFi details
         </p>
       </div>
@@ -2881,7 +2881,7 @@ function DeviceWifiTab({ mac }: { mac: string }) {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Wifi className="h-4 w-4 text-mesh-accent" />
-        <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+        <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
           WiFi Connection
         </p>
       </div>
@@ -2893,7 +2893,7 @@ function DeviceWifiTab({ mac }: { mac: string }) {
         {/* Signal Strength */}
         {wifiInfo.signal_dbm != null && (
           <div className="flex items-baseline justify-between gap-4">
-            <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
+            <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
               Signal
             </span>
             <SignalBadge dbm={wifiInfo.signal_dbm} />
@@ -2903,10 +2903,10 @@ function DeviceWifiTab({ mac }: { mac: string }) {
         {/* Band */}
         {wifiInfo.band && (
           <div className="flex items-baseline justify-between gap-4">
-            <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
+            <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
               Band
             </span>
-            <Badge variant="outline" className="border-slate-600 text-slate-300 text-xs">
+            <Badge variant="outline" className="border-mesh-text-mute text-mesh-text text-xs">
               {wifiInfo.band}
             </Badge>
           </div>
@@ -2927,27 +2927,27 @@ function DeviceWifiTab({ mac }: { mac: string }) {
           <>
             <Separator className="bg-mesh-surface-1" />
             <div className="flex items-center gap-2">
-              <Network className="h-4 w-4 text-slate-500" />
-              <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+              <Network className="h-4 w-4 text-mesh-text-mute" />
+              <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
                 Current Speed
               </p>
             </div>
             {wifiInfo.download_bps != null && (
               <div className="flex items-baseline justify-between gap-4">
-                <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
+                <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
                   Download
                 </span>
-                <span className="font-mono text-sm text-green-400">
+                <span className="font-mono text-sm text-[#4ade80]">
                   {formatSpeed(wifiInfo.download_bps)}
                 </span>
               </div>
             )}
             {wifiInfo.upload_bps != null && (
               <div className="flex items-baseline justify-between gap-4">
-                <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
+                <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
                   Upload
                 </span>
-                <span className="font-mono text-sm text-blue-400">
+                <span className="font-mono text-sm text-mesh-primary">
                   {formatSpeed(wifiInfo.upload_bps)}
                 </span>
               </div>
@@ -2979,11 +2979,11 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
+      <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
         {label}
       </span>
       <span
-        className={`min-w-0 truncate text-right text-sm text-slate-300 ${mono ? "font-mono tabular-nums" : ""}`}
+        className={`min-w-0 truncate text-right text-sm text-mesh-text ${mono ? "font-mono tabular-nums" : ""}`}
         title={value}
       >
         {value}

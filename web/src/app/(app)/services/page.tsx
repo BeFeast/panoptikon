@@ -74,7 +74,7 @@ import type {
 
 // ─── Styled select matching the dark theme ──────────────────
 const selectCls =
-  "w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2 text-sm text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-2 focus:ring-blue-600";
+  "w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-3 py-2 text-sm text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-2 focus:ring-mesh-primary";
 
 // ─── Page ───────────────────────────────────────────────────
 export default function ServicesPage() {
@@ -282,7 +282,7 @@ export default function ServicesPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-white">Services</h1>
-            <p className="mt-1 text-sm text-slate-400">
+            <p className="mt-1 text-sm text-mesh-text-dim">
               Manage reverse proxy entries and port-forwarding rules
             </p>
           </div>
@@ -291,13 +291,13 @@ export default function ServicesPage() {
             <div className="flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                  <div className="flex items-center gap-1.5 text-xs text-mesh-text-dim">
                     <Shield className="h-3.5 w-3.5" />
                     <span
                       className={`inline-block h-2 w-2 rounded-full ${
                         caddyStatus?.reachable
-                          ? "bg-emerald-400"
-                          : "bg-slate-600"
+                          ? "bg-[#4ade80]"
+                          : "bg-mesh-text-mute"
                       }`}
                     />
                     <span>Caddy</span>
@@ -311,14 +311,14 @@ export default function ServicesPage() {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                  <div className="flex items-center gap-1.5 text-xs text-mesh-text-dim">
                     <Network className="h-3.5 w-3.5" />
                     <span
                       className={`inline-block h-2 w-2 rounded-full ${
                         mikrotikStatus?.configured &&
                         mikrotikStatus?.reachable
-                          ? "bg-emerald-400"
-                          : "bg-slate-600"
+                          ? "bg-[#4ade80]"
+                          : "bg-mesh-text-mute"
                       }`}
                     />
                     <span>MikroTik</span>
@@ -339,7 +339,7 @@ export default function ServicesPage() {
                 loadHosts();
                 loadStatuses();
               }}
-              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
+              className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
             >
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
               Refresh
@@ -350,7 +350,7 @@ export default function ServicesPage() {
                 resetAddForm();
                 setAddOpen(true);
               }}
-              className="bg-blue-600 text-white hover:bg-blue-500"
+              className="bg-mesh-primary text-white hover:bg-mesh-primary"
             >
               <Plus className="mr-1.5 h-3.5 w-3.5" />
               Add Service
@@ -359,7 +359,7 @@ export default function ServicesPage() {
         </div>
 
         {/* Services table */}
-        <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95">
+        <div className="rounded-lg border border-mesh-border bg-mesh-surface-1/95">
           {loading ? (
             <div className="space-y-2 p-4">
               {[...Array(3)].map((_, i) => (
@@ -370,10 +370,10 @@ export default function ServicesPage() {
               ))}
             </div>
           ) : hosts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-500">
+            <div className="flex flex-col items-center justify-center py-16 text-mesh-text-mute">
               <Server className="mb-3 h-10 w-10" />
               <p className="text-sm">No services configured</p>
-              <p className="mt-1 text-xs text-slate-600">
+              <p className="mt-1 text-xs text-mesh-text-mute">
                 Click &quot;Add Service&quot; to create your first reverse proxy
                 entry
               </p>
@@ -382,11 +382,11 @@ export default function ServicesPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                  <TableHead className="text-slate-400">Domain</TableHead>
-                  <TableHead className="text-slate-400">Upstream</TableHead>
-                  <TableHead className="text-slate-400">TLS</TableHead>
-                  <TableHead className="text-slate-400">Status</TableHead>
-                  <TableHead className="text-right text-slate-400">
+                  <TableHead className="text-mesh-text-dim">Domain</TableHead>
+                  <TableHead className="text-mesh-text-dim">Upstream</TableHead>
+                  <TableHead className="text-mesh-text-dim">TLS</TableHead>
+                  <TableHead className="text-mesh-text-dim">Status</TableHead>
+                  <TableHead className="text-right text-mesh-text-dim">
                     Actions
                   </TableHead>
                 </TableRow>
@@ -395,17 +395,17 @@ export default function ServicesPage() {
                 {hosts.map((host) => (
                   <TableRow
                     key={host.id}
-                    className="border-mesh-border-strong hover:bg-mesh-surface-2/55"
+                    className="border-mesh-border hover:bg-mesh-surface-2/55"
                   >
                     <TableCell className="max-w-[250px]">
                       <div className="flex items-center gap-2 min-w-0">
-                        <Globe className="h-4 w-4 shrink-0 text-slate-500" />
+                        <Globe className="h-4 w-4 shrink-0 text-mesh-text-mute" />
                         <span className="truncate font-medium text-white">
                           {host.domain}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="max-w-[200px] text-slate-300">
+                    <TableCell className="max-w-[200px] text-mesh-text">
                       <span className="block truncate">
                         {host.forward_scheme}://{host.forward_host}:
                         {host.forward_port}
@@ -415,14 +415,14 @@ export default function ServicesPage() {
                       {host.tls_enabled ? (
                         <Badge
                           variant="outline"
-                          className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                          className="border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]"
                         >
                           HTTPS
                         </Badge>
                       ) : (
                         <Badge
                           variant="outline"
-                          className="border-mesh-border-strong text-slate-500"
+                          className="border-mesh-border-strong text-mesh-text-mute"
                         >
                           HTTP
                         </Badge>
@@ -431,15 +431,15 @@ export default function ServicesPage() {
                     <TableCell>
                       {host.enabled ? (
                         <div className="flex items-center gap-1.5">
-                          <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
-                          <span className="text-xs text-emerald-400">
+                          <span className="inline-block h-2 w-2 rounded-full bg-[#4ade80]" />
+                          <span className="text-xs text-[#4ade80]">
                             Enabled
                           </span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1.5">
-                          <span className="inline-block h-2 w-2 rounded-full bg-slate-600" />
-                          <span className="text-xs text-slate-500">
+                          <span className="inline-block h-2 w-2 rounded-full bg-mesh-text-mute" />
+                          <span className="text-xs text-mesh-text-mute">
                             Disabled
                           </span>
                         </div>
@@ -453,7 +453,7 @@ export default function ServicesPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => handleToggle(host)}
-                              className="h-8 w-8 p-0 text-slate-400 hover:text-white"
+                              className="h-8 w-8 p-0 text-mesh-text-dim hover:text-white"
                             >
                               {host.enabled ? (
                                 <PowerOff className="h-3.5 w-3.5" />
@@ -472,7 +472,7 @@ export default function ServicesPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => openEditDialog(host)}
-                              className="h-8 w-8 p-0 text-slate-400 hover:text-white"
+                              className="h-8 w-8 p-0 text-mesh-text-dim hover:text-white"
                             >
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
@@ -488,7 +488,7 @@ export default function ServicesPage() {
                                 setDeleteHost(host);
                                 setDeleteOpen(true);
                               }}
-                              className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400"
+                              className="h-8 w-8 p-0 text-mesh-text-dim hover:text-[#fb7185]"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -514,7 +514,7 @@ export default function ServicesPage() {
             setAddOpen(open);
           }}
         >
-          <DialogContent className="max-w-md border-mesh-border-strong bg-mesh-surface-1/95 text-white">
+          <DialogContent className="max-w-md border-mesh-border bg-mesh-surface-1/95 text-white">
             <DialogHeader>
               <DialogTitle>Add Service</DialogTitle>
             </DialogHeader>
@@ -527,24 +527,24 @@ export default function ServicesPage() {
                     key={i}
                     className={`flex items-start gap-2 rounded-md border px-3 py-2 ${
                       step.success
-                        ? "border-emerald-500/30 bg-emerald-500/10"
-                        : "border-rose-500/30 bg-rose-500/10"
+                        ? "border-[#4ade80]/30 bg-[#4ade80]/10"
+                        : "border-[#fb7185]/30 bg-[#fb7185]/10"
                     }`}
                   >
                     {step.success ? (
-                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[#4ade80]" />
                     ) : (
-                      <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+                      <XCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#fb7185]" />
                     )}
                     <div className="min-w-0">
                       <p
                         className={`text-xs font-medium ${
-                          step.success ? "text-emerald-400" : "text-rose-400"
+                          step.success ? "text-[#4ade80]" : "text-[#fb7185]"
                         }`}
                       >
                         {step.step.replace(/_/g, " ")}
                       </p>
-                      <p className="text-xs text-slate-400">{step.message}</p>
+                      <p className="text-xs text-mesh-text-dim">{step.message}</p>
                     </div>
                   </div>
                 ))}
@@ -554,7 +554,7 @@ export default function ServicesPage() {
                       setAddOpen(false);
                       resetAddForm();
                     }}
-                    className="bg-blue-600 text-white hover:bg-blue-500"
+                    className="bg-mesh-primary text-white hover:bg-mesh-primary"
                   >
                     Done
                   </Button>
@@ -564,31 +564,31 @@ export default function ServicesPage() {
               /* Form view */
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">
+                  <Label className="text-xs text-mesh-text-dim">
                     Service Name
                   </Label>
                   <Input
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="My App"
-                    className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                    className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-400">
+                    <Label className="text-xs text-mesh-text-dim">
                       Internal IP
                     </Label>
                     <Input
                       value={internalIp}
                       onChange={(e) => setInternalIp(e.target.value)}
                       placeholder="10.10.0.50"
-                      className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                      className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-400">
+                    <Label className="text-xs text-mesh-text-dim">
                       Internal Port
                     </Label>
                     <Input
@@ -596,26 +596,26 @@ export default function ServicesPage() {
                       value={internalPort}
                       onChange={(e) => setInternalPort(e.target.value)}
                       placeholder="8080"
-                      className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                      className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">
+                  <Label className="text-xs text-mesh-text-dim">
                     Domain
                   </Label>
                   <Input
                     value={domain}
                     onChange={(e) => setDomain(e.target.value)}
                     placeholder="myapp.oklabs.uk"
-                    className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                    className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-slate-400">
+                    <Label className="text-xs text-mesh-text-dim">
                       Forward Scheme
                     </Label>
                     <select
@@ -633,7 +633,7 @@ export default function ServicesPage() {
                         checked={tlsEnabled}
                         onCheckedChange={setTlsEnabled}
                       />
-                      <Label className="text-xs text-slate-400">
+                      <Label className="text-xs text-mesh-text-dim">
                         Auto TLS (HTTPS)
                       </Label>
                     </div>
@@ -644,8 +644,8 @@ export default function ServicesPage() {
                 <div className="rounded-md border border-mesh-border-strong p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Network className="h-4 w-4 text-slate-500" />
-                      <Label className="text-xs text-slate-400">
+                      <Network className="h-4 w-4 text-mesh-text-mute" />
+                      <Label className="text-xs text-mesh-text-dim">
                         MikroTik Port-Forward
                       </Label>
                     </div>
@@ -657,7 +657,7 @@ export default function ServicesPage() {
                   {createPortForward && (
                     <div className="mt-3 grid grid-cols-2 gap-3">
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-slate-400">
+                        <Label className="text-xs text-mesh-text-dim">
                           External Port
                         </Label>
                         <Input
@@ -665,11 +665,11 @@ export default function ServicesPage() {
                           value={externalPort}
                           onChange={(e) => setExternalPort(e.target.value)}
                           placeholder="443"
-                          className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                          className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                         />
                       </div>
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-slate-400">
+                        <Label className="text-xs text-mesh-text-dim">
                           Protocol
                         </Label>
                         <select
@@ -693,14 +693,14 @@ export default function ServicesPage() {
                       setAddOpen(false);
                       resetAddForm();
                     }}
-                    className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
+                    className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleAddService}
                     disabled={!addValid || adding}
-                    className="bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
+                    className="bg-mesh-primary text-white hover:bg-mesh-primary disabled:opacity-40"
                   >
                     {adding && (
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -715,45 +715,45 @@ export default function ServicesPage() {
 
         {/* ── Edit Dialog ── */}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
-          <DialogContent className="max-w-md border-mesh-border-strong bg-mesh-surface-1/95 text-white">
+          <DialogContent className="max-w-md border-mesh-border bg-mesh-surface-1/95 text-white">
             <DialogHeader>
               <DialogTitle>Edit Service</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label className="text-xs text-slate-400">Domain</Label>
+                <Label className="text-xs text-mesh-text-dim">Domain</Label>
                 <Input
                   value={editDomain}
                   onChange={(e) => setEditDomain(e.target.value)}
-                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                  className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">
+                  <Label className="text-xs text-mesh-text-dim">
                     Forward Host
                   </Label>
                   <Input
                     value={editForwardHost}
                     onChange={(e) => setEditForwardHost(e.target.value)}
-                    className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                    className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">
+                  <Label className="text-xs text-mesh-text-dim">
                     Forward Port
                   </Label>
                   <Input
                     type="number"
                     value={editForwardPort}
                     onChange={(e) => setEditForwardPort(e.target.value)}
-                    className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                    className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs text-slate-400">
+                  <Label className="text-xs text-mesh-text-dim">
                     Forward Scheme
                   </Label>
                   <select
@@ -771,7 +771,7 @@ export default function ServicesPage() {
                       checked={editTlsEnabled}
                       onCheckedChange={setEditTlsEnabled}
                     />
-                    <Label className="text-xs text-slate-400">
+                    <Label className="text-xs text-mesh-text-dim">
                       Auto TLS
                     </Label>
                   </div>
@@ -782,14 +782,14 @@ export default function ServicesPage() {
               <Button
                 variant="outline"
                 onClick={() => setEditOpen(false)}
-                className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
+                className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleEditSave}
                 disabled={editSaving}
-                className="bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
+                className="bg-mesh-primary text-white hover:bg-mesh-primary disabled:opacity-40"
               >
                 {editSaving && (
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -802,12 +802,12 @@ export default function ServicesPage() {
 
         {/* ── Delete Confirmation ── */}
         <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-          <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-white">
                 Delete Service
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-slate-400">
+              <AlertDialogDescription className="text-mesh-text-dim">
                 This will remove the Caddy proxy host for{" "}
                 <span className="font-medium text-white">
                   {deleteHost?.domain}
@@ -816,13 +816,13 @@ export default function ServicesPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55">
+              <AlertDialogCancel className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
                 disabled={deleting}
-                className="bg-rose-600 text-white hover:bg-rose-500"
+                className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
               >
                 {deleting && (
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />

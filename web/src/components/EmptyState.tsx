@@ -29,17 +29,17 @@ export function EmptyState({
   variant?: "default" | "success";
 }) {
   const iconColor =
-    variant === "success" ? "text-emerald-400/80" : "text-cyan-300/70";
+    variant === "success" ? "text-[#4ade80]/80" : "text-[#67e8f9]/70";
   const titleColor =
-    variant === "success" ? "text-emerald-300" : "text-slate-200";
+    variant === "success" ? "text-[#4ade80]" : "text-mesh-text";
 
   return (
-    <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-mesh-border-strong bg-mesh-surface-1 px-5 py-12 text-center">
-      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md border border-mesh-border-strong bg-mesh-surface-1">
+    <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-mesh-border bg-mesh-surface-1 px-5 py-12 text-center">
+      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md border border-mesh-border bg-mesh-surface-1">
         <Icon className={`h-5 w-5 ${iconColor}`} />
       </div>
       <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${titleColor}`}>{title}</p>
-      <p className="mt-2 max-w-sm text-sm text-slate-500">{description}</p>
+      <p className="mt-2 max-w-sm text-sm text-mesh-text-mute">{description}</p>
       {actionLabel && (actionHref || onAction) && (
         actionHref ? (
           <a href={actionHref}>

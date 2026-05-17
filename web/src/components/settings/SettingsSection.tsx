@@ -27,7 +27,7 @@ export function SettingsSection({
   children,
 }: SettingsSectionProps) {
   return (
-    <Card className="border-mesh-border-strong bg-mesh-surface-1" data-testid="settings-section">
+    <Card className="border-mesh-border bg-mesh-surface-1" data-testid="settings-section">
       <CardHeader>
         <div className="flex items-center gap-3">
           <div
@@ -38,7 +38,7 @@ export function SettingsSection({
           <div className="min-w-0 flex-1">
             <CardTitle className="text-base text-white">{title}</CardTitle>
             {description && (
-              <CardDescription className="text-xs text-slate-500">
+              <CardDescription className="text-xs text-mesh-text-mute">
                 {description}
               </CardDescription>
             )}

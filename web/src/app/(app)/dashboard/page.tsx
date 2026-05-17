@@ -119,16 +119,16 @@ function CriticalDevicesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-mesh-border-strong bg-mesh-surface-1 text-white sm:max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+      <DialogContent className="border-mesh-border bg-mesh-surface-1 text-white sm:max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="text-white">Critical Devices</DialogTitle>
-          <DialogDescription className="text-slate-400">
+          <DialogDescription className="text-mesh-text-dim">
             Devices included in the Infrastructure Health metric.
           </DialogDescription>
         </DialogHeader>
         <div className="overflow-y-auto -mx-6 px-6">
           {error ? (
-            <div className="flex items-center gap-2 py-4 text-sm text-rose-400">
+            <div className="flex items-center gap-2 py-4 text-sm text-[#fb7185]">
               <WifiOff className="h-4 w-4 shrink-0" />
               <span>Failed to load critical devices</span>
             </div>
@@ -139,7 +139,7 @@ function CriticalDevicesDialog({
               ))}
             </div>
           ) : devices.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-500">
+            <p className="py-6 text-center text-sm text-mesh-text-mute">
               No critical devices found.
             </p>
           ) : (
@@ -155,20 +155,20 @@ function CriticalDevicesDialog({
                     className={cn(
                       "inline-block h-2.5 w-2.5 shrink-0 rounded-full",
                       dev.is_online
-                        ? "bg-emerald-400 ring-2 ring-emerald-400/30"
-                        : "bg-rose-400 ring-2 ring-rose-400/30",
+                        ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30"
+                        : "bg-[#fb7185] ring-2 ring-[#fb7185]/30",
                     )}
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="truncate text-sm font-medium text-slate-200">
+                      <span className="truncate text-sm font-medium text-mesh-text">
                         {dev.name || dev.hostname || dev.ip || "Unknown"}
                       </span>
                       {dev.classification === "pinned" && (
-                        <Pin className="h-3 w-3 shrink-0 text-amber-400" />
+                        <Pin className="h-3 w-3 shrink-0 text-[#fbbf24]" />
                       )}
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-slate-500">
+                    <div className="flex items-center gap-2 text-xs text-mesh-text-mute">
                       {dev.device_type && (
                         <span className="capitalize">{dev.device_type.replace(/_/g, " ")}</span>
                       )}
@@ -179,16 +179,16 @@ function CriticalDevicesDialog({
                     <span
                       className={cn(
                         "text-xs font-medium",
-                        dev.is_online ? "text-emerald-400" : "text-rose-400",
+                        dev.is_online ? "text-[#4ade80]" : "text-[#fb7185]",
                       )}
                     >
                       {dev.is_online ? "Online" : "Offline"}
                     </span>
                     {dev.last_seen_at && (
-                      <p className="text-xs text-slate-600">{timeAgo(dev.last_seen_at)}</p>
+                      <p className="text-xs text-mesh-text-mute">{timeAgo(dev.last_seen_at)}</p>
                     )}
                   </div>
-                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-mesh-text-mute opacity-0 group-hover:opacity-100 transition-opacity" />
                 </Link>
               ))}
             </div>
@@ -363,7 +363,7 @@ export default function DashboardPage() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-md border border-mesh-border-strong bg-mesh-surface-1/70 px-3 py-1.5 text-xs text-slate-300 hover:bg-mesh-surface-2"
+              className="inline-flex items-center gap-2 rounded-md border border-mesh-border bg-mesh-surface-1/70 px-3 py-1.5 text-xs text-mesh-text hover:bg-mesh-surface-2"
             >
               <Icon name="filter" size={12} />
               <span>last 24h</span>
@@ -371,7 +371,7 @@ export default function DashboardPage() {
             </button>
             <Link
               href="/devices"
-              className="inline-flex items-center gap-2 rounded-md border border-mesh-border-strong bg-mesh-surface-1/70 px-3 py-1.5 text-xs text-slate-300 hover:bg-mesh-surface-2"
+              className="inline-flex items-center gap-2 rounded-md border border-mesh-border bg-mesh-surface-1/70 px-3 py-1.5 text-xs text-mesh-text hover:bg-mesh-surface-2"
             >
               <Icon name="plus" size={12} />
               <span>Add device</span>
@@ -492,7 +492,7 @@ export default function DashboardPage() {
           {/* LEFT column */}
           <div className="flex flex-col gap-3">
             {/* WAN traffic card */}
-            <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/70 p-4">
+            <div className="rounded-md border border-mesh-border bg-mesh-surface-1/70 p-4">
               <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-3">
                   <h3 className="text-sm font-semibold text-white">WAN traffic</h3>
@@ -542,7 +542,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Top talkers table */}
-            <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/70">
+            <div className="rounded-md border border-mesh-border bg-mesh-surface-1/70">
               <div className="flex items-center justify-between px-4 py-3">
                 <h3 className="text-sm font-semibold text-white">Top talkers · 24h</h3>
                 <span className="font-mono text-[11px] text-mesh-text-mute">
@@ -621,12 +621,12 @@ export default function DashboardPage() {
           {/* RIGHT column */}
           <div className="flex flex-col gap-3">
             {/* Topology card */}
-            <div className="flex flex-col gap-2.5 rounded-md border border-mesh-border-strong bg-mesh-surface-1/70 p-4">
+            <div className="flex flex-col gap-2.5 rounded-md border border-mesh-border bg-mesh-surface-1/70 p-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white">Topology</h3>
                 <Link
                   href="/topology"
-                  className="text-xs font-medium text-mesh-accent hover:text-cyan-300"
+                  className="text-xs font-medium text-mesh-accent hover:text-[#67e8f9]"
                 >
                   open →
                 </Link>
@@ -659,7 +659,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Recent events */}
-            <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/70">
+            <div className="rounded-md border border-mesh-border bg-mesh-surface-1/70">
               <div className="flex items-center justify-between px-4 py-3">
                 <h3 className="text-sm font-semibold text-white">Recent events</h3>
                 <span className="font-mono text-[11px] text-mesh-text-mute">last 1h</span>
@@ -713,7 +713,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Bottom: Subnet utilization ──────────────── */}
-        <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/70 p-4">
+        <div className="rounded-md border border-mesh-border bg-mesh-surface-1/70 p-4">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white">Subnet utilization</h3>
             <span className="font-mono text-[11px] text-mesh-text-mute">capacity / 5min</span>

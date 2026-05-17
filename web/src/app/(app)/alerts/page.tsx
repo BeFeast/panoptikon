@@ -63,17 +63,17 @@ import {
 function alertIcon(type: Alert["type"]) {
   switch (type) {
     case "new_device":
-      return <MonitorSmartphone className="h-5 w-5 text-blue-400" />;
+      return <MonitorSmartphone className="h-5 w-5 text-mesh-primary" />;
     case "device_offline":
-      return <Wifi className="h-5 w-5 text-rose-400" />;
+      return <Wifi className="h-5 w-5 text-[#fb7185]" />;
     case "device_online":
-      return <Wifi className="h-5 w-5 text-emerald-400" />;
+      return <Wifi className="h-5 w-5 text-[#4ade80]" />;
     case "agent_offline":
-      return <Activity className="h-5 w-5 text-rose-400" />;
+      return <Activity className="h-5 w-5 text-[#fb7185]" />;
     case "high_bandwidth":
-      return <AlertTriangle className="h-5 w-5 text-amber-400" />;
+      return <AlertTriangle className="h-5 w-5 text-[#fbbf24]" />;
     default:
-      return <Shield className="h-5 w-5 text-slate-400" />;
+      return <Shield className="h-5 w-5 text-mesh-text-dim" />;
   }
 }
 
@@ -98,19 +98,19 @@ function severityBadge(severity: Alert["severity"]) {
   switch (severity) {
     case "CRITICAL":
       return (
-        <Badge className="bg-rose-500/20 text-rose-400 border-rose-500/30 text-[10px] px-1.5 py-0">
+        <Badge className="bg-[#fb7185]/20 text-[#fb7185] border-[#fb7185]/30 text-[10px] px-1.5 py-0">
           CRITICAL
         </Badge>
       );
     case "WARNING":
       return (
-        <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-[10px] px-1.5 py-0">
+        <Badge className="bg-[#fbbf24]/20 text-[#fbbf24] border-[#fbbf24]/30 text-[10px] px-1.5 py-0">
           WARNING
         </Badge>
       );
     case "INFO":
       return (
-        <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 text-[10px] px-1.5 py-0">
+        <Badge className="bg-mesh-primary/20 text-mesh-primary border-mesh-primary/30 text-[10px] px-1.5 py-0">
           INFO
         </Badge>
       );
@@ -295,7 +295,7 @@ export default function AlertsPage() {
             </Badge>
           )}
           {acknowledgedCount > 0 && (
-            <Badge variant="outline" className="gap-1 text-slate-400 border-gray-700">
+            <Badge variant="outline" className="gap-1 text-mesh-text-dim border-mesh-border-strong">
               <Check className="h-3 w-3" />
               {acknowledgedCount} acknowledged
             </Badge>
@@ -308,7 +308,7 @@ export default function AlertsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-gray-700 text-slate-400 hover:text-gray-200 gap-1.5"
+                  className="border-mesh-border-strong text-mesh-text-dim hover:text-mesh-text gap-1.5"
                 >
                   <Download className="h-3.5 w-3.5" />
                   Export
@@ -344,14 +344,14 @@ export default function AlertsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="border-gray-700 text-slate-400 hover:text-gray-200 gap-1.5"
+                    className="border-mesh-border-strong text-mesh-text-dim hover:text-mesh-text gap-1.5"
                     onClick={handleMarkAllRead}
                   >
                     <CheckCheck className="h-3.5 w-3.5" />
                     Mark all read
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
+                <TooltipContent className="max-w-xs border-mesh-border bg-mesh-surface-1 text-mesh-text">
                   Mark every unread alert as read
                 </TooltipContent>
               </Tooltip>
@@ -361,14 +361,14 @@ export default function AlertsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-gray-700 text-slate-400 hover:text-rose-400 gap-1.5"
+                  className="border-mesh-border-strong text-mesh-text-dim hover:text-[#fb7185] gap-1.5"
                   onClick={() => setClearAllDialogOpen(true)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Clear all
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
+              <TooltipContent className="max-w-xs border-mesh-border bg-mesh-surface-1 text-mesh-text">
                 Permanently delete all alerts
               </TooltipContent>
             </Tooltip>
@@ -388,7 +388,7 @@ export default function AlertsPage() {
               className={
                 statusFilter === f
                   ? ""
-                  : "border-gray-700 text-slate-400 hover:text-gray-200"
+                  : "border-mesh-border-strong text-mesh-text-dim hover:text-mesh-text"
               }
             >
               {f === "all" ? "All" : f === "active" ? "Active" : "Acknowledged"}
@@ -407,7 +407,7 @@ export default function AlertsPage() {
               className={
                 typeFilter === t.value
                   ? ""
-                  : "border-gray-700 text-slate-400 hover:text-gray-200"
+                  : "border-mesh-border-strong text-mesh-text-dim hover:text-mesh-text"
               }
             >
               {t.value !== "all" && (
@@ -421,24 +421,24 @@ export default function AlertsPage() {
 
       {/* Severity Summary Bar */}
       {alerts && alerts.length > 0 && (criticalCount > 0 || warningCount > 0 || infoCount > 0) && (
-        <div className="flex items-center gap-3 rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 px-4 py-2.5">
-          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Severity</span>
+        <div className="flex items-center gap-3 rounded-lg border border-mesh-border bg-mesh-surface-1/95 px-4 py-2.5">
+          <span className="text-xs font-medium text-mesh-text-mute uppercase tracking-wider">Severity</span>
           <div className="flex items-center gap-3">
             {criticalCount > 0 && (
-              <Badge className="bg-red-500/20 text-red-400 border-red-500/30 gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+              <Badge className="bg-[#fb7185]/20 text-[#fb7185] border-[#fb7185]/30 gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#fb7185]" />
                 {criticalCount} critical
               </Badge>
             )}
             {warningCount > 0 && (
-              <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              <Badge className="bg-[#fbbf24]/20 text-[#fbbf24] border-[#fbbf24]/30 gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#fbbf24]" />
                 {warningCount} warning
               </Badge>
             )}
             {infoCount > 0 && (
-              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+              <Badge className="bg-mesh-primary/20 text-mesh-primary border-mesh-primary/30 gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-mesh-primary" />
                 {infoCount} info
               </Badge>
             )}
@@ -451,7 +451,7 @@ export default function AlertsPage() {
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card key={i} className="border-mesh-border bg-mesh-surface-1/95">
               <CardContent className="flex items-center gap-4 py-4">
                 <Skeleton className="h-10 w-10 rounded-full" />
                 <div className="flex-1 space-y-2">
@@ -463,7 +463,7 @@ export default function AlertsPage() {
             </Card>
           ))}
           </div>
-          <Card className="hidden border-mesh-border-strong bg-mesh-surface-1/95 lg:block">
+          <Card className="hidden border-mesh-border bg-mesh-surface-1/95 lg:block">
             <CardContent className="space-y-3 py-4">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-16 w-full" />
@@ -472,7 +472,7 @@ export default function AlertsPage() {
           </Card>
         </div>
       ) : alerts.length === 0 ? (
-        <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+        <Card className="border-mesh-border bg-mesh-surface-1/95">
           <CardContent>
             <EmptyState
               icon={Shield}
@@ -486,8 +486,8 @@ export default function AlertsPage() {
         </Card>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="min-w-0 rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95">
-            <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_6rem_7.25rem] gap-3 border-b border-mesh-border px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 max-md:hidden">
+          <div className="min-w-0 rounded-lg border border-mesh-border bg-mesh-surface-1/95">
+            <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_6rem_7.25rem] gap-3 border-b border-mesh-border px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-mesh-text-mute max-md:hidden">
               <span>Type</span>
               <span>Message</span>
               <span>Age</span>
@@ -507,7 +507,7 @@ export default function AlertsPage() {
                       setSelectedAlertId(alert.id);
                     }
                   }}
-                  className={`grid w-full grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-l-none border-mesh-border-strong px-3 py-3 text-left transition-colors hover:bg-mesh-surface-2/55 lg:grid-cols-[2.25rem_minmax(0,1fr)_6rem_7.25rem] ${
+                  className={`grid w-full grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-l-none border-mesh-border px-3 py-3 text-left transition-colors hover:bg-mesh-surface-2/55 lg:grid-cols-[2.25rem_minmax(0,1fr)_6rem_7.25rem] ${
                     acknowledgingIds.has(alert.id)
                       ? "animate-ack-strike opacity-0"
                       : selectedAlert?.id === alert.id
@@ -519,60 +519,60 @@ export default function AlertsPage() {
                 >
                   <span className={`flex h-8 w-8 items-center justify-center rounded-md border ${
                     alert.acknowledged_at
-                      ? "border-mesh-border-strong bg-mesh-surface-1/95 text-slate-500"
-                      : "border-mesh-border-strong bg-mesh-surface-1"
+                      ? "border-mesh-border bg-mesh-surface-1/95 text-mesh-text-mute"
+                      : "border-mesh-border bg-mesh-surface-1"
                   }`}>
                     {alertIcon(alert.type)}
                   </span>
 
                   <span className="min-w-0">
                     <span className="flex min-w-0 items-center gap-2">
-                      <span className="truncate text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                      <span className="truncate text-[11px] font-semibold uppercase tracking-wider text-mesh-text-mute">
                         {alertTypeLabel(alert.type)}
                       </span>
                       {severityBadge(alert.severity)}
                       {!alert.is_read && !alert.acknowledged_at && (
-                        <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
+                        <span className="h-1.5 w-1.5 rounded-full bg-mesh-primary" />
                       )}
                       {alert.acknowledged_at && (
-                        <Badge variant="outline" className="border-emerald-700 px-1.5 py-0 text-[10px] text-emerald-500">
+                        <Badge variant="outline" className="border-[#4ade80] px-1.5 py-0 text-[10px] text-[#4ade80]">
                           ACK
                         </Badge>
                       )}
                     </span>
                     <span className={`mt-0.5 block truncate text-sm ${
                       alert.acknowledged_at
-                        ? "text-slate-500"
+                        ? "text-mesh-text-mute"
                         : !alert.is_read
-                          ? "text-slate-200"
-                          : "text-slate-400"
+                          ? "text-mesh-text"
+                          : "text-mesh-text-dim"
                     }`}>
                       {alert.message}
                     </span>
                   </span>
 
-                  <span className="shrink-0 font-mono text-[11px] text-slate-600 max-lg:hidden">
+                  <span className="shrink-0 font-mono text-[11px] text-mesh-text-mute max-lg:hidden">
                     {timeAgo(alert.created_at)}
                   </span>
 
                   <span className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                     {!alert.acknowledged_at && (
                       alert.is_read ? (
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-slate-500 hover:text-blue-400" onClick={() => handleMarkUnread(alert.id)} title="Mark unread">
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-mesh-text-mute hover:text-mesh-primary" onClick={() => handleMarkUnread(alert.id)} title="Mark unread">
                           <Bell className="h-3.5 w-3.5" />
                         </Button>
                       ) : (
-                        <Button variant="ghost" size="sm" className="h-7 px-2 text-slate-500 hover:text-gray-200" onClick={() => handleMarkRead(alert.id)} title="Mark read">
+                        <Button variant="ghost" size="sm" className="h-7 px-2 text-mesh-text-mute hover:text-mesh-text" onClick={() => handleMarkRead(alert.id)} title="Mark read">
                           <Check className="h-3.5 w-3.5" />
                         </Button>
                       )
                     )}
                     {!alert.acknowledged_at && (
-                      <Button variant="ghost" size="sm" className="h-7 px-2 text-slate-500 hover:text-emerald-400" onClick={() => openAckDialog(alert.id)} title="Acknowledge">
+                      <Button variant="ghost" size="sm" className="h-7 px-2 text-mesh-text-mute hover:text-[#4ade80]" onClick={() => openAckDialog(alert.id)} title="Acknowledge">
                         <CheckCheck className="h-3.5 w-3.5" />
                       </Button>
                     )}
-                    <Button variant="ghost" size="sm" className="h-7 px-2 text-slate-500 hover:text-rose-400" onClick={() => handleDeleteOne(alert.id)} title="Delete alert">
+                    <Button variant="ghost" size="sm" className="h-7 px-2 text-mesh-text-mute hover:text-[#fb7185]" onClick={() => handleDeleteOne(alert.id)} title="Delete alert">
                       <X className="h-3.5 w-3.5" />
                     </Button>
                   </span>
@@ -582,24 +582,24 @@ export default function AlertsPage() {
           </div>
 
           {selectedAlert && (
-            <aside className="min-w-0 rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 p-4 lg:sticky lg:top-4 lg:self-start">
+            <aside className="min-w-0 rounded-lg border border-mesh-border bg-mesh-surface-1/95 p-4 lg:sticky lg:top-4 lg:self-start">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-mesh-text-mute">
                     {alertTypeLabel(selectedAlert.type)}
                   </p>
-                  <h2 className="mt-1 text-base font-semibold text-slate-100">
+                  <h2 className="mt-1 text-base font-semibold text-mesh-text">
                     Alert detail
                   </h2>
                 </div>
                 {severityBadge(selectedAlert.severity)}
               </div>
 
-              <p className="mt-4 text-sm leading-6 text-slate-300">
+              <p className="mt-4 text-sm leading-6 text-mesh-text">
                 {selectedAlert.message}
               </p>
               {selectedAlert.details && (
-                <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 p-3 text-xs leading-5 text-slate-400">
+                <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-mesh-border bg-mesh-surface-1/95 p-3 text-xs leading-5 text-mesh-text-dim">
                   {selectedAlert.details}
                 </pre>
               )}
@@ -620,12 +620,12 @@ export default function AlertsPage() {
                   </Button>
                 )}
                 {selectedAlert.is_read ? (
-                  <Button variant="outline" size="sm" className="gap-1.5 border-mesh-border-strong text-slate-300 hover:text-white" onClick={() => handleMarkUnread(selectedAlert.id)}>
+                  <Button variant="outline" size="sm" className="gap-1.5 border-mesh-border-strong text-mesh-text hover:text-white" onClick={() => handleMarkUnread(selectedAlert.id)}>
                     <Bell className="h-3.5 w-3.5" />
                     Mark unread
                   </Button>
                 ) : (
-                  <Button variant="outline" size="sm" className="gap-1.5 border-mesh-border-strong text-slate-300 hover:text-white" onClick={() => handleMarkRead(selectedAlert.id)}>
+                  <Button variant="outline" size="sm" className="gap-1.5 border-mesh-border-strong text-mesh-text hover:text-white" onClick={() => handleMarkRead(selectedAlert.id)}>
                     <Check className="h-3.5 w-3.5" />
                     Mark read
                   </Button>
@@ -633,7 +633,7 @@ export default function AlertsPage() {
                 {selectedAlert.device_id && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-1.5 border-mesh-border-strong text-slate-300 hover:text-white">
+                      <Button variant="outline" size="sm" className="gap-1.5 border-mesh-border-strong text-mesh-text hover:text-white">
                         <VolumeX className="h-3.5 w-3.5" />
                         Mute
                       </Button>
@@ -650,7 +650,7 @@ export default function AlertsPage() {
                     </DropdownMenuContent>
                   </DropdownMenu>
                 )}
-                <Button variant="outline" size="sm" className="gap-1.5 border-mesh-border-strong text-slate-300 hover:text-rose-400" onClick={() => handleDeleteOne(selectedAlert.id)}>
+                <Button variant="outline" size="sm" className="gap-1.5 border-mesh-border-strong text-mesh-text hover:text-[#fb7185]" onClick={() => handleDeleteOne(selectedAlert.id)}>
                   <Trash2 className="h-3.5 w-3.5" />
                   Delete
                 </Button>
@@ -662,7 +662,7 @@ export default function AlertsPage() {
 
       {/* Acknowledge Dialog */}
       <Dialog open={ackDialogOpen} onOpenChange={setAckDialogOpen}>
-        <DialogContent className="bg-mesh-surface-1/95 border-mesh-border-strong">
+        <DialogContent className="bg-mesh-surface-1/95 border-mesh-border">
           <DialogHeader>
             <DialogTitle>Acknowledge Alert</DialogTitle>
             <DialogDescription>
@@ -682,7 +682,7 @@ export default function AlertsPage() {
             <Button
               variant="outline"
               onClick={() => setAckDialogOpen(false)}
-              className="border-gray-700"
+              className="border-mesh-border-strong"
             >
               Cancel
             </Button>
@@ -693,7 +693,7 @@ export default function AlertsPage() {
 
       {/* Clear All Confirmation Dialog */}
       <Dialog open={clearAllDialogOpen} onOpenChange={setClearAllDialogOpen}>
-        <DialogContent className="bg-mesh-surface-1/95 border-mesh-border-strong">
+        <DialogContent className="bg-mesh-surface-1/95 border-mesh-border">
           <DialogHeader>
             <DialogTitle>Delete All Alerts</DialogTitle>
             <DialogDescription>
@@ -704,7 +704,7 @@ export default function AlertsPage() {
             <Button
               variant="outline"
               onClick={() => setClearAllDialogOpen(false)}
-              className="border-gray-700"
+              className="border-mesh-border-strong"
             >
               Cancel
             </Button>
@@ -733,8 +733,8 @@ function TriageRow({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <span className="shrink-0 font-semibold uppercase tracking-wider text-slate-600">{label}</span>
-      <span className={`min-w-0 truncate text-right text-slate-400 ${mono ? "font-mono tabular-nums" : ""}`} title={value}>
+      <span className="shrink-0 font-semibold uppercase tracking-wider text-mesh-text-mute">{label}</span>
+      <span className={`min-w-0 truncate text-right text-mesh-text-dim ${mono ? "font-mono tabular-nums" : ""}`} title={value}>
         {value}
       </span>
     </div>

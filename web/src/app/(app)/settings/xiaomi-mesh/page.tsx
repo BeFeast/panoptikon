@@ -216,7 +216,7 @@ export default function XiaomiMeshSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -224,15 +224,15 @@ export default function XiaomiMeshSettingsPage() {
         </div>
 
         <SettingsSection
-          icon={<Wifi className="h-4 w-4 text-orange-400" />}
-          iconBg="bg-orange-500/10"
+          icon={<Wifi className="h-4 w-4 text-[#fbbf24]" />}
+          iconBg="bg-[#fbbf24]/10"
           title="Xiaomi Mesh Connection"
           description="Connect to your Xiaomi mesh router to fetch WiFi clients, mesh topology, and device info."
           headerRight={
             <div className="flex items-center gap-2">
               <Label
                 htmlFor="xiaomi-enabled"
-                className="text-xs text-slate-400"
+                className="text-xs text-mesh-text-dim"
               >
                 {enabled ? "Enabled" : "Disabled"}
               </Label>
@@ -246,10 +246,10 @@ export default function XiaomiMeshSettingsPage() {
         >
           {/* Router IP */}
           <div className="space-y-1.5">
-            <Label htmlFor="xiaomi-ip" className="text-xs text-slate-400">
+            <Label htmlFor="xiaomi-ip" className="text-xs text-mesh-text-dim">
               Router IP{" "}
               {savedIp && (
-                <span className="text-emerald-500">(saved)</span>
+                <span className="text-[#4ade80]">(saved)</span>
               )}
             </Label>
             <div className="relative">
@@ -259,23 +259,23 @@ export default function XiaomiMeshSettingsPage() {
                 value={ip}
                 onChange={(e) => setIp(e.target.value)}
                 autoComplete="one-time-code"
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
+                className={`border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   ipValidation === "valid"
-                    ? "border-emerald-500/40"
+                    ? "border-[#4ade80]/40"
                     : ipValidation === "error"
-                      ? "border-rose-500/40"
+                      ? "border-[#fb7185]/40"
                       : ""
                 }`}
                 placeholder="10.10.0.199"
               />
               {ipValidation === "valid" && (
                 <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
-                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  <CheckCircle className="h-4 w-4 text-[#4ade80]" />
                 </div>
               )}
             </div>
             {ip && !ipValid && (
-              <p className="animate-fade-in text-xs text-rose-400">
+              <p className="animate-fade-in text-xs text-[#fb7185]">
                 Enter a valid IPv4 address.
               </p>
             )}
@@ -285,12 +285,12 @@ export default function XiaomiMeshSettingsPage() {
           <div className="space-y-1.5">
             <Label
               htmlFor="xiaomi-proxy-host"
-              className="text-xs text-slate-400"
+              className="text-xs text-mesh-text-dim"
             >
               Proxy Host{" "}
-              <span className="text-slate-600">(optional)</span>
+              <span className="text-mesh-text-mute">(optional)</span>
               {savedProxyHost && (
-                <span className="text-emerald-500"> (saved)</span>
+                <span className="text-[#4ade80]"> (saved)</span>
               )}
             </Label>
             <Input
@@ -299,10 +299,10 @@ export default function XiaomiMeshSettingsPage() {
               value={proxyHost}
               onChange={(e) => setProxyHost(e.target.value)}
               autoComplete="one-time-code"
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+              className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="e.g. 10.10.0.14:9199"
             />
-            <p className="text-xs text-slate-600">
+            <p className="text-xs text-mesh-text-mute">
               If the router blocks direct access, enter a proxy host (IP:port)
               that forwards TCP to the router. Leave empty for direct
               connection.
@@ -313,11 +313,11 @@ export default function XiaomiMeshSettingsPage() {
           <div className="space-y-1.5">
             <Label
               htmlFor="xiaomi-password"
-              className="text-xs text-slate-400"
+              className="text-xs text-mesh-text-dim"
             >
               Password{" "}
               {passwordSet && (
-                <span className="text-emerald-500">(saved)</span>
+                <span className="text-[#4ade80]">(saved)</span>
               )}
             </Label>
             <Input
@@ -326,7 +326,7 @@ export default function XiaomiMeshSettingsPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+              className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder={
                 passwordSet
                   ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022  (leave blank to keep current)"
@@ -334,7 +334,7 @@ export default function XiaomiMeshSettingsPage() {
               }
             />
             {passwordRequired && (
-              <p className="animate-fade-in text-xs text-rose-400">
+              <p className="animate-fade-in text-xs text-[#fb7185]">
                 Password is required when integration is enabled.
               </p>
             )}
@@ -344,7 +344,7 @@ export default function XiaomiMeshSettingsPage() {
           <div className="space-y-1.5">
             <Label
               htmlFor="xiaomi-poll-interval"
-              className="text-xs text-slate-400"
+              className="text-xs text-mesh-text-dim"
             >
               Poll Interval (seconds)
             </Label>
@@ -356,23 +356,23 @@ export default function XiaomiMeshSettingsPage() {
                 max={300}
                 value={pollInterval}
                 onChange={(e) => setPollInterval(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
+                className={`border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   intervalValidation === "valid"
-                    ? "border-emerald-500/40"
+                    ? "border-[#4ade80]/40"
                     : intervalValidation === "error"
-                      ? "border-rose-500/40"
+                      ? "border-[#fb7185]/40"
                       : ""
                 }`}
                 placeholder="30"
               />
               {intervalValidation === "valid" && (
                 <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
-                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  <CheckCircle className="h-4 w-4 text-[#4ade80]" />
                 </div>
               )}
             </div>
             {pollInterval && !intervalValid && (
-              <p className="animate-fade-in text-xs text-rose-400">
+              <p className="animate-fade-in text-xs text-[#fb7185]">
                 Must be between 10 and 300 seconds.
               </p>
             )}
@@ -380,27 +380,27 @@ export default function XiaomiMeshSettingsPage() {
 
           {/* Save status messages */}
           {saveStatus === "success" && saveMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-              <p className="text-xs text-emerald-400">{saveMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+              <p className="text-xs text-[#4ade80]">{saveMsg}</p>
             </div>
           )}
           {saveStatus === "error" && saveMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-              <p className="text-xs text-rose-400">{saveMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+              <p className="text-xs text-[#fb7185]">{saveMsg}</p>
             </div>
           )}
 
           {/* Test connection status */}
           {testStatus === "success" && testMsg && (
-            <div className="space-y-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
+            <div className="space-y-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
               <div className="flex items-center gap-2">
-                <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-                <p className="text-xs text-emerald-400">{testMsg}</p>
+                <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+                <p className="text-xs text-[#4ade80]">{testMsg}</p>
               </div>
               {testDetails && (
-                <div className="space-y-0.5 pl-6 text-xs text-emerald-400/80">
+                <div className="space-y-0.5 pl-6 text-xs text-[#4ade80]/80">
                   {testDetails.router_model && (
                     <p>Model: {testDetails.router_model}</p>
                   )}
@@ -418,9 +418,9 @@ export default function XiaomiMeshSettingsPage() {
             </div>
           )}
           {testStatus === "error" && testMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-              <p className="text-xs text-rose-400">{testMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+              <p className="text-xs text-[#fb7185]">{testMsg}</p>
             </div>
           )}
 
@@ -435,7 +435,7 @@ export default function XiaomiMeshSettingsPage() {
               variant="outline"
               onClick={handleTest}
               disabled={!ip || !ipValid || testStatus === "loading"}
-              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55 disabled:opacity-40"
+              className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55 disabled:opacity-40"
             >
               {testStatus === "loading" ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />

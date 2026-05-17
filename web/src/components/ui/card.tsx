@@ -9,7 +9,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "relative overflow-hidden rounded-lg border border-mesh-border-strong bg-mesh-surface-1 text-mesh-text shadow-[0_0_0_1px_rgba(96,144,212,0.20),0_1px_0_rgba(255,255,255,0.03)_inset]",
+      "relative overflow-hidden rounded-lg border border-mesh-border bg-mesh-surface-1 text-mesh-text shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45),inset_0_1px_0_rgba(255,255,255,0.03)]",
       "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-mesh-accent/10",
       "transition-[border-color,background-color] duration-150 ease-out hover:border-mesh-accent/40",
       selected && "card-selected",

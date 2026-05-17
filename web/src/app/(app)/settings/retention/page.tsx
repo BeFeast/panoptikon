@@ -190,7 +190,7 @@ export default function RetentionSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -199,13 +199,13 @@ export default function RetentionSettingsPage() {
 
         {/* Retention Policies Section */}
         <SettingsSection
-          icon={<Clock className="h-4 w-4 text-amber-400" />}
-          iconBg="bg-amber-500/10"
+          icon={<Clock className="h-4 w-4 text-[#fbbf24]" />}
+          iconBg="bg-[#fbbf24]/10"
           title="Retention Policies"
           description="Configure how long different types of data are kept."
         >
           <div className="space-y-1.5">
-            <Label htmlFor="ret-traffic" className="text-xs text-slate-400">
+            <Label htmlFor="ret-traffic" className="text-xs text-mesh-text-dim">
               Traffic samples retention (hours)
             </Label>
             <div className="relative">
@@ -215,28 +215,28 @@ export default function RetentionSettingsPage() {
                 min={1}
                 value={retTrafficHours}
                 onChange={(e) => setRetTrafficHours(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
+                className={`border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   trafficValid === "valid"
-                    ? "border-emerald-500/40"
+                    ? "border-[#4ade80]/40"
                     : trafficValid === "error"
-                      ? "border-rose-500/40"
+                      ? "border-[#fb7185]/40"
                       : ""
                 }`}
                 placeholder="48"
               />
               {trafficValid === "valid" && (
                 <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
-                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  <CheckCircle className="h-4 w-4 text-[#4ade80]" />
                 </div>
               )}
             </div>
             {trafficValid === "error" && (
-              <p className="animate-fade-in text-xs text-rose-400">Must be at least 1 hour.</p>
+              <p className="animate-fade-in text-xs text-[#fb7185]">Must be at least 1 hour.</p>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="ret-alerts" className="text-xs text-slate-400">
+            <Label htmlFor="ret-alerts" className="text-xs text-mesh-text-dim">
               Acknowledged alerts retention (days)
             </Label>
             <div className="relative">
@@ -246,28 +246,28 @@ export default function RetentionSettingsPage() {
                 min={1}
                 value={retAlertsDays}
                 onChange={(e) => setRetAlertsDays(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
+                className={`border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   alertsValid === "valid"
-                    ? "border-emerald-500/40"
+                    ? "border-[#4ade80]/40"
                     : alertsValid === "error"
-                      ? "border-rose-500/40"
+                      ? "border-[#fb7185]/40"
                       : ""
                 }`}
                 placeholder="90"
               />
               {alertsValid === "valid" && (
                 <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
-                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  <CheckCircle className="h-4 w-4 text-[#4ade80]" />
                 </div>
               )}
             </div>
             {alertsValid === "error" && (
-              <p className="animate-fade-in text-xs text-rose-400">Must be at least 1 day.</p>
+              <p className="animate-fade-in text-xs text-[#fb7185]">Must be at least 1 day.</p>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="ret-agent" className="text-xs text-slate-400">
+            <Label htmlFor="ret-agent" className="text-xs text-mesh-text-dim">
               Agent reports retention (days)
             </Label>
             <div className="relative">
@@ -277,36 +277,36 @@ export default function RetentionSettingsPage() {
                 min={1}
                 value={retAgentDays}
                 onChange={(e) => setRetAgentDays(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
+                className={`border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   agentValid === "valid"
-                    ? "border-emerald-500/40"
+                    ? "border-[#4ade80]/40"
                     : agentValid === "error"
-                      ? "border-rose-500/40"
+                      ? "border-[#fb7185]/40"
                       : ""
                 }`}
                 placeholder="7"
               />
               {agentValid === "valid" && (
                 <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
-                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  <CheckCircle className="h-4 w-4 text-[#4ade80]" />
                 </div>
               )}
             </div>
             {agentValid === "error" && (
-              <p className="animate-fade-in text-xs text-rose-400">Must be at least 1 day.</p>
+              <p className="animate-fade-in text-xs text-[#fb7185]">Must be at least 1 day.</p>
             )}
           </div>
 
           {retentionStatus === "success" && retentionMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-              <p className="text-xs text-emerald-400">{retentionMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+              <p className="text-xs text-[#4ade80]">{retentionMsg}</p>
             </div>
           )}
           {retentionStatus === "error" && retentionMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-              <p className="text-xs text-rose-400">{retentionMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+              <p className="text-xs text-[#fb7185]">{retentionMsg}</p>
             </div>
           )}
 
@@ -319,28 +319,28 @@ export default function RetentionSettingsPage() {
 
         {/* Database Maintenance Section */}
         <SettingsSection
-          icon={<HardDrive className="h-4 w-4 text-slate-400" />}
-          iconBg="bg-slate-500/10"
+          icon={<HardDrive className="h-4 w-4 text-mesh-text-dim" />}
+          iconBg="bg-mesh-text-mute/10"
           title="Database Maintenance"
           description="Monitor database size and reclaim unused space."
         >
-          <div className="flex items-center justify-between rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2">
-            <span className="text-xs text-slate-400">Current DB size</span>
+          <div className="flex items-center justify-between rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2">
+            <span className="text-xs text-mesh-text-dim">Current DB size</span>
             <span className="text-sm font-medium text-white">
               {dbSizeBytes !== null ? formatBytes(dbSizeBytes) : "..."}
             </span>
           </div>
 
           {vacuumStatus === "success" && vacuumMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-              <p className="text-xs text-emerald-400">{vacuumMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+              <p className="text-xs text-[#4ade80]">{vacuumMsg}</p>
             </div>
           )}
           {vacuumStatus === "error" && vacuumMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-              <p className="text-xs text-rose-400">{vacuumMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+              <p className="text-xs text-[#fb7185]">{vacuumMsg}</p>
             </div>
           )}
 
@@ -348,7 +348,7 @@ export default function RetentionSettingsPage() {
             variant="outline"
             onClick={handleVacuum}
             disabled={vacuumStatus === "loading"}
-            className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55 disabled:opacity-40"
+            className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55 disabled:opacity-40"
           >
             {vacuumStatus === "loading" ? (
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />

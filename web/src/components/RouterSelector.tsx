@@ -11,9 +11,9 @@ interface RouterSelectorProps {
 }
 
 const primaryActive =
-  "border-cyan-400/40 bg-cyan-400/15 text-cyan-100 hover:bg-cyan-400/20";
+  "border-mesh-accent/40 bg-mesh-accent/15 text-mesh-text hover:bg-mesh-accent/20";
 const inactive =
-  "border-mesh-border-strong bg-mesh-surface-1 text-slate-400 hover:bg-mesh-surface-2 hover:text-white";
+  "border-mesh-border bg-mesh-surface-1 text-mesh-text-dim hover:bg-mesh-surface-2 hover:text-white";
 
 export function RouterSelector({ active }: RouterSelectorProps) {
   return (
@@ -46,8 +46,8 @@ export function RouterSelector({ active }: RouterSelectorProps) {
         asChild
         className={
           active === "xiaomi"
-            ? "border-orange-400/40 bg-orange-400/12 text-orange-100 hover:bg-orange-400/20"
-            : "border-mesh-border-strong bg-mesh-surface-1 text-slate-500 hover:bg-mesh-surface-2 hover:text-white"
+            ? "border-[#fbbf24]/40 bg-[#fbbf24]/12 text-[#fbbf24] hover:bg-[#fbbf24]/20"
+            : "border-mesh-border bg-mesh-surface-1 text-mesh-text-mute hover:bg-mesh-surface-2 hover:text-white"
         }
       >
         <Link href="/router/xiaomi">

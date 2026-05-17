@@ -224,7 +224,7 @@ export default function AssetDetailContent() {
       <div>
         <Link
           href="/devices"
-          className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white transition-colors mb-3"
+          className="inline-flex items-center gap-1 text-sm text-mesh-text-dim hover:text-white transition-colors mb-3"
         >
           <ArrowLeft size={14} />
           Back to Devices
@@ -325,7 +325,7 @@ function AssetHeader({
     <div className="space-y-3">
       {/* Name + Status */}
       <div className="flex items-center gap-3 flex-wrap">
-        <DeviceIcon size={24} className="text-slate-400" />
+        <DeviceIcon size={24} className="text-mesh-text-dim" />
         {edit.field === "custom_name" ? (
           <InlineEditInput
             value={edit.value}
@@ -337,17 +337,17 @@ function AssetHeader({
           />
         ) : (
           <h1
-            className="text-2xl font-semibold text-white cursor-pointer hover:text-cyan-300 transition-colors group flex items-center gap-2"
+            className="text-2xl font-semibold text-white cursor-pointer hover:text-[#67e8f9] transition-colors group flex items-center gap-2"
             onClick={() => setEdit({ field: "custom_name", value: device.custom_name || device.name || device.hostname || "" })}
           >
             {effectiveName}
-            <Pencil size={14} className="text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <Pencil size={14} className="text-mesh-text-mute opacity-0 group-hover:opacity-100 transition-opacity" />
           </h1>
         )}
 
         {/* Type badge */}
         {effectiveType && (
-          <Badge variant="outline" className="border-slate-600 text-slate-400">
+          <Badge variant="outline" className="border-mesh-text-mute text-mesh-text-dim">
             {typeLabel}
           </Badge>
         )}
@@ -364,15 +364,15 @@ function AssetHeader({
           variant="outline"
           className={
             device.is_online
-              ? "border-emerald-500/50 text-emerald-400"
-              : "border-rose-500/50 text-rose-400"
+              ? "border-[#4ade80]/50 text-[#4ade80]"
+              : "border-[#fb7185]/50 text-[#fb7185]"
           }
         >
           <span
             className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
               device.is_online
-                ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-                : "bg-rose-400 ring-2 ring-rose-400/30 status-glow-offline"
+                ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
+                : "bg-[#fb7185] ring-2 ring-[#fb7185]/30 status-glow-offline"
             }`}
           />
           {device.is_online ? "Online" : "Offline"}
@@ -380,11 +380,11 @@ function AssetHeader({
       </div>
 
       {/* Tags + Location + Owner */}
-      <div className="flex items-center gap-3 flex-wrap text-sm text-slate-400">
+      <div className="flex items-center gap-3 flex-wrap text-sm text-mesh-text-dim">
         {/* Tags (editable) */}
         {edit.field === "tags" ? (
           <div className="flex items-center gap-1">
-            <Tag size={14} className="text-slate-500" />
+            <Tag size={14} className="text-mesh-text-mute" />
             <InlineEditInput
               value={edit.value}
               onChange={(v) => setEdit({ ...edit, value: v })}
@@ -396,31 +396,31 @@ function AssetHeader({
           </div>
         ) : (
           <span
-            className="flex items-center gap-1 cursor-pointer hover:text-cyan-300 transition-colors group"
+            className="flex items-center gap-1 cursor-pointer hover:text-[#67e8f9] transition-colors group"
             onClick={() => setEdit({ field: "tags", value: device.tags || "" })}
           >
-            <Tag size={14} className="text-slate-500" />
+            <Tag size={14} className="text-mesh-text-mute" />
             {tags.length > 0 ? (
               <span className="flex gap-1">
                 {tags.map((tag) => (
-                  <Badge key={tag} variant="outline" className="border-mesh-border-strong text-slate-400 text-[10px]">
+                  <Badge key={tag} variant="outline" className="border-mesh-border-strong text-mesh-text-dim text-[10px]">
                     {tag}
                   </Badge>
                 ))}
               </span>
             ) : (
-              <span className="text-slate-600 italic">Add tags</span>
+              <span className="text-mesh-text-mute italic">Add tags</span>
             )}
-            <Pencil size={10} className="text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <Pencil size={10} className="text-mesh-text-mute opacity-0 group-hover:opacity-100 transition-opacity" />
           </span>
         )}
 
-        <span className="text-slate-700">|</span>
+        <span className="text-mesh-border-strong">|</span>
 
         {/* Location (editable) */}
         {edit.field === "location" ? (
           <div className="flex items-center gap-1">
-            <MapPin size={14} className="text-slate-500" />
+            <MapPin size={14} className="text-mesh-text-mute" />
             <InlineEditInput
               value={edit.value}
               onChange={(v) => setEdit({ ...edit, value: v })}
@@ -432,21 +432,21 @@ function AssetHeader({
           </div>
         ) : (
           <span
-            className="flex items-center gap-1 cursor-pointer hover:text-cyan-300 transition-colors group"
+            className="flex items-center gap-1 cursor-pointer hover:text-[#67e8f9] transition-colors group"
             onClick={() => setEdit({ field: "location", value: device.location || "" })}
           >
-            <MapPin size={14} className="text-slate-500" />
-            {device.location || <span className="text-slate-600 italic">Add location</span>}
-            <Pencil size={10} className="text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <MapPin size={14} className="text-mesh-text-mute" />
+            {device.location || <span className="text-mesh-text-mute italic">Add location</span>}
+            <Pencil size={10} className="text-mesh-text-mute opacity-0 group-hover:opacity-100 transition-opacity" />
           </span>
         )}
 
-        <span className="text-slate-700">|</span>
+        <span className="text-mesh-border-strong">|</span>
 
         {/* Owner (editable) */}
         {edit.field === "owner" ? (
           <div className="flex items-center gap-1">
-            <User size={14} className="text-slate-500" />
+            <User size={14} className="text-mesh-text-mute" />
             <InlineEditInput
               value={edit.value}
               onChange={(v) => setEdit({ ...edit, value: v })}
@@ -458,12 +458,12 @@ function AssetHeader({
           </div>
         ) : (
           <span
-            className="flex items-center gap-1 cursor-pointer hover:text-cyan-300 transition-colors group"
+            className="flex items-center gap-1 cursor-pointer hover:text-[#67e8f9] transition-colors group"
             onClick={() => setEdit({ field: "owner", value: device.owner || "" })}
           >
-            <User size={14} className="text-slate-500" />
-            {device.owner || <span className="text-slate-600 italic">Add owner</span>}
-            <Pencil size={10} className="text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <User size={14} className="text-mesh-text-mute" />
+            {device.owner || <span className="text-mesh-text-mute italic">Add owner</span>}
+            <Pencil size={10} className="text-mesh-text-mute opacity-0 group-hover:opacity-100 transition-opacity" />
           </span>
         )}
       </div>
@@ -537,8 +537,8 @@ function InfoGrid({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {/* Hardware Column */}
-      <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4">
-        <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
+      <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+        <h3 className="text-sm font-medium text-mesh-text-dim mb-3 flex items-center gap-2">
           <HardDrive size={14} />
           Hardware
         </h3>
@@ -594,8 +594,8 @@ function InfoGrid({
       </div>
 
       {/* Software Column */}
-      <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4">
-        <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
+      <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+        <h3 className="text-sm font-medium text-mesh-text-dim mb-3 flex items-center gap-2">
           <Monitor size={14} />
           Software
         </h3>
@@ -613,7 +613,7 @@ function InfoGrid({
           />
           {portScan && portScan.ports.length > 0 && (
             <div>
-              <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
+              <span className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
                 Open Ports
               </span>
               <div className="mt-1 flex flex-wrap gap-1">
@@ -623,7 +623,7 @@ function InfoGrid({
                     <Badge
                       key={`${p.port}/${p.protocol}`}
                       variant="outline"
-                      className="border-slate-600 text-slate-300 text-[10px]"
+                      className="border-mesh-text-mute text-mesh-text text-[10px]"
                     >
                       {p.port}/{p.protocol}
                       {p.service ? ` (${p.service})` : ""}
@@ -652,14 +652,14 @@ function InfoGrid({
       </div>
 
       {/* Network Column */}
-      <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4">
-        <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
+      <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+        <h3 className="text-sm font-medium text-mesh-text-dim mb-3 flex items-center gap-2">
           <Cpu size={14} />
           Network
         </h3>
         <div className="space-y-2">
           <div>
-            <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
+            <span className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
               IP Address(es)
             </span>
             <div className="mt-0.5">
@@ -670,7 +670,7 @@ function InfoGrid({
                   </p>
                 ))
               ) : (
-                <p className="text-sm text-slate-600">None</p>
+                <p className="text-sm text-mesh-text-mute">None</p>
               )}
             </div>
           </div>
@@ -683,8 +683,8 @@ function InfoGrid({
 
       {/* Asset Management (extra row) */}
       {(device.purchase_date || device.warranty_expiry) && (
-        <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4 md:col-span-2 lg:col-span-3">
-          <h3 className="text-sm font-medium text-slate-400 mb-3 flex items-center gap-2">
+        <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4 md:col-span-2 lg:col-span-3">
+          <h3 className="text-sm font-medium text-mesh-text-dim mb-3 flex items-center gap-2">
             <Tag size={14} />
             Asset Management
           </h3>
@@ -728,8 +728,8 @@ function LiveMetricsPanel({ chartData }: { chartData: ChartPoint[] }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       {/* CPU Chart */}
-      <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4">
-        <h2 className="text-sm font-medium text-slate-400 mb-3">CPU Usage %</h2>
+      <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+        <h2 className="text-sm font-medium text-mesh-text-dim mb-3">CPU Usage %</h2>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
@@ -771,8 +771,8 @@ function LiveMetricsPanel({ chartData }: { chartData: ChartPoint[] }) {
       </div>
 
       {/* RAM Chart */}
-      <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4">
-        <h2 className="text-sm font-medium text-slate-400 mb-3">RAM Usage %</h2>
+      <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+        <h2 className="text-sm font-medium text-mesh-text-dim mb-3">RAM Usage %</h2>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
@@ -829,26 +829,26 @@ function LinkedSources({
   if (!hasAny) return null;
 
   return (
-    <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4">
-      <h3 className="text-sm font-medium text-slate-400 mb-3">Linked Sources</h3>
+    <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+      <h3 className="text-sm font-medium text-mesh-text-dim mb-3">Linked Sources</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {/* Network Device */}
-        <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-3">
+        <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-3">
           <div className="flex items-center gap-2 mb-2">
-            <Monitor size={14} className="text-slate-500" />
-            <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
+            <Monitor size={14} className="text-mesh-text-mute" />
+            <span className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
               Network Device
             </span>
           </div>
           <div className="space-y-1 text-sm">
             {device.ips.length > 0 && (
-              <p className="text-slate-300 font-mono text-xs">{device.ips[0]}</p>
+              <p className="text-mesh-text font-mono text-xs">{device.ips[0]}</p>
             )}
-            <p className="text-slate-500 font-mono text-xs">{device.mac}</p>
+            <p className="text-mesh-text-mute font-mono text-xs">{device.mac}</p>
           </div>
           <Link
             href={`/devices`}
-            className="mt-2 inline-flex items-center gap-1 text-xs text-cyan-300 hover:text-cyan-200 transition-colors"
+            className="mt-2 inline-flex items-center gap-1 text-xs text-[#67e8f9] hover:text-mesh-text transition-colors"
           >
             View in Devices <ExternalLink size={10} />
           </Link>
@@ -856,73 +856,73 @@ function LinkedSources({
 
         {/* Agent */}
         {device.agent ? (
-          <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-3">
+          <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-3">
             <div className="flex items-center gap-2 mb-2">
-              <Server size={14} className="text-slate-500" />
-              <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
+              <Server size={14} className="text-mesh-text-mute" />
+              <span className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
                 Agent
               </span>
               <span
                 className={`inline-block h-1.5 w-1.5 rounded-full ${
                   device.agent.is_online
-                    ? "bg-emerald-400 ring-2 ring-emerald-400/30"
-                    : "bg-rose-400 ring-2 ring-rose-400/30"
+                    ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30"
+                    : "bg-[#fb7185] ring-2 ring-[#fb7185]/30"
                 }`}
               />
             </div>
             <div className="space-y-1 text-sm">
-              <p className="text-slate-300">{device.agent.name || device.agent.id.slice(0, 8)}</p>
+              <p className="text-mesh-text">{device.agent.name || device.agent.id.slice(0, 8)}</p>
               {device.agent.cpu_percent != null && (
-                <p className="text-slate-500 text-xs">CPU: {formatPercent(device.agent.cpu_percent)}</p>
+                <p className="text-mesh-text-mute text-xs">CPU: {formatPercent(device.agent.cpu_percent)}</p>
               )}
             </div>
             <Link
               href={`/agents/detail?id=${device.agent.id}`}
-              className="mt-2 inline-flex items-center gap-1 text-xs text-cyan-300 hover:text-cyan-200 transition-colors"
+              className="mt-2 inline-flex items-center gap-1 text-xs text-[#67e8f9] hover:text-mesh-text transition-colors"
             >
               Agent Detail <ExternalLink size={10} />
             </Link>
           </div>
         ) : (
-          <div className="rounded-md border border-dashed border-mesh-border-strong bg-mesh-surface-1 p-3 flex flex-col items-center justify-center text-center">
-            <Server size={16} className="text-slate-700 mb-1" />
-            <p className="text-xs text-slate-600">No Agent Linked</p>
+          <div className="rounded-md border border-dashed border-mesh-border bg-mesh-surface-1 p-3 flex flex-col items-center justify-center text-center">
+            <Server size={16} className="text-mesh-border-strong mb-1" />
+            <p className="text-xs text-mesh-text-mute">No Agent Linked</p>
           </div>
         )}
 
         {/* SSH Target */}
         {linkedSshTarget ? (
-          <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-3">
+          <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-3">
             <div className="flex items-center gap-2 mb-2">
-              <Terminal size={14} className="text-slate-500" />
-              <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
+              <Terminal size={14} className="text-mesh-text-mute" />
+              <span className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
                 SSH Target
               </span>
               <span
                 className={`inline-block h-1.5 w-1.5 rounded-full ${
                   linkedSshTarget.is_online
-                    ? "bg-emerald-400 ring-2 ring-emerald-400/30"
-                    : "bg-rose-400 ring-2 ring-rose-400/30"
+                    ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30"
+                    : "bg-[#fb7185] ring-2 ring-[#fb7185]/30"
                 }`}
               />
             </div>
             <div className="space-y-1 text-sm">
-              <p className="text-slate-300">{linkedSshTarget.name}</p>
-              <p className="text-slate-500 font-mono text-xs">
+              <p className="text-mesh-text">{linkedSshTarget.name}</p>
+              <p className="text-mesh-text-mute font-mono text-xs">
                 {linkedSshTarget.username}@{linkedSshTarget.host}:{linkedSshTarget.port}
               </p>
             </div>
             <Link
               href="/ssh-hosts"
-              className="mt-2 inline-flex items-center gap-1 text-xs text-cyan-300 hover:text-cyan-200 transition-colors"
+              className="mt-2 inline-flex items-center gap-1 text-xs text-[#67e8f9] hover:text-mesh-text transition-colors"
             >
               SSH Hosts <ExternalLink size={10} />
             </Link>
           </div>
         ) : (
-          <div className="rounded-md border border-dashed border-mesh-border-strong bg-mesh-surface-1 p-3 flex flex-col items-center justify-center text-center">
-            <Terminal size={16} className="text-slate-700 mb-1" />
-            <p className="text-xs text-slate-600">No SSH Target Linked</p>
+          <div className="rounded-md border border-dashed border-mesh-border bg-mesh-surface-1 p-3 flex flex-col items-center justify-center text-center">
+            <Terminal size={16} className="text-mesh-border-strong mb-1" />
+            <p className="text-xs text-mesh-text-mute">No SSH Target Linked</p>
           </div>
         )}
       </div>
@@ -948,12 +948,12 @@ function NotesSection({
   cancelEdit: () => void;
 }) {
   return (
-    <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4">
-      <h3 className="text-sm font-medium text-slate-400 mb-3">Notes</h3>
+    <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+      <h3 className="text-sm font-medium text-mesh-text-dim mb-3">Notes</h3>
       {edit.field === "notes" ? (
         <div className="space-y-2">
           <textarea
-            className="w-full min-h-[80px] rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-cyan-500"
+            className="w-full min-h-[80px] rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-accent"
             value={edit.value}
             onChange={(e) => setEdit({ ...edit, value: e.target.value })}
             placeholder="Add notes about this asset..."
@@ -973,7 +973,7 @@ function NotesSection({
               size="sm"
               variant="ghost"
               onClick={cancelEdit}
-              className="h-7 px-2 text-xs text-slate-400"
+              className="h-7 px-2 text-xs text-mesh-text-dim"
             >
               <X size={12} className="mr-1" />
               Cancel
@@ -982,13 +982,13 @@ function NotesSection({
         </div>
       ) : (
         <p
-          className="text-sm text-slate-300 cursor-pointer hover:text-cyan-300 transition-colors group"
+          className="text-sm text-mesh-text cursor-pointer hover:text-[#67e8f9] transition-colors group"
           onClick={() => setEdit({ field: "notes", value: device.notes || "" })}
         >
           {device.notes || (
-            <span className="text-slate-600 italic">Click to add notes...</span>
+            <span className="text-mesh-text-mute italic">Click to add notes...</span>
           )}
-          <Pencil size={10} className="inline ml-2 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+          <Pencil size={10} className="inline ml-2 text-mesh-text-mute opacity-0 group-hover:opacity-100 transition-opacity" />
         </p>
       )}
     </div>
@@ -999,7 +999,7 @@ function NotesSection({
 
 function DetectedBadge() {
   return (
-    <Badge variant="outline" className="ml-1 border-teal-500/50 text-teal-400 text-[9px] px-1 py-0">
+    <Badge variant="outline" className="ml-1 border-mesh-accent/50 text-mesh-accent text-[9px] px-1 py-0">
       detected
     </Badge>
   );
@@ -1019,7 +1019,7 @@ function InfoRow({
   if (!value) return null;
   return (
     <div>
-      <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
+      <span className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
         {label}
       </span>
       <p className={`text-sm text-white flex items-center ${mono ? "font-mono tabular-nums" : ""}`}>
@@ -1058,7 +1058,7 @@ function EditableInfoRow({
   if (edit.field === field) {
     return (
       <div>
-        <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
+        <span className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
           {label}
         </span>
         <InlineEditInput
@@ -1080,12 +1080,12 @@ function EditableInfoRow({
         className="cursor-pointer hover:bg-mesh-surface-2 rounded px-1 -mx-1 py-0.5 transition-colors group"
         onClick={() => setEdit({ field, value: manualValue || "" })}
       >
-        <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
+        <span className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
           {label}
         </span>
         <p className="text-sm text-white flex items-center gap-1">
-          {value || <span className="text-slate-600 italic">Not set</span>}
-          <Pencil size={10} className="text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+          {value || <span className="text-mesh-text-mute italic">Not set</span>}
+          <Pencil size={10} className="text-mesh-text-mute opacity-0 group-hover:opacity-100 transition-opacity" />
         </p>
       </div>
     );
@@ -1097,12 +1097,12 @@ function EditableInfoRow({
       className="cursor-pointer hover:bg-mesh-surface-2 rounded px-1 -mx-1 py-0.5 transition-colors group"
       onClick={() => setEdit({ field, value: manualValue || "" })}
     >
-      <span className="text-xs font-medium uppercase tracking-wider text-slate-500">
+      <span className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
         {label}
       </span>
       <p className="text-sm text-white flex items-center gap-1">
         {value}
-        <Pencil size={10} className="text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <Pencil size={10} className="text-mesh-text-mute opacity-0 group-hover:opacity-100 transition-opacity" />
       </p>
     </div>
   );
@@ -1137,7 +1137,7 @@ function InlineEditInput({
         placeholder={placeholder}
         autoFocus
         disabled={saving}
-        className={`h-7 bg-mesh-surface-1 border-mesh-border-strong text-white text-sm ${className || ""}`}
+        className={`h-7 bg-mesh-surface-1 border-mesh-border text-white text-sm ${className || ""}`}
       />
       <Button
         size="sm"
@@ -1151,7 +1151,7 @@ function InlineEditInput({
         size="sm"
         variant="ghost"
         onClick={onCancel}
-        className="h-7 w-7 p-0 text-slate-400"
+        className="h-7 w-7 p-0 text-mesh-text-dim"
       >
         <X size={12} />
       </Button>

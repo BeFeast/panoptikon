@@ -230,7 +230,7 @@ export function Sidebar() {
           "group/nav relative flex items-center gap-3 rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150",
           active
             ? "bg-mesh-accent/10 text-mesh-accent"
-            : "text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white",
+            : "text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-white",
           sidebarCollapsed && "justify-center px-0",
         )}
       >
@@ -249,7 +249,7 @@ export function Sidebar() {
           <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
           <TooltipContent
             side="right"
-            className="border-mesh-border-strong bg-mesh-surface-1 animate-in slide-in-from-left-1 duration-150"
+            className="border-mesh-border bg-mesh-surface-1 animate-in slide-in-from-left-1 duration-150"
           >
             <p>{item.label}</p>
           </TooltipContent>
@@ -275,16 +275,16 @@ export function Sidebar() {
             className="flex items-center gap-2.5 min-w-0"
             aria-label="Panoptikon"
           >
-            <BrandMark size={28} className="text-sky-300" />
+            <BrandMark size={28} className="text-mesh-accent" />
             {!sidebarCollapsed && (
-              <span className="font-mono text-[13px] font-semibold uppercase tracking-[0.08em] text-slate-100 truncate">
+              <span className="font-mono text-[13px] font-semibold uppercase tracking-[0.08em] text-mesh-text truncate">
                 Panoptikon
               </span>
             )}
           </Link>
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-mesh-surface-2/55 hover:text-slate-300"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-mesh-text-mute transition-colors hover:bg-mesh-surface-2/55 hover:text-mesh-text"
             aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {sidebarCollapsed ? (
@@ -319,7 +319,7 @@ export function Sidebar() {
                     >
                       <button
                         onClick={() => toggleGroup(group.key)}
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors text-slate-500 hover:bg-mesh-surface-2/55 hover:text-slate-300"
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors text-mesh-text-mute hover:bg-mesh-surface-2/55 hover:text-mesh-text"
                         aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.label}`}
                         aria-expanded={!isCollapsed}
                       >
@@ -333,7 +333,7 @@ export function Sidebar() {
                       <span
                         className={cn(
                           "cursor-default select-none text-[10px] font-semibold uppercase tracking-[0.08em]",
-                          hasActive ? "text-mesh-accent" : "text-slate-500",
+                          hasActive ? "text-mesh-accent" : "text-mesh-text-mute",
                         )}
                       >
                         {group.label}
@@ -376,19 +376,19 @@ export function Sidebar() {
                     className={cn(
                       "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
                       wsConnected
-                        ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-                        : "bg-slate-600",
+                        ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
+                        : "bg-mesh-text-mute",
                     )}
                   />
                 </TooltipTrigger>
                 <TooltipContent
                   side="top"
-                  className="border-mesh-border-strong bg-mesh-surface-1"
+                  className="border-mesh-border bg-mesh-surface-1"
                 >
                   <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
                 </TooltipContent>
               </Tooltip>
-              <p className="text-[10px] text-slate-700">
+              <p className="text-[10px] text-mesh-border-strong">
                 Panoptikon {serverVersion ?? "..."}
               </p>
             </div>
@@ -400,14 +400,14 @@ export function Sidebar() {
                     className={cn(
                       "inline-block h-1.5 w-1.5 rounded-full",
                       wsConnected
-                        ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-                        : "bg-slate-600",
+                        ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
+                        : "bg-mesh-text-mute",
                     )}
                   />
                 </TooltipTrigger>
                 <TooltipContent
                   side="right"
-                  className="border-mesh-border-strong bg-mesh-surface-1"
+                  className="border-mesh-border bg-mesh-surface-1"
                 >
                   <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
                 </TooltipContent>

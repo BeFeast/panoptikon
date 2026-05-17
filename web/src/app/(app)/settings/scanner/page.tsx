@@ -165,7 +165,7 @@ export default function ScannerSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -175,12 +175,12 @@ export default function ScannerSettingsPage() {
         {/* Scan Configuration Section */}
         <SettingsSection
           icon={<Search className="h-4 w-4 text-mesh-accent" />}
-          iconBg="bg-cyan-500/10"
+          iconBg="bg-mesh-accent/10"
           title="Scan Configuration"
           description="Configure ARP scanning interval, target subnets, and ping sweep."
         >
           <div className="space-y-1.5">
-            <Label htmlFor="scan-interval" className="text-xs text-slate-400">
+            <Label htmlFor="scan-interval" className="text-xs text-mesh-text-dim">
               Scan interval (seconds)
             </Label>
             <div className="relative">
@@ -190,30 +190,30 @@ export default function ScannerSettingsPage() {
                 min={10}
                 value={scanInterval}
                 onChange={(e) => setScanInterval(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
+                className={`border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   intervalValid === "valid"
-                    ? "border-emerald-500/40"
+                    ? "border-[#4ade80]/40"
                     : intervalValid === "error"
-                      ? "border-rose-500/40"
+                      ? "border-[#fb7185]/40"
                       : ""
                 }`}
                 placeholder="60"
               />
               {intervalValid === "valid" && (
                 <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
-                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  <CheckCircle className="h-4 w-4 text-[#4ade80]" />
                 </div>
               )}
             </div>
             {intervalValid === "error" && (
-              <p className="animate-fade-in text-xs text-rose-400">
+              <p className="animate-fade-in text-xs text-[#fb7185]">
                 Must be at least 10 seconds.
               </p>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="scan-subnets" className="text-xs text-slate-400">
+            <Label htmlFor="scan-subnets" className="text-xs text-mesh-text-dim">
               Subnets to scan (comma-separated CIDR)
             </Label>
             <Input
@@ -221,10 +221,10 @@ export default function ScannerSettingsPage() {
               type="text"
               value={scanSubnets}
               onChange={(e) => setScanSubnets(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+              className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="10.0.0.0/24, 192.168.1.0/24"
             />
-            <p className="text-[10px] text-slate-600">
+            <p className="text-[10px] text-mesh-text-mute">
               Leave empty to auto-detect from router interfaces.
             </p>
           </div>
@@ -236,7 +236,7 @@ export default function ScannerSettingsPage() {
               aria-checked={pingSweepEnabled}
               onClick={() => setPingSweepEnabled((v) => !v)}
               className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                pingSweepEnabled ? "bg-cyan-500" : "bg-slate-700"
+                pingSweepEnabled ? "bg-mesh-accent" : "bg-mesh-border-strong"
               }`}
             >
               <span
@@ -245,7 +245,7 @@ export default function ScannerSettingsPage() {
                 }`}
               />
             </button>
-            <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setPingSweepEnabled((v) => !v)}>
+            <Label className="text-xs text-mesh-text-dim cursor-pointer" onClick={() => setPingSweepEnabled((v) => !v)}>
               Active ping sweep
             </Label>
           </div>
@@ -253,8 +253,8 @@ export default function ScannerSettingsPage() {
 
         {/* Enrichment Sources Section */}
         <SettingsSection
-          icon={<Layers className="h-4 w-4 text-violet-400" />}
-          iconBg="bg-violet-500/10"
+          icon={<Layers className="h-4 w-4 text-[#a78bfa]" />}
+          iconBg="bg-[#a78bfa]/10"
           title="Enrichment Sources"
           description="Enable additional discovery methods for richer device data."
         >
@@ -267,7 +267,7 @@ export default function ScannerSettingsPage() {
                 data-testid="nmap-toggle"
                 onClick={() => setNmapEnabled((v) => !v)}
                 className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                  nmapEnabled ? "bg-cyan-500" : "bg-slate-700"
+                  nmapEnabled ? "bg-mesh-accent" : "bg-mesh-border-strong"
                 }`}
               >
                 <span
@@ -277,10 +277,10 @@ export default function ScannerSettingsPage() {
                 />
               </button>
               <div>
-                <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setNmapEnabled((v) => !v)}>
+                <Label className="text-xs text-mesh-text-dim cursor-pointer" onClick={() => setNmapEnabled((v) => !v)}>
                   Nmap service detection
                 </Label>
-                <p className="text-[10px] text-slate-600">
+                <p className="text-[10px] text-mesh-text-mute">
                   Scan open ports and detect services (requires nmap)
                 </p>
               </div>
@@ -294,7 +294,7 @@ export default function ScannerSettingsPage() {
                 data-testid="netbios-toggle"
                 onClick={() => setNetbiosEnabled((v) => !v)}
                 className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                  netbiosEnabled ? "bg-cyan-500" : "bg-slate-700"
+                  netbiosEnabled ? "bg-mesh-accent" : "bg-mesh-border-strong"
                 }`}
               >
                 <span
@@ -304,10 +304,10 @@ export default function ScannerSettingsPage() {
                 />
               </button>
               <div>
-                <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setNetbiosEnabled((v) => !v)}>
+                <Label className="text-xs text-mesh-text-dim cursor-pointer" onClick={() => setNetbiosEnabled((v) => !v)}>
                   NetBIOS name lookup
                 </Label>
-                <p className="text-[10px] text-slate-600">
+                <p className="text-[10px] text-mesh-text-mute">
                   Discover Windows machine names (requires nmblookup)
                 </p>
               </div>
@@ -321,7 +321,7 @@ export default function ScannerSettingsPage() {
                 data-testid="snmp-toggle"
                 onClick={() => setSnmpEnabled((v) => !v)}
                 className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                  snmpEnabled ? "bg-cyan-500" : "bg-slate-700"
+                  snmpEnabled ? "bg-mesh-accent" : "bg-mesh-border-strong"
                 }`}
               >
                 <span
@@ -331,10 +331,10 @@ export default function ScannerSettingsPage() {
                 />
               </button>
               <div>
-                <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setSnmpEnabled((v) => !v)}>
+                <Label className="text-xs text-mesh-text-dim cursor-pointer" onClick={() => setSnmpEnabled((v) => !v)}>
                   SNMP discovery
                 </Label>
-                <p className="text-[10px] text-slate-600">
+                <p className="text-[10px] text-mesh-text-mute">
                   Query managed switches/routers via SNMP (requires snmpget)
                 </p>
               </div>
@@ -348,7 +348,7 @@ export default function ScannerSettingsPage() {
                 data-testid="http-fingerprint-toggle"
                 onClick={() => setHttpFingerprintEnabled((v) => !v)}
                 className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full transition-colors ${
-                  httpFingerprintEnabled ? "bg-cyan-500" : "bg-slate-700"
+                  httpFingerprintEnabled ? "bg-mesh-accent" : "bg-mesh-border-strong"
                 }`}
               >
                 <span
@@ -358,10 +358,10 @@ export default function ScannerSettingsPage() {
                 />
               </button>
               <div>
-                <Label className="text-xs text-slate-400 cursor-pointer" onClick={() => setHttpFingerprintEnabled((v) => !v)}>
+                <Label className="text-xs text-mesh-text-dim cursor-pointer" onClick={() => setHttpFingerprintEnabled((v) => !v)}>
                   HTTP fingerprinting
                 </Label>
-                <p className="text-[10px] text-slate-600">
+                <p className="text-[10px] text-mesh-text-mute">
                   Detect web servers and infer device type from HTTP headers
                 </p>
               </div>
@@ -371,15 +371,15 @@ export default function ScannerSettingsPage() {
 
         {/* Status messages */}
         {scannerStatus === "success" && scannerMsg && (
-          <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-            <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-            <p className="text-xs text-emerald-400">{scannerMsg}</p>
+          <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+            <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+            <p className="text-xs text-[#4ade80]">{scannerMsg}</p>
           </div>
         )}
         {scannerStatus === "error" && scannerMsg && (
-          <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-            <p className="text-xs text-rose-400">{scannerMsg}</p>
+          <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+            <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+            <p className="text-xs text-[#fb7185]">{scannerMsg}</p>
           </div>
         )}
 

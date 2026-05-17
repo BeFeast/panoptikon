@@ -124,19 +124,19 @@ export default function AgentsPage() {
       </div>
 
       {/* Agents table */}
-      <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95">
+      <div className="rounded-lg border border-mesh-border bg-mesh-surface-1/95">
         {agents === null ? (
           <Table>
             <TableHeader>
               <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                <TableHead className="text-slate-500">Name</TableHead>
-                <TableHead className="text-slate-500">Hostname</TableHead>
-                <TableHead className="text-slate-500">OS</TableHead>
-                <TableHead className="text-slate-500">Platform</TableHead>
-                <TableHead className="text-slate-500">Version</TableHead>
-                <TableHead className="text-slate-500">CPU Trend</TableHead>
-                <TableHead className="text-slate-500">Last Report</TableHead>
-                <TableHead className="text-slate-500">Status</TableHead>
+                <TableHead className="text-mesh-text-mute">Name</TableHead>
+                <TableHead className="text-mesh-text-mute">Hostname</TableHead>
+                <TableHead className="text-mesh-text-mute">OS</TableHead>
+                <TableHead className="text-mesh-text-mute">Platform</TableHead>
+                <TableHead className="text-mesh-text-mute">Version</TableHead>
+                <TableHead className="text-mesh-text-mute">CPU Trend</TableHead>
+                <TableHead className="text-mesh-text-mute">Last Report</TableHead>
+                <TableHead className="text-mesh-text-mute">Status</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -172,14 +172,14 @@ export default function AgentsPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                <TableHead className="text-slate-500">Name</TableHead>
-                <TableHead className="text-slate-500">Hostname</TableHead>
-                <TableHead className="text-slate-500">OS</TableHead>
-                <TableHead className="text-slate-500">Platform</TableHead>
-                <TableHead className="text-slate-500">Version</TableHead>
-                <TableHead className="text-slate-500">CPU Trend</TableHead>
-                <TableHead className="text-slate-500">Last Report</TableHead>
-                <TableHead className="text-slate-500">Status</TableHead>
+                <TableHead className="text-mesh-text-mute">Name</TableHead>
+                <TableHead className="text-mesh-text-mute">Hostname</TableHead>
+                <TableHead className="text-mesh-text-mute">OS</TableHead>
+                <TableHead className="text-mesh-text-mute">Platform</TableHead>
+                <TableHead className="text-mesh-text-mute">Version</TableHead>
+                <TableHead className="text-mesh-text-mute">CPU Trend</TableHead>
+                <TableHead className="text-mesh-text-mute">Last Report</TableHead>
+                <TableHead className="text-mesh-text-mute">Status</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -187,7 +187,7 @@ export default function AgentsPage() {
               {agents.map((agent) => (
                 <TableRow
                   key={agent.id}
-                  className="border-mesh-border-strong cursor-pointer hover:bg-mesh-surface-2/55 transition-colors"
+                  className="border-mesh-border cursor-pointer hover:bg-mesh-surface-2/55 transition-colors"
                   onClick={() => router.push(`/agents/detail?id=${agent.id}`)}
                 >
                   <TableCell className="font-medium text-white">
@@ -218,21 +218,21 @@ export default function AgentsPage() {
                             autoFocus
                             value={renameValue}
                             onChange={(e) => setRenameValue(e.target.value)}
-                            className="h-7 w-40 bg-mesh-surface-1 border-blue-500 text-white text-sm px-2"
+                            className="h-7 w-40 bg-mesh-surface-1 border-mesh-primary text-white text-sm px-2"
                           />
-                          <button type="submit" className="text-emerald-400 hover:text-emerald-300 transition-colors">
+                          <button type="submit" className="text-[#4ade80] hover:text-[#4ade80] transition-colors">
                             <Check size={14} />
                           </button>
                           <button
                             type="button"
                             onClick={() => { setRenamingId(null); setRenameError(null); }}
-                            className="text-slate-500 hover:text-slate-300"
+                            className="text-mesh-text-mute hover:text-mesh-text"
                           >
                             <X size={14} />
                           </button>
                         </div>
                         {renameError && (
-                          <p className="text-xs text-rose-400">{renameError}</p>
+                          <p className="text-xs text-[#fb7185]">{renameError}</p>
                         )}
                       </form>
                     ) : (
@@ -241,7 +241,7 @@ export default function AgentsPage() {
                           <span className="flex items-center gap-1">
                             <Link
                               href={`/agents/detail?id=${agent.id}`}
-                              className="hover:text-blue-400 transition-colors hover:underline"
+                              className="hover:text-mesh-primary transition-colors hover:underline"
                               onClick={(e) => e.stopPropagation()}
                             >
                               {agent.name ?? agent.id.slice(0, 8)}
@@ -254,13 +254,13 @@ export default function AgentsPage() {
                                 setRenameValue(agent.name ?? "");
                                 setRenameError(null);
                               }}
-                              className="opacity-0 group-hover:opacity-50 text-slate-400 hover:text-gray-200"
+                              className="opacity-0 group-hover:opacity-50 text-mesh-text-dim hover:text-mesh-text"
                             >
                               <Pencil size={12} />
                             </button>
                           </span>
                           {agent.cpu_name && (
-                            <span className="w-full min-w-0 truncate text-xs font-normal text-slate-500" title={agent.cpu_name}>
+                            <span className="w-full min-w-0 truncate text-xs font-normal text-mesh-text-mute" title={agent.cpu_name}>
                               {agent.cpu_name}
                             </span>
                           )}
@@ -268,22 +268,22 @@ export default function AgentsPage() {
                       </span>
                     )}
                   </TableCell>
-                  <TableCell className="font-mono tabular-nums text-slate-400">
+                  <TableCell className="font-mono tabular-nums text-mesh-text-dim">
                     {agent.hostname ?? "—"}
                   </TableCell>
-                  <TableCell className="text-slate-400">
+                  <TableCell className="text-mesh-text-dim">
                     {agent.os_name ? `${agent.os_name} ${agent.os_version ?? ""}` : "—"}
                   </TableCell>
-                  <TableCell className="text-slate-400">
+                  <TableCell className="text-mesh-text-dim">
                     {agent.platform ?? "—"}
                   </TableCell>
-                  <TableCell className="font-mono tabular-nums text-xs text-slate-500">
+                  <TableCell className="font-mono tabular-nums text-xs text-mesh-text-mute">
                     {agent.version ?? "—"}
                   </TableCell>
                   <TableCell>
                     <SparklineChart data={sparklines[agent.id] ?? []} />
                   </TableCell>
-                  <TableCell className="text-slate-400">
+                  <TableCell className="text-mesh-text-dim">
                     {agent.last_report_at ? timeAgo(agent.last_report_at) : "Never"}
                   </TableCell>
                   <TableCell>
@@ -292,7 +292,7 @@ export default function AgentsPage() {
                   <TableCell>
                     <button
                       onClick={(e) => { e.stopPropagation(); setPendingDelete(agent); }}
-                      className="rounded p-1 text-slate-600 hover:bg-rose-500/10 hover:text-rose-400 transition-colors"
+                      className="rounded p-1 text-mesh-text-mute hover:bg-[#fb7185]/10 hover:text-[#fb7185] transition-colors"
                       title="Delete agent"
                     >
                       <Trash2 size={14} />
@@ -307,15 +307,15 @@ export default function AgentsPage() {
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={!!pendingDelete} onOpenChange={(v) => { if (!v) setPendingDelete(null); }}>
-        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
+        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
           <AlertDialogHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10">
-                <AlertTriangle className="h-5 w-5 text-rose-400" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fb7185]/10">
+                <AlertTriangle className="h-5 w-5 text-[#fb7185]" />
               </div>
               <AlertDialogTitle className="text-white">Delete agent?</AlertDialogTitle>
             </div>
-            <AlertDialogDescription className="text-slate-400 pl-[52px]">
+            <AlertDialogDescription className="text-mesh-text-dim pl-[52px]">
               <span className="font-medium text-white">
                 {pendingDelete?.name ?? pendingDelete?.id.slice(0, 8)}
               </span>{" "}
@@ -324,7 +324,7 @@ export default function AgentsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
-              className="border-mesh-border-strong bg-transparent text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white"
+              className="border-mesh-border bg-transparent text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-white"
               disabled={deleting}
             >
               Cancel
@@ -333,7 +333,7 @@ export default function AgentsPage() {
               onClick={handleDelete}
               disabled={deleting}
               autoFocus
-              className="bg-rose-600 text-white hover:bg-rose-500"
+              className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
             >
               {deleting ? "Deleting…" : "Delete"}
             </AlertDialogAction>
@@ -353,15 +353,15 @@ function StatusBadge({ online }: { online: boolean }) {
       variant="outline"
       className={
         online
-          ? "border-emerald-500/50 text-emerald-400"
-          : "border-rose-500/50 text-rose-400"
+          ? "border-[#4ade80]/50 text-[#4ade80]"
+          : "border-[#fb7185]/50 text-[#fb7185]"
       }
     >
       <span
         className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
           online
-            ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-            : "bg-rose-400 ring-2 ring-rose-400/30 status-glow-offline"
+            ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
+            : "bg-[#fb7185] ring-2 ring-[#fb7185]/30 status-glow-offline"
         }`}
       />
       {online ? "Online" : "Offline"}
@@ -413,7 +413,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
           Add Agent
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-full max-w-[680px] border-mesh-border-strong bg-mesh-surface-1/95">
+      <DialogContent className="w-full max-w-[680px] border-mesh-border bg-mesh-surface-1/95">
         <DialogHeader>
           <DialogTitle className="text-white">
             {result ? "Agent Created" : "Add New Agent"}
@@ -436,7 +436,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
                 onKeyDown={(e) => e.key === "Enter" && handleCreate()}
               />
             </div>
-            {error && <p className="text-sm text-rose-400">{error}</p>}
+            {error && <p className="text-sm text-[#fb7185]">{error}</p>}
             <Button onClick={handleCreate} disabled={loading || !name.trim()} className="w-full">
               {loading ? "Creating…" : "Generate API Key"}
             </Button>
@@ -444,15 +444,15 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
         ) : (
           <div className="min-w-0 space-y-4 pt-2">
             <div className="space-y-2">
-              <Label className="text-slate-400">API Key</Label>
+              <Label className="text-mesh-text-dim">API Key</Label>
               <CopyBlock text={result.api_key} />
-              <p className="text-xs text-amber-400">
+              <p className="text-xs text-[#fbbf24]">
                 ⚠ Save this key — it won&apos;t be shown again.
               </p>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-400">Install Command</Label>
+              <Label className="text-mesh-text-dim">Install Command</Label>
               <Tabs defaultValue="linux-amd64">
                 <TabsList className="bg-mesh-surface-1">
                   <TabsTrigger value="linux-amd64">Linux x86_64</TabsTrigger>
@@ -522,15 +522,15 @@ function CopyBlock({ text }: { text: string }) {
   };
 
   return (
-    <div className="overflow-hidden rounded-md border border-mesh-border-strong bg-mesh-surface-1/95">
+    <div className="overflow-hidden rounded-md border border-mesh-border bg-mesh-surface-1/95">
       {/* Header bar: copy button lives here, completely separate from scroll area */}
       <div className="flex items-center justify-end border-b border-mesh-border px-3 py-1.5">
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+          className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-mesh-text-mute transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
         >
           {copied ? (
-            <Check className="h-3 w-3 text-emerald-400" />
+            <Check className="h-3 w-3 text-[#4ade80]" />
           ) : (
             <Copy className="h-3 w-3" />
           )}
@@ -540,7 +540,7 @@ function CopyBlock({ text }: { text: string }) {
       {/* Scrollable pre — independent of the header bar */}
       <pre
         ref={preRef}
-        className="overflow-x-auto p-3 font-mono text-xs text-slate-300 select-all cursor-text"
+        className="overflow-x-auto p-3 font-mono text-xs text-mesh-text select-all cursor-text"
       >
         {text}
       </pre>

@@ -133,20 +133,20 @@ export default function SshHostsPage() {
         </div>
 
         {/* Table */}
-        <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95">
+        <div className="rounded-lg border border-mesh-border bg-mesh-surface-1/95">
           {targets === null ? (
             <Table>
               <TableHeader>
                 <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                  <TableHead className="text-slate-500">Name</TableHead>
-                  <TableHead className="text-slate-500">Host</TableHead>
-                  <TableHead className="text-slate-500">OS</TableHead>
-                  <TableHead className="text-slate-500">CPU</TableHead>
-                  <TableHead className="text-slate-500">RAM</TableHead>
-                  <TableHead className="text-slate-500">Disk</TableHead>
-                  <TableHead className="text-slate-500">Uptime</TableHead>
-                  <TableHead className="text-slate-500">Last Seen</TableHead>
-                  <TableHead className="text-slate-500">Status</TableHead>
+                  <TableHead className="text-mesh-text-mute">Name</TableHead>
+                  <TableHead className="text-mesh-text-mute">Host</TableHead>
+                  <TableHead className="text-mesh-text-mute">OS</TableHead>
+                  <TableHead className="text-mesh-text-mute">CPU</TableHead>
+                  <TableHead className="text-mesh-text-mute">RAM</TableHead>
+                  <TableHead className="text-mesh-text-mute">Disk</TableHead>
+                  <TableHead className="text-mesh-text-mute">Uptime</TableHead>
+                  <TableHead className="text-mesh-text-mute">Last Seen</TableHead>
+                  <TableHead className="text-mesh-text-mute">Status</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -179,15 +179,15 @@ export default function SshHostsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                  <TableHead className="text-slate-500">Name</TableHead>
-                  <TableHead className="text-slate-500">Host</TableHead>
-                  <TableHead className="text-slate-500">OS</TableHead>
-                  <TableHead className="text-slate-500">CPU</TableHead>
-                  <TableHead className="text-slate-500">RAM</TableHead>
-                  <TableHead className="text-slate-500">Disk</TableHead>
-                  <TableHead className="text-slate-500">Uptime</TableHead>
-                  <TableHead className="text-slate-500">Last Seen</TableHead>
-                  <TableHead className="text-slate-500">Status</TableHead>
+                  <TableHead className="text-mesh-text-mute">Name</TableHead>
+                  <TableHead className="text-mesh-text-mute">Host</TableHead>
+                  <TableHead className="text-mesh-text-mute">OS</TableHead>
+                  <TableHead className="text-mesh-text-mute">CPU</TableHead>
+                  <TableHead className="text-mesh-text-mute">RAM</TableHead>
+                  <TableHead className="text-mesh-text-mute">Disk</TableHead>
+                  <TableHead className="text-mesh-text-mute">Uptime</TableHead>
+                  <TableHead className="text-mesh-text-mute">Last Seen</TableHead>
+                  <TableHead className="text-mesh-text-mute">Status</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -197,35 +197,35 @@ export default function SshHostsPage() {
                     <TableCell className="font-medium text-white">
                       {target.name}
                     </TableCell>
-                    <TableCell className="font-mono tabular-nums text-slate-400">
+                    <TableCell className="font-mono tabular-nums text-mesh-text-dim">
                       {target.host}:{target.port}
                     </TableCell>
-                    <TableCell className="text-slate-400">
+                    <TableCell className="text-mesh-text-dim">
                       {target.os_name
                         ? `${target.os_name} ${target.os_version ?? ""}`
                         : "—"}
                     </TableCell>
-                    <TableCell className="font-mono tabular-nums text-slate-400">
+                    <TableCell className="font-mono tabular-nums text-mesh-text-dim">
                       {target.cpu_percent != null
                         ? `${target.cpu_percent.toFixed(1)}%`
                         : "—"}
                     </TableCell>
-                    <TableCell className="text-slate-400">
+                    <TableCell className="text-mesh-text-dim">
                       {target.mem_total != null && target.mem_used != null
                         ? `${formatBytes(target.mem_used)} / ${formatBytes(target.mem_total)}`
                         : "—"}
                     </TableCell>
-                    <TableCell className="text-slate-400">
+                    <TableCell className="text-mesh-text-dim">
                       {target.disk_total != null && target.disk_used != null
                         ? `${formatBytes(target.disk_used)} / ${formatBytes(target.disk_total)}`
                         : "—"}
                     </TableCell>
-                    <TableCell className="text-slate-400">
+                    <TableCell className="text-mesh-text-dim">
                       {target.uptime_seconds != null
                         ? formatUptime(target.uptime_seconds)
                         : "—"}
                     </TableCell>
-                    <TableCell className="text-slate-400">
+                    <TableCell className="text-mesh-text-dim">
                       {target.last_report_at
                         ? timeAgo(target.last_report_at)
                         : "Never"}
@@ -238,7 +238,7 @@ export default function SshHostsPage() {
                         <button
                           onClick={() => handleTestConnection(target.id)}
                           disabled={testing === target.id}
-                          className="rounded p-1 text-slate-600 hover:bg-blue-500/10 hover:text-blue-400 transition-colors disabled:opacity-50"
+                          className="rounded p-1 text-mesh-text-mute hover:bg-mesh-primary/10 hover:text-mesh-primary transition-colors disabled:opacity-50"
                           title="Test connection"
                         >
                           {testing === target.id ? (
@@ -249,14 +249,14 @@ export default function SshHostsPage() {
                         </button>
                         <button
                           onClick={() => setEditTarget(target)}
-                          className="rounded p-1 text-slate-600 hover:bg-mesh-surface-2/55 hover:text-white transition-colors"
+                          className="rounded p-1 text-mesh-text-mute hover:bg-mesh-surface-2/55 hover:text-white transition-colors"
                           title="Edit"
                         >
                           <Pencil size={14} />
                         </button>
                         <button
                           onClick={() => setPendingDelete(target)}
-                          className="rounded p-1 text-slate-600 hover:bg-rose-500/10 hover:text-rose-400 transition-colors"
+                          className="rounded p-1 text-mesh-text-mute hover:bg-[#fb7185]/10 hover:text-[#fb7185] transition-colors"
                           title="Delete"
                         >
                           <Trash2 size={14} />
@@ -285,22 +285,22 @@ export default function SshHostsPage() {
 
         {/* Delete confirmation */}
         <AlertDialog open={!!pendingDelete} onOpenChange={(v) => { if (!v) setPendingDelete(null); }}>
-          <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
             <AlertDialogHeader>
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10">
-                  <AlertTriangle className="h-5 w-5 text-rose-400" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fb7185]/10">
+                  <AlertTriangle className="h-5 w-5 text-[#fb7185]" />
                 </div>
                 <AlertDialogTitle className="text-white">Delete SSH host?</AlertDialogTitle>
               </div>
-              <AlertDialogDescription className="text-slate-400 pl-[52px]">
+              <AlertDialogDescription className="text-mesh-text-dim pl-[52px]">
                 <span className="font-medium text-white">{pendingDelete?.name}</span>{" "}
                 and all its collected metrics will be permanently removed.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel
-                className="border-mesh-border-strong bg-transparent text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white"
+                className="border-mesh-border bg-transparent text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-white"
                 disabled={deleting}
               >
                 Cancel
@@ -309,7 +309,7 @@ export default function SshHostsPage() {
                 onClick={handleDelete}
                 disabled={deleting}
                 autoFocus
-                className="bg-rose-600 text-white hover:bg-rose-500"
+                className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
               >
                 {deleting ? "Deleting..." : "Delete"}
               </AlertDialogAction>
@@ -329,15 +329,15 @@ function StatusBadge({ online }: { online: boolean }) {
       variant="outline"
       className={
         online
-          ? "border-emerald-500/50 text-emerald-400"
-          : "border-rose-500/50 text-rose-400"
+          ? "border-[#4ade80]/50 text-[#4ade80]"
+          : "border-[#fb7185]/50 text-[#fb7185]"
       }
     >
       <span
         className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
           online
-            ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-            : "bg-rose-400 ring-2 ring-rose-400/30 status-glow-offline"
+            ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
+            : "bg-[#fb7185] ring-2 ring-[#fb7185]/30 status-glow-offline"
         }`}
       />
       {online ? "Online" : "Offline"}
@@ -442,7 +442,7 @@ function SshTargetFormDialog({
   };
 
   const dialogContent = (
-    <DialogContent className="w-full max-w-[520px] border-mesh-border-strong bg-mesh-surface-1/95">
+    <DialogContent className="w-full max-w-[520px] border-mesh-border bg-mesh-surface-1/95">
       <DialogHeader>
         <DialogTitle className="text-white">
           {isEdit ? "Edit SSH Host" : "Add SSH Host"}
@@ -496,7 +496,7 @@ function SshTargetFormDialog({
             <select
               value={authType}
               onChange={(e) => setAuthType(e.target.value as "password" | "key")}
-              className="flex h-10 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="flex h-10 w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
             >
               <option value="password">Password</option>
               <option value="key">SSH Key</option>
@@ -509,7 +509,7 @@ function SshTargetFormDialog({
             <Label>
               Password
               {isEdit && existing?.has_password && (
-                <span className="ml-2 text-xs text-slate-500">(leave empty to keep current)</span>
+                <span className="ml-2 text-xs text-mesh-text-mute">(leave empty to keep current)</span>
               )}
             </Label>
             <Input
@@ -524,11 +524,11 @@ function SshTargetFormDialog({
             <Label>
               Private Key (PEM)
               {isEdit && existing?.has_private_key && (
-                <span className="ml-2 text-xs text-slate-500">(leave empty to keep current)</span>
+                <span className="ml-2 text-xs text-mesh-text-mute">(leave empty to keep current)</span>
               )}
             </Label>
             <textarea
-              className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2 text-sm text-white font-mono placeholder:text-mesh-text-mute focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 min-h-[100px]"
+              className="w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-3 py-2 text-sm text-white font-mono placeholder:text-mesh-text-mute focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary min-h-[100px]"
               placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
               value={privateKey}
               onChange={(e) => setPrivateKey(e.target.value)}
@@ -547,7 +547,7 @@ function SshTargetFormDialog({
             />
           </div>
           <div className="flex items-end pb-1">
-            <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-mesh-text-dim cursor-pointer">
               <input
                 type="checkbox"
                 checked={enabled}
@@ -559,7 +559,7 @@ function SshTargetFormDialog({
           </div>
         </div>
 
-        {error && <p className="text-sm text-rose-400">{error}</p>}
+        {error && <p className="text-sm text-[#fb7185]">{error}</p>}
 
         <Button onClick={handleSubmit} disabled={loading} className="w-full">
           {loading ? "Saving..." : isEdit ? "Update" : "Add SSH Host"}

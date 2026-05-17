@@ -94,97 +94,97 @@ const emptyState: DirectoryState = {
 
 const iconMap: Record<string, { icon: ReactNode; iconBg: string }> = {
   "/settings/router": {
-    icon: <Router className="h-4 w-4 text-cyan-300" />,
-    iconBg: "bg-cyan-500/10 ring-cyan-400/20",
+    icon: <Router className="h-4 w-4 text-[#67e8f9]" />,
+    iconBg: "bg-mesh-accent/10 ring-mesh-accent/20",
   },
   "/settings/pfsense": {
-    icon: <ShieldCheck className="h-4 w-4 text-sky-300" />,
-    iconBg: "bg-sky-500/10 ring-sky-400/20",
+    icon: <ShieldCheck className="h-4 w-4 text-mesh-accent" />,
+    iconBg: "bg-mesh-accent/10 ring-mesh-accent/20",
   },
   "/settings/xiaomi-mesh": {
-    icon: <Wifi className="h-4 w-4 text-rose-300" />,
-    iconBg: "bg-rose-500/10 ring-rose-400/20",
+    icon: <Wifi className="h-4 w-4 text-[#fb7185]" />,
+    iconBg: "bg-[#fb7185]/10 ring-[#fb7185]/20",
   },
   "/settings/dns": {
-    icon: <Server className="h-4 w-4 text-teal-300" />,
-    iconBg: "bg-teal-500/10 ring-teal-400/20",
+    icon: <Server className="h-4 w-4 text-mesh-accent" />,
+    iconBg: "bg-mesh-accent/10 ring-mesh-accent/20",
   },
   "/caddy": {
-    icon: <Globe className="h-4 w-4 text-blue-300" />,
-    iconBg: "bg-blue-500/10 ring-blue-400/20",
+    icon: <Globe className="h-4 w-4 text-mesh-primary" />,
+    iconBg: "bg-mesh-primary/10 ring-mesh-primary/20",
   },
   "/settings/cloudflare-tunnel": {
-    icon: <Globe className="h-4 w-4 text-orange-300" />,
-    iconBg: "bg-orange-500/10 ring-orange-400/20",
+    icon: <Globe className="h-4 w-4 text-[#fbbf24]" />,
+    iconBg: "bg-[#fbbf24]/10 ring-[#fbbf24]/20",
   },
   "/settings/tailscale": {
-    icon: <Network className="h-4 w-4 text-indigo-300" />,
-    iconBg: "bg-indigo-500/10 ring-indigo-400/20",
+    icon: <Network className="h-4 w-4 text-[#818cf8]" />,
+    iconBg: "bg-[#818cf8]/10 ring-[#818cf8]/20",
   },
   "/settings/webhook": {
-    icon: <Bell className="h-4 w-4 text-violet-300" />,
-    iconBg: "bg-violet-500/10 ring-violet-400/20",
+    icon: <Bell className="h-4 w-4 text-[#a78bfa]" />,
+    iconBg: "bg-[#a78bfa]/10 ring-[#a78bfa]/20",
   },
   "/settings/email": {
-    icon: <Mail className="h-4 w-4 text-emerald-300" />,
-    iconBg: "bg-emerald-500/10 ring-emerald-400/20",
+    icon: <Mail className="h-4 w-4 text-[#4ade80]" />,
+    iconBg: "bg-[#4ade80]/10 ring-[#4ade80]/20",
   },
   "/settings/snmp": {
-    icon: <Radio className="h-4 w-4 text-amber-300" />,
-    iconBg: "bg-amber-500/10 ring-amber-400/20",
+    icon: <Radio className="h-4 w-4 text-[#fbbf24]" />,
+    iconBg: "bg-[#fbbf24]/10 ring-[#fbbf24]/20",
   },
   "/settings/alert-rules": {
-    icon: <ShieldAlert className="h-4 w-4 text-amber-300" />,
-    iconBg: "bg-amber-500/10 ring-amber-400/20",
+    icon: <ShieldAlert className="h-4 w-4 text-[#fbbf24]" />,
+    iconBg: "bg-[#fbbf24]/10 ring-[#fbbf24]/20",
   },
   "/settings/scanner": {
-    icon: <Radar className="h-4 w-4 text-cyan-300" />,
-    iconBg: "bg-cyan-500/10 ring-cyan-400/20",
+    icon: <Radar className="h-4 w-4 text-[#67e8f9]" />,
+    iconBg: "bg-mesh-accent/10 ring-mesh-accent/20",
   },
   "/settings/speedtest": {
-    icon: <Radar className="h-4 w-4 text-blue-300" />,
-    iconBg: "bg-blue-500/10 ring-blue-400/20",
+    icon: <Radar className="h-4 w-4 text-mesh-primary" />,
+    iconBg: "bg-mesh-primary/10 ring-mesh-primary/20",
   },
   "/settings/dns-blocklists": {
-    icon: <ShieldBan className="h-4 w-4 text-rose-300" />,
-    iconBg: "bg-rose-500/10 ring-rose-400/20",
+    icon: <ShieldBan className="h-4 w-4 text-[#fb7185]" />,
+    iconBg: "bg-[#fb7185]/10 ring-[#fb7185]/20",
   },
   "/settings/dns-security": {
-    icon: <ShieldCheck className="h-4 w-4 text-emerald-300" />,
-    iconBg: "bg-emerald-500/10 ring-emerald-400/20",
+    icon: <ShieldCheck className="h-4 w-4 text-[#4ade80]" />,
+    iconBg: "bg-[#4ade80]/10 ring-[#4ade80]/20",
   },
   "/settings/retention": {
-    icon: <Database className="h-4 w-4 text-amber-300" />,
-    iconBg: "bg-amber-500/10 ring-amber-400/20",
+    icon: <Database className="h-4 w-4 text-[#fbbf24]" />,
+    iconBg: "bg-[#fbbf24]/10 ring-[#fbbf24]/20",
   },
   "/settings/audit-log": {
-    icon: <FileText className="h-4 w-4 text-indigo-300" />,
-    iconBg: "bg-indigo-500/10 ring-indigo-400/20",
+    icon: <FileText className="h-4 w-4 text-[#818cf8]" />,
+    iconBg: "bg-[#818cf8]/10 ring-[#818cf8]/20",
   },
   "/settings/config-backup": {
-    icon: <HardDrive className="h-4 w-4 text-emerald-300" />,
-    iconBg: "bg-emerald-500/10 ring-emerald-400/20",
+    icon: <HardDrive className="h-4 w-4 text-[#4ade80]" />,
+    iconBg: "bg-[#4ade80]/10 ring-[#4ade80]/20",
   },
   "/settings/users": {
-    icon: <Users className="h-4 w-4 text-blue-300" />,
-    iconBg: "bg-blue-500/10 ring-blue-400/20",
+    icon: <Users className="h-4 w-4 text-mesh-primary" />,
+    iconBg: "bg-mesh-primary/10 ring-mesh-primary/20",
   },
   "/settings/password": {
-    icon: <Lock className="h-4 w-4 text-slate-300" />,
-    iconBg: "bg-slate-500/10 ring-slate-400/20",
+    icon: <Lock className="h-4 w-4 text-mesh-text" />,
+    iconBg: "bg-mesh-text-mute/10 ring-mesh-text-dim/20",
   },
   "/settings/advanced": {
-    icon: <Settings2 className="h-4 w-4 text-slate-300" />,
-    iconBg: "bg-slate-500/10 ring-slate-400/20",
+    icon: <Settings2 className="h-4 w-4 text-mesh-text" />,
+    iconBg: "bg-mesh-text-mute/10 ring-mesh-text-dim/20",
   },
 };
 
 const toneClass: Record<Tone, string> = {
-  connected: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
-  enabled: "border-cyan-400/30 bg-cyan-400/10 text-cyan-200",
-  disabled: "border-mesh-border-strong bg-mesh-surface-1/95 text-slate-400",
-  error: "border-rose-400/30 bg-rose-400/10 text-rose-200",
-  neutral: "border-mesh-border-strong bg-mesh-surface-1/95 text-slate-300",
+  connected: "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]",
+  enabled: "border-mesh-accent/30 bg-mesh-accent/10 text-mesh-text",
+  disabled: "border-mesh-border bg-mesh-surface-1/95 text-mesh-text-dim",
+  error: "border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]",
+  neutral: "border-mesh-border bg-mesh-surface-1/95 text-mesh-text",
 };
 
 function formatBytes(bytes: number) {
@@ -461,36 +461,36 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-4 border-b border-mesh-border pb-5 md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
             <h1 className="text-2xl font-semibold tracking-tight text-white">Settings</h1>
-            <p className="max-w-2xl text-sm leading-6 text-slate-400">
+            <p className="max-w-2xl text-sm leading-6 text-mesh-text-dim">
               Configure router clients, network services, security controls, and operator access.
             </p>
           </div>
           <div className="relative w-full md:w-80">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mesh-text-mute" />
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Filter settings"
               aria-label="Filter settings"
-              className="h-10 border-mesh-border-strong bg-mesh-surface-1 pl-9 text-sm text-white placeholder:text-mesh-text-mute"
+              className="h-10 border-mesh-border bg-mesh-surface-1 pl-9 text-sm text-white placeholder:text-mesh-text-mute"
             />
           </div>
         </div>
 
         <div className="mt-7 space-y-8">
           {groups.length === 0 ? (
-            <div className="border border-mesh-border-strong bg-mesh-surface-1/70 px-4 py-8 text-center text-sm text-slate-400">
+            <div className="border border-mesh-border bg-mesh-surface-1/70 px-4 py-8 text-center text-sm text-mesh-text-dim">
               No settings match this filter.
             </div>
           ) : (
             groups.map((group) => (
               <section key={group.label} className="space-y-3">
                 <div className="flex min-h-10 flex-col justify-end gap-1">
-                  <h2 className="text-xs font-medium uppercase tracking-wider text-slate-500">
+                  <h2 className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
                     {group.label}
                   </h2>
                   {group.subtitle && (
-                    <p className="text-xs leading-5 text-slate-500">{group.subtitle}</p>
+                    <p className="text-xs leading-5 text-mesh-text-mute">{group.subtitle}</p>
                   )}
                 </div>
 
@@ -501,7 +501,7 @@ export default function SettingsPage() {
 
                     return (
                       <Link key={item.href} href={item.href} className="group block h-full">
-                        <Card className="h-full overflow-hidden rounded border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)] transition-colors group-hover:border-mesh-accent/40 group-hover:bg-mesh-surface-2/55">
+                        <Card className="h-full overflow-hidden rounded border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)] transition-colors group-hover:border-mesh-accent/40 group-hover:bg-mesh-surface-2/55">
                           <CardContent className="flex h-full min-h-[7.25rem] flex-col gap-4 p-4">
                             <div className="flex items-start gap-3">
                               {visual && (
@@ -519,9 +519,9 @@ export default function SettingsPage() {
                                   <p className="truncate text-sm font-medium leading-5 text-white">
                                     {item.title}
                                   </p>
-                                  <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-slate-600 transition-colors group-hover:text-cyan-300" />
+                                  <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-mesh-text-mute transition-colors group-hover:text-[#67e8f9]" />
                                 </div>
-                                <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">
+                                <p className="mt-1 line-clamp-2 text-xs leading-5 text-mesh-text-mute">
                                   {item.description}
                                 </p>
                               </div>
@@ -537,7 +537,7 @@ export default function SettingsPage() {
                                 {status.label}
                               </span>
                               {status.detail && (
-                                <span className="min-w-0 truncate text-right font-mono text-[11px] text-slate-500">
+                                <span className="min-w-0 truncate text-right font-mono text-[11px] text-mesh-text-mute">
                                   {status.detail}
                                 </span>
                               )}

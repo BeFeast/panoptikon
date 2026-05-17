@@ -90,7 +90,7 @@ export default function PfSenseRouter() {
       <PfSenseStatusHeader status={status} />
 
       <Tabs value={tab} onValueChange={setTab} className="w-full min-w-0">
-        <TabsList className="h-auto w-full justify-start gap-1 border border-mesh-border-strong bg-mesh-surface-1 p-1">
+        <TabsList className="h-auto w-full justify-start gap-1 border border-mesh-border bg-mesh-surface-1 p-1">
           <TabsTrigger value="system" className={tabTriggerClass}>
             <Monitor className="h-3.5 w-3.5" />
             System

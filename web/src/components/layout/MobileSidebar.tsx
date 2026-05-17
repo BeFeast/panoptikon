@@ -27,7 +27,7 @@ export function MobileSidebar() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex h-9 w-9 items-center justify-center rounded-md text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white transition-colors md:hidden"
+        className="flex h-9 w-9 items-center justify-center rounded-md text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-white transition-colors md:hidden"
         aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
@@ -67,7 +67,7 @@ export function MobileSidebar() {
                   >
                     <button
                       onClick={() => toggleGroup(group.key)}
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors text-slate-500 hover:bg-mesh-surface-2/55 hover:text-slate-300"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors text-mesh-text-mute hover:bg-mesh-surface-2/55 hover:text-mesh-text"
                       aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.label}`}
                       aria-expanded={!isCollapsed}
                     >
@@ -81,7 +81,7 @@ export function MobileSidebar() {
                     <span
                       className={cn(
                         "cursor-default select-none text-[11px] font-semibold uppercase tracking-wider",
-                        hasActive ? "text-mesh-accent" : "text-slate-500",
+                        hasActive ? "text-mesh-accent" : "text-mesh-text-mute",
                       )}
                     >
                       {group.label}
@@ -109,7 +109,7 @@ export function MobileSidebar() {
                               "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
                               active
                                 ? "bg-mesh-accent/10 text-mesh-accent"
-                                : "text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white",
+                                : "text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-white",
                             )}
                           >
                             {active && (
@@ -135,7 +135,7 @@ export function MobileSidebar() {
                   "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
                   pathname?.startsWith("/settings")
                     ? "bg-mesh-accent/10 text-mesh-accent"
-                    : "text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white",
+                    : "text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-white",
                 )}
               >
                 {pathname?.startsWith("/settings") && (
@@ -154,14 +154,14 @@ export function MobileSidebar() {
                 className={cn(
                   "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
                   wsConnected
-                    ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-                    : "bg-slate-600"
+                    ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
+                    : "bg-mesh-text-mute"
                 )}
               />
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-mesh-text-mute">
                 {wsConnected ? "Live" : "Disconnected"}
               </span>
-              <p className="ml-auto text-[10px] text-slate-700">
+              <p className="ml-auto text-[10px] text-mesh-border-strong">
                 Panoptikon {serverVersion ?? "..."}
               </p>
             </div>

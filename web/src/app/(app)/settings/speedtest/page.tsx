@@ -120,7 +120,7 @@ export default function SpeedtestSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -128,14 +128,14 @@ export default function SpeedtestSettingsPage() {
         </div>
 
         <SettingsSection
-          icon={<Radar className="h-4 w-4 text-blue-400" />}
-          iconBg="bg-blue-500/10"
+          icon={<Radar className="h-4 w-4 text-mesh-primary" />}
+          iconBg="bg-mesh-primary/10"
           title="Speed Test Configuration"
           description="Configure automatic speed tests and result retention."
         >
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="speedtest-auto" className="text-xs text-slate-400">
+              <Label htmlFor="speedtest-auto" className="text-xs text-mesh-text-dim">
                 Auto-run interval (hours)
               </Label>
               <div className="relative">
@@ -145,27 +145,27 @@ export default function SpeedtestSettingsPage() {
                   min={0}
                   value={speedtestAutoHours}
                   onChange={(e) => setSpeedtestAutoHours(e.target.value)}
-                  className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
+                  className={`border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                     autoValid === "valid"
-                      ? "border-emerald-500/40"
+                      ? "border-[#4ade80]/40"
                       : autoValid === "error"
-                        ? "border-rose-500/40"
+                        ? "border-[#fb7185]/40"
                         : ""
                   }`}
                   placeholder="0 = disabled"
                 />
                 {autoValid === "valid" && (
                   <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
-                    <CheckCircle className="h-4 w-4 text-emerald-400" />
+                    <CheckCircle className="h-4 w-4 text-[#4ade80]" />
                   </div>
                 )}
               </div>
-              <p className="text-[10px] text-slate-600">
+              <p className="text-[10px] text-mesh-text-mute">
                 Set to 0 to disable. E.g. 6 = every 6 hours.
               </p>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="speedtest-ret" className="text-xs text-slate-400">
+              <Label htmlFor="speedtest-ret" className="text-xs text-mesh-text-dim">
                 History retention (days)
               </Label>
               <div className="relative">
@@ -175,37 +175,37 @@ export default function SpeedtestSettingsPage() {
                   min={1}
                   value={speedtestRetDays}
                   onChange={(e) => setSpeedtestRetDays(e.target.value)}
-                  className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
+                  className={`border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                     retValid === "valid"
-                      ? "border-emerald-500/40"
+                      ? "border-[#4ade80]/40"
                       : retValid === "error"
-                        ? "border-rose-500/40"
+                        ? "border-[#fb7185]/40"
                         : ""
                   }`}
                   placeholder="90"
                 />
                 {retValid === "valid" && (
                   <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
-                    <CheckCircle className="h-4 w-4 text-emerald-400" />
+                    <CheckCircle className="h-4 w-4 text-[#4ade80]" />
                   </div>
                 )}
               </div>
               {retValid === "error" && (
-                <p className="animate-fade-in text-xs text-rose-400">Must be at least 1 day.</p>
+                <p className="animate-fade-in text-xs text-[#fb7185]">Must be at least 1 day.</p>
               )}
             </div>
           </div>
 
           {speedtestStatus === "success" && speedtestMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-              <p className="text-xs text-emerald-400">{speedtestMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+              <p className="text-xs text-[#4ade80]">{speedtestMsg}</p>
             </div>
           )}
           {speedtestStatus === "error" && speedtestMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-              <p className="text-xs text-rose-400">{speedtestMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+              <p className="text-xs text-[#fb7185]">{speedtestMsg}</p>
             </div>
           )}
 

@@ -81,11 +81,11 @@ export function DeviceTrafficChart({
   }, [load, range]);
 
   return (
-    <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1 p-4">
+    <div className="rounded-lg border border-mesh-border bg-mesh-surface-1 p-4">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Activity className="h-4 w-4 text-blue-400" />
-          <h3 className="text-sm font-medium text-slate-400">
+          <Activity className="h-4 w-4 text-mesh-primary" />
+          <h3 className="text-sm font-medium text-mesh-text-dim">
             Bandwidth History
           </h3>
         </div>
@@ -97,8 +97,8 @@ export function DeviceTrafficChart({
               size="sm"
               className={`h-7 px-2.5 text-xs ${
                 range === r
-                  ? "bg-slate-700 text-white"
-                  : "text-slate-500 hover:text-slate-300"
+                  ? "bg-mesh-border-strong text-white"
+                  : "text-mesh-text-mute hover:text-mesh-text"
               }`}
               onClick={() => setRange(r)}
             >
@@ -196,7 +196,7 @@ export function DeviceTrafficChart({
           className="flex items-center justify-center"
           style={{ height }}
         >
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-mesh-text-mute">
             No traffic data for this device.
           </p>
         </div>

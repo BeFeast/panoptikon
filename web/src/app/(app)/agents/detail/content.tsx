@@ -105,7 +105,7 @@ export default function AgentDetailContent() {
       <div>
         <Link
           href="/agents"
-          className="inline-flex items-center gap-1 text-sm text-slate-400 hover:text-white transition-colors mb-3"
+          className="inline-flex items-center gap-1 text-sm text-mesh-text-dim hover:text-white transition-colors mb-3"
         >
           <ArrowLeft size={14} />
           Back to Agents
@@ -118,21 +118,21 @@ export default function AgentDetailContent() {
             variant="outline"
             className={
               agent.is_online
-                ? "border-emerald-500/50 text-emerald-400"
-                : "border-rose-500/50 text-rose-400"
+                ? "border-[#4ade80]/50 text-[#4ade80]"
+                : "border-[#fb7185]/50 text-[#fb7185]"
             }
           >
             <span
               className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
                 agent.is_online
-                  ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-                  : "bg-rose-400 ring-2 ring-rose-400/30 status-glow-offline"
+                  ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
+                  : "bg-[#fb7185] ring-2 ring-[#fb7185]/30 status-glow-offline"
               }`}
             />
             {agent.is_online ? "Online" : "Offline"}
           </Badge>
         </div>
-        <p className="text-sm text-slate-500 mt-1">
+        <p className="text-sm text-mesh-text-mute mt-1">
           Last seen: {agent.last_report_at ? timeAgo(agent.last_report_at) : "Never"}
           {agent.hostname && <> · {agent.hostname}</>}
           {agent.os_name && <> · {agent.os_name} {agent.os_version ?? ""}</>}
@@ -146,8 +146,8 @@ export default function AgentDetailContent() {
       {chartData.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* CPU Chart */}
-          <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 p-4">
-            <h2 className="text-sm font-medium text-slate-400 mb-3">CPU Usage %</h2>
+          <div className="rounded-md border border-mesh-border bg-mesh-surface-1/95 p-4">
+            <h2 className="text-sm font-medium text-mesh-text-dim mb-3">CPU Usage %</h2>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
@@ -189,8 +189,8 @@ export default function AgentDetailContent() {
           </div>
 
           {/* RAM Chart */}
-          <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 p-4">
-            <h2 className="text-sm font-medium text-slate-400 mb-3">RAM Usage %</h2>
+          <div className="rounded-md border border-mesh-border bg-mesh-surface-1/95 p-4">
+            <h2 className="text-sm font-medium text-mesh-text-dim mb-3">RAM Usage %</h2>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
@@ -240,9 +240,9 @@ export default function AgentDetailContent() {
       )}
 
       {/* Reports table */}
-      <div className="overflow-hidden rounded-md border border-mesh-border-strong bg-mesh-surface-1/95">
+      <div className="overflow-hidden rounded-md border border-mesh-border bg-mesh-surface-1/95">
         <div className="px-4 py-3 border-b border-mesh-border">
-          <h2 className="text-sm font-medium text-slate-400">
+          <h2 className="text-sm font-medium text-mesh-text-dim">
             Recent Reports ({reports.length})
           </h2>
         </div>
@@ -258,16 +258,16 @@ export default function AgentDetailContent() {
           <Table>
             <TableHeader>
               <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                <TableHead className="text-slate-500">Time</TableHead>
-                <TableHead className="text-slate-500">CPU %</TableHead>
-                <TableHead className="text-slate-500">RAM Used</TableHead>
-                <TableHead className="text-slate-500">RAM Total</TableHead>
+                <TableHead className="text-mesh-text-mute">Time</TableHead>
+                <TableHead className="text-mesh-text-mute">CPU %</TableHead>
+                <TableHead className="text-mesh-text-mute">RAM Used</TableHead>
+                <TableHead className="text-mesh-text-mute">RAM Total</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {reports.map((report) => (
                 <TableRow key={report.id} className="border-mesh-border-strong">
-                  <TableCell className="text-slate-400 font-mono tabular-nums text-xs">
+                  <TableCell className="text-mesh-text-dim font-mono tabular-nums text-xs">
                     {new Date(report.reported_at).toLocaleString()}
                   </TableCell>
                   <TableCell className="text-white">
@@ -389,13 +389,13 @@ function HardwareInfoCard({ agent }: { agent: Agent }) {
   }
 
   return (
-    <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 p-4">
-      <h2 className="text-sm font-medium text-slate-400 mb-3">Hardware Info</h2>
+    <div className="rounded-md border border-mesh-border bg-mesh-surface-1/95 p-4">
+      <h2 className="text-sm font-medium text-mesh-text-dim mb-3">Hardware Info</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
         {items.map((item) => (
           <div key={item.label} className="flex min-w-0 items-start gap-2 text-sm">
-            <span className="mt-0.5 text-slate-500">{item.icon}</span>
-            <span className="text-slate-500 shrink-0">{item.label}:</span>
+            <span className="mt-0.5 text-mesh-text-mute">{item.icon}</span>
+            <span className="text-mesh-text-mute shrink-0">{item.label}:</span>
             <span className="text-white truncate" title={item.value}>{item.value}</span>
           </div>
         ))}

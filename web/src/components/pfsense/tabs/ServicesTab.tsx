@@ -43,13 +43,13 @@ export function ServicesTab() {
   );
 
   return (
-    <Card className="border-mesh-border-strong bg-mesh-surface-1">
+    <Card className="border-mesh-border bg-mesh-surface-1">
       <CardHeader className="flex flex-row items-center justify-between pb-4">
         <CardTitle className="flex items-center gap-2 text-white">
-          <Cog className="h-4 w-4 text-blue-400" />
+          <Cog className="h-4 w-4 text-mesh-primary" />
           Services
         </CardTitle>
-        <span className="text-xs text-slate-500">
+        <span className="text-xs text-mesh-text-mute">
           {sorted.filter((s) => s.running).length} / {sorted.length} running
         </span>
       </CardHeader>
@@ -57,7 +57,7 @@ export function ServicesTab() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
+              <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-mesh-text-mute">
                 <th className="px-3 py-2">Service</th>
                 <th className="px-3 py-2">Description</th>
                 <th className="px-3 py-2">Status</th>
@@ -69,7 +69,7 @@ export function ServicesTab() {
                 <tr>
                   <td
                     colSpan={4}
-                    className="px-3 py-8 text-center text-slate-500"
+                    className="px-3 py-8 text-center text-mesh-text-mute"
                   >
                     No services found
                   </td>
@@ -104,23 +104,23 @@ function ServiceRow({
   const isActing = acting?.startsWith(`${service.name}-`) ?? false;
 
   return (
-    <tr className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
+    <tr className="border-b border-mesh-border hover:bg-mesh-surface-2">
       <td className="px-3 py-2 font-medium text-white">{service.name}</td>
-      <td className="px-3 py-2 text-slate-400">
+      <td className="px-3 py-2 text-mesh-text-dim">
         {service.description || "\u2014"}
       </td>
       <td className="px-3 py-2">
         {service.running ? (
           <Badge
             variant="outline"
-            className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+            className="border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]"
           >
             Running
           </Badge>
         ) : (
           <Badge
             variant="outline"
-            className="border-rose-500/30 bg-rose-500/10 text-rose-400"
+            className="border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]"
           >
             Stopped
           </Badge>
@@ -133,7 +133,7 @@ function ServiceRow({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 gap-1 text-xs text-amber-400 hover:text-amber-300"
+                className="h-7 gap-1 text-xs text-[#fbbf24] hover:text-[#fbbf24]"
                 disabled={isActing}
                 onClick={() => onAction(service.name, "restart")}
               >
@@ -143,7 +143,7 @@ function ServiceRow({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 gap-1 text-xs text-rose-400 hover:text-rose-300"
+                className="h-7 gap-1 text-xs text-[#fb7185] hover:text-[#fb7185]"
                 disabled={isActing}
                 onClick={() => onAction(service.name, "stop")}
               >
@@ -155,7 +155,7 @@ function ServiceRow({
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 gap-1 text-xs text-emerald-400 hover:text-emerald-300"
+              className="h-7 gap-1 text-xs text-[#4ade80] hover:text-[#4ade80]"
               disabled={isActing}
               onClick={() => onAction(service.name, "start")}
             >

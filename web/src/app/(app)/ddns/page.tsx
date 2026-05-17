@@ -79,19 +79,19 @@ function StatusBadge({ status }: { status: string }) {
   switch (status) {
     case "success":
       return (
-        <Badge className="bg-emerald-500/10 text-emerald-400 border-emerald-500/20">
+        <Badge className="bg-[#4ade80]/10 text-[#4ade80] border-[#4ade80]/20">
           <CheckCircle className="mr-1 h-3 w-3" /> Success
         </Badge>
       );
     case "error":
       return (
-        <Badge className="bg-rose-500/10 text-rose-400 border-rose-500/20">
+        <Badge className="bg-[#fb7185]/10 text-[#fb7185] border-[#fb7185]/20">
           <AlertCircle className="mr-1 h-3 w-3" /> Error
         </Badge>
       );
     default:
       return (
-        <Badge className="bg-slate-500/10 text-slate-400 border-slate-500/20">
+        <Badge className="bg-mesh-text-mute/10 text-mesh-text-dim border-mesh-text-mute/20">
           <Clock className="mr-1 h-3 w-3" /> Unknown
         </Badge>
       );
@@ -193,7 +193,7 @@ function DdnsFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg bg-mesh-surface-1 border-mesh-border-strong text-slate-100 max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg bg-mesh-surface-1 border-mesh-border text-mesh-text max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {initial ? "Edit DDNS Entry" : "Add DDNS Entry"}
@@ -204,7 +204,7 @@ function DdnsFormDialog({
             <div className="space-y-2">
               <Label>Provider</Label>
               <select
-                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-slate-100"
+                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text"
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
               >
@@ -219,7 +219,7 @@ function DdnsFormDialog({
               <div className="space-y-2">
                 <Label>Router Type</Label>
                 <select
-                  className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-slate-100"
+                  className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text"
                   value={routerType}
                   onChange={(e) => setRouterType(e.target.value)}
                 >
@@ -236,7 +236,7 @@ function DdnsFormDialog({
           <div className="space-y-2">
             <Label>Hostname *</Label>
             <Input
-              className="bg-mesh-surface-1 border-mesh-border-strong"
+              className="bg-mesh-surface-1 border-mesh-border"
               placeholder="home.example.com"
               value={hostname}
               onChange={(e) => setHostname(e.target.value)}
@@ -246,7 +246,7 @@ function DdnsFormDialog({
           <div className="space-y-2">
             <Label>Zone</Label>
             <Input
-              className="bg-mesh-surface-1 border-mesh-border-strong"
+              className="bg-mesh-surface-1 border-mesh-border"
               placeholder="example.com (for Cloudflare)"
               value={zone}
               onChange={(e) => setZone(e.target.value)}
@@ -257,7 +257,7 @@ function DdnsFormDialog({
             <div className="space-y-2">
               <Label>Username</Label>
               <Input
-                className="bg-mesh-surface-1 border-mesh-border-strong"
+                className="bg-mesh-surface-1 border-mesh-border"
                 placeholder="Username or email"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -267,11 +267,11 @@ function DdnsFormDialog({
               <Label>
                 Password{" "}
                 {initial?.has_password && (
-                  <span className="text-xs text-slate-500">(set)</span>
+                  <span className="text-xs text-mesh-text-mute">(set)</span>
                 )}
               </Label>
               <Input
-                className="bg-mesh-surface-1 border-mesh-border-strong"
+                className="bg-mesh-surface-1 border-mesh-border"
                 type="password"
                 placeholder={initial?.has_password ? "Leave blank to keep" : "Password"}
                 value={password}
@@ -284,11 +284,11 @@ function DdnsFormDialog({
             <Label>
               API Token{" "}
               {initial?.has_api_token && (
-                <span className="text-xs text-slate-500">(set)</span>
+                <span className="text-xs text-mesh-text-mute">(set)</span>
               )}
             </Label>
             <Input
-              className="bg-mesh-surface-1 border-mesh-border-strong"
+              className="bg-mesh-surface-1 border-mesh-border"
               type="password"
               placeholder={
                 initial?.has_api_token
@@ -304,7 +304,7 @@ function DdnsFormDialog({
             <div className="space-y-2">
               <Label>IP Source</Label>
               <select
-                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-slate-100"
+                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text"
                 value={ipSource}
                 onChange={(e) => setIpSource(e.target.value)}
               >
@@ -318,7 +318,7 @@ function DdnsFormDialog({
             <div className="space-y-2">
               <Label>Protocol</Label>
               <select
-                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-slate-100"
+                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text"
                 value={protocol}
                 onChange={(e) => setProtocol(e.target.value)}
               >
@@ -332,7 +332,7 @@ function DdnsFormDialog({
             <div className="space-y-2">
               <Label>Interface</Label>
               <Input
-                className="bg-mesh-surface-1 border-mesh-border-strong"
+                className="bg-mesh-surface-1 border-mesh-border"
                 placeholder="eth0"
                 value={interfaceName}
                 onChange={(e) => setInterfaceName(e.target.value)}
@@ -452,7 +452,7 @@ export default function DdnsPage() {
   if (error && !entries) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-rose-400">{error}</p>
+        <p className="text-[#fb7185]">{error}</p>
       </div>
     );
   }
@@ -464,7 +464,7 @@ export default function DdnsPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-white">Dynamic DNS</h1>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-mesh-text-dim">
               Manage DDNS client configurations for automatic DNS updates
             </p>
           </div>
@@ -473,7 +473,7 @@ export default function DdnsPage() {
               variant="ghost"
               size="sm"
               onClick={loadData}
-              className="text-slate-400"
+              className="text-mesh-text-dim"
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
@@ -492,9 +492,9 @@ export default function DdnsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardHeader className="pb-2">
-                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                   Total Entries
                 </CardTitle>
               </CardHeader>
@@ -504,38 +504,38 @@ export default function DdnsPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardHeader className="pb-2">
-                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                   Enabled
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-semibold tabular-nums text-blue-400">
+                <p className="text-2xl font-semibold tabular-nums text-mesh-primary">
                   {statusData.enabled}
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardHeader className="pb-2">
-                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                   Healthy
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-semibold tabular-nums text-emerald-400">
+                <p className="text-2xl font-semibold tabular-nums text-[#4ade80]">
                   {statusData.healthy}
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardHeader className="pb-2">
-                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                   Failing
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-semibold tabular-nums text-rose-400">
+                <p className="text-2xl font-semibold tabular-nums text-[#fb7185]">
                   {statusData.failing}
                 </p>
               </CardContent>
@@ -546,7 +546,7 @@ export default function DdnsPage() {
         {/* Search */}
         <div className="flex items-center gap-2">
           <Input
-            className="max-w-sm bg-mesh-surface-1 border-mesh-border-strong"
+            className="max-w-sm bg-mesh-surface-1 border-mesh-border"
             placeholder="Search by hostname, provider, or IP..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -554,15 +554,15 @@ export default function DdnsPage() {
         </div>
 
         {/* Table */}
-        <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+        <Card className="border-mesh-border bg-mesh-surface-1/95">
           {entries === null ? (
             <div className="p-6 space-y-3">
               {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-12 bg-slate-700" />
+                <Skeleton key={i} className="h-12 bg-mesh-border-strong" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-slate-400">
+            <div className="flex flex-col items-center justify-center py-16 text-mesh-text-dim">
               <Globe className="mb-3 h-10 w-10 opacity-40" />
               <p className="text-sm">
                 {search ? "No entries match your search" : "No DDNS entries configured"}
@@ -582,13 +582,13 @@ export default function DdnsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="border-mesh-border-strong">
-                  <TableHead className="text-slate-400">Provider</TableHead>
-                  <TableHead className="text-slate-400">Hostname</TableHead>
-                  <TableHead className="text-slate-400">Current IP</TableHead>
-                  <TableHead className="text-slate-400">Status</TableHead>
-                  <TableHead className="text-slate-400">Last Update</TableHead>
-                  <TableHead className="text-slate-400">Router</TableHead>
-                  <TableHead className="text-slate-400 text-right">
+                  <TableHead className="text-mesh-text-dim">Provider</TableHead>
+                  <TableHead className="text-mesh-text-dim">Hostname</TableHead>
+                  <TableHead className="text-mesh-text-dim">Current IP</TableHead>
+                  <TableHead className="text-mesh-text-dim">Status</TableHead>
+                  <TableHead className="text-mesh-text-dim">Last Update</TableHead>
+                  <TableHead className="text-mesh-text-dim">Router</TableHead>
+                  <TableHead className="text-mesh-text-dim text-right">
                     Actions
                   </TableHead>
                 </TableRow>
@@ -600,7 +600,7 @@ export default function DdnsPage() {
                       <div className="flex items-center gap-2">
                         <Badge
                           variant="outline"
-                          className="border-slate-600 text-slate-300"
+                          className="border-mesh-text-mute text-mesh-text"
                         >
                           {entry.provider}
                         </Badge>
@@ -608,18 +608,18 @@ export default function DdnsPage() {
                     </TableCell>
                     <TableCell>
                       <div>
-                        <span className="text-slate-100 font-medium">
+                        <span className="text-mesh-text font-medium">
                           {entry.hostname}
                         </span>
                         {entry.zone && (
-                          <span className="ml-1 text-xs text-slate-500">
+                          <span className="ml-1 text-xs text-mesh-text-mute">
                             ({entry.zone})
                           </span>
                         )}
                       </div>
                     </TableCell>
                     <TableCell>
-                      <span className="text-slate-300 font-mono text-sm">
+                      <span className="text-mesh-text font-mono text-sm">
                         {entry.last_ip ?? "---"}
                       </span>
                     </TableCell>
@@ -627,18 +627,18 @@ export default function DdnsPage() {
                       {entry.enabled ? (
                         <StatusBadge status={entry.last_status} />
                       ) : (
-                        <Badge className="bg-slate-600/10 text-slate-500 border-slate-600/20">
+                        <Badge className="bg-mesh-text-mute/10 text-mesh-text-mute border-mesh-text-mute/20">
                           Disabled
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-mesh-text-dim">
                         {timeAgo(entry.last_updated_at)}
                       </span>
                       {entry.last_error && (
                         <p
-                          className="text-xs text-rose-400 mt-0.5 max-w-[200px] truncate"
+                          className="text-xs text-[#fb7185] mt-0.5 max-w-[200px] truncate"
                           title={entry.last_error}
                         >
                           {entry.last_error}
@@ -648,7 +648,7 @@ export default function DdnsPage() {
                     <TableCell>
                       <Badge
                         variant="outline"
-                        className="border-slate-600 text-slate-400 text-xs"
+                        className="border-mesh-text-mute text-mesh-text-dim text-xs"
                       >
                         MikroTik
                       </Badge>
@@ -663,7 +663,7 @@ export default function DdnsPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => setEditItem(entry)}
-                          className="text-slate-400 hover:text-slate-200"
+                          className="text-mesh-text-dim hover:text-mesh-text"
                         >
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -671,7 +671,7 @@ export default function DdnsPage() {
                           variant="ghost"
                           size="sm"
                           onClick={() => setPendingDelete(entry)}
-                          className="text-rose-400 hover:text-rose-300"
+                          className="text-[#fb7185] hover:text-[#fb7185]"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -709,24 +709,24 @@ export default function DdnsPage() {
         open={!!pendingDelete}
         onOpenChange={(v) => !v && setPendingDelete(null)}
       >
-        <AlertDialogContent className="bg-mesh-surface-1 border-mesh-border-strong text-slate-100">
+        <AlertDialogContent className="bg-mesh-surface-1 border-mesh-border text-mesh-text">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete DDNS Entry</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-mesh-text-dim">
               Are you sure you want to delete the DDNS entry for{" "}
-              <strong className="text-slate-200">
+              <strong className="text-mesh-text">
                 {pendingDelete?.hostname}
               </strong>
               ? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-slate-600 text-slate-300">
+            <AlertDialogCancel className="border-mesh-text-mute text-mesh-text">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-rose-600 hover:bg-rose-700"
+              className="bg-[#fb7185] hover:bg-[#fb7185]"
             >
               Delete
             </AlertDialogAction>

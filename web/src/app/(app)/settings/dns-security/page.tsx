@@ -137,7 +137,7 @@ export default function DnsSecurityPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -154,18 +154,18 @@ export default function DnsSecurityPage() {
         ) : (
           <>
             {/* DNSSEC Section */}
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+            <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10">
-                      <ShieldCheck className="h-4 w-4 text-emerald-400" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#4ade80]/10">
+                      <ShieldCheck className="h-4 w-4 text-[#4ade80]" />
                     </div>
                     <div>
-                      <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                      <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                         DNSSEC Validation
                       </CardTitle>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-mesh-text-mute">
                         Validate DNS responses with cryptographic signatures to
                         prevent spoofing and cache poisoning.
                       </p>
@@ -180,8 +180,8 @@ export default function DnsSecurityPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/90 px-4 py-3">
-                  <p className="text-xs text-slate-400">
+                <div className="rounded-md border border-mesh-border bg-mesh-surface-1/90 px-4 py-3">
+                  <p className="text-xs text-mesh-text-dim">
                     When enabled, Unbound validates DNSSEC signatures on
                     responses. Domains with invalid or missing signatures will
                     return SERVFAIL. Requires Unbound to be configured as the
@@ -192,18 +192,18 @@ export default function DnsSecurityPage() {
             </Card>
 
             {/* DoT Section */}
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+            <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
-                      <Lock className="h-4 w-4 text-blue-400" />
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-mesh-primary/10">
+                      <Lock className="h-4 w-4 text-mesh-primary" />
                     </div>
                     <div>
-                      <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                      <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                         DNS-over-TLS (DoT)
                       </CardTitle>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-mesh-text-mute">
                         Encrypt DNS queries to upstream resolvers using TLS
                         (port 853).
                       </p>
@@ -220,13 +220,13 @@ export default function DnsSecurityPage() {
               <CardContent className="space-y-4 pt-0">
                 {/* DoT Upstream Servers */}
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-slate-300">
+                  <p className="text-sm font-medium text-mesh-text">
                     Upstream DoT Servers
                   </p>
                   <Button
                     size="sm"
                     onClick={() => setShowAddServer(true)}
-                    className="bg-blue-600 text-white hover:bg-blue-500"
+                    className="bg-mesh-primary text-white hover:bg-mesh-primary"
                   >
                     <Plus className="mr-1.5 h-3.5 w-3.5" />
                     Add Server
@@ -236,11 +236,11 @@ export default function DnsSecurityPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                      <TableHead className="text-slate-400">Name</TableHead>
-                      <TableHead className="text-slate-400">Address</TableHead>
-                      <TableHead className="text-slate-400">Port</TableHead>
-                      <TableHead className="text-slate-400">Status</TableHead>
-                      <TableHead className="text-right text-slate-400">
+                      <TableHead className="text-mesh-text-dim">Name</TableHead>
+                      <TableHead className="text-mesh-text-dim">Address</TableHead>
+                      <TableHead className="text-mesh-text-dim">Port</TableHead>
+                      <TableHead className="text-mesh-text-dim">Status</TableHead>
+                      <TableHead className="text-right text-mesh-text-dim">
                         Actions
                       </TableHead>
                     </TableRow>
@@ -250,7 +250,7 @@ export default function DnsSecurityPage() {
                       <TableRow className="border-mesh-border-strong hover:bg-transparent">
                         <TableCell
                           colSpan={5}
-                          className="py-8 text-center text-slate-500"
+                          className="py-8 text-center text-mesh-text-mute"
                         >
                           No DoT upstream servers configured. Add a server to
                           encrypt DNS queries.
@@ -260,15 +260,15 @@ export default function DnsSecurityPage() {
                       settings.dot_servers.map((server, index) => (
                         <TableRow
                           key={`${server.address}-${index}`}
-                          className="border-mesh-border-strong hover:bg-mesh-surface-2/55"
+                          className="border-mesh-border hover:bg-mesh-surface-2/55"
                         >
                           <TableCell className="font-medium text-white">
                             {server.name || "—"}
                           </TableCell>
-                          <TableCell className="font-mono text-sm text-slate-400">
+                          <TableCell className="font-mono text-sm text-mesh-text-dim">
                             {server.address}
                           </TableCell>
-                          <TableCell className="font-mono text-sm text-slate-400">
+                          <TableCell className="font-mono text-sm text-mesh-text-dim">
                             {server.port}
                           </TableCell>
                           <TableCell>
@@ -284,7 +284,7 @@ export default function DnsSecurityPage() {
                               size="sm"
                               onClick={() => handleDeleteServer(index)}
                               disabled={saving}
-                              className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400"
+                              className="h-8 w-8 p-0 text-mesh-text-dim hover:text-[#fb7185]"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
@@ -350,7 +350,7 @@ function AddDotServerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-md">
+      <DialogContent className="border-mesh-border bg-mesh-surface-1/95 sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white">
             Add DoT Upstream Server
@@ -358,32 +358,32 @@ function AddDotServerDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="dot-name" className="text-xs text-slate-400">
+            <Label htmlFor="dot-name" className="text-xs text-mesh-text-dim">
               Name
             </Label>
             <Input
               id="dot-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+              className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="Cloudflare"
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="dot-address" className="text-xs text-slate-400">
+            <Label htmlFor="dot-address" className="text-xs text-mesh-text-dim">
               Address
             </Label>
             <Input
               id="dot-address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+              className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="1.1.1.1"
               required
             />
           </div>
           <div className="space-y-1.5">
-            <Label htmlFor="dot-port" className="text-xs text-slate-400">
+            <Label htmlFor="dot-port" className="text-xs text-mesh-text-dim">
               Port
             </Label>
             <Input
@@ -391,7 +391,7 @@ function AddDotServerDialog({
               type="number"
               value={port}
               onChange={(e) => setPort(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+              className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="853"
             />
           </div>
@@ -400,14 +400,14 @@ function AddDotServerDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
+              className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={saving || !address.trim()}
-              className="bg-blue-600 text-white hover:bg-blue-500"
+              className="bg-mesh-primary text-white hover:bg-mesh-primary"
             >
               {saving && (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />

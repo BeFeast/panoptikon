@@ -6,23 +6,23 @@ import type { PfsenseStatus } from "@/lib/types";
 
 export function PfSenseStatusHeader({ status }: { status: PfsenseStatus }) {
   return (
-    <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4">
+    <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-blue-500/20 bg-blue-500/10">
-            <Shield className="h-5 w-5 text-blue-300" />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-mesh-primary/20 bg-mesh-primary/10">
+            <Shield className="h-5 w-5 text-mesh-primary" />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-blue-300/80">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-mesh-primary/80">
               firewall workspace
             </p>
             <h1 className="truncate text-2xl font-semibold tracking-tight text-white">
               pfSense Router
             </h1>
-            <p className="truncate text-xs text-slate-500">
+            <p className="truncate text-xs text-mesh-text-mute">
               {status.hostname ?? "pfSense"}{" "}
               {status.version && (
-                <span className="text-slate-600">&middot; pfSense {status.version}</span>
+                <span className="text-mesh-text-mute">&middot; pfSense {status.version}</span>
               )}
             </p>
           </div>
@@ -31,20 +31,20 @@ export function PfSenseStatusHeader({ status }: { status: PfsenseStatus }) {
           {status.reachable ? (
             <Badge
               variant="outline"
-              className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+              className="border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]"
             >
               &#9679; Connected
             </Badge>
           ) : (
             <Badge
               variant="outline"
-              className="border-rose-500/30 bg-rose-500/10 text-rose-400"
+              className="border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]"
             >
               &#9679; Unreachable
             </Badge>
           )}
           {status.uptime && (
-            <Badge variant="outline" className="border-mesh-border-strong text-slate-400">
+            <Badge variant="outline" className="border-mesh-border-strong text-mesh-text-dim">
               Uptime: {status.uptime}
             </Badge>
           )}

@@ -75,13 +75,13 @@ import {
 function statusColor(status: string) {
   switch (status) {
     case "valid":
-      return "border-emerald-500/30 bg-emerald-500/10 text-emerald-400";
+      return "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]";
     case "expiring":
-      return "border-amber-500/30 bg-amber-500/10 text-amber-400";
+      return "border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[#fbbf24]";
     case "expired":
-      return "border-rose-500/30 bg-rose-500/10 text-rose-400";
+      return "border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]";
     default:
-      return "border-slate-500/30 bg-slate-500/10 text-slate-400";
+      return "border-mesh-text-mute/30 bg-mesh-text-mute/10 text-mesh-text-dim";
   }
 }
 
@@ -304,7 +304,7 @@ export default function CertificatesPage() {
             </h1>
             <HelpTooltip text="View and manage SSL/TLS certificates provisioned through Caddy. Request free Let's Encrypt certs or upload your own." />
           </div>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-mesh-text-dim">
             Manage SSL certificates via Caddy
           </p>
         </div>
@@ -314,13 +314,13 @@ export default function CertificatesPage() {
               <Button
                 variant="outline"
                 onClick={() => setLeDialogOpen(true)}
-                className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
+                className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
               >
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 Let&apos;s Encrypt
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
+            <TooltipContent className="max-w-xs border-mesh-border bg-mesh-surface-1 text-mesh-text">
               Request a free SSL certificate from Let&apos;s Encrypt via DNS challenge
             </TooltipContent>
           </Tooltip>
@@ -329,13 +329,13 @@ export default function CertificatesPage() {
               <Button
                 variant="outline"
                 onClick={() => setCustomDialogOpen(true)}
-                className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
+                className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
               >
                 <Upload className="mr-1.5 h-3.5 w-3.5" />
                 Upload Custom
               </Button>
             </TooltipTrigger>
-            <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
+            <TooltipContent className="max-w-xs border-mesh-border bg-mesh-surface-1 text-mesh-text">
               Upload your own SSL certificate and private key
             </TooltipContent>
           </Tooltip>
@@ -344,9 +344,9 @@ export default function CertificatesPage() {
 
       {/* Expiry warning banner */}
       {expiringCount > 0 && (
-        <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-4 py-3">
-          <AlertTriangle className="h-4 w-4 shrink-0 text-amber-400" />
-          <p className="text-sm text-amber-400">
+        <div className="flex items-center gap-2 rounded-md border border-[#fbbf24]/30 bg-[#fbbf24]/10 px-4 py-3">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-[#fbbf24]" />
+          <p className="text-sm text-[#fbbf24]">
             {expiringCount} certificate{expiringCount > 1 ? "s" : ""}{" "}
             {expiringCount > 1 ? "are" : "is"} expiring or expired.
           </p>
@@ -354,17 +354,17 @@ export default function CertificatesPage() {
       )}
 
       {/* Certificates table */}
-      <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+      <Card className="border-mesh-border bg-mesh-surface-1/95">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-md border border-cyan-500/20 bg-cyan-500/10">
-              <Shield className="h-4 w-4 text-cyan-300" />
+            <div className="flex h-9 w-9 items-center justify-center rounded-md border border-mesh-accent/20 bg-mesh-accent/10">
+              <Shield className="h-4 w-4 text-[#67e8f9]" />
             </div>
             <div>
               <CardTitle className="text-base text-white">
                 Certificates ({certs.length})
               </CardTitle>
-              <CardDescription className="text-xs text-slate-500">
+              <CardDescription className="text-xs text-mesh-text-mute">
                 All SSL certificates managed by Caddy
               </CardDescription>
             </div>
@@ -382,12 +382,12 @@ export default function CertificatesPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                    <TableHead className="text-slate-400">Name</TableHead>
-                    <TableHead className="text-slate-400">Domains</TableHead>
-                    <TableHead className="text-slate-400">Provider</TableHead>
-                    <TableHead className="text-slate-400">Expires</TableHead>
-                    <TableHead className="text-slate-400">Status</TableHead>
-                    <TableHead className="text-right text-slate-400">
+                    <TableHead className="text-mesh-text-dim">Name</TableHead>
+                    <TableHead className="text-mesh-text-dim">Domains</TableHead>
+                    <TableHead className="text-mesh-text-dim">Provider</TableHead>
+                    <TableHead className="text-mesh-text-dim">Expires</TableHead>
+                    <TableHead className="text-mesh-text-dim">Status</TableHead>
+                    <TableHead className="text-right text-mesh-text-dim">
                       Actions
                     </TableHead>
                   </TableRow>
@@ -407,24 +407,24 @@ export default function CertificatesPage() {
                             <Badge
                               key={d}
                               variant="outline"
-                              className="border-mesh-border-strong text-xs text-slate-300"
+                              className="border-mesh-border-strong text-xs text-mesh-text"
                             >
                               {d}
                             </Badge>
                           ))}
                         </div>
                       </TableCell>
-                      <TableCell className="text-slate-400">
+                      <TableCell className="text-mesh-text-dim">
                         {cert.provider === "letsencrypt"
                           ? "Let's Encrypt"
                           : cert.provider === "other"
                             ? "Custom"
                             : cert.provider}
                       </TableCell>
-                      <TableCell className="text-slate-400">
+                      <TableCell className="text-mesh-text-dim">
                         <span>{formatDate(cert.expires_on)}</span>
                         {cert.days_remaining !== null && (
-                          <span className="ml-1.5 text-xs text-slate-600">
+                          <span className="ml-1.5 text-xs text-mesh-text-mute">
                             ({cert.days_remaining}d)
                           </span>
                         )}
@@ -445,7 +445,7 @@ export default function CertificatesPage() {
                               size="sm"
                               onClick={() => handleRenew(cert)}
                               disabled={renewingId === cert.id}
-                              className="h-8 px-2 text-slate-400 hover:text-white"
+                              className="h-8 px-2 text-mesh-text-dim hover:text-white"
                               title="Renew"
                             >
                               {renewingId === cert.id ? (
@@ -459,7 +459,7 @@ export default function CertificatesPage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => setDeleteTarget(cert)}
-                            className="h-8 px-2 text-slate-400 hover:text-rose-400"
+                            className="h-8 px-2 text-mesh-text-dim hover:text-[#fb7185]"
                             title="Delete"
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -477,29 +477,29 @@ export default function CertificatesPage() {
 
       {/* Let's Encrypt Dialog */}
       <Dialog open={leDialogOpen} onOpenChange={setLeDialogOpen}>
-        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 text-white sm:max-w-md">
+        <DialogContent className="border-mesh-border bg-mesh-surface-1/95 text-white sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Request Let&apos;s Encrypt Certificate</DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-mesh-text-dim">
               Provide domain names and an email for Let&apos;s Encrypt
               validation.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <Label htmlFor="le-domains" className="text-xs text-slate-400">
+              <Label htmlFor="le-domains" className="text-xs text-mesh-text-dim">
                 Domain Names (comma-separated)
               </Label>
               <Input
                 id="le-domains"
                 value={leDomains}
                 onChange={(e) => setLeDomains(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="example.com, *.example.com"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="le-email" className="text-xs text-slate-400">
+              <Label htmlFor="le-email" className="text-xs text-mesh-text-dim">
                 Email
               </Label>
               <Input
@@ -507,11 +507,11 @@ export default function CertificatesPage() {
                 type="email"
                 value={leEmail}
                 onChange={(e) => setLeEmail(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="admin@example.com"
               />
             </div>
-            <label className="flex items-center gap-2 text-sm text-slate-300">
+            <label className="flex items-center gap-2 text-sm text-mesh-text">
               <input
                 type="checkbox"
                 checked={leDns}
@@ -525,14 +525,14 @@ export default function CertificatesPage() {
             <Button
               variant="outline"
               onClick={() => setLeDialogOpen(false)}
-              className="border-mesh-border-strong text-slate-300"
+              className="border-mesh-border-strong text-mesh-text"
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreateLetsEncrypt}
               disabled={!leDomains.trim() || !leEmail.trim() || leSubmitting}
-              className="bg-cyan-500 text-slate-950 hover:bg-cyan-400"
+              className="bg-mesh-accent text-mesh-surface-1 hover:bg-mesh-accent"
             >
               {leSubmitting && (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -545,10 +545,10 @@ export default function CertificatesPage() {
 
       {/* Upload Custom Certificate Dialog */}
       <Dialog open={customDialogOpen} onOpenChange={setCustomDialogOpen}>
-        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 text-white sm:max-w-lg">
+        <DialogContent className="border-mesh-border bg-mesh-surface-1/95 text-white sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Upload Custom Certificate</DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-mesh-text-dim">
               Upload PEM-encoded certificate and private key files, or paste
               them directly.
             </DialogDescription>
@@ -557,7 +557,7 @@ export default function CertificatesPage() {
             <div className="space-y-1.5">
               <Label
                 htmlFor="custom-name"
-                className="text-xs text-slate-400"
+                className="text-xs text-mesh-text-dim"
               >
                 Certificate Name
               </Label>
@@ -565,7 +565,7 @@ export default function CertificatesPage() {
                 id="custom-name"
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="My Certificate"
               />
             </div>
@@ -573,11 +573,11 @@ export default function CertificatesPage() {
               <div className="flex items-center justify-between">
                 <Label
                   htmlFor="custom-cert"
-                  className="text-xs text-slate-400"
+                  className="text-xs text-mesh-text-dim"
                 >
                   Certificate (PEM)
                 </Label>
-                <label className="cursor-pointer text-xs text-cyan-300 hover:text-cyan-200">
+                <label className="cursor-pointer text-xs text-[#67e8f9] hover:text-mesh-text">
                   <input
                     type="file"
                     accept=".pem,.crt,.cer"
@@ -594,7 +594,7 @@ export default function CertificatesPage() {
                 value={customCert}
                 onChange={(e) => setCustomCert(e.target.value)}
                 rows={4}
-                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2 font-mono text-xs text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-3 py-2 font-mono text-xs text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-accent"
                 placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
               />
             </div>
@@ -602,11 +602,11 @@ export default function CertificatesPage() {
               <div className="flex items-center justify-between">
                 <Label
                   htmlFor="custom-key"
-                  className="text-xs text-slate-400"
+                  className="text-xs text-mesh-text-dim"
                 >
                   Private Key (PEM)
                 </Label>
-                <label className="cursor-pointer text-xs text-cyan-300 hover:text-cyan-200">
+                <label className="cursor-pointer text-xs text-[#67e8f9] hover:text-mesh-text">
                   <input
                     type="file"
                     accept=".pem,.key"
@@ -623,7 +623,7 @@ export default function CertificatesPage() {
                 value={customKey}
                 onChange={(e) => setCustomKey(e.target.value)}
                 rows={4}
-                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2 font-mono text-xs text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-3 py-2 font-mono text-xs text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-accent"
                 placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
               />
             </div>
@@ -632,7 +632,7 @@ export default function CertificatesPage() {
             <Button
               variant="outline"
               onClick={() => setCustomDialogOpen(false)}
-              className="border-mesh-border-strong text-slate-300"
+              className="border-mesh-border-strong text-mesh-text"
             >
               Cancel
             </Button>
@@ -644,7 +644,7 @@ export default function CertificatesPage() {
                 !customKey.trim() ||
                 customSubmitting
               }
-              className="bg-cyan-500 text-slate-950 hover:bg-cyan-400"
+              className="bg-mesh-accent text-mesh-surface-1 hover:bg-mesh-accent"
             >
               {customSubmitting && (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -660,24 +660,24 @@ export default function CertificatesPage() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
+        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Delete Certificate
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-mesh-text-dim">
               Are you sure you want to delete &ldquo;{deleteTarget?.nice_name}
               &rdquo;? This action cannot be undone. Any proxy hosts using this
               certificate will lose their SSL configuration.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-mesh-border-strong text-slate-300">
+            <AlertDialogCancel className="border-mesh-border-strong text-mesh-text">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-rose-600 text-white hover:bg-rose-500"
+              className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
             >
               Delete
             </AlertDialogAction>

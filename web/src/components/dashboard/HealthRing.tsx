@@ -15,22 +15,22 @@ export function HealthRing({ online, total }: HealthRingProps) {
 
   const color =
     pct >= 90
-      ? "stroke-emerald-500"
+      ? "stroke-[#4ade80]"
       : pct >= 70
-        ? "stroke-amber-500"
-        : "stroke-rose-500";
+        ? "stroke-[#fbbf24]"
+        : "stroke-[#fb7185]";
   const bgColor =
     pct >= 90
-      ? "text-emerald-500/10"
+      ? "text-[#4ade80]/10"
       : pct >= 70
-        ? "text-amber-500/10"
-        : "text-rose-500/10";
+        ? "text-[#fbbf24]/10"
+        : "text-[#fb7185]/10";
   const textColor =
     pct >= 90
-      ? "text-emerald-400"
+      ? "text-[#4ade80]"
       : pct >= 70
-        ? "text-amber-400"
-        : "text-rose-400";
+        ? "text-[#fbbf24]"
+        : "text-[#fb7185]";
 
   if (total === 0) {
     return (
@@ -43,14 +43,14 @@ export function HealthRing({ online, total }: HealthRingProps) {
               r="40"
               fill="none"
               strokeWidth="8"
-              className="text-slate-500/10 stroke-current"
+              className="text-mesh-text-mute/10 stroke-current"
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-sm font-medium text-slate-500">N/A</span>
+            <span className="text-sm font-medium text-mesh-text-mute">N/A</span>
           </div>
         </div>
-        <span className="text-xs text-slate-500 text-center">
+        <span className="text-xs text-mesh-text-mute text-center">
           No critical devices
         </span>
       </div>
@@ -89,7 +89,7 @@ export function HealthRing({ online, total }: HealthRingProps) {
           </span>
         </div>
       </div>
-      <span className="text-xs text-slate-500">
+      <span className="text-xs text-mesh-text-mute">
         {online}/{total} critical online
       </span>
     </div>

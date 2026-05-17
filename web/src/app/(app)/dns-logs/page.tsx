@@ -167,7 +167,7 @@ export default function DnsLogsPage() {
                   Refresh
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200">
+              <TooltipContent className="max-w-xs border-mesh-border bg-mesh-surface-1 text-mesh-text">
                 Reload the query log with the latest entries
               </TooltipContent>
             </Tooltip>
@@ -199,12 +199,12 @@ export default function DnsLogsPage() {
 
         {/* Stats Cards */}
         <div className="grid gap-5 md:grid-cols-4" data-testid="dns-stats-grid">
-          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <Card className="border-mesh-border bg-mesh-surface-1/95">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                 Total Queries
               </CardTitle>
-              <Globe className="h-4 w-4 text-slate-500" />
+              <Globe className="h-4 w-4 text-mesh-text-mute" />
             </CardHeader>
             <CardContent>
               {statsLoading ? (
@@ -216,29 +216,29 @@ export default function DnsLogsPage() {
               )}
             </CardContent>
           </Card>
-          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <Card className="border-mesh-border bg-mesh-surface-1/95">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                 Blocked
               </CardTitle>
-              <ShieldBan className="h-4 w-4 text-rose-500/60" />
+              <ShieldBan className="h-4 w-4 text-[#fb7185]/60" />
             </CardHeader>
             <CardContent>
               {statsLoading ? (
                 <Skeleton className="h-8 w-24" />
               ) : (
-                <div className="text-2xl font-semibold tabular-nums text-rose-400">
+                <div className="text-2xl font-semibold tabular-nums text-[#fb7185]">
                   {stats?.total_blocked.toLocaleString() ?? 0}
                 </div>
               )}
             </CardContent>
           </Card>
-          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <Card className="border-mesh-border bg-mesh-surface-1/95">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                 Unique Domains
               </CardTitle>
-              <Search className="h-4 w-4 text-slate-500" />
+              <Search className="h-4 w-4 text-mesh-text-mute" />
             </CardHeader>
             <CardContent>
               {statsLoading ? (
@@ -250,12 +250,12 @@ export default function DnsLogsPage() {
               )}
             </CardContent>
           </Card>
-          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <Card className="border-mesh-border bg-mesh-surface-1/95">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                 Clients
               </CardTitle>
-              <Monitor className="h-4 w-4 text-slate-500" />
+              <Monitor className="h-4 w-4 text-mesh-text-mute" />
             </CardHeader>
             <CardContent>
               {statsLoading ? (
@@ -399,7 +399,7 @@ export default function DnsLogsPage() {
                             ) : (
                               <Badge
                                 variant="outline"
-                                className="text-xs text-green-400 border-green-400/30"
+                                className="text-xs text-[#4ade80] border-[#4ade80]/30"
                               >
                                 {entry.result}
                               </Badge>
@@ -593,7 +593,7 @@ export default function DnsLogsPage() {
                           <TableCell className="text-right font-mono">
                             {ds.total_queries.toLocaleString()}
                           </TableCell>
-                          <TableCell className="text-right font-mono text-red-400">
+                          <TableCell className="text-right font-mono text-[#fb7185]">
                             {ds.blocked_queries > 0
                               ? ds.blocked_queries.toLocaleString()
                               : "-"}

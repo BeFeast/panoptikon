@@ -72,15 +72,15 @@ export default function SetupPage() {
   return (
     <div className="login-bg relative flex min-h-screen items-center justify-center overflow-hidden p-4">
       <div className="relative z-10 w-full max-w-md">
-        <Card className="login-card-glow w-full rounded-md border-slate-800/90 bg-slate-950/95 backdrop-blur-sm">
-          <CardHeader className="items-center border-b border-slate-800/80 pb-4">
-            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-md border border-cyan-400/50 bg-cyan-500 shadow-[0_0_28px_rgba(34,211,238,0.18)]">
-              <span className="font-display text-2xl font-bold text-slate-950">P</span>
+        <Card className="login-card-glow w-full rounded-md border-mesh-border/90 bg-mesh-surface-1/95 backdrop-blur-sm">
+          <CardHeader className="items-center border-b border-mesh-border-strong/80 pb-4">
+            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-md border border-mesh-accent/50 bg-mesh-accent shadow-[0_0_28px_rgba(34,211,238,0.18)]">
+              <span className="font-display text-2xl font-bold text-mesh-surface-1">P</span>
             </div>
             <h1 className="font-display text-center text-2xl font-bold text-white">
               Welcome to Panoptikon
             </h1>
-            <p className="text-center text-xs uppercase tracking-[0.2em] text-cyan-300/80">
+            <p className="text-center text-xs uppercase tracking-[0.2em] text-[#67e8f9]/80">
               Set up your admin password to get started.
             </p>
           </CardHeader>
@@ -98,7 +98,7 @@ export default function SetupPage() {
                 <div className="space-y-2">
                   <Label htmlFor="password">Admin Password</Label>
                   <div className="input-focus-glow relative rounded-md">
-                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mesh-text-mute" />
                     <Input
                       id="password"
                       type={showPassword ? "text" : "password"}
@@ -112,7 +112,7 @@ export default function SetupPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 transition-colors duration-200 hover:text-white"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-mesh-text-mute transition-colors duration-200 hover:text-white"
                       tabIndex={-1}
                       aria-label={showPassword ? "Hide password" : "Show password"}
                     >
@@ -130,7 +130,7 @@ export default function SetupPage() {
                 <div className="space-y-2">
                   <Label htmlFor="confirm">Confirm Password</Label>
                   <div className="input-focus-glow relative rounded-md">
-                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                    <Lock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mesh-text-mute" />
                     <Input
                       id="confirm"
                       type={showPassword ? "text" : "password"}
@@ -144,12 +144,12 @@ export default function SetupPage() {
                 </div>
 
                 {error && (
-                  <p className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+                  <p className="rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2 text-sm text-[#fb7185]">
                     {error}
                   </p>
                 )}
 
-                <Button type="submit" className="w-full bg-cyan-500 text-slate-950 hover:bg-cyan-400" disabled={loading}>
+                <Button type="submit" className="w-full bg-mesh-accent text-mesh-surface-1 hover:bg-mesh-accent" disabled={loading}>
                   {loading ? "Setting up..." : "Complete Setup"}
                 </Button>
               </form>
@@ -159,7 +159,7 @@ export default function SetupPage() {
 
         {/* Version info */}
         {version && (
-          <p className="mt-4 text-center text-xs text-slate-600">
+          <p className="mt-4 text-center text-xs text-mesh-text-mute">
             v{version}
           </p>
         )}

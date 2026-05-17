@@ -16,7 +16,7 @@ type RouterWorkspaceProps = {
 export function RouterWorkspace({ active, children }: RouterWorkspaceProps) {
   return (
     <div className="min-w-0 space-y-5">
-      <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-3">
+      <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-3">
         <RouterSelector active={active} />
       </div>
       {children}
@@ -27,7 +27,7 @@ export function RouterWorkspace({ active, children }: RouterWorkspaceProps) {
 export function RouterWorkspaceLoading() {
   return (
     <div className="space-y-5">
-      <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4">
+      <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-2">
             <Skeleton className="h-7 w-56" />
@@ -61,11 +61,11 @@ export function RouterWorkspaceState({
 }: RouterWorkspaceStateProps) {
   const toneClass =
     tone === "rose"
-      ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
-      : "border-amber-500/30 bg-amber-500/10 text-amber-300";
+      ? "border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]"
+      : "border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[#fbbf24]";
 
   return (
-    <Card className="border-mesh-border-strong bg-mesh-surface-1 shadow-none">
+    <Card className="border-mesh-border bg-mesh-surface-1 shadow-none">
       <CardContent className="grid gap-5 p-5 sm:grid-cols-[1fr_auto] sm:items-center">
         <div className="min-w-0 space-y-3">
           <div className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-xs ${toneClass}`}>
@@ -76,18 +76,18 @@ export function RouterWorkspaceState({
             <h1 className="text-xl font-semibold tracking-tight text-white">
               {title}
             </h1>
-            <p className="mt-1 max-w-2xl text-sm text-slate-400">
+            <p className="mt-1 max-w-2xl text-sm text-mesh-text-dim">
               {description}
             </p>
             {detail && (
-              <p className="mt-2 font-mono text-xs text-slate-500">{detail}</p>
+              <p className="mt-2 font-mono text-xs text-mesh-text-mute">{detail}</p>
             )}
           </div>
         </div>
         <Button
           variant="outline"
           asChild
-          className="w-full border-mesh-border-strong text-slate-200 hover:bg-mesh-surface-2 sm:w-auto"
+          className="w-full border-mesh-border text-mesh-text hover:bg-mesh-surface-2 sm:w-auto"
         >
           <Link href={settingsHref}>
             <Settings className="mr-2 h-4 w-4" />

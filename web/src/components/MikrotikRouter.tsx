@@ -195,23 +195,23 @@ function formatMemory(bytes: string | null): string {
 
 function StatusHeader({ status }: { status: MikrotikStatus }) {
   return (
-    <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4">
+    <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-cyan-500/20 bg-cyan-500/10">
-            <Router className="h-5 w-5 text-cyan-300" />
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md border border-mesh-accent/20 bg-mesh-accent/10">
+            <Router className="h-5 w-5 text-[#67e8f9]" />
           </div>
           <div className="min-w-0">
-            <p className="text-[11px] font-medium uppercase tracking-wider text-cyan-300/80">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-[#67e8f9]/80">
               RouterOS workspace
             </p>
             <h1 className="truncate text-2xl font-semibold tracking-tight text-white">
               MikroTik Router
             </h1>
-            <p className="truncate text-xs text-slate-500">
+            <p className="truncate text-xs text-mesh-text-mute">
               {status.board_name ?? "RouterOS"}{" "}
               {status.version && (
-                <span className="text-slate-600">&middot; RouterOS {status.version}</span>
+                <span className="text-mesh-text-mute">&middot; RouterOS {status.version}</span>
               )}
             </p>
           </div>
@@ -220,20 +220,20 @@ function StatusHeader({ status }: { status: MikrotikStatus }) {
           {status.reachable ? (
             <Badge
               variant="outline"
-              className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+              className="border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]"
             >
               &#9679; Connected
             </Badge>
           ) : (
             <Badge
               variant="outline"
-              className="border-rose-500/30 bg-rose-500/10 text-rose-400"
+              className="border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]"
             >
               &#9679; Unreachable
             </Badge>
           )}
           {status.uptime && (
-            <Badge variant="outline" className="border-mesh-border-strong text-slate-400">
+            <Badge variant="outline" className="border-mesh-border-strong text-mesh-text-dim">
               Uptime: {status.uptime}
             </Badge>
           )}
@@ -262,25 +262,25 @@ function SystemTab({ status }: { status: MikrotikStatus }) {
     <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
       <InfoStatCard
         icon={<Monitor className="h-5 w-5 text-mesh-accent" />}
-        iconColorClass="bg-cyan-500/10"
+        iconColorClass="bg-mesh-accent/10"
         label="Version"
         value={status.version ?? "\u2014"}
       />
       <InfoStatCard
-        icon={<Clock className="h-5 w-5 text-emerald-400" />}
-        iconColorClass="bg-emerald-500/10"
+        icon={<Clock className="h-5 w-5 text-[#4ade80]" />}
+        iconColorClass="bg-[#4ade80]/10"
         label="Uptime"
         value={status.uptime ?? "\u2014"}
       />
       <InfoStatCard
-        icon={<Cpu className="h-5 w-5 text-amber-400" />}
-        iconColorClass="bg-amber-500/10"
+        icon={<Cpu className="h-5 w-5 text-[#fbbf24]" />}
+        iconColorClass="bg-[#fbbf24]/10"
         label="CPU Load"
         value={status.cpu_load ? `${status.cpu_load}%` : "\u2014"}
       />
       <InfoStatCard
-        icon={<MemoryStick className="h-5 w-5 text-purple-400" />}
-        iconColorClass="bg-purple-500/10"
+        icon={<MemoryStick className="h-5 w-5 text-[#c084fc]" />}
+        iconColorClass="bg-[#c084fc]/10"
         label="Memory"
         value={
           memUsed
@@ -290,13 +290,13 @@ function SystemTab({ status }: { status: MikrotikStatus }) {
       />
       <InfoStatCard
         icon={<HardDrive className="h-5 w-5 text-mesh-accent" />}
-        iconColorClass="bg-cyan-500/10"
+        iconColorClass="bg-mesh-accent/10"
         label="Platform"
         value={platformValue}
       />
       <InfoStatCard
-        icon={<Server className="h-5 w-5 text-blue-400" />}
-        iconColorClass="bg-blue-500/10"
+        icon={<Server className="h-5 w-5 text-mesh-primary" />}
+        iconColorClass="bg-mesh-primary/10"
         label="Board"
         value={status.board_name ?? "\u2014"}
       />
@@ -316,15 +316,15 @@ function InterfacesTable({
   error: string | null;
 }) {
   const headerCols = (
-    <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
-      <th className="px-4 py-3 font-medium text-slate-400">Status</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Type</th>
-      <th className="px-4 py-3 font-medium text-slate-400">IP Address</th>
-      <th className="px-4 py-3 font-medium text-slate-400">MAC</th>
-      <th className="px-4 py-3 font-medium text-slate-400">MTU</th>
-      <th className="px-4 py-3 font-medium text-slate-400">TX</th>
-      <th className="px-4 py-3 font-medium text-slate-400">RX</th>
+    <tr className="border-b border-mesh-border bg-mesh-surface-1 text-left">
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">Status</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">Interface</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">Type</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">IP Address</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">MAC</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">MTU</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">TX</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">RX</th>
     </tr>
   );
 
@@ -354,15 +354,15 @@ function InterfacesTable({
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-        <p className="text-xs text-rose-400">{error}</p>
+      <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+        <p className="text-xs text-[#fb7185]">{error}</p>
       </div>
     );
   }
 
   if (!data || data.length === 0) {
-    return <p className="py-4 text-sm text-slate-500">No interfaces found.</p>;
+    return <p className="py-4 text-sm text-mesh-text-mute">No interfaces found.</p>;
   }
 
   return (
@@ -373,25 +373,25 @@ function InterfacesTable({
           {data.map((iface) => (
             <tr
               key={iface.name}
-              className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors"
+              className="border-b border-mesh-border last:border-b-0 hover:bg-mesh-surface-2 transition-colors"
             >
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
                   <span
                     className={`inline-block h-2 w-2 rounded-full ${
                       iface.running
-                        ? "bg-emerald-400"
+                        ? "bg-[#4ade80]"
                         : iface.disabled
-                          ? "bg-slate-600"
-                          : "bg-amber-400"
+                          ? "bg-mesh-text-mute"
+                          : "bg-[#fbbf24]"
                     }`}
                   />
                   <Badge
                     variant="outline"
                     className={
                       iface.running
-                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
-                        : "border-mesh-border-strong text-slate-500 text-xs"
+                        ? "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80] text-xs"
+                        : "border-mesh-border-strong text-mesh-text-mute text-xs"
                     }
                   >
                     {iface.running ? "up" : iface.disabled ? "disabled" : "down"}
@@ -404,28 +404,28 @@ function InterfacesTable({
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="text-slate-400">{iface.iface_type ?? "\u2014"}</span>
+                <span className="text-mesh-text-dim">{iface.iface_type ?? "\u2014"}</span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono tabular-nums text-slate-300">
+                <span className="font-mono tabular-nums text-mesh-text">
                   {iface.ip_address ?? "\u2014"}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono tabular-nums text-xs text-slate-400">
+                <span className="font-mono tabular-nums text-xs text-mesh-text-dim">
                   {iface.mac ?? "\u2014"}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="text-slate-300">{iface.mtu ?? "\u2014"}</span>
+                <span className="text-mesh-text">{iface.mtu ?? "\u2014"}</span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono tabular-nums text-xs text-slate-400">
+                <span className="font-mono tabular-nums text-xs text-mesh-text-dim">
                   {formatBytes(iface.tx_bytes)}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono tabular-nums text-xs text-slate-400">
+                <span className="font-mono tabular-nums text-xs text-mesh-text-dim">
                   {formatBytes(iface.rx_bytes)}
                 </span>
               </td>
@@ -569,12 +569,12 @@ function VlansPanel({
   };
 
   const headerCols = (
-    <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
-      <th className="px-4 py-3 font-medium text-slate-400">VLAN ID</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Name</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
-      <th className="px-4 py-3 font-medium text-slate-400">MTU</th>
-      <th className="px-4 py-3 text-right font-medium text-slate-400">Actions</th>
+    <tr className="border-b border-mesh-border bg-mesh-surface-1 text-left">
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">VLAN ID</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">Name</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">Interface</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">MTU</th>
+      <th className="px-4 py-3 text-right font-medium text-mesh-text-dim">Actions</th>
     </tr>
   );
 
@@ -583,7 +583,7 @@ function VlansPanel({
       <div className="flex items-center justify-end">
         <Button
           onClick={openCreate}
-          className="bg-pink-600 text-white hover:bg-pink-700"
+          className="bg-[#f472b6] text-white hover:bg-[#f472b6]"
           size="sm"
         >
           <Plus className="mr-1.5 h-3.5 w-3.5" />
@@ -622,12 +622,12 @@ function VlansPanel({
           </table>
         </div>
       ) : error ? (
-        <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-          <p className="text-xs text-rose-400">{error}</p>
+        <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+          <p className="text-xs text-[#fb7185]">{error}</p>
         </div>
       ) : !data || data.length === 0 ? (
-        <p className="py-4 text-sm text-slate-500">No VLAN interfaces configured.</p>
+        <p className="py-4 text-sm text-mesh-text-mute">No VLAN interfaces configured.</p>
       ) : (
         <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
           <table className="w-full text-sm">
@@ -636,7 +636,7 @@ function VlansPanel({
               {data.map((vlan, idx) => (
                 <tr
                   key={vlan.id ?? `${vlan.name ?? "vlan"}-${vlan.vlan_id ?? idx}`}
-                  className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors"
+                  className="border-b border-mesh-border last:border-b-0 hover:bg-mesh-surface-2 transition-colors"
                 >
                   <td className="px-4 py-3">
                     <span className="font-mono tabular-nums font-medium text-white">
@@ -644,22 +644,22 @@ function VlansPanel({
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-slate-300">{vlan.name ?? "\u2014"}</span>
+                    <span className="text-mesh-text">{vlan.name ?? "\u2014"}</span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="font-mono tabular-nums text-slate-300">
+                    <span className="font-mono tabular-nums text-mesh-text">
                       {vlan.interface ?? "\u2014"}
                     </span>
                   </td>
                   <td className="px-4 py-3">
-                    <span className="text-slate-300">{vlan.mtu ?? "\u2014"}</span>
+                    <span className="text-mesh-text">{vlan.mtu ?? "\u2014"}</span>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
+                        className="h-8 w-8 text-mesh-text-dim hover:bg-mesh-surface-2 hover:text-white"
                         onClick={() => openEdit(vlan)}
                         disabled={!vlan.id}
                       >
@@ -668,7 +668,7 @@ function VlansPanel({
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                        className="h-8 w-8 text-[#fb7185] hover:bg-[#fb7185]/10 hover:text-[#fb7185]"
                         onClick={() => setConfirmDelete(vlan)}
                         disabled={!vlan.id}
                       >
@@ -693,12 +693,12 @@ function VlansPanel({
           }
         }}
       >
-        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100">
+        <DialogContent className="border-mesh-border bg-mesh-surface-1 text-mesh-text">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editing ? "Edit VLAN" : "Create VLAN"}
             </DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-mesh-text-dim">
               Configure a VLAN interface on your MikroTik router.
             </DialogDescription>
           </DialogHeader>
@@ -712,7 +712,7 @@ function VlansPanel({
                 onChange={(e) => setForm((prev) => ({ ...prev, vlan_id: e.target.value }))}
                 placeholder="10"
                 inputMode="numeric"
-                className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
+                className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
               />
             </div>
             <div className="space-y-2">
@@ -722,7 +722,7 @@ function VlansPanel({
                 value={form.name}
                 onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
                 placeholder="vlan10-office"
-                className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
+                className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
               />
             </div>
             <div className="space-y-2">
@@ -732,7 +732,7 @@ function VlansPanel({
                 value={form.interface}
                 onChange={(e) => setForm((prev) => ({ ...prev, interface: e.target.value }))}
                 placeholder="bridge"
-                className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
+                className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
               />
             </div>
             <div className="space-y-2">
@@ -743,7 +743,7 @@ function VlansPanel({
                 onChange={(e) => setForm((prev) => ({ ...prev, mtu: e.target.value }))}
                 placeholder="1500"
                 inputMode="numeric"
-                className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
+                className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
               />
             </div>
           </div>
@@ -752,14 +752,14 @@ function VlansPanel({
             <Button
               variant="outline"
               onClick={() => setDialogOpen(false)}
-              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2"
+              className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSave}
               disabled={saving}
-              className="bg-pink-600 text-white hover:bg-pink-700"
+              className="bg-[#f472b6] text-white hover:bg-[#f472b6]"
             >
               {saving ? "Saving..." : editing ? "Save Changes" : "Create VLAN"}
             </Button>
@@ -771,23 +771,23 @@ function VlansPanel({
         open={!!confirmDelete}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
       >
-        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
+        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete VLAN</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-mesh-text-dim">
               This will remove VLAN{" "}
-              <span className="font-mono text-slate-200">{confirmDelete?.name ?? ""}</span>{" "}
+              <span className="font-mono text-mesh-text">{confirmDelete?.name ?? ""}</span>{" "}
               (ID {confirmDelete?.vlan_id ?? "\u2014"}). This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2">
+            <AlertDialogCancel className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
               disabled={deleting}
-              className="bg-rose-600 text-white hover:bg-rose-700"
+              className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
             >
               {deleting ? "Deleting..." : "Delete"}
             </AlertDialogAction>
@@ -810,12 +810,12 @@ function RoutesTable({
   error: string | null;
 }) {
   const headerCols = (
-    <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
-      <th className="px-4 py-3 font-medium text-slate-400">Status</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Destination</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Gateway</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Distance</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Table</th>
+    <tr className="border-b border-mesh-border bg-mesh-surface-1 text-left">
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">Status</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">Destination</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">Gateway</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">Distance</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">Table</th>
     </tr>
   );
 
@@ -842,15 +842,15 @@ function RoutesTable({
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-        <p className="text-xs text-rose-400">{error}</p>
+      <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+        <p className="text-xs text-[#fb7185]">{error}</p>
       </div>
     );
   }
 
   if (!data || data.length === 0) {
-    return <p className="py-4 text-sm text-slate-500">No routes found.</p>;
+    return <p className="py-4 text-sm text-mesh-text-mute">No routes found.</p>;
   }
 
   return (
@@ -861,21 +861,21 @@ function RoutesTable({
           {data.map((route, idx) => (
             <tr
               key={`${route.dst_address}-${idx}`}
-              className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors"
+              className="border-b border-mesh-border last:border-b-0 hover:bg-mesh-surface-2 transition-colors"
             >
               <td className="px-4 py-3">
                 <div className="flex items-center gap-1.5">
                   {route.active ? (
                     <Badge
                       variant="outline"
-                      className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+                      className="border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80] text-xs"
                     >
                       active
                     </Badge>
                   ) : (
                     <Badge
                       variant="outline"
-                      className="border-mesh-border-strong text-slate-500 text-xs"
+                      className="border-mesh-border-strong text-mesh-text-mute text-xs"
                     >
                       {route.disabled ? "disabled" : "inactive"}
                     </Badge>
@@ -883,7 +883,7 @@ function RoutesTable({
                   {route.dynamic && (
                     <Badge
                       variant="outline"
-                      className="border-blue-500/30 text-blue-400 text-xs"
+                      className="border-mesh-primary/30 text-mesh-primary text-xs"
                     >
                       dynamic
                     </Badge>
@@ -896,17 +896,17 @@ function RoutesTable({
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono tabular-nums text-slate-300">
+                <span className="font-mono tabular-nums text-mesh-text">
                   {route.gateway ?? "\u2014"}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="font-mono tabular-nums text-xs text-slate-400">
+                <span className="font-mono tabular-nums text-xs text-mesh-text-dim">
                   {route.distance ?? "\u2014"}
                 </span>
               </td>
               <td className="px-4 py-3">
-                <span className="text-slate-400">
+                <span className="text-mesh-text-dim">
                   {route.routing_table ?? "main"}
                 </span>
               </td>
@@ -959,14 +959,14 @@ function DhcpLeasesTable({
   };
 
   const headerCols = (
-    <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
-      <th className="px-4 py-3 font-medium text-slate-400">IP Address</th>
-      <th className="px-4 py-3 font-medium text-slate-400">MAC Address</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Hostname</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Server</th>
-      <th className="px-4 py-3 font-medium text-slate-400">Expires</th>
-      <th className="px-4 py-3 font-medium text-slate-400">State</th>
-      <th className="px-4 py-3 font-medium text-slate-400 w-16" />
+    <tr className="border-b border-mesh-border bg-mesh-surface-1 text-left">
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">IP Address</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">MAC Address</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">Hostname</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">Server</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">Expires</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim">State</th>
+      <th className="px-4 py-3 font-medium text-mesh-text-dim w-16" />
     </tr>
   );
 
@@ -995,16 +995,16 @@ function DhcpLeasesTable({
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-        <p className="text-xs text-rose-400">{error}</p>
+      <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+        <p className="text-xs text-[#fb7185]">{error}</p>
       </div>
     );
   }
 
   if (!data || data.length === 0) {
     return (
-      <p className="py-4 text-sm text-slate-500">
+      <p className="py-4 text-sm text-mesh-text-mute">
         No DHCP leases found. DHCP server may not be configured.
       </p>
     );
@@ -1021,7 +1021,7 @@ function DhcpLeasesTable({
             return (
               <tr
                 key={`${lease.address}-${idx}`}
-                className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors"
+                className="border-b border-mesh-border last:border-b-0 hover:bg-mesh-surface-2 transition-colors"
               >
                 <td className="px-4 py-3">
                   <span className="font-mono tabular-nums font-medium text-white">
@@ -1029,22 +1029,22 @@ function DhcpLeasesTable({
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="font-mono tabular-nums text-xs text-slate-400">
+                  <span className="font-mono tabular-nums text-xs text-mesh-text-dim">
                     {lease.mac_address ?? "\u2014"}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-slate-300">
+                  <span className="text-mesh-text">
                     {lease.host_name ?? "\u2014"}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="text-slate-300">
+                  <span className="text-mesh-text">
                     {lease.server ?? "\u2014"}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="font-mono tabular-nums text-xs text-slate-400">
+                  <span className="font-mono tabular-nums text-xs text-mesh-text-dim">
                     {lease.expires_after ?? "\u2014"}
                   </span>
                 </td>
@@ -1053,8 +1053,8 @@ function DhcpLeasesTable({
                     variant="outline"
                     className={
                       lease.status === "bound"
-                        ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
-                        : "border-mesh-border-strong text-slate-500 text-xs"
+                        ? "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80] text-xs"
+                        : "border-mesh-border-strong text-mesh-text-mute text-xs"
                     }
                   >
                     {lease.dynamic ? lease.status ?? "\u2014" : "static"}
@@ -1065,7 +1065,7 @@ function DhcpLeasesTable({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-slate-400 hover:text-amber-400"
+                      className="h-7 w-7 text-mesh-text-dim hover:text-[#fbbf24]"
                       title="Reserve (create static mapping)"
                       disabled={isPinning}
                       onClick={() => handlePin(lease)}
@@ -1124,41 +1124,41 @@ function DhcpServersSection({ reload: parentReload }: { reload: () => Promise<vo
 
   if (servers.error) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-        <p className="text-xs text-rose-400">{servers.error}</p>
+      <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+        <p className="text-xs text-[#fb7185]">{servers.error}</p>
       </div>
     );
   }
 
   if (!servers.data || servers.data.length === 0) {
-    return <p className="py-4 text-sm text-slate-500">No DHCP servers configured.</p>;
+    return <p className="py-4 text-sm text-mesh-text-mute">No DHCP servers configured.</p>;
   }
 
   return (
     <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
-            <th className="px-4 py-3 font-medium text-slate-400">Name</th>
-            <th className="px-4 py-3 font-medium text-slate-400">Interface</th>
-            <th className="px-4 py-3 font-medium text-slate-400">Address Pool</th>
-            <th className="px-4 py-3 font-medium text-slate-400">Lease Time</th>
-            <th className="px-4 py-3 font-medium text-slate-400">Status</th>
-            <th className="px-4 py-3 font-medium text-slate-400 w-20" />
+          <tr className="border-b border-mesh-border bg-mesh-surface-1 text-left">
+            <th className="px-4 py-3 font-medium text-mesh-text-dim">Name</th>
+            <th className="px-4 py-3 font-medium text-mesh-text-dim">Interface</th>
+            <th className="px-4 py-3 font-medium text-mesh-text-dim">Address Pool</th>
+            <th className="px-4 py-3 font-medium text-mesh-text-dim">Lease Time</th>
+            <th className="px-4 py-3 font-medium text-mesh-text-dim">Status</th>
+            <th className="px-4 py-3 font-medium text-mesh-text-dim w-20" />
           </tr>
         </thead>
         <tbody>
           {servers.data.map((srv, idx) => (
-            <tr key={srv.id ?? idx} className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors">
+            <tr key={srv.id ?? idx} className="border-b border-mesh-border last:border-b-0 hover:bg-mesh-surface-2 transition-colors">
               <td className="px-4 py-3 font-medium text-white">{srv.name ?? "\u2014"}</td>
-              <td className="px-4 py-3 text-slate-300">{srv.interface ?? "\u2014"}</td>
-              <td className="px-4 py-3 text-slate-300">{srv.address_pool ?? "\u2014"}</td>
+              <td className="px-4 py-3 text-mesh-text">{srv.interface ?? "\u2014"}</td>
+              <td className="px-4 py-3 text-mesh-text">{srv.address_pool ?? "\u2014"}</td>
               <td className="px-4 py-3">
                 {editId === srv.id ? (
                   <div className="flex items-center gap-2">
                     <Input
-                      className="h-7 w-28 bg-mesh-surface-1 border-mesh-border-strong text-white text-xs"
+                      className="h-7 w-28 bg-mesh-surface-1 border-mesh-border text-white text-xs"
                       value={editLeaseTime}
                       onChange={(e) => setEditLeaseTime(e.target.value)}
                       placeholder="e.g. 1d"
@@ -1167,13 +1167,13 @@ function DhcpServersSection({ reload: parentReload }: { reload: () => Promise<vo
                     <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setEditId(null)}>Cancel</Button>
                   </div>
                 ) : (
-                  <span className="font-mono text-xs text-slate-400">{srv.lease_time ?? "\u2014"}</span>
+                  <span className="font-mono text-xs text-mesh-text-dim">{srv.lease_time ?? "\u2014"}</span>
                 )}
               </td>
               <td className="px-4 py-3">
                 <Badge
                   variant="outline"
-                  className={srv.disabled ? "border-mesh-border-strong text-slate-500 text-xs" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"}
+                  className={srv.disabled ? "border-mesh-border-strong text-mesh-text-mute text-xs" : "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80] text-xs"}
                 >
                   {srv.disabled ? "disabled" : "active"}
                 </Badge>
@@ -1183,7 +1183,7 @@ function DhcpServersSection({ reload: parentReload }: { reload: () => Promise<vo
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-7 w-7 text-slate-400 hover:text-white"
+                    className="h-7 w-7 text-mesh-text-dim hover:text-white"
                     onClick={() => handleEdit(srv)}
                   >
                     <Pencil className="h-3.5 w-3.5" />
@@ -1274,9 +1274,9 @@ function DhcpNetworksSection() {
 
   if (networks.error) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-        <p className="text-xs text-rose-400">{networks.error}</p>
+      <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+        <p className="text-xs text-[#fb7185]">{networks.error}</p>
       </div>
     );
   }
@@ -1298,35 +1298,35 @@ function DhcpNetworksSection() {
       </div>
 
       {(!networks.data || networks.data.length === 0) ? (
-        <p className="py-4 text-sm text-slate-500">No DHCP networks configured. Add one to define options for clients.</p>
+        <p className="py-4 text-sm text-mesh-text-mute">No DHCP networks configured. Add one to define options for clients.</p>
       ) : (
         <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
-                <th className="px-4 py-3 font-medium text-slate-400">Address</th>
-                <th className="px-4 py-3 font-medium text-slate-400">Gateway</th>
-                <th className="px-4 py-3 font-medium text-slate-400">DNS</th>
-                <th className="px-4 py-3 font-medium text-slate-400">Domain</th>
-                <th className="px-4 py-3 font-medium text-slate-400">NTP</th>
-                <th className="px-4 py-3 font-medium text-slate-400 w-20" />
+              <tr className="border-b border-mesh-border bg-mesh-surface-1 text-left">
+                <th className="px-4 py-3 font-medium text-mesh-text-dim">Address</th>
+                <th className="px-4 py-3 font-medium text-mesh-text-dim">Gateway</th>
+                <th className="px-4 py-3 font-medium text-mesh-text-dim">DNS</th>
+                <th className="px-4 py-3 font-medium text-mesh-text-dim">Domain</th>
+                <th className="px-4 py-3 font-medium text-mesh-text-dim">NTP</th>
+                <th className="px-4 py-3 font-medium text-mesh-text-dim w-20" />
               </tr>
             </thead>
             <tbody>
               {networks.data.map((n, idx) => (
-                <tr key={n.id ?? idx} className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors">
+                <tr key={n.id ?? idx} className="border-b border-mesh-border last:border-b-0 hover:bg-mesh-surface-2 transition-colors">
                   <td className="px-4 py-3 font-mono text-xs text-white">{n.address ?? "\u2014"}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-300">{n.gateway ?? "\u2014"}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-300">{n.dns_server ?? "\u2014"}</td>
-                  <td className="px-4 py-3 text-slate-300">{n.domain ?? "\u2014"}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-300">{n.ntp_server ?? "\u2014"}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-mesh-text">{n.gateway ?? "\u2014"}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-mesh-text">{n.dns_server ?? "\u2014"}</td>
+                  <td className="px-4 py-3 text-mesh-text">{n.domain ?? "\u2014"}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-mesh-text">{n.ntp_server ?? "\u2014"}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-white" onClick={() => handleEdit(n)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-mesh-text-dim hover:text-white" onClick={() => handleEdit(n)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       {!n.dynamic && (
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-rose-400" onClick={() => setDeleteTarget(n)}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-mesh-text-dim hover:text-[#fb7185]" onClick={() => setDeleteTarget(n)}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
@@ -1340,37 +1340,37 @@ function DhcpNetworksSection() {
       )}
 
       <Dialog open={showAdd} onOpenChange={(open) => { if (!open) { setShowAdd(false); setEditId(null); } }}>
-        <DialogContent className="bg-mesh-surface-1 border-mesh-border-strong text-white sm:max-w-lg">
+        <DialogContent className="bg-mesh-surface-1 border-mesh-border text-white sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editId ? "Edit DHCP Network" : "Add DHCP Network"}</DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-mesh-text-dim">
               Configure DHCP options (gateway, DNS, domain, NTP) for a network range.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
             <div>
-              <Label className="text-slate-300 text-xs">Network Address (CIDR)</Label>
-              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" placeholder="192.168.1.0/24" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
+              <Label className="text-mesh-text text-xs">Network Address (CIDR)</Label>
+              <Input className="bg-mesh-surface-1 border-mesh-border text-white" placeholder="192.168.1.0/24" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} />
             </div>
             <div>
-              <Label className="text-slate-300 text-xs">Gateway</Label>
-              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" placeholder="192.168.1.1" value={form.gateway ?? ""} onChange={(e) => setForm({ ...form, gateway: e.target.value || undefined })} />
+              <Label className="text-mesh-text text-xs">Gateway</Label>
+              <Input className="bg-mesh-surface-1 border-mesh-border text-white" placeholder="192.168.1.1" value={form.gateway ?? ""} onChange={(e) => setForm({ ...form, gateway: e.target.value || undefined })} />
             </div>
             <div>
-              <Label className="text-slate-300 text-xs">DNS Servers (comma-separated)</Label>
-              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" placeholder="8.8.8.8,8.8.4.4" value={form.dns_server ?? ""} onChange={(e) => setForm({ ...form, dns_server: e.target.value || undefined })} />
+              <Label className="text-mesh-text text-xs">DNS Servers (comma-separated)</Label>
+              <Input className="bg-mesh-surface-1 border-mesh-border text-white" placeholder="8.8.8.8,8.8.4.4" value={form.dns_server ?? ""} onChange={(e) => setForm({ ...form, dns_server: e.target.value || undefined })} />
             </div>
             <div>
-              <Label className="text-slate-300 text-xs">Domain</Label>
-              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" placeholder="local" value={form.domain ?? ""} onChange={(e) => setForm({ ...form, domain: e.target.value || undefined })} />
+              <Label className="text-mesh-text text-xs">Domain</Label>
+              <Input className="bg-mesh-surface-1 border-mesh-border text-white" placeholder="local" value={form.domain ?? ""} onChange={(e) => setForm({ ...form, domain: e.target.value || undefined })} />
             </div>
             <div>
-              <Label className="text-slate-300 text-xs">NTP Server</Label>
-              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" placeholder="pool.ntp.org" value={form.ntp_server ?? ""} onChange={(e) => setForm({ ...form, ntp_server: e.target.value || undefined })} />
+              <Label className="text-mesh-text text-xs">NTP Server</Label>
+              <Input className="bg-mesh-surface-1 border-mesh-border text-white" placeholder="pool.ntp.org" value={form.ntp_server ?? ""} onChange={(e) => setForm({ ...form, ntp_server: e.target.value || undefined })} />
             </div>
             <div>
-              <Label className="text-slate-300 text-xs">Comment</Label>
-              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" value={form.comment ?? ""} onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })} />
+              <Label className="text-mesh-text text-xs">Comment</Label>
+              <Input className="bg-mesh-surface-1 border-mesh-border text-white" value={form.comment ?? ""} onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })} />
             </div>
           </div>
           <DialogFooter>
@@ -1383,16 +1383,16 @@ function DhcpNetworksSection() {
       </Dialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
-        <AlertDialogContent className="bg-mesh-surface-1 border-mesh-border-strong text-white">
+        <AlertDialogContent className="bg-mesh-surface-1 border-mesh-border text-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete DHCP Network</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-mesh-text-dim">
               Remove network {deleteTarget?.address}? DHCP clients in this range will no longer receive options.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-mesh-border-strong text-slate-300">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel className="border-mesh-border-strong text-mesh-text">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-[#fb7185] hover:bg-[#fb7185]" onClick={handleDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1462,9 +1462,9 @@ function DhcpPoolsSection() {
 
   if (pools.error) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-        <p className="text-xs text-rose-400">{pools.error}</p>
+      <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+        <p className="text-xs text-[#fb7185]">{pools.error}</p>
       </div>
     );
   }
@@ -1486,31 +1486,31 @@ function DhcpPoolsSection() {
       </div>
 
       {(!pools.data || pools.data.length === 0) ? (
-        <p className="py-4 text-sm text-slate-500">No IP pools configured. Add one to define DHCP address ranges.</p>
+        <p className="py-4 text-sm text-mesh-text-mute">No IP pools configured. Add one to define DHCP address ranges.</p>
       ) : (
         <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
-                <th className="px-4 py-3 font-medium text-slate-400">Name</th>
-                <th className="px-4 py-3 font-medium text-slate-400">Ranges</th>
-                <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
-                <th className="px-4 py-3 font-medium text-slate-400 w-20" />
+              <tr className="border-b border-mesh-border bg-mesh-surface-1 text-left">
+                <th className="px-4 py-3 font-medium text-mesh-text-dim">Name</th>
+                <th className="px-4 py-3 font-medium text-mesh-text-dim">Ranges</th>
+                <th className="px-4 py-3 font-medium text-mesh-text-dim">Comment</th>
+                <th className="px-4 py-3 font-medium text-mesh-text-dim w-20" />
               </tr>
             </thead>
             <tbody>
               {pools.data.map((p, idx) => (
-                <tr key={p.id ?? idx} className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors">
+                <tr key={p.id ?? idx} className="border-b border-mesh-border last:border-b-0 hover:bg-mesh-surface-2 transition-colors">
                   <td className="px-4 py-3 font-medium text-white">{p.name ?? "\u2014"}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-300">{p.ranges ?? "\u2014"}</td>
-                  <td className="px-4 py-3 text-slate-400 text-xs">{p.comment ?? "\u2014"}</td>
+                  <td className="px-4 py-3 font-mono text-xs text-mesh-text">{p.ranges ?? "\u2014"}</td>
+                  <td className="px-4 py-3 text-mesh-text-dim text-xs">{p.comment ?? "\u2014"}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-white" onClick={() => handleEdit(p)}>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-mesh-text-dim hover:text-white" onClick={() => handleEdit(p)}>
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
                       {!p.dynamic && (
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-rose-400" onClick={() => setDeleteTarget(p)}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-mesh-text-dim hover:text-[#fb7185]" onClick={() => setDeleteTarget(p)}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
@@ -1524,25 +1524,25 @@ function DhcpPoolsSection() {
       )}
 
       <Dialog open={showAdd} onOpenChange={(open) => { if (!open) { setShowAdd(false); setEditId(null); } }}>
-        <DialogContent className="bg-mesh-surface-1 border-mesh-border-strong text-white sm:max-w-md">
+        <DialogContent className="bg-mesh-surface-1 border-mesh-border text-white sm:max-w-md">
           <DialogHeader>
             <DialogTitle>{editId ? "Edit IP Pool" : "Add IP Pool"}</DialogTitle>
-            <DialogDescription className="text-slate-400">
+            <DialogDescription className="text-mesh-text-dim">
               Define an IP address range for the DHCP server.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3">
             <div>
-              <Label className="text-slate-300 text-xs">Pool Name</Label>
-              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" placeholder="dhcp-pool1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Label className="text-mesh-text text-xs">Pool Name</Label>
+              <Input className="bg-mesh-surface-1 border-mesh-border text-white" placeholder="dhcp-pool1" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             </div>
             <div>
-              <Label className="text-slate-300 text-xs">IP Ranges</Label>
-              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" placeholder="192.168.1.100-192.168.1.200" value={form.ranges} onChange={(e) => setForm({ ...form, ranges: e.target.value })} />
+              <Label className="text-mesh-text text-xs">IP Ranges</Label>
+              <Input className="bg-mesh-surface-1 border-mesh-border text-white" placeholder="192.168.1.100-192.168.1.200" value={form.ranges} onChange={(e) => setForm({ ...form, ranges: e.target.value })} />
             </div>
             <div>
-              <Label className="text-slate-300 text-xs">Comment</Label>
-              <Input className="bg-mesh-surface-1 border-mesh-border-strong text-white" value={form.comment ?? ""} onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })} />
+              <Label className="text-mesh-text text-xs">Comment</Label>
+              <Input className="bg-mesh-surface-1 border-mesh-border text-white" value={form.comment ?? ""} onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })} />
             </div>
           </div>
           <DialogFooter>
@@ -1555,16 +1555,16 @@ function DhcpPoolsSection() {
       </Dialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
-        <AlertDialogContent className="bg-mesh-surface-1 border-mesh-border-strong text-white">
+        <AlertDialogContent className="bg-mesh-surface-1 border-mesh-border text-white">
           <AlertDialogHeader>
             <AlertDialogTitle>Delete IP Pool</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-mesh-text-dim">
               Remove pool &quot;{deleteTarget?.name}&quot; ({deleteTarget?.ranges})? Any DHCP server using this pool will stop assigning addresses.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-mesh-border-strong text-slate-300">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogCancel className="border-mesh-border-strong text-mesh-text">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-[#fb7185] hover:bg-[#fb7185]" onClick={handleDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1587,37 +1587,37 @@ function DhcpLogsSection() {
 
   if (logs.error) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-        <p className="text-xs text-rose-400">{logs.error}</p>
+      <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+        <p className="text-xs text-[#fb7185]">{logs.error}</p>
       </div>
     );
   }
 
   if (!logs.data || logs.data.length === 0) {
-    return <p className="py-4 text-sm text-slate-500">No DHCP log entries found.</p>;
+    return <p className="py-4 text-sm text-mesh-text-mute">No DHCP log entries found.</p>;
   }
 
   return (
     <div className="space-y-2">
       <div className="flex justify-end">
-        <Button variant="ghost" size="sm" className="gap-1.5 text-slate-400" onClick={() => logs.reload()}>
+        <Button variant="ghost" size="sm" className="gap-1.5 text-mesh-text-dim" onClick={() => logs.reload()}>
           Refresh
         </Button>
       </div>
       <div className="overflow-x-auto rounded-md border border-mesh-border-strong max-h-96 overflow-y-auto">
         <table className="w-full text-sm">
           <thead className="sticky top-0">
-            <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
-              <th className="px-4 py-2 font-medium text-slate-400 w-40">Time</th>
-              <th className="px-4 py-2 font-medium text-slate-400">Message</th>
+            <tr className="border-b border-mesh-border bg-mesh-surface-1 text-left">
+              <th className="px-4 py-2 font-medium text-mesh-text-dim w-40">Time</th>
+              <th className="px-4 py-2 font-medium text-mesh-text-dim">Message</th>
             </tr>
           </thead>
           <tbody>
             {logs.data.slice(-100).reverse().map((entry, idx) => (
               <tr key={entry.id ?? idx} className="border-b border-mesh-border-strong last:border-b-0">
-                <td className="px-4 py-2 font-mono text-xs text-slate-500 whitespace-nowrap">{entry.time ?? "\u2014"}</td>
-                <td className="px-4 py-2 text-xs text-slate-300">{entry.message ?? "\u2014"}</td>
+                <td className="px-4 py-2 font-mono text-xs text-mesh-text-mute whitespace-nowrap">{entry.time ?? "\u2014"}</td>
+                <td className="px-4 py-2 text-xs text-mesh-text">{entry.message ?? "\u2014"}</td>
               </tr>
             ))}
           </tbody>
@@ -1633,12 +1633,12 @@ function ActionBadge({ action }: { action: string | null }) {
   const lower = (action ?? "").toLowerCase();
   const cls =
     lower === "accept" || lower === "masquerade"
-      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
+      ? "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80] text-xs"
       : lower === "drop"
-        ? "border-rose-500/30 bg-rose-500/10 text-rose-400 text-xs"
+        ? "border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185] text-xs"
         : lower === "reject"
-          ? "border-orange-500/30 bg-orange-500/10 text-orange-400 text-xs"
-          : "border-mesh-border-strong text-slate-400 text-xs";
+          ? "border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[#fbbf24] text-xs"
+          : "border-mesh-border-strong text-mesh-text-dim text-xs";
   return (
     <Badge variant="outline" className={cls}>
       {action ?? "\u2014"}
@@ -1782,12 +1782,12 @@ function FirewallFilterDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg border-mesh-border-strong bg-mesh-surface-1 text-slate-100">
+      <DialogContent className="max-w-lg border-mesh-border bg-mesh-surface-1 text-mesh-text">
         <DialogHeader>
           <DialogTitle className="text-white">
             {isEdit ? "Edit Filter Rule" : "Create Filter Rule"}
           </DialogTitle>
-          <DialogDescription className="text-slate-400">
+          <DialogDescription className="text-mesh-text-dim">
             Configure a MikroTik firewall filter rule.
           </DialogDescription>
         </DialogHeader>
@@ -1798,7 +1798,7 @@ function FirewallFilterDialog({
               <select
                 value={form.chain}
                 onChange={(e) => setForm({ ...form, chain: e.target.value })}
-                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
               >
                 <option value="forward">forward</option>
                 <option value="input">input</option>
@@ -1810,7 +1810,7 @@ function FirewallFilterDialog({
               <select
                 value={form.action}
                 onChange={(e) => setForm({ ...form, action: e.target.value })}
-                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
               >
                 <option value="accept">accept</option>
                 <option value="drop">drop</option>
@@ -1827,7 +1827,7 @@ function FirewallFilterDialog({
             <select
               value={form.protocol ?? ""}
               onChange={(e) => setForm({ ...form, protocol: e.target.value || undefined })}
-              className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+              className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
             >
               <option value="">any</option>
               <option value="tcp">tcp</option>
@@ -1845,7 +1845,7 @@ function FirewallFilterDialog({
                 value={form.src_address ?? ""}
                 onChange={(e) => setForm({ ...form, src_address: e.target.value || undefined })}
                 placeholder="e.g. 192.168.1.0/24"
-                className="border-mesh-border-strong bg-mesh-surface-1"
+                className="border-mesh-border bg-mesh-surface-1"
               />
             </div>
             <div className="space-y-2">
@@ -1854,7 +1854,7 @@ function FirewallFilterDialog({
                 value={form.dst_address ?? ""}
                 onChange={(e) => setForm({ ...form, dst_address: e.target.value || undefined })}
                 placeholder="e.g. 10.0.0.1"
-                className="border-mesh-border-strong bg-mesh-surface-1"
+                className="border-mesh-border bg-mesh-surface-1"
               />
             </div>
           </div>
@@ -1866,7 +1866,7 @@ function FirewallFilterDialog({
                   value={form.src_port ?? ""}
                   onChange={(e) => setForm({ ...form, src_port: e.target.value || undefined })}
                   placeholder="e.g. 1024-65535"
-                  className="border-mesh-border-strong bg-mesh-surface-1"
+                  className="border-mesh-border bg-mesh-surface-1"
                 />
               </div>
               <div className="space-y-2">
@@ -1875,7 +1875,7 @@ function FirewallFilterDialog({
                   value={form.dst_port ?? ""}
                   onChange={(e) => setForm({ ...form, dst_port: e.target.value || undefined })}
                   placeholder="e.g. 80,443"
-                  className="border-mesh-border-strong bg-mesh-surface-1"
+                  className="border-mesh-border bg-mesh-surface-1"
                 />
               </div>
             </div>
@@ -1886,9 +1886,9 @@ function FirewallFilterDialog({
               value={form.time ?? ""}
               onChange={(e) => setForm({ ...form, time: e.target.value || undefined })}
               placeholder="e.g. 08:00:00-17:00:00,mon,tue,wed,thu,fri"
-              className="border-mesh-border-strong bg-mesh-surface-1"
+              className="border-mesh-border bg-mesh-surface-1"
             />
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-mesh-text-mute">
               Format: HH:MM:SS-HH:MM:SS,day1,day2,… Leave empty for always active.
             </p>
           </div>
@@ -1898,7 +1898,7 @@ function FirewallFilterDialog({
               value={form.comment ?? ""}
               onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })}
               placeholder="Rule description"
-              className="border-mesh-border-strong bg-mesh-surface-1"
+              className="border-mesh-border bg-mesh-surface-1"
             />
           </div>
         </div>
@@ -1909,7 +1909,7 @@ function FirewallFilterDialog({
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-pink-600 text-white hover:bg-pink-700"
+            className="bg-[#f472b6] text-white hover:bg-[#f472b6]"
           >
             {saving ? "Saving\u2026" : isEdit ? "Update" : "Create"}
           </Button>
@@ -1981,12 +1981,12 @@ function FirewallNatDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg border-mesh-border-strong bg-mesh-surface-1 text-slate-100">
+      <DialogContent className="max-w-lg border-mesh-border bg-mesh-surface-1 text-mesh-text">
         <DialogHeader>
           <DialogTitle className="text-white">
             {isEdit ? "Edit NAT Rule" : "Create NAT Rule"}
           </DialogTitle>
-          <DialogDescription className="text-slate-400">
+          <DialogDescription className="text-mesh-text-dim">
             Configure a MikroTik firewall NAT rule.
           </DialogDescription>
         </DialogHeader>
@@ -1997,7 +1997,7 @@ function FirewallNatDialog({
               <select
                 value={form.chain}
                 onChange={(e) => setForm({ ...form, chain: e.target.value })}
-                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
               >
                 <option value="dstnat">dstnat</option>
                 <option value="srcnat">srcnat</option>
@@ -2008,7 +2008,7 @@ function FirewallNatDialog({
               <select
                 value={form.action}
                 onChange={(e) => setForm({ ...form, action: e.target.value })}
-                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
               >
                 <option value="dst-nat">dst-nat</option>
                 <option value="src-nat">src-nat</option>
@@ -2024,7 +2024,7 @@ function FirewallNatDialog({
             <select
               value={form.protocol ?? ""}
               onChange={(e) => setForm({ ...form, protocol: e.target.value || undefined })}
-              className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+              className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
             >
               <option value="">any</option>
               <option value="tcp">tcp</option>
@@ -2039,7 +2039,7 @@ function FirewallNatDialog({
                 value={form.dst_address ?? ""}
                 onChange={(e) => setForm({ ...form, dst_address: e.target.value || undefined })}
                 placeholder="e.g. 203.0.113.1"
-                className="border-mesh-border-strong bg-mesh-surface-1"
+                className="border-mesh-border bg-mesh-surface-1"
               />
             </div>
             {showPorts && (
@@ -2049,7 +2049,7 @@ function FirewallNatDialog({
                   value={form.dst_port ?? ""}
                   onChange={(e) => setForm({ ...form, dst_port: e.target.value || undefined })}
                   placeholder="e.g. 8080"
-                  className="border-mesh-border-strong bg-mesh-surface-1"
+                  className="border-mesh-border bg-mesh-surface-1"
                 />
               </div>
             )}
@@ -2061,7 +2061,7 @@ function FirewallNatDialog({
                 value={form.to_addresses ?? ""}
                 onChange={(e) => setForm({ ...form, to_addresses: e.target.value || undefined })}
                 placeholder="e.g. 192.168.1.100"
-                className="border-mesh-border-strong bg-mesh-surface-1"
+                className="border-mesh-border bg-mesh-surface-1"
               />
             </div>
             {showPorts && (
@@ -2071,7 +2071,7 @@ function FirewallNatDialog({
                   value={form.to_ports ?? ""}
                   onChange={(e) => setForm({ ...form, to_ports: e.target.value || undefined })}
                   placeholder="e.g. 80"
-                  className="border-mesh-border-strong bg-mesh-surface-1"
+                  className="border-mesh-border bg-mesh-surface-1"
                 />
               </div>
             )}
@@ -2082,7 +2082,7 @@ function FirewallNatDialog({
               value={form.comment ?? ""}
               onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })}
               placeholder="Rule description"
-              className="border-mesh-border-strong bg-mesh-surface-1"
+              className="border-mesh-border bg-mesh-surface-1"
             />
           </div>
         </div>
@@ -2093,7 +2093,7 @@ function FirewallNatDialog({
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-pink-600 text-white hover:bg-pink-700"
+            className="bg-[#f472b6] text-white hover:bg-[#f472b6]"
           >
             {saving ? "Saving\u2026" : isEdit ? "Update" : "Create"}
           </Button>
@@ -2162,12 +2162,12 @@ function AddressListDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md border-mesh-border-strong bg-mesh-surface-1 text-slate-100">
+      <DialogContent className="max-w-md border-mesh-border bg-mesh-surface-1 text-mesh-text">
         <DialogHeader>
           <DialogTitle className="text-white">
             {isEdit ? "Edit Address List Entry" : "Add Address List Entry"}
           </DialogTitle>
-          <DialogDescription className="text-slate-400">
+          <DialogDescription className="text-mesh-text-dim">
             {isEdit
               ? "Update this address list entry on MikroTik."
               : "Add an address to a MikroTik address list."}
@@ -2180,7 +2180,7 @@ function AddressListDialog({
               value={form.list}
               onChange={(e) => setForm({ ...form, list: e.target.value })}
               placeholder="e.g. blocked"
-              className="border-mesh-border-strong bg-mesh-surface-1"
+              className="border-mesh-border bg-mesh-surface-1"
             />
           </div>
           <div className="space-y-2">
@@ -2189,7 +2189,7 @@ function AddressListDialog({
               value={form.address}
               onChange={(e) => setForm({ ...form, address: e.target.value })}
               placeholder="e.g. 10.0.0.0/8"
-              className="border-mesh-border-strong bg-mesh-surface-1"
+              className="border-mesh-border bg-mesh-surface-1"
             />
           </div>
           <div className="space-y-2">
@@ -2198,7 +2198,7 @@ function AddressListDialog({
               value={form.comment ?? ""}
               onChange={(e) => setForm({ ...form, comment: e.target.value || undefined })}
               placeholder="Optional description"
-              className="border-mesh-border-strong bg-mesh-surface-1"
+              className="border-mesh-border bg-mesh-surface-1"
             />
           </div>
         </div>
@@ -2209,7 +2209,7 @@ function AddressListDialog({
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-pink-600 text-white hover:bg-pink-700"
+            className="bg-[#f472b6] text-white hover:bg-[#f472b6]"
           >
             {saving ? "Saving\u2026" : isEdit ? "Save" : "Add"}
           </Button>
@@ -2257,7 +2257,7 @@ function SortableFilterRow({
     <tr
       ref={setNodeRef}
       style={style}
-      className={`border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors ${
+      className={`border-b border-mesh-border last:border-b-0 hover:bg-mesh-surface-2 transition-colors ${
         rule.disabled ? "opacity-50" : ""
       }`}
     >
@@ -2265,58 +2265,58 @@ function SortableFilterRow({
         <button
           {...attributes}
           {...listeners}
-          className="cursor-grab text-slate-500 hover:text-slate-300 active:cursor-grabbing"
+          className="cursor-grab text-mesh-text-mute hover:text-mesh-text active:cursor-grabbing"
           title="Drag to reorder"
         >
           <GripVertical className="h-4 w-4" />
         </button>
       </td>
-      <td className="px-4 py-3 text-slate-300">{rule.chain ?? "\u2014"}</td>
+      <td className="px-4 py-3 text-mesh-text">{rule.chain ?? "\u2014"}</td>
       <td className="px-4 py-3">
         <ActionBadge action={rule.action} />
       </td>
-      <td className="px-4 py-3 text-slate-300">{rule.protocol ?? "any"}</td>
+      <td className="px-4 py-3 text-mesh-text">{rule.protocol ?? "any"}</td>
       <td className="px-4 py-3">
-        <span className="font-mono tabular-nums text-xs text-slate-400">
+        <span className="font-mono tabular-nums text-xs text-mesh-text-dim">
           {rule.src_address ?? "any"}
         </span>
       </td>
       <td className="px-4 py-3">
-        <span className="font-mono tabular-nums text-xs text-slate-400">
+        <span className="font-mono tabular-nums text-xs text-mesh-text-dim">
           {rule.dst_address ?? "any"}
         </span>
       </td>
-      <td className="px-4 py-3 text-slate-300">{rule.dst_port ?? "\u2014"}</td>
+      <td className="px-4 py-3 text-mesh-text">{rule.dst_port ?? "\u2014"}</td>
       <td className="px-4 py-3">
         <div className="flex flex-col gap-0.5">
           <span className="tabular-nums text-xs text-mesh-accent" title={`${rule.packets ?? 0} packets`}>
             {formatPackets(rule.packets)} pkts
           </span>
-          <span className="tabular-nums text-xs text-slate-500" title={`${rule.bytes ?? 0} bytes`}>
+          <span className="tabular-nums text-xs text-mesh-text-mute" title={`${rule.bytes ?? 0} bytes`}>
             {formatBytes(rule.bytes)}
           </span>
         </div>
       </td>
       <td className="px-4 py-3">
         {rule.time ? (
-          <span className="flex items-center gap-1 text-xs text-amber-400" title={rule.time}>
+          <span className="flex items-center gap-1 text-xs text-[#fbbf24]" title={rule.time}>
             <Timer className="h-3 w-3" />
             {rule.time.split(",")[0]}
           </span>
         ) : (
-          <span className="text-xs text-slate-600">—</span>
+          <span className="text-xs text-mesh-text-mute">—</span>
         )}
       </td>
       <td className="px-4 py-3">
-        <span className="text-slate-500 text-xs">{rule.comment ?? ""}</span>
+        <span className="text-mesh-text-mute text-xs">{rule.comment ?? ""}</span>
       </td>
       <td className="px-4 py-3">
         <Badge
           variant="outline"
           className={
             rule.disabled
-              ? "border-mesh-border-strong text-slate-500 text-xs"
-              : "border-emerald-500/30 text-emerald-400 text-xs"
+              ? "border-mesh-border-strong text-mesh-text-mute text-xs"
+              : "border-[#4ade80]/30 text-[#4ade80] text-xs"
           }
         >
           {rule.disabled ? "disabled" : "enabled"}
@@ -2327,7 +2327,7 @@ function SortableFilterRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
+            className="h-8 w-8 text-mesh-text-dim hover:bg-mesh-surface-2 hover:text-white"
             onClick={() => onToggle(rule)}
             disabled={!rule.id || toggling === rule.id}
             title={rule.disabled ? "Enable" : "Disable"}
@@ -2337,7 +2337,7 @@ function SortableFilterRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
+            className="h-8 w-8 text-mesh-text-dim hover:bg-mesh-surface-2 hover:text-white"
             onClick={() => onEdit(rule)}
             disabled={!rule.id}
           >
@@ -2346,7 +2346,7 @@ function SortableFilterRow({
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+            className="h-8 w-8 text-[#fb7185] hover:bg-[#fb7185]/10 hover:text-[#fb7185]"
             onClick={() => onDelete(rule)}
             disabled={!rule.id || deleting === rule.id}
           >
@@ -2526,7 +2526,7 @@ function FirewallPanel({
 
   if (loading) {
     return (
-      <Card className="border-mesh-border-strong bg-mesh-surface-1">
+      <Card className="border-mesh-border bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="text-base text-white">Filter Rules</CardTitle>
         </CardHeader>
@@ -2534,19 +2534,19 @@ function FirewallPanel({
           <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
+                <tr className="border-b border-mesh-border bg-mesh-surface-1 text-left">
                   <th className="w-8 px-2 py-3" />
-                  <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">Action</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">Src</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">Port</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">Stats</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">Schedule</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">Status</th>
-                  <th className="px-4 py-3 font-medium text-slate-400">Actions</th>
+                  <th className="px-4 py-3 font-medium text-mesh-text-dim">Chain</th>
+                  <th className="px-4 py-3 font-medium text-mesh-text-dim">Action</th>
+                  <th className="px-4 py-3 font-medium text-mesh-text-dim">Protocol</th>
+                  <th className="px-4 py-3 font-medium text-mesh-text-dim">Src</th>
+                  <th className="px-4 py-3 font-medium text-mesh-text-dim">Dst</th>
+                  <th className="px-4 py-3 font-medium text-mesh-text-dim">Port</th>
+                  <th className="px-4 py-3 font-medium text-mesh-text-dim">Stats</th>
+                  <th className="px-4 py-3 font-medium text-mesh-text-dim">Schedule</th>
+                  <th className="px-4 py-3 font-medium text-mesh-text-dim">Comment</th>
+                  <th className="px-4 py-3 font-medium text-mesh-text-dim">Status</th>
+                  <th className="px-4 py-3 font-medium text-mesh-text-dim">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -2576,11 +2576,11 @@ function FirewallPanel({
 
   if (error) {
     return (
-      <Card className="border-mesh-border-strong bg-mesh-surface-1">
+      <Card className="border-mesh-border bg-mesh-surface-1">
         <CardContent className="py-4">
-          <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-            <p className="text-xs text-rose-400">{error}</p>
+          <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+            <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+            <p className="text-xs text-[#fb7185]">{error}</p>
           </div>
         </CardContent>
       </Card>
@@ -2598,13 +2598,13 @@ function FirewallPanel({
   return (
     <div className="space-y-4">
       {/* Filter Rules */}
-      <Card className="border-mesh-border-strong bg-mesh-surface-1">
+      <Card className="border-mesh-border bg-mesh-surface-1">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base text-white">Filter Rules</CardTitle>
             <Button
               size="sm"
-              className="bg-pink-600 text-white hover:bg-pink-700"
+              className="bg-[#f472b6] text-white hover:bg-[#f472b6]"
               onClick={() => {
                 setEditFilter(null);
                 setFilterDialogOpen(true);
@@ -2616,19 +2616,19 @@ function FirewallPanel({
           </div>
           {(data?.filter_rules.length ?? 0) > 0 && (
             <div className="relative mt-2">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mesh-text-mute" />
               <Input
                 value={filterSearch}
                 onChange={(e) => setFilterSearch(e.target.value)}
                 placeholder="Search rules…"
-                className="border-mesh-border-strong bg-mesh-surface-1 pl-9 text-sm"
+                className="border-mesh-border bg-mesh-surface-1 pl-9 text-sm"
               />
             </div>
           )}
         </CardHeader>
         <CardContent>
           {!data?.filter_rules.length ? (
-            <p className="py-4 text-sm text-slate-500">No filter rules configured.</p>
+            <p className="py-4 text-sm text-mesh-text-mute">No filter rules configured.</p>
           ) : (
             <DndContext
               sensors={sensors}
@@ -2638,23 +2638,23 @@ function FirewallPanel({
               <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
+                    <tr className="border-b border-mesh-border bg-mesh-surface-1 text-left">
                       <th className="w-8 px-2 py-3" />
-                      <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
-                      <th className="px-4 py-3 font-medium text-slate-400">Action</th>
-                      <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
-                      <th className="px-4 py-3 font-medium text-slate-400">Src</th>
-                      <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
-                      <th className="px-4 py-3 font-medium text-slate-400">Port</th>
-                      <th className="px-4 py-3 font-medium text-slate-400">
+                      <th className="px-4 py-3 font-medium text-mesh-text-dim">Chain</th>
+                      <th className="px-4 py-3 font-medium text-mesh-text-dim">Action</th>
+                      <th className="px-4 py-3 font-medium text-mesh-text-dim">Protocol</th>
+                      <th className="px-4 py-3 font-medium text-mesh-text-dim">Src</th>
+                      <th className="px-4 py-3 font-medium text-mesh-text-dim">Dst</th>
+                      <th className="px-4 py-3 font-medium text-mesh-text-dim">Port</th>
+                      <th className="px-4 py-3 font-medium text-mesh-text-dim">
                         <span className="flex items-center gap-1">
                           <BarChart3 className="h-3.5 w-3.5" /> Stats
                         </span>
                       </th>
-                      <th className="px-4 py-3 font-medium text-slate-400">Schedule</th>
-                      <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
-                      <th className="px-4 py-3 font-medium text-slate-400">Status</th>
-                      <th className="px-4 py-3 text-right font-medium text-slate-400">Actions</th>
+                      <th className="px-4 py-3 font-medium text-mesh-text-dim">Schedule</th>
+                      <th className="px-4 py-3 font-medium text-mesh-text-dim">Comment</th>
+                      <th className="px-4 py-3 font-medium text-mesh-text-dim">Status</th>
+                      <th className="px-4 py-3 text-right font-medium text-mesh-text-dim">Actions</th>
                     </tr>
                   </thead>
                   <SortableContext
@@ -2688,13 +2688,13 @@ function FirewallPanel({
       </Card>
 
       {/* NAT Rules */}
-      <Card className="border-mesh-border-strong bg-mesh-surface-1">
+      <Card className="border-mesh-border bg-mesh-surface-1">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base text-white">NAT Rules</CardTitle>
             <Button
               size="sm"
-              className="bg-pink-600 text-white hover:bg-pink-700"
+              className="bg-[#f472b6] text-white hover:bg-[#f472b6]"
               onClick={() => {
                 setEditNat(null);
                 setNatDialogOpen(true);
@@ -2707,58 +2707,58 @@ function FirewallPanel({
         </CardHeader>
         <CardContent>
           {!data?.nat_rules.length ? (
-            <p className="py-4 text-sm text-slate-500">No NAT rules configured.</p>
+            <p className="py-4 text-sm text-mesh-text-mute">No NAT rules configured.</p>
           ) : (
             <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
-                    <th className="px-4 py-3 font-medium text-slate-400">Chain</th>
-                    <th className="px-4 py-3 font-medium text-slate-400">Action</th>
-                    <th className="px-4 py-3 font-medium text-slate-400">Protocol</th>
-                    <th className="px-4 py-3 font-medium text-slate-400">Dst</th>
-                    <th className="px-4 py-3 font-medium text-slate-400">Port</th>
-                    <th className="px-4 py-3 font-medium text-slate-400">To</th>
-                    <th className="px-4 py-3 font-medium text-slate-400">Comment</th>
-                    <th className="px-4 py-3 font-medium text-slate-400">Status</th>
-                    <th className="px-4 py-3 text-right font-medium text-slate-400">Actions</th>
+                  <tr className="border-b border-mesh-border bg-mesh-surface-1 text-left">
+                    <th className="px-4 py-3 font-medium text-mesh-text-dim">Chain</th>
+                    <th className="px-4 py-3 font-medium text-mesh-text-dim">Action</th>
+                    <th className="px-4 py-3 font-medium text-mesh-text-dim">Protocol</th>
+                    <th className="px-4 py-3 font-medium text-mesh-text-dim">Dst</th>
+                    <th className="px-4 py-3 font-medium text-mesh-text-dim">Port</th>
+                    <th className="px-4 py-3 font-medium text-mesh-text-dim">To</th>
+                    <th className="px-4 py-3 font-medium text-mesh-text-dim">Comment</th>
+                    <th className="px-4 py-3 font-medium text-mesh-text-dim">Status</th>
+                    <th className="px-4 py-3 text-right font-medium text-mesh-text-dim">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.nat_rules.map((rule, i) => (
                     <tr
                       key={rule.id ?? i}
-                      className={`border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors ${
+                      className={`border-b border-mesh-border last:border-b-0 hover:bg-mesh-surface-2 transition-colors ${
                         rule.disabled ? "opacity-50" : ""
                       }`}
                     >
-                      <td className="px-4 py-3 text-slate-300">{rule.chain ?? "\u2014"}</td>
+                      <td className="px-4 py-3 text-mesh-text">{rule.chain ?? "\u2014"}</td>
                       <td className="px-4 py-3">
                         <ActionBadge action={rule.action} />
                       </td>
-                      <td className="px-4 py-3 text-slate-300">{rule.protocol ?? "any"}</td>
+                      <td className="px-4 py-3 text-mesh-text">{rule.protocol ?? "any"}</td>
                       <td className="px-4 py-3">
-                        <span className="font-mono tabular-nums text-xs text-slate-400">
+                        <span className="font-mono tabular-nums text-xs text-mesh-text-dim">
                           {rule.dst_address ?? "any"}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-300">{rule.dst_port ?? "\u2014"}</td>
+                      <td className="px-4 py-3 text-mesh-text">{rule.dst_port ?? "\u2014"}</td>
                       <td className="px-4 py-3">
-                        <span className="font-mono tabular-nums text-slate-300">
+                        <span className="font-mono tabular-nums text-mesh-text">
                           {rule.to_addresses ?? "\u2014"}
                           {rule.to_ports ? `:${rule.to_ports}` : ""}
                         </span>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="text-slate-500">{rule.comment ?? ""}</span>
+                        <span className="text-mesh-text-mute">{rule.comment ?? ""}</span>
                       </td>
                       <td className="px-4 py-3">
                         <Badge
                           variant="outline"
                           className={
                             rule.disabled
-                              ? "border-mesh-border-strong text-slate-500 text-xs"
-                              : "border-emerald-500/30 text-emerald-400 text-xs"
+                              ? "border-mesh-border-strong text-mesh-text-mute text-xs"
+                              : "border-[#4ade80]/30 text-[#4ade80] text-xs"
                           }
                         >
                           {rule.disabled ? "disabled" : "enabled"}
@@ -2769,7 +2769,7 @@ function FirewallPanel({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
+                            className="h-8 w-8 text-mesh-text-dim hover:bg-mesh-surface-2 hover:text-white"
                             onClick={() => handleToggleNat(rule)}
                             disabled={!rule.id || toggling === rule.id}
                             title={rule.disabled ? "Enable" : "Disable"}
@@ -2779,7 +2779,7 @@ function FirewallPanel({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
+                            className="h-8 w-8 text-mesh-text-dim hover:bg-mesh-surface-2 hover:text-white"
                             onClick={() => {
                               setEditNat(rule);
                               setNatDialogOpen(true);
@@ -2791,7 +2791,7 @@ function FirewallPanel({
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                            className="h-8 w-8 text-[#fb7185] hover:bg-[#fb7185]/10 hover:text-[#fb7185]"
                             onClick={() => setConfirmDeleteNat(rule)}
                             disabled={!rule.id || deleting === rule.id}
                           >
@@ -2809,13 +2809,13 @@ function FirewallPanel({
       </Card>
 
       {/* Address Lists */}
-      <Card className="border-mesh-border-strong bg-mesh-surface-1">
+      <Card className="border-mesh-border bg-mesh-surface-1">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base text-white">Address Lists</CardTitle>
             <Button
               size="sm"
-              className="bg-pink-600 text-white hover:bg-pink-700"
+              className="bg-[#f472b6] text-white hover:bg-[#f472b6]"
               onClick={() => {
                 setEditAddr(null);
                 setAddrDialogOpen(true);
@@ -2828,43 +2828,43 @@ function FirewallPanel({
         </CardHeader>
         <CardContent>
           {Object.keys(addressGroups).length === 0 ? (
-            <p className="py-4 text-sm text-slate-500">No address list entries.</p>
+            <p className="py-4 text-sm text-mesh-text-mute">No address list entries.</p>
           ) : (
             <div className="space-y-3">
               {Object.entries(addressGroups).map(([listName, entries]) => (
                 <div key={listName}>
                   <div className="mb-1 flex items-center gap-2">
-                    <List className="h-3.5 w-3.5 text-slate-400" />
-                    <span className="text-sm font-medium text-slate-300">{listName}</span>
-                    <Badge variant="outline" className="border-mesh-border-strong text-slate-500 text-xs">
+                    <List className="h-3.5 w-3.5 text-mesh-text-dim" />
+                    <span className="text-sm font-medium text-mesh-text">{listName}</span>
+                    <Badge variant="outline" className="border-mesh-border-strong text-mesh-text-mute text-xs">
                       {entries.length}
                     </Badge>
                   </div>
                   <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
-                          <th className="px-4 py-2 font-medium text-slate-400">Address</th>
-                          <th className="px-4 py-2 font-medium text-slate-400">Comment</th>
-                          <th className="px-4 py-2 font-medium text-slate-400">Type</th>
-                          <th className="px-4 py-2 font-medium text-slate-400">Status</th>
-                          <th className="px-4 py-2 text-right font-medium text-slate-400">Actions</th>
+                        <tr className="border-b border-mesh-border bg-mesh-surface-1 text-left">
+                          <th className="px-4 py-2 font-medium text-mesh-text-dim">Address</th>
+                          <th className="px-4 py-2 font-medium text-mesh-text-dim">Comment</th>
+                          <th className="px-4 py-2 font-medium text-mesh-text-dim">Type</th>
+                          <th className="px-4 py-2 font-medium text-mesh-text-dim">Status</th>
+                          <th className="px-4 py-2 text-right font-medium text-mesh-text-dim">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {entries.map((entry, i) => (
                           <tr
                             key={entry.id ?? i}
-                            className={`border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors ${
+                            className={`border-b border-mesh-border last:border-b-0 hover:bg-mesh-surface-2 transition-colors ${
                               entry.disabled ? "opacity-50" : ""
                             }`}
                           >
                             <td className="px-4 py-2">
-                              <span className="font-mono tabular-nums text-xs text-slate-300">
+                              <span className="font-mono tabular-nums text-xs text-mesh-text">
                                 {entry.address ?? "\u2014"}
                               </span>
                             </td>
-                            <td className="px-4 py-2 text-slate-500">
+                            <td className="px-4 py-2 text-mesh-text-mute">
                               {entry.comment ?? ""}
                             </td>
                             <td className="px-4 py-2">
@@ -2872,8 +2872,8 @@ function FirewallPanel({
                                 variant="outline"
                                 className={
                                   entry.dynamic
-                                    ? "border-blue-500/30 text-blue-400 text-xs"
-                                    : "border-mesh-border-strong text-slate-400 text-xs"
+                                    ? "border-mesh-primary/30 text-mesh-primary text-xs"
+                                    : "border-mesh-border-strong text-mesh-text-dim text-xs"
                                 }
                               >
                                 {entry.dynamic ? "dynamic" : "static"}
@@ -2884,8 +2884,8 @@ function FirewallPanel({
                                 variant="outline"
                                 className={
                                   entry.disabled
-                                    ? "border-mesh-border-strong text-slate-500 text-xs"
-                                    : "border-emerald-500/30 text-emerald-400 text-xs"
+                                    ? "border-mesh-border-strong text-mesh-text-mute text-xs"
+                                    : "border-[#4ade80]/30 text-[#4ade80] text-xs"
                                 }
                               >
                                 {entry.disabled ? "disabled" : "enabled"}
@@ -2897,7 +2897,7 @@ function FirewallPanel({
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
+                                    className="h-7 w-7 text-mesh-text-dim hover:bg-mesh-surface-2 hover:text-white"
                                     onClick={() => handleToggleAddr(entry)}
                                     disabled={!entry.id || toggling === entry.id}
                                     title={entry.disabled ? "Enable" : "Disable"}
@@ -2907,7 +2907,7 @@ function FirewallPanel({
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
+                                    className="h-7 w-7 text-mesh-text-dim hover:bg-mesh-surface-2 hover:text-white"
                                     onClick={() => {
                                       setEditAddr(entry);
                                       setAddrDialogOpen(true);
@@ -2919,7 +2919,7 @@ function FirewallPanel({
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className="h-7 w-7 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                                    className="h-7 w-7 text-[#fb7185] hover:bg-[#fb7185]/10 hover:text-[#fb7185]"
                                     onClick={() => setConfirmDeleteAddr(entry)}
                                     disabled={!entry.id || deleting === entry.id}
                                   >
@@ -2976,19 +2976,19 @@ function FirewallPanel({
           if (!open) setConfirmDeleteFilter(null);
         }}
       >
-        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
+        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Filter Rule</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-mesh-text-dim">
               Are you sure you want to delete this filter rule? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-mesh-border-strong bg-mesh-surface-1 text-slate-300">
+            <AlertDialogCancel className="border-mesh-border bg-mesh-surface-1 text-mesh-text">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-rose-600 text-white hover:bg-rose-700"
+              className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
               onClick={handleDeleteFilter}
             >
               Delete
@@ -3003,19 +3003,19 @@ function FirewallPanel({
           if (!open) setConfirmDeleteNat(null);
         }}
       >
-        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
+        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete NAT Rule</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-mesh-text-dim">
               Are you sure you want to delete this NAT rule? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-mesh-border-strong bg-mesh-surface-1 text-slate-300">
+            <AlertDialogCancel className="border-mesh-border bg-mesh-surface-1 text-mesh-text">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-rose-600 text-white hover:bg-rose-700"
+              className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
               onClick={handleDeleteNat}
             >
               Delete
@@ -3030,20 +3030,20 @@ function FirewallPanel({
           if (!open) setConfirmDeleteAddr(null);
         }}
       >
-        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
+        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Address List Entry</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-mesh-text-dim">
               Remove <span className="font-mono text-white">{confirmDeleteAddr?.address}</span> from
               list <span className="font-medium text-white">{confirmDeleteAddr?.list}</span>?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-mesh-border-strong bg-mesh-surface-1 text-slate-300">
+            <AlertDialogCancel className="border-mesh-border bg-mesh-surface-1 text-mesh-text">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              className="bg-rose-600 text-white hover:bg-rose-700"
+              className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
               onClick={handleDeleteAddr}
             >
               Delete
@@ -3076,9 +3076,9 @@ function DnsPanel({
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-        <p className="text-xs text-rose-400">{error}</p>
+      <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+        <p className="text-xs text-[#fb7185]">{error}</p>
       </div>
     );
   }
@@ -3088,7 +3088,7 @@ function DnsPanel({
   return (
     <div className="space-y-4">
       <div>
-        <p className="mb-2 text-xs font-medium uppercase text-slate-500">
+        <p className="mb-2 text-xs font-medium uppercase text-mesh-text-mute">
           Upstream Servers
         </p>
         <div className="flex flex-wrap gap-2">
@@ -3097,36 +3097,36 @@ function DnsPanel({
               <Badge
                 key={s}
                 variant="outline"
-                className="border-mesh-border-strong font-mono text-xs text-slate-300"
+                className="border-mesh-border-strong font-mono text-xs text-mesh-text"
               >
                 {s}
               </Badge>
             ))
           ) : (
-            <p className="text-sm text-slate-500">No DNS servers configured.</p>
+            <p className="text-sm text-mesh-text-mute">No DNS servers configured.</p>
           )}
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="border-mesh-border-strong bg-mesh-surface-1">
+        <Card className="border-mesh-border bg-mesh-surface-1">
           <CardContent className="py-3">
-            <p className="text-xs text-slate-500">Allow Remote Requests</p>
+            <p className="text-xs text-mesh-text-mute">Allow Remote Requests</p>
             <p className="text-sm font-medium text-white">
               {data.allow_remote_requests ? "Yes" : "No"}
             </p>
           </CardContent>
         </Card>
-        <Card className="border-mesh-border-strong bg-mesh-surface-1">
+        <Card className="border-mesh-border bg-mesh-surface-1">
           <CardContent className="py-3">
-            <p className="text-xs text-slate-500">Cache Size</p>
+            <p className="text-xs text-mesh-text-mute">Cache Size</p>
             <p className="text-sm font-medium text-white">
               {data.cache_size ?? "\u2014"}
             </p>
           </CardContent>
         </Card>
-        <Card className="border-mesh-border-strong bg-mesh-surface-1">
+        <Card className="border-mesh-border bg-mesh-surface-1">
           <CardContent className="py-3">
-            <p className="text-xs text-slate-500">Cache Used</p>
+            <p className="text-xs text-mesh-text-mute">Cache Used</p>
             <p className="text-sm font-medium text-white">
               {data.cache_used ?? "\u2014"}
             </p>
@@ -3158,16 +3158,16 @@ function WireGuardPanel({
 
   if (error) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-        <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-        <p className="text-xs text-rose-400">{error}</p>
+      <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+        <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+        <p className="text-xs text-[#fb7185]">{error}</p>
       </div>
     );
   }
 
   if (!data?.interfaces.length) {
     return (
-      <p className="py-4 text-sm text-slate-500">
+      <p className="py-4 text-sm text-mesh-text-mute">
         No WireGuard interfaces configured.
       </p>
     );
@@ -3178,7 +3178,7 @@ function WireGuardPanel({
       {data.interfaces.map((iface) => (
         <div
           key={iface.name}
-          className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1 p-4"
+          className="rounded-lg border border-mesh-border bg-mesh-surface-1 p-4"
         >
           <div className="mb-3 flex items-center gap-3">
             <span className="font-mono text-sm font-medium text-white">
@@ -3188,14 +3188,14 @@ function WireGuardPanel({
               variant="outline"
               className={
                 iface.running
-                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs"
-                  : "border-mesh-border-strong text-slate-500 text-xs"
+                  ? "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80] text-xs"
+                  : "border-mesh-border-strong text-mesh-text-mute text-xs"
               }
             >
               {iface.running ? "running" : iface.disabled ? "disabled" : "down"}
             </Badge>
             {iface.listen_port && (
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-mesh-text-mute">
                 port {iface.listen_port}
               </span>
             )}
@@ -3204,19 +3204,19 @@ function WireGuardPanel({
             <div className="overflow-x-auto rounded-md border border-mesh-border-strong">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-mesh-border-strong bg-mesh-surface-1 text-left">
-                    <th className="px-3 py-2 font-medium text-slate-400">
+                  <tr className="border-b border-mesh-border bg-mesh-surface-1 text-left">
+                    <th className="px-3 py-2 font-medium text-mesh-text-dim">
                       Public Key
                     </th>
-                    <th className="px-3 py-2 font-medium text-slate-400">
+                    <th className="px-3 py-2 font-medium text-mesh-text-dim">
                       Endpoint
                     </th>
-                    <th className="px-3 py-2 font-medium text-slate-400">
+                    <th className="px-3 py-2 font-medium text-mesh-text-dim">
                       Allowed IPs
                     </th>
-                    <th className="px-3 py-2 font-medium text-slate-400">RX</th>
-                    <th className="px-3 py-2 font-medium text-slate-400">TX</th>
-                    <th className="px-3 py-2 font-medium text-slate-400">
+                    <th className="px-3 py-2 font-medium text-mesh-text-dim">RX</th>
+                    <th className="px-3 py-2 font-medium text-mesh-text-dim">TX</th>
+                    <th className="px-3 py-2 font-medium text-mesh-text-dim">
                       Last Handshake
                     </th>
                   </tr>
@@ -3225,7 +3225,7 @@ function WireGuardPanel({
                   {iface.peers.map((peer, i) => (
                     <tr
                       key={i}
-                      className="border-b border-mesh-border-strong last:border-b-0 hover:bg-mesh-surface-2 transition-colors text-slate-300"
+                      className="border-b border-mesh-border last:border-b-0 hover:bg-mesh-surface-2 transition-colors text-mesh-text"
                     >
                       <td className="px-3 py-2 font-mono">
                         {peer.public_key
@@ -3308,7 +3308,7 @@ function TrafficTab() {
   }, [load, range]);
 
   return (
-    <Card className="border-mesh-border-strong bg-mesh-surface-1">
+    <Card className="border-mesh-border bg-mesh-surface-1">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-base text-white">
@@ -3322,8 +3322,8 @@ function TrafficTab() {
                 size="sm"
                 className={`h-7 px-2.5 text-xs ${
                   range === r
-                    ? "bg-slate-700 text-white"
-                    : "text-slate-500 hover:text-slate-300"
+                    ? "bg-mesh-border-strong text-white"
+                    : "text-mesh-text-mute hover:text-mesh-text"
                 }`}
                 onClick={() => setRange(r)}
               >
@@ -3407,7 +3407,7 @@ function TrafficTab() {
           </div>
         ) : (
           <div className="flex h-[300px] items-center justify-center">
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-mesh-text-mute">
               No traffic data yet. The poller collects samples every 60 seconds.
             </p>
           </div>
@@ -3479,7 +3479,7 @@ function PolicyRoutingTab({
   return (
     <div className="space-y-6">
       {/* Routing Tables */}
-      <Card className="border-mesh-border-strong bg-mesh-surface-1">
+      <Card className="border-mesh-border bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="text-base text-white">Routing Tables</CardTitle>
         </CardHeader>
@@ -3487,14 +3487,14 @@ function PolicyRoutingTab({
           {routingTables.loading ? (
             <Skeleton className="h-24 w-full" />
           ) : routingTables.error ? (
-            <p className="text-sm text-rose-400">{routingTables.error}</p>
+            <p className="text-sm text-[#fb7185]">{routingTables.error}</p>
           ) : !routingTables.data?.length ? (
-            <p className="text-sm text-slate-500">No custom routing tables</p>
+            <p className="text-sm text-mesh-text-mute">No custom routing tables</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-mesh-text-mute">
                     <th className="px-3 py-2">Name</th>
                     <th className="px-3 py-2">FIB</th>
                     <th className="px-3 py-2">Status</th>
@@ -3502,11 +3502,11 @@ function PolicyRoutingTab({
                 </thead>
                 <tbody>
                   {routingTables.data.map((t, i) => (
-                    <tr key={t.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
+                    <tr key={t.id ?? i} className="border-b border-mesh-border hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 text-white">{t.name ?? "—"}</td>
-                      <td className="px-3 py-2 text-slate-300">{t.fib ? "Yes" : "No"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{t.fib ? "Yes" : "No"}</td>
                       <td className="px-3 py-2">
-                        <Badge variant="outline" className={t.disabled ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}>
+                        <Badge variant="outline" className={t.disabled ? "border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]" : "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]"}>
                           {t.disabled ? "Disabled" : "Active"}
                         </Badge>
                       </td>
@@ -3520,7 +3520,7 @@ function PolicyRoutingTab({
       </Card>
 
       {/* Mangle Rules (PBR) */}
-      <Card className="border-mesh-border-strong bg-mesh-surface-1">
+      <Card className="border-mesh-border bg-mesh-surface-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base text-white">Mangle Rules (Policy Routing)</CardTitle>
           <Button size="sm" variant="outline" className="border-mesh-border-strong" onClick={() => setShowCreate(true)}>
@@ -3531,14 +3531,14 @@ function PolicyRoutingTab({
           {mangle.loading ? (
             <Skeleton className="h-24 w-full" />
           ) : mangle.error ? (
-            <p className="text-sm text-rose-400">{mangle.error}</p>
+            <p className="text-sm text-[#fb7185]">{mangle.error}</p>
           ) : !mangle.data?.length ? (
-            <p className="text-sm text-slate-500">No mangle rules configured</p>
+            <p className="text-sm text-mesh-text-mute">No mangle rules configured</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-mesh-text-mute">
                     <th className="px-3 py-2">Chain</th>
                     <th className="px-3 py-2">Action</th>
                     <th className="px-3 py-2">Src Address</th>
@@ -3551,21 +3551,21 @@ function PolicyRoutingTab({
                 </thead>
                 <tbody>
                   {mangle.data.map((r, i) => (
-                    <tr key={r.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
+                    <tr key={r.id ?? i} className="border-b border-mesh-border hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 text-white">{r.chain ?? "—"}</td>
-                      <td className="px-3 py-2 text-slate-300">{r.action ?? "—"}</td>
-                      <td className="px-3 py-2 text-slate-300">{r.src_address ?? "any"}</td>
-                      <td className="px-3 py-2 text-slate-300">{r.dst_address ?? "any"}</td>
-                      <td className="px-3 py-2 text-slate-300">{r.protocol ?? "any"}</td>
-                      <td className="px-3 py-2 text-blue-400">{r.new_routing_mark ?? "—"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{r.action ?? "—"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{r.src_address ?? "any"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{r.dst_address ?? "any"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{r.protocol ?? "any"}</td>
+                      <td className="px-3 py-2 text-mesh-primary">{r.new_routing_mark ?? "—"}</td>
                       <td className="px-3 py-2">
-                        <Badge variant="outline" className={r.disabled ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}>
+                        <Badge variant="outline" className={r.disabled ? "border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]" : "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]"}>
                           {r.disabled ? "Disabled" : "Active"}
                         </Badge>
                       </td>
                       <td className="px-3 py-2">
                         {r.id && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-500 hover:text-rose-400" onClick={() => setDeleteTarget(r)}>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-mesh-text-mute hover:text-[#fb7185]" onClick={() => setDeleteTarget(r)}>
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         )}
@@ -3580,7 +3580,7 @@ function PolicyRoutingTab({
       </Card>
 
       {/* Routing Rules */}
-      <Card className="border-mesh-border-strong bg-mesh-surface-1">
+      <Card className="border-mesh-border bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="text-base text-white">Routing Rules</CardTitle>
         </CardHeader>
@@ -3588,14 +3588,14 @@ function PolicyRoutingTab({
           {routingRules.loading ? (
             <Skeleton className="h-24 w-full" />
           ) : routingRules.error ? (
-            <p className="text-sm text-rose-400">{routingRules.error}</p>
+            <p className="text-sm text-[#fb7185]">{routingRules.error}</p>
           ) : !routingRules.data?.length ? (
-            <p className="text-sm text-slate-500">No routing rules configured</p>
+            <p className="text-sm text-mesh-text-mute">No routing rules configured</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-mesh-text-mute">
                     <th className="px-3 py-2">Src Address</th>
                     <th className="px-3 py-2">Dst Address</th>
                     <th className="px-3 py-2">Routing Mark</th>
@@ -3606,14 +3606,14 @@ function PolicyRoutingTab({
                 </thead>
                 <tbody>
                   {routingRules.data.map((r, i) => (
-                    <tr key={r.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
-                      <td className="px-3 py-2 text-slate-300">{r.src_address ?? "any"}</td>
-                      <td className="px-3 py-2 text-slate-300">{r.dst_address ?? "any"}</td>
-                      <td className="px-3 py-2 text-blue-400">{r.routing_mark ?? "—"}</td>
+                    <tr key={r.id ?? i} className="border-b border-mesh-border hover:bg-mesh-surface-2">
+                      <td className="px-3 py-2 text-mesh-text">{r.src_address ?? "any"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{r.dst_address ?? "any"}</td>
+                      <td className="px-3 py-2 text-mesh-primary">{r.routing_mark ?? "—"}</td>
                       <td className="px-3 py-2 text-white">{r.action ?? "—"}</td>
-                      <td className="px-3 py-2 text-slate-300">{r.table ?? "—"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{r.table ?? "—"}</td>
                       <td className="px-3 py-2">
-                        <Badge variant="outline" className={r.disabled ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}>
+                        <Badge variant="outline" className={r.disabled ? "border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]" : "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]"}>
                           {r.disabled ? "Disabled" : "Active"}
                         </Badge>
                       </td>
@@ -3628,39 +3628,39 @@ function PolicyRoutingTab({
 
       {/* Create Mangle Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1">
+        <DialogContent className="border-mesh-border bg-mesh-surface-1">
           <DialogHeader>
             <DialogTitle className="text-white">Create Mangle Rule</DialogTitle>
-            <DialogDescription className="text-slate-400">Add a policy routing mangle rule</DialogDescription>
+            <DialogDescription className="text-mesh-text-dim">Add a policy routing mangle rule</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="text-slate-300">Chain</Label>
-              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" value={form.chain} onChange={(e) => setForm({ ...form, chain: e.target.value })} />
+              <Label className="text-mesh-text">Chain</Label>
+              <Input className="border-mesh-border bg-mesh-surface-1 text-white" value={form.chain} onChange={(e) => setForm({ ...form, chain: e.target.value })} />
             </div>
             <div>
-              <Label className="text-slate-300">Action</Label>
-              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value })} />
+              <Label className="text-mesh-text">Action</Label>
+              <Input className="border-mesh-border bg-mesh-surface-1 text-white" value={form.action} onChange={(e) => setForm({ ...form, action: e.target.value })} />
             </div>
             <div>
-              <Label className="text-slate-300">Source Address</Label>
-              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" placeholder="e.g. 192.168.1.0/24" value={form.src_address} onChange={(e) => setForm({ ...form, src_address: e.target.value })} />
+              <Label className="text-mesh-text">Source Address</Label>
+              <Input className="border-mesh-border bg-mesh-surface-1 text-white" placeholder="e.g. 192.168.1.0/24" value={form.src_address} onChange={(e) => setForm({ ...form, src_address: e.target.value })} />
             </div>
             <div>
-              <Label className="text-slate-300">Destination Address</Label>
-              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" placeholder="e.g. 0.0.0.0/0" value={form.dst_address} onChange={(e) => setForm({ ...form, dst_address: e.target.value })} />
+              <Label className="text-mesh-text">Destination Address</Label>
+              <Input className="border-mesh-border bg-mesh-surface-1 text-white" placeholder="e.g. 0.0.0.0/0" value={form.dst_address} onChange={(e) => setForm({ ...form, dst_address: e.target.value })} />
             </div>
             <div>
-              <Label className="text-slate-300">Protocol</Label>
-              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" placeholder="e.g. tcp, udp" value={form.protocol} onChange={(e) => setForm({ ...form, protocol: e.target.value })} />
+              <Label className="text-mesh-text">Protocol</Label>
+              <Input className="border-mesh-border bg-mesh-surface-1 text-white" placeholder="e.g. tcp, udp" value={form.protocol} onChange={(e) => setForm({ ...form, protocol: e.target.value })} />
             </div>
             <div>
-              <Label className="text-slate-300">New Routing Mark</Label>
-              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" placeholder="e.g. wan2-mark" value={form.new_routing_mark} onChange={(e) => setForm({ ...form, new_routing_mark: e.target.value })} />
+              <Label className="text-mesh-text">New Routing Mark</Label>
+              <Input className="border-mesh-border bg-mesh-surface-1 text-white" placeholder="e.g. wan2-mark" value={form.new_routing_mark} onChange={(e) => setForm({ ...form, new_routing_mark: e.target.value })} />
             </div>
             <div>
-              <Label className="text-slate-300">Comment</Label>
-              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} />
+              <Label className="text-mesh-text">Comment</Label>
+              <Input className="border-mesh-border bg-mesh-surface-1 text-white" value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} />
             </div>
           </div>
           <DialogFooter>
@@ -3672,16 +3672,16 @@ function PolicyRoutingTab({
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
+        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Mangle Rule?</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-mesh-text-dim">
               This will remove the mangle rule for {deleteTarget?.src_address ?? "any"} → {deleteTarget?.dst_address ?? "any"} with mark &quot;{deleteTarget?.new_routing_mark ?? "—"}&quot;.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="border-mesh-border-strong">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogAction className="bg-[#fb7185] hover:bg-[#fb7185]" onClick={handleDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -3742,33 +3742,33 @@ function GatewayMonitoringTab({
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <InfoStatCard
-          icon={<HeartPulse className="h-5 w-5 text-emerald-400" />}
-          iconColorClass="bg-emerald-500/10"
+          icon={<HeartPulse className="h-5 w-5 text-[#4ade80]" />}
+          iconColorClass="bg-[#4ade80]/10"
           label="Gateways Up"
           value={String(upCount)}
         />
         <InfoStatCard
-          icon={<HeartPulse className="h-5 w-5 text-rose-400" />}
-          iconColorClass="bg-rose-500/10"
+          icon={<HeartPulse className="h-5 w-5 text-[#fb7185]" />}
+          iconColorClass="bg-[#fb7185]/10"
           label="Gateways Down"
           value={String(downCount)}
         />
         <InfoStatCard
-          icon={<Activity className="h-5 w-5 text-blue-400" />}
-          iconColorClass="bg-blue-500/10"
+          icon={<Activity className="h-5 w-5 text-mesh-primary" />}
+          iconColorClass="bg-mesh-primary/10"
           label="Total Monitors"
           value={String(netwatch.data?.length ?? 0)}
         />
         <InfoStatCard
-          icon={<Globe className="h-5 w-5 text-amber-400" />}
-          iconColorClass="bg-amber-500/10"
+          icon={<Globe className="h-5 w-5 text-[#fbbf24]" />}
+          iconColorClass="bg-[#fbbf24]/10"
           label="Disabled"
           value={String(netwatch.data?.filter((n) => n.disabled).length ?? 0)}
         />
       </div>
 
       {/* Netwatch Table */}
-      <Card className="border-mesh-border-strong bg-mesh-surface-1">
+      <Card className="border-mesh-border bg-mesh-surface-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base text-white">Gateway Health Monitors</CardTitle>
           <Button size="sm" variant="outline" className="border-mesh-border-strong" onClick={() => setShowCreate(true)}>
@@ -3779,14 +3779,14 @@ function GatewayMonitoringTab({
           {netwatch.loading ? (
             <Skeleton className="h-24 w-full" />
           ) : netwatch.error ? (
-            <p className="text-sm text-rose-400">{netwatch.error}</p>
+            <p className="text-sm text-[#fb7185]">{netwatch.error}</p>
           ) : !netwatch.data?.length ? (
-            <p className="text-sm text-slate-500">No gateway monitors configured</p>
+            <p className="text-sm text-mesh-text-mute">No gateway monitors configured</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-mesh-text-mute">
                     <th className="px-3 py-2">Host</th>
                     <th className="px-3 py-2">Type</th>
                     <th className="px-3 py-2">Interval</th>
@@ -3799,27 +3799,27 @@ function GatewayMonitoringTab({
                 </thead>
                 <tbody>
                   {netwatch.data.map((n, i) => (
-                    <tr key={n.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
+                    <tr key={n.id ?? i} className="border-b border-mesh-border hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 font-mono text-white">{n.host ?? "—"}</td>
-                      <td className="px-3 py-2 text-slate-300">{n.check_type ?? "icmp"}</td>
-                      <td className="px-3 py-2 text-slate-300">{n.interval ?? "—"}</td>
-                      <td className="px-3 py-2 text-slate-300">{n.timeout ?? "—"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{n.check_type ?? "icmp"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{n.interval ?? "—"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{n.timeout ?? "—"}</td>
                       <td className="px-3 py-2">
                         {n.disabled ? (
-                          <Badge variant="outline" className="border-slate-600 text-slate-500">Disabled</Badge>
+                          <Badge variant="outline" className="border-mesh-text-mute text-mesh-text-mute">Disabled</Badge>
                         ) : n.status === "up" ? (
-                          <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400">Up</Badge>
+                          <Badge variant="outline" className="border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]">Up</Badge>
                         ) : n.status === "down" ? (
-                          <Badge variant="outline" className="border-rose-500/30 bg-rose-500/10 text-rose-400">Down</Badge>
+                          <Badge variant="outline" className="border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]">Down</Badge>
                         ) : (
-                          <Badge variant="outline" className="border-slate-600 text-slate-500">{n.status ?? "Unknown"}</Badge>
+                          <Badge variant="outline" className="border-mesh-text-mute text-mesh-text-mute">{n.status ?? "Unknown"}</Badge>
                         )}
                       </td>
-                      <td className="px-3 py-2 text-slate-400">{n.since ?? "—"}</td>
-                      <td className="px-3 py-2 text-slate-500">{n.comment ?? ""}</td>
+                      <td className="px-3 py-2 text-mesh-text-dim">{n.since ?? "—"}</td>
+                      <td className="px-3 py-2 text-mesh-text-mute">{n.comment ?? ""}</td>
                       <td className="px-3 py-2">
                         {n.id && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-500 hover:text-rose-400" onClick={() => setDeleteTarget(n)}>
+                          <Button size="icon" variant="ghost" className="h-7 w-7 text-mesh-text-mute hover:text-[#fb7185]" onClick={() => setDeleteTarget(n)}>
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         )}
@@ -3835,31 +3835,31 @@ function GatewayMonitoringTab({
 
       {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1">
+        <DialogContent className="border-mesh-border bg-mesh-surface-1">
           <DialogHeader>
             <DialogTitle className="text-white">Add Gateway Monitor</DialogTitle>
-            <DialogDescription className="text-slate-400">Monitor a gateway IP for health checks</DialogDescription>
+            <DialogDescription className="text-mesh-text-dim">Monitor a gateway IP for health checks</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="text-slate-300">Host / Gateway IP</Label>
-              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" placeholder="e.g. 8.8.8.8" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} />
+              <Label className="text-mesh-text">Host / Gateway IP</Label>
+              <Input className="border-mesh-border bg-mesh-surface-1 text-white" placeholder="e.g. 8.8.8.8" value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} />
             </div>
             <div>
-              <Label className="text-slate-300">Check Type</Label>
-              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" value={form.check_type} onChange={(e) => setForm({ ...form, check_type: e.target.value })} />
+              <Label className="text-mesh-text">Check Type</Label>
+              <Input className="border-mesh-border bg-mesh-surface-1 text-white" value={form.check_type} onChange={(e) => setForm({ ...form, check_type: e.target.value })} />
             </div>
             <div>
-              <Label className="text-slate-300">Interval</Label>
-              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" value={form.interval} onChange={(e) => setForm({ ...form, interval: e.target.value })} />
+              <Label className="text-mesh-text">Interval</Label>
+              <Input className="border-mesh-border bg-mesh-surface-1 text-white" value={form.interval} onChange={(e) => setForm({ ...form, interval: e.target.value })} />
             </div>
             <div>
-              <Label className="text-slate-300">Timeout</Label>
-              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" value={form.timeout} onChange={(e) => setForm({ ...form, timeout: e.target.value })} />
+              <Label className="text-mesh-text">Timeout</Label>
+              <Input className="border-mesh-border bg-mesh-surface-1 text-white" value={form.timeout} onChange={(e) => setForm({ ...form, timeout: e.target.value })} />
             </div>
             <div>
-              <Label className="text-slate-300">Comment</Label>
-              <Input className="border-mesh-border-strong bg-mesh-surface-1 text-white" value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} />
+              <Label className="text-mesh-text">Comment</Label>
+              <Input className="border-mesh-border bg-mesh-surface-1 text-white" value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} />
             </div>
           </div>
           <DialogFooter>
@@ -3871,16 +3871,16 @@ function GatewayMonitoringTab({
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
+        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Gateway Monitor?</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-mesh-text-dim">
               This will remove the health monitor for {deleteTarget?.host ?? "unknown"}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="border-mesh-border-strong">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>Delete</AlertDialogAction>
+            <AlertDialogAction className="bg-[#fb7185] hover:bg-[#fb7185]" onClick={handleDelete}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -3900,7 +3900,7 @@ function DynamicRoutingTab({
   return (
     <div className="space-y-6">
       {/* BGP Connections */}
-      <Card className="border-mesh-border-strong bg-mesh-surface-1">
+      <Card className="border-mesh-border bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="text-base text-white">BGP Connections</CardTitle>
         </CardHeader>
@@ -3908,14 +3908,14 @@ function DynamicRoutingTab({
           {dynamic.loading ? (
             <Skeleton className="h-24 w-full" />
           ) : dynamic.error ? (
-            <p className="text-sm text-rose-400">{dynamic.error}</p>
+            <p className="text-sm text-[#fb7185]">{dynamic.error}</p>
           ) : !dynamic.data?.bgp_connections.length ? (
-            <p className="text-sm text-slate-500">No BGP connections configured</p>
+            <p className="text-sm text-mesh-text-mute">No BGP connections configured</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-mesh-text-mute">
                     <th className="px-3 py-2">Name</th>
                     <th className="px-3 py-2">Remote Address</th>
                     <th className="px-3 py-2">Remote AS</th>
@@ -3927,15 +3927,15 @@ function DynamicRoutingTab({
                 </thead>
                 <tbody>
                   {dynamic.data.bgp_connections.map((b, i) => (
-                    <tr key={b.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
+                    <tr key={b.id ?? i} className="border-b border-mesh-border hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 text-white">{b.name ?? "—"}</td>
-                      <td className="px-3 py-2 font-mono text-slate-300">{b.remote_address ?? "—"}</td>
-                      <td className="px-3 py-2 text-slate-300">{b.remote_as ?? "—"}</td>
-                      <td className="px-3 py-2 text-slate-300">{b.local_as ?? "—"}</td>
-                      <td className="px-3 py-2 text-slate-300">{b.local_role ?? "—"}</td>
-                      <td className="px-3 py-2 text-blue-400">{b.routing_table ?? "main"}</td>
+                      <td className="px-3 py-2 font-mono text-mesh-text">{b.remote_address ?? "—"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{b.remote_as ?? "—"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{b.local_as ?? "—"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{b.local_role ?? "—"}</td>
+                      <td className="px-3 py-2 text-mesh-primary">{b.routing_table ?? "main"}</td>
                       <td className="px-3 py-2">
-                        <Badge variant="outline" className={b.disabled ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}>
+                        <Badge variant="outline" className={b.disabled ? "border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]" : "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]"}>
                           {b.disabled ? "Disabled" : "Active"}
                         </Badge>
                       </td>
@@ -3949,7 +3949,7 @@ function DynamicRoutingTab({
       </Card>
 
       {/* OSPF Instances */}
-      <Card className="border-mesh-border-strong bg-mesh-surface-1">
+      <Card className="border-mesh-border bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="text-base text-white">OSPF Instances</CardTitle>
         </CardHeader>
@@ -3957,12 +3957,12 @@ function DynamicRoutingTab({
           {dynamic.loading ? (
             <Skeleton className="h-24 w-full" />
           ) : !dynamic.data?.ospf_instances.length ? (
-            <p className="text-sm text-slate-500">No OSPF instances configured</p>
+            <p className="text-sm text-mesh-text-mute">No OSPF instances configured</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-mesh-text-mute">
                     <th className="px-3 py-2">Name</th>
                     <th className="px-3 py-2">Router ID</th>
                     <th className="px-3 py-2">Version</th>
@@ -3971,12 +3971,12 @@ function DynamicRoutingTab({
                 </thead>
                 <tbody>
                   {dynamic.data.ospf_instances.map((o, i) => (
-                    <tr key={o.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
+                    <tr key={o.id ?? i} className="border-b border-mesh-border hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 text-white">{o.name ?? "—"}</td>
-                      <td className="px-3 py-2 font-mono text-slate-300">{o.router_id ?? "—"}</td>
-                      <td className="px-3 py-2 text-slate-300">{o.version ?? "—"}</td>
+                      <td className="px-3 py-2 font-mono text-mesh-text">{o.router_id ?? "—"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{o.version ?? "—"}</td>
                       <td className="px-3 py-2">
-                        <Badge variant="outline" className={o.disabled ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}>
+                        <Badge variant="outline" className={o.disabled ? "border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]" : "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]"}>
                           {o.disabled ? "Disabled" : "Active"}
                         </Badge>
                       </td>
@@ -3991,7 +3991,7 @@ function DynamicRoutingTab({
 
       {/* OSPF Areas */}
       {dynamic.data?.ospf_areas && dynamic.data.ospf_areas.length > 0 && (
-        <Card className="border-mesh-border-strong bg-mesh-surface-1">
+        <Card className="border-mesh-border bg-mesh-surface-1">
           <CardHeader>
             <CardTitle className="text-base text-white">OSPF Areas</CardTitle>
           </CardHeader>
@@ -3999,7 +3999,7 @@ function DynamicRoutingTab({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-mesh-text-mute">
                     <th className="px-3 py-2">Name</th>
                     <th className="px-3 py-2">Area ID</th>
                     <th className="px-3 py-2">Instance</th>
@@ -4008,12 +4008,12 @@ function DynamicRoutingTab({
                 </thead>
                 <tbody>
                   {dynamic.data.ospf_areas.map((a, i) => (
-                    <tr key={a.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
+                    <tr key={a.id ?? i} className="border-b border-mesh-border hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 text-white">{a.name ?? "—"}</td>
-                      <td className="px-3 py-2 font-mono text-slate-300">{a.area_id ?? "—"}</td>
-                      <td className="px-3 py-2 text-slate-300">{a.instance ?? "—"}</td>
+                      <td className="px-3 py-2 font-mono text-mesh-text">{a.area_id ?? "—"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{a.instance ?? "—"}</td>
                       <td className="px-3 py-2">
-                        <Badge variant="outline" className={a.disabled ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}>
+                        <Badge variant="outline" className={a.disabled ? "border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]" : "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]"}>
                           {a.disabled ? "Disabled" : "Active"}
                         </Badge>
                       </td>
@@ -4027,7 +4027,7 @@ function DynamicRoutingTab({
       )}
 
       {/* IPv6 Router Advertisements */}
-      <Card className="border-mesh-border-strong bg-mesh-surface-1">
+      <Card className="border-mesh-border bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="text-base text-white">IPv6 Router Advertisements</CardTitle>
         </CardHeader>
@@ -4035,14 +4035,14 @@ function DynamicRoutingTab({
           {ipv6Nd.loading ? (
             <Skeleton className="h-24 w-full" />
           ) : ipv6Nd.error ? (
-            <p className="text-sm text-rose-400">{ipv6Nd.error}</p>
+            <p className="text-sm text-[#fb7185]">{ipv6Nd.error}</p>
           ) : !ipv6Nd.data?.length ? (
-            <p className="text-sm text-slate-500">No IPv6 ND interfaces configured</p>
+            <p className="text-sm text-mesh-text-mute">No IPv6 ND interfaces configured</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-mesh-text-mute">
                     <th className="px-3 py-2">Interface</th>
                     <th className="px-3 py-2">RA Interval</th>
                     <th className="px-3 py-2">RA Lifetime</th>
@@ -4053,14 +4053,14 @@ function DynamicRoutingTab({
                 </thead>
                 <tbody>
                   {ipv6Nd.data.map((n, i) => (
-                    <tr key={n.id ?? i} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
+                    <tr key={n.id ?? i} className="border-b border-mesh-border hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 text-white">{n.interface ?? "—"}</td>
-                      <td className="px-3 py-2 text-slate-300">{n.ra_interval ?? "—"}</td>
-                      <td className="px-3 py-2 text-slate-300">{n.ra_lifetime ?? "—"}</td>
-                      <td className="px-3 py-2 text-slate-300">{n.managed ? "Yes" : "No"}</td>
-                      <td className="px-3 py-2 text-slate-300">{n.other ? "Yes" : "No"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{n.ra_interval ?? "—"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{n.ra_lifetime ?? "—"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{n.managed ? "Yes" : "No"}</td>
+                      <td className="px-3 py-2 text-mesh-text">{n.other ? "Yes" : "No"}</td>
                       <td className="px-3 py-2">
-                        <Badge variant="outline" className={n.disabled ? "border-rose-500/30 bg-rose-500/10 text-rose-400" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"}>
+                        <Badge variant="outline" className={n.disabled ? "border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]" : "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]"}>
                           {n.disabled ? "Disabled" : "Active"}
                         </Badge>
                       </td>
@@ -4158,7 +4158,7 @@ export default function MikrotikRouter() {
       <StatusHeader status={status} />
 
       <Tabs value={tab} onValueChange={setTab} className="min-w-0">
-        <TabsList className="h-auto w-full justify-start gap-1 border border-mesh-border-strong bg-mesh-surface-1 p-1">
+        <TabsList className="h-auto w-full justify-start gap-1 border border-mesh-border bg-mesh-surface-1 p-1">
           <TabsTrigger
             value="system"
             className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
@@ -4250,7 +4250,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="interfaces">
-          <Card className="border-mesh-border-strong bg-mesh-surface-1">
+          <Card className="border-mesh-border bg-mesh-surface-1">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 Network Interfaces
@@ -4267,7 +4267,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="vlans">
-          <Card className="border-mesh-border-strong bg-mesh-surface-1">
+          <Card className="border-mesh-border bg-mesh-surface-1">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 VLAN Interfaces
@@ -4285,7 +4285,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="routes">
-          <Card className="border-mesh-border-strong bg-mesh-surface-1">
+          <Card className="border-mesh-border bg-mesh-surface-1">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 Routing Table
@@ -4302,7 +4302,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="dhcp">
-          <Card className="border-mesh-border-strong bg-mesh-surface-1">
+          <Card className="border-mesh-border bg-mesh-surface-1">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 DHCP Server Management
@@ -4310,7 +4310,7 @@ export default function MikrotikRouter() {
             </CardHeader>
             <CardContent>
               <Tabs defaultValue="leases">
-                <TabsList className="border-mesh-border-strong bg-mesh-surface-1 mb-4">
+                <TabsList className="border-mesh-border bg-mesh-surface-1 mb-4">
                   <TabsTrigger value="leases" className="data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white text-xs">
                     Leases
                   </TabsTrigger>
@@ -4353,7 +4353,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="dns">
-          <Card className="border-mesh-border-strong bg-mesh-surface-1">
+          <Card className="border-mesh-border bg-mesh-surface-1">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 DNS Settings
@@ -4379,7 +4379,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="vpn">
-          <Card className="border-mesh-border-strong bg-mesh-surface-1">
+          <Card className="border-mesh-border bg-mesh-surface-1">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 WireGuard Interfaces
