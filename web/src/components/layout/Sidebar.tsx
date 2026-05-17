@@ -229,14 +229,14 @@ export function Sidebar() {
         className={cn(
           "group/nav relative flex items-center gap-3 rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150",
           active
-            ? "bg-cyan-500/10 text-cyan-500"
+            ? "bg-mesh-accent/10 text-mesh-accent"
             : "text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white",
           sidebarCollapsed && "justify-center px-0",
         )}
       >
         {/* Active accent bar */}
         {active && (
-          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-gradient-to-b from-cyan-400 to-cyan-600" />
+          <span className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] rounded-full bg-mesh-accent" />
         )}
         <Icon className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover/nav:scale-105" />
         {!sidebarCollapsed && <span>{item.label}</span>}
@@ -333,7 +333,7 @@ export function Sidebar() {
                       <span
                         className={cn(
                           "cursor-default select-none text-[10px] font-semibold uppercase tracking-[0.08em]",
-                          hasActive ? "text-cyan-400" : "text-slate-500",
+                          hasActive ? "text-mesh-accent" : "text-slate-500",
                         )}
                       >
                         {group.label}
