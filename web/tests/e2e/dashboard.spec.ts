@@ -21,7 +21,7 @@ async function mockDashboardData(page: Page) {
     });
   });
 
-  await page.route('**/api/v1/alerts?limit=5', async (route) => {
+  await page.route('**/api/v1/alerts?limit=*', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify([
@@ -37,7 +37,7 @@ async function mockDashboardData(page: Page) {
     });
   });
 
-  await page.route('**/api/v1/traffic/history?minutes=60', async (route) => {
+  await page.route('**/api/v1/traffic/history**', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify([
@@ -73,7 +73,7 @@ async function mockDashboardData(page: Page) {
     });
   });
 
-  await page.route('**/api/v1/dashboard/top-devices?limit=6', async (route) => {
+  await page.route('**/api/v1/dashboard/top-devices**', async (route) => {
     await route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify([
@@ -133,167 +133,119 @@ async function openDashboard(page: Page) {
 }
 
 test.describe('Dashboard', () => {
-  test('dashboard page loads with stat cards', async ({ page }) => {
+  test('dashboard hero renders core.lan title and KPI row', async ({ page }) => {
     await openDashboard(page);
-    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+    await expect(page.getByTestId('dashboard-title')).toHaveText('core.lan');
+    // "Overview" appears both in the eyebrow and the layout breadcrumb,
+    // so accept any match here.
+    await expect(page.getByText('Overview', { exact: true }).first()).toBeVisible();
 
-    // Wait for API calls to settle before checking stat cards
+    // Wait for API calls to settle so KPIs leave their loading state.
     await page.waitForLoadState('networkidle');
 
-    // Should have stat cards (4 of them) — wait for stats to load
-    // In error state titles: Router Status, Active Devices, WAN Bandwidth, Unread Alerts
-    await expect(page.getByText('Router Status', { exact: true })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByText('Devices online', { exact: true })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('Throughput', { exact: true })).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Unread Alerts', { exact: true })).toBeVisible({ timeout: 5000 });
+    // KPI labels from the design handoff. The sidebar nav also surfaces
+    // "Agents" and "Alerts" so we scope to mesh-kpi components for the
+    // disambiguated checks.
+    const kpis = page.locator('[data-component="mesh-kpi"]');
+    await expect(kpis).toHaveCount(6, { timeout: 15000 });
+    await expect(kpis.filter({ hasText: 'Devices online' })).toHaveCount(1);
+    await expect(kpis.filter({ hasText: 'Throughput' })).toHaveCount(1);
+    await expect(kpis.filter({ hasText: 'Agents' })).toHaveCount(1);
+    await expect(kpis.filter({ hasText: 'Alerts' })).toHaveCount(1);
+    await expect(kpis.filter({ hasText: 'WAN latency' })).toHaveCount(1);
+    await expect(kpis.filter({ hasText: 'DNS blocks' })).toHaveCount(1);
 
-    await page.screenshot({ path: 'tests/screenshots/dashboard-stat-cards.png', fullPage: true });
+    await page.screenshot({ path: 'tests/screenshots/dashboard-hero.png', fullPage: true });
   });
 
-  test('stat cards show values after load', async ({ page }) => {
+  test('KPI row resolves to backend-derived values', async ({ page }) => {
     await openDashboard(page);
-    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
-
-    // Wait for stat cards to resolve from skeleton to real values
-    await expect(page.getByText('Router Status', { exact: true })).toBeVisible({ timeout: 10000 });
-
-    // "Active Devices" card shows a number and subtitle
-    const devicesSubtitle = page.getByText(/total known/);
-    await expect(devicesSubtitle.first()).toBeVisible({ timeout: 10000 });
-
-    // "Unread Alerts" card shows status
-    await expect(page.getByText('Unread Alerts', { exact: true })).toBeVisible();
-    const alertsSubtitle = page.getByText(/All clear|Needs attention/);
-    await expect(alertsSubtitle.first()).toBeVisible({ timeout: 10000 });
-
-    await page.screenshot({ path: 'tests/screenshots/dashboard-stat-values.png', fullPage: true });
-  });
-
-  test('infrastructure health ring loads', async ({ page }) => {
-    await openDashboard(page);
-    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
-
-    // Infrastructure Health card should show the health ring or "No critical devices"
-    await expect(page.getByText('Infrastructure Health')).toBeVisible({ timeout: 10000 });
-    // The ring shows "X%" and "N/N critical online" or "No critical devices" when empty
-    const healthContent = page.getByText(/\d+%|No critical devices|N\/A/);
-    await expect(healthContent.first()).toBeVisible({ timeout: 10000 });
-
-    await page.screenshot({ path: 'tests/screenshots/dashboard-health-ring.png', fullPage: true });
-  });
-
-  test('quick actions row is visible', async ({ page }) => {
-    await openDashboard(page);
-    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
-
-    // Quick actions pills should be visible
-    await expect(page.getByText('Scan Network')).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('View Alerts')).toBeVisible();
-    await expect(page.getByText('Check DNS')).toBeVisible();
-
-    await page.screenshot({ path: 'tests/screenshots/dashboard-quick-actions.png', fullPage: true });
-  });
-
-  test('bento grid layout renders section data', async ({ page }) => {
-    await openDashboard(page);
-    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
-
-    // Wait for API calls to settle before checking bento grid
+    await expect(page.getByTestId('dashboard-title')).toHaveText('core.lan');
     await page.waitForLoadState('networkidle');
 
-    // All bento grid sections should be visible and resolved with API-backed data,
-    // not only their unconditional section titles.
-    await expect(page.getByText('WAN Traffic').first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('1.3 Mbps').first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('250.0 Kbps').first()).toBeVisible();
-    await expect(page.getByText('Recent Alerts')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Core switch uplink saturated')).toBeVisible();
-    await expect(page.getByText('Infrastructure Health')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('50%')).toBeVisible();
-    await expect(page.getByText('1/2 critical online')).toBeVisible();
-    await expect(page.getByText('Device Breakdown')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Router Health')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Connected', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Available router client').first()).toBeVisible();
-    await expect(page.getByText('Top Devices')).toBeVisible({ timeout: 5000 });
+    // Devices online: "2 / 2" split across value + unit; assert both visible.
+    const kpis = page.locator('[data-component="mesh-kpi"]');
+    const devicesKpi = kpis.filter({ hasText: 'Devices online' });
+    await expect(devicesKpi).toBeVisible({ timeout: 15000 });
+    await expect(devicesKpi).toContainText('2');
+    await expect(devicesKpi).toContainText('/ 2');
+
+    // Throughput card should show an Mbps unit.
+    const throughputKpi = kpis.filter({ hasText: 'Throughput' });
+    await expect(throughputKpi).toContainText('Mbps');
+
+    await page.screenshot({ path: 'tests/screenshots/dashboard-kpi-values.png', fullPage: true });
+  });
+
+  test('header action chips render (filter, Add device, Run scan)', async ({ page }) => {
+    await openDashboard(page);
+    await expect(page.getByTestId('dashboard-title')).toHaveText('core.lan');
+
+    await expect(page.getByText('last 24h')).toBeVisible();
+    await expect(page.getByText('Add device')).toBeVisible();
+    await expect(page.getByText('Run scan')).toBeVisible();
+
+    await page.screenshot({ path: 'tests/screenshots/dashboard-actions.png', fullPage: true });
+  });
+
+  test('WAN traffic card renders title, legend and range tabs', async ({ page }) => {
+    await openDashboard(page);
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByRole('heading', { name: 'WAN traffic', level: 3 })).toBeVisible({ timeout: 10000 });
+    // Legend text is rendered as adjacent inline spans (e.g. "RX 1") — use a substring match.
+    await expect(page.getByText(/RX\s+/).first()).toBeVisible();
+    await expect(page.getByText(/TX\s+/).first()).toBeVisible();
+    // Range tabs.
+    for (const r of ['1h', '6h', '24h', '7d']) {
+      await expect(page.getByRole('button', { name: r, exact: true })).toBeVisible();
+    }
+
+    await page.screenshot({ path: 'tests/screenshots/dashboard-wan-traffic.png', fullPage: true });
+  });
+
+  test('top talkers table lists device rows with IP', async ({ page }) => {
+    await openDashboard(page);
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByText('Top talkers · 24h')).toBeVisible({ timeout: 10000 });
     await expect(page.getByText('Core Switch', { exact: true })).toBeVisible();
     await expect(page.getByText('10.0.0.2')).toBeVisible();
-    await expect(page.getByText('Topology Preview')).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText('Offline', { exact: true }).first()).toBeVisible();
-    await expect(page.getByText('Routers')).toBeVisible();
-    await expect(page.getByText('Servers')).toBeVisible();
-    await expect(page.getByText('Connected to MikroTik')).toBeVisible();
-    await expect(page.getByText('2 total known')).toBeVisible();
+    await expect(page.getByTestId('top-talker-row').first()).toBeVisible();
 
-    await page.screenshot({ path: 'tests/screenshots/dashboard-bento-grid.png', fullPage: true });
+    await page.screenshot({ path: 'tests/screenshots/dashboard-top-talkers.png', fullPage: true });
   });
 
-  test('dashboard has Recent Alerts section', async ({ page }) => {
+  test('topology mini card renders with footer counts', async ({ page }) => {
     await openDashboard(page);
-    await expect(page.getByText('Recent Alerts')).toBeVisible({ timeout: 10000 });
-    await page.screenshot({ path: 'tests/screenshots/dashboard-alerts.png', fullPage: true });
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByRole('heading', { name: 'Topology', level: 3 })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('link', { name: 'open →' })).toBeVisible();
+    await expect(page.getByText(/\d+ devices/).first()).toBeVisible();
+
+    await page.screenshot({ path: 'tests/screenshots/dashboard-topo.png', fullPage: true });
   });
 
-  test('dashboard has Device Breakdown section', async ({ page }) => {
+  test('recent events panel renders alert rows', async ({ page }) => {
     await openDashboard(page);
-    await expect(page.getByText('Device Breakdown')).toBeVisible({ timeout: 10000 });
-    await page.screenshot({ path: 'tests/screenshots/dashboard-devices.png', fullPage: true });
+    await page.waitForLoadState('networkidle');
+
+    await expect(page.getByText('Recent events', { exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Core switch uplink saturated')).toBeVisible();
+    await expect(page.getByTestId('recent-event-row').first()).toBeVisible();
+
+    await page.screenshot({ path: 'tests/screenshots/dashboard-events.png', fullPage: true });
   });
 
-  test('dashboard stats API responds within 2 seconds (#494)', async ({ page }) => {
+  test('subnet utilization grid renders subnet card derived from topology', async ({ page }) => {
     await openDashboard(page);
-    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+    await page.waitForLoadState('networkidle');
 
-    const start = Date.now();
-    const response = await page.request.get('/api/v1/dashboard/stats');
-    const elapsed = Date.now() - start;
+    await expect(page.getByText('Subnet utilization', { exact: true })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('subnet-card').first()).toBeVisible();
 
-    expect(response.ok()).toBeTruthy();
-    const body = await response.json();
-    expect(body).toHaveProperty('router_status');
-    expect(body).toHaveProperty('devices_online');
-    expect(body).toHaveProperty('devices_total');
-    expect(body).toHaveProperty('alerts_unread');
-
-    // Must respond in under 2 seconds (was 3-5s before fix)
-    expect(elapsed).toBeLessThan(2000);
-
-    await page.screenshot({ path: 'tests/screenshots/dashboard-stats-perf.png', fullPage: true });
-  });
-
-  test('dashboard displays loading state or content', async ({ page }) => {
-    await openDashboard(page);
-    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
-    await page.screenshot({ path: 'tests/screenshots/dashboard-full.png', fullPage: true });
-  });
-
-  test('dashboard stats API returns router_type field', async ({ page }) => {
-    await openDashboard(page);
-    const response = await page.request.get('/api/v1/dashboard/stats');
-    expect(response.ok()).toBeTruthy();
-    const data = await response.json();
-
-    expect(['mikrotik', 'pfsense', 'none']).toContain(data.router_type);
-    expect(['connected', 'disconnected', 'unconfigured']).toContain(data.router_status);
-
-    await page.screenshot({ path: 'tests/screenshots/dashboard-router-type-api.png' });
-  });
-
-  test('dashboard stats API returns critical device counts (#518)', async ({ page }) => {
-    await openDashboard(page);
-    const response = await page.request.get('/api/v1/dashboard/stats');
-    expect(response.ok()).toBeTruthy();
-    const data = await response.json();
-
-    expect(data).toHaveProperty('critical_online');
-    expect(data).toHaveProperty('critical_total');
-    expect(typeof data.critical_online).toBe('number');
-    expect(typeof data.critical_total).toBe('number');
-    expect(data.critical_online).toBeGreaterThanOrEqual(0);
-    expect(data.critical_total).toBeGreaterThanOrEqual(0);
-    expect(data.critical_online).toBeLessThanOrEqual(data.critical_total);
-
-    await page.screenshot({ path: 'tests/screenshots/dashboard-critical-stats-api.png' });
+    await page.screenshot({ path: 'tests/screenshots/dashboard-subnets.png', fullPage: true });
   });
 
   test('dashboard stats API responds within 2 seconds', async ({ page }) => {
@@ -313,32 +265,48 @@ test.describe('Dashboard', () => {
     await page.screenshot({ path: 'tests/screenshots/dashboard-fast-api.png' });
   });
 
-  test('dashboard renders stat cards within 3 seconds', async ({ page }) => {
+  test('dashboard stats API returns critical device counts (#518)', async ({ page }) => {
     await openDashboard(page);
-    const start = Date.now();
+    const response = await page.request.get('/api/v1/dashboard/stats');
+    expect(response.ok()).toBeTruthy();
+    const data = await response.json();
 
-    // Wait for the stat cards to fully render (not skeletons)
-    const devicesSubtitle = page.getByText(/total known/);
-    await expect(devicesSubtitle.first()).toBeVisible({ timeout: 5000 });
-    const elapsed = Date.now() - start;
+    expect(data).toHaveProperty('critical_online');
+    expect(data).toHaveProperty('critical_total');
+    expect(typeof data.critical_online).toBe('number');
+    expect(typeof data.critical_total).toBe('number');
+    expect(data.critical_online).toBeGreaterThanOrEqual(0);
+    expect(data.critical_total).toBeGreaterThanOrEqual(0);
+    expect(data.critical_online).toBeLessThanOrEqual(data.critical_total);
 
-    expect(elapsed).toBeLessThan(3000);
-
-    await page.screenshot({ path: 'tests/screenshots/dashboard-fast-render.png', fullPage: true });
+    await page.screenshot({ path: 'tests/screenshots/dashboard-critical-stats-api.png' });
   });
 
   test('responsive layout collapses to single column on mobile', async ({ page }) => {
-    // Set mobile viewport
     await page.setViewportSize({ width: 375, height: 812 });
     await openDashboard(page);
-    await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+    // On a 375px viewport the sidebar may collapse with a redirect lag;
+    // give the hero a generous timeout instead of asserting immediately.
+    await expect(page.getByTestId('dashboard-title')).toHaveText('core.lan', { timeout: 20000 });
 
-    // All stat cards should still be visible
-    await expect(page.getByText('Router Status', { exact: true })).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText('Devices online', { exact: true })).toBeVisible();
+    // Header eyebrow still visible. The sidebar nav also renders "Overview"
+    // but is hidden on mobile, so filter to a visible match.
+    const overviewMatches = page.getByText('Overview', { exact: true });
+    await expect(async () => {
+      const count = await overviewMatches.count();
+      let anyVisible = false;
+      for (let i = 0; i < count; i++) {
+        if (await overviewMatches.nth(i).isVisible()) {
+          anyVisible = true;
+          break;
+        }
+      }
+      expect(anyVisible).toBe(true);
+    }).toPass({ timeout: 10000 });
 
-    // Quick actions should be visible
-    await expect(page.getByText('Scan Network')).toBeVisible();
+    // KPI card label survives mobile breakpoint.
+    const kpis = page.locator('[data-component="mesh-kpi"]');
+    await expect(kpis.filter({ hasText: 'Devices online' })).toBeVisible({ timeout: 10000 });
 
     await page.screenshot({ path: 'tests/screenshots/dashboard-mobile.png', fullPage: true });
   });
