@@ -268,13 +268,10 @@
 }
 
 .login-bg {
-  background-color: #070b12;
+  background-color: #050d1d;
   background-image:
-    linear-gradient(rgba(34, 211, 238, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(34, 211, 238, 0.045) 1px, transparent 1px),
-    radial-gradient(circle at 50% 0%, rgba(34, 211, 238, 0.1), transparent 34%),
-    linear-gradient(180deg, #070b12 0%, #0b1220 100%);
-  background-size: 32px 32px, 32px 32px, auto, auto;
+    radial-gradient(circle at 50% 45%, rgba(30, 67, 126, 0.2), transparent 36%),
+    linear-gradient(180deg, #050d1d 0%, #07132a 52%, #050d1d 100%);
 }
 
 .login-card-glow {

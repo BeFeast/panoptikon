@@ -80,7 +80,7 @@ test.describe('Navigation & Layout', () => {
     await page.waitForURL(/\/login/, { timeout: 10000 });
     
     // Verify we're on the login page
-    await expect(page.getByText('Sign in to your network operations console')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByLabel('Operator')).toHaveValue('operator', { timeout: 10000 });
     await page.screenshot({ path: 'tests/screenshots/unauth-redirect.png', fullPage: true });
   });
 });
