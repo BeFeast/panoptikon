@@ -234,7 +234,7 @@ test.describe("Section Spacing (#571)", () => {
     ).toBeVisible({ timeout: 10000 });
 
     // Wait for stat cards to load
-    await expect(page.getByText("Router Status")).toBeVisible({
+    await expect(page.getByText("Router Status", { exact: true }).first()).toBeVisible({
       timeout: 10000,
     });
 

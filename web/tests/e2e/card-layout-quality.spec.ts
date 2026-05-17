@@ -29,7 +29,7 @@ test.describe("Card Layout Quality (#538)", () => {
     ).toBeVisible();
 
     // Wait for stat cards to resolve
-    await expect(page.getByText("Router Status")).toBeVisible({
+    await expect(page.getByText("Router Status", { exact: true }).first()).toBeVisible({
       timeout: 10000,
     });
 
