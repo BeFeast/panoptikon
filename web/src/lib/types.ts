@@ -1008,6 +1008,8 @@ export interface SyslogResponse {
 export interface AuthStatus {
   authenticated: boolean;
   needs_setup: boolean;
+  sso_enabled?: boolean;
+  sso_login_url?: string | null;
 }
 
 export interface LoginResponse {

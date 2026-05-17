@@ -310,7 +310,7 @@ function ProxyHostsTable({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-left text-xs uppercase text-slate-500">
+              <tr className="border-b border-cyan-900/35 text-left text-xs uppercase text-slate-500">
                 <th className="px-4 py-2">Domain(s)</th>
                 <th className="px-4 py-2">Forward To</th>
                 <th className="px-4 py-2">SSL</th>
@@ -332,7 +332,7 @@ function ProxyHostsTable({
                 return (
                   <tr
                     key={h.id}
-                    className="border-b border-slate-800/50 hover:bg-slate-800/30"
+                    className="border-b border-cyan-900/35 hover:bg-cyan-950/35"
                   >
                     <td className="px-4 py-2.5">
                       <div className="flex flex-wrap gap-1">
@@ -420,7 +420,7 @@ function ProxyHostsTable({
           }
         }}
       >
-        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+        <DialogContent className="border-cyan-900/45 bg-[#0b1220]/72 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editHost ? "Edit Proxy Host" : "New Proxy Host"}
@@ -443,7 +443,7 @@ function ProxyHostsTable({
               </Label>
               <Input
                 id="proxy-domains"
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-cyan-900/45 bg-[#0b1220]/72 text-white"
                 placeholder="app.example.com, www.example.com"
                 value={form.domain_names}
                 onChange={(e) =>
@@ -458,7 +458,7 @@ function ProxyHostsTable({
                 <Label htmlFor="proxy-fwd-host">Forward Host</Label>
                 <Input
                   id="proxy-fwd-host"
-                  className="border-slate-800 bg-slate-950 text-white"
+                  className="border-cyan-900/45 bg-[#0b1220]/72 text-white"
                   placeholder="192.168.1.100"
                   value={form.forward_host}
                   onChange={(e) =>
@@ -470,7 +470,7 @@ function ProxyHostsTable({
                 <Label htmlFor="proxy-scheme">Scheme</Label>
                 <select
                   id="proxy-scheme"
-                  className="h-9 rounded-md border border-slate-800 bg-slate-950 px-2 text-sm text-white"
+                  className="h-9 rounded-md border border-cyan-900/45 bg-[#0b1220]/72 px-2 text-sm text-white"
                   value={form.forward_scheme}
                   onChange={(e) =>
                     setForm({ ...form, forward_scheme: e.target.value })
@@ -485,7 +485,7 @@ function ProxyHostsTable({
                 <Input
                   id="proxy-port"
                   type="number"
-                  className="w-24 border-slate-800 bg-slate-950 text-white"
+                  className="w-24 border-cyan-900/45 bg-[#0b1220]/72 text-white"
                   placeholder="80"
                   value={form.forward_port || ""}
                   onChange={(e) =>
@@ -503,7 +503,7 @@ function ProxyHostsTable({
               <Label htmlFor="proxy-access-list">Access List</Label>
               <select
                 id="proxy-access-list"
-                className="h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-2 text-sm text-white"
+                className="h-9 w-full rounded-md border border-cyan-900/45 bg-[#0b1220]/72 px-2 text-sm text-white"
                 value={String(form.access_list_id)}
                 onChange={(e) =>
                   setForm({ ...form, access_list_id: Number(e.target.value) })
@@ -594,7 +594,7 @@ function ProxyHostsTable({
         open={!!confirmDelete}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
       >
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-cyan-900/45 bg-[#0b1220]/72">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Delete Proxy Host?
@@ -801,7 +801,7 @@ function RedirectionHostsTable({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-left text-xs uppercase text-slate-500">
+              <tr className="border-b border-cyan-900/35 text-left text-xs uppercase text-slate-500">
                 <th className="px-4 py-2">Source Domain(s)</th>
                 <th className="px-4 py-2">Forward To</th>
                 <th className="px-4 py-2">Code</th>
@@ -814,7 +814,7 @@ function RedirectionHostsTable({
               {hosts.map((h) => (
                 <tr
                   key={h.id}
-                  className="border-b border-slate-800/50 hover:bg-slate-800/30"
+                  className="border-b border-cyan-900/35 hover:bg-cyan-950/35"
                 >
                   <td className="px-4 py-2.5">
                     <div className="flex flex-wrap gap-1">
@@ -899,7 +899,7 @@ function RedirectionHostsTable({
           }
         }}
       >
-        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+        <DialogContent className="border-cyan-900/45 bg-[#0b1220]/72 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editHost ? "Edit Redirection" : "New Redirection"}
@@ -922,7 +922,7 @@ function RedirectionHostsTable({
               </Label>
               <Input
                 id="redir-domains"
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-cyan-900/45 bg-[#0b1220]/72 text-white"
                 placeholder="old.example.com, legacy.example.com"
                 value={form.domain_names}
                 onChange={(e) =>
@@ -937,7 +937,7 @@ function RedirectionHostsTable({
                 <Label htmlFor="redir-scheme">Scheme</Label>
                 <select
                   id="redir-scheme"
-                  className="h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-2 text-sm text-white"
+                  className="h-9 w-full rounded-md border border-cyan-900/45 bg-[#0b1220]/72 px-2 text-sm text-white"
                   value={form.forward_scheme}
                   onChange={(e) =>
                     setForm({ ...form, forward_scheme: e.target.value })
@@ -951,7 +951,7 @@ function RedirectionHostsTable({
                 <Label htmlFor="redir-domain">Forward Domain</Label>
                 <Input
                   id="redir-domain"
-                  className="border-slate-800 bg-slate-950 text-white"
+                  className="border-cyan-900/45 bg-[#0b1220]/72 text-white"
                   placeholder="new.example.com"
                   value={form.forward_domain_name}
                   onChange={(e) =>
@@ -966,7 +966,7 @@ function RedirectionHostsTable({
               <Label htmlFor="redir-code">HTTP Code</Label>
               <select
                 id="redir-code"
-                className="h-9 w-full rounded-md border border-slate-800 bg-slate-950 px-2 text-sm text-white"
+                className="h-9 w-full rounded-md border border-cyan-900/45 bg-[#0b1220]/72 px-2 text-sm text-white"
                 value={form.forward_http_code}
                 onChange={(e) =>
                   setForm({
@@ -1042,7 +1042,7 @@ function RedirectionHostsTable({
         open={!!confirmDelete}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
       >
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-cyan-900/45 bg-[#0b1220]/72">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Delete Redirection?
@@ -1231,7 +1231,7 @@ function StreamsTable({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-left text-xs uppercase text-slate-500">
+              <tr className="border-b border-cyan-900/35 text-left text-xs uppercase text-slate-500">
                 <th className="px-4 py-2">Incoming Port</th>
                 <th className="px-4 py-2">Forward To</th>
                 <th className="px-4 py-2">Protocol</th>
@@ -1243,7 +1243,7 @@ function StreamsTable({
               {streams.map((s) => (
                 <tr
                   key={s.id}
-                  className="border-b border-slate-800/50 hover:bg-slate-800/30"
+                  className="border-b border-cyan-900/35 hover:bg-cyan-950/35"
                 >
                   <td className="px-4 py-2.5 font-mono text-xs text-white">
                     :{s.incoming_port}
@@ -1320,7 +1320,7 @@ function StreamsTable({
           }
         }}
       >
-        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+        <DialogContent className="border-cyan-900/45 bg-[#0b1220]/72 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editStream ? "Edit Stream" : "New Stream"}
@@ -1339,7 +1339,7 @@ function StreamsTable({
               <Input
                 id="stream-incoming-port"
                 type="number"
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-cyan-900/45 bg-[#0b1220]/72 text-white"
                 placeholder="8080"
                 value={form.incoming_port || ""}
                 onChange={(e) =>
@@ -1357,7 +1357,7 @@ function StreamsTable({
                 <Label htmlFor="stream-fwd-host">Forwarding Host</Label>
                 <Input
                   id="stream-fwd-host"
-                  className="border-slate-800 bg-slate-950 text-white"
+                  className="border-cyan-900/45 bg-[#0b1220]/72 text-white"
                   placeholder="192.168.1.100"
                   value={form.forwarding_host}
                   onChange={(e) =>
@@ -1370,7 +1370,7 @@ function StreamsTable({
                 <Input
                   id="stream-fwd-port"
                   type="number"
-                  className="border-slate-800 bg-slate-950 text-white"
+                  className="border-cyan-900/45 bg-[#0b1220]/72 text-white"
                   placeholder="8080"
                   value={form.forwarding_port || ""}
                   onChange={(e) =>
@@ -1437,7 +1437,7 @@ function StreamsTable({
         open={!!confirmDelete}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
       >
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-cyan-900/45 bg-[#0b1220]/72">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Delete Stream?
@@ -1577,7 +1577,7 @@ function DeadHostsTable({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-left text-xs uppercase text-slate-500">
+              <tr className="border-b border-cyan-900/35 text-left text-xs uppercase text-slate-500">
                 <th className="px-4 py-2">Domain(s)</th>
                 <th className="px-4 py-2">SSL</th>
                 <th className="px-4 py-2">Status</th>
@@ -1588,7 +1588,7 @@ function DeadHostsTable({
               {hosts.map((h) => (
                 <tr
                   key={h.id}
-                  className="border-b border-slate-800/50 hover:bg-slate-800/30"
+                  className="border-b border-cyan-900/35 hover:bg-cyan-950/35"
                 >
                   <td className="px-4 py-2.5">
                     <div className="flex flex-wrap gap-1">
@@ -1650,7 +1650,7 @@ function DeadHostsTable({
           if (!open) setShowForm(false);
         }}
       >
-        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+        <DialogContent className="border-cyan-900/45 bg-[#0b1220]/72 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-white">New Dead Host</DialogTitle>
             <DialogDescription>
@@ -1668,7 +1668,7 @@ function DeadHostsTable({
               </Label>
               <Input
                 id="dead-domains"
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-cyan-900/45 bg-[#0b1220]/72 text-white"
                 placeholder="expired.example.com, old.example.com"
                 value={form.domain_names}
                 onChange={(e) =>
@@ -1708,7 +1708,7 @@ function DeadHostsTable({
         open={!!confirmDelete}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
       >
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-cyan-900/45 bg-[#0b1220]/72">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Delete Dead Host?
@@ -1906,7 +1906,7 @@ function AccessListsTable({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-left text-xs uppercase text-slate-500">
+              <tr className="border-b border-cyan-900/35 text-left text-xs uppercase text-slate-500">
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Clients</th>
                 <th className="px-4 py-2">Rules</th>
@@ -1918,7 +1918,7 @@ function AccessListsTable({
               {accessLists.map((al) => (
                 <tr
                   key={al.id}
-                  className="border-b border-slate-800/50 hover:bg-slate-800/30"
+                  className="border-b border-cyan-900/35 hover:bg-cyan-950/35"
                 >
                   <td className="px-4 py-2.5 font-medium text-white">
                     {al.name}
@@ -1999,7 +1999,7 @@ function AccessListsTable({
           }
         }}
       >
-        <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-lg">
+        <DialogContent className="border-cyan-900/45 bg-[#0b1220]/72 sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="text-white">
               {editList ? "Edit Access List" : "New Access List"}
@@ -2017,7 +2017,7 @@ function AccessListsTable({
               <Label htmlFor="al-name">Name</Label>
               <Input
                 id="al-name"
-                className="border-slate-800 bg-slate-950 text-white"
+                className="border-cyan-900/45 bg-[#0b1220]/72 text-white"
                 placeholder="e.g. Office IPs Only"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -2057,7 +2057,7 @@ function AccessListsTable({
                 {form.clients.map((client, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <select
-                      className="h-9 w-24 shrink-0 rounded-md border border-slate-800 bg-slate-950 px-2 text-sm text-white"
+                      className="h-9 w-24 shrink-0 rounded-md border border-cyan-900/45 bg-[#0b1220]/72 px-2 text-sm text-white"
                       value={client.directive}
                       onChange={(e) =>
                         updateClient(idx, "directive", e.target.value)
@@ -2067,7 +2067,7 @@ function AccessListsTable({
                       <option value="deny">Deny</option>
                     </select>
                     <Input
-                      className="border-slate-800 bg-slate-950 text-white"
+                      className="border-cyan-900/45 bg-[#0b1220]/72 text-white"
                       placeholder="192.168.1.0/24"
                       value={client.address}
                       onChange={(e) =>
@@ -2115,7 +2115,7 @@ function AccessListsTable({
         open={!!confirmDelete}
         onOpenChange={(open) => !open && setConfirmDelete(null)}
       >
-        <AlertDialogContent className="border-slate-800 bg-slate-900">
+        <AlertDialogContent className="border-cyan-900/45 bg-[#0b1220]/72">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Delete Access List?
@@ -2294,7 +2294,7 @@ export default function NpmPage() {
       </div>
 
       {!configured && (
-        <Card className="border-slate-800 bg-slate-900/50">
+        <Card className="border-cyan-900/45 bg-[#0b1220]/72">
           <CardContent className="py-8 text-center">
             <Globe className="mx-auto mb-3 h-10 w-10 text-slate-600" />
             <p className="text-sm text-slate-400">
@@ -2310,7 +2310,7 @@ export default function NpmPage() {
 
       {configured && (
         <Tabs value={npmTab} onValueChange={setNpmTab} className="w-full">
-          <TabsList className="border-slate-800 bg-slate-900">
+          <TabsList className="border-cyan-900/45 bg-[#0b1220]/72">
             <TabsTrigger value="redirections" className="gap-1.5">
               <ArrowRightLeft className="h-3.5 w-3.5" />
               Redirections
@@ -2374,7 +2374,7 @@ export default function NpmPage() {
           </TabsList>
 
           <TabsContent value="redirections">
-            <Card className="border-slate-800 bg-slate-900/50">
+            <Card className="border-cyan-900/45 bg-[#0b1220]/72">
               <CardHeader className="pb-0">
                 <CardTitle className="flex items-center gap-2 text-lg text-white">
                   <ArrowRightLeft className="h-4 w-4 text-orange-400" />
@@ -2392,7 +2392,7 @@ export default function NpmPage() {
           </TabsContent>
 
           <TabsContent value="proxy-hosts">
-            <Card className="border-slate-800 bg-slate-900/50">
+            <Card className="border-cyan-900/45 bg-[#0b1220]/72">
               <CardHeader className="pb-0">
                 <CardTitle className="flex items-center gap-2 text-lg text-white">
                   <ExternalLink className="h-4 w-4 text-blue-400" />
@@ -2406,7 +2406,7 @@ export default function NpmPage() {
           </TabsContent>
 
           <TabsContent value="streams">
-            <Card className="border-slate-800 bg-slate-900/50">
+            <Card className="border-cyan-900/45 bg-[#0b1220]/72">
               <CardHeader className="pb-0">
                 <CardTitle className="flex items-center gap-2 text-lg text-white">
                   <Radio className="h-4 w-4 text-violet-400" />
@@ -2424,7 +2424,7 @@ export default function NpmPage() {
           </TabsContent>
 
           <TabsContent value="dead-hosts">
-            <Card className="border-slate-800 bg-slate-900/50">
+            <Card className="border-cyan-900/45 bg-[#0b1220]/72">
               <CardHeader className="pb-0">
                 <CardTitle className="flex items-center gap-2 text-lg text-white">
                   <FileX2 className="h-4 w-4 text-rose-400" />
@@ -2442,7 +2442,7 @@ export default function NpmPage() {
           </TabsContent>
 
           <TabsContent value="access-lists">
-            <Card className="border-slate-800 bg-slate-900/50">
+            <Card className="border-cyan-900/45 bg-[#0b1220]/72">
               <CardHeader className="pb-0">
                 <CardTitle className="flex items-center gap-2 text-lg text-white">
                   <Shield className="h-4 w-4 text-amber-400" />

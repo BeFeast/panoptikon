@@ -136,7 +136,7 @@ export default function AlertRulesPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-900/45 text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -157,7 +157,7 @@ export default function AlertRulesPage() {
         )}
 
         {status === "loading" && rules.length === 0 ? (
-          <Card className="border-slate-800 bg-slate-900">
+          <Card className="border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
             <CardContent className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
             </CardContent>
@@ -165,7 +165,7 @@ export default function AlertRulesPage() {
         ) : (
           <>
             {rules.length === 0 && (
-              <Card className="border-slate-800 bg-slate-900">
+              <Card className="border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
                 <CardContent className="py-8 text-center">
                   <p className="text-sm text-slate-500">
                     No alert rules configured. Add a rule below.
@@ -177,7 +177,7 @@ export default function AlertRulesPage() {
             {rules.map((rule) => {
               const meta = RULE_TYPE_LABELS[rule.rule_type];
               return (
-                <Card key={rule.id} className="border-slate-800 bg-slate-900">
+                <Card key={rule.id} className="border-cyan-900/45 bg-[#0b1220]/72">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -185,7 +185,7 @@ export default function AlertRulesPage() {
                           <Bell className="h-4 w-4 text-amber-400" />
                         </div>
                         <div>
-                          <CardTitle className="text-base text-white">
+                          <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                             {meta?.label ?? rule.rule_type}
                           </CardTitle>
                           <CardDescription className="text-xs text-slate-500">
@@ -243,7 +243,7 @@ export default function AlertRulesPage() {
                               threshold_value: rule.threshold_value,
                             })
                           }
-                          className="w-32 border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                          className="w-32 border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
                           placeholder={
                             rule.rule_type === "device_offline" ? "5" : "100"
                           }
@@ -288,7 +288,7 @@ export default function AlertRulesPage() {
             })}
 
             {availableTypes.length > 0 && (
-              <Card className="border-dashed border-slate-800 bg-slate-900/50">
+              <Card className="border-dashed border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
                 <CardContent className="py-4">
                   <p className="mb-3 text-xs font-medium text-slate-500">
                     Add a rule
@@ -300,7 +300,7 @@ export default function AlertRulesPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleCreate(type_key)}
-                        className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                        className="border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35"
                       >
                         <Plus className="mr-1.5 h-3.5 w-3.5" />
                         {RULE_TYPE_LABELS[type_key]?.label ?? type_key}

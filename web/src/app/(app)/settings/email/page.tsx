@@ -133,7 +133,7 @@ export default function EmailSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-900/45 text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -155,7 +155,7 @@ export default function EmailSettingsPage() {
                 id="smtp-host"
                 value={smtpHost}
                 onChange={(e) => setSmtpHost(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
                 placeholder="smtp.gmail.com"
               />
             </div>
@@ -167,7 +167,7 @@ export default function EmailSettingsPage() {
                 id="smtp-port"
                 value={smtpPort}
                 onChange={(e) => setSmtpPort(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
                 placeholder="587"
               />
             </div>
@@ -177,7 +177,7 @@ export default function EmailSettingsPage() {
                   type="checkbox"
                   checked={smtpTlsEnabled}
                   onChange={(e) => setSmtpTlsEnabled(e.target.checked)}
-                  className="rounded border-slate-700"
+                  className="rounded border-cyan-900/45"
                 />
                 TLS / STARTTLS
               </label>
@@ -190,7 +190,7 @@ export default function EmailSettingsPage() {
                 id="smtp-username"
                 value={smtpUsername}
                 onChange={(e) => setSmtpUsername(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
                 placeholder="user@gmail.com"
               />
             </div>
@@ -203,7 +203,7 @@ export default function EmailSettingsPage() {
                 type="password"
                 value={smtpPassword}
                 onChange={(e) => setSmtpPassword(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
                 placeholder={savedPasswordSet ? "Leave blank to keep" : "App password"}
               />
             </div>
@@ -216,7 +216,7 @@ export default function EmailSettingsPage() {
                 type="email"
                 value={smtpFromEmail}
                 onChange={(e) => setSmtpFromEmail(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
                 placeholder="panoptikon@example.com"
               />
             </div>
@@ -229,7 +229,7 @@ export default function EmailSettingsPage() {
                 type="email"
                 value={smtpToEmail}
                 onChange={(e) => setSmtpToEmail(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
                 placeholder="admin@example.com"
               />
             </div>
@@ -270,7 +270,7 @@ export default function EmailSettingsPage() {
               variant="outline"
               onClick={handleTestEmail}
               disabled={!savedHost || testStatus === "loading"}
-              className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+              className="border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35 disabled:opacity-40"
             >
               {testStatus === "loading" ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />

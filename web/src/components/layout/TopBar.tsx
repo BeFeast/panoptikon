@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Bell, Settings, Lock, LogOut, Monitor, Cpu, Terminal, Package } from "lucide-react";
 import { searchAll, fetchRecentAlerts, fetchDashboardStats, markAllAlertsRead, deleteAllAlerts, logout } from "@/lib/api";
 import { useWsEvent } from "@/lib/ws";
+import { useWsConnected } from "@/components/providers/WebSocketProvider";
 import { timeAgo } from "@/lib/format";
 import type { SearchResponse, SearchDevice, SearchAgent, SearchAlert, SearchSshTarget, SearchAsset, Alert } from "@/lib/types";
 import {
@@ -18,12 +19,36 @@ import {
 
 export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
   const router = useRouter();
+  const wsConnected = useWsConnected();
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Lightweight liveness ping for the "live · ws · Nms" pill from the design.
+  useEffect(() => {
+    let cancelled = false;
+    async function ping() {
+      const started = performance.now();
+      try {
+        await fetch("/api/v1/version", { credentials: "include", cache: "no-store" });
+        if (!cancelled) {
+          setLatencyMs(Math.round(performance.now() - started));
+        }
+      } catch {
+        if (!cancelled) setLatencyMs(null);
+      }
+    }
+    void ping();
+    const interval = setInterval(ping, 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
 
   // ── Notification bell state ──
   const [bellOpen, setBellOpen] = useState(false);
@@ -427,6 +452,27 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
         )}
       </div>
 
+      {/* Realm context + live status pill — mirrors the design source TopBar */}
+      <div className="hidden lg:flex items-center gap-2 shrink-0 font-mono text-[11px] text-slate-400">
+        <span className="text-slate-500">core.lan</span>
+        <span className="text-slate-700">›</span>
+        <span className="text-slate-300">Overview</span>
+      </div>
+      <div
+        className="flex items-center gap-2 shrink-0 rounded-full border border-cyan-900/45 bg-[#091633]/55 px-2.5 py-1 font-mono text-[11px] text-slate-300"
+        data-testid="live-status-pill"
+      >
+        <span
+          className={cnLive(wsConnected)}
+          aria-hidden="true"
+        />
+        <span>live · ws</span>
+        <span className="text-slate-600">·</span>
+        <span className="text-slate-400 tabular-nums">
+          {latencyMs == null ? "—" : `${latencyMs}ms`}
+        </span>
+      </div>
+
       {/* Right side: alerts bell + user avatar */}
       <div className="flex items-center gap-2">
         {/* ── Notification Bell ── */}
@@ -556,6 +602,12 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
       </div>
     </header>
   );
+}
+
+function cnLive(connected: boolean) {
+  return connected
+    ? "inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online-pulse"
+    : "inline-block h-1.5 w-1.5 rounded-full bg-slate-600";
 }
 
 function SeverityBadge({ severity }: { severity: string }) {

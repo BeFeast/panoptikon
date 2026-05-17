@@ -146,7 +146,7 @@ export default function AgentDetailContent() {
       {chartData.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* CPU Chart */}
-          <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
+          <div className="rounded-md border border-cyan-900/45 bg-[#0b1220]/72 p-4">
             <h2 className="text-sm font-medium text-slate-400 mb-3">CPU Usage %</h2>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
@@ -189,7 +189,7 @@ export default function AgentDetailContent() {
           </div>
 
           {/* RAM Chart */}
-          <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
+          <div className="rounded-md border border-cyan-900/45 bg-[#0b1220]/72 p-4">
             <h2 className="text-sm font-medium text-slate-400 mb-3">RAM Usage %</h2>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
@@ -240,8 +240,8 @@ export default function AgentDetailContent() {
       )}
 
       {/* Reports table */}
-      <div className="overflow-hidden rounded-md border border-slate-800 bg-slate-950/60">
-        <div className="px-4 py-3 border-b border-slate-800">
+      <div className="overflow-hidden rounded-md border border-cyan-900/45 bg-[#0b1220]/72">
+        <div className="px-4 py-3 border-b border-cyan-900/35">
           <h2 className="text-sm font-medium text-slate-400">
             Recent Reports ({reports.length})
           </h2>
@@ -389,7 +389,7 @@ function HardwareInfoCard({ agent }: { agent: Agent }) {
   }
 
   return (
-    <div className="rounded-md border border-slate-800 bg-slate-950/60 p-4">
+    <div className="rounded-md border border-cyan-900/45 bg-[#0b1220]/72 p-4">
       <h2 className="text-sm font-medium text-slate-400 mb-3">Hardware Info</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
         {items.map((item) => (

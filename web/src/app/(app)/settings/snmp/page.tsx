@@ -86,7 +86,7 @@ export default function SnmpSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-900/45 text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -113,7 +113,7 @@ export default function SnmpSettingsPage() {
               type="checkbox"
               checked={enabled}
               onChange={(e) => setEnabled(e.target.checked)}
-              className="rounded border-slate-700"
+              className="rounded border-cyan-900/45"
             />
             Enable SNMP scanning
           </label>
@@ -127,7 +127,7 @@ export default function SnmpSettingsPage() {
                 id="snmp-community"
                 value={community}
                 onChange={(e) => setCommunity(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
                 placeholder="public"
               />
             </div>
@@ -139,7 +139,7 @@ export default function SnmpSettingsPage() {
                 id="snmp-version"
                 value={version}
                 onChange={(e) => setVersion(e.target.value)}
-                className="w-full rounded-md border border-slate-800 bg-slate-950 px-3 py-2 text-sm text-white"
+                className="w-full rounded-md border border-cyan-900/45 bg-[#08111e] px-3 py-2 text-sm text-white"
               >
                 <option value="1">v1</option>
                 <option value="2c">v2c</option>
@@ -154,7 +154,7 @@ export default function SnmpSettingsPage() {
                 id="snmp-port"
                 value={port}
                 onChange={(e) => setPort(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
                 placeholder="161"
               />
             </div>
@@ -166,7 +166,7 @@ export default function SnmpSettingsPage() {
                 id="snmp-timeout"
                 value={timeout}
                 onChange={(e) => setTimeout_(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
                 placeholder="5"
               />
             </div>
@@ -178,7 +178,7 @@ export default function SnmpSettingsPage() {
                 id="snmp-retries"
                 value={retries}
                 onChange={(e) => setRetries(e.target.value)}
-                className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+                className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
                 placeholder="1"
               />
             </div>

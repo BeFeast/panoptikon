@@ -102,7 +102,7 @@ export default function PasswordSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-900/45 text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -142,7 +142,7 @@ export default function PasswordSettingsPage() {
                     type={showCurrent ? "text" : "password"}
                     value={current}
                     onChange={(e) => setCurrent(e.target.value)}
-                    className={`border-slate-800 bg-slate-950 pr-10 text-white placeholder:text-slate-600 ${
+                    className={`border-cyan-900/45 bg-[#08111e] pr-10 text-white placeholder:text-slate-600 ${
                       currentValid === "valid" ? "border-emerald-500/40" : ""
                     }`}
                     placeholder="••••••••"
@@ -181,7 +181,7 @@ export default function PasswordSettingsPage() {
                     type={showNext ? "text" : "password"}
                     value={next}
                     onChange={(e) => setNext(e.target.value)}
-                    className={`border-slate-800 bg-slate-950 pr-10 text-white placeholder:text-slate-600 ${
+                    className={`border-cyan-900/45 bg-[#08111e] pr-10 text-white placeholder:text-slate-600 ${
                       nextValid === "valid"
                         ? "border-emerald-500/40"
                         : nextValid === "error"
@@ -219,7 +219,7 @@ export default function PasswordSettingsPage() {
                     type="password"
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
-                    className={`border-slate-800 bg-slate-950 text-white placeholder:text-slate-600 ${
+                    className={`border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600 ${
                       confirmValid === "valid"
                         ? "border-emerald-500/40"
                         : confirmValid === "error"

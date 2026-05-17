@@ -137,7 +137,7 @@ export default function DnsSecurityPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-900/45 text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -148,13 +148,13 @@ export default function DnsSecurityPage() {
 
         {settings === null ? (
           <div className="space-y-6">
-            <Skeleton className="h-40 w-full bg-slate-800" />
-            <Skeleton className="h-40 w-full bg-slate-800" />
+            <Skeleton className="h-40 w-full bg-cyan-950/35" />
+            <Skeleton className="h-40 w-full bg-cyan-950/35" />
           </div>
         ) : (
           <>
             {/* DNSSEC Section */}
-            <Card className="border-slate-800 bg-slate-900">
+            <Card className="border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -162,7 +162,7 @@ export default function DnsSecurityPage() {
                       <ShieldCheck className="h-4 w-4 text-emerald-400" />
                     </div>
                     <div>
-                      <CardTitle className="text-base text-white">
+                      <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                         DNSSEC Validation
                       </CardTitle>
                       <p className="text-xs text-slate-500">
@@ -180,7 +180,7 @@ export default function DnsSecurityPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="rounded-md border border-slate-800 bg-slate-950/50 px-4 py-3">
+                <div className="rounded-md border border-cyan-900/45 bg-[#08111e]/60 px-4 py-3">
                   <p className="text-xs text-slate-400">
                     When enabled, Unbound validates DNSSEC signatures on
                     responses. Domains with invalid or missing signatures will
@@ -192,7 +192,7 @@ export default function DnsSecurityPage() {
             </Card>
 
             {/* DoT Section */}
-            <Card className="border-slate-800 bg-slate-900">
+            <Card className="border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -200,7 +200,7 @@ export default function DnsSecurityPage() {
                       <Lock className="h-4 w-4 text-blue-400" />
                     </div>
                     <div>
-                      <CardTitle className="text-base text-white">
+                      <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                         DNS-over-TLS (DoT)
                       </CardTitle>
                       <p className="text-xs text-slate-500">
@@ -235,7 +235,7 @@ export default function DnsSecurityPage() {
 
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-slate-800 hover:bg-transparent">
+                    <TableRow className="border-cyan-900/45 hover:bg-transparent">
                       <TableHead className="text-slate-400">Name</TableHead>
                       <TableHead className="text-slate-400">Address</TableHead>
                       <TableHead className="text-slate-400">Port</TableHead>
@@ -247,7 +247,7 @@ export default function DnsSecurityPage() {
                   </TableHeader>
                   <TableBody>
                     {settings.dot_servers.length === 0 ? (
-                      <TableRow className="border-slate-800 hover:bg-transparent">
+                      <TableRow className="border-cyan-900/45 hover:bg-transparent">
                         <TableCell
                           colSpan={5}
                           className="py-8 text-center text-slate-500"
@@ -260,7 +260,7 @@ export default function DnsSecurityPage() {
                       settings.dot_servers.map((server, index) => (
                         <TableRow
                           key={`${server.address}-${index}`}
-                          className="border-slate-800 hover:bg-slate-800/30"
+                          className="border-cyan-900/45 hover:bg-cyan-950/35"
                         >
                           <TableCell className="font-medium text-white">
                             {server.name || "—"}
@@ -350,7 +350,7 @@ function AddDotServerDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-slate-800 bg-slate-900 sm:max-w-md">
+      <DialogContent className="border-cyan-900/45 bg-[#0b1220]/72 sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white">
             Add DoT Upstream Server
@@ -365,7 +365,7 @@ function AddDotServerDialog({
               id="dot-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
               placeholder="Cloudflare"
             />
           </div>
@@ -377,7 +377,7 @@ function AddDotServerDialog({
               id="dot-address"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
               placeholder="1.1.1.1"
               required
             />
@@ -391,7 +391,7 @@ function AddDotServerDialog({
               type="number"
               value={port}
               onChange={(e) => setPort(e.target.value)}
-              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
               placeholder="853"
             />
           </div>
@@ -400,7 +400,7 @@ function AddDotServerDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="border-slate-800 text-slate-300 hover:bg-slate-800"
+              className="border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35"
             >
               Cancel
             </Button>

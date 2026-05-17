@@ -1,48 +1,88 @@
 import { cn } from "@/lib/utils";
 
 interface BrandMarkProps {
-  /** Width and height in pixels. SVG scales proportionally. */
   size?: number;
   className?: string;
+  glow?: boolean;
 }
 
-export function BrandMark({ size = 32, className }: BrandMarkProps) {
+/**
+ * Panoptikon mesh mark.
+ *
+ * Faithful port of LogoMesh from the design handoff source
+ * (panopticon/project/logos.jsx). Five nodes arranged as a
+ * constellation, with axis links rendered in a sky-to-cobalt
+ * gradient and dashed guide links in muted blue.
+ */
+export function BrandMark({ size = 32, className, glow = true }: BrandMarkProps) {
+  const nodes = [
+    { x: 14, y: 18, r: 4 },
+    { x: 50, y: 14, r: 3 },
+    { x: 32, y: 32, r: 5 },
+    { x: 12, y: 48, r: 3 },
+    { x: 52, y: 50, r: 4 },
+  ];
+  const links: Array<[number, number]> = [
+    [0, 2],
+    [1, 2],
+    [2, 3],
+    [2, 4],
+    [0, 1],
+    [3, 4],
+  ];
+
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 256 256"
+      viewBox="0 0 64 64"
       fill="none"
-      xmlns="http://www.w3.org/2000/svg"
       className={cn("shrink-0", className)}
       aria-label="Panoptikon"
       role="img"
+      data-brand-mark="panoptikon"
     >
-      <g strokeLinecap="round" strokeLinejoin="round">
-        {/* Outer broken hex ring — signal cyan */}
-        <path
-          d="M57 87L128 46L199 87L199 169"
-          stroke="#22D3EE"
-          strokeWidth="14"
-        />
-        <path
-          d="M180 188L128 218L76 188"
-          stroke="#22D3EE"
-          strokeWidth="14"
-        />
-        <path d="M57 169L57 87" stroke="#22D3EE" strokeWidth="14" />
-        {/* Inner hex — cloud white */}
-        <path
-          d="M87 104L128 80L169 104L169 152L128 176L87 152Z"
-          stroke="#E8EEF7"
-          strokeOpacity="0.92"
-          strokeWidth="10"
-        />
-        {/* Connector spoke — amber accent */}
-        <path d="M169 104L186 94" stroke="#F59E0B" strokeWidth="10" />
-      </g>
-      {/* Central node — amber */}
-      <circle cx="128" cy="128" r="13" fill="#F59E0B" />
+      <defs>
+        <linearGradient id="panoptikonMeshAxis" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#38bdf8" />
+          <stop offset="1" stopColor="#2563eb" />
+        </linearGradient>
+      </defs>
+      {links.map(([a, b], i) => {
+        const isAxis = i < 4;
+        return (
+          <line
+            key={i}
+            x1={nodes[a].x}
+            y1={nodes[a].y}
+            x2={nodes[b].x}
+            y2={nodes[b].y}
+            stroke={isAxis ? "url(#panoptikonMeshAxis)" : "rgba(96,144,212,0.35)"}
+            strokeWidth={isAxis ? 1.5 : 1}
+            strokeDasharray={isAxis ? undefined : "2 3"}
+            strokeLinecap="round"
+          />
+        );
+      })}
+      {nodes.map((n, i) => {
+        const isCenter = i === 2;
+        return (
+          <g key={i}>
+            {isCenter && glow && (
+              <circle cx={n.x} cy={n.y} r={n.r + 4} fill="#2563eb" opacity="0.18" />
+            )}
+            <circle
+              cx={n.x}
+              cy={n.y}
+              r={n.r}
+              fill={isCenter ? "#2563eb" : "#0c1b30"}
+              stroke={isCenter ? "#5eead4" : "#38bdf8"}
+              strokeWidth={1.5}
+            />
+            {isCenter && <circle cx={n.x} cy={n.y} r={1.5} fill="#5eead4" />}
+          </g>
+        );
+      })}
     </svg>
   );
 }

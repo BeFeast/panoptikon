@@ -171,7 +171,7 @@ function MikrotikPanel() {
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            className={`border-slate-800 bg-slate-950 text-white placeholder:text-slate-600 ${
+            className={`border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600 ${
               urlValid === "valid"
                 ? "border-emerald-500/40"
                 : urlValid === "error"
@@ -200,7 +200,7 @@ function MikrotikPanel() {
           type="text"
           value={user}
           onChange={(e) => setUser(e.target.value)}
-          className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+          className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
           placeholder="admin"
         />
       </div>
@@ -215,7 +215,7 @@ function MikrotikPanel() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+          className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
           placeholder={
             passwordSet
               ? "••••••••  (leave blank to keep current)"
@@ -241,7 +241,7 @@ function MikrotikPanel() {
           variant="outline"
           onClick={handleTest}
           disabled={!url || testStatus === "loading"}
-          className="border-slate-800 text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+          className="border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35 disabled:opacity-40"
         >
           {testStatus === "loading" ? (
             <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -307,7 +307,7 @@ export default function RouterSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-900/45 text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>

@@ -136,6 +136,8 @@ pub struct LoginResponse {
 pub struct AuthStatusResponse {
     pub authenticated: bool,
     pub needs_setup: bool,
+    pub sso_enabled: bool,
+    pub sso_login_url: Option<String>,
 }
 
 /// POST /api/v1/auth/login — authenticate and set session cookie.
@@ -401,6 +403,8 @@ pub async fn status(
     Ok(Json(AuthStatusResponse {
         authenticated,
         needs_setup,
+        sso_enabled: false,
+        sso_login_url: None,
     }))
 }
 

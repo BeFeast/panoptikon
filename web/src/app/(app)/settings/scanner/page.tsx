@@ -165,7 +165,7 @@ export default function ScannerSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-slate-800 text-slate-400 transition-colors hover:bg-slate-800 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-900/45 text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -190,7 +190,7 @@ export default function ScannerSettingsPage() {
                 min={10}
                 value={scanInterval}
                 onChange={(e) => setScanInterval(e.target.value)}
-                className={`border-slate-800 bg-slate-950 text-white placeholder:text-slate-600 ${
+                className={`border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600 ${
                   intervalValid === "valid"
                     ? "border-emerald-500/40"
                     : intervalValid === "error"
@@ -221,7 +221,7 @@ export default function ScannerSettingsPage() {
               type="text"
               value={scanSubnets}
               onChange={(e) => setScanSubnets(e.target.value)}
-              className="border-slate-800 bg-slate-950 text-white placeholder:text-slate-600"
+              className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
               placeholder="10.0.0.0/24, 192.168.1.0/24"
             />
             <p className="text-[10px] text-slate-600">

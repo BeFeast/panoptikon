@@ -1195,7 +1195,7 @@ function TopologyPageInner() {
 
           {stats.total === 0 && (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-4">
-              <div className="pointer-events-auto rounded-lg border border-slate-800 bg-slate-950/90 px-8 py-4 shadow-2xl">
+              <div className="pointer-events-auto rounded-lg border border-cyan-900/45 bg-[#0b1220]/72 px-8 py-4 shadow-2xl">
                 <EmptyState
                   icon={Network}
                   title="No topology devices"
@@ -1218,7 +1218,7 @@ function TopologyPageInner() {
       >
         <SheetContent
           side="right"
-          className="w-full overflow-y-auto border-slate-800 bg-slate-950 sm:max-w-md"
+          className="w-full overflow-y-auto border-cyan-900/45 bg-[#0b1220]/72 sm:max-w-md"
         >
           {selectedDevice && <DeviceDetailPanel device={selectedDevice} />}
         </SheetContent>

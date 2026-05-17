@@ -7,7 +7,9 @@ import {
   ArrowRight,
   CheckCircle2,
   Circle,
+  Cpu,
   ExternalLink,
+  Gauge,
   Info,
   MonitorSmartphone,
   Network,
@@ -15,6 +17,7 @@ import {
   Radar,
   Rocket,
   Router,
+  Search,
   Shield,
   Server,
   WifiOff,
@@ -35,7 +38,9 @@ import {
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  fetchAgents,
   fetchDashboardStats,
+  fetchDnsQueryStats,
   fetchRecentAlerts,
   fetchTrafficHistory,
   fetchDevices,
@@ -44,9 +49,11 @@ import {
   fetchTopologyGraph,
 } from "@/lib/api";
 import type {
+  Agent,
   Alert,
   CriticalDevice,
   DashboardStats,
+  DnsQueryStats,
   TrafficHistoryPoint,
   Device,
   TopDevice,
@@ -73,6 +80,16 @@ function formatTime(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+// ─── Compact integer formatting (12300 → "12.3k") ──────
+
+function formatCompactCount(n: number): string {
+  if (!Number.isFinite(n) || n < 0) return "—";
+  if (n < 1_000) return String(n);
+  if (n < 1_000_000) return `${(n / 1_000).toFixed(1)}k`;
+  if (n < 1_000_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  return `${(n / 1_000_000_000).toFixed(1)}B`;
 }
 
 // ─── Alert severity → color mapping ────────────────────
@@ -783,6 +800,16 @@ export default function DashboardPage() {
     fetchTopologyGraph,
     swrOpts,
   );
+  const { data: agents, error: agentsError } = useApiFetch<Agent[]>(
+    "/api/v1/agents",
+    () => fetchAgents().then((a) => (Array.isArray(a) ? a : [])),
+    swrOpts,
+  );
+  const { data: dnsStats, error: dnsStatsError } = useApiFetch<DnsQueryStats>(
+    "/api/v1/dns-queries/stats?hours=24",
+    () => fetchDnsQueryStats(24),
+    swrOpts,
+  );
 
   const devicesRef = useRef(devices);
   devicesRef.current = devices;
@@ -889,7 +916,7 @@ export default function DashboardPage() {
         />
 
         {/* ── Stat Cards Row ───────────────────────────── */}
-        <StaggerItem className="xl:col-span-4"><div className="grid h-full grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <StaggerItem className="xl:col-span-4"><div className="grid h-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
           {statsError ? (
             <>
               <StatCard
@@ -901,7 +928,7 @@ export default function DashboardPage() {
                 status="offline"
               />
               <StatCard
-                title="Active Devices"
+                title="Devices online"
                 href="/devices"
                 value="—"
                 subtitle="Cannot load stats"
@@ -909,7 +936,7 @@ export default function DashboardPage() {
                 status="offline"
               />
               <StatCard
-                title="WAN Bandwidth"
+                title="Throughput"
                 href="/traffic"
                 value="—"
                 subtitle="Cannot load stats"
@@ -922,6 +949,22 @@ export default function DashboardPage() {
                 value="—"
                 subtitle="Cannot load stats"
                 icon={<AlertTriangle className="h-4 w-4" />}
+                status="offline"
+              />
+              <StatCard
+                title="WAN Latency"
+                href="/router"
+                value="—"
+                subtitle="Cannot load stats"
+                icon={<Gauge className="h-4 w-4" />}
+                status="offline"
+              />
+              <StatCard
+                title="DNS Blocks"
+                href="/dns-queries"
+                value="—"
+                subtitle="Cannot load stats"
+                icon={<Search className="h-4 w-4" />}
                 status="offline"
               />
             </>
@@ -936,7 +979,7 @@ export default function DashboardPage() {
                 status={routerStatusLabel(stats).status}
               />
               <StatCard
-                title="Active Devices"
+                title="Devices online"
                 href="/devices"
                 value={String(stats.devices_online)}
                 subtitle={`${stats.devices_total} total known`}
@@ -944,12 +987,40 @@ export default function DashboardPage() {
                 status="online"
               />
               <StatCard
-                title="WAN Bandwidth"
+                title="Throughput"
                 href="/traffic"
-                value={`↓ ${formatBps(stats.wan_rx_bps)}`}
-                subtitle={`↑ ${formatBps(stats.wan_tx_bps)}`}
+                value={formatBps(stats.wan_rx_bps + stats.wan_tx_bps)}
+                subtitle={`↓ ${formatBps(stats.wan_rx_bps)} · ↑ ${formatBps(stats.wan_tx_bps)}`}
                 icon={<Activity className="h-4 w-4" />}
                 status="online"
+              />
+              <StatCard
+                title="Agents"
+                href="/agents"
+                value={
+                  agentsError
+                    ? "—"
+                    : agents
+                      ? String(agents.filter((a) => a.is_online).length)
+                      : "—"
+                }
+                subtitle={
+                  agentsError
+                    ? "Cannot load agents"
+                    : agents
+                      ? `of ${agents.length} registered`
+                      : "Loading…"
+                }
+                icon={<Cpu className="h-4 w-4" />}
+                status={
+                  agentsError
+                    ? "offline"
+                    : agents && agents.length > 0 && agents.every((a) => a.is_online)
+                      ? "online"
+                      : agents && agents.some((a) => !a.is_online)
+                        ? "warning"
+                        : "online"
+                }
               />
               <StatCard
                 title="Unread Alerts"
@@ -959,9 +1030,40 @@ export default function DashboardPage() {
                 icon={<AlertTriangle className="h-4 w-4" />}
                 status={stats.alerts_unread > 0 ? "warning" : "online"}
               />
+              {/* TODO: surface real WAN latency once /api/v1/dashboard/stats exposes it. */}
+              <StatCard
+                title="WAN Latency"
+                href="/router"
+                value="—"
+                subtitle="No latency probe yet"
+                icon={<Gauge className="h-4 w-4" />}
+                status="warning"
+              />
+              <StatCard
+                title="DNS Blocks"
+                href="/dns-queries"
+                value={
+                  dnsStatsError
+                    ? "—"
+                    : dnsStats
+                      ? formatCompactCount(dnsStats.blocked_queries)
+                      : "—"
+                }
+                subtitle={
+                  dnsStatsError
+                    ? "Cannot load DNS stats"
+                    : dnsStats
+                      ? `${formatCompactCount(dnsStats.total_queries)} queries · 24h`
+                      : "Loading…"
+                }
+                icon={<Search className="h-4 w-4" />}
+                status={dnsStatsError ? "offline" : "online"}
+              />
             </>
           ) : (
             <>
+              <StatCardSkeleton />
+              <StatCardSkeleton />
               <StatCardSkeleton />
               <StatCardSkeleton />
               <StatCardSkeleton />
