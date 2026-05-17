@@ -47,7 +47,7 @@ test.describe("U4 router workspace shell", () => {
     // Header or empty-state must resolve (test env router is unreachable)
     const header = page.getByTestId("router-header").first();
     const empty = page.getByTestId("router-empty-state").first();
-    await expect(header.or(empty)).toBeVisible({ timeout: 40000 });
+    await expect(header.or(empty).first()).toBeVisible({ timeout: 40000 });
 
     await page.screenshot({
       path: "tests/screenshots/u4-router-mikrotik.png",
@@ -66,7 +66,7 @@ test.describe("U4 router workspace shell", () => {
     });
     const header = page.getByTestId("router-header").first();
     const empty = page.getByTestId("router-empty-state").first();
-    await expect(header.or(empty)).toBeVisible({ timeout: 30000 });
+    await expect(header.or(empty).first()).toBeVisible({ timeout: 30000 });
 
     await page.screenshot({
       path: "tests/screenshots/u4-router-pfsense.png",
@@ -86,7 +86,7 @@ test.describe("U4 router workspace shell", () => {
 
     const tabs = page.getByTestId("router-tabs");
     const empty = page.getByTestId("router-empty-state").first();
-    await expect(tabs.or(empty)).toBeVisible({ timeout: 30000 });
+    await expect(tabs.or(empty).first()).toBeVisible({ timeout: 30000 });
 
     if (await tabs.isVisible()) {
       await expect(page.getByTestId("router-tab-system")).toBeVisible();
