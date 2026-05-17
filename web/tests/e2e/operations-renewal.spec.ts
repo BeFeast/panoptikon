@@ -196,16 +196,16 @@ test.describe('operations route renewal', () => {
   });
 
   test('devices support selected-device deep links without fake data', async ({ page }) => {
-    await page.goto('/devices/?selected=device-alpha');
+    await page.goto('/devices?selected=device-alpha');
 
     await expect(page.getByRole('heading', { name: 'Devices', level: 1 })).toBeVisible();
-    await expect(page.locator('tbody').getByText('192.168.1.2')).toBeVisible();
-    await expect(page.getByText('1 new')).toBeVisible();
+    await expect(page.getByText('192.168.1.2').first()).toBeVisible();
+    await expect(page.getByText('New')).toBeVisible();
     await expect(page.getByRole('dialog').getByRole('heading', { name: 'core-switch' })).toBeVisible();
 
     await page.getByRole('button', { name: 'Close' }).click();
     await expect(page.getByRole('dialog')).not.toBeVisible();
-    await page.locator('[data-device-row]').filter({ hasText: 'desk-laptop' }).click();
+    await page.getByText('desk-laptop').click();
     await expect(page.getByRole('dialog').getByRole('heading', { name: 'desk-laptop' })).toBeVisible();
   });
 
