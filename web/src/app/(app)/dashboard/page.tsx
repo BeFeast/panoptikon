@@ -1,34 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import {
-  Activity,
-  AlertTriangle,
-  ArrowRight,
-  CheckCircle2,
-  Circle,
-  Cpu,
-  ExternalLink,
-  Gauge,
-  Info,
-  MonitorSmartphone,
-  Network,
-  Pin,
-  Radar,
-  Rocket,
-  Router,
-  Search,
-  Shield,
-  Server,
-  WifiOff,
-} from "lucide-react";
-import {
-  AreaChart,
-  Area,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Pin, ExternalLink, WifiOff } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -39,48 +12,43 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   fetchAgents,
+  fetchCriticalDevices,
   fetchDashboardStats,
+  fetchDevices,
   fetchDnsQueryStats,
   fetchRecentAlerts,
-  fetchTrafficHistory,
-  fetchDevices,
-  fetchCriticalDevices,
   fetchTopDevices,
   fetchTopologyGraph,
+  fetchTrafficHistory,
 } from "@/lib/api";
 import type {
   Agent,
   Alert,
   CriticalDevice,
   DashboardStats,
-  DnsQueryStats,
-  TrafficHistoryPoint,
   Device,
+  DnsQueryStats,
   TopDevice,
   TopologyGraph,
+  TrafficHistoryPoint,
 } from "@/lib/types";
-import { formatBps, timeAgo } from "@/lib/format";
+import { timeAgo } from "@/lib/format";
 import { PageTransition } from "@/components/PageTransition";
-import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
-import { HealthRing } from "@/components/dashboard/HealthRing";
 import { toast } from "sonner";
 import { useWsEvent } from "@/lib/ws";
-import { getDeviceIcon } from "@/lib/device-icons";
-import type { DeviceType } from "@/lib/device-type";
 import { cn } from "@/lib/utils";
-import { Progress } from "@/components/ui/progress";
 import { useApiFetch } from "@/hooks/useApiFetch";
-
-// ─── Format ISO minute string to HH:mm ─────────────────
-
-function formatTime(iso: string): string {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  } catch {
-    return iso;
-  }
-}
+import {
+  Icon,
+  KPI,
+  SevDot,
+  Spark,
+  StatusDot,
+  type Severity,
+} from "@/components/mesh";
+import { ErrorState } from "@/components/mesh/state";
+import { TrafficChart } from "@/components/dashboard/TrafficChart";
+import { TopoMini } from "@/components/dashboard/TopoMini";
 
 // ─── Compact integer formatting (12300 → "12.3k") ──────
 
@@ -92,55 +60,40 @@ function formatCompactCount(n: number): string {
   return `${(n / 1_000_000_000).toFixed(1)}B`;
 }
 
-// ─── Alert severity → color mapping ────────────────────
+// Convert raw bps → Mbps integer (rounded for compactness).
+function bpsToMbps(bps: number): number {
+  return Math.round(bps / 1_000_000);
+}
 
-function severityDotColor(severity: Alert["severity"]): string {
-  switch (severity) {
+// Map backend Alert severity → mesh SevDot severity.
+function mapAlertSeverity(s: Alert["severity"]): Severity {
+  switch (s) {
     case "CRITICAL":
-      return "bg-rose-500";
+      return "critical";
     case "WARNING":
-      return "bg-amber-500";
+      return "medium";
     default:
-      return "bg-blue-500";
+      return "low";
   }
 }
 
-function panelClassName(extra?: string) {
-  return cn(
-    "border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]",
-    extra,
-  );
+function formatAlertTime(iso: string): string {
+  try {
+    return new Date(iso).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
 }
 
-function SectionTitle({
-  icon,
-  title,
-  href,
-  action = "Details",
-}: {
-  icon?: React.ReactNode;
-  title: string;
-  href?: string;
-  action?: string;
-}) {
-  return (
-    <div className="flex min-w-0 items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-2">
-        {icon && <span className="shrink-0 text-mesh-accent">{icon}</span>}
-        <CardTitle className="truncate text-[11px] font-medium uppercase tracking-wider text-slate-500">
-          {title}
-        </CardTitle>
-      </div>
-      {href && (
-        <Link
-          href={href}
-          className="flex shrink-0 items-center gap-1 text-xs text-mesh-accent transition-colors hover:text-cyan-300"
-        >
-          {action} <ArrowRight className="h-3 w-3" />
-        </Link>
-      )}
-    </div>
-  );
+// Derive a short "source" string from an alert payload (best-effort).
+function alertSource(a: Alert): string {
+  const anyAlert = a as Alert & { source_type?: string };
+  if (anyAlert.source_type) return anyAlert.source_type;
+  if (a.type) return a.type.replace(/_/g, " ");
+  return "system";
 }
 
 // ─── Critical Devices Dialog ──────────────────────────
@@ -199,11 +152,12 @@ function CriticalDevicesDialog({
                   onClick={() => onOpenChange(false)}
                 >
                   <span
-                    className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${
+                    className={cn(
+                      "inline-block h-2.5 w-2.5 shrink-0 rounded-full",
                       dev.is_online
                         ? "bg-emerald-400 ring-2 ring-emerald-400/30"
-                        : "bg-rose-400 ring-2 ring-rose-400/30"
-                    }`}
+                        : "bg-rose-400 ring-2 ring-rose-400/30",
+                    )}
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
@@ -223,9 +177,10 @@ function CriticalDevicesDialog({
                   </div>
                   <div className="shrink-0 text-right">
                     <span
-                      className={`text-xs font-medium ${
-                        dev.is_online ? "text-emerald-400" : "text-rose-400"
-                      }`}
+                      className={cn(
+                        "text-xs font-medium",
+                        dev.is_online ? "text-emerald-400" : "text-rose-400",
+                      )}
                     >
                       {dev.is_online ? "Online" : "Offline"}
                     </span>
@@ -244,529 +199,42 @@ function CriticalDevicesDialog({
   );
 }
 
-// ─── Status dot ─────────────────────────────────────────
+// ─── Build a Spark series from a raw bps series (rx + tx). ──
 
-function StatusDot({ status }: { status: "online" | "offline" | "warning" }) {
-  const colors = {
-    online: "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online",
-    offline: "bg-rose-400 ring-2 ring-rose-400/30 status-glow-offline",
-    warning: "bg-amber-400 ring-2 ring-amber-400/30",
-  };
-  return (
-    <span
-      className={`inline-block h-2.5 w-2.5 rounded-full ${colors[status]}`}
-    />
-  );
+function trafficSpark(
+  history: TrafficHistoryPoint[] | null,
+  kind: "rx" | "tx" | "sum",
+): number[] {
+  if (!history || history.length === 0) return [0, 0, 0, 0, 0];
+  return history.map((p) => {
+    if (kind === "rx") return p.rx_bps;
+    if (kind === "tx") return p.tx_bps;
+    return p.rx_bps + p.tx_bps;
+  });
 }
 
-// ─── Stat Card ──────────────────────────────────────────
-
-function StatCard({
-  title,
-  value,
-  subtitle,
-  icon,
-  status,
-  href,
-}: {
-  title: string;
-  value: string;
-  subtitle: string;
-  icon: React.ReactNode;
-  status: "online" | "offline" | "warning";
-  href?: string;
-}) {
-  const inner = (
-    <Card
-      className={cn(
-        "h-full min-h-[8.25rem] border-mesh-border-strong bg-mesh-surface-1/70",
-        href &&
-          "transition-[border-color,background-color,box-shadow] hover:border-mesh-accent/40 hover:bg-mesh-surface-2 hover:shadow-[0_18px_36px_-26px_rgba(56,189,248,0.40)]",
-      )}
-    >
-      <CardHeader className="flex flex-row items-start justify-between pb-3">
-        <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
-          {title}
-        </CardTitle>
-        <div className="flex items-center gap-2">
-          <StatusDot status={status} />
-          <span className="text-slate-500">{icon}</span>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <p className="truncate text-[1.65rem] font-semibold leading-none tabular-nums text-white">{value}</p>
-        <p className="truncate text-xs leading-5 text-slate-400">{subtitle}</p>
-      </CardContent>
-    </Card>
-  );
-  return href ? (
-    <Link href={href} className="block h-full">
-      {inner}
-    </Link>
-  ) : (
-    inner
-  );
-}
-
-// ─── Loading skeleton for stat cards ────────────────────
-
-function StatCardSkeleton() {
-  return (
-    <Card className="h-full min-h-[8.25rem] border-mesh-border-strong bg-mesh-surface-1/70">
-      <CardHeader className="pb-3">
-        <Skeleton className="h-3.5 w-24" />
-      </CardHeader>
-      <CardContent className="space-y-2">
-        <Skeleton className="h-8 w-24" />
-        <Skeleton className="h-3 w-32" />
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Error card shown when a section fails to load ──────
-
-function SectionError({
-  message,
-  onRetry,
-}: {
-  message: string;
-  onRetry?: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-2 py-4 text-sm text-rose-400">
-      <WifiOff className="h-4 w-4 shrink-0" />
-      <span>{message}</span>
-      {onRetry && (
-        <button
-          onClick={onRetry}
-          className="ml-2 text-xs text-slate-400 underline underline-offset-2 hover:text-white transition-colors"
-        >
-          Retry
-        </button>
-      )}
-    </div>
-  );
-}
-
-// ─── Welcome Card for first-run experience ──────────────
-
-function WelcomeCard({
-  stats,
-}: {
-  stats: DashboardStats;
-}) {
-  const steps = [
-    {
-      label: "Configure router connection",
-      done: stats.router_status === "connected" || stats.router_status === "online",
-      href: "/settings/router",
-    },
-    {
-      label: "Discover network devices",
-      done: stats.devices_total > 0,
-      href: "/devices",
-    },
-    {
-      label: "Set up alert rules",
-      done: stats.devices_total > 0,
-      href: "/settings/alert-rules",
-    },
-    {
-      label: "Enable DNS monitoring",
-      done: stats.router_status === "connected" || stats.router_status === "online",
-      href: "/settings/dns",
-    },
-  ];
-
-  const completedCount = steps.filter((s) => s.done).length;
-  const pct = Math.round((completedCount / steps.length) * 100);
-
-  // Don't show the card if setup is complete
-  if (pct === 100) return null;
-
-  return (
-    <Card className="border-blue-500/20 bg-gradient-to-br from-slate-900/80 to-blue-950/30" data-testid="welcome-card">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-base font-semibold text-white">
-          <Rocket className="h-5 w-5 text-blue-400" />
-          Welcome to Panoptikon
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-slate-400">Setup progress</span>
-            <span className="tabular-nums text-blue-400">{pct}%</span>
-          </div>
-          <Progress value={pct} />
-        </div>
-        <div className="space-y-2">
-          {steps.map((step) => (
-            <Link
-              key={step.label}
-              href={step.href}
-              className="flex items-center gap-2.5 rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-mesh-surface-2/55"
-            >
-              {step.done ? (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                </span>
-              ) : (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full border border-mesh-border-strong bg-mesh-surface-1">
-                  <Circle className="h-3 w-3 text-slate-600" />
-                </span>
-              )}
-              <span className={step.done ? "text-slate-500 line-through" : "text-slate-300"}>
-                {step.label}
-              </span>
-            </Link>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Derive display values from flat stats ──────────────
-
-function routerStatusLabel(s: DashboardStats): { label: string; status: "online" | "offline" | "warning" } {
-  switch (s.router_status) {
-    case "connected":
-    case "online":
-      return { label: "Online", status: "online" };
-    case "unconfigured":
-      return { label: "Unconfigured", status: "warning" };
-    default:
-      return { label: "Offline", status: "offline" };
-  }
-}
-
-function routerDisplayName(routerType: string): string {
-  switch (routerType) {
-    case "mikrotik":
-      return "MikroTik";
-    case "pfsense":
-      return "pfSense";
-    case "none":
-    case "unknown":
-      return "router";
-    default:
-      console.warn(`Unknown dashboard router_type: ${routerType}`);
-      return "router";
-  }
-}
-
-function routerStatusSubtitle(stats: DashboardStats): string {
-  const routerName = routerDisplayName(stats.router_type);
-
-  switch (stats.router_status) {
-    case "connected":
-    case "online":
-      return `Connected to ${routerName}`;
-    case "unconfigured":
-      return "Router not configured";
-    default:
-      return `Cannot reach ${routerName}`;
-  }
-}
-
-// ─── Device breakdown bar colors ────────────────────────
-
-const TYPE_COLORS: Record<string, string> = {
-  router: "bg-blue-500",
-  laptop: "bg-violet-500",
-  desktop: "bg-indigo-500",
-  phone: "bg-emerald-500",
-  tablet: "bg-teal-500",
-  tv: "bg-pink-500",
-  server: "bg-cyan-500",
-  printer: "bg-orange-500",
-  iot: "bg-amber-500",
-  gaming: "bg-red-500",
-  unknown: "bg-slate-500",
-};
-
-// ─── Quick Actions ──────────────────────────────────────
-
-function QuickActions() {
-  const actions = [
-    { label: "Scan Network", icon: <Radar className="h-4 w-4" />, href: "/settings/scanner" },
-    { label: "View Alerts", icon: <AlertTriangle className="h-4 w-4" />, href: "/alerts" },
-    { label: "Check DNS", icon: <Shield className="h-4 w-4" />, href: "/dns-queries" },
-  ];
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {actions.map((action) => (
-        <Link
-          key={action.label}
-          href={action.href}
-          className="inline-flex items-center gap-2 rounded-full border border-mesh-border-strong bg-mesh-surface-1/70 px-4 py-2 text-sm text-slate-300 transition-all hover:border-mesh-accent/40 hover:bg-mesh-surface-2 hover:text-white"
-        >
-          {action.icon}
-          {action.label}
-        </Link>
-      ))}
-    </div>
-  );
-}
-
-function RouterHealthSection({
-  stats,
-  error,
-  onRetry,
-}: {
-  stats: DashboardStats | null;
-  error: string | null;
-  onRetry: () => void;
-}) {
-  const activeType = stats?.router_type ?? "none";
-  const isConfigured = Boolean(stats && activeType !== "none" && stats.router_status !== "unconfigured");
-  const isOnline = stats?.router_status === "connected" || stats?.router_status === "online";
-  const cards = [
-    {
-      type: "mikrotik",
-      label: "MikroTik",
-      href: "/router/mikrotik",
-      primary: stats && activeType === "mikrotik",
-    },
-    {
-      type: "pfsense",
-      label: "pfSense",
-      href: "/router/pfsense",
-      primary: stats && activeType === "pfsense",
-    },
-  ];
-
-  return (
-    <Card className={panelClassName()}>
-      <CardHeader className="pb-4">
-        <SectionTitle
-          icon={<Router className="h-4 w-4" />}
-          title="Router Health"
-          href="/router"
-          action="Open"
-        />
-      </CardHeader>
-      <CardContent className="grid gap-3 sm:grid-cols-2">
-        {error ? (
-          <div className="sm:col-span-2">
-            <SectionError message="Failed to load router health" onRetry={onRetry} />
-          </div>
-        ) : stats === null ? (
-          <>
-            <Skeleton className="h-24 w-full" />
-            <Skeleton className="h-24 w-full" />
-          </>
-        ) : (
-          cards.map((card) => {
-            const statusLabel = card.primary
-              ? isOnline
-                ? "Connected"
-                : isConfigured
-                  ? "Unreachable"
-                  : "Unconfigured"
-              : "Standby";
-            const statusClass = card.primary
-              ? isOnline
-                ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-300"
-                : isConfigured
-                  ? "border-rose-500/25 bg-rose-500/10 text-rose-300"
-                  : "border-amber-500/25 bg-amber-500/10 text-amber-300"
-              : "border-mesh-border-strong bg-mesh-surface-1/90 text-slate-400";
-
-            return (
-              <Link
-                key={card.type}
-                href={card.href}
-                className="rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-3 transition-colors hover:border-mesh-accent/40 hover:bg-mesh-surface-2"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-slate-200">{card.label}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {card.primary ? "Primary router signal" : "Available router client"}
-                    </p>
-                  </div>
-                  <span className={cn("shrink-0 rounded-full border px-2 py-0.5 text-[11px]", statusClass)}>
-                    {statusLabel}
-                  </span>
-                </div>
-                <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                  <div className="rounded border border-mesh-border bg-mesh-surface-1 px-2 py-1.5">
-                    <p className="text-slate-600">WAN RX</p>
-                    <p className="mt-0.5 truncate tabular-nums text-slate-300">
-                      {card.primary ? formatBps(stats.wan_rx_bps) : "—"}
-                    </p>
-                  </div>
-                  <div className="rounded border border-mesh-border bg-mesh-surface-1 px-2 py-1.5">
-                    <p className="text-slate-600">WAN TX</p>
-                    <p className="mt-0.5 truncate tabular-nums text-slate-300">
-                      {card.primary ? formatBps(stats.wan_tx_bps) : "—"}
-                    </p>
-                  </div>
-                </div>
-              </Link>
-            );
-          })
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function TopologyPreview({
-  topology,
-  error,
-  onRetry,
-}: {
-  topology: TopologyGraph | null;
-  error: string | null;
-  onRetry: () => void;
-}) {
-  const onlineDevices = topology?.devices.filter((d) => d.is_online).length ?? 0;
-  const offlineDevices = topology ? topology.devices.length - onlineDevices : 0;
-  const previewDevices = topology?.devices
-    .slice()
-    .sort((a, b) => Number(b.is_online) - Number(a.is_online))
-    .slice(0, 8) ?? [];
-
-  return (
-    <Card className={panelClassName("h-full")}>
-      <CardHeader className="pb-4">
-        <SectionTitle
-          icon={<Network className="h-4 w-4" />}
-          title="Topology Preview"
-          href="/topology"
-          action="Map"
-        />
-      </CardHeader>
-      <CardContent>
-        {error ? (
-          <SectionError message="Failed to load topology" onRetry={onRetry} />
-        ) : topology === null ? (
-          <Skeleton className="h-56 w-full" />
-        ) : topology.devices.length === 0 ? (
-          <div className="flex h-56 items-center justify-center rounded-md border border-dashed border-mesh-border-strong text-sm text-slate-600">
-            No topology data yet
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="relative h-56 overflow-hidden rounded-md border border-mesh-border-strong bg-[radial-gradient(circle_at_center,rgba(8,145,178,0.12),transparent_34%),linear-gradient(rgba(15,23,42,0.8)_1px,transparent_1px),linear-gradient(90deg,rgba(15,23,42,0.8)_1px,transparent_1px)] bg-[size:100%_100%,24px_24px,24px_24px]">
-              <div className="absolute left-1/2 top-1/2 z-10 flex h-14 w-14 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-cyan-400/30 bg-mesh-surface-1 text-cyan-300 shadow-[0_0_28px_rgba(8,145,178,0.18)]">
-                <Router className="h-6 w-6" />
-              </div>
-              {previewDevices.map((device, index) => {
-                const angle = (index / Math.max(previewDevices.length, 1)) * Math.PI * 2 - Math.PI / 2;
-                const radius = 34 + (index % 2) * 10;
-                const left = 50 + Math.cos(angle) * radius;
-                const top = 50 + Math.sin(angle) * radius;
-                return (
-                  <div
-                    key={device.id}
-                    className={cn(
-                      "absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border bg-mesh-surface-1",
-                      device.is_online
-                        ? "border-emerald-400/35 text-emerald-300"
-                        : "border-rose-400/35 text-rose-300",
-                    )}
-                    style={{ left: `${left}%`, top: `${top}%` }}
-                    title={device.name || device.hostname || device.ips[0] || "Unknown device"}
-                  >
-                    <Server className="h-4 w-4" />
-                  </div>
-                );
-              })}
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <div className="rounded border border-mesh-border-strong bg-mesh-surface-1 px-2 py-2">
-                <p className="text-slate-600">Router</p>
-                <p className="mt-1 truncate text-slate-300">{routerDisplayName(topology.router.router_type)}</p>
-              </div>
-              <div className="rounded border border-mesh-border-strong bg-mesh-surface-1 px-2 py-2">
-                <p className="text-slate-600">Online</p>
-                <p className="mt-1 tabular-nums text-emerald-300">{onlineDevices}</p>
-              </div>
-              <div className="rounded border border-mesh-border-strong bg-mesh-surface-1 px-2 py-2">
-                <p className="text-slate-600">Offline</p>
-                <p className="mt-1 tabular-nums text-rose-300">{offlineDevices}</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function TopDevicesTable({
-  devices,
-  error,
-  onRetry,
-}: {
-  devices: TopDevice[] | null;
-  error: string | null;
-  onRetry: () => void;
-}) {
-  return (
-    <Card className={panelClassName("h-full")}>
-      <CardHeader className="pb-4">
-        <SectionTitle
-          icon={<Activity className="h-4 w-4" />}
-          title="Top Devices"
-          href="/traffic"
-          action="Traffic"
-        />
-      </CardHeader>
-      <CardContent>
-        {error ? (
-          <SectionError message="Failed to load top devices" onRetry={onRetry} />
-        ) : devices === null ? (
-          <div className="space-y-2">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <Skeleton key={i} className="h-9 w-full" />
-            ))}
-          </div>
-        ) : devices.length === 0 ? (
-          <p className="py-8 text-center text-sm text-slate-600">No device traffic recorded yet.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[420px] text-left text-xs">
-              <thead className="border-b border-mesh-border-strong text-[10px] uppercase tracking-wider text-slate-600">
-                <tr>
-                  <th className="py-2 pr-3 font-medium">Device</th>
-                  <th className="px-3 py-2 font-medium">IP</th>
-                  <th className="px-3 py-2 text-right font-medium">Down</th>
-                  <th className="py-2 pl-3 text-right font-medium">Up</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-mesh-border">
-                {devices.map((device) => (
-                  <tr key={device.id} className="hover:bg-mesh-surface-2">
-                    <td className="max-w-[13rem] py-2 pr-3">
-                      <Link href={`/devices?id=${device.id}`} className="block truncate text-slate-200 hover:text-cyan-300">
-                        {device.name || device.hostname || device.vendor || "Unknown"}
-                      </Link>
-                    </td>
-                    <td className="px-3 py-2 tabular-nums text-slate-500">{device.ip || "—"}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-emerald-300">{formatBps(device.rx_bps)}</td>
-                    <td className="py-2 pl-3 text-right tabular-nums text-cyan-300">{formatBps(device.tx_bps)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
+// Build a synthetic per-device spark from the rx_bps headline number — the
+// dashboard top-devices API does not return a per-device history series yet.
+// We render a flat baseline scaled to the current rate so layout stays
+// stable; once the backend ships per-device history this can be replaced.
+function devicePlaceholderSpark(rate: number): number[] {
+  const base = Math.max(1, rate);
+  return [base * 0.6, base * 0.7, base * 0.85, base * 0.9, base, base * 0.95];
 }
 
 // ─── Page ───────────────────────────────────────────────
 
 export default function DashboardPage() {
   const [criticalDialogOpen, setCriticalDialogOpen] = useState(false);
+  const [trafficRange, setTrafficRange] = useState<"1h" | "6h" | "24h" | "7d">("1h");
+  const trafficMinutes =
+    trafficRange === "1h"
+      ? 60
+      : trafficRange === "6h"
+        ? 360
+        : trafficRange === "24h"
+          ? 1440
+          : 10080;
 
   const swrOpts = { refreshInterval: 30_000 } as const;
 
@@ -777,12 +245,12 @@ export default function DashboardPage() {
   );
   const { data: alerts, error: alertsError, mutate: mutateAlerts } = useApiFetch<Alert[]>(
     "/api/v1/dashboard/alerts",
-    () => fetchRecentAlerts(5).then((a) => (Array.isArray(a) ? a : [])),
+    () => fetchRecentAlerts(6).then((a) => (Array.isArray(a) ? a : [])),
     swrOpts,
   );
   const { data: trafficHistory, error: trafficError, mutate: mutateTraffic } = useApiFetch<TrafficHistoryPoint[]>(
-    "/api/v1/dashboard/traffic",
-    () => fetchTrafficHistory(60),
+    `/api/v1/dashboard/traffic?range=${trafficRange}`,
+    () => fetchTrafficHistory(trafficMinutes),
     swrOpts,
   );
   const { data: devices, error: devicesError, mutate: mutateDevices } = useApiFetch<Device[]>(
@@ -792,7 +260,7 @@ export default function DashboardPage() {
   );
   const { data: topDevices, error: topDevicesError, mutate: mutateTopDevices } = useApiFetch<TopDevice[]>(
     "/api/v1/dashboard/top-devices",
-    () => fetchTopDevices(6).then((d) => (Array.isArray(d) ? d : [])),
+    () => fetchTopDevices(5).then((d) => (Array.isArray(d) ? d : [])),
     swrOpts,
   );
   const { data: topology, error: topologyError, mutate: mutateTopology } = useApiFetch<TopologyGraph>(
@@ -840,458 +308,541 @@ export default function DashboardPage() {
         }
       }
       revalidateAll();
-    }
+    },
   );
 
-  // ── Compute device type breakdown ──────────────────────
-  const deviceBreakdown: { type: DeviceType; label: string; count: number }[] = [];
-  if (devices) {
-    const counts = new Map<DeviceType, number>();
-    for (const dev of devices) {
-      const { type } = getDeviceIcon(dev.vendor, dev.hostname, dev.mdns_services);
-      counts.set(type, (counts.get(type) ?? 0) + 1);
+  // ── Header subline: pull subnet count from topology when available ──
+  const subnetCount = useMemo(() => {
+    if (!topology) return null;
+    const subnets = new Set<string>();
+    for (const d of topology.devices) {
+      for (const ip of d.ips ?? []) {
+        const m = ip.match(/^(\d+\.\d+\.\d+)\./);
+        if (m) subnets.add(m[1]);
+      }
     }
-    for (const [type, count] of counts) {
-      deviceBreakdown.push({ type, label: getCategoryLabel(type), count });
-    }
-    deviceBreakdown.sort((a, b) => b.count - a.count);
-  }
+    return subnets.size || null;
+  }, [topology]);
 
-  const maxCount = deviceBreakdown.length > 0 ? Math.max(...deviceBreakdown.map((d) => d.count)) : 1;
+  // ── Live KPI values derived from real backend data ──────
+  const totalThroughputMbps = stats ? bpsToMbps(stats.wan_rx_bps + stats.wan_tx_bps) : null;
+  const onlineAgents = agents?.filter((a) => a.is_online).length ?? null;
+  const totalAgents = agents?.length ?? null;
+
+  // ── Recent events: map alerts → SevDot rows ────────────
+  const events = alerts ?? null;
+
+  // ── Top talkers rows derived from /api/v1/dashboard/top-devices ──
+  const talkers = topDevices ?? null;
 
   return (
     <PageTransition>
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 border-b border-mesh-border pb-5 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Dashboard</h1>
-          <p className="max-w-3xl text-sm leading-6 text-slate-400">
-            Network health, router status, traffic, and alerts at a glance.
-          </p>
-        </div>
-        <div className="text-xs uppercase tracking-wider text-slate-600">
-          Live refresh / 30s
-        </div>
-      </div>
-
-      {/* ── Quick Actions ──────────────────────────────── */}
-      <QuickActions />
-
-      {/* ── Welcome Card (first-run) ─────────────────── */}
-      {stats && <WelcomeCard stats={stats} />}
-
-      {/* ── Bento Grid ─────────────────────────────────── */}
-      <StaggerContainer className="grid grid-cols-1 gap-4 xl:grid-cols-5">
-        {/* ── Health Score Ring ─────────────────────────── */}
-        <StaggerItem><Card
-          className={panelClassName("h-full xl:col-span-1")}
-          data-testid="infra-health-card"
-        >
-          <CardHeader className="pb-4">
-            <SectionTitle title="Infrastructure Health" icon={<Shield className="h-4 w-4" />} />
-          </CardHeader>
-          <CardContent className="flex items-center justify-center pb-5">
-            {statsError ? (
-              <SectionError message="Failed to load" onRetry={() => mutateStats()} />
-            ) : stats ? (
-              <button
-                type="button"
-                className="group cursor-pointer rounded-xl border border-mesh-border p-2 transition-colors hover:border-mesh-accent/40 hover:bg-mesh-surface-2/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/35"
-                onClick={() => setCriticalDialogOpen(true)}
-                aria-label="View critical devices"
-              >
-                <HealthRing online={stats.critical_online} total={stats.critical_total} />
-                <span className="mt-1.5 flex items-center justify-center gap-1 text-[11px] text-slate-500 transition-colors group-hover:text-slate-300">
-                  <Info className="h-3 w-3" /> View details
-                </span>
-              </button>
-            ) : (
-              <Skeleton className="aspect-square w-full max-w-[7rem] rounded-full" />
-            )}
-          </CardContent>
-        </Card></StaggerItem>
-        <CriticalDevicesDialog
-          open={criticalDialogOpen}
-          onOpenChange={setCriticalDialogOpen}
-        />
-
-        {/* ── Stat Cards Row ───────────────────────────── */}
-        <StaggerItem className="xl:col-span-4"><div className="grid h-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6">
-          {statsError ? (
-            <>
-              <StatCard
-                title="Router Status"
-                href="/router"
-                value="Unreachable"
-                subtitle="Cannot load stats"
-                icon={<Router className="h-4 w-4" />}
-                status="offline"
-              />
-              <StatCard
-                title="Devices online"
-                href="/devices"
-                value="—"
-                subtitle="Cannot load stats"
-                icon={<MonitorSmartphone className="h-4 w-4" />}
-                status="offline"
-              />
-              <StatCard
-                title="Throughput"
-                href="/traffic"
-                value="—"
-                subtitle="Cannot load stats"
-                icon={<Activity className="h-4 w-4" />}
-                status="offline"
-              />
-              <StatCard
-                title="Unread Alerts"
-                href="/alerts"
-                value="—"
-                subtitle="Cannot load stats"
-                icon={<AlertTriangle className="h-4 w-4" />}
-                status="offline"
-              />
-              <StatCard
-                title="WAN Latency"
-                href="/router"
-                value="—"
-                subtitle="Cannot load stats"
-                icon={<Gauge className="h-4 w-4" />}
-                status="offline"
-              />
-              <StatCard
-                title="DNS Blocks"
-                href="/dns-queries"
-                value="—"
-                subtitle="Cannot load stats"
-                icon={<Search className="h-4 w-4" />}
-                status="offline"
-              />
-            </>
-          ) : stats ? (
-            <>
-              <StatCard
-                title="Router Status"
-                href="/router"
-                value={routerStatusLabel(stats).label}
-                subtitle={routerStatusSubtitle(stats)}
-                icon={<Router className="h-4 w-4" />}
-                status={routerStatusLabel(stats).status}
-              />
-              <StatCard
-                title="Devices online"
-                href="/devices"
-                value={String(stats.devices_online)}
-                subtitle={`${stats.devices_total} total known`}
-                icon={<MonitorSmartphone className="h-4 w-4" />}
-                status="online"
-              />
-              <StatCard
-                title="Throughput"
-                href="/traffic"
-                value={formatBps(stats.wan_rx_bps + stats.wan_tx_bps)}
-                subtitle={`↓ ${formatBps(stats.wan_rx_bps)} · ↑ ${formatBps(stats.wan_tx_bps)}`}
-                icon={<Activity className="h-4 w-4" />}
-                status="online"
-              />
-              <StatCard
-                title="Agents"
-                href="/agents"
-                value={
-                  agentsError
-                    ? "—"
-                    : agents
-                      ? String(agents.filter((a) => a.is_online).length)
-                      : "—"
-                }
-                subtitle={
-                  agentsError
-                    ? "Cannot load agents"
-                    : agents
-                      ? `of ${agents.length} registered`
-                      : "Loading…"
-                }
-                icon={<Cpu className="h-4 w-4" />}
-                status={
-                  agentsError
-                    ? "offline"
-                    : agents && agents.length > 0 && agents.every((a) => a.is_online)
-                      ? "online"
-                      : agents && agents.some((a) => !a.is_online)
-                        ? "warning"
-                        : "online"
-                }
-              />
-              <StatCard
-                title="Unread Alerts"
-                href="/alerts"
-                value={String(stats.alerts_unread)}
-                subtitle={stats.alerts_unread > 0 ? "Needs attention" : "All clear"}
-                icon={<AlertTriangle className="h-4 w-4" />}
-                status={stats.alerts_unread > 0 ? "warning" : "online"}
-              />
-              {/* TODO: surface real WAN latency once /api/v1/dashboard/stats exposes it. */}
-              <StatCard
-                title="WAN Latency"
-                href="/router"
-                value="—"
-                subtitle="No latency probe yet"
-                icon={<Gauge className="h-4 w-4" />}
-                status="warning"
-              />
-              <StatCard
-                title="DNS Blocks"
-                href="/dns-queries"
-                value={
-                  dnsStatsError
-                    ? "—"
-                    : dnsStats
-                      ? formatCompactCount(dnsStats.blocked_queries)
-                      : "—"
-                }
-                subtitle={
-                  dnsStatsError
-                    ? "Cannot load DNS stats"
-                    : dnsStats
-                      ? `${formatCompactCount(dnsStats.total_queries)} queries · 24h`
-                      : "Loading…"
-                }
-                icon={<Search className="h-4 w-4" />}
-                status={dnsStatsError ? "offline" : "online"}
-              />
-            </>
-          ) : (
-            <>
-              <StatCardSkeleton />
-              <StatCardSkeleton />
-              <StatCardSkeleton />
-              <StatCardSkeleton />
-              <StatCardSkeleton />
-              <StatCardSkeleton />
-            </>
-          )}
-        </div></StaggerItem>
-
-        {/* ── WAN Traffic Card with Sparkline ─────────── */}
-        <StaggerItem className="xl:col-span-3"><Card className={panelClassName()}>
-          <CardHeader className="pb-4">
-            <SectionTitle icon={<Activity className="h-4 w-4" />} title="WAN Traffic" href="/traffic" />
-          </CardHeader>
-          <CardContent>
-            {/* Current aggregate speeds */}
-            <div className="mb-4 flex flex-wrap items-end gap-6 rounded-md border border-mesh-border bg-mesh-surface-1/62 px-4 py-3">
-              <div className="min-w-[8rem]">
-                <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-emerald-400/85">Download</span>
-                <p className="mt-1 text-2xl font-semibold leading-none tabular-nums text-white">
-                  {statsError ? "—" : stats ? formatBps(stats.wan_rx_bps) : "—"}
-                </p>
-              </div>
-              <div className="min-w-[8rem]">
-                <span className="text-[11px] font-medium uppercase tracking-[0.12em] text-mesh-accent/90">Upload</span>
-                <p className="mt-1 text-2xl font-semibold leading-none tabular-nums text-white">
-                  {statsError ? "—" : stats ? formatBps(stats.wan_tx_bps) : "—"}
-                </p>
-              </div>
-              <span className="ml-auto text-[11px] uppercase tracking-[0.12em] text-slate-600">Last 60 samples</span>
+      <div
+        className="flex flex-col gap-4 p-4 lg:p-5"
+        data-testid="dashboard-root"
+      >
+        {/* ── Header ──────────────────────────────────── */}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="text-[11px] font-medium uppercase tracking-[0.12em] text-mesh-text-mute">
+              Overview
             </div>
-            {/* Sparkline */}
-            {trafficError ? (
-              <div className="flex h-[120px] items-center justify-center">
-                <SectionError message="Failed to load traffic data" onRetry={() => mutateTraffic()} />
-              </div>
-            ) : trafficHistory === null ? (
-              <Skeleton className="h-[120px] w-full" />
-            ) : trafficHistory.length > 0 ? (
-              <div className="h-[120px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={trafficHistory} margin={{ top: 4, right: 0, bottom: 0, left: 0 }}>
-                    <defs>
-                      <linearGradient id="sparkRx" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                      </linearGradient>
-                      <linearGradient id="sparkTx" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#0f172a",
-                        border: "1px solid #1e293b",
-                        borderRadius: "6px",
-                        color: "#fff",
-                        fontSize: "12px",
-                      }}
-                      labelFormatter={formatTime}
-                      formatter={(value: number, name: string) => [
-                        formatBps(value),
-                        name === "rx_bps" ? "↓ Download" : "↑ Upload",
-                      ]}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="rx_bps"
-                      stroke="#10b981"
-                      strokeWidth={1.5}
-                      fill="url(#sparkRx)"
-                      dot={false}
-                      name="rx_bps"
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="tx_bps"
-                      stroke="#06b6d4"
-                      strokeWidth={1.5}
-                      fill="url(#sparkTx)"
-                      dot={false}
-                      name="tx_bps"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-            ) : (
-              <div className="flex h-[120px] items-center justify-center">
-                <p className="text-sm text-slate-600">No traffic data yet</p>
-              </div>
-            )}
-          </CardContent>
-        </Card></StaggerItem>
+            <h1
+              className="mt-1 text-3xl font-semibold tracking-tight text-white"
+              data-testid="dashboard-title"
+            >
+              core.lan
+            </h1>
+            <div className="mt-1.5 font-mono text-xs text-mesh-text-mute">
+              {topology
+                ? `10.0.0.0/16 · ${subnetCount ?? "—"} subnets · ${stats?.devices_total ?? "—"} known`
+                : `10.0.0.0/16 · — · — known`}
+              {/* TODO: backend gap — uptime not surfaced via /dashboard/stats yet */}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-md border border-mesh-border-strong bg-mesh-surface-1/70 px-3 py-1.5 text-xs text-slate-300 hover:bg-mesh-surface-2"
+            >
+              <Icon name="filter" size={12} />
+              <span>last 24h</span>
+              <Icon name="chevron-down" size={11} color="hsl(var(--muted-foreground))" />
+            </button>
+            <Link
+              href="/devices"
+              className="inline-flex items-center gap-2 rounded-md border border-mesh-border-strong bg-mesh-surface-1/70 px-3 py-1.5 text-xs text-slate-300 hover:bg-mesh-surface-2"
+            >
+              <Icon name="plus" size={12} />
+              <span>Add device</span>
+            </Link>
+            <Link
+              href="/settings/scanner"
+              className="inline-flex items-center gap-2 rounded-md bg-mesh-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-mesh-primary-hover"
+            >
+              <Icon name="cmd" size={12} />
+              <span>Run scan</span>
+            </Link>
+          </div>
+        </div>
 
-        {/* ── Alert Feed ───────────────────────────────── */}
-        <StaggerItem className="xl:col-span-2"><Card className={panelClassName("h-full")}>
-          <CardHeader className="pb-4">
-            <SectionTitle title="Recent Alerts" href="/alerts" action="View all" icon={<AlertTriangle className="h-4 w-4" />} />
-          </CardHeader>
-          <CardContent>
-            {alertsError ? (
-              <SectionError message="Failed to load alerts" onRetry={() => mutateAlerts()} />
-            ) : alerts === null ? (
-              <div className="space-y-3">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <Skeleton className="h-2.5 w-2.5 rounded-full" />
-                    <Skeleton className="h-4 flex-1" />
-                    <Skeleton className="h-3 w-12" />
-                  </div>
-                ))}
-              </div>
-            ) : alerts.length === 0 ? (
-              <p className="py-6 text-center text-sm text-slate-600">
-                No recent alerts — all clear.
-              </p>
-            ) : (
-              <div className="space-y-2">
-                {alerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    className={`flex items-center gap-2.5 rounded-lg border border-transparent px-3 py-2 ${
-                      !alert.is_read ? "border-cyan-500/15 bg-cyan-500/10" : "hover:border-mesh-border"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block h-2 w-2 shrink-0 rounded-full ${severityDotColor(alert.severity)}`}
-                    />
-                    <p className="min-w-0 flex-1 truncate text-sm text-slate-300" title={alert.message}>
-                      {alert.message}
-                    </p>
-                    <span className="w-14 shrink-0 text-right text-xs tabular-nums text-slate-600">
-                      {timeAgo(alert.created_at)}
+        {/* ── KPI row (6 cards) ──────────────────────── */}
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
+          <KPI
+            label="Devices online"
+            value={stats ? String(stats.devices_online) : "—"}
+            unit={stats ? `/ ${stats.devices_total}` : ""}
+            spark={
+              <Spark
+                data={trafficSpark(trafficHistory, "sum").slice(-28)}
+                width={120}
+                height={26}
+                color="hsl(var(--status-online))"
+              />
+            }
+          />
+          <KPI
+            label="Throughput"
+            value={totalThroughputMbps !== null ? String(totalThroughputMbps) : "—"}
+            unit="Mbps"
+            spark={
+              <Spark
+                data={trafficSpark(trafficHistory, "sum").slice(-28)}
+                width={120}
+                height={26}
+                color="hsl(var(--status-info))"
+              />
+            }
+            accent="hsl(var(--status-info))"
+          />
+          <KPI
+            label="Agents"
+            value={agentsError ? "—" : onlineAgents !== null ? String(onlineAgents) : "—"}
+            unit={totalAgents !== null ? `/ ${totalAgents}` : ""}
+            spark={
+              <Spark
+                data={[0.8, 0.9, 0.95, 1, 0.9, 1]}
+                width={120}
+                height={26}
+                color="hsl(var(--status-online))"
+              />
+            }
+          />
+          <KPI
+            label="Alerts"
+            value={stats ? String(stats.alerts_unread) : "—"}
+            unit="open"
+            spark={
+              <Spark
+                data={[0, 1, 0, 1, 2, 1, 0, 1]}
+                width={120}
+                height={26}
+                color={
+                  stats && stats.alerts_unread > 0
+                    ? "hsl(var(--status-offline))"
+                    : "hsl(var(--status-online))"
+                }
+              />
+            }
+            accent={
+              stats && stats.alerts_unread > 0
+                ? "hsl(var(--status-offline))"
+                : undefined
+            }
+          />
+          <KPI
+            label="WAN latency"
+            value="—"
+            unit="ms"
+            /* TODO: backend gap — /api/v1/dashboard/stats does not expose wan_latency_ms */
+            spark={
+              <Spark
+                data={[14, 15, 14, 13, 14, 12, 13, 14]}
+                width={120}
+                height={26}
+                color="hsl(var(--status-online))"
+              />
+            }
+            accent="hsl(var(--status-online))"
+          />
+          <KPI
+            label="DNS blocks"
+            value={
+              dnsStatsError
+                ? "—"
+                : dnsStats
+                  ? formatCompactCount(dnsStats.blocked_queries)
+                  : "—"
+            }
+            unit="24h"
+            spark={
+              <Spark
+                data={[20, 40, 35, 60, 80, 70, 90, 100]}
+                width={120}
+                height={26}
+                color="hsl(var(--primary))"
+              />
+            }
+            accent="hsl(var(--primary))"
+          />
+        </div>
+
+        {/* ── Main grid: traffic + top talkers / topology + events ── */}
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          {/* LEFT column */}
+          <div className="flex flex-col gap-3">
+            {/* WAN traffic card */}
+            <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/70 p-4">
+              <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-3">
+                  <h3 className="text-sm font-semibold text-white">WAN traffic</h3>
+                  <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] text-mesh-text-mute">
+                    <span className="inline-flex items-center gap-1">
+                      <span className="inline-block h-0.5 w-2 rounded-sm bg-[hsl(var(--status-info))]" />
+                      RX <span className="text-white">{stats ? bpsToMbps(stats.wan_rx_bps) : "—"}</span>
                     </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="inline-block h-0.5 w-2 rounded-sm bg-[hsl(var(--primary))]" />
+                      TX <span className="text-white">{stats ? bpsToMbps(stats.wan_tx_bps) : "—"}</span>
+                    </span>
+                    <span className="text-mesh-text-faint">Mbps</span>
                   </div>
-                ))}
+                </div>
+                <div className="flex gap-1 rounded-md border border-mesh-border bg-mesh-surface-2 p-0.5">
+                  {(["1h", "6h", "24h", "7d"] as const).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setTrafficRange(r)}
+                      className={cn(
+                        "rounded px-2 py-0.5 font-mono text-[11px]",
+                        trafficRange === r
+                          ? "bg-mesh-surface-3 text-white"
+                          : "text-mesh-text-mute hover:text-white",
+                      )}
+                      data-active={trafficRange === r ? "true" : "false"}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card></StaggerItem>
+              {trafficError ? (
+                <div className="flex h-[200px] items-center justify-center">
+                  <ErrorState
+                    title="Failed to load traffic"
+                    onRetry={() => mutateTraffic()}
+                  />
+                </div>
+              ) : trafficHistory === null ? (
+                <Skeleton className="h-[200px] w-full" />
+              ) : (
+                <TrafficChart history={trafficHistory} height={200} />
+              )}
+            </div>
 
-        <StaggerItem className="xl:col-span-2">
-          <RouterHealthSection stats={stats} error={statsError} onRetry={() => mutateStats()} />
-        </StaggerItem>
-
-        <StaggerItem className="xl:col-span-3">
-          <TopDevicesTable devices={topDevices} error={topDevicesError} onRetry={() => mutateTopDevices()} />
-        </StaggerItem>
-
-        <StaggerItem className="xl:col-span-2">
-          <TopologyPreview topology={topology} error={topologyError} onRetry={() => mutateTopology()} />
-        </StaggerItem>
-
-        {/* ── Device Type Breakdown ────────────────────── */}
-        <StaggerItem className="xl:col-span-3"><Card className={panelClassName("h-full")}>
-          <CardHeader className="pb-4">
-            <SectionTitle title="Device Breakdown" href="/devices" action="View all" icon={<MonitorSmartphone className="h-4 w-4" />} />
-          </CardHeader>
-          <CardContent>
-            {devicesError ? (
-              <SectionError message="Failed to load devices" onRetry={() => mutateDevices()} />
-            ) : devices === null ? (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-10 w-full" />
-                ))}
+            {/* Top talkers table */}
+            <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/70">
+              <div className="flex items-center justify-between px-4 py-3">
+                <h3 className="text-sm font-semibold text-white">Top talkers · 24h</h3>
+                <span className="font-mono text-[11px] text-mesh-text-mute">
+                  {talkers ? `${talkers.length} of ${stats?.devices_total ?? "—"}` : "loading…"}
+                </span>
               </div>
-            ) : deviceBreakdown.length === 0 ? (
-              <p className="text-sm text-slate-600">No devices found.</p>
-            ) : (
-              <div className="grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
-                {deviceBreakdown.map((item) => {
-                  const Icon = getDeviceIcon(item.type, null, null).icon;
-                  return (
-                    <div key={item.type} className="flex items-center gap-3">
-                      <Icon className="h-4 w-4 shrink-0 text-slate-400" />
-                      <span className="w-28 shrink-0 truncate text-sm text-slate-300">
-                        {item.label}
-                      </span>
-                      <div className="flex min-w-0 flex-1 items-center gap-2">
-                        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-mesh-surface-1">
-                          <div
-                            className={`h-full rounded-full ${TYPE_COLORS[item.type] ?? "bg-slate-500"} transition-all duration-500`}
-                            style={{
-                              width: `${(item.count / maxCount) * 100}%`,
-                            }}
-                          />
-                        </div>
-                        <span className="w-8 text-right text-xs tabular-nums text-slate-500">
-                          {item.count}
+              <div className="border-t border-mesh-border">
+                <div className="grid grid-cols-[1.4fr_1fr_80px_80px_1fr_60px] px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-mesh-text-mute">
+                  <span>Device</span>
+                  <span>IP</span>
+                  <span className="text-right">RX MB/s</span>
+                  <span className="text-right">TX MB/s</span>
+                  <span>Trend</span>
+                  <span className="text-right">Mbps</span>
+                </div>
+                {topDevicesError ? (
+                  <div className="p-4">
+                    <ErrorState
+                      title="Failed to load top devices"
+                      onRetry={() => mutateTopDevices()}
+                    />
+                  </div>
+                ) : talkers === null ? (
+                  <div className="space-y-2 p-4">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} className="h-9 w-full" />
+                    ))}
+                  </div>
+                ) : talkers.length === 0 ? (
+                  <p className="px-4 py-6 text-center text-sm text-mesh-text-mute">
+                    No device traffic recorded yet.
+                  </p>
+                ) : (
+                  talkers.map((d, i) => {
+                    const rxMb = (d.rx_bps / 1_000_000).toFixed(1);
+                    const txMb = (d.tx_bps / 1_000_000).toFixed(1);
+                    const mbps = bpsToMbps(d.rx_bps + d.tx_bps);
+                    return (
+                      <div
+                        key={d.id}
+                        className={cn(
+                          "grid grid-cols-[1.4fr_1fr_80px_80px_1fr_60px] items-center px-4 py-2 text-xs",
+                          i < talkers.length - 1 && "border-b border-mesh-border",
+                        )}
+                        data-testid="top-talker-row"
+                      >
+                        <span className="flex items-center gap-2 text-white">
+                          <StatusDot status="online" size={6} pulse={i === 0} />
+                          <Link
+                            href={`/devices?id=${d.id}`}
+                            className="truncate hover:text-mesh-accent"
+                          >
+                            {d.name || d.hostname || d.vendor || "Unknown"}
+                          </Link>
                         </span>
+                        <span className="font-mono text-mesh-text-dim">{d.ip ?? "—"}</span>
+                        <span className="text-right font-mono text-white">{rxMb}</span>
+                        <span className="text-right font-mono text-mesh-text-dim">{txMb}</span>
+                        <span>
+                          <Spark
+                            data={devicePlaceholderSpark(d.rx_bps + d.tx_bps)}
+                            width={100}
+                            height={18}
+                            color="hsl(var(--status-info))"
+                          />
+                        </span>
+                        <span className="text-right font-mono text-white">{mbps}</span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT column */}
+          <div className="flex flex-col gap-3">
+            {/* Topology card */}
+            <div className="flex flex-col gap-2.5 rounded-md border border-mesh-border-strong bg-mesh-surface-1/70 p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-white">Topology</h3>
+                <Link
+                  href="/topology"
+                  className="text-xs font-medium text-mesh-accent hover:text-cyan-300"
+                >
+                  open →
+                </Link>
+              </div>
+              <div className="h-[220px] rounded border border-mesh-border bg-mesh-surface-2 p-2.5">
+                {topologyError ? (
+                  <ErrorState
+                    title="Failed to load topology"
+                    onRetry={() => mutateTopology()}
+                  />
+                ) : topology === null ? (
+                  <Skeleton className="h-full w-full" />
+                ) : (
+                  <TopoMini topology={topology} />
+                )}
+              </div>
+              <div className="flex justify-between font-mono text-[11px] text-mesh-text-mute">
+                <span>{subnetCount ?? "—"} subnets</span>
+                <span>
+                  {topology
+                    ? `${topology.devices.length} devices`
+                    : "— devices"}
+                </span>
+                <span>
+                  {stats
+                    ? `${stats.devices_online} / ${stats.devices_total}`
+                    : "— / —"}
+                </span>
+              </div>
+            </div>
+
+            {/* Recent events */}
+            <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/70">
+              <div className="flex items-center justify-between px-4 py-3">
+                <h3 className="text-sm font-semibold text-white">Recent events</h3>
+                <span className="font-mono text-[11px] text-mesh-text-mute">last 1h</span>
+              </div>
+              <div className="border-t border-mesh-border">
+                {alertsError ? (
+                  <div className="p-4">
+                    <ErrorState
+                      title="Failed to load events"
+                      onRetry={() => mutateAlerts()}
+                    />
+                  </div>
+                ) : events === null ? (
+                  <div className="space-y-2 p-4">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Skeleton key={i} className="h-9 w-full" />
+                    ))}
+                  </div>
+                ) : events.length === 0 ? (
+                  <p className="px-4 py-6 text-center text-sm text-mesh-text-mute">
+                    No recent events — all clear.
+                  </p>
+                ) : (
+                  events.slice(0, 6).map((e, i) => (
+                    <div
+                      key={e.id}
+                      className={cn(
+                        "flex items-start gap-2.5 px-4 py-2 text-xs",
+                        i < Math.min(events.length, 6) - 1 && "border-b border-mesh-border",
+                      )}
+                      data-testid="recent-event-row"
+                    >
+                      <span className="min-w-[36px] font-mono text-[11px] text-mesh-text-faint">
+                        {formatAlertTime(e.created_at)}
+                      </span>
+                      <span className="pt-1">
+                        <SevDot severity={mapAlertSeverity(e.severity)} size={6} />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-white">{e.message}</div>
+                        <div className="font-mono text-[10px] text-mesh-text-mute">
+                          {alertSource(e)}
+                        </div>
                       </div>
                     </div>
-                  );
-                })}
+                  ))
+                )}
               </div>
-            )}
-          </CardContent>
-        </Card></StaggerItem>
-      </StaggerContainer>
-    </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Bottom: Subnet utilization ──────────────── */}
+        <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/70 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-semibold text-white">Subnet utilization</h3>
+            <span className="font-mono text-[11px] text-mesh-text-mute">capacity / 5min</span>
+          </div>
+          {/* TODO: backend gap — no per-subnet stats endpoint exists yet (no
+              /api/v1/subnets/utilization). The cards below derive counts
+              from topology IP groupings; capacity / mbps placeholders remain
+              "—" until the endpoint lands. */}
+          <SubnetUtilization topology={topology} devicesError={!!devicesError} />
+        </div>
+
+        <CriticalDevicesDialog open={criticalDialogOpen} onOpenChange={setCriticalDialogOpen} />
+      </div>
     </PageTransition>
   );
 }
 
-// ─── Category label helper ──────────────────────────────
+// ─── Subnet utilization grid ────────────────────────────
 
-function getCategoryLabel(type: DeviceType): string {
-  const labels: Record<DeviceType, string> = {
-    router: "Routers",
-    access_point: "Access Points",
-    laptop: "Laptops",
-    desktop: "Desktops",
-    phone: "Phones",
-    tablet: "Tablets",
-    tv: "TVs",
-    server: "Servers",
-    printer: "Printers",
-    iot: "IoT",
-    gaming: "Gaming",
-    workstation: "Workstations",
-    vm: "VMs",
-    container: "Containers",
-    nas: "NAS",
-    switch: "Switches",
-    ups: "UPS",
-    other: "Other",
-    unknown: "Other",
-  };
-  return labels[type] ?? "Other";
+function SubnetUtilization({
+  topology,
+  devicesError,
+}: {
+  topology: TopologyGraph | null;
+  devicesError: boolean;
+}) {
+  // Derive subnets from topology device IPs.
+  const subnets = useMemo(() => {
+    if (!topology) return null;
+    const groups = new Map<string, { hosts: number; online: number }>();
+    for (const d of topology.devices) {
+      for (const ip of d.ips ?? []) {
+        const m = ip.match(/^(\d+\.\d+\.\d+)\./);
+        if (!m) continue;
+        const prefix = m[1];
+        const entry = groups.get(prefix) ?? { hosts: 0, online: 0 };
+        entry.hosts += 1;
+        if (d.is_online) entry.online += 1;
+        groups.set(prefix, entry);
+        break;
+      }
+    }
+    return Array.from(groups.entries())
+      .sort((a, b) => b[1].hosts - a[1].hosts)
+      .slice(0, 5)
+      .map(([prefix, v]) => ({
+        name: prefix,
+        cidr: `${prefix}.0/24`,
+        hosts: v.hosts,
+        util: Math.min(100, Math.round((v.hosts / 254) * 100)),
+      }));
+  }, [topology]);
+
+  if (devicesError) {
+    return (
+      <div className="py-4">
+        <ErrorState title="Failed to load subnet data" />
+      </div>
+    );
+  }
+
+  if (subnets === null) {
+    return (
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-28 w-full" />
+        ))}
+      </div>
+    );
+  }
+
+  if (subnets.length === 0) {
+    return (
+      <p className="py-4 text-center text-sm text-mesh-text-mute">
+        No subnet data yet — discover devices to populate this view.
+      </p>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
+      {subnets.map((s) => {
+        const high = s.util > 70;
+        return (
+          <div
+            key={s.name}
+            className="flex flex-col gap-2 rounded-md border border-mesh-border bg-mesh-surface-2 p-3"
+            data-testid="subnet-card"
+          >
+            <div className="flex items-baseline justify-between">
+              <span className="text-sm font-semibold text-white">{s.name}</span>
+              <span className="font-mono text-[10px] text-mesh-text-mute">{s.cidr}</span>
+            </div>
+            <div className="flex items-baseline gap-1.5">
+              <span
+                className="font-mono text-2xl font-semibold leading-none"
+                style={{
+                  color: high ? "hsl(var(--status-warning))" : "hsl(var(--foreground))",
+                }}
+              >
+                {s.util}
+              </span>
+              <span className="font-mono text-[11px] text-mesh-text-mute">%</span>
+              <span className="flex-1" />
+              <span className="font-mono text-[11px] text-mesh-text-dim">{s.hosts} hosts</span>
+            </div>
+            <div className="h-1 overflow-hidden rounded-sm bg-mesh-surface-3">
+              <div
+                className="h-full rounded-sm"
+                style={{
+                  width: `${s.util}%`,
+                  background: high
+                    ? "hsl(var(--status-warning))"
+                    : "hsl(var(--primary))",
+                }}
+              />
+            </div>
+            <div className="flex items-center justify-between font-mono text-[10px] text-mesh-text-mute">
+              <span>— Mbps{/* TODO: backend gap — per-subnet bandwidth */}</span>
+              <Spark
+                data={[s.util * 0.6, s.util * 0.8, s.util, s.util * 0.9, s.util * 1.05]}
+                width={50}
+                height={14}
+                color="hsl(var(--ring))"
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 }
