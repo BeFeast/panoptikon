@@ -276,7 +276,7 @@ export interface TopDevice {
   id: string;
   name: string | null;
   hostname: string | null;
-  ip: string;
+  ip: string | null;
   vendor: string | null;
   rx_bps: number;
   tx_bps: number;
