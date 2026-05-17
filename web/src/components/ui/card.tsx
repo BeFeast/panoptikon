@@ -9,7 +9,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "relative overflow-hidden rounded-lg border border-slate-800/90 bg-slate-950/64 text-card-foreground shadow-[0_10px_28px_-24px_rgba(15,23,42,0.95)] backdrop-blur-xl supports-[backdrop-filter]:bg-slate-950/58",
+      "relative overflow-hidden rounded-lg border border-cyan-900/45 bg-[#0b1220]/64 text-card-foreground shadow-[0_10px_28px_-24px_rgba(15,23,42,0.95)] backdrop-blur-xl supports-[backdrop-filter]:bg-[#0b1220]/58",
       "before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-cyan-300/10",
       "transition-[border-color,background-color] duration-150 ease-out hover:border-cyan-400/20",
       selected && "card-selected",

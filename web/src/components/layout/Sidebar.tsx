@@ -227,7 +227,7 @@ export function Sidebar() {
           "group/nav relative flex items-center gap-3 rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150",
           active
             ? "bg-cyan-500/10 text-cyan-500"
-            : "text-slate-400 hover:bg-slate-800/60 hover:text-white",
+            : "text-slate-400 hover:bg-cyan-950/35 hover:text-white",
           sidebarCollapsed && "justify-center px-0",
         )}
       >
@@ -261,12 +261,12 @@ export function Sidebar() {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "hidden md:flex flex-col border-r border-slate-800/90 bg-slate-950/92 transition-all duration-200",
+          "relative z-20 hidden md:flex flex-col border-r border-cyan-900/50 bg-[#060b13]/88 shadow-[12px_0_36px_-30px_rgba(34,211,238,0.42)] backdrop-blur-xl transition-all duration-200",
           sidebarCollapsed ? "w-16" : "w-60",
         )}
       >
         {/* Logo + collapse toggle */}
-        <div className="flex h-14 items-center justify-between border-b border-slate-800/90 px-3">
+        <div className="flex h-[3.75rem] items-center justify-between border-b border-cyan-900/45 px-3">
           <Link
             href="/dashboard"
             className="flex items-center min-w-0"
@@ -282,7 +282,7 @@ export function Sidebar() {
           </Link>
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-slate-800/60 hover:text-slate-300"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-cyan-950/35 hover:text-slate-300"
             aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {sidebarCollapsed ? (
@@ -317,7 +317,7 @@ export function Sidebar() {
                     >
                       <button
                         onClick={() => toggleGroup(group.key)}
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors text-slate-500 hover:bg-slate-800/60 hover:text-slate-300"
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors text-slate-500 hover:bg-cyan-950/35 hover:text-slate-300"
                         aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.label}`}
                         aria-expanded={!isCollapsed}
                       >

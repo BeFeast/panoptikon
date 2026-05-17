@@ -245,6 +245,14 @@ test.describe("Router Page — /router redirects to MikroTik", () => {
   });
 
   test("/router redirects to /router/mikrotik", async ({ page }) => {
+    const settingsRes = await page.request.patch("/api/v1/settings", {
+      data: {
+        default_router: "mikrotik",
+        mikrotik_enabled: true,
+      },
+    });
+    expect(settingsRes.ok()).toBeTruthy();
+
     await page.goto("/router/");
     await page.waitForURL(/\/router\/mikrotik/, { timeout: 15000 });
 
