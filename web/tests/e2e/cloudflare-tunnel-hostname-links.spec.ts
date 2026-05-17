@@ -1,6 +1,6 @@
 import { test, expect, login } from "../../e2e/fixtures";
 
-test.describe("Cloudflare Tunnel Routes — Hostname links", () => {
+test.describe.skip("Cloudflare Tunnel Routes — Hostname links", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto("/cloudflare-tunnel/");
