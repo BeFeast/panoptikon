@@ -136,6 +136,8 @@ test.describe('Dashboard', () => {
   test('dashboard page loads with stat cards', async ({ page }) => {
     await openDashboard(page);
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible();
+    await expect(page.getByRole('main').getByText('core.lan > Overview')).toBeVisible();
+    await expect(page.getByTestId('ws-latency-pill')).toBeVisible();
 
     // Wait for API calls to settle before checking stat cards
     await page.waitForLoadState('networkidle');

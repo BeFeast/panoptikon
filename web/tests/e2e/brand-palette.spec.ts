@@ -15,9 +15,12 @@ test.describe("Brand palette migration", () => {
 
     // The renewed login surface should expose the reference-screen affordances.
     await expect(page.locator(".login-bg")).toBeVisible();
-    await expect(page.getByLabel("Operator")).toHaveValue("operator");
+    await expect(page.getByLabel("Operator")).toHaveValue("operator", {
+      timeout: 15000,
+    });
     await expect(page.getByRole("button", { name: "Continue with SSO" })).toBeVisible();
     await expect(page.getByText("all systems healthy")).toBeVisible();
+    await expect(page.getByTestId("brand-mark")).toBeVisible();
 
     await page.screenshot({
       path: "tests/screenshots/brand-palette-login.png",
@@ -32,6 +35,9 @@ test.describe("Brand palette migration", () => {
     await expect(
       page.getByRole("heading", { name: "Dashboard", level: 1 }),
     ).toBeVisible({ timeout: 15000 });
+    await expect(page.getByRole("main").getByText("core.lan > Overview")).toBeVisible();
+    await expect(page.getByTestId("brand-mark").first()).toBeVisible();
+    await expect(page.getByTestId("ws-latency-pill")).toBeVisible();
 
     await page.screenshot({
       path: "tests/screenshots/brand-palette-dashboard.png",

@@ -28,6 +28,7 @@ import {
   Workflow,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { BrandMark } from "@/components/brand/BrandMark";
 import {
   Tooltip,
   TooltipContent,
@@ -271,11 +272,11 @@ export function Sidebar() {
             href="/dashboard"
             className="flex items-center min-w-0"
           >
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-cyan-300/40 bg-cyan-400/12 text-sm font-bold text-cyan-200">
-              P
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-cyan-300/35 bg-cyan-400/10 text-cyan-200">
+              <BrandMark size={24} className="text-cyan-200" />
             </div>
             {!sidebarCollapsed && (
-              <span className="ml-2 font-display text-base font-semibold text-white">
+              <span className="ml-2 font-mono text-[13px] font-semibold uppercase tracking-[0.12em] text-white">
                 Panoptikon
               </span>
             )}

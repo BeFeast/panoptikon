@@ -101,6 +101,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   } = options;
 
   const [connected, setConnected] = useState(false);
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
   const delayRef = useRef(initialDelay);
@@ -118,11 +119,13 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     if (!mountedRef.current) return;
 
     try {
+      const startedAt = performance.now();
       const ws = new WebSocket(getUrl());
 
       ws.onopen = () => {
         if (!mountedRef.current) { ws.close(); return; }
         setConnected(true);
+        setLatencyMs(Math.max(1, Math.round(performance.now() - startedAt)));
         delayRef.current = initialDelay; // Reset backoff on successful connection
       };
 
@@ -138,6 +141,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
       ws.onclose = () => {
         if (!mountedRef.current) return;
         setConnected(false);
+        setLatencyMs(null);
         wsRef.current = null;
 
         if (reconnect) {
@@ -175,5 +179,5 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
     };
   }, [connect]);
 
-  return { connected };
+  return { connected, latencyMs };
 }

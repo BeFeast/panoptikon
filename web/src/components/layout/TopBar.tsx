@@ -1,10 +1,13 @@
 "use client";
 
 import { type ReactNode, useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { Bell, Settings, Lock, LogOut, Monitor, Cpu, Terminal, Package } from "lucide-react";
 import { searchAll, fetchRecentAlerts, fetchDashboardStats, markAllAlertsRead, deleteAllAlerts, logout } from "@/lib/api";
 import { useWsEvent } from "@/lib/ws";
+import { BrandMark } from "@/components/brand/BrandMark";
+import { useWsStatus } from "@/components/providers/WebSocketProvider";
 import { timeAgo } from "@/lib/format";
 import type { SearchResponse, SearchDevice, SearchAgent, SearchAlert, SearchSshTarget, SearchAsset, Alert } from "@/lib/types";
 import {
@@ -18,6 +21,8 @@ import {
 
 export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
+  const { connected: wsConnected, latencyMs } = useWsStatus();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResponse | null>(null);
   const [isOpen, setIsOpen] = useState(false);
@@ -228,6 +233,23 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
       {/* Mobile menu button */}
       {mobileMenu}
 
+      <Link
+        href="/dashboard"
+        className="hidden min-w-[12rem] items-center gap-3 md:flex"
+        aria-label="Panoptikon dashboard"
+      >
+        <BrandMark size={30} className="text-cyan-200" />
+        <div className="min-w-0">
+          <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-100">
+            core.lan <span className="text-slate-600">&gt;</span>{" "}
+            <span className="text-cyan-300">{pathname === "/dashboard" ? "Overview" : "Console"}</span>
+          </div>
+          <div className="mt-0.5 text-[10px] uppercase tracking-[0.14em] text-slate-600">
+            Panoptikon
+          </div>
+        </div>
+      </Link>
+
       {/* Search */}
       <div className="relative max-w-lg flex-1" ref={containerRef}>
         <input
@@ -429,6 +451,23 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
 
       {/* Right side: alerts bell + user avatar */}
       <div className="flex items-center gap-2">
+        <div
+          className="hidden items-center gap-2 rounded-md border border-cyan-900/45 bg-[#08111e]/82 px-2.5 py-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-slate-400 sm:flex"
+          data-testid="ws-latency-pill"
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              wsConnected
+                ? "bg-emerald-400 ring-2 ring-emerald-400/25"
+                : "bg-rose-400 ring-2 ring-rose-400/20"
+            }`}
+          />
+          <span>{wsConnected ? "Live" : "Offline"}</span>
+          <span className="text-slate-600">/</span>
+          <span className="tabular-nums text-cyan-300">
+            ws {wsConnected && latencyMs ? `${latencyMs}ms` : "--"}
+          </span>
+        </div>
         {/* ── Notification Bell ── */}
         <div className="relative" ref={bellRef}>
           <button

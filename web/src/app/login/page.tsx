@@ -3,72 +3,7 @@
 import { useEffect, useState } from "react";
 import { Command, Eye, EyeOff, Lock } from "lucide-react";
 import { fetchAuthStatus, login } from "@/lib/api";
-
-function PanoptikonMark() {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 96 96"
-      className="h-12 w-12 text-sky-300"
-      fill="none"
-    >
-      <path
-        d="M48 48 24 24M48 48l27-30M48 48 20 28M48 48 20 72"
-        stroke="currentColor"
-        strokeWidth="4"
-        strokeLinecap="round"
-      />
-      <path
-        d="M24 24h34l17-6M20 72h42l6 4"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeDasharray="5 8"
-        opacity="0.22"
-      />
-      <circle
-        cx="48"
-        cy="48"
-        r="11"
-        stroke="#38bdf8"
-        strokeWidth="4"
-        fill="#2563eb"
-      />
-      <circle cx="48" cy="48" r="4" fill="#4ade80" />
-      <circle
-        cx="24"
-        cy="24"
-        r="7"
-        fill="#09172d"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <circle
-        cx="75"
-        cy="18"
-        r="6"
-        fill="#09172d"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <circle
-        cx="68"
-        cy="76"
-        r="7"
-        fill="#09172d"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-      <circle
-        cx="20"
-        cy="72"
-        r="6"
-        fill="#09172d"
-        stroke="currentColor"
-        strokeWidth="4"
-      />
-    </svg>
-  );
-}
+import { BrandMark } from "@/components/brand/BrandMark";
 
 function NetworkBackdrop() {
   return (
@@ -189,7 +124,7 @@ export default function LoginPage() {
       <NetworkBackdrop />
       <section className="relative z-10 w-full max-w-[720px] rounded-[18px] border border-[#2c4d80] bg-[#091731]/96 px-10 py-6 shadow-[0_0_0_3px_rgba(55,91,145,0.34),0_0_42px_rgba(42,98,177,0.28),inset_0_1px_0_rgba(122,163,218,0.16)] max-md:max-w-[430px] max-md:px-6 max-md:py-6">
         <div className="mb-5 flex flex-col items-center text-center">
-          <PanoptikonMark />
+          <BrandMark size={52} className="text-sky-300 drop-shadow-[0_0_18px_rgba(56,189,248,0.24)]" />
           <h1 className="mt-4 font-display text-[30px] font-semibold leading-none tracking-[0.08em] text-slate-100 max-md:text-3xl">
             Panoptikon
           </h1>

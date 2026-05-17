@@ -262,12 +262,12 @@ function StatCard({
   const inner = (
     <Card
       className={cn(
-        "h-full min-h-[8.25rem] border-cyan-900/45 bg-[#0b1220]/70",
+        "h-full min-h-[7.1rem] border-cyan-900/45 bg-[#0b1220]/70",
         href &&
           "transition-[border-color,background-color,box-shadow] hover:border-cyan-700/50 hover:bg-slate-900/72 hover:shadow-[0_14px_32px_-22px_rgba(8,145,178,0.45)]",
       )}
     >
-      <CardHeader className="flex flex-row items-start justify-between pb-3">
+      <CardHeader className="flex flex-row items-start justify-between pb-2">
         <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
           {title}
         </CardTitle>
@@ -276,8 +276,8 @@ function StatCard({
           <span className="text-slate-500">{icon}</span>
         </div>
       </CardHeader>
-      <CardContent className="space-y-2">
-        <p className="truncate text-[1.65rem] font-semibold leading-none tabular-nums text-white">{value}</p>
+      <CardContent className="space-y-1.5">
+        <p className="truncate font-mono text-[1.45rem] font-semibold leading-none tabular-nums text-white">{value}</p>
         <p className="truncate text-xs leading-5 text-slate-400">{subtitle}</p>
       </CardContent>
     </Card>
@@ -295,7 +295,7 @@ function StatCard({
 
 function StatCardSkeleton() {
   return (
-    <Card className="h-full min-h-[8.25rem] border-cyan-900/45 bg-[#0b1220]/70">
+    <Card className="h-full min-h-[7.1rem] border-cyan-900/45 bg-[#0b1220]/70">
       <CardHeader className="pb-3">
         <Skeleton className="h-3.5 w-24" />
       </CardHeader>
@@ -485,7 +485,7 @@ function QuickActions() {
         <Link
           key={action.label}
           href={action.href}
-          className="inline-flex items-center gap-2 rounded-full border border-cyan-900/45 bg-[#0b1220]/70 px-4 py-2 text-sm text-slate-300 transition-all hover:border-cyan-700/50 hover:bg-cyan-950/80 hover:text-white"
+          className="inline-flex items-center gap-2 rounded-md border border-cyan-900/45 bg-[#0b1220]/70 px-3 py-1.5 text-xs text-slate-300 transition-all hover:border-cyan-700/50 hover:bg-cyan-950/80 hover:text-white"
         >
           {action.icon}
           {action.label}
@@ -834,16 +834,30 @@ export default function DashboardPage() {
 
   return (
     <PageTransition>
-    <div className="space-y-6">
-      <div className="flex flex-col gap-3 border-b border-cyan-900/35 pb-5 lg:flex-row lg:items-end lg:justify-between">
-        <div className="space-y-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Dashboard</h1>
-          <p className="max-w-3xl text-sm leading-6 text-slate-400">
-            Network health, router status, traffic, and alerts at a glance.
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 border-b border-cyan-900/35 pb-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="space-y-1.5">
+          <p className="font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+            core.lan <span className="text-slate-600">&gt;</span> Overview
+          </p>
+          <h1 className="font-mono text-xl font-semibold uppercase tracking-[0.12em] text-white">Dashboard</h1>
+          <p className="max-w-3xl text-xs leading-5 text-slate-400">
+            Router status, WAN traffic, topology, and recent events.
           </p>
         </div>
-        <div className="text-xs uppercase tracking-wider text-slate-600">
-          Live refresh / 30s
+        <div className="grid grid-cols-3 gap-2 text-[10px] uppercase tracking-[0.12em] text-slate-500">
+          <div className="rounded border border-cyan-900/35 bg-[#08111e]/70 px-3 py-2">
+            <p className="text-slate-600">Router</p>
+            <p className="mt-1 text-cyan-300">{stats ? routerDisplayName(stats.router_type) : "--"}</p>
+          </div>
+          <div className="rounded border border-cyan-900/35 bg-[#08111e]/70 px-3 py-2">
+            <p className="text-slate-600">Refresh</p>
+            <p className="mt-1 text-slate-300">30s</p>
+          </div>
+          <div className="rounded border border-cyan-900/35 bg-[#08111e]/70 px-3 py-2">
+            <p className="text-slate-600">Events</p>
+            <p className="mt-1 tabular-nums text-slate-300">{stats ? stats.alerts_unread : "--"}</p>
+          </div>
         </div>
       </div>
 

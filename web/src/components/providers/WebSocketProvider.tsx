@@ -6,10 +6,13 @@ import { useWebSocket } from "@/lib/ws";
 interface WebSocketContextValue {
   /** Whether the WebSocket is currently connected to the server. */
   connected: boolean;
+  /** Time from socket construction to open, used as a lightweight live latency signal. */
+  latencyMs: number | null;
 }
 
 const WebSocketContext = createContext<WebSocketContextValue>({
   connected: false,
+  latencyMs: null,
 });
 
 /**
@@ -22,10 +25,10 @@ const WebSocketContext = createContext<WebSocketContextValue>({
  * 2. Subscribe to specific events via `useWsEvent()`
  */
 export function WebSocketProvider({ children }: { children: React.ReactNode }) {
-  const { connected } = useWebSocket();
+  const { connected, latencyMs } = useWebSocket();
 
   return (
-    <WebSocketContext.Provider value={{ connected }}>
+    <WebSocketContext.Provider value={{ connected, latencyMs }}>
       {children}
     </WebSocketContext.Provider>
   );
@@ -34,4 +37,9 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
 /** Returns whether the WebSocket is currently connected. */
 export function useWsConnected(): boolean {
   return useContext(WebSocketContext).connected;
+}
+
+/** Returns WebSocket status fields for compact shell status indicators. */
+export function useWsStatus(): WebSocketContextValue {
+  return useContext(WebSocketContext);
 }

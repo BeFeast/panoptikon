@@ -26,6 +26,14 @@ test.describe("Login page visual upgrade", () => {
     expect(backgroundImage).toContain("radial-gradient");
 
     await expect(page.locator(".login-orb")).toHaveCount(0);
+    await expect(page.getByTestId("brand-mark")).toBeVisible();
+
+    const maxStrokeWidth = await page.getByTestId("brand-mark").evaluate((mark) => {
+      const widths = Array.from(mark.querySelectorAll("[stroke-width], [strokeWidth]"))
+        .map((node) => Number(node.getAttribute("stroke-width") ?? node.getAttribute("strokeWidth") ?? 0));
+      return Math.max(...widths);
+    });
+    expect(maxStrokeWidth).toBeLessThanOrEqual(2.25);
 
     const card = page.locator("main.login-bg section").first();
     await expect(card).toBeVisible();

@@ -8,14 +8,14 @@ test.describe('Sidebar rebrand — cyan accents instead of blue', () => {
     await expect(page.getByRole('heading', { name: 'Dashboard', level: 1 })).toBeVisible({ timeout: 30000 });
   });
 
-  test('sidebar is visible with branded logo tile', async ({ page }) => {
+  test('sidebar is visible with shared brand mark tile', async ({ page }) => {
     const sidebar = page.locator('aside');
     await expect(sidebar).toBeVisible({ timeout: 15000 });
 
-    // Logo tile should be visible with cyan background
+    // Logo tile should render the shared thin network glyph.
     const logoTile = sidebar.locator('div[class*="bg-cyan-400"]');
     await expect(logoTile).toBeVisible({ timeout: 10000 });
-    await expect(logoTile).toContainText('P');
+    await expect(logoTile.getByTestId('brand-mark')).toBeVisible();
 
     await page.screenshot({ path: 'tests/screenshots/sidebar-rebrand-logo.png', fullPage: true });
   });
