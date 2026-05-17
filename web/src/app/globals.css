@@ -313,3 +313,20 @@
     animation: none;
   }
 }
+
+/* ── mesh selected rail ────────────────────────────────
+ * Ported from panopticon/project/base.css —
+ * [data-direction="mesh"] .selected-rail dashed underline,
+ * used to mark the active rail in mesh-direction navigation.
+ * The host shell sets `data-direction="mesh"` on a parent so
+ * the rule stays scoped to mesh surfaces. */
+[data-direction="mesh"] .selected-rail {
+  background-image: linear-gradient(
+    90deg,
+    hsl(var(--ring)) 50%,
+    transparent 50%
+  );
+  background-size: 6px 1px;
+  background-repeat: repeat-x;
+  background-position: bottom left;
+}
