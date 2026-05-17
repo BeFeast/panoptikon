@@ -131,29 +131,29 @@ export default function TrafficPage() {
 
       {/* NetFlow Collector Status */}
       {netflow && (
-        <div className="flex items-center gap-2 rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 px-4 py-2.5">
-          <Radio className={`h-4 w-4 ${netflow.enabled ? "text-emerald-400" : "text-slate-500"}`} />
-          <span className="text-sm text-slate-400">
+        <div className="flex items-center gap-2 rounded-lg border border-mesh-border bg-mesh-surface-1/95 px-4 py-2.5">
+          <Radio className={`h-4 w-4 ${netflow.enabled ? "text-[#4ade80]" : "text-mesh-text-mute"}`} />
+          <span className="text-sm text-mesh-text-dim">
             NetFlow collector:{" "}
             {netflow.enabled ? (
-              <span className="text-emerald-400">
+              <span className="text-[#4ade80]">
                 active on port {netflow.port}
-                <span className="ml-2 text-slate-500">
+                <span className="ml-2 text-mesh-text-mute">
                   ({netflow.flows_received.toLocaleString()} flows received)
                 </span>
               </span>
             ) : (
-              <span className="text-slate-500">disabled</span>
+              <span className="text-mesh-text-mute">disabled</span>
             )}
           </span>
         </div>
       )}
 
       {/* Traffic History Chart */}
-      <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 p-4">
+      <div className="rounded-lg border border-mesh-border bg-mesh-surface-1/95 p-4">
         <div className="mb-3 flex items-center gap-2">
-          <Activity className="h-4 w-4 text-blue-400" />
-          <h2 className="text-sm font-medium text-slate-400">
+          <Activity className="h-4 w-4 text-mesh-primary" />
+          <h2 className="text-sm font-medium text-mesh-text-dim">
             Traffic — Last 60 minutes
           </h2>
         </div>
@@ -232,9 +232,9 @@ export default function TrafficPage() {
         ) : (
           <div className="flex h-[200px] items-center justify-center">
             <div className="text-center">
-              <Activity className="mx-auto mb-2 h-8 w-8 text-slate-600" />
-              <p className="text-sm font-medium text-slate-400">No traffic data</p>
-              <p className="mt-1 text-xs text-slate-600">Enable NetFlow/sFlow export in Settings to see bandwidth data.</p>
+              <Activity className="mx-auto mb-2 h-8 w-8 text-mesh-text-mute" />
+              <p className="text-sm font-medium text-mesh-text-dim">No traffic data</p>
+              <p className="mt-1 text-xs text-mesh-text-mute">Enable NetFlow/sFlow export in Settings to see bandwidth data.</p>
             </div>
           </div>
         )}
@@ -244,13 +244,13 @@ export default function TrafficPage() {
       {selectedDevice && (
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-medium text-slate-400">
+            <h2 className="text-sm font-medium text-mesh-text-dim">
               {selectedDevice.name ?? selectedDevice.hostname ?? selectedDevice.ip} — Historical Bandwidth
             </h2>
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-slate-500 hover:text-white"
+              className="h-7 px-2 text-mesh-text-mute hover:text-white"
               onClick={() => setSelectedDevice(null)}
             >
               <X className="h-4 w-4" />
@@ -261,21 +261,21 @@ export default function TrafficPage() {
       )}
 
       {/* Top Devices by Bandwidth */}
-      <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95">
+      <div className="rounded-lg border border-mesh-border bg-mesh-surface-1/95">
         <div className="border-b border-mesh-border px-4 py-3">
-          <h2 className="text-sm font-medium text-slate-400">
+          <h2 className="text-sm font-medium text-mesh-text-dim">
             Top Devices by Bandwidth
-            <span className="ml-2 text-xs text-slate-600">Click a row to view history</span>
+            <span className="ml-2 text-xs text-mesh-text-mute">Click a row to view history</span>
           </h2>
         </div>
         {loading && topDevices.length === 0 ? (
           <Table>
             <TableHeader>
               <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                <TableHead className="text-slate-500">Device</TableHead>
-                <TableHead className="text-slate-500">IP</TableHead>
-                <TableHead className="text-right text-slate-500">Download</TableHead>
-                <TableHead className="text-right text-slate-500">Upload</TableHead>
+                <TableHead className="text-mesh-text-mute">Device</TableHead>
+                <TableHead className="text-mesh-text-mute">IP</TableHead>
+                <TableHead className="text-right text-mesh-text-mute">Download</TableHead>
+                <TableHead className="text-right text-mesh-text-mute">Upload</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -301,12 +301,12 @@ export default function TrafficPage() {
           <Table>
             <TableHeader>
               <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                <TableHead className="text-slate-500">Device</TableHead>
-                <TableHead className="text-slate-500">IP</TableHead>
-                <TableHead className="text-right text-slate-500">
+                <TableHead className="text-mesh-text-mute">Device</TableHead>
+                <TableHead className="text-mesh-text-mute">IP</TableHead>
+                <TableHead className="text-right text-mesh-text-mute">
                   Download
                 </TableHead>
-                <TableHead className="text-right text-slate-500">
+                <TableHead className="text-right text-mesh-text-mute">
                   Upload
                 </TableHead>
               </TableRow>
@@ -315,7 +315,7 @@ export default function TrafficPage() {
               {topDevices.map((d) => (
                 <TableRow
                   key={d.id}
-                  className={`border-mesh-border-strong cursor-pointer ${
+                  className={`border-mesh-border cursor-pointer ${
                     selectedDevice?.id === d.id
                       ? "bg-mesh-surface-1"
                       : "hover:bg-mesh-surface-2/55"
@@ -329,13 +329,13 @@ export default function TrafficPage() {
                   <TableCell className="text-white">
                     {d.name ?? d.hostname ?? d.id.slice(0, 8)}
                   </TableCell>
-                  <TableCell className="font-mono tabular-nums text-xs text-slate-400">
+                  <TableCell className="font-mono tabular-nums text-xs text-mesh-text-dim">
                     {d.ip ?? "—"}
                   </TableCell>
-                  <TableCell className="font-mono tabular-nums text-right text-blue-400">
+                  <TableCell className="font-mono tabular-nums text-right text-mesh-primary">
                     {formatBps(d.rx_bps)}
                   </TableCell>
-                  <TableCell className="font-mono tabular-nums text-right text-emerald-400">
+                  <TableCell className="font-mono tabular-nums text-right text-[#4ade80]">
                     {formatBps(d.tx_bps)}
                   </TableCell>
                 </TableRow>

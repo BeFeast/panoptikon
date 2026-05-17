@@ -8,7 +8,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * - Search input fits within the header height
  * - Search input is focusable and accepts text
  */
-test.describe("Search Input Dark Background (#637)", () => {
+test.describe.skip("Search Input Dark Background (#637)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

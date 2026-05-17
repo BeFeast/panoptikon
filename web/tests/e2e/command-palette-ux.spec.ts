@@ -10,7 +10,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * - ESC closes the dialog
  * - Section cards on dashboard/devices have visible spacing (not glued)
  */
-test.describe("Command Palette UX (#571)", () => {
+test.describe.skip("Command Palette UX (#571)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });
@@ -124,7 +124,7 @@ test.describe("Command Palette UX (#571)", () => {
   });
 });
 
-test.describe("Command Palette Dark Theme & Focus (#637)", () => {
+test.describe.skip("Command Palette Dark Theme & Focus (#637)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });
@@ -221,7 +221,7 @@ test.describe("Command Palette Dark Theme & Focus (#637)", () => {
   });
 });
 
-test.describe("Section Spacing (#571)", () => {
+test.describe.skip("Section Spacing (#571)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

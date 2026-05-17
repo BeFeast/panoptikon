@@ -104,48 +104,48 @@ function MeshNodeComponent({ data }: NodeProps<MeshNodeType>) {
     <div
       className={`flex flex-col gap-2 rounded-xl border px-4 py-3 shadow-lg transition-shadow hover:shadow-xl ${
         isMain
-          ? 'border-amber-500/30 bg-gradient-to-br from-slate-800 to-slate-900 shadow-amber-500/10'
+          ? 'border-[#fbbf24]/30 bg-gradient-to-br from-mesh-border-strong to-mesh-surface-1 shadow-[#fbbf24]/10'
           : node.is_online
-            ? 'border-blue-500/30 bg-gradient-to-br from-slate-800 to-slate-900 shadow-blue-500/10'
-            : 'border-slate-600/30 bg-mesh-surface-1 shadow-slate-700/10'
+            ? 'border-mesh-primary/30 bg-gradient-to-br from-mesh-border-strong to-mesh-surface-1 shadow-mesh-primary/10'
+            : 'border-mesh-text-mute/30 bg-mesh-surface-1 shadow-mesh-border-strong/10'
       }`}
       style={{ width: NODE_WIDTH, minHeight: NODE_HEIGHT }}
     >
-      <Handle type="target" position={Position.Top} className="!bg-blue-500" />
-      <Handle type="source" position={Position.Bottom} className="!bg-blue-500" />
-      <Handle type="target" position={Position.Left} id="left" className="!bg-blue-500" />
-      <Handle type="source" position={Position.Right} id="right" className="!bg-blue-500" />
+      <Handle type="target" position={Position.Top} className="!bg-mesh-primary" />
+      <Handle type="source" position={Position.Bottom} className="!bg-mesh-primary" />
+      <Handle type="target" position={Position.Left} id="left" className="!bg-mesh-primary" />
+      <Handle type="source" position={Position.Right} id="right" className="!bg-mesh-primary" />
 
       {/* Header row */}
       <div className="flex items-center gap-3">
         <div
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-            isMain ? 'bg-amber-500/20' : 'bg-blue-500/20'
+            isMain ? 'bg-[#fbbf24]/20' : 'bg-mesh-primary/20'
           }`}
         >
           {isMain ? (
-            <Crown className={`h-5 w-5 ${isMain ? 'text-amber-400' : 'text-blue-400'}`} />
+            <Crown className={`h-5 w-5 ${isMain ? 'text-[#fbbf24]' : 'text-mesh-primary'}`} />
           ) : (
-            <Wifi className="h-5 w-5 text-blue-400" />
+            <Wifi className="h-5 w-5 text-mesh-primary" />
           )}
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-white">
             {node.name || 'Mesh Node'}
           </p>
-          <p className="truncate font-mono text-xs text-slate-400">{node.ip || '—'}</p>
+          <p className="truncate font-mono text-xs text-mesh-text-dim">{node.ip || '—'}</p>
         </div>
         <span
           className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${
             node.is_online
-              ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]'
-              : 'bg-rose-400 shadow-[0_0_6px_rgba(251,113,133,0.5)]'
+              ? 'bg-[#4ade80] shadow-[0_0_6px_rgba(52,211,153,0.5)]'
+              : 'bg-[#fb7185] shadow-[0_0_6px_rgba(251,113,133,0.5)]'
           }`}
         />
       </div>
 
       {/* Stats row */}
-      <div className="flex items-center gap-3 text-[11px] text-slate-400">
+      <div className="flex items-center gap-3 text-[11px] text-mesh-text-dim">
         <span className="flex items-center gap-1">
           <MonitorSmartphone className="h-3 w-3" />
           {node.online_devices} device{node.online_devices !== 1 ? 's' : ''}
@@ -160,12 +160,12 @@ function MeshNodeComponent({ data }: NodeProps<MeshNodeType>) {
       <div className="flex items-center gap-1.5">
         <Badge
           variant="outline"
-          className="border-mesh-border-strong text-[10px] text-slate-500"
+          className="border-mesh-border-strong text-[10px] text-mesh-text-mute"
         >
           {node.model || node.hardware || 'Unknown'}
         </Badge>
         {isMain && (
-          <Badge className="bg-amber-500/10 text-[10px] text-amber-400 border-amber-500/20">
+          <Badge className="bg-[#fbbf24]/10 text-[10px] text-[#fbbf24] border-[#fbbf24]/20">
             CAP
           </Badge>
         )}
@@ -187,13 +187,13 @@ function MeshNodeDetailPanel({ node }: { node: MeshNode }) {
         <div className="flex items-center gap-3">
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${
-              node.is_main ? 'bg-amber-500/20' : 'bg-blue-500/20'
+              node.is_main ? 'bg-[#fbbf24]/20' : 'bg-mesh-primary/20'
             }`}
           >
             {node.is_main ? (
-              <Crown className="h-5 w-5 text-amber-400" />
+              <Crown className="h-5 w-5 text-[#fbbf24]" />
             ) : (
-              <Wifi className="h-5 w-5 text-blue-400" />
+              <Wifi className="h-5 w-5 text-mesh-primary" />
             )}
           </div>
           <div className="min-w-0 flex-1">
@@ -202,9 +202,9 @@ function MeshNodeDetailPanel({ node }: { node: MeshNode }) {
             </SheetTitle>
             <SheetDescription>
               {node.is_online ? (
-                <span className="text-emerald-400">Online</span>
+                <span className="text-[#4ade80]">Online</span>
               ) : (
-                <span className="text-rose-400">Offline</span>
+                <span className="text-[#fb7185]">Offline</span>
               )}
               {node.is_main && ' — Main Router (CAP)'}
             </SheetDescription>
@@ -258,11 +258,11 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
+      <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
         {label}
       </span>
       <span
-        className={`min-w-0 truncate text-sm text-slate-300 ${mono ? 'font-mono tabular-nums' : ''}`}
+        className={`min-w-0 truncate text-sm text-mesh-text ${mono ? 'font-mono tabular-nums' : ''}`}
       >
         {value}
       </span>
@@ -406,8 +406,8 @@ export default function MeshPage() {
       <PageTransition>
         <div className="flex h-[calc(100vh-64px)] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            <p className="text-sm text-slate-400">Loading mesh topology…</p>
+            <Loader2 className="h-8 w-8 animate-spin text-mesh-primary" />
+            <p className="text-sm text-mesh-text-dim">Loading mesh topology…</p>
           </div>
         </div>
       </PageTransition>
@@ -418,21 +418,21 @@ export default function MeshPage() {
     return (
       <PageTransition>
         <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-          <Card className="w-full max-w-md border-mesh-border-strong bg-mesh-surface-1/95">
+          <Card className="w-full max-w-md border-mesh-border bg-mesh-surface-1/95">
             <CardContent className="flex flex-col items-center gap-4 py-12">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/10">
-                <WifiOff className="h-8 w-8 text-rose-400" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#fb7185]/10">
+                <WifiOff className="h-8 w-8 text-[#fb7185]" />
               </div>
               <h1 className="text-xl font-semibold text-white">
                 Mesh Topology Unavailable
               </h1>
-              <p className="text-center text-sm text-slate-400">
+              <p className="text-center text-sm text-mesh-text-dim">
                 Could not load mesh topology from the Xiaomi router. Make sure the router is powered on and the IP address is correct in Settings.
               </p>
               <div className="flex items-center gap-3">
                 <Button
                   variant="outline"
-                  className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
+                  className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
                   onClick={() => {
                     setLoading(true)
                     buildGraph(true)
@@ -444,7 +444,7 @@ export default function MeshPage() {
                 <Link href="/settings/xiaomi-mesh">
                   <Button
                     variant="outline"
-                    className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
+                    className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
                   >
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
@@ -476,7 +476,7 @@ export default function MeshPage() {
           className="bg-mesh-surface-1"
         >
           <Controls
-            className="!border-mesh-border-strong !bg-mesh-surface-1 [&>button]:!border-mesh-border-strong [&>button]:!bg-mesh-surface-1 [&>button]:!text-slate-300 [&>button:hover]:!bg-mesh-surface-1"
+            className="!border-mesh-border !bg-mesh-surface-1 [&>button]:!border-mesh-border [&>button]:!bg-mesh-surface-1 [&>button]:!text-mesh-text [&>button:hover]:!bg-mesh-surface-1"
             showInteractive={false}
           />
           <MiniMap
@@ -485,7 +485,7 @@ export default function MeshPage() {
               if (data.node?.is_main) return '#f59e0b'
               return data.node?.is_online ? '#34d399' : '#475569'
             }}
-            className="!border-mesh-border-strong !bg-mesh-surface-1"
+            className="!border-mesh-border !bg-mesh-surface-1"
             maskColor="rgba(15, 23, 42, 0.7)"
           />
           <Background
@@ -496,24 +496,24 @@ export default function MeshPage() {
           />
 
           {/* Floating toolbar */}
-          <div className="absolute right-4 top-4 z-10 flex items-center gap-3 rounded-lg border border-mesh-border-strong bg-mesh-surface-1 px-4 py-2 backdrop-blur-sm">
-            <span className="text-[11px] text-slate-400">
+          <div className="absolute right-4 top-4 z-10 flex items-center gap-3 rounded-lg border border-mesh-border bg-mesh-surface-1 px-4 py-2 backdrop-blur-sm">
+            <span className="text-[11px] text-mesh-text-dim">
               <span>{stats.total} node{stats.total !== 1 ? 's' : ''}</span>
               {' · '}
               <span>{stats.online} online</span>
               {' · '}
               <span>{stats.totalDevices} device{stats.totalDevices !== 1 ? 's' : ''}</span>
             </span>
-            <div className="h-3 w-px bg-slate-700" />
+            <div className="h-3 w-px bg-mesh-border-strong" />
             <button
               onClick={() => buildGraph(false)}
-              className="text-slate-400 transition-colors hover:text-white"
+              className="text-mesh-text-dim transition-colors hover:text-white"
               title="Refresh now"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </button>
             {lastRefresh && (
-              <span className="text-[10px] text-slate-500">
+              <span className="text-[10px] text-mesh-text-mute">
                 {lastRefresh.toLocaleTimeString()}
               </span>
             )}
@@ -530,7 +530,7 @@ export default function MeshPage() {
       >
         <SheetContent
           side="right"
-          className="w-full overflow-y-auto border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-md"
+          className="w-full overflow-y-auto border-mesh-border bg-mesh-surface-1/95 sm:max-w-md"
         >
           {selectedNode && <MeshNodeDetailPanel node={selectedNode} />}
         </SheetContent>

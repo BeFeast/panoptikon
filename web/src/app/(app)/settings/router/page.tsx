@@ -151,7 +151,7 @@ function MikrotikPanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Label htmlFor="mt-enabled" className="text-xs text-slate-400">
+        <Label htmlFor="mt-enabled" className="text-xs text-mesh-text-dim">
           Enable MikroTik integration
         </Label>
         <Switch
@@ -162,7 +162,7 @@ function MikrotikPanel() {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="mt-url" className="text-xs text-slate-400">
+        <Label htmlFor="mt-url" className="text-xs text-mesh-text-dim">
           Router URL
         </Label>
         <div className="relative">
@@ -171,28 +171,28 @@ function MikrotikPanel() {
             type="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
+            className={`border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
               urlValid === "valid"
-                ? "border-emerald-500/40"
+                ? "border-[#4ade80]/40"
                 : urlValid === "error"
-                  ? "border-rose-500/40"
+                  ? "border-[#fb7185]/40"
                   : ""
             }`}
             placeholder="http://10.10.0.125"
           />
           {urlValid === "valid" && (
             <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
-              <CheckCircle className="h-4 w-4 text-emerald-400" />
+              <CheckCircle className="h-4 w-4 text-[#4ade80]" />
             </div>
           )}
         </div>
         {urlValid === "error" && (
-          <p className="animate-fade-in text-xs text-rose-400">Enter a valid URL (http:// or https://).</p>
+          <p className="animate-fade-in text-xs text-[#fb7185]">Enter a valid URL (http:// or https://).</p>
         )}
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="mt-user" className="text-xs text-slate-400">
+        <Label htmlFor="mt-user" className="text-xs text-mesh-text-dim">
           Username
         </Label>
         <Input
@@ -200,22 +200,22 @@ function MikrotikPanel() {
           type="text"
           value={user}
           onChange={(e) => setUser(e.target.value)}
-          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+          className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
           placeholder="admin"
         />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="mt-password" className="text-xs text-slate-400">
+        <Label htmlFor="mt-password" className="text-xs text-mesh-text-dim">
           Password{" "}
-          {passwordSet && <span className="text-emerald-500">(saved)</span>}
+          {passwordSet && <span className="text-[#4ade80]">(saved)</span>}
         </Label>
         <Input
           id="mt-password"
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+          className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
           placeholder={
             passwordSet
               ? "••••••••  (leave blank to keep current)"
@@ -241,7 +241,7 @@ function MikrotikPanel() {
           variant="outline"
           onClick={handleTest}
           disabled={!url || testStatus === "loading"}
-          className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55 disabled:opacity-40"
+          className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55 disabled:opacity-40"
         >
           {testStatus === "loading" ? (
             <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -271,27 +271,27 @@ function StatusMessages({
   return (
     <>
       {saveStatus === "success" && saveMsg && (
-        <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-          <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-          <p className="text-xs text-emerald-400">{saveMsg}</p>
+        <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+          <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+          <p className="text-xs text-[#4ade80]">{saveMsg}</p>
         </div>
       )}
       {saveStatus === "error" && saveMsg && (
-        <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-          <p className="text-xs text-rose-400">{saveMsg}</p>
+        <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+          <p className="text-xs text-[#fb7185]">{saveMsg}</p>
         </div>
       )}
       {testStatus === "success" && testMsg && (
-        <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-          <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-          <p className="text-xs text-emerald-400">{testMsg}</p>
+        <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+          <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+          <p className="text-xs text-[#4ade80]">{testMsg}</p>
         </div>
       )}
       {testStatus === "error" && testMsg && (
-        <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-          <p className="text-xs text-rose-400">{testMsg}</p>
+        <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+          <p className="text-xs text-[#fb7185]">{testMsg}</p>
         </div>
       )}
     </>
@@ -307,7 +307,7 @@ export default function RouterSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -317,8 +317,8 @@ export default function RouterSettingsPage() {
         </div>
 
         <SettingsSection
-          icon={<Router className="h-4 w-4 text-blue-400" />}
-          iconBg="bg-blue-500/10"
+          icon={<Router className="h-4 w-4 text-mesh-primary" />}
+          iconBg="bg-mesh-primary/10"
           title="Router Connection"
           description="Configure MikroTik router integration."
         >

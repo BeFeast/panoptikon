@@ -115,6 +115,9 @@ jobs:
       - name: Install dependencies
         run: bun install
 
+      - name: Design tokens guard
+        run: bash scripts/check-design-tokens.sh
+
       - name: Lint
         run: bunx eslint src --ext .ts,.tsx --max-warnings=0 || true
 

@@ -112,7 +112,7 @@ export default function WebhookSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -120,13 +120,13 @@ export default function WebhookSettingsPage() {
         </div>
 
         <SettingsSection
-          icon={<Bell className="h-4 w-4 text-purple-400" />}
-          iconBg="bg-purple-500/10"
+          icon={<Bell className="h-4 w-4 text-[#c084fc]" />}
+          iconBg="bg-[#c084fc]/10"
           title="Webhook Configuration"
           description="POST alert payloads to Discord, Slack, ntfy.sh, or any URL."
         >
           <div className="space-y-1.5">
-            <Label htmlFor="webhook-url" className="text-xs text-slate-400">
+            <Label htmlFor="webhook-url" className="text-xs text-mesh-text-dim">
               Webhook URL
             </Label>
             <div className="relative">
@@ -135,48 +135,48 @@ export default function WebhookSettingsPage() {
                 type="url"
                 value={webhookUrl}
                 onChange={(e) => setWebhookUrl(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
+                className={`border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   urlValid === "valid"
-                    ? "border-emerald-500/40"
+                    ? "border-[#4ade80]/40"
                     : urlValid === "error"
-                      ? "border-rose-500/40"
+                      ? "border-[#fb7185]/40"
                       : ""
                 }`}
                 placeholder="https://ntfy.sh/my-topic or Discord webhook URL"
               />
               {urlValid === "valid" && (
                 <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
-                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  <CheckCircle className="h-4 w-4 text-[#4ade80]" />
                 </div>
               )}
             </div>
             {urlValid === "error" && (
-              <p className="animate-fade-in text-xs text-rose-400">Enter a valid URL (http:// or https://).</p>
+              <p className="animate-fade-in text-xs text-[#fb7185]">Enter a valid URL (http:// or https://).</p>
             )}
           </div>
 
           {webhookStatus === "success" && webhookMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-              <p className="text-xs text-emerald-400">{webhookMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+              <p className="text-xs text-[#4ade80]">{webhookMsg}</p>
             </div>
           )}
           {webhookStatus === "error" && webhookMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-              <p className="text-xs text-rose-400">{webhookMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+              <p className="text-xs text-[#fb7185]">{webhookMsg}</p>
             </div>
           )}
           {testStatus === "success" && testMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-              <p className="text-xs text-emerald-400">{testMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+              <p className="text-xs text-[#4ade80]">{testMsg}</p>
             </div>
           )}
           {testStatus === "error" && testMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-              <p className="text-xs text-rose-400">{testMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+              <p className="text-xs text-[#fb7185]">{testMsg}</p>
             </div>
           )}
 
@@ -190,7 +190,7 @@ export default function WebhookSettingsPage() {
               variant="outline"
               onClick={handleWebhookTest}
               disabled={!savedWebhookUrl || testStatus === "loading"}
-              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55 disabled:opacity-40"
+              className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55 disabled:opacity-40"
             >
               {testStatus === "loading" ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />

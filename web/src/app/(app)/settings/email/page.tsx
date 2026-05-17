@@ -133,7 +133,7 @@ export default function EmailSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -141,38 +141,38 @@ export default function EmailSettingsPage() {
         </div>
 
         <SettingsSection
-          icon={<Mail className="h-4 w-4 text-emerald-400" />}
-          iconBg="bg-emerald-500/10"
+          icon={<Mail className="h-4 w-4 text-[#4ade80]" />}
+          iconBg="bg-[#4ade80]/10"
           title="SMTP Configuration"
           description="Configure SMTP to receive email alerts alongside webhook notifications."
         >
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2 space-y-1.5">
-              <Label htmlFor="smtp-host" className="text-xs text-slate-400">
+              <Label htmlFor="smtp-host" className="text-xs text-mesh-text-dim">
                 SMTP Host
               </Label>
               <Input
                 id="smtp-host"
                 value={smtpHost}
                 onChange={(e) => setSmtpHost(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="smtp.gmail.com"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="smtp-port" className="text-xs text-slate-400">
+              <Label htmlFor="smtp-port" className="text-xs text-mesh-text-dim">
                 Port
               </Label>
               <Input
                 id="smtp-port"
                 value={smtpPort}
                 onChange={(e) => setSmtpPort(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="587"
               />
             </div>
             <div className="flex items-end space-y-1.5">
-              <label className="flex items-center gap-2 text-sm text-slate-300">
+              <label className="flex items-center gap-2 text-sm text-mesh-text">
                 <input
                   type="checkbox"
                   checked={smtpTlsEnabled}
@@ -183,19 +183,19 @@ export default function EmailSettingsPage() {
               </label>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="smtp-username" className="text-xs text-slate-400">
+              <Label htmlFor="smtp-username" className="text-xs text-mesh-text-dim">
                 Username
               </Label>
               <Input
                 id="smtp-username"
                 value={smtpUsername}
                 onChange={(e) => setSmtpUsername(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="user@gmail.com"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="smtp-password" className="text-xs text-slate-400">
+              <Label htmlFor="smtp-password" className="text-xs text-mesh-text-dim">
                 Password {savedPasswordSet && "(set)"}
               </Label>
               <Input
@@ -203,12 +203,12 @@ export default function EmailSettingsPage() {
                 type="password"
                 value={smtpPassword}
                 onChange={(e) => setSmtpPassword(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder={savedPasswordSet ? "Leave blank to keep" : "App password"}
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="smtp-from" className="text-xs text-slate-400">
+              <Label htmlFor="smtp-from" className="text-xs text-mesh-text-dim">
                 From Email
               </Label>
               <Input
@@ -216,12 +216,12 @@ export default function EmailSettingsPage() {
                 type="email"
                 value={smtpFromEmail}
                 onChange={(e) => setSmtpFromEmail(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="panoptikon@example.com"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="smtp-to" className="text-xs text-slate-400">
+              <Label htmlFor="smtp-to" className="text-xs text-mesh-text-dim">
                 To Email
               </Label>
               <Input
@@ -229,34 +229,34 @@ export default function EmailSettingsPage() {
                 type="email"
                 value={smtpToEmail}
                 onChange={(e) => setSmtpToEmail(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="admin@example.com"
               />
             </div>
           </div>
 
           {saveStatus === "success" && saveMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-              <p className="text-xs text-emerald-400">{saveMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+              <p className="text-xs text-[#4ade80]">{saveMsg}</p>
             </div>
           )}
           {saveStatus === "error" && saveMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-              <p className="text-xs text-rose-400">{saveMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+              <p className="text-xs text-[#fb7185]">{saveMsg}</p>
             </div>
           )}
           {testStatus === "success" && testMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-              <p className="text-xs text-emerald-400">{testMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+              <p className="text-xs text-[#4ade80]">{testMsg}</p>
             </div>
           )}
           {testStatus === "error" && testMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-              <p className="text-xs text-rose-400">{testMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+              <p className="text-xs text-[#fb7185]">{testMsg}</p>
             </div>
           )}
 
@@ -270,7 +270,7 @@ export default function EmailSettingsPage() {
               variant="outline"
               onClick={handleTestEmail}
               disabled={!savedHost || testStatus === "loading"}
-              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55 disabled:opacity-40"
+              className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55 disabled:opacity-40"
             >
               {testStatus === "loading" ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />

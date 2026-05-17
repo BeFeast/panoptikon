@@ -90,15 +90,15 @@ export function ConfigTab() {
   return (
     <div className="space-y-6">
       {/* Config Backups */}
-      <Card className="border-mesh-border-strong bg-mesh-surface-1">
+      <Card className="border-mesh-border bg-mesh-surface-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
-            <FileArchive className="h-4 w-4 text-blue-400" />
+            <FileArchive className="h-4 w-4 text-mesh-primary" />
             Config Backups
           </CardTitle>
           <Button
             size="sm"
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-mesh-primary hover:bg-mesh-primary"
             onClick={handleCreateSnapshot}
             disabled={creating}
           >
@@ -113,7 +113,7 @@ export function ConfigTab() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-mesh-text-mute">
                     <th className="px-3 py-2">Timestamp</th>
                     <th className="px-3 py-2">Description</th>
                     <th className="px-3 py-2">Size</th>
@@ -123,22 +123,22 @@ export function ConfigTab() {
                 <tbody>
                   {(snapshots ?? []).length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-3 py-8 text-center text-slate-500">
+                      <td colSpan={4} className="px-3 py-8 text-center text-mesh-text-mute">
                         No config backups
                       </td>
                     </tr>
                   ) : (
                     (snapshots ?? []).map((s) => (
-                      <tr key={s.id} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
+                      <tr key={s.id} className="border-b border-mesh-border hover:bg-mesh-surface-2">
                         <td className="px-3 py-2 text-white">{new Date(s.timestamp).toLocaleString()}</td>
-                        <td className="px-3 py-2 text-slate-400">{s.description ?? "\u2014"}</td>
-                        <td className="px-3 py-2 text-slate-400">{formatBytes(s.size_bytes)}</td>
+                        <td className="px-3 py-2 text-mesh-text-dim">{s.description ?? "\u2014"}</td>
+                        <td className="px-3 py-2 text-mesh-text-dim">{formatBytes(s.size_bytes)}</td>
                         <td className="px-3 py-2 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-slate-400 hover:text-white"
+                              className="text-mesh-text-dim hover:text-white"
                               onClick={() => handleViewDiff(s.id)}
                               disabled={diffLoading}
                             >
@@ -148,7 +148,7 @@ export function ConfigTab() {
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="text-amber-400 hover:text-amber-300"
+                              className="text-[#fbbf24] hover:text-[#fbbf24]"
                               onClick={() => setRestoreTarget(s)}
                             >
                               <RotateCcw className="mr-1 h-3.5 w-3.5" />
@@ -167,10 +167,10 @@ export function ConfigTab() {
       </Card>
 
       {/* Audit Log */}
-      <Card className="border-mesh-border-strong bg-mesh-surface-1">
+      <Card className="border-mesh-border bg-mesh-surface-1">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
-            <FileArchive className="h-4 w-4 text-blue-400" />
+            <FileArchive className="h-4 w-4 text-mesh-primary" />
             Audit Log
           </CardTitle>
         </CardHeader>
@@ -181,7 +181,7 @@ export function ConfigTab() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
+                  <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-mesh-text-mute">
                     <th className="px-3 py-2">Timestamp</th>
                     <th className="px-3 py-2">Action</th>
                     <th className="px-3 py-2">Description</th>
@@ -191,24 +191,24 @@ export function ConfigTab() {
                 <tbody>
                   {(audit ?? []).length === 0 ? (
                     <tr>
-                      <td colSpan={4} className="px-3 py-8 text-center text-slate-500">
+                      <td colSpan={4} className="px-3 py-8 text-center text-mesh-text-mute">
                         No audit entries
                       </td>
                     </tr>
                   ) : (
                     (audit ?? []).map((a) => (
-                      <tr key={a.id} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
-                        <td className="px-3 py-2 text-slate-300">{new Date(a.timestamp).toLocaleString()}</td>
+                      <tr key={a.id} className="border-b border-mesh-border hover:bg-mesh-surface-2">
+                        <td className="px-3 py-2 text-mesh-text">{new Date(a.timestamp).toLocaleString()}</td>
                         <td className="px-3 py-2 font-medium text-white">{a.action}</td>
-                        <td className="px-3 py-2 text-slate-400">{a.description}</td>
+                        <td className="px-3 py-2 text-mesh-text-dim">{a.description}</td>
                         <td className="px-3 py-2">
                           {a.success ? (
-                            <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
+                            <Badge variant="outline" className="border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]">
                               <CheckCircle className="mr-1 h-3 w-3" />
                               Success
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="border-rose-500/30 bg-rose-500/10 text-rose-400">
+                            <Badge variant="outline" className="border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]">
                               <XCircle className="mr-1 h-3 w-3" />
                               Failed
                             </Badge>
@@ -226,13 +226,13 @@ export function ConfigTab() {
 
       {/* Diff Dialog */}
       <Dialog open={!!diffData} onOpenChange={(o) => !o && setDiffData(null)}>
-        <DialogContent className="max-h-[80vh] border-mesh-border-strong bg-mesh-surface-1 sm:max-w-3xl">
+        <DialogContent className="max-h-[80vh] border-mesh-border bg-mesh-surface-1 sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle className="text-white">Config Diff</DialogTitle>
           </DialogHeader>
           {diffData && (
             <div className="max-h-[60vh] overflow-auto">
-              <pre className="rounded-lg bg-mesh-surface-1 p-4 text-xs leading-relaxed text-slate-300">
+              <pre className="rounded-lg bg-mesh-surface-1 p-4 text-xs leading-relaxed text-mesh-text">
                 {diffData.diff || "No differences found"}
               </pre>
             </div>
@@ -242,17 +242,17 @@ export function ConfigTab() {
 
       {/* Restore Confirm */}
       <AlertDialog open={!!restoreTarget} onOpenChange={(o) => !o && setRestoreTarget(null)}>
-        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
+        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Restore Config</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-mesh-text-dim">
               Restore config from {restoreTarget ? new Date(restoreTarget.timestamp).toLocaleString() : ""}?
               This will overwrite the current configuration and reload all services.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-mesh-border-strong text-slate-400">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-amber-600 hover:bg-amber-700" onClick={handleRestore}>
+            <AlertDialogCancel className="border-mesh-border-strong text-mesh-text-dim">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-[#fbbf24] hover:bg-[#fbbf24]" onClick={handleRestore}>
               Restore
             </AlertDialogAction>
           </AlertDialogFooter>

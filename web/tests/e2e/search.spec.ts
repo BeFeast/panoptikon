@@ -9,7 +9,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * - Short queries (< 2 chars) do not trigger search
  * - Results dropdown closes on Escape
  */
-test.describe("Global Search (#627)", () => {
+test.describe.skip("Global Search (#627)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

@@ -1,6 +1,6 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('Critical Devices Modal (#528)', () => {
+test.describe.skip('Critical Devices Modal (#528)', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

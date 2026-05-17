@@ -85,15 +85,15 @@ function formatSpeed(bytesPerSec: string | null): string {
 }
 
 function progressColor(value: number): string {
-  if (value >= 90) return "bg-red-500";
-  if (value >= 70) return "bg-amber-500";
-  return "bg-emerald-500";
+  if (value >= 90) return "bg-[#fb7185]";
+  if (value >= 70) return "bg-[#fbbf24]";
+  return "bg-[#4ade80]";
 }
 
 function tempColor(temp: number): string {
-  if (temp >= 80) return "text-red-400";
-  if (temp >= 60) return "text-amber-400";
-  return "text-emerald-400";
+  if (temp >= 80) return "text-[#fb7185]";
+  if (temp >= 60) return "text-[#fbbf24]";
+  return "text-[#4ade80]";
 }
 
 // ── System Stats Section ─────────────────────────────────
@@ -103,10 +103,10 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
   const memUsage = status.mem_usage ? Math.round(status.mem_usage * 100) : 0;
 
   return (
-    <Card className="border-mesh-border-strong bg-mesh-surface-1">
+    <Card className="border-mesh-border bg-mesh-surface-1">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-300">
-          <Cpu className="h-4 w-4 text-orange-400" />
+        <CardTitle className="flex items-center gap-2 text-sm font-medium text-mesh-text">
+          <Cpu className="h-4 w-4 text-[#fbbf24]" />
           System Stats
         </CardTitle>
       </CardHeader>
@@ -114,10 +114,10 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
         {/* CPU */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">
+            <span className="text-mesh-text-dim">
               CPU ({status.cpu_cores ?? "?"}-core @ {status.cpu_freq ?? "?"})
             </span>
-            <span className="font-mono text-slate-200">{cpuLoad}%</span>
+            <span className="font-mono text-mesh-text">{cpuLoad}%</span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-mesh-surface-1">
             <div
@@ -130,10 +130,10 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
         {/* Memory */}
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-slate-400">
+            <span className="text-mesh-text-dim">
               RAM ({status.mem_total ?? "?"} {status.mem_type ?? ""})
             </span>
-            <span className="font-mono text-slate-200">{memUsage}%</span>
+            <span className="font-mono text-mesh-text">{memUsage}%</span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-mesh-surface-1">
             <div
@@ -146,22 +146,22 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
         {/* Temperature + Uptime row */}
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-lg bg-mesh-surface-1 p-3">
-            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
               <Thermometer className="h-3.5 w-3.5" />
               Temperature
             </div>
             <p
-              className={`mt-1.5 text-lg font-semibold ${status.temperature != null ? tempColor(status.temperature) : "text-slate-400"}`}
+              className={`mt-1.5 text-lg font-semibold ${status.temperature != null ? tempColor(status.temperature) : "text-mesh-text-dim"}`}
             >
               {status.temperature != null ? `${status.temperature}\u00b0C` : "\u2014"}
             </p>
           </div>
           <div className="rounded-lg bg-mesh-surface-1 p-3">
-            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
               <Clock className="h-3.5 w-3.5" />
               Uptime
             </div>
-            <p className="mt-1.5 text-lg font-semibold text-slate-200">
+            <p className="mt-1.5 text-lg font-semibold text-mesh-text">
               {formatUptime(status.uptime)}
             </p>
           </div>
@@ -170,27 +170,27 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
         {/* Devices + Bandwidth row */}
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-lg bg-mesh-surface-1 p-3">
-            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
               <Users className="h-3.5 w-3.5" />
               Devices Online
             </div>
-            <p className="mt-1.5 text-lg font-semibold text-slate-200">
+            <p className="mt-1.5 text-lg font-semibold text-mesh-text">
               {status.devices_online ?? 0}
-              <span className="ml-1 text-sm font-normal text-slate-500">
+              <span className="ml-1 text-sm font-normal text-mesh-text-mute">
                 / {status.devices_total ?? 0}
               </span>
             </p>
           </div>
           <div className="rounded-lg bg-mesh-surface-1 p-3">
-            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-slate-500">
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
               WAN Speed
             </div>
             <div className="mt-1 flex items-center gap-3 text-sm">
-              <span className="flex items-center gap-1 text-emerald-400">
+              <span className="flex items-center gap-1 text-[#4ade80]">
                 <ArrowDown className="h-3 w-3" />
                 {formatSpeed(status.wan_download)}
               </span>
-              <span className="flex items-center gap-1 text-blue-400">
+              <span className="flex items-center gap-1 text-mesh-primary">
                 <ArrowUp className="h-3 w-3" />
                 {formatSpeed(status.wan_upload)}
               </span>
@@ -208,63 +208,63 @@ function WanInfoSection({ wan }: { wan: XiaomiWanInfo }) {
   const dnsServers = wan.dns?.split(",").map((d) => d.trim()) ?? [];
 
   return (
-    <Card className="border-mesh-border-strong bg-mesh-surface-1">
+    <Card className="border-mesh-border bg-mesh-surface-1">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-300">
-          <Globe className="h-4 w-4 text-blue-400" />
+        <CardTitle className="flex items-center gap-2 text-sm font-medium text-mesh-text">
+          <Globe className="h-4 w-4 text-mesh-primary" />
           WAN Info
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
-            <span className="text-slate-500">WAN IP</span>
-            <p className="font-mono text-slate-200">{wan.ip ?? "\u2014"}</p>
+            <span className="text-mesh-text-mute">WAN IP</span>
+            <p className="font-mono text-mesh-text">{wan.ip ?? "\u2014"}</p>
           </div>
           <div>
-            <span className="text-slate-500">Gateway</span>
-            <p className="font-mono text-slate-200">{wan.gateway ?? "\u2014"}</p>
+            <span className="text-mesh-text-mute">Gateway</span>
+            <p className="font-mono text-mesh-text">{wan.gateway ?? "\u2014"}</p>
           </div>
           <div>
-            <span className="text-slate-500">Subnet Mask</span>
-            <p className="font-mono text-slate-200">{wan.mask ?? "\u2014"}</p>
+            <span className="text-mesh-text-mute">Subnet Mask</span>
+            <p className="font-mono text-mesh-text">{wan.mask ?? "\u2014"}</p>
           </div>
           <div>
-            <span className="text-slate-500">WAN Type</span>
-            <p className="text-slate-200">
+            <span className="text-mesh-text-mute">WAN Type</span>
+            <p className="text-mesh-text">
               <Badge
                 variant="outline"
-                className="border-mesh-border-strong text-slate-300"
+                className="border-mesh-border-strong text-mesh-text"
               >
                 {wan.wan_type ?? "\u2014"}
               </Badge>
             </p>
           </div>
           <div>
-            <span className="text-slate-500">DNS Servers</span>
+            <span className="text-mesh-text-mute">DNS Servers</span>
             <div className="mt-0.5 flex flex-wrap gap-1.5">
               {dnsServers.length > 0
                 ? dnsServers.map((d) => (
                     <Badge
                       key={d}
                       variant="outline"
-                      className="border-mesh-border-strong font-mono text-slate-300"
+                      className="border-mesh-border-strong font-mono text-mesh-text"
                     >
                       {d}
                     </Badge>
                   ))
-                : <span className="text-slate-400">{"\u2014"}</span>}
+                : <span className="text-mesh-text-dim">{"\u2014"}</span>}
             </div>
           </div>
           <div>
-            <span className="text-slate-500">IPv6 Status</span>
-            <p className="text-slate-200">
+            <span className="text-mesh-text-mute">IPv6 Status</span>
+            <p className="text-mesh-text">
               <Badge
                 variant="outline"
                 className={
                   wan.ipv6_status === "enabled"
-                    ? "border-emerald-700 text-emerald-400"
-                    : "border-mesh-border-strong text-slate-400"
+                    ? "border-[#4ade80] text-[#4ade80]"
+                    : "border-mesh-border-strong text-mesh-text-dim"
                 }
               >
                 {wan.ipv6_status ?? "unknown"}
@@ -344,16 +344,16 @@ function WifiBandsSection({
     wifiDevices.length > 0 && wifiDevices.some((d) => d.band != null);
 
   return (
-    <Card className="border-mesh-border-strong bg-mesh-surface-1">
+    <Card className="border-mesh-border bg-mesh-surface-1">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-300">
-          <Wifi className="h-4 w-4 text-violet-400" />
+        <CardTitle className="flex items-center gap-2 text-sm font-medium text-mesh-text">
+          <Wifi className="h-4 w-4 text-[#a78bfa]" />
           WiFi Bands
         </CardTitle>
       </CardHeader>
       <CardContent>
         {dedupedBands.length === 0 ? (
-          <p className="text-sm text-slate-500">No WiFi bands detected.</p>
+          <p className="text-sm text-mesh-text-mute">No WiFi bands detected.</p>
         ) : (
           <div className="grid gap-4 md:grid-cols-2">
             {dedupedBands.map((band, i) => {
@@ -375,18 +375,18 @@ function WifiBandsSection({
               return (
                 <div
                   key={`${bandLabel}|${band.ssid ?? i}`}
-                  className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1 p-4"
+                  className="rounded-lg border border-mesh-border bg-mesh-surface-1 p-4"
                 >
                   <div className="mb-3 flex items-center justify-between">
-                    <Badge className="bg-violet-500/20 text-violet-300">
+                    <Badge className="bg-[#a78bfa]/20 text-[#a78bfa]">
                       {bandLabel}
                     </Badge>
                     <Badge
                       variant="outline"
                       className={
                         band.status === "1"
-                          ? "border-emerald-700 text-emerald-400"
-                          : "border-mesh-border-strong text-slate-500"
+                          ? "border-[#4ade80] text-[#4ade80]"
+                          : "border-mesh-border-strong text-mesh-text-mute"
                       }
                     >
                       {band.status === "1" ? "Active" : "Off"}
@@ -394,34 +394,34 @@ function WifiBandsSection({
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm">
                     <div>
-                      <span className="text-slate-500">SSID</span>
-                      <p className="truncate text-slate-200">
+                      <span className="text-mesh-text-mute">SSID</span>
+                      <p className="truncate text-mesh-text">
                         {band.ssid ?? "\u2014"}
                       </p>
                     </div>
                     <div>
-                      <span className="text-slate-500">Channel</span>
-                      <p className="text-slate-200">
+                      <span className="text-mesh-text-mute">Channel</span>
+                      <p className="text-mesh-text">
                         {!band.channel || band.channel === "0"
                           ? "Auto"
                           : band.channel}
                       </p>
                     </div>
                     <div>
-                      <span className="text-slate-500">Clients</span>
-                      <p className="text-slate-200">
+                      <span className="text-mesh-text-mute">Clients</span>
+                      <p className="text-mesh-text">
                         {hasBandInfo ? clientCount : "\u2014"}
                       </p>
                     </div>
                     <div>
-                      <span className="text-slate-500">Band Steering</span>
-                      <p className="text-slate-200">
+                      <span className="text-mesh-text-mute">Band Steering</span>
+                      <p className="text-mesh-text">
                         <Badge
                           variant="outline"
                           className={
                             band.band_steering === "1"
-                              ? "border-emerald-700 text-emerald-400"
-                              : "border-mesh-border-strong text-slate-400"
+                              ? "border-[#4ade80] text-[#4ade80]"
+                              : "border-mesh-border-strong text-mesh-text-dim"
                           }
                         >
                           {band.band_steering === "1" ? "On" : "Off"}
@@ -443,9 +443,9 @@ function WifiBandsSection({
 
 function FirmwareSection({ firmware }: { firmware: XiaomiFirmware }) {
   return (
-    <Card className="border-mesh-border-strong bg-mesh-surface-1">
+    <Card className="border-mesh-border bg-mesh-surface-1">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-300">
+        <CardTitle className="flex items-center gap-2 text-sm font-medium text-mesh-text">
           <HardDrive className="h-4 w-4 text-mesh-accent" />
           Firmware & Updates
         </CardTitle>
@@ -453,41 +453,41 @@ function FirmwareSection({ firmware }: { firmware: XiaomiFirmware }) {
       <CardContent>
         <div className="grid gap-3 text-sm sm:grid-cols-2">
           <div>
-            <span className="text-slate-500">Firmware Version</span>
-            <p className="font-mono text-slate-200">
+            <span className="text-mesh-text-mute">Firmware Version</span>
+            <p className="font-mono text-mesh-text">
               {firmware.rom_version ?? "\u2014"}
             </p>
           </div>
           <div>
-            <span className="text-slate-500">Hardware</span>
-            <p className="text-slate-200">{firmware.hardware ?? "\u2014"}</p>
+            <span className="text-mesh-text-mute">Hardware</span>
+            <p className="text-mesh-text">{firmware.hardware ?? "\u2014"}</p>
           </div>
           <div>
-            <span className="text-slate-500">Model</span>
-            <p className="text-slate-200">{firmware.model ?? "\u2014"}</p>
+            <span className="text-mesh-text-mute">Model</span>
+            <p className="text-mesh-text">{firmware.model ?? "\u2014"}</p>
           </div>
           <div>
-            <span className="text-slate-500">Router Name</span>
-            <p className="text-slate-200">{firmware.router_name ?? "\u2014"}</p>
+            <span className="text-mesh-text-mute">Router Name</span>
+            <p className="text-mesh-text">{firmware.router_name ?? "\u2014"}</p>
           </div>
           <div>
-            <span className="text-slate-500">Locale</span>
-            <p className="text-slate-200">
+            <span className="text-mesh-text-mute">Locale</span>
+            <p className="text-mesh-text">
               {firmware.language ?? firmware.country_code ?? "\u2014"}
             </p>
           </div>
           <div>
-            <span className="text-slate-500">Update Available</span>
+            <span className="text-mesh-text-mute">Update Available</span>
             <p>
               {firmware.update_available ? (
-                <Badge className="bg-amber-500/20 text-amber-300">
+                <Badge className="bg-[#fbbf24]/20 text-[#fbbf24]">
                   <Download className="mr-1 h-3 w-3" />
                   {firmware.update_version ?? "Yes"}
                 </Badge>
               ) : (
                 <Badge
                   variant="outline"
-                  className="border-emerald-700 text-emerald-400"
+                  className="border-[#4ade80] text-[#4ade80]"
                 >
                   Up to date
                 </Badge>
@@ -547,8 +547,8 @@ export default function XiaomiRouter() {
   if (!status?.configured || !status?.reachable) {
     return (
       <div className="flex flex-col items-center gap-4 py-12 text-center">
-        <AlertCircle className="h-10 w-10 text-amber-400" />
-        <p className="text-sm text-slate-400">
+        <AlertCircle className="h-10 w-10 text-[#fbbf24]" />
+        <p className="text-sm text-mesh-text-dim">
           {!status?.configured
             ? "Xiaomi router is not configured. Enable it in Settings \u2192 Integrations \u2192 Xiaomi Mesh."
             : "Xiaomi router is unreachable. Check connection settings."}
@@ -562,12 +562,12 @@ export default function XiaomiRouter() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
-            <Router className="h-5 w-5 text-orange-400" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#fbbf24]/10">
+            <Router className="h-5 w-5 text-[#fbbf24]" />
           </div>
           <div>
             <h2 className="text-lg font-semibold text-white">Xiaomi Router</h2>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-mesh-text-mute">
               {status.devices_online ?? 0} devices online
             </p>
           </div>

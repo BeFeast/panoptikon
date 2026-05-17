@@ -42,9 +42,9 @@ export function SaveButton({
       onClick={onClick}
       disabled={disabled || status === "loading"}
       className={cn(
-        "bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 transition-all",
-        animating === "success" && "animate-success-glow bg-emerald-600 hover:bg-emerald-500",
-        animating === "error" && "animate-shake bg-rose-600 hover:bg-rose-500",
+        "bg-mesh-primary text-white hover:bg-mesh-primary disabled:opacity-40 transition-all",
+        animating === "success" && "animate-success-glow bg-[#4ade80] hover:bg-[#4ade80]",
+        animating === "error" && "animate-shake bg-[#fb7185] hover:bg-[#fb7185]",
         className,
       )}
       data-testid="save-button"

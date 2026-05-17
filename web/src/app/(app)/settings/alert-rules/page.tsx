@@ -136,7 +136,7 @@ export default function AlertRulesPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -144,30 +144,30 @@ export default function AlertRulesPage() {
         </div>
 
         {status === "success" && statusMsg && (
-          <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-            <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-            <p className="text-xs text-emerald-400">{statusMsg}</p>
+          <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+            <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+            <p className="text-xs text-[#4ade80]">{statusMsg}</p>
           </div>
         )}
         {status === "error" && statusMsg && (
-          <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-            <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-            <p className="text-xs text-rose-400">{statusMsg}</p>
+          <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+            <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+            <p className="text-xs text-[#fb7185]">{statusMsg}</p>
           </div>
         )}
 
         {status === "loading" && rules.length === 0 ? (
-          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+          <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
             <CardContent className="flex items-center justify-center py-8">
-              <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
+              <Loader2 className="h-5 w-5 animate-spin text-mesh-text-mute" />
             </CardContent>
           </Card>
         ) : (
           <>
             {rules.length === 0 && (
-              <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+              <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
                 <CardContent className="py-8 text-center">
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-mesh-text-mute">
                     No alert rules configured. Add a rule below.
                   </p>
                 </CardContent>
@@ -177,18 +177,18 @@ export default function AlertRulesPage() {
             {rules.map((rule) => {
               const meta = RULE_TYPE_LABELS[rule.rule_type];
               return (
-                <Card key={rule.id} className="border-mesh-border-strong bg-mesh-surface-1/95">
+                <Card key={rule.id} className="border-mesh-border bg-mesh-surface-1/95">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10">
-                          <Bell className="h-4 w-4 text-amber-400" />
+                        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#fbbf24]/10">
+                          <Bell className="h-4 w-4 text-[#fbbf24]" />
                         </div>
                         <div>
-                          <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                          <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                             {meta?.label ?? rule.rule_type}
                           </CardTitle>
-                          <CardDescription className="text-xs text-slate-500">
+                          <CardDescription className="text-xs text-mesh-text-mute">
                             {meta?.description ?? ""}
                           </CardDescription>
                         </div>
@@ -205,7 +205,7 @@ export default function AlertRulesPage() {
                           size="icon"
                           onClick={() => handleDelete(rule.id)}
                           disabled={savingId === rule.id}
-                          className="h-8 w-8 text-slate-500 hover:text-rose-400"
+                          className="h-8 w-8 text-mesh-text-mute hover:text-[#fb7185]"
                         >
                           {savingId === rule.id ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
@@ -219,7 +219,7 @@ export default function AlertRulesPage() {
                   <CardContent className="space-y-4">
                     {meta?.unit && (
                       <div className="space-y-1.5">
-                        <Label className="text-xs text-slate-400">
+                        <Label className="text-xs text-mesh-text-dim">
                           Threshold ({meta.unit})
                         </Label>
                         <Input
@@ -243,7 +243,7 @@ export default function AlertRulesPage() {
                               threshold_value: rule.threshold_value,
                             })
                           }
-                          className="w-32 border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+                          className="w-32 border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                           placeholder={
                             rule.rule_type === "device_offline" ? "5" : "100"
                           }
@@ -261,7 +261,7 @@ export default function AlertRulesPage() {
                         />
                         <Label
                           htmlFor={`telegram-${rule.id}`}
-                          className="text-xs text-slate-400"
+                          className="text-xs text-mesh-text-dim"
                         >
                           Telegram webhook
                         </Label>
@@ -276,7 +276,7 @@ export default function AlertRulesPage() {
                         />
                         <Label
                           htmlFor={`inapp-${rule.id}`}
-                          className="text-xs text-slate-400"
+                          className="text-xs text-mesh-text-dim"
                         >
                           In-app notification
                         </Label>
@@ -288,9 +288,9 @@ export default function AlertRulesPage() {
             })}
 
             {availableTypes.length > 0 && (
-              <Card className="border-dashed border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+              <Card className="border-dashed border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
                 <CardContent className="py-4">
-                  <p className="mb-3 text-xs font-medium text-slate-500">
+                  <p className="mb-3 text-xs font-medium text-mesh-text-mute">
                     Add a rule
                   </p>
                   <div className="flex flex-wrap gap-2">
@@ -300,7 +300,7 @@ export default function AlertRulesPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleCreate(type_key)}
-                        className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
+                        className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
                       >
                         <Plus className="mr-1.5 h-3.5 w-3.5" />
                         {RULE_TYPE_LABELS[type_key]?.label ?? type_key}

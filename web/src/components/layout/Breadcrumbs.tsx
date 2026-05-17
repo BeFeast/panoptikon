@@ -66,7 +66,7 @@ export function Breadcrumbs() {
   return (
     <nav
       aria-label="Breadcrumb"
-      className="flex items-center gap-1 px-3 py-1.5 text-xs text-slate-500 md:px-6 animate-in slide-in-from-left-2 fade-in duration-300"
+      className="flex items-center gap-1 px-3 py-1.5 text-xs text-mesh-text-mute md:px-6 animate-in slide-in-from-left-2 fade-in duration-300"
     >
       {segments.map((segment, i) => {
         const href = "/" + segments.slice(0, i + 1).join("/");
@@ -75,16 +75,16 @@ export function Breadcrumbs() {
         return (
           <span key={href} className="flex items-center gap-1">
             {i > 0 && (
-              <ChevronRight className="h-3 w-3 shrink-0 text-slate-600" />
+              <ChevronRight className="h-3 w-3 shrink-0 text-mesh-text-mute" />
             )}
             {isLast ? (
-              <span className="text-slate-300 font-medium">
+              <span className="text-mesh-text font-medium">
                 {labelFor(segment)}
               </span>
             ) : (
               <Link
                 href={href}
-                className="transition-colors hover:text-slate-300"
+                className="transition-colors hover:text-mesh-text"
               >
                 {labelFor(segment)}
               </Link>

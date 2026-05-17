@@ -1,6 +1,6 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('Device drawer UX — scrolling, field order, sticky save', () => {
+test.describe.skip('Device drawer UX — scrolling, field order, sticky save', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/devices/');

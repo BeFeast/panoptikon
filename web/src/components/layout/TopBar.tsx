@@ -265,14 +265,14 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
             if (results && query.length >= 2) setIsOpen(true);
           }}
           placeholder="Search devices, IPs, MACs...  ⌘K"
-          className="h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-white placeholder-slate-500 transition-all duration-150 focus:border-cyan-500/45 focus:outline-none focus:ring-2 focus:ring-cyan-500/18"
+          className="h-8 w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 text-sm text-white placeholder-mesh-text-mute transition-all duration-150 focus:border-mesh-accent/45 focus:outline-none focus:ring-2 focus:ring-mesh-accent/18"
         />
 
         {/* Search Results Dropdown */}
         {isOpen && (
           <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-lg border border-mesh-border-strong bg-mesh-bg/95 shadow-2xl backdrop-blur-md">
             {noResults && (
-              <div className="px-4 py-3 text-sm text-slate-500">
+              <div className="px-4 py-3 text-sm text-mesh-text-mute">
                 No results for &ldquo;{query}&rdquo;
               </div>
             )}
@@ -282,7 +282,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                 {/* Devices */}
                 {results.devices.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-mesh-text-mute">
                       Devices
                     </div>
                     {results.devices.map((d: SearchDevice) => {
@@ -296,22 +296,22 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                           onClick={() => navigateTo("device", d.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
                         >
-                          <Monitor className="h-4 w-4 shrink-0 text-slate-400" />
+                          <Monitor className="h-4 w-4 shrink-0 text-mesh-text-dim" />
                           <span
                             className={`inline-block h-2 w-2 rounded-full ${
                               d.is_online
-                                ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-                                : "bg-slate-500"
+                                ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
+                                : "bg-mesh-text-mute"
                             }`}
                           />
                           <span className="min-w-0 truncate font-mono tabular-nums text-white">
                             {d.name || d.ip_address || d.mac_address}
                           </span>
                           {d.hostname && (
-                            <span className="min-w-0 truncate text-slate-500">({d.hostname})</span>
+                            <span className="min-w-0 truncate text-mesh-text-mute">({d.hostname})</span>
                           )}
                           {d.vendor && (
-                            <span className="ml-auto shrink-0 truncate text-xs text-slate-600 max-w-[120px]">{d.vendor}</span>
+                            <span className="ml-auto shrink-0 truncate text-xs text-mesh-text-mute max-w-[120px]">{d.vendor}</span>
                           )}
                         </button>
                       );
@@ -322,7 +322,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                 {/* Agents */}
                 {results.agents.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-mesh-border-strong">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-mesh-text-mute border-t border-mesh-border-strong">
                       Agents
                     </div>
                     {results.agents.map((a: SearchAgent) => {
@@ -336,17 +336,17 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                           onClick={() => navigateTo("agent", a.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
                         >
-                          <Cpu className="h-4 w-4 shrink-0 text-slate-400" />
+                          <Cpu className="h-4 w-4 shrink-0 text-mesh-text-dim" />
                           <span
                             className={`inline-block h-2 w-2 rounded-full ${
                               a.is_online
-                                ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-                                : "bg-slate-500"
+                                ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
+                                : "bg-mesh-text-mute"
                             }`}
                           />
                           <span className="min-w-0 truncate text-white">{a.name || a.id}</span>
                           {a.hostname && (
-                            <span className="min-w-0 truncate text-slate-500">({a.hostname})</span>
+                            <span className="min-w-0 truncate text-mesh-text-mute">({a.hostname})</span>
                           )}
                         </button>
                       );
@@ -357,7 +357,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                 {/* SSH Hosts */}
                 {results.ssh_targets.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-mesh-border-strong">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-mesh-text-mute border-t border-mesh-border-strong">
                       SSH Hosts
                     </div>
                     {results.ssh_targets.map((st: SearchSshTarget) => {
@@ -371,16 +371,16 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                           onClick={() => navigateTo("ssh_target", st.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
                         >
-                          <Terminal className="h-4 w-4 shrink-0 text-slate-400" />
+                          <Terminal className="h-4 w-4 shrink-0 text-mesh-text-dim" />
                           <span
                             className={`inline-block h-2 w-2 rounded-full ${
                               st.is_online
-                                ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-                                : "bg-slate-500"
+                                ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
+                                : "bg-mesh-text-mute"
                             }`}
                           />
                           <span className="min-w-0 truncate text-white">{st.name}</span>
-                          <span className="min-w-0 truncate text-slate-500 font-mono text-xs">
+                          <span className="min-w-0 truncate text-mesh-text-mute font-mono text-xs">
                             {st.username}@{st.host}
                           </span>
                         </button>
@@ -392,7 +392,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                 {/* Assets */}
                 {results.assets.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-mesh-border-strong">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-mesh-text-mute border-t border-mesh-border-strong">
                       Assets
                     </div>
                     {results.assets.map((asset: SearchAsset) => {
@@ -406,11 +406,11 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                           onClick={() => navigateTo("asset", asset.id)}
                           onMouseEnter={() => setActiveIndex(idx)}
                         >
-                          <Package className="h-4 w-4 shrink-0 text-slate-400" />
+                          <Package className="h-4 w-4 shrink-0 text-mesh-text-dim" />
                           <span className="min-w-0 truncate text-white">{asset.name}</span>
-                          <span className="shrink-0 text-slate-500 text-xs">{asset.asset_type}</span>
+                          <span className="shrink-0 text-mesh-text-mute text-xs">{asset.asset_type}</span>
                           {asset.location && (
-                            <span className="ml-auto shrink-0 truncate text-xs text-slate-600 max-w-[120px]">{asset.location}</span>
+                            <span className="ml-auto shrink-0 truncate text-xs text-mesh-text-mute max-w-[120px]">{asset.location}</span>
                           )}
                         </button>
                       );
@@ -421,7 +421,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                 {/* Alerts */}
                 {results.alerts.length > 0 && (
                   <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500 border-t border-mesh-border-strong">
+                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-mesh-text-mute border-t border-mesh-border-strong">
                       Alerts
                     </div>
                     {results.alerts.map((al: SearchAlert) => {
@@ -453,13 +453,13 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
       </div>
 
       {/* Realm context + live status pill — mirrors the design source TopBar */}
-      <div className="hidden lg:flex items-center gap-2 shrink-0 font-mono text-[11px] text-slate-400">
-        <span className="text-slate-500">core.lan</span>
-        <span className="text-slate-700">›</span>
-        <span className="text-slate-300">Overview</span>
+      <div className="hidden lg:flex items-center gap-2 shrink-0 font-mono text-[11px] text-mesh-text-dim">
+        <span className="text-mesh-text-mute">core.lan</span>
+        <span className="text-mesh-border-strong">›</span>
+        <span className="text-mesh-text">Overview</span>
       </div>
       <div
-        className="flex items-center gap-2 shrink-0 rounded-full border border-mesh-border-strong bg-mesh-surface-1/80 px-2.5 py-1 font-mono text-[11px] text-slate-300"
+        className="flex items-center gap-2 shrink-0 rounded-full border border-mesh-border bg-mesh-surface-1/80 px-2.5 py-1 font-mono text-[11px] text-mesh-text"
         data-testid="live-status-pill"
       >
         <span
@@ -467,8 +467,8 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
           aria-hidden="true"
         />
         <span>live · ws</span>
-        <span className="text-slate-600">·</span>
-        <span className="text-slate-400 tabular-nums">
+        <span className="text-mesh-text-mute">·</span>
+        <span className="text-mesh-text-dim tabular-nums">
           {latencyMs == null ? "—" : `${latencyMs}ms`}
         </span>
       </div>
@@ -479,12 +479,12 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
         <div className="relative" ref={bellRef}>
           <button
             onClick={() => setBellOpen((v) => !v)}
-            className="relative flex h-9 w-9 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-mesh-surface-2/75 hover:text-white"
+            className="relative flex h-9 w-9 items-center justify-center rounded-md text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/75 hover:text-white"
             aria-label="Notifications"
           >
             <Bell className="h-5 w-5" />
             {unreadCount > 0 && (
-              <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded bg-rose-500 px-1 text-[10px] font-bold text-white">
+              <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded bg-[#fb7185] px-1 text-[10px] font-bold text-white">
                 {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}
@@ -498,7 +498,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                   {unreadCount > 0 && (
                     <button
                       onClick={handleMarkAllRead}
-                      className="text-xs text-cyan-400 hover:text-cyan-300 transition-colors"
+                      className="text-xs text-mesh-accent hover:text-[#67e8f9] transition-colors"
                     >
                       Mark all read
                     </button>
@@ -506,7 +506,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                   {alerts.length > 0 && (
                     <button
                       onClick={handleClearAll}
-                      className="text-xs text-slate-400 hover:text-rose-400 transition-colors"
+                      className="text-xs text-mesh-text-dim hover:text-[#fb7185] transition-colors"
                     >
                       Clear all
                     </button>
@@ -516,7 +516,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
 
               <div className="max-h-72 overflow-y-auto">
                 {alerts.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-sm text-slate-500">
+                  <div className="px-4 py-6 text-center text-sm text-mesh-text-mute">
                     No recent alerts
                   </div>
                 ) : (
@@ -533,14 +533,14 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                     >
                       <div className="flex items-center gap-2">
                         {!alert.is_read && (
-                          <span className="h-2 w-2 rounded-full bg-cyan-400 shrink-0" />
+                          <span className="h-2 w-2 rounded-full bg-mesh-accent shrink-0" />
                         )}
                         <SeverityBadge severity={alert.severity} />
-                        <span className="text-xs text-slate-500 ml-auto">
+                        <span className="text-xs text-mesh-text-mute ml-auto">
                           {timeAgo(alert.created_at)}
                         </span>
                       </div>
-                      <span className="block text-sm text-slate-300 truncate">
+                      <span className="block text-sm text-mesh-text truncate">
                         {alert.message}
                       </span>
                     </button>
@@ -554,7 +554,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
                     setBellOpen(false);
                     router.push("/alerts");
                   }}
-                  className="flex w-full items-center justify-center px-4 py-2.5 text-sm text-cyan-400 hover:text-cyan-300 hover:bg-mesh-surface-2/55 transition-colors"
+                  className="flex w-full items-center justify-center px-4 py-2.5 text-sm text-mesh-accent hover:text-[#67e8f9] hover:bg-mesh-surface-2/55 transition-colors"
                 >
                   View all alerts
                 </button>
@@ -566,12 +566,12 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
         {/* ── User Avatar Menu ── */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-300/35 bg-cyan-400/12 text-sm font-medium text-cyan-100 transition-colors hover:bg-cyan-400/18">
+            <button className="flex h-8 w-8 items-center justify-center rounded-md border border-[#67e8f9]/35 bg-mesh-accent/12 text-sm font-medium text-mesh-text transition-colors hover:bg-mesh-accent/18">
               A
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel className="text-xs text-slate-400 font-normal">
+            <DropdownMenuLabel className="text-xs text-mesh-text-dim font-normal">
               Admin
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
@@ -591,7 +591,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="cursor-pointer text-rose-400 focus:text-rose-400"
+              className="cursor-pointer text-[#fb7185] focus:text-[#fb7185]"
               onClick={handleLogout}
             >
               <LogOut className="mr-2 h-4 w-4" />
@@ -606,15 +606,15 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
 
 function cnLive(connected: boolean) {
   return connected
-    ? "inline-block h-1.5 w-1.5 rounded-full bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online-pulse"
-    : "inline-block h-1.5 w-1.5 rounded-full bg-slate-600";
+    ? "inline-block h-1.5 w-1.5 rounded-full bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online-pulse"
+    : "inline-block h-1.5 w-1.5 rounded-full bg-mesh-text-mute";
 }
 
 function SeverityBadge({ severity }: { severity: string }) {
   const colors: Record<string, string> = {
-    CRITICAL: "bg-rose-500/20 text-rose-400 border-rose-500/30",
-    WARNING: "bg-yellow-500/20 text-yellow-400 border-yellow-500/30",
-    INFO: "bg-cyan-500/18 text-cyan-300 border-cyan-500/30",
+    CRITICAL: "bg-[#fb7185]/20 text-[#fb7185] border-[#fb7185]/30",
+    WARNING: "bg-[#fbbf24]/20 text-[#fbbf24] border-[#fbbf24]/30",
+    INFO: "bg-mesh-accent/18 text-[#67e8f9] border-mesh-accent/30",
   };
   const cls = colors[severity] || colors.WARNING;
   return (

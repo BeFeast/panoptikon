@@ -152,7 +152,7 @@ export default function UsersSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -160,8 +160,8 @@ export default function UsersSettingsPage() {
         </div>
 
         <SettingsSection
-          icon={<Users className="h-4 w-4 text-blue-400" />}
-          iconBg="bg-blue-500/10"
+          icon={<Users className="h-4 w-4 text-mesh-primary" />}
+          iconBg="bg-mesh-primary/10"
           title="Users & Roles"
           description="Manage users with role-based access control (admin, operator, read-only)."
           headerRight={
@@ -169,7 +169,7 @@ export default function UsersSettingsPage() {
               <Button
                 size="sm"
                 onClick={() => setFormMode("create")}
-                className="bg-blue-600 text-white hover:bg-blue-700"
+                className="bg-mesh-primary text-white hover:bg-mesh-primary"
               >
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 Add User
@@ -179,12 +179,12 @@ export default function UsersSettingsPage() {
         >
           {/* User list */}
           {loading ? (
-            <div className="flex items-center gap-2 py-4 text-slate-400">
+            <div className="flex items-center gap-2 py-4 text-mesh-text-dim">
               <Loader2 className="h-4 w-4 animate-spin" />
               Loading users…
             </div>
           ) : users.length === 0 ? (
-            <p className="py-4 text-sm text-slate-500">
+            <p className="py-4 text-sm text-mesh-text-mute">
               No users created yet. Users can log in with their own credentials once created.
             </p>
           ) : (
@@ -195,11 +195,11 @@ export default function UsersSettingsPage() {
                 return (
                   <div key={user.id} className="flex items-center gap-3 py-3">
                     <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-mesh-surface-2/55">
-                      <Icon className="h-4 w-4 text-slate-400" />
+                      <Icon className="h-4 w-4 text-mesh-text-dim" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-white">{user.username}</p>
-                      <p className="text-xs text-slate-500">
+                      <p className="text-xs text-mesh-text-mute">
                         {roleInfo.label}
                         {user.email ? ` · ${user.email}` : ""}
                       </p>
@@ -208,7 +208,7 @@ export default function UsersSettingsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-slate-400 hover:text-white"
+                        className="h-7 w-7 text-mesh-text-dim hover:text-white"
                         onClick={() => startEdit(user)}
                       >
                         <Pencil className="h-3.5 w-3.5" />
@@ -216,7 +216,7 @@ export default function UsersSettingsPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-7 w-7 text-slate-400 hover:text-rose-400"
+                        className="h-7 w-7 text-mesh-text-dim hover:text-[#fb7185]"
                         onClick={() => handleDelete(user.id)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -230,24 +230,24 @@ export default function UsersSettingsPage() {
 
           {/* Create/Edit form */}
           {formMode !== "idle" && (
-            <div className="space-y-3 rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4">
+            <div className="space-y-3 rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
               <p className="text-sm font-medium text-white">
                 {formMode === "create" ? "New User" : "Edit User"}
               </p>
               <div className="space-y-1.5">
-                <Label htmlFor="user-username" className="text-xs text-slate-400">
+                <Label htmlFor="user-username" className="text-xs text-mesh-text-dim">
                   Username
                 </Label>
                 <Input
                   id="user-username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
+                  className="border-mesh-border bg-mesh-surface-1/95 text-white"
                   placeholder="johndoe"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="user-password" className="text-xs text-slate-400">
+                <Label htmlFor="user-password" className="text-xs text-mesh-text-dim">
                   {formMode === "create" ? "Password" : "New Password (leave blank to keep)"}
                 </Label>
                 <Input
@@ -255,12 +255,12 @@ export default function UsersSettingsPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
+                  className="border-mesh-border bg-mesh-surface-1/95 text-white"
                   placeholder={formMode === "create" ? "Min 8 characters" : "Leave blank to keep current"}
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="user-email" className="text-xs text-slate-400">
+                <Label htmlFor="user-email" className="text-xs text-mesh-text-dim">
                   Email (optional)
                 </Label>
                 <Input
@@ -268,19 +268,19 @@ export default function UsersSettingsPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
+                  className="border-mesh-border bg-mesh-surface-1/95 text-white"
                   placeholder="user@example.com"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="user-role" className="text-xs text-slate-400">
+                <Label htmlFor="user-role" className="text-xs text-mesh-text-dim">
                   Role
                 </Label>
                 <select
                   id="user-role"
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-3 py-2 text-sm text-white"
                 >
                   <option value="admin">Admin</option>
                   <option value="operator">Operator</option>
@@ -289,7 +289,7 @@ export default function UsersSettingsPage() {
               </div>
 
               {error && (
-                <p className="text-xs text-rose-400">{error}</p>
+                <p className="text-xs text-[#fb7185]">{error}</p>
               )}
 
               <div className="flex gap-2">
@@ -297,7 +297,7 @@ export default function UsersSettingsPage() {
                   size="sm"
                   onClick={handleSubmit}
                   disabled={saving || !username || (formMode === "create" && password.length < 8)}
-                  className="bg-blue-600 text-white hover:bg-blue-700"
+                  className="bg-mesh-primary text-white hover:bg-mesh-primary"
                 >
                   {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
                   {formMode === "create" ? "Create" : "Save"}
@@ -306,7 +306,7 @@ export default function UsersSettingsPage() {
                   size="sm"
                   variant="outline"
                   onClick={resetForm}
-                  className="border-mesh-border-strong text-slate-300"
+                  className="border-mesh-border-strong text-mesh-text"
                 >
                   Cancel
                 </Button>

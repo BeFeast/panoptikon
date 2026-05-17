@@ -18,9 +18,9 @@ export interface DetailsTabsProps {
 
 const BADGE_TONE: Record<NonNullable<DetailsTab["badgeTone"]>, string> = {
   info: "bg-mesh-primary-soft text-mesh-accent",
-  warning: "bg-amber-500/20 text-amber-300",
-  offline: "bg-rose-500/20 text-rose-300",
-  online: "bg-emerald-500/20 text-emerald-300",
+  warning: "bg-[#fbbf24]/20 text-[#fbbf24]",
+  offline: "bg-[#fb7185]/20 text-[#fb7185]",
+  online: "bg-[#4ade80]/20 text-[#4ade80]",
 };
 
 /**

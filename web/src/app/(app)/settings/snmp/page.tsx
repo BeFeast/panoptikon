@@ -86,7 +86,7 @@ export default function SnmpSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -94,21 +94,21 @@ export default function SnmpSettingsPage() {
         </div>
 
         <SettingsSection
-          icon={<Radio className="h-4 w-4 text-orange-400" />}
-          iconBg="bg-orange-500/10"
+          icon={<Radio className="h-4 w-4 text-[#fbbf24]" />}
+          iconBg="bg-[#fbbf24]/10"
           title="SNMP Configuration"
           description="Configure SNMP scanning for managed routers and network devices."
         >
           {!available && (
-            <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
-              <p className="text-xs text-amber-400">
+            <div className="flex items-center gap-2 rounded-md border border-[#fbbf24]/30 bg-[#fbbf24]/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#fbbf24]" />
+              <p className="text-xs text-[#fbbf24]">
                 snmpget not found on the system. Install net-snmp to enable SNMP scanning.
               </p>
             </div>
           )}
 
-          <label className="flex items-center gap-2 text-sm text-slate-300">
+          <label className="flex items-center gap-2 text-sm text-mesh-text">
             <input
               type="checkbox"
               checked={enabled}
@@ -120,26 +120,26 @@ export default function SnmpSettingsPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="snmp-community" className="text-xs text-slate-400">
+              <Label htmlFor="snmp-community" className="text-xs text-mesh-text-dim">
                 Community String
               </Label>
               <Input
                 id="snmp-community"
                 value={community}
                 onChange={(e) => setCommunity(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="public"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="snmp-version" className="text-xs text-slate-400">
+              <Label htmlFor="snmp-version" className="text-xs text-mesh-text-dim">
                 SNMP Version
               </Label>
               <select
                 id="snmp-version"
                 value={version}
                 onChange={(e) => setVersion(e.target.value)}
-                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
               >
                 <option value="1">v1</option>
                 <option value="2c">v2c</option>
@@ -147,53 +147,53 @@ export default function SnmpSettingsPage() {
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="snmp-port" className="text-xs text-slate-400">
+              <Label htmlFor="snmp-port" className="text-xs text-mesh-text-dim">
                 Port
               </Label>
               <Input
                 id="snmp-port"
                 value={port}
                 onChange={(e) => setPort(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="161"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="snmp-timeout" className="text-xs text-slate-400">
+              <Label htmlFor="snmp-timeout" className="text-xs text-mesh-text-dim">
                 Timeout (seconds)
               </Label>
               <Input
                 id="snmp-timeout"
                 value={timeout}
                 onChange={(e) => setTimeout_(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="5"
               />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="snmp-retries" className="text-xs text-slate-400">
+              <Label htmlFor="snmp-retries" className="text-xs text-mesh-text-dim">
                 Retries
               </Label>
               <Input
                 id="snmp-retries"
                 value={retries}
                 onChange={(e) => setRetries(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
                 placeholder="1"
               />
             </div>
           </div>
 
           {saveStatus === "success" && saveMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-              <p className="text-xs text-emerald-400">{saveMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+              <p className="text-xs text-[#4ade80]">{saveMsg}</p>
             </div>
           )}
           {saveStatus === "error" && saveMsg && (
-            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-              <p className="text-xs text-rose-400">{saveMsg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+              <p className="text-xs text-[#fb7185]">{saveMsg}</p>
             </div>
           )}
 

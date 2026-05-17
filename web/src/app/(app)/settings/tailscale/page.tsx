@@ -81,15 +81,15 @@ export default function TailscaleSettingsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Shield className="h-6 w-6 text-blue-500" />
+            <Shield className="h-6 w-6 text-mesh-primary" />
             <h1 className="text-2xl font-semibold tracking-tight text-white">Tailscale</h1>
             {data && (
               <Badge
                 variant="outline"
                 className={
                   isConnected
-                    ? "border-emerald-500/30 text-emerald-400"
-                    : "border-mesh-border-strong text-slate-500"
+                    ? "border-[#4ade80]/30 text-[#4ade80]"
+                    : "border-mesh-border-strong text-mesh-text-mute"
                 }
               >
                 {data.backend_state || "Unknown"}
@@ -100,7 +100,7 @@ export default function TailscaleSettingsPage() {
             variant="outline"
             size="sm"
             onClick={load}
-            className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
+            className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
           >
             <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
             Refresh
@@ -113,14 +113,14 @@ export default function TailscaleSettingsPage() {
             title="Status"
             value={data?.backend_state ?? null}
             loading={loading && !data}
-            icon={<Shield className="h-4 w-4 text-blue-400" />}
+            icon={<Shield className="h-4 w-4 text-mesh-primary" />}
             isText
           />
           <SummaryCard
             title="Peers Online"
             value={data?.online_peers ?? null}
             loading={loading && !data}
-            icon={<Wifi className="h-4 w-4 text-emerald-400" />}
+            icon={<Wifi className="h-4 w-4 text-[#4ade80]" />}
             subtitle={data ? `of ${data.total_peers} total` : undefined}
           />
           <SummaryCard
@@ -140,17 +140,17 @@ export default function TailscaleSettingsPage() {
                 : null
             }
             loading={loading && !data}
-            icon={<Network className="h-4 w-4 text-amber-400" />}
+            icon={<Network className="h-4 w-4 text-[#fbbf24]" />}
             isText
           />
         </div>
 
         {/* Node Info Card */}
         {data && isConnected && (
-          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+          <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
             <CardHeader>
-              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">This Node</CardTitle>
-              <CardDescription className="text-slate-400">
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">This Node</CardTitle>
+              <CardDescription className="text-mesh-text-dim">
                 Local Tailscale node information for this Panoptikon instance.
               </CardDescription>
             </CardHeader>
@@ -188,16 +188,16 @@ export default function TailscaleSettingsPage() {
 
         {/* Not Connected State */}
         {!loading && !isConnected && (
-          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+          <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
             <CardContent className="py-12 text-center">
-              <WifiOff className="mx-auto mb-3 h-10 w-10 text-slate-600" />
-              <p className="text-sm text-slate-400">
+              <WifiOff className="mx-auto mb-3 h-10 w-10 text-mesh-text-mute" />
+              <p className="text-sm text-mesh-text-dim">
                 Tailscale is not connected. Make sure the{" "}
-                <code className="rounded bg-mesh-surface-2/55 px-1.5 py-0.5 text-xs text-slate-300">
+                <code className="rounded bg-mesh-surface-2/55 px-1.5 py-0.5 text-xs text-mesh-text">
                   panoptikon-tailscale
                 </code>{" "}
                 container is running and{" "}
-                <code className="rounded bg-mesh-surface-2/55 px-1.5 py-0.5 text-xs text-slate-300">
+                <code className="rounded bg-mesh-surface-2/55 px-1.5 py-0.5 text-xs text-mesh-text">
                   TS_AUTHKEY
                 </code>{" "}
                 is set in your environment.
@@ -208,10 +208,10 @@ export default function TailscaleSettingsPage() {
 
         {/* Peers Table */}
         {data && isConnected && (
-          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+          <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
             <CardHeader>
-              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">Connected Peers</CardTitle>
-              <CardDescription className="text-slate-400">
+              <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">Connected Peers</CardTitle>
+              <CardDescription className="text-mesh-text-dim">
                 Devices on your Tailscale network. Data refreshes every 30
                 seconds.
               </CardDescription>
@@ -220,17 +220,17 @@ export default function TailscaleSettingsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                    <TableHead className="text-slate-400">Status</TableHead>
-                    <TableHead className="text-slate-400">Hostname</TableHead>
-                    <TableHead className="text-slate-400">OS</TableHead>
-                    <TableHead className="text-slate-400">
+                    <TableHead className="text-mesh-text-dim">Status</TableHead>
+                    <TableHead className="text-mesh-text-dim">Hostname</TableHead>
+                    <TableHead className="text-mesh-text-dim">OS</TableHead>
+                    <TableHead className="text-mesh-text-dim">
                       Tailscale IP
                     </TableHead>
-                    <TableHead className="text-slate-400">Exit Node</TableHead>
-                    <TableHead className="text-right text-slate-400">
+                    <TableHead className="text-mesh-text-dim">Exit Node</TableHead>
+                    <TableHead className="text-right text-mesh-text-dim">
                       RX
                     </TableHead>
-                    <TableHead className="text-right text-slate-400">
+                    <TableHead className="text-right text-mesh-text-dim">
                       TX
                     </TableHead>
                   </TableRow>
@@ -240,7 +240,7 @@ export default function TailscaleSettingsPage() {
                     <TableRow className="border-mesh-border-strong hover:bg-transparent">
                       <TableCell
                         colSpan={7}
-                        className="py-8 text-center text-slate-500"
+                        className="py-8 text-center text-mesh-text-mute"
                       >
                         No peers found.
                       </TableCell>
@@ -258,7 +258,7 @@ export default function TailscaleSettingsPage() {
 
         {/* Loading skeleton */}
         {loading && !data && (
-          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+          <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
             <CardContent className="space-y-3 py-6">
               <Skeleton className="h-4 w-3/4 bg-mesh-surface-2/55" />
               <Skeleton className="h-4 w-1/2 bg-mesh-surface-2/55" />
@@ -289,13 +289,13 @@ function SummaryCard({
   isText?: boolean;
 }) {
   return (
-    <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+    <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
       <CardContent className="flex items-center gap-5 p-5">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-mesh-surface-2/55">
           {icon}
         </div>
         <div className="min-w-0">
-          <p className="text-xs text-slate-500">{title}</p>
+          <p className="text-xs text-mesh-text-mute">{title}</p>
           {loading ? (
             <Skeleton className="mt-1 h-6 w-16 bg-mesh-surface-2/55" />
           ) : isText ? (
@@ -305,7 +305,7 @@ function SummaryCard({
           ) : (
             <p className="text-2xl font-bold text-white">{value ?? 0}</p>
           )}
-          {subtitle && <p className="text-xs text-slate-500">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-mesh-text-mute">{subtitle}</p>}
         </div>
       </CardContent>
     </Card>
@@ -317,7 +317,7 @@ function SummaryCard({
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <span className="text-slate-500">{label}:</span>{" "}
+      <span className="text-mesh-text-mute">{label}:</span>{" "}
       <span className="font-medium text-white">{value || "—"}</span>
     </div>
   );
@@ -327,20 +327,20 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 
 function PeerRow({ peer }: { peer: TailscalePeer }) {
   return (
-    <TableRow className="border-mesh-border-strong hover:bg-mesh-surface-2/55">
+    <TableRow className="border-mesh-border hover:bg-mesh-surface-2/55">
       <TableCell>
         <div className="flex items-center gap-2">
           {peer.online ? (
-            <Wifi className="h-3.5 w-3.5 text-emerald-400" />
+            <Wifi className="h-3.5 w-3.5 text-[#4ade80]" />
           ) : (
-            <WifiOff className="h-3.5 w-3.5 text-slate-600" />
+            <WifiOff className="h-3.5 w-3.5 text-mesh-text-mute" />
           )}
           <Badge
             variant="outline"
             className={
               peer.online
-                ? "border-emerald-500/30 text-emerald-400"
-                : "border-mesh-border-strong text-slate-500"
+                ? "border-[#4ade80]/30 text-[#4ade80]"
+                : "border-mesh-border-strong text-mesh-text-mute"
             }
           >
             {peer.online ? "online" : "offline"}
@@ -351,37 +351,37 @@ function PeerRow({ peer }: { peer: TailscalePeer }) {
         <div>
           <p className="font-medium text-white">{peer.hostname || "—"}</p>
           {peer.dns_name && (
-            <p className="text-xs text-slate-500">{peer.dns_name}</p>
+            <p className="text-xs text-mesh-text-mute">{peer.dns_name}</p>
           )}
         </div>
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-1.5">
-          <MonitorSmartphone className="h-3.5 w-3.5 text-slate-500" />
-          <span className="text-sm text-slate-400">{peer.os || "—"}</span>
+          <MonitorSmartphone className="h-3.5 w-3.5 text-mesh-text-mute" />
+          <span className="text-sm text-mesh-text-dim">{peer.os || "—"}</span>
         </div>
       </TableCell>
-      <TableCell className="font-mono text-xs text-slate-400">
+      <TableCell className="font-mono text-xs text-mesh-text-dim">
         {peer.tailscale_ips?.[0] ?? "—"}
       </TableCell>
       <TableCell>
         {peer.exit_node ? (
           <Badge
             variant="outline"
-            className="border-blue-500/30 text-blue-400"
+            className="border-mesh-primary/30 text-mesh-primary"
           >
             Active
           </Badge>
         ) : peer.exit_node_option ? (
-          <span className="text-xs text-slate-500">Available</span>
+          <span className="text-xs text-mesh-text-mute">Available</span>
         ) : (
-          <span className="text-xs text-slate-600">—</span>
+          <span className="text-xs text-mesh-text-mute">—</span>
         )}
       </TableCell>
-      <TableCell className="text-right font-mono text-xs text-slate-400">
+      <TableCell className="text-right font-mono text-xs text-mesh-text-dim">
         {formatBytes(peer.rx_bytes)}
       </TableCell>
-      <TableCell className="text-right font-mono text-xs text-slate-400">
+      <TableCell className="text-right font-mono text-xs text-mesh-text-dim">
         {formatBytes(peer.tx_bytes)}
       </TableCell>
     </TableRow>

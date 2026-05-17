@@ -28,23 +28,23 @@ function getStrength(password: string, minLength: number): { level: Strength; sc
 const strengthConfig: Record<Strength, { label: string; color: string; gradient: string }> = {
   weak: {
     label: "Weak",
-    color: "text-rose-400",
-    gradient: "from-rose-500 to-rose-600",
+    color: "text-[#fb7185]",
+    gradient: "from-[#fb7185] to-[#fb7185]",
   },
   fair: {
     label: "Fair",
-    color: "text-yellow-400",
-    gradient: "from-rose-500 via-yellow-500 to-yellow-500",
+    color: "text-[#fbbf24]",
+    gradient: "from-[#fb7185] via-[#fbbf24] to-[#fbbf24]",
   },
   good: {
     label: "Good",
-    color: "text-blue-400",
-    gradient: "from-rose-500 via-yellow-500 to-blue-500",
+    color: "text-mesh-primary",
+    gradient: "from-[#fb7185] via-[#fbbf24] to-mesh-primary",
   },
   strong: {
     label: "Strong",
-    color: "text-emerald-400",
-    gradient: "from-rose-500 via-yellow-500 via-blue-500 to-emerald-500",
+    color: "text-[#4ade80]",
+    gradient: "from-[#fb7185] via-[#fbbf24] via-mesh-primary to-[#4ade80]",
   },
 };
 
@@ -79,16 +79,16 @@ export function PasswordStrengthMeter({
           </span>
         )}
         <div className="flex gap-3 text-[10px]">
-          <span className={meetsLength ? "text-emerald-400" : "text-slate-600"}>
+          <span className={meetsLength ? "text-[#4ade80]" : "text-mesh-text-mute"}>
             {minLength}+ chars
           </span>
-          <span className={/[A-Z]/.test(password) ? "text-emerald-400" : "text-slate-600"}>
+          <span className={/[A-Z]/.test(password) ? "text-[#4ade80]" : "text-mesh-text-mute"}>
             Uppercase
           </span>
-          <span className={/\d/.test(password) ? "text-emerald-400" : "text-slate-600"}>
+          <span className={/\d/.test(password) ? "text-[#4ade80]" : "text-mesh-text-mute"}>
             Number
           </span>
-          <span className={/[^A-Za-z0-9]/.test(password) ? "text-emerald-400" : "text-slate-600"}>
+          <span className={/[^A-Za-z0-9]/.test(password) ? "text-[#4ade80]" : "text-mesh-text-mute"}>
             Symbol
           </span>
         </div>

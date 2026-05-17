@@ -252,12 +252,12 @@ export default function CloudflareTunnelPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Cloud className="h-6 w-6 text-orange-400" />
+            <Cloud className="h-6 w-6 text-[#fbbf24]" />
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-white">
                 Cloudflare Tunnel
               </h1>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-mesh-text-dim">
                 Manage tunnel routes and monitor connection status
               </p>
             </div>
@@ -268,7 +268,7 @@ export default function CloudflareTunnelPage() {
               size="sm"
               onClick={load}
               disabled={loading}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-slate-300 hover:bg-slate-700"
+              className="border-mesh-border bg-mesh-surface-1 text-mesh-text hover:bg-mesh-border-strong"
             >
               <RefreshCw
                 className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}
@@ -279,7 +279,7 @@ export default function CloudflareTunnelPage() {
               <Button
                 size="sm"
                 onClick={() => setAddDialogOpen(true)}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-mesh-primary hover:bg-mesh-primary"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Add Route
@@ -290,17 +290,17 @@ export default function CloudflareTunnelPage() {
 
         {/* Not configured message */}
         {notConfigured && (
-          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <Card className="border-mesh-border bg-mesh-surface-1/95">
             <CardContent className="py-8 text-center">
-              <Cloud className="mx-auto mb-4 h-12 w-12 text-slate-600" />
-              <h3 className="text-lg font-medium text-slate-300">
+              <Cloud className="mx-auto mb-4 h-12 w-12 text-mesh-text-mute" />
+              <h3 className="text-lg font-medium text-mesh-text">
                 Cloudflare Tunnel Not Configured
               </h3>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-mesh-text-mute">
                 Set your Cloudflare API token, account ID, and tunnel ID in{" "}
                 <a
                   href="/settings/cloudflare-tunnel"
-                  className="text-blue-400 underline hover:text-blue-300"
+                  className="text-mesh-primary underline hover:text-mesh-primary"
                 >
                   Settings
                 </a>{" "}
@@ -314,9 +314,9 @@ export default function CloudflareTunnelPage() {
         {!notConfigured && status && (
           <div className="grid gap-5 md:grid-cols-3">
             {/* Tunnel Status */}
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardHeader className="pb-2">
-                <CardDescription className="text-slate-400">
+                <CardDescription className="text-mesh-text-dim">
                   Tunnel Status
                 </CardDescription>
               </CardHeader>
@@ -324,22 +324,22 @@ export default function CloudflareTunnelPage() {
                 <div className="flex items-center gap-2">
                   {status.connected ? (
                     <>
-                      <Wifi className="h-5 w-5 text-emerald-400" />
-                      <span className="text-lg font-semibold text-emerald-400">
+                      <Wifi className="h-5 w-5 text-[#4ade80]" />
+                      <span className="text-lg font-semibold text-[#4ade80]">
                         Connected
                       </span>
                     </>
                   ) : (
                     <>
-                      <WifiOff className="h-5 w-5 text-rose-400" />
-                      <span className="text-lg font-semibold text-rose-400">
+                      <WifiOff className="h-5 w-5 text-[#fb7185]" />
+                      <span className="text-lg font-semibold text-[#fb7185]">
                         Disconnected
                       </span>
                     </>
                   )}
                 </div>
                 {status.tunnel_name && (
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-mesh-text-mute">
                     {status.tunnel_name}
                   </p>
                 )}
@@ -347,22 +347,22 @@ export default function CloudflareTunnelPage() {
             </Card>
 
             {/* Active Connections */}
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardHeader className="pb-2">
-                <CardDescription className="text-slate-400">
+                <CardDescription className="text-mesh-text-dim">
                   Active Connections
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2">
-                  <Server className="h-5 w-5 text-blue-400" />
-                  <span className="text-lg font-semibold text-slate-100">
+                  <Server className="h-5 w-5 text-mesh-primary" />
+                  <span className="text-lg font-semibold text-mesh-text">
                     {status.connections.length}
                   </span>
-                  <span className="text-sm text-slate-400">connector(s)</span>
+                  <span className="text-sm text-mesh-text-dim">connector(s)</span>
                 </div>
                 {status.connections.length > 0 && (
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-mesh-text-mute">
                     Colos:{" "}
                     {status.connections
                       .map((c) => c.colo_name || "?")
@@ -373,19 +373,19 @@ export default function CloudflareTunnelPage() {
             </Card>
 
             {/* Active Routes */}
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardHeader className="pb-2">
-                <CardDescription className="text-slate-400">
+                <CardDescription className="text-mesh-text-dim">
                   Active Routes
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-2">
-                  <Globe className="h-5 w-5 text-orange-400" />
-                  <span className="text-lg font-semibold text-slate-100">
+                  <Globe className="h-5 w-5 text-[#fbbf24]" />
+                  <span className="text-lg font-semibold text-mesh-text">
                     {routes.length}
                   </span>
-                  <span className="text-sm text-slate-400">route(s)</span>
+                  <span className="text-sm text-mesh-text-dim">route(s)</span>
                 </div>
               </CardContent>
             </Card>
@@ -394,10 +394,10 @@ export default function CloudflareTunnelPage() {
 
         {/* Connections table */}
         {!notConfigured && status && status.connections.length > 0 && (
-          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <Card className="border-mesh-border bg-mesh-surface-1/95">
             <CardHeader>
-              <CardTitle className="text-slate-100">Connections</CardTitle>
-              <CardDescription className="text-slate-400">
+              <CardTitle className="text-mesh-text">Connections</CardTitle>
+              <CardDescription className="text-mesh-text-dim">
                 Active cloudflared connector instances
               </CardDescription>
             </CardHeader>
@@ -405,22 +405,22 @@ export default function CloudflareTunnelPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                    <TableHead className="text-slate-400">Colo</TableHead>
-                    <TableHead className="text-slate-400">Origin IP</TableHead>
-                    <TableHead className="text-slate-400">Opened</TableHead>
-                    <TableHead className="text-slate-400">Status</TableHead>
+                    <TableHead className="text-mesh-text-dim">Colo</TableHead>
+                    <TableHead className="text-mesh-text-dim">Origin IP</TableHead>
+                    <TableHead className="text-mesh-text-dim">Opened</TableHead>
+                    <TableHead className="text-mesh-text-dim">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {status.connections.map((conn, i) => (
                     <TableRow key={i} className="border-mesh-border-strong">
-                      <TableCell className="font-medium text-slate-200">
+                      <TableCell className="font-medium text-mesh-text">
                         {conn.colo_name || "Unknown"}
                       </TableCell>
-                      <TableCell className="font-mono text-sm text-slate-300">
+                      <TableCell className="font-mono text-sm text-mesh-text">
                         {conn.origin_ip || "N/A"}
                       </TableCell>
-                      <TableCell className="text-slate-300">
+                      <TableCell className="text-mesh-text">
                         <span title={formatDate(conn.opened_at)}>
                           {timeAgo(conn.opened_at)}
                         </span>
@@ -429,14 +429,14 @@ export default function CloudflareTunnelPage() {
                         {conn.is_pending_reconnect ? (
                           <Badge
                             variant="outline"
-                            className="border-amber-500/30 bg-amber-500/10 text-amber-400"
+                            className="border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[#fbbf24]"
                           >
                             Reconnecting
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
-                            className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                            className="border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]"
                           >
                             Healthy
                           </Badge>
@@ -452,16 +452,16 @@ export default function CloudflareTunnelPage() {
 
         {/* Routes table */}
         {!notConfigured && (
-          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <Card className="border-mesh-border bg-mesh-surface-1/95">
             <CardHeader>
-              <CardTitle className="text-slate-100">Tunnel Routes</CardTitle>
-              <CardDescription className="text-slate-400">
+              <CardTitle className="text-mesh-text">Tunnel Routes</CardTitle>
+              <CardDescription className="text-mesh-text-dim">
                 Hostname to backend service mapping
               </CardDescription>
             </CardHeader>
             <CardContent>
               {routes.length === 0 ? (
-                <div className="py-8 text-center text-sm text-slate-500">
+                <div className="py-8 text-center text-sm text-mesh-text-mute">
                   No routes configured. Click &quot;Add Route&quot; to create
                   one.
                 </div>
@@ -469,14 +469,14 @@ export default function CloudflareTunnelPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                      <TableHead className="text-slate-400">
+                      <TableHead className="text-mesh-text-dim">
                         Hostname
                       </TableHead>
-                      <TableHead className="text-slate-400">
+                      <TableHead className="text-mesh-text-dim">
                         Backend Service
                       </TableHead>
-                      <TableHead className="text-slate-400">Path</TableHead>
-                      <TableHead className="w-[100px] text-slate-400">
+                      <TableHead className="text-mesh-text-dim">Path</TableHead>
+                      <TableHead className="w-[100px] text-mesh-text-dim">
                         Actions
                       </TableHead>
                     </TableRow>
@@ -484,7 +484,7 @@ export default function CloudflareTunnelPage() {
                   <TableBody>
                     {routes.map((route) => (
                       <TableRow key={route.hostname} className="border-mesh-border-strong">
-                        <TableCell className="max-w-[200px] font-medium text-slate-200">
+                        <TableCell className="max-w-[200px] font-medium text-mesh-text">
                           {route.service.startsWith("http") ? (
                             <TooltipProvider>
                               <Tooltip>
@@ -493,7 +493,7 @@ export default function CloudflareTunnelPage() {
                                     href={`https://${route.hostname}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex max-w-full items-center gap-1.5 text-blue-400 hover:text-blue-300 hover:underline"
+                                    className="inline-flex max-w-full items-center gap-1.5 text-mesh-primary hover:text-mesh-primary hover:underline"
                                   >
                                     <span className="truncate">
                                       {route.hostname}
@@ -510,10 +510,10 @@ export default function CloudflareTunnelPage() {
                             <span className="block truncate">{route.hostname}</span>
                           )}
                         </TableCell>
-                        <TableCell className="max-w-[250px] font-mono text-sm text-slate-300">
+                        <TableCell className="max-w-[250px] font-mono text-sm text-mesh-text">
                           <span className="block truncate">{route.service}</span>
                         </TableCell>
-                        <TableCell className="text-slate-400">
+                        <TableCell className="text-mesh-text-dim">
                           {route.path || "/"}
                         </TableCell>
                         <TableCell>
@@ -521,7 +521,7 @@ export default function CloudflareTunnelPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-slate-400 hover:text-blue-400"
+                              className="h-8 w-8 text-mesh-text-dim hover:text-mesh-primary"
                               onClick={() => openEditDialog(route)}
                             >
                               <Pencil className="h-4 w-4" />
@@ -529,7 +529,7 @@ export default function CloudflareTunnelPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 text-slate-400 hover:text-rose-400"
+                              className="h-8 w-8 text-mesh-text-dim hover:text-[#fb7185]"
                               onClick={() => setDeleteTarget(route.hostname)}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -547,15 +547,15 @@ export default function CloudflareTunnelPage() {
 
         {/* Add Route Dialog */}
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-          <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <DialogContent className="border-mesh-border bg-mesh-surface-1/95">
             <DialogHeader>
-              <DialogTitle className="text-slate-100">
+              <DialogTitle className="text-mesh-text">
                 Add Tunnel Route
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="hostname" className="text-slate-300">
+                <Label htmlFor="hostname" className="text-mesh-text">
                   Hostname
                 </Label>
                 <Input
@@ -563,11 +563,11 @@ export default function CloudflareTunnelPage() {
                   placeholder="app.example.com"
                   value={formHostname}
                   onChange={(e) => setFormHostname(e.target.value)}
-                  className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
+                  className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="service" className="text-slate-300">
+                <Label htmlFor="service" className="text-mesh-text">
                   Backend Service
                 </Label>
                 <Input
@@ -575,11 +575,11 @@ export default function CloudflareTunnelPage() {
                   placeholder="http://localhost:8080"
                   value={formService}
                   onChange={(e) => setFormService(e.target.value)}
-                  className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
+                  className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="path" className="text-slate-300">
+                <Label htmlFor="path" className="text-mesh-text">
                   Path (optional)
                 </Label>
                 <Input
@@ -587,21 +587,21 @@ export default function CloudflareTunnelPage() {
                   placeholder="/"
                   value={formPath}
                   onChange={(e) => setFormPath(e.target.value)}
-                  className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
+                  className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
                 />
               </div>
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setAddDialogOpen(false)}
-                  className="border-mesh-border-strong text-slate-300"
+                  className="border-mesh-border-strong text-mesh-text"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleAddRoute}
                   disabled={saving || !formHostname || !formService}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-mesh-primary hover:bg-mesh-primary"
                 >
                   {saving ? "Adding..." : "Add Route"}
                 </Button>
@@ -612,15 +612,15 @@ export default function CloudflareTunnelPage() {
 
         {/* Edit Route Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <DialogContent className="border-mesh-border bg-mesh-surface-1/95">
             <DialogHeader>
-              <DialogTitle className="text-slate-100">
+              <DialogTitle className="text-mesh-text">
                 Edit Tunnel Route
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-hostname" className="text-slate-300">
+                <Label htmlFor="edit-hostname" className="text-mesh-text">
                   Hostname
                 </Label>
                 <Input
@@ -628,11 +628,11 @@ export default function CloudflareTunnelPage() {
                   placeholder="app.example.com"
                   value={editHostname}
                   onChange={(e) => setEditHostname(e.target.value)}
-                  className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
+                  className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-service" className="text-slate-300">
+                <Label htmlFor="edit-service" className="text-mesh-text">
                   Backend Service
                 </Label>
                 <Input
@@ -640,11 +640,11 @@ export default function CloudflareTunnelPage() {
                   placeholder="http://localhost:8080"
                   value={editService}
                   onChange={(e) => setEditService(e.target.value)}
-                  className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
+                  className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="edit-path" className="text-slate-300">
+                <Label htmlFor="edit-path" className="text-mesh-text">
                   Path (optional)
                 </Label>
                 <Input
@@ -652,21 +652,21 @@ export default function CloudflareTunnelPage() {
                   placeholder="/"
                   value={editPath}
                   onChange={(e) => setEditPath(e.target.value)}
-                  className="border-mesh-border-strong bg-mesh-surface-1 text-slate-100"
+                  className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
                 />
               </div>
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setEditDialogOpen(false)}
-                  className="border-mesh-border-strong text-slate-300"
+                  className="border-mesh-border-strong text-mesh-text"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleEditRoute}
                   disabled={saving || !editHostname || !editService}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  className="bg-mesh-primary hover:bg-mesh-primary"
                 >
                   {saving ? "Saving..." : "Save Changes"}
                 </Button>
@@ -680,24 +680,24 @@ export default function CloudflareTunnelPage() {
           open={!!deleteTarget}
           onOpenChange={(open) => !open && setDeleteTarget(null)}
         >
-          <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-slate-100">
+              <AlertDialogTitle className="text-mesh-text">
                 Remove Route
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-slate-400">
+              <AlertDialogDescription className="text-mesh-text-dim">
                 Are you sure you want to remove the route for{" "}
-                <strong className="text-slate-200">{deleteTarget}</strong>? This
+                <strong className="text-mesh-text">{deleteTarget}</strong>? This
                 will immediately update the tunnel configuration.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-mesh-border-strong text-slate-300">
+              <AlertDialogCancel className="border-mesh-border-strong text-mesh-text">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => deleteTarget && handleDeleteRoute(deleteTarget)}
-                className="bg-rose-600 hover:bg-rose-700"
+                className="bg-[#fb7185] hover:bg-[#fb7185]"
               >
                 Remove
               </AlertDialogAction>

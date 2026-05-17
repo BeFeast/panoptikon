@@ -27,7 +27,7 @@ export function MobileSidebar() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex h-9 w-9 items-center justify-center rounded-md text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white transition-colors md:hidden"
+        className="flex h-9 w-9 items-center justify-center rounded-md text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-white transition-colors md:hidden"
         aria-label="Open menu"
       >
         <Menu className="h-5 w-5" />
@@ -41,7 +41,7 @@ export function MobileSidebar() {
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           {/* Logo */}
           <div className="flex h-14 shrink-0 items-center border-b border-mesh-border-strong px-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-cyan-300/40 bg-cyan-400/12 text-sm font-bold text-cyan-200">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-mesh-accent/40 bg-mesh-accent/12 text-sm font-bold text-mesh-accent">
               P
             </div>
             <span className="ml-2 text-lg font-semibold text-white">
@@ -67,7 +67,7 @@ export function MobileSidebar() {
                   >
                     <button
                       onClick={() => toggleGroup(group.key)}
-                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors text-slate-500 hover:bg-mesh-surface-2/55 hover:text-slate-300"
+                      className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors text-mesh-text-mute hover:bg-mesh-surface-2/55 hover:text-mesh-text"
                       aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.label}`}
                       aria-expanded={!isCollapsed}
                     >
@@ -81,7 +81,7 @@ export function MobileSidebar() {
                     <span
                       className={cn(
                         "cursor-default select-none text-[11px] font-semibold uppercase tracking-wider",
-                        hasActive ? "text-cyan-400" : "text-slate-500",
+                        hasActive ? "text-mesh-accent" : "text-mesh-text-mute",
                       )}
                     >
                       {group.label}
@@ -108,12 +108,12 @@ export function MobileSidebar() {
                             className={cn(
                               "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
                               active
-                                ? "bg-cyan-500/10 text-cyan-400"
-                                : "text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white",
+                                ? "bg-mesh-accent/10 text-mesh-accent"
+                                : "text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-white",
                             )}
                           >
                             {active && (
-                              <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-gradient-to-b from-cyan-300 to-cyan-600" />
+                              <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-mesh-accent" />
                             )}
                             <Icon className="h-[18px] w-[18px] shrink-0 transition-transform duration-150 group-hover/nav:scale-105" />
                             <span>{item.label}</span>
@@ -134,12 +134,12 @@ export function MobileSidebar() {
                 className={cn(
                   "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
                   pathname?.startsWith("/settings")
-                    ? "bg-cyan-500/10 text-cyan-400"
-                    : "text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white",
+                    ? "bg-mesh-accent/10 text-mesh-accent"
+                    : "text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-white",
                 )}
               >
                 {pathname?.startsWith("/settings") && (
-                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-gradient-to-b from-cyan-300 to-cyan-600" />
+                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-mesh-accent" />
                 )}
                 <Settings className="h-[18px] w-[18px] shrink-0 transition-transform duration-150 group-hover/nav:scale-105" />
                 <span>Settings</span>
@@ -154,14 +154,14 @@ export function MobileSidebar() {
                 className={cn(
                   "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
                   wsConnected
-                    ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-                    : "bg-slate-600"
+                    ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
+                    : "bg-mesh-text-mute"
                 )}
               />
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-mesh-text-mute">
                 {wsConnected ? "Live" : "Disconnected"}
               </span>
-              <p className="ml-auto text-[10px] text-slate-700">
+              <p className="ml-auto text-[10px] text-mesh-border-strong">
                 Panoptikon {serverVersion ?? "..."}
               </p>
             </div>

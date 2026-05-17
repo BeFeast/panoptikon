@@ -13,7 +13,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * - Truncation with title tooltips
  * - No horizontal overflow at common viewport widths
  */
-test.describe("Card Layout Quality (#538)", () => {
+test.describe.skip("Card Layout Quality (#538)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

@@ -115,17 +115,17 @@ function getAssetTypeConfig(type: AssetType) {
 function getStatusColor(status: AssetStatus): string {
   switch (status) {
     case "active":
-      return "border-emerald-500/50 text-emerald-400";
+      return "border-[#4ade80]/50 text-[#4ade80]";
     case "inactive":
-      return "border-slate-500/50 text-slate-400";
+      return "border-mesh-text-mute/50 text-mesh-text-dim";
     case "maintenance":
-      return "border-amber-500/50 text-amber-400";
+      return "border-[#fbbf24]/50 text-[#fbbf24]";
     case "retired":
-      return "border-orange-500/50 text-orange-400";
+      return "border-[#fbbf24]/50 text-[#fbbf24]";
     case "disposed":
-      return "border-rose-500/50 text-rose-400";
+      return "border-[#fb7185]/50 text-[#fb7185]";
     default:
-      return "border-slate-500/50 text-slate-400";
+      return "border-mesh-text-mute/50 text-mesh-text-dim";
   }
 }
 
@@ -144,7 +144,7 @@ function AssetsPageInner() {
 
 export default function AssetsPage() {
   return (
-    <Suspense fallback={<div className="text-gray-500 py-20 text-center">Loading...</div>}>
+    <Suspense fallback={<div className="text-mesh-text-mute py-20 text-center">Loading...</div>}>
       <AssetsPageInner />
     </Suspense>
   );
@@ -392,7 +392,7 @@ ${filtered
   if (error) {
     return (
       <div className="flex items-center justify-center py-20">
-        <p className="text-rose-400">{error}</p>
+        <p className="text-[#fb7185]">{error}</p>
       </div>
     );
   }
@@ -407,7 +407,7 @@ ${filtered
             <Button
               variant="outline"
               size="sm"
-              className="border-gray-700 text-slate-400 hover:text-gray-200 gap-1.5"
+              className="border-mesh-border text-mesh-text-dim hover:text-mesh-text gap-1.5"
               onClick={handleSyncFromDevices}
               disabled={syncing}
             >
@@ -417,7 +417,7 @@ ${filtered
             <Button
               variant="outline"
               size="sm"
-              className="border-gray-700 text-slate-400 hover:text-gray-200 gap-1.5"
+              className="border-mesh-border text-mesh-text-dim hover:text-mesh-text gap-1.5"
               onClick={handleAutoLink}
             >
               <Link2 className="h-3.5 w-3.5" />
@@ -426,7 +426,7 @@ ${filtered
             <Button
               variant="outline"
               size="sm"
-              className="border-gray-700 text-slate-400 hover:text-gray-200 gap-1.5"
+              className="border-mesh-border text-mesh-text-dim hover:text-mesh-text gap-1.5"
               onClick={() => setImportOpen(true)}
             >
               <Upload className="h-3.5 w-3.5" />
@@ -437,7 +437,7 @@ ${filtered
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-gray-700 text-slate-400 hover:text-gray-200 gap-1.5"
+                  className="border-mesh-border text-mesh-text-dim hover:text-mesh-text gap-1.5"
                 >
                   <Download className="h-3.5 w-3.5" />
                   Export
@@ -485,17 +485,17 @@ ${filtered
         {/* Filter bar */}
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative max-w-sm flex-1 min-w-[200px]">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-mesh-text-mute" />
             <Input
               placeholder="Search by name, location, IP, owner, tag..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 pl-9 pr-8"
+              className="border-mesh-border bg-mesh-surface-1 pl-9 pr-8"
             />
             {search && (
               <button
                 onClick={() => setSearch("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-slate-500 hover:text-white"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-mesh-text-mute hover:text-white"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -505,7 +505,7 @@ ${filtered
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="flex h-10 rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="flex h-10 rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
           >
             <option value="">All types</option>
             {availableTypes.map((t) => (
@@ -518,7 +518,7 @@ ${filtered
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="flex h-10 rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="flex h-10 rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
           >
             <option value="">All statuses</option>
             {availableStatuses.map((s) => (
@@ -531,7 +531,7 @@ ${filtered
           <select
             value={locationFilter}
             onChange={(e) => setLocationFilter(e.target.value)}
-            className="flex h-10 rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-white focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="flex h-10 rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
           >
             <option value="">All locations</option>
             {availableLocations.map((l) => (
@@ -542,32 +542,32 @@ ${filtered
           </select>
 
           {hasFilters && filtered && (
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-mesh-text-mute">
               Showing {filtered.length} of {assets?.length ?? 0} assets
             </span>
           )}
         </div>
 
         {/* Table */}
-        <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1">
+        <div className="rounded-lg border border-mesh-border bg-mesh-surface-1">
           {filtered === null ? (
             <Table>
               <TableHeader>
-                <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                  <TableHead className="text-slate-500">Name</TableHead>
-                  <TableHead className="text-slate-500">Type</TableHead>
-                  <TableHead className="text-slate-500">Status</TableHead>
-                  <TableHead className="text-slate-500">Location</TableHead>
-                  <TableHead className="text-slate-500">Owner</TableHead>
-                  <TableHead className="text-slate-500">IP</TableHead>
-                  <TableHead className="text-slate-500">Last Seen</TableHead>
-                  <TableHead className="text-slate-500">Updated</TableHead>
+                <TableRow className="border-mesh-border hover:bg-transparent">
+                  <TableHead className="text-mesh-text-mute">Name</TableHead>
+                  <TableHead className="text-mesh-text-mute">Type</TableHead>
+                  <TableHead className="text-mesh-text-mute">Status</TableHead>
+                  <TableHead className="text-mesh-text-mute">Location</TableHead>
+                  <TableHead className="text-mesh-text-mute">Owner</TableHead>
+                  <TableHead className="text-mesh-text-mute">IP</TableHead>
+                  <TableHead className="text-mesh-text-mute">Last Seen</TableHead>
+                  <TableHead className="text-mesh-text-mute">Updated</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {Array.from({ length: 3 }).map((_, i) => (
-                  <TableRow key={i} className="border-mesh-border-strong">
+                  <TableRow key={i} className="border-mesh-border">
                     <TableCell><Skeleton className="h-5 w-28" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-20" /></TableCell>
                     <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
@@ -583,11 +583,11 @@ ${filtered
             </Table>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Box className="mb-4 h-12 w-12 text-slate-600" />
-              <p className="text-lg font-medium text-slate-400">
+              <Box className="mb-4 h-12 w-12 text-mesh-text-mute" />
+              <p className="text-lg font-medium text-mesh-text-dim">
                 {hasFilters ? "No assets match your filters" : "No assets yet"}
               </p>
-              <p className="mt-1 text-sm text-slate-600">
+              <p className="mt-1 text-sm text-mesh-text-mute">
                 {hasFilters
                   ? "Try adjusting your search or filter criteria."
                   : "Click \"Import from Devices\" to create assets from discovered network devices, or add one manually."}
@@ -596,15 +596,15 @@ ${filtered
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                  <TableHead className="text-slate-500">Name</TableHead>
-                  <TableHead className="text-slate-500">Type</TableHead>
-                  <TableHead className="text-slate-500">Status</TableHead>
-                  <TableHead className="text-slate-500">Location</TableHead>
-                  <TableHead className="text-slate-500">Owner</TableHead>
-                  <TableHead className="text-slate-500">IP</TableHead>
-                  <TableHead className="text-slate-500">Last Seen</TableHead>
-                  <TableHead className="text-slate-500">Updated</TableHead>
+                <TableRow className="border-mesh-border hover:bg-transparent">
+                  <TableHead className="text-mesh-text-mute">Name</TableHead>
+                  <TableHead className="text-mesh-text-mute">Type</TableHead>
+                  <TableHead className="text-mesh-text-mute">Status</TableHead>
+                  <TableHead className="text-mesh-text-mute">Location</TableHead>
+                  <TableHead className="text-mesh-text-mute">Owner</TableHead>
+                  <TableHead className="text-mesh-text-mute">IP</TableHead>
+                  <TableHead className="text-mesh-text-mute">Last Seen</TableHead>
+                  <TableHead className="text-mesh-text-mute">Updated</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -626,13 +626,13 @@ ${filtered
                         ease: "easeOut",
                         delay: Math.min(index * 0.015, 0.12),
                       }}
-                      className="border-b border-mesh-border-strong transition-colors hover:bg-mesh-surface-2 data-[state=selected]:bg-muted"
+                      className="border-b border-mesh-border transition-colors hover:bg-mesh-surface-2 data-[state=selected]:bg-muted"
                     >
                       <TableCell className="font-medium text-white">
                         {asset.name}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1.5 text-slate-400">
+                        <div className="flex items-center gap-1.5 text-mesh-text-dim">
                           <TypeIcon className="h-4 w-4 shrink-0" />
                           <span className="text-sm">{typeConfig.label}</span>
                         </div>
@@ -645,33 +645,33 @@ ${filtered
                           {asset.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-slate-400">
+                      <TableCell className="text-mesh-text-dim">
                         {asset.location ?? "\u2014"}
                       </TableCell>
-                      <TableCell className="text-slate-400">
+                      <TableCell className="text-mesh-text-dim">
                         {asset.owner ?? "\u2014"}
                       </TableCell>
-                      <TableCell className="font-mono tabular-nums text-slate-400">
+                      <TableCell className="font-mono tabular-nums text-mesh-text-dim">
                         {asset.ip ?? "\u2014"}
                       </TableCell>
-                      <TableCell className="text-slate-400">
+                      <TableCell className="text-mesh-text-dim">
                         {lastSeen ? timeAgo(lastSeen) : "\u2014"}
                       </TableCell>
-                      <TableCell className="text-slate-400 text-xs">
+                      <TableCell className="text-mesh-text-dim text-xs">
                         {timeAgo(asset.updated_at)}
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1">
                           <button
                             onClick={() => setEditAsset(asset)}
-                            className="rounded p-1 text-slate-600 hover:bg-mesh-surface-2 hover:text-white transition-colors"
+                            className="rounded p-1 text-mesh-text-mute hover:bg-mesh-surface-2 hover:text-white transition-colors"
                             title="Edit"
                           >
                             <Pencil size={14} />
                           </button>
                           <button
                             onClick={() => setPendingDelete(asset)}
-                            className="rounded p-1 text-slate-600 hover:bg-rose-500/10 hover:text-rose-400 transition-colors"
+                            className="rounded p-1 text-mesh-text-mute hover:bg-[#fb7185]/10 hover:text-[#fb7185] transition-colors"
                             title="Delete"
                           >
                             <Trash2 size={14} />
@@ -718,17 +718,17 @@ ${filtered
             if (!v) setPendingDelete(null);
           }}
         >
-          <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
+          <AlertDialogContent className="border-mesh-border bg-mesh-surface-1">
             <AlertDialogHeader>
               <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10">
-                  <AlertTriangle className="h-5 w-5 text-rose-400" />
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fb7185]/10">
+                  <AlertTriangle className="h-5 w-5 text-[#fb7185]" />
                 </div>
                 <AlertDialogTitle className="text-white">
                   Delete asset?
                 </AlertDialogTitle>
               </div>
-              <AlertDialogDescription className="pl-[52px] text-slate-400">
+              <AlertDialogDescription className="pl-[52px] text-mesh-text-dim">
                 <span className="font-medium text-white">
                   {pendingDelete?.name}
                 </span>{" "}
@@ -737,7 +737,7 @@ ${filtered
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel
-                className="border-mesh-border-strong bg-transparent text-slate-400 hover:bg-mesh-surface-2 hover:text-white"
+                className="border-mesh-border bg-transparent text-mesh-text-dim hover:bg-mesh-surface-2 hover:text-white"
                 disabled={deleting}
               >
                 Cancel
@@ -746,7 +746,7 @@ ${filtered
                 onClick={handleDelete}
                 disabled={deleting}
                 autoFocus
-                className="bg-rose-600 text-white hover:bg-rose-500"
+                className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
               >
                 {deleting ? "Deleting..." : "Delete"}
               </AlertDialogAction>
@@ -776,15 +776,15 @@ function StatusBadge({ online }: { online: boolean }) {
       variant="outline"
       className={
         online
-          ? "border-emerald-500/50 text-emerald-400"
-          : "border-rose-500/50 text-rose-400"
+          ? "border-[#4ade80]/50 text-[#4ade80]"
+          : "border-[#fb7185]/50 text-[#fb7185]"
       }
     >
       <span
         className={`mr-1.5 inline-block h-1.5 w-1.5 rounded-full ${
           online
-            ? "bg-emerald-400 ring-2 ring-emerald-400/30 status-glow-online"
-            : "bg-rose-400 ring-2 ring-rose-400/30 status-glow-offline"
+            ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
+            : "bg-[#fb7185] ring-2 ring-[#fb7185]/30 status-glow-offline"
         }`}
       />
       {online ? "Online" : "Offline"}
@@ -855,7 +855,7 @@ function ImportCSVDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-[520px] border-mesh-border-strong bg-mesh-surface-1">
+      <DialogContent className="w-full max-w-[520px] border-mesh-border bg-mesh-surface-1">
         <DialogHeader>
           <DialogTitle className="text-white">Import Assets from CSV</DialogTitle>
           <DialogDescription>
@@ -870,17 +870,17 @@ function ImportCSVDialog({
             type="file"
             accept=".csv,text/csv"
             onChange={handleFileChange}
-            className="border-mesh-border-strong bg-mesh-surface-1 file:text-slate-400"
+            className="border-mesh-border bg-mesh-surface-1 file:text-mesh-text-dim"
           />
 
           {rows.length > 0 && (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-mesh-text-dim">
               {rows.length} row(s) parsed and ready to import.
             </p>
           )}
 
           {result && (
-            <p className="text-sm text-slate-300 whitespace-pre-wrap">{result}</p>
+            <p className="text-sm text-mesh-text whitespace-pre-wrap">{result}</p>
           )}
 
           <Button
@@ -984,7 +984,7 @@ function AssetFormDialog({
   };
 
   const dialogContent = (
-    <DialogContent className="w-full max-w-[560px] border-mesh-border-strong bg-mesh-surface-1">
+    <DialogContent className="w-full max-w-[560px] border-mesh-border bg-mesh-surface-1">
       <DialogHeader>
         <DialogTitle className="text-white">
           {isEdit ? "Edit Asset" : "Add Asset"}
@@ -1062,7 +1062,7 @@ function AssetFormDialog({
           <div className="space-y-2">
             <Label>
               Tags
-              <span className="ml-2 text-xs text-slate-500">
+              <span className="ml-2 text-xs text-mesh-text-mute">
                 JSON array, e.g. [&quot;production&quot;, &quot;web&quot;]
               </span>
             </Label>
@@ -1106,7 +1106,7 @@ function AssetFormDialog({
           />
         </div>
 
-        {formError && <p className="text-sm text-rose-400">{formError}</p>}
+        {formError && <p className="text-sm text-[#fb7185]">{formError}</p>}
 
         <Button onClick={handleSubmit} disabled={loading} className="w-full">
           {loading ? "Saving..." : isEdit ? "Update" : "Add Asset"}

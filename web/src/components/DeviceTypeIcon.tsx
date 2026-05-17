@@ -45,25 +45,25 @@ const ICON_MAP: Record<DeviceType, typeof Router> = {
 };
 
 const COLOR_MAP: Record<DeviceType, string> = {
-  router: "text-blue-400",
-  access_point: "text-cyan-300",
-  laptop: "text-sky-400",
-  desktop: "text-indigo-400",
-  phone: "text-violet-400",
-  tablet: "text-purple-400",
-  tv: "text-pink-400",
-  server: "text-emerald-400",
-  printer: "text-amber-400",
-  iot: "text-teal-400",
-  gaming: "text-rose-400",
-  workstation: "text-indigo-400",
+  router: "text-mesh-primary",
+  access_point: "text-[#67e8f9]",
+  laptop: "text-mesh-accent",
+  desktop: "text-[#818cf8]",
+  phone: "text-[#a78bfa]",
+  tablet: "text-[#c084fc]",
+  tv: "text-[#f472b6]",
+  server: "text-[#4ade80]",
+  printer: "text-[#fbbf24]",
+  iot: "text-mesh-accent",
+  gaming: "text-[#fb7185]",
+  workstation: "text-[#818cf8]",
   vm: "text-mesh-accent",
-  container: "text-orange-400",
+  container: "text-[#fbbf24]",
   nas: "text-lime-400",
-  switch: "text-blue-300",
-  ups: "text-yellow-400",
-  other: "text-slate-400",
-  unknown: "text-slate-400",
+  switch: "text-mesh-primary",
+  ups: "text-[#fbbf24]",
+  other: "text-mesh-text-dim",
+  unknown: "text-mesh-text-dim",
 };
 
 interface DeviceTypeIconProps {
@@ -107,5 +107,5 @@ export function DeviceTypeLabel({ type }: { type: DeviceType }) {
     other: "Other",
     unknown: "Unknown",
   };
-  return <span className="text-xs text-slate-500 capitalize">{labels[type]}</span>;
+  return <span className="text-xs text-mesh-text-mute capitalize">{labels[type]}</span>;
 }

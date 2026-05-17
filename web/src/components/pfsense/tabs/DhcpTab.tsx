@@ -45,10 +45,10 @@ function ActiveLeasesSection() {
   if (loading) return <Skeleton className="h-48 w-full" />;
 
   return (
-    <Card className="border-mesh-border-strong bg-mesh-surface-1">
+    <Card className="border-mesh-border bg-mesh-surface-1">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-white">
-          <Server className="h-4 w-4 text-blue-400" />
+          <Server className="h-4 w-4 text-mesh-primary" />
           Active Leases
         </CardTitle>
       </CardHeader>
@@ -56,7 +56,7 @@ function ActiveLeasesSection() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
+              <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-mesh-text-mute">
                 <th className="px-3 py-2">IP</th>
                 <th className="px-3 py-2">MAC</th>
                 <th className="px-3 py-2">Hostname</th>
@@ -69,31 +69,31 @@ function ActiveLeasesSection() {
             <tbody>
               {(leases ?? []).length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-8 text-center text-slate-500">
+                  <td colSpan={7} className="px-3 py-8 text-center text-mesh-text-mute">
                     No active leases
                   </td>
                 </tr>
               ) : (
                 (leases ?? []).map((l, i) => (
-                  <tr key={`${l.mac}-${i}`} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
+                  <tr key={`${l.mac}-${i}`} className="border-b border-mesh-border hover:bg-mesh-surface-2">
                     <td className="px-3 py-2 font-mono text-white">{l.ip}</td>
-                    <td className="px-3 py-2 font-mono text-slate-400">{l.mac}</td>
-                    <td className="px-3 py-2 text-slate-300">{l.hostname ?? "\u2014"}</td>
-                    <td className="px-3 py-2 text-slate-400">{l.start ?? "\u2014"}</td>
-                    <td className="px-3 py-2 text-slate-400">{l.end ?? "\u2014"}</td>
+                    <td className="px-3 py-2 font-mono text-mesh-text-dim">{l.mac}</td>
+                    <td className="px-3 py-2 text-mesh-text">{l.hostname ?? "\u2014"}</td>
+                    <td className="px-3 py-2 text-mesh-text-dim">{l.start ?? "\u2014"}</td>
+                    <td className="px-3 py-2 text-mesh-text-dim">{l.end ?? "\u2014"}</td>
                     <td className="px-3 py-2">
                       <Badge
                         variant="outline"
                         className={
                           l.status === "active"
-                            ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
-                            : "border-slate-600/30 bg-slate-600/10 text-slate-500"
+                            ? "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]"
+                            : "border-mesh-text-mute/30 bg-mesh-text-mute/10 text-mesh-text-mute"
                         }
                       >
                         {l.status}
                       </Badge>
                     </td>
-                    <td className="px-3 py-2 text-slate-400">{l.interface}</td>
+                    <td className="px-3 py-2 text-mesh-text-dim">{l.interface}</td>
                   </tr>
                 ))
               )}
@@ -147,15 +147,15 @@ function StaticMappingsSection() {
 
   return (
     <>
-      <Card className="border-mesh-border-strong bg-mesh-surface-1">
+      <Card className="border-mesh-border bg-mesh-surface-1">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
-            <Server className="h-4 w-4 text-blue-400" />
+            <Server className="h-4 w-4 text-mesh-primary" />
             Static Mappings
           </CardTitle>
           <Button
             size="sm"
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-mesh-primary hover:bg-mesh-primary"
             onClick={() => setShowCreate(true)}
           >
             <Plus className="mr-1 h-3.5 w-3.5" />
@@ -166,7 +166,7 @@ function StaticMappingsSection() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-slate-500">
+                <tr className="border-b border-mesh-border-strong text-left text-xs uppercase tracking-wider text-mesh-text-mute">
                   <th className="px-3 py-2">MAC</th>
                   <th className="px-3 py-2">IP</th>
                   <th className="px-3 py-2">Hostname</th>
@@ -178,23 +178,23 @@ function StaticMappingsSection() {
               <tbody>
                 {(mappings ?? []).length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-3 py-8 text-center text-slate-500">
+                    <td colSpan={6} className="px-3 py-8 text-center text-mesh-text-mute">
                       No static mappings
                     </td>
                   </tr>
                 ) : (
                   (mappings ?? []).map((m) => (
-                    <tr key={m.id} className="border-b border-mesh-border-strong hover:bg-mesh-surface-2">
+                    <tr key={m.id} className="border-b border-mesh-border hover:bg-mesh-surface-2">
                       <td className="px-3 py-2 font-mono text-white">{m.mac}</td>
-                      <td className="px-3 py-2 font-mono text-slate-300">{m.ip}</td>
-                      <td className="px-3 py-2 text-slate-300">{m.hostname ?? "\u2014"}</td>
-                      <td className="px-3 py-2 text-slate-400">{m.description ?? "\u2014"}</td>
-                      <td className="px-3 py-2 text-slate-400">{m.interface}</td>
+                      <td className="px-3 py-2 font-mono text-mesh-text">{m.ip}</td>
+                      <td className="px-3 py-2 text-mesh-text">{m.hostname ?? "\u2014"}</td>
+                      <td className="px-3 py-2 text-mesh-text-dim">{m.description ?? "\u2014"}</td>
+                      <td className="px-3 py-2 text-mesh-text-dim">{m.interface}</td>
                       <td className="px-3 py-2 text-right">
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-rose-400 hover:text-rose-300"
+                          className="text-[#fb7185] hover:text-[#fb7185]"
                           onClick={() => setDeleteTarget(m)}
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -211,54 +211,54 @@ function StaticMappingsSection() {
 
       {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1">
+        <DialogContent className="border-mesh-border bg-mesh-surface-1">
           <DialogHeader>
             <DialogTitle className="text-white">Add Static Mapping</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-slate-300">MAC Address</Label>
+              <Label className="text-mesh-text">MAC Address</Label>
               <Input
                 placeholder="aa:bb:cc:dd:ee:ff"
                 value={form.mac}
                 onChange={(e) => setForm({ ...form, mac: e.target.value })}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white"
+                className="border-mesh-border bg-mesh-surface-1 text-white"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-slate-300">IP Address</Label>
+              <Label className="text-mesh-text">IP Address</Label>
               <Input
                 placeholder="192.168.1.100"
                 value={form.ip}
                 onChange={(e) => setForm({ ...form, ip: e.target.value })}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white"
+                className="border-mesh-border bg-mesh-surface-1 text-white"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-slate-300">Hostname</Label>
+              <Label className="text-mesh-text">Hostname</Label>
               <Input
                 placeholder="my-device"
                 value={form.hostname}
                 onChange={(e) => setForm({ ...form, hostname: e.target.value })}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white"
+                className="border-mesh-border bg-mesh-surface-1 text-white"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-slate-300">Description</Label>
+              <Label className="text-mesh-text">Description</Label>
               <Input
                 placeholder="Optional description"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="border-mesh-border-strong bg-mesh-surface-1 text-white"
+                className="border-mesh-border bg-mesh-surface-1 text-white"
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setShowCreate(false)} className="text-slate-400">
+            <Button variant="ghost" onClick={() => setShowCreate(false)} className="text-mesh-text-dim">
               Cancel
             </Button>
             <Button
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-mesh-primary hover:bg-mesh-primary"
               onClick={handleCreate}
               disabled={saving || !form.mac || !form.ip}
             >
@@ -270,16 +270,16 @@ function StaticMappingsSection() {
 
       {/* Delete Confirm */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1">
+        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">Delete Static Mapping</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
+            <AlertDialogDescription className="text-mesh-text-dim">
               Delete mapping for {deleteTarget?.mac} ({deleteTarget?.ip})? This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-mesh-border-strong text-slate-400">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-rose-600 hover:bg-rose-700" onClick={handleDelete}>
+            <AlertDialogCancel className="border-mesh-border-strong text-mesh-text-dim">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-[#fb7185] hover:bg-[#fb7185]" onClick={handleDelete}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -294,7 +294,7 @@ function StaticMappingsSection() {
 export function DhcpTab() {
   return (
     <Tabs defaultValue="leases" className="w-full">
-      <TabsList className="border-mesh-border-strong bg-mesh-surface-1">
+      <TabsList className="border-mesh-border bg-mesh-surface-1">
         <TabsTrigger value="leases">Active Leases</TabsTrigger>
         <TabsTrigger value="mappings">Static Mappings</TabsTrigger>
       </TabsList>

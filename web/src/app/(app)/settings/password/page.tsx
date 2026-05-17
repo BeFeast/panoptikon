@@ -102,7 +102,7 @@ export default function PasswordSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -111,14 +111,14 @@ export default function PasswordSettingsPage() {
 
         {pwStatus === "success" ? (
           <SettingsSection
-            icon={<ShieldCheck className="h-4 w-4 text-emerald-400" />}
-            iconBg="bg-emerald-500/10"
+            icon={<ShieldCheck className="h-4 w-4 text-[#4ade80]" />}
+            iconBg="bg-[#4ade80]/10"
             title="Password Changed"
             description="Redirecting to login…"
           >
             <div className="flex flex-col items-center gap-3 py-6 text-center">
-              <CheckCircle className="h-10 w-10 text-emerald-400" />
-              <p className="text-sm text-emerald-400">
+              <CheckCircle className="h-10 w-10 text-[#4ade80]" />
+              <p className="text-sm text-[#4ade80]">
                 Password changed! Redirecting to login…
               </p>
             </div>
@@ -127,13 +127,13 @@ export default function PasswordSettingsPage() {
           <>
             {/* Current Password Section */}
             <SettingsSection
-              icon={<KeyRound className="h-4 w-4 text-blue-400" />}
-              iconBg="bg-blue-500/10"
+              icon={<KeyRound className="h-4 w-4 text-mesh-primary" />}
+              iconBg="bg-mesh-primary/10"
               title="Current Password"
               description="Verify your identity before making changes."
             >
               <div className="space-y-1.5">
-                <Label htmlFor="current" className="text-xs text-slate-400">
+                <Label htmlFor="current" className="text-xs text-mesh-text-dim">
                   Current password
                 </Label>
                 <div className="relative">
@@ -142,8 +142,8 @@ export default function PasswordSettingsPage() {
                     type={showCurrent ? "text" : "password"}
                     value={current}
                     onChange={(e) => setCurrent(e.target.value)}
-                    className={`border-mesh-border-strong bg-mesh-surface-1 pr-10 text-white placeholder:text-mesh-text-mute ${
-                      currentValid === "valid" ? "border-emerald-500/40" : ""
+                    className={`border-mesh-border bg-mesh-surface-1 pr-10 text-white placeholder:text-mesh-text-mute ${
+                      currentValid === "valid" ? "border-[#4ade80]/40" : ""
                     }`}
                     placeholder="••••••••"
                     autoComplete="current-password"
@@ -151,7 +151,7 @@ export default function PasswordSettingsPage() {
                   <button
                     type="button"
                     onClick={() => setShowCurrent((v) => !v)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-mesh-text-mute hover:text-mesh-text"
                     tabIndex={-1}
                   >
                     {showCurrent ? (
@@ -166,13 +166,13 @@ export default function PasswordSettingsPage() {
 
             {/* New Password Section */}
             <SettingsSection
-              icon={<Lock className="h-4 w-4 text-purple-400" />}
-              iconBg="bg-purple-500/10"
+              icon={<Lock className="h-4 w-4 text-[#c084fc]" />}
+              iconBg="bg-[#c084fc]/10"
               title="New Password"
               description="Choose a strong password with at least 8 characters."
             >
               <div className="space-y-1.5">
-                <Label htmlFor="new" className="text-xs text-slate-400">
+                <Label htmlFor="new" className="text-xs text-mesh-text-dim">
                   New password
                 </Label>
                 <div className="relative">
@@ -181,11 +181,11 @@ export default function PasswordSettingsPage() {
                     type={showNext ? "text" : "password"}
                     value={next}
                     onChange={(e) => setNext(e.target.value)}
-                    className={`border-mesh-border-strong bg-mesh-surface-1 pr-10 text-white placeholder:text-mesh-text-mute ${
+                    className={`border-mesh-border bg-mesh-surface-1 pr-10 text-white placeholder:text-mesh-text-mute ${
                       nextValid === "valid"
-                        ? "border-emerald-500/40"
+                        ? "border-[#4ade80]/40"
                         : nextValid === "error"
-                          ? "border-rose-500/40"
+                          ? "border-[#fb7185]/40"
                           : ""
                     }`}
                     placeholder="Min. 8 characters"
@@ -194,7 +194,7 @@ export default function PasswordSettingsPage() {
                   <button
                     type="button"
                     onClick={() => setShowNext((v) => !v)}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-mesh-text-mute hover:text-mesh-text"
                     tabIndex={-1}
                   >
                     {showNext ? (
@@ -210,7 +210,7 @@ export default function PasswordSettingsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="confirm" className="text-xs text-slate-400">
+                <Label htmlFor="confirm" className="text-xs text-mesh-text-dim">
                   Confirm new password
                 </Label>
                 <div className="relative">
@@ -219,11 +219,11 @@ export default function PasswordSettingsPage() {
                     type="password"
                     value={confirm}
                     onChange={(e) => setConfirm(e.target.value)}
-                    className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
+                    className={`border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                       confirmValid === "valid"
-                        ? "border-emerald-500/40"
+                        ? "border-[#4ade80]/40"
                         : confirmValid === "error"
-                          ? "border-rose-500/40"
+                          ? "border-[#fb7185]/40"
                           : ""
                     }`}
                     placeholder="••••••••"
@@ -231,12 +231,12 @@ export default function PasswordSettingsPage() {
                   />
                   {confirmValid === "valid" && (
                     <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
-                      <CheckCircle className="h-4 w-4 text-emerald-400" />
+                      <CheckCircle className="h-4 w-4 text-[#4ade80]" />
                     </div>
                   )}
                 </div>
                 {confirmValid === "error" && (
-                  <p className="animate-fade-in text-xs text-rose-400">
+                  <p className="animate-fade-in text-xs text-[#fb7185]">
                     Passwords do not match.
                   </p>
                 )}
@@ -245,9 +245,9 @@ export default function PasswordSettingsPage() {
 
             {/* Error message */}
             {pwStatus === "error" && pwError && (
-              <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-                <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-                <p className="text-xs text-rose-400">{pwError}</p>
+              <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+                <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+                <p className="text-xs text-[#fb7185]">{pwError}</p>
               </div>
             )}
 

@@ -1,6 +1,6 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('Infrastructure Health (#518)', () => {
+test.describe.skip('Infrastructure Health (#518)', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

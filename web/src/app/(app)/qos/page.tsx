@@ -72,7 +72,7 @@ import type {
 import { toast } from "sonner";
 
 const surfaceClass =
-  "border-mesh-border-strong bg-gradient-to-b from-slate-900/80 to-slate-900/55 shadow-[0_12px_30px_rgba(2,6,23,0.35)]";
+  "border-mesh-border-strong bg-gradient-to-b from-mesh-surface-1/80 to-mesh-surface-1/55 shadow-[0_12px_30px_rgba(2,6,23,0.35)]";
 
 const LIVE_POLL_INTERVAL = 5000;
 
@@ -203,14 +203,14 @@ export default function QosPage() {
   return (
     <PageTransition>
       <div className="space-y-8">
-        <section className="flex flex-col gap-5 rounded-xl border border-mesh-border-strong bg-mesh-surface-1/95 p-4 md:flex-row md:items-center md:justify-between">
+        <section className="flex flex-col gap-5 rounded-xl border border-mesh-border bg-mesh-surface-1/95 p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/20 via-cyan-500/10 to-indigo-500/10 text-blue-300">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-mesh-primary/30 bg-gradient-to-br from-mesh-primary/20 via-mesh-accent/10 to-[#818cf8]/10 text-mesh-primary">
               <Gauge className="h-6 w-6" />
             </div>
             <div>
               <h1 className="text-2xl font-semibold tracking-tight text-white">QoS / Traffic Shaping</h1>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-mesh-text-dim">
                 Queue policies, bandwidth limits, and hierarchical shaping.
               </p>
             </div>
@@ -223,8 +223,8 @@ export default function QosPage() {
                 size="sm"
                 onClick={() => setLiveRefresh((v) => !v)}
                 className={cn(
-                  "border-mesh-border-strong bg-mesh-surface-1 text-slate-200 hover:bg-mesh-surface-2/55",
-                  liveRefresh && "border-emerald-500/50 text-emerald-300",
+                  "border-mesh-border bg-mesh-surface-1 text-mesh-text hover:bg-mesh-surface-2/55",
+                  liveRefresh && "border-[#4ade80]/50 text-[#4ade80]",
                 )}
               >
                 <RefreshCw
@@ -243,7 +243,7 @@ export default function QosPage() {
                 load();
                 if (activeTab === "mikrotik") loadMtQueues();
               }}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-slate-200 hover:bg-mesh-surface-2/55"
+              className="border-mesh-border bg-mesh-surface-1 text-mesh-text hover:bg-mesh-surface-2/55"
             >
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
               Refresh
@@ -256,20 +256,20 @@ export default function QosPage() {
             title="MikroTik Simple Queues"
             value={summary?.mikrotik_simple_queue_count ?? null}
             available={summary?.mikrotik_available ?? null}
-            icon={<Network className="h-4 w-4 text-amber-300" />}
-            iconClass="border-amber-500/30 bg-amber-500/15"
+            icon={<Network className="h-4 w-4 text-[#fbbf24]" />}
+            iconClass="border-[#fbbf24]/30 bg-[#fbbf24]/15"
           />
           <SummaryCard
             title="MikroTik Queue Tree"
             value={summary?.mikrotik_queue_tree_count ?? null}
             available={summary?.mikrotik_available ?? null}
-            icon={<TreePine className="h-4 w-4 text-cyan-300" />}
-            iconClass="border-cyan-500/30 bg-cyan-500/15"
+            icon={<TreePine className="h-4 w-4 text-[#67e8f9]" />}
+            iconClass="border-mesh-accent/30 bg-mesh-accent/15"
           />
         </section>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="h-auto rounded-xl border border-mesh-border-strong bg-mesh-surface-1/95 p-1">
+          <TabsList className="h-auto rounded-xl border border-mesh-border bg-mesh-surface-1/95 p-1">
             <TabsTrigger
               value="overview"
               className="rounded-lg px-4 data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
@@ -291,26 +291,26 @@ export default function QosPage() {
             <Card className={surfaceClass}>
               <CardHeader>
                 <CardTitle className="text-base text-white">Traffic Shaping Overview</CardTitle>
-                <CardDescription className="text-slate-400">
+                <CardDescription className="text-mesh-text-dim">
                   Simple queues apply per-target limits, while queue tree entries define
                   hierarchical policy and prioritization.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 {summary?.mikrotik_available ? (
-                  <div className="grid gap-3 text-sm text-slate-300 md:grid-cols-2">
-                    <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 p-3">
-                      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Simple queues</p>
-                      <p className="mt-1 text-slate-200">
+                  <div className="grid gap-3 text-sm text-mesh-text md:grid-cols-2">
+                    <div className="rounded-lg border border-mesh-border bg-mesh-surface-1/95 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-mesh-text-mute">Simple queues</p>
+                      <p className="mt-1 text-mesh-text">
                         <span className="font-semibold text-white">
                           {summary.mikrotik_simple_queue_count}
                         </span>{" "}
                         configured
                       </p>
                     </div>
-                    <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 p-3">
-                      <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Queue tree</p>
-                      <p className="mt-1 text-slate-200">
+                    <div className="rounded-lg border border-mesh-border bg-mesh-surface-1/95 p-3">
+                      <p className="text-[11px] uppercase tracking-[0.2em] text-mesh-text-mute">Queue tree</p>
+                      <p className="mt-1 text-mesh-text">
                         <span className="font-semibold text-white">
                           {summary.mikrotik_queue_tree_count}
                         </span>{" "}
@@ -319,7 +319,7 @@ export default function QosPage() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-slate-400">
+                  <p className="text-sm text-mesh-text-dim">
                     No router is configured. Configure router credentials in Settings.
                   </p>
                 )}
@@ -330,12 +330,12 @@ export default function QosPage() {
           <TabsContent value="mikrotik" className="space-y-4 pt-2">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="relative max-w-md flex-1">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mesh-text-mute" />
                 <Input
                   placeholder="Filter by queue name, target, or comment..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="border-mesh-border-strong bg-mesh-surface-1/95 pl-10 text-white placeholder:text-mesh-text-mute"
+                  className="border-mesh-border bg-mesh-surface-1/95 pl-10 text-white placeholder:text-mesh-text-mute"
                 />
               </div>
 
@@ -343,7 +343,7 @@ export default function QosPage() {
                 <Button
                   size="sm"
                   onClick={() => setShowAddMtQueue(true)}
-                  className="bg-blue-600 text-white hover:bg-blue-500"
+                  className="bg-mesh-primary text-white hover:bg-mesh-primary"
                 >
                   <Plus className="mr-1.5 h-3.5 w-3.5" />
                   Add Queue
@@ -352,7 +352,7 @@ export default function QosPage() {
                   size="sm"
                   variant="outline"
                   onClick={() => setShowAddMtTree(true)}
-                  className="border-mesh-border-strong text-slate-200 hover:bg-mesh-surface-2/55"
+                  className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
                 >
                   <Plus className="mr-1.5 h-3.5 w-3.5" />
                   Add Tree Entry
@@ -364,7 +364,7 @@ export default function QosPage() {
             <Card className={surfaceClass}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base text-white">Simple Queues</CardTitle>
-                <CardDescription className="text-xs text-slate-500">
+                <CardDescription className="text-xs text-mesh-text-mute">
                   Per-target bandwidth limits for IPs/subnets.
                 </CardDescription>
               </CardHeader>
@@ -373,13 +373,13 @@ export default function QosPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Name</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Target</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Max Limit</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Priority</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Rate</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Status</TableHead>
-                        <TableHead className="text-right text-xs uppercase tracking-wide text-slate-500">Actions</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Name</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Target</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Max Limit</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Priority</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Rate</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Status</TableHead>
+                        <TableHead className="text-right text-xs uppercase tracking-wide text-mesh-text-mute">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
 
@@ -396,7 +396,7 @@ export default function QosPage() {
                         ))
                       ) : filteredMtQueues.length === 0 ? (
                         <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                          <TableCell colSpan={7} className="py-12 text-center text-slate-500">
+                          <TableCell colSpan={7} className="py-12 text-center text-mesh-text-mute">
                             {search ? "No queues match your filter." : "No simple queues configured."}
                           </TableCell>
                         </TableRow>
@@ -404,13 +404,13 @@ export default function QosPage() {
                         filteredMtQueues.map((queue) => (
                           <TableRow
                             key={queue.id ?? queue.name}
-                            className="border-mesh-border-strong hover:bg-mesh-surface-2/55"
+                            className="border-mesh-border hover:bg-mesh-surface-2/55"
                           >
                             <TableCell className="font-medium text-white">{queue.name}</TableCell>
-                            <TableCell className="text-slate-300">{queue.target}</TableCell>
-                            <TableCell className="font-mono text-xs text-slate-400">{queue.max_limit ?? "—"}</TableCell>
-                            <TableCell className="text-slate-300">{queue.priority ?? "—"}</TableCell>
-                            <TableCell className="font-mono text-xs text-slate-400">
+                            <TableCell className="text-mesh-text">{queue.target}</TableCell>
+                            <TableCell className="font-mono text-xs text-mesh-text-dim">{queue.max_limit ?? "—"}</TableCell>
+                            <TableCell className="text-mesh-text">{queue.priority ?? "—"}</TableCell>
+                            <TableCell className="font-mono text-xs text-mesh-text-dim">
                               <RateDisplay rate={queue.rate} />
                             </TableCell>
                             <TableCell>
@@ -419,10 +419,10 @@ export default function QosPage() {
                                 className={cn(
                                   "rounded-md border text-[11px] uppercase",
                                   queue.disabled
-                                    ? "border-mesh-border-strong bg-mesh-surface-1 text-slate-500"
+                                    ? "border-mesh-border bg-mesh-surface-1 text-mesh-text-mute"
                                     : queue.dynamic
-                                      ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
-                                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+                                      ? "border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[#fbbf24]"
+                                      : "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]",
                                 )}
                               >
                                 {queue.disabled ? "disabled" : queue.dynamic ? "dynamic" : "active"}
@@ -436,7 +436,7 @@ export default function QosPage() {
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => setEditMtQueue(queue)}
-                                      className="h-8 w-8 p-0 text-slate-400 hover:text-white"
+                                      className="h-8 w-8 p-0 text-mesh-text-dim hover:text-white"
                                     >
                                       <Pencil className="h-3.5 w-3.5" />
                                     </Button>
@@ -444,7 +444,7 @@ export default function QosPage() {
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => setPendingDeleteMtQueue(queue)}
-                                      className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400"
+                                      className="h-8 w-8 p-0 text-mesh-text-dim hover:text-[#fb7185]"
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
@@ -465,7 +465,7 @@ export default function QosPage() {
             <Card className={surfaceClass}>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base text-white">Queue Tree</CardTitle>
-                <CardDescription className="text-xs text-slate-500">
+                <CardDescription className="text-xs text-mesh-text-mute">
                   Hierarchical queue entries for packet-mark based shaping.
                 </CardDescription>
               </CardHeader>
@@ -474,14 +474,14 @@ export default function QosPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Name</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Parent</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Packet Mark</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Max Limit</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Priority</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Rate</TableHead>
-                        <TableHead className="text-xs uppercase tracking-wide text-slate-500">Status</TableHead>
-                        <TableHead className="text-right text-xs uppercase tracking-wide text-slate-500">Actions</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Name</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Parent</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Packet Mark</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Max Limit</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Priority</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Rate</TableHead>
+                        <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Status</TableHead>
+                        <TableHead className="text-right text-xs uppercase tracking-wide text-mesh-text-mute">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
 
@@ -498,7 +498,7 @@ export default function QosPage() {
                         ))
                       ) : filteredMtTree.length === 0 ? (
                         <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                          <TableCell colSpan={8} className="py-12 text-center text-slate-500">
+                          <TableCell colSpan={8} className="py-12 text-center text-mesh-text-mute">
                             {search ? "No tree entries match your filter." : "No queue tree entries."}
                           </TableCell>
                         </TableRow>
@@ -506,14 +506,14 @@ export default function QosPage() {
                         filteredMtTree.map((entry) => (
                           <TableRow
                             key={entry.id ?? entry.name}
-                            className="border-mesh-border-strong hover:bg-mesh-surface-2/55"
+                            className="border-mesh-border hover:bg-mesh-surface-2/55"
                           >
                             <TableCell className="font-medium text-white">{entry.name}</TableCell>
-                            <TableCell className="text-slate-300">{entry.parent ?? "—"}</TableCell>
-                            <TableCell className="text-slate-300">{entry.packet_mark ?? "—"}</TableCell>
-                            <TableCell className="font-mono text-xs text-slate-400">{entry.max_limit ?? "—"}</TableCell>
-                            <TableCell className="text-slate-300">{entry.priority ?? "—"}</TableCell>
-                            <TableCell className="font-mono text-xs text-slate-400">
+                            <TableCell className="text-mesh-text">{entry.parent ?? "—"}</TableCell>
+                            <TableCell className="text-mesh-text">{entry.packet_mark ?? "—"}</TableCell>
+                            <TableCell className="font-mono text-xs text-mesh-text-dim">{entry.max_limit ?? "—"}</TableCell>
+                            <TableCell className="text-mesh-text">{entry.priority ?? "—"}</TableCell>
+                            <TableCell className="font-mono text-xs text-mesh-text-dim">
                               <RateDisplay rate={entry.rate} />
                             </TableCell>
                             <TableCell>
@@ -522,10 +522,10 @@ export default function QosPage() {
                                 className={cn(
                                   "rounded-md border text-[11px] uppercase",
                                   entry.disabled
-                                    ? "border-mesh-border-strong bg-mesh-surface-1 text-slate-500"
+                                    ? "border-mesh-border bg-mesh-surface-1 text-mesh-text-mute"
                                     : entry.dynamic
-                                      ? "border-amber-500/30 bg-amber-500/10 text-amber-300"
-                                      : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300",
+                                      ? "border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[#fbbf24]"
+                                      : "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]",
                                 )}
                               >
                                 {entry.disabled ? "disabled" : entry.dynamic ? "dynamic" : "active"}
@@ -539,7 +539,7 @@ export default function QosPage() {
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => setEditMtTree(entry)}
-                                      className="h-8 w-8 p-0 text-slate-400 hover:text-white"
+                                      className="h-8 w-8 p-0 text-mesh-text-dim hover:text-white"
                                     >
                                       <Pencil className="h-3.5 w-3.5" />
                                     </Button>
@@ -547,7 +547,7 @@ export default function QosPage() {
                                       variant="ghost"
                                       size="sm"
                                       onClick={() => setPendingDeleteMtTree(entry)}
-                                      className="h-8 w-8 p-0 text-slate-400 hover:text-rose-400"
+                                      className="h-8 w-8 p-0 text-mesh-text-dim hover:text-[#fb7185]"
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
@@ -609,21 +609,21 @@ export default function QosPage() {
             if (!open) setPendingDeleteMtQueue(null);
           }}
         >
-          <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-white">Delete Simple Queue</AlertDialogTitle>
-              <AlertDialogDescription className="text-slate-400">
+              <AlertDialogDescription className="text-mesh-text-dim">
                 Are you sure you want to delete queue{" "}
                 <span className="font-medium text-white">{pendingDeleteMtQueue?.name}</span>?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55">
+              <AlertDialogCancel className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeleteMtQueue}
-                className="bg-rose-600 text-white hover:bg-rose-500"
+                className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
               >
                 Delete
               </AlertDialogAction>
@@ -638,21 +638,21 @@ export default function QosPage() {
             if (!open) setPendingDeleteMtTree(null);
           }}
         >
-          <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-white">Delete Queue Tree Entry</AlertDialogTitle>
-              <AlertDialogDescription className="text-slate-400">
+              <AlertDialogDescription className="text-mesh-text-dim">
                 Are you sure you want to delete queue tree entry{" "}
                 <span className="font-medium text-white">{pendingDeleteMtTree?.name}</span>?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55">
+              <AlertDialogCancel className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeleteMtTree}
-                className="bg-rose-600 text-white hover:bg-rose-500"
+                className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
               >
                 Delete
               </AlertDialogAction>
@@ -667,7 +667,7 @@ export default function QosPage() {
 // ── Rate Display ──────────────────────────────────────────
 
 function RateDisplay({ rate }: { rate: string | null }) {
-  if (!rate || rate === "0/0" || rate === "0") return <span className="text-slate-600">—</span>;
+  if (!rate || rate === "0/0" || rate === "0") return <span className="text-mesh-text-mute">—</span>;
   return <span className="text-mesh-accent">{rate}</span>;
 }
 
@@ -694,13 +694,13 @@ function SummaryCard({
         </div>
 
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">{title}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-mesh-text-mute">{title}</p>
           {available === null ? (
             <Skeleton className="mt-2 h-6 w-14 bg-mesh-surface-1" />
           ) : available ? (
             <p className="mt-1 text-2xl font-semibold text-white">{value ?? 0}</p>
           ) : (
-            <p className="mt-1 text-sm text-slate-500">Not configured</p>
+            <p className="mt-1 text-sm text-mesh-text-mute">Not configured</p>
           )}
         </div>
       </CardContent>
@@ -805,67 +805,67 @@ function MikrotikQueueFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-md">
+      <DialogContent className="border-mesh-border bg-mesh-surface-1/95 sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white">{isEdit ? "Edit Simple Queue" : "Add Simple Queue"}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="queue-name" className="text-xs text-slate-400">
+            <Label htmlFor="queue-name" className="text-xs text-mesh-text-dim">
               Name
             </Label>
             <Input
               id="queue-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+              className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
               placeholder="download-limit-pc"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="queue-target" className="text-xs text-slate-400">
+            <Label htmlFor="queue-target" className="text-xs text-mesh-text-dim">
               Target (IP or subnet)
             </Label>
             <Input
               id="queue-target"
               value={target}
               onChange={(e) => setTarget(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+              className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
               placeholder="192.168.1.100/32"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="queue-max-limit" className="text-xs text-slate-400">
+            <Label htmlFor="queue-max-limit" className="text-xs text-mesh-text-dim">
               Max Limit (upload/download)
             </Label>
             <Input
               id="queue-max-limit"
               value={maxLimit}
               onChange={(e) => setMaxLimit(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+              className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
               placeholder="10M/10M"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Burst Limit</Label>
+              <Label className="text-xs text-mesh-text-dim">Burst Limit</Label>
               <Input
                 value={burstLimit}
                 onChange={(e) => setBurstLimit(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="15M/15M"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Burst Threshold</Label>
+              <Label className="text-xs text-mesh-text-dim">Burst Threshold</Label>
               <Input
                 value={burstThreshold}
                 onChange={(e) => setBurstThreshold(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="8M/8M"
               />
             </div>
@@ -873,39 +873,39 @@ function MikrotikQueueFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Burst Time</Label>
+              <Label className="text-xs text-mesh-text-dim">Burst Time</Label>
               <Input
                 value={burstTime}
                 onChange={(e) => setBurstTime(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="10s/10s"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Priority</Label>
+              <Label className="text-xs text-mesh-text-dim">Priority</Label>
               <Input
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="8"
               />
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs text-slate-400">Comment</Label>
+            <Label className="text-xs text-mesh-text-dim">Comment</Label>
             <Input
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+              className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
               placeholder="Optional comment"
             />
           </div>
 
           {formError && (
-            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-              <p className="text-xs text-rose-400">{formError}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+              <p className="text-xs text-[#fb7185]">{formError}</p>
             </div>
           )}
 
@@ -914,11 +914,11 @@ function MikrotikQueueFormDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
+              className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="bg-blue-600 text-white hover:bg-blue-500">
+            <Button type="submit" disabled={loading} className="bg-mesh-primary text-white hover:bg-mesh-primary">
               {loading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               {isEdit ? "Update" : "Create"}
             </Button>
@@ -1026,67 +1026,67 @@ function QueueTreeFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-md">
+      <DialogContent className="border-mesh-border bg-mesh-surface-1/95 sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white">{isEdit ? "Edit Queue Tree Entry" : "Add Queue Tree Entry"}</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <Label htmlFor="tree-name" className="text-xs text-slate-400">
+            <Label htmlFor="tree-name" className="text-xs text-mesh-text-dim">
               Name
             </Label>
             <Input
               id="tree-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+              className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
               placeholder="voip-priority"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="tree-parent" className="text-xs text-slate-400">
+            <Label htmlFor="tree-parent" className="text-xs text-mesh-text-dim">
               Parent
             </Label>
             <Input
               id="tree-parent"
               value={parent}
               onChange={(e) => setParent(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+              className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
               placeholder="global"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="tree-packet-mark" className="text-xs text-slate-400">
+            <Label htmlFor="tree-packet-mark" className="text-xs text-mesh-text-dim">
               Packet Mark
             </Label>
             <Input
               id="tree-packet-mark"
               value={packetMark}
               onChange={(e) => setPacketMark(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+              className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
               placeholder="voip-mark"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Max Limit</Label>
+              <Label className="text-xs text-mesh-text-dim">Max Limit</Label>
               <Input
                 value={maxLimit}
                 onChange={(e) => setMaxLimit(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="10M"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Priority</Label>
+              <Label className="text-xs text-mesh-text-dim">Priority</Label>
               <Input
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="1"
               />
             </div>
@@ -1094,20 +1094,20 @@ function QueueTreeFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Burst Limit</Label>
+              <Label className="text-xs text-mesh-text-dim">Burst Limit</Label>
               <Input
                 value={burstLimit}
                 onChange={(e) => setBurstLimit(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="15M"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Burst Threshold</Label>
+              <Label className="text-xs text-mesh-text-dim">Burst Threshold</Label>
               <Input
                 value={burstThreshold}
                 onChange={(e) => setBurstThreshold(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="8M"
               />
             </div>
@@ -1115,29 +1115,29 @@ function QueueTreeFormDialog({
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Burst Time</Label>
+              <Label className="text-xs text-mesh-text-dim">Burst Time</Label>
               <Input
                 value={burstTime}
                 onChange={(e) => setBurstTime(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="10s"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs text-slate-400">Comment</Label>
+              <Label className="text-xs text-mesh-text-dim">Comment</Label>
               <Input
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
-                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
+                className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="Optional comment"
               />
             </div>
           </div>
 
           {formError && (
-            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-              <p className="text-xs text-rose-400">{formError}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+              <p className="text-xs text-[#fb7185]">{formError}</p>
             </div>
           )}
 
@@ -1146,11 +1146,11 @@ function QueueTreeFormDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
+              className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="bg-blue-600 text-white hover:bg-blue-500">
+            <Button type="submit" disabled={loading} className="bg-mesh-primary text-white hover:bg-mesh-primary">
               {loading && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
               {isEdit ? "Update" : "Create"}
             </Button>

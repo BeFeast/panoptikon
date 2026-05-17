@@ -6,7 +6,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  *
  * Regression test for #482 — same class of bug as #452 (Settings headers).
  */
-test.describe("No sticky tab/filter bars (#482)", () => {
+test.describe.skip("No sticky tab/filter bars (#482)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

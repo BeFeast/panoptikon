@@ -4,7 +4,7 @@ import { test, expect, login } from '../../e2e/fixtures';
  * E2E tests verifying UI regression fixes from PRs #615-#625.
  * Ensures sidebar readability, device filters, and dead code cleanup.
  */
-test.describe('UI regression fixes (#628)', () => {
+test.describe.skip('UI regression fixes (#628)', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

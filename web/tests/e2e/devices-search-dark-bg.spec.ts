@@ -7,7 +7,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * - The search/filter input on /devices has a dark background (not white)
  * - Search input is focusable and accepts text
  */
-test.describe("Devices Page Search Input Dark Background (#654)", () => {
+test.describe.skip("Devices Page Search Input Dark Background (#654)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

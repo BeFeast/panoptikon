@@ -147,7 +147,7 @@ export default function DnsQueriesPage() {
         {stats === null ? (
           <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Card key={i} className="border-mesh-border-strong bg-mesh-surface-1/95">
+              <Card key={i} className="border-mesh-border bg-mesh-surface-1/95">
                 <CardContent className="py-4">
                   <Skeleton className="h-4 w-20 mb-2" />
                   <Skeleton className="h-8 w-16" />
@@ -157,9 +157,9 @@ export default function DnsQueriesPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardContent className="py-4">
-                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                <div className="flex items-center gap-2 text-xs text-mesh-text-mute mb-1">
                   <Globe className="h-3.5 w-3.5" />
                   Total Queries
                 </div>
@@ -168,25 +168,25 @@ export default function DnsQueriesPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardContent className="py-4">
-                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                <div className="flex items-center gap-2 text-xs text-mesh-text-mute mb-1">
                   <ShieldAlert className="h-3.5 w-3.5" />
                   Blocked
                 </div>
-                <p className="text-2xl font-semibold text-rose-400">
+                <p className="text-2xl font-semibold text-[#fb7185]">
                   {stats.blocked_queries.toLocaleString()}
                   {stats.total_queries > 0 && (
-                    <span className="ml-2 text-sm text-slate-500">
+                    <span className="ml-2 text-sm text-mesh-text-mute">
                       ({((stats.blocked_queries / stats.total_queries) * 100).toFixed(1)}%)
                     </span>
                   )}
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardContent className="py-4">
-                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                <div className="flex items-center gap-2 text-xs text-mesh-text-mute mb-1">
                   <Search className="h-3.5 w-3.5" />
                   Unique Domains
                 </div>
@@ -195,9 +195,9 @@ export default function DnsQueriesPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <Card className="border-mesh-border bg-mesh-surface-1/95">
               <CardContent className="py-4">
-                <div className="flex items-center gap-2 text-xs text-slate-500 mb-1">
+                <div className="flex items-center gap-2 text-xs text-mesh-text-mute mb-1">
                   <Users className="h-3.5 w-3.5" />
                   Clients
                 </div>
@@ -214,9 +214,9 @@ export default function DnsQueriesPage() {
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
             {/* Top queried domains */}
             {stats.top_queried_domains.length > 0 && (
-              <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+              <Card className="border-mesh-border bg-mesh-surface-1/95">
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-400">
+                  <CardTitle className="flex items-center gap-2 text-sm font-medium text-mesh-text-dim">
                     <BarChart3 className="h-4 w-4" />
                     Top Queried Domains
                   </CardTitle>
@@ -224,8 +224,8 @@ export default function DnsQueriesPage() {
                 <CardContent className="space-y-2">
                   {stats.top_queried_domains.slice(0, 10).map((d, i) => (
                     <div key={d.domain} className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2 truncate text-slate-300">
-                        <span className="text-xs text-slate-600 w-4">{i + 1}.</span>
+                      <span className="flex items-center gap-2 truncate text-mesh-text">
+                        <span className="text-xs text-mesh-text-mute w-4">{i + 1}.</span>
                         {d.domain}
                       </span>
                       <Badge variant="secondary" className="text-xs shrink-0 ml-2">
@@ -239,9 +239,9 @@ export default function DnsQueriesPage() {
 
             {/* Top blocked domains */}
             {stats.top_blocked_domains.length > 0 && (
-              <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+              <Card className="border-mesh-border bg-mesh-surface-1/95">
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-400">
+                  <CardTitle className="flex items-center gap-2 text-sm font-medium text-mesh-text-dim">
                     <Shield className="h-4 w-4" />
                     Top Blocked Domains
                   </CardTitle>
@@ -249,11 +249,11 @@ export default function DnsQueriesPage() {
                 <CardContent className="space-y-2">
                   {stats.top_blocked_domains.slice(0, 10).map((d, i) => (
                     <div key={d.domain} className="flex items-center justify-between text-sm">
-                      <span className="flex items-center gap-2 truncate text-rose-400">
-                        <span className="text-xs text-slate-600 w-4">{i + 1}.</span>
+                      <span className="flex items-center gap-2 truncate text-[#fb7185]">
+                        <span className="text-xs text-mesh-text-mute w-4">{i + 1}.</span>
                         {d.domain}
                       </span>
-                      <Badge className="bg-rose-500/20 text-rose-400 border-rose-500/30 text-xs shrink-0 ml-2">
+                      <Badge className="bg-[#fb7185]/20 text-[#fb7185] border-[#fb7185]/30 text-xs shrink-0 ml-2">
                         {d.count.toLocaleString()}
                       </Badge>
                     </div>
@@ -264,9 +264,9 @@ export default function DnsQueriesPage() {
 
             {/* Per-device stats */}
             {stats.per_device_stats.length > 0 && (
-              <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+              <Card className="border-mesh-border bg-mesh-surface-1/95">
                 <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-400">
+                  <CardTitle className="flex items-center gap-2 text-sm font-medium text-mesh-text-dim">
                     <Users className="h-4 w-4" />
                     Per-Device Stats
                   </CardTitle>
@@ -274,10 +274,10 @@ export default function DnsQueriesPage() {
                 <CardContent className="space-y-2">
                   {stats.per_device_stats.slice(0, 10).map((d) => (
                     <div key={d.client_ip} className="flex items-center justify-between text-sm">
-                      <span className="truncate text-slate-300">
+                      <span className="truncate text-mesh-text">
                         {d.device_name || d.client_ip}
                         {d.device_name && (
-                          <span className="ml-1.5 text-xs text-slate-600">{d.client_ip}</span>
+                          <span className="ml-1.5 text-xs text-mesh-text-mute">{d.client_ip}</span>
                         )}
                       </span>
                       <div className="flex items-center gap-2 shrink-0 ml-2">
@@ -285,7 +285,7 @@ export default function DnsQueriesPage() {
                           {d.total_queries.toLocaleString()}
                         </Badge>
                         {d.blocked_queries > 0 && (
-                          <Badge className="bg-rose-500/20 text-rose-400 border-rose-500/30 text-xs">
+                          <Badge className="bg-[#fb7185]/20 text-[#fb7185] border-[#fb7185]/30 text-xs">
                             {d.blocked_queries}
                           </Badge>
                         )}
@@ -311,7 +311,7 @@ export default function DnsQueriesPage() {
                 className={
                   timeRange === t.value
                     ? ""
-                    : "border-gray-700 text-slate-400 hover:text-gray-200"
+                    : "border-mesh-border-strong text-mesh-text-dim hover:text-mesh-text"
                 }
               >
                 {t.label}
@@ -330,7 +330,7 @@ export default function DnsQueriesPage() {
                 className={
                   blockedFilter === f
                     ? ""
-                    : "border-gray-700 text-slate-400 hover:text-gray-200"
+                    : "border-mesh-border-strong text-mesh-text-dim hover:text-mesh-text"
                 }
               >
                 {f === "all" ? "All" : f === "blocked" ? "Blocked" : "Allowed"}
@@ -340,7 +340,7 @@ export default function DnsQueriesPage() {
 
           {/* Domain search */}
           <div className="relative flex-1 min-w-[200px] max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-mesh-text-mute" />
             <Input
               placeholder="Filter by domain..."
               value={domainSearch}
@@ -352,7 +352,7 @@ export default function DnsQueriesPage() {
 
         {/* Query log table */}
         {logData === null ? (
-          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <Card className="border-mesh-border bg-mesh-surface-1/95">
             <CardContent className="py-6 space-y-3">
               {Array.from({ length: 8 }).map((_, i) => (
                 <Skeleton key={i} className="h-10 w-full" />
@@ -360,7 +360,7 @@ export default function DnsQueriesPage() {
             </CardContent>
           </Card>
         ) : logData.items.length === 0 ? (
-          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
+          <Card className="border-mesh-border bg-mesh-surface-1/95">
             <CardContent>
               <EmptyState
                 icon={Globe}
@@ -372,27 +372,27 @@ export default function DnsQueriesPage() {
             </CardContent>
           </Card>
         ) : (
-          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 overflow-hidden">
+          <Card className="border-mesh-border bg-mesh-surface-1/95 overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                    <TableHead className="text-slate-500">Time</TableHead>
-                    <TableHead className="text-slate-500">Client</TableHead>
-                    <TableHead className="text-slate-500">Domain</TableHead>
-                    <TableHead className="text-slate-500">Type</TableHead>
-                    <TableHead className="text-slate-500">Status</TableHead>
-                    <TableHead className="text-slate-500">Response</TableHead>
-                    <TableHead className="text-slate-500 text-right">Latency</TableHead>
+                    <TableHead className="text-mesh-text-mute">Time</TableHead>
+                    <TableHead className="text-mesh-text-mute">Client</TableHead>
+                    <TableHead className="text-mesh-text-mute">Domain</TableHead>
+                    <TableHead className="text-mesh-text-mute">Type</TableHead>
+                    <TableHead className="text-mesh-text-mute">Status</TableHead>
+                    <TableHead className="text-mesh-text-mute">Response</TableHead>
+                    <TableHead className="text-mesh-text-mute text-right">Latency</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {logData.items.map((entry) => (
                     <TableRow
                       key={entry.id}
-                      className="border-mesh-border-strong hover:bg-mesh-surface-2/55"
+                      className="border-mesh-border hover:bg-mesh-surface-2/55"
                     >
-                      <TableCell className="text-xs text-slate-500 whitespace-nowrap">
+                      <TableCell className="text-xs text-mesh-text-mute whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <Clock className="h-3 w-3" />
                           {timeAgo(entry.queried_at)}
@@ -402,18 +402,18 @@ export default function DnsQueriesPage() {
                         <div>
                           {entry.device_name ? (
                             <>
-                              <span className="text-slate-300">{entry.device_name}</span>
-                              <span className="ml-1.5 text-xs text-slate-600">{entry.client_ip}</span>
+                              <span className="text-mesh-text">{entry.device_name}</span>
+                              <span className="ml-1.5 text-xs text-mesh-text-mute">{entry.client_ip}</span>
                             </>
                           ) : (
-                            <span className="text-slate-400">{entry.client_ip}</span>
+                            <span className="text-mesh-text-dim">{entry.client_ip}</span>
                           )}
                         </div>
                       </TableCell>
                       <TableCell className="text-sm max-w-[300px]">
                         <span
                           className={`truncate block ${
-                            entry.blocked ? "text-rose-400" : "text-slate-300"
+                            entry.blocked ? "text-[#fb7185]" : "text-mesh-text"
                           }`}
                           title={entry.domain}
                         >
@@ -423,18 +423,18 @@ export default function DnsQueriesPage() {
                       <TableCell>
                         <Badge
                           variant="outline"
-                          className="text-[10px] border-mesh-border-strong text-slate-400"
+                          className="text-[10px] border-mesh-border-strong text-mesh-text-dim"
                         >
                           {entry.query_type}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         {entry.blocked ? (
-                          <Badge className="bg-rose-500/20 text-rose-400 border-rose-500/30 text-[10px]">
+                          <Badge className="bg-[#fb7185]/20 text-[#fb7185] border-[#fb7185]/30 text-[10px]">
                             BLOCKED
                           </Badge>
                         ) : (
-                          <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-[10px]">
+                          <Badge className="bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/30 text-[10px]">
                             ALLOWED
                           </Badge>
                         )}
@@ -444,16 +444,16 @@ export default function DnsQueriesPage() {
                           variant="outline"
                           className={`text-[10px] border-mesh-border-strong ${
                             entry.response_code === "NOERROR"
-                              ? "text-emerald-400 border-emerald-700/30"
+                              ? "text-[#4ade80] border-[#4ade80]/30"
                               : entry.response_code === "NXDOMAIN"
-                                ? "text-amber-400 border-amber-700/30"
-                                : "text-slate-400"
+                                ? "text-[#fbbf24] border-[#fbbf24]/30"
+                                : "text-mesh-text-dim"
                           }`}
                         >
                           {entry.response_code}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right text-xs text-slate-500">
+                      <TableCell className="text-right text-xs text-mesh-text-mute">
                         {entry.response_time_ms != null
                           ? `${entry.response_time_ms}ms`
                           : "-"}
@@ -467,7 +467,7 @@ export default function DnsQueriesPage() {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between border-t border-mesh-border px-4 py-3">
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-mesh-text-mute">
                   Page {logData.page} of {totalPages} ({logData.total.toLocaleString()} entries)
                 </span>
                 <div className="flex items-center gap-2">
@@ -476,7 +476,7 @@ export default function DnsQueriesPage() {
                     size="sm"
                     disabled={page <= 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="border-gray-700 text-slate-400 h-7 px-2"
+                    className="border-mesh-border-strong text-mesh-text-dim h-7 px-2"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
@@ -485,7 +485,7 @@ export default function DnsQueriesPage() {
                     size="sm"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
-                    className="border-gray-700 text-slate-400 h-7 px-2"
+                    className="border-mesh-border-strong text-mesh-text-dim h-7 px-2"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>

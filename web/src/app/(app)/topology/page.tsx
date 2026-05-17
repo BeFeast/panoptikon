@@ -264,30 +264,30 @@ function RouterNode({ data }: NodeProps<RouterNodeType>) {
 
   return (
     <div
-      className="flex items-center gap-3 rounded-xl border border-blue-500/30 bg-gradient-to-br from-slate-800 to-slate-900 px-5 py-4 shadow-lg shadow-blue-500/10"
+      className="flex items-center gap-3 rounded-xl border border-mesh-primary/30 bg-gradient-to-br from-mesh-border-strong to-mesh-surface-1 px-5 py-4 shadow-lg shadow-mesh-primary/10"
       style={{ width: ROUTER_WIDTH, height: ROUTER_HEIGHT }}
     >
-      <Handle type="source" position={Position.Bottom} className="!bg-blue-500" />
-      <Handle type="source" position={Position.Left} id="left" className="!bg-blue-500" />
-      <Handle type="source" position={Position.Right} id="right" className="!bg-blue-500" />
-      <Handle type="source" position={Position.Top} id="top" className="!bg-blue-500" />
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/20">
-        <Network className="h-5 w-5 text-blue-400" />
+      <Handle type="source" position={Position.Bottom} className="!bg-mesh-primary" />
+      <Handle type="source" position={Position.Left} id="left" className="!bg-mesh-primary" />
+      <Handle type="source" position={Position.Right} id="right" className="!bg-mesh-primary" />
+      <Handle type="source" position={Position.Top} id="top" className="!bg-mesh-primary" />
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-mesh-primary/20">
+        <Network className="h-5 w-5 text-mesh-primary" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-semibold text-white">{routerLabel}</p>
         {data.wanIp && (
-          <p className="truncate text-xs text-slate-400">{data.wanIp}</p>
+          <p className="truncate text-xs text-mesh-text-dim">{data.wanIp}</p>
         )}
         <div className="mt-0.5 flex items-center gap-1.5">
           <span
             className={`inline-block h-2 w-2 rounded-full ${
               data.isOnline
-                ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]'
-                : 'bg-rose-400 shadow-[0_0_6px_rgba(251,113,133,0.5)]'
+                ? 'bg-[#4ade80] shadow-[0_0_6px_rgba(52,211,153,0.5)]'
+                : 'bg-[#fb7185] shadow-[0_0_6px_rgba(251,113,133,0.5)]'
             }`}
           />
-          <span className="text-[10px] text-slate-500">
+          <span className="text-[10px] text-mesh-text-mute">
             {data.isOnline ? 'Online' : 'Offline'}
           </span>
         </div>
@@ -312,34 +312,34 @@ function DeviceNode({ data }: NodeProps<DeviceNodeType>) {
 
   return (
     <div
-      className="flex items-center gap-2.5 rounded-lg border bg-mesh-surface-1 px-3 py-2.5 shadow-md transition-shadow hover:shadow-lg hover:shadow-slate-700/20"
+      className="flex items-center gap-2.5 rounded-lg border bg-mesh-surface-1 px-3 py-2.5 shadow-md transition-shadow hover:shadow-lg hover:shadow-mesh-border-strong/20"
       style={{
         width: DEVICE_WIDTH,
         height: DEVICE_HEIGHT,
         borderColor: subnetColor.border,
       }}
     >
-      <Handle type="target" position={Position.Top} className="!bg-slate-500" />
-      <Handle type="target" position={Position.Left} id="left" className="!bg-slate-500" />
-      <Handle type="target" position={Position.Right} id="right" className="!bg-slate-500" />
-      <Handle type="target" position={Position.Bottom} id="bottom" className="!bg-slate-500" />
-      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-slate-700/60">
-        <Icon className="h-4 w-4 text-slate-300" />
+      <Handle type="target" position={Position.Top} className="!bg-mesh-text-mute" />
+      <Handle type="target" position={Position.Left} id="left" className="!bg-mesh-text-mute" />
+      <Handle type="target" position={Position.Right} id="right" className="!bg-mesh-text-mute" />
+      <Handle type="target" position={Position.Bottom} id="bottom" className="!bg-mesh-text-mute" />
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-mesh-border-strong/60">
+        <Icon className="h-4 w-4 text-mesh-text" />
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-xs font-medium text-white">{displayName}</p>
         <div className="flex items-center gap-1">
-          <p className="truncate text-[10px] text-slate-400">{primaryIp}</p>
+          <p className="truncate text-[10px] text-mesh-text-dim">{primaryIp}</p>
           {hasDhcp && (
-            <span className="inline-block h-1 w-1 rounded-full bg-blue-400" title="DHCP lease" />
+            <span className="inline-block h-1 w-1 rounded-full bg-mesh-primary" title="DHCP lease" />
           )}
         </div>
       </div>
       <span
         className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${
           device.is_online
-            ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.5)]'
-            : 'bg-rose-400/60'
+            ? 'bg-[#4ade80] shadow-[0_0_6px_rgba(52,211,153,0.5)]'
+            : 'bg-[#fb7185]/60'
         }`}
       />
     </div>
@@ -362,7 +362,7 @@ function SubnetGroupNode({ data }: NodeProps<SubnetGroupType>) {
         <span className="text-xs font-medium" style={{ color: color.text }}>
           {data.label}
         </span>
-        <span className="text-[10px] text-slate-500">
+        <span className="text-[10px] text-mesh-text-mute">
           {data.onlineCount}/{data.deviceCount} online
         </span>
       </div>
@@ -420,12 +420,12 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
         <div className="flex items-center gap-3">
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mesh-surface-1 ${
-              device.is_online ? 'ring-1 ring-emerald-500/20' : ''
+              device.is_online ? 'ring-1 ring-[#4ade80]/20' : ''
             }`}
           >
             <DetailIcon
               className={`h-5 w-5 ${
-                device.is_online ? 'text-emerald-400' : 'text-slate-500'
+                device.is_online ? 'text-[#4ade80]' : 'text-mesh-text-mute'
               }`}
             />
           </div>
@@ -435,17 +435,17 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
             </div>
             <div className="flex items-center gap-2">
               {vendorDisplay && (
-                <span className="text-xs text-slate-400">{vendorDisplay}</span>
+                <span className="text-xs text-mesh-text-dim">{vendorDisplay}</span>
               )}
-              <span className="text-xs text-slate-500">{deviceTypeLabel}</span>
+              <span className="text-xs text-mesh-text-mute">{deviceTypeLabel}</span>
             </div>
           </div>
         </div>
         <SheetDescription>
           {device.is_online ? (
-            <span className="text-emerald-400">Online</span>
+            <span className="text-[#4ade80]">Online</span>
           ) : (
-            <span className="text-slate-500">
+            <span className="text-mesh-text-mute">
               Offline — last seen {timeAgo(device.last_seen_at)}
             </span>
           )}
@@ -454,7 +454,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
 
       <div className="mt-3">
         <Link href={`/devices?selected=${device.id}`}>
-          <button className="flex w-full items-center justify-center gap-2 rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-slate-300 transition-colors hover:bg-slate-700 hover:text-white">
+          <button className="flex w-full items-center justify-center gap-2 rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text transition-colors hover:bg-mesh-border-strong hover:text-white">
             <ExternalLink className="h-4 w-4" />
             Full Device Details
           </button>
@@ -476,7 +476,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
             {ips.slice(1).map((ip) => (
               <span
                 key={ip}
-                className="mr-1.5 inline-block rounded bg-mesh-surface-1 px-1.5 py-0.5 font-mono text-[11px] text-slate-400"
+                className="mr-1.5 inline-block rounded bg-mesh-surface-1 px-1.5 py-0.5 font-mono text-[11px] text-mesh-text-dim"
               >
                 {ip}
               </span>
@@ -500,7 +500,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
         {(device.os_family || effectiveType || device.device_model) && (
           <>
             <Separator className="bg-mesh-surface-1" />
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+            <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
               Device Identity
             </p>
             {device.os_family && (
@@ -528,7 +528,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
         {(device.dhcp_lease_status || device.bridge_port) && (
           <>
             <Separator className="bg-mesh-surface-1" />
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+            <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
               Network
             </p>
             {device.dhcp_lease_status && (
@@ -555,7 +555,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
         {device.mdns_services && (
           <>
             <Separator className="bg-mesh-surface-1" />
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+            <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
               mDNS Services
             </p>
             <div className="flex flex-wrap gap-1.5">
@@ -563,7 +563,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
                 <Badge
                   key={svc.trim()}
                   variant="outline"
-                  className="border-mesh-border-strong text-slate-400 text-[10px]"
+                  className="border-mesh-border-strong text-mesh-text-dim text-[10px]"
                 >
                   {svc.trim()}
                 </Badge>
@@ -575,7 +575,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
         {(device.location || device.owner || device.tags) && (
           <>
             <Separator className="bg-mesh-surface-1" />
-            <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
+            <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
               Asset Info
             </p>
             {device.location && (
@@ -588,7 +588,7 @@ function DeviceDetailPanel({ device }: { device: TopologyDevice }) {
                   <Badge
                     key={tag.trim()}
                     variant="outline"
-                    className="border-mesh-border-strong text-slate-400 text-[10px]"
+                    className="border-mesh-border-strong text-mesh-text-dim text-[10px]"
                   >
                     {tag.trim()}
                   </Badge>
@@ -617,11 +617,11 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-slate-500">
+      <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
         {label}
       </span>
       <span
-        className={`flex min-w-0 items-center gap-1 text-sm text-slate-300 ${
+        className={`flex min-w-0 items-center gap-1 text-sm text-mesh-text ${
           mono ? 'font-mono tabular-nums' : ''
         }`}
       >
@@ -629,10 +629,10 @@ function InfoRow({
         {onCopy && (
           <button
             onClick={onCopy}
-            className="ml-1 shrink-0 text-slate-600 transition-colors hover:text-slate-400"
+            className="ml-1 shrink-0 text-mesh-text-mute transition-colors hover:text-mesh-text-dim"
           >
             {copied ? (
-              <Check className="h-3 w-3 text-emerald-400" />
+              <Check className="h-3 w-3 text-[#4ade80]" />
             ) : (
               <Copy className="h-3 w-3" />
             )}
@@ -1077,8 +1077,8 @@ function TopologyPageInner() {
       <PageTransition>
         <div className="flex h-[calc(100vh-64px)] items-center justify-center">
           <div className="flex flex-col items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-            <p className="text-sm text-slate-400">Building topology…</p>
+            <Loader2 className="h-8 w-8 animate-spin text-mesh-primary" />
+            <p className="text-sm text-mesh-text-dim">Building topology…</p>
           </div>
         </div>
       </PageTransition>
@@ -1118,7 +1118,7 @@ function TopologyPageInner() {
           className="bg-mesh-surface-1"
         >
           <Controls
-            className="!border-mesh-border-strong !bg-mesh-surface-1 [&>button]:!border-mesh-border-strong [&>button]:!bg-mesh-surface-1 [&>button]:!text-slate-300 [&>button:hover]:!bg-mesh-surface-1"
+            className="!border-mesh-border !bg-mesh-surface-1 [&>button]:!border-mesh-border [&>button]:!bg-mesh-surface-1 [&>button]:!text-mesh-text [&>button:hover]:!bg-mesh-surface-1"
             showInteractive={false}
           />
           <MiniMap
@@ -1128,7 +1128,7 @@ function TopologyPageInner() {
               const data = n.data as DeviceNodeData
               return data.device?.is_online ? '#34d399' : '#475569'
             }}
-            className="!border-mesh-border-strong !bg-mesh-surface-1"
+            className="!border-mesh-border !bg-mesh-surface-1"
             maskColor="rgba(15, 23, 42, 0.7)"
           />
           <Background
@@ -1139,24 +1139,24 @@ function TopologyPageInner() {
           />
 
           {/* Floating toolbar */}
-          <div className="absolute left-4 top-4 z-10 max-w-[calc(100vw-2rem)] rounded-lg border border-mesh-border-strong bg-mesh-surface-1 px-4 py-3 backdrop-blur-sm">
+          <div className="absolute left-4 top-4 z-10 max-w-[calc(100vw-2rem)] rounded-lg border border-mesh-border bg-mesh-surface-1 px-4 py-3 backdrop-blur-sm">
             <div className="mb-2 flex items-center gap-2">
               <Network className="h-4 w-4 text-mesh-accent" />
               <h1 className="text-sm font-semibold text-white">Topology</h1>
-              <span className="rounded border border-mesh-border-strong px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-slate-500">
+              <span className="rounded border border-mesh-border-strong px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-mesh-text-mute">
                 {routerInfoRef.current?.router_type ?? 'router'}
               </span>
             </div>
-            <span className="text-[11px] text-slate-400">
+            <span className="text-[11px] text-mesh-text-dim">
               {stats.total} devices · {stats.online} online · {stats.subnets}{' '}
               subnet{stats.subnets !== 1 ? 's' : ''}
             </span>
           </div>
 
-          <div className="absolute right-4 top-4 z-10 flex items-center gap-3 rounded-lg border border-mesh-border-strong bg-mesh-surface-1 px-4 py-2 backdrop-blur-sm">
+          <div className="absolute right-4 top-4 z-10 flex items-center gap-3 rounded-lg border border-mesh-border bg-mesh-surface-1 px-4 py-2 backdrop-blur-sm">
             <button
               onClick={autoLayout}
-              className="text-slate-400 transition-colors hover:text-white"
+              className="text-mesh-text-dim transition-colors hover:text-white"
               title="Auto-layout"
               data-testid="topology-auto-layout"
             >
@@ -1164,7 +1164,7 @@ function TopologyPageInner() {
             </button>
             <button
               onClick={handleFitView}
-              className="text-slate-400 transition-colors hover:text-white"
+              className="text-mesh-text-dim transition-colors hover:text-white"
               title="Fit view"
               data-testid="topology-fit-view"
             >
@@ -1172,7 +1172,7 @@ function TopologyPageInner() {
             </button>
             <button
               onClick={resetLayout}
-              className="text-slate-400 transition-colors hover:text-white"
+              className="text-mesh-text-dim transition-colors hover:text-white"
               title="Reset layout"
               data-testid="topology-reset-layout"
             >
@@ -1180,14 +1180,14 @@ function TopologyPageInner() {
             </button>
             <button
               onClick={() => buildGraph(false)}
-              className="text-slate-400 transition-colors hover:text-white"
+              className="text-mesh-text-dim transition-colors hover:text-white"
               title="Refresh now"
               data-testid="topology-refresh"
             >
               <RefreshCw className="h-3.5 w-3.5" />
             </button>
             {lastRefresh && (
-              <span className="text-[10px] text-slate-500">
+              <span className="text-[10px] text-mesh-text-mute">
                 {lastRefresh.toLocaleTimeString()}
               </span>
             )}
@@ -1195,7 +1195,7 @@ function TopologyPageInner() {
 
           {stats.total === 0 && (
             <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-4">
-              <div className="pointer-events-auto rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 px-8 py-4 shadow-2xl">
+              <div className="pointer-events-auto rounded-lg border border-mesh-border bg-mesh-surface-1/95 px-8 py-4 shadow-2xl">
                 <EmptyState
                   icon={Network}
                   title="No topology devices"
@@ -1218,7 +1218,7 @@ function TopologyPageInner() {
       >
         <SheetContent
           side="right"
-          className="w-full overflow-y-auto border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-md"
+          className="w-full overflow-y-auto border-mesh-border bg-mesh-surface-1/95 sm:max-w-md"
         >
           {selectedDevice && <DeviceDetailPanel device={selectedDevice} />}
         </SheetContent>

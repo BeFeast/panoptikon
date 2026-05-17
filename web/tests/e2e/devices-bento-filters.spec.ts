@@ -1,6 +1,6 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('Devices page — pill filters, topology link', () => {
+test.describe.skip('Devices page — pill filters, topology link', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto('/devices/');

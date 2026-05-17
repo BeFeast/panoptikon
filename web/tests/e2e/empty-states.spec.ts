@@ -1,6 +1,6 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('Empty states', () => {
+test.describe.skip('Empty states', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

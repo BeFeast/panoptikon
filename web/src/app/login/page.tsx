@@ -126,12 +126,12 @@ export default function LoginPage() {
   const ssoLoginUrl = authStatus?.sso_login_url ?? null;
 
   return (
-    <main className="login-bg relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-4 text-slate-100">
+    <main className="login-bg relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-4 text-mesh-text">
       <NetworkBackdrop />
       <section className="relative z-10 w-full max-w-[720px] rounded-[18px] border border-[#2c4d80] bg-[#091731]/96 px-10 py-6 shadow-[0_0_0_3px_rgba(55,91,145,0.34),0_0_42px_rgba(42,98,177,0.28),inset_0_1px_0_rgba(122,163,218,0.16)] max-md:max-w-[430px] max-md:px-6 max-md:py-6">
         <div className="mb-5 flex flex-col items-center text-center">
-          <BrandMark size={48} className="text-sky-300" />
-          <h1 className="mt-4 font-mono text-[28px] font-semibold uppercase leading-none tracking-[0.08em] text-slate-100 max-md:text-2xl">
+          <BrandMark size={48} className="text-mesh-accent" />
+          <h1 className="mt-4 font-mono text-[28px] font-semibold uppercase leading-none tracking-[0.08em] text-mesh-text max-md:text-2xl">
             Panoptikon
           </h1>
           <p className="mt-3 font-mono text-[16px] leading-none tracking-[0.12em] text-[#6580a8] max-md:text-sm">
@@ -158,7 +158,7 @@ export default function LoginPage() {
                 id="operator"
                 value="operator"
                 readOnly
-                className="h-12 w-full rounded-[5px] border-2 border-[#2c5289] bg-[#091832] px-5 font-sans text-[22px] text-slate-100 outline-none shadow-[inset_0_0_0_1px_rgba(81,124,185,0.16)] max-md:h-12 max-md:text-lg"
+                className="h-12 w-full rounded-[5px] border-2 border-[#2c5289] bg-[#091832] px-5 font-sans text-[22px] text-mesh-text outline-none shadow-[inset_0_0_0_1px_rgba(81,124,185,0.16)] max-md:h-12 max-md:text-lg"
               />
             </div>
 
@@ -183,7 +183,7 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 w-full rounded-[5px] border-2 border-[#2c5289] bg-[#091832] px-5 pr-14 font-mono text-[22px] tracking-[0.18em] text-slate-100 outline-none shadow-[inset_0_0_0_1px_rgba(81,124,185,0.16)] transition-colors focus:border-[#3c72bc] max-md:h-12 max-md:text-lg"
+                  className="h-12 w-full rounded-[5px] border-2 border-[#2c5289] bg-[#091832] px-5 pr-14 font-mono text-[22px] tracking-[0.18em] text-mesh-text outline-none shadow-[inset_0_0_0_1px_rgba(81,124,185,0.16)] transition-colors focus:border-[#3c72bc] max-md:h-12 max-md:text-lg"
                   placeholder="••••••••••"
                   autoFocus
                   required
@@ -191,7 +191,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#607aa2] transition-colors hover:text-slate-200"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-[#607aa2] transition-colors hover:text-mesh-text"
                   tabIndex={-1}
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
@@ -205,7 +205,7 @@ export default function LoginPage() {
             </div>
 
             {error && (
-              <p className="rounded-md border border-rose-400/35 bg-rose-500/10 px-4 py-3 font-mono text-sm text-rose-200">
+              <p className="rounded-md border border-[#fb7185]/35 bg-[#fb7185]/10 px-4 py-3 font-mono text-sm text-[#fb7185]">
                 {error}
               </p>
             )}
@@ -229,7 +229,7 @@ export default function LoginPage() {
 
                 <a
                   href={ssoLoginUrl ?? "/api/v1/auth/sso/login"}
-                  className="flex h-12 w-full items-center justify-center gap-3 rounded-[5px] border-2 border-[#2c5289] bg-[#102142]/45 text-[22px] font-medium text-slate-100 transition-colors hover:border-[#3c72bc] hover:bg-[#13284f] max-md:h-12 max-md:text-lg"
+                  className="flex h-12 w-full items-center justify-center gap-3 rounded-[5px] border-2 border-[#2c5289] bg-[#102142]/45 text-[22px] font-medium text-mesh-text transition-colors hover:border-[#3c72bc] hover:bg-[#13284f] max-md:h-12 max-md:text-lg"
                 >
                   <Command className="h-5 w-5 stroke-[1.8] max-md:h-5 max-md:w-5" />
                   Continue with SSO

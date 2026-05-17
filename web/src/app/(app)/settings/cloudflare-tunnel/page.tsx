@@ -114,7 +114,7 @@ export default function CloudflareTunnelSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -124,16 +124,16 @@ export default function CloudflareTunnelSettingsPage() {
         </div>
 
         <SettingsSection
-          icon={<Cloud className="h-4 w-4 text-orange-400" />}
-          iconBg="bg-orange-500/10"
+          icon={<Cloud className="h-4 w-4 text-[#fbbf24]" />}
+          iconBg="bg-[#fbbf24]/10"
           title="Tunnel Configuration"
           description="Connect to your Cloudflare Tunnel to expose services securely."
         >
           <div className="space-y-1.5">
-            <Label htmlFor="cf-api-token" className="text-xs text-slate-400">
+            <Label htmlFor="cf-api-token" className="text-xs text-mesh-text-dim">
               API Token{" "}
               {apiTokenSet && (
-                <span className="text-emerald-500">(saved)</span>
+                <span className="text-[#4ade80]">(saved)</span>
               )}
             </Label>
             <Input
@@ -141,26 +141,26 @@ export default function CloudflareTunnelSettingsPage() {
               type="password"
               value={apiToken}
               onChange={(e) => setApiToken(e.target.value)}
-              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+              className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder={
                 apiTokenSet
                   ? "••••••••  (leave blank to keep current)"
                   : "Enter Cloudflare API token"
               }
             />
-            <p className="text-[10px] text-slate-600">
+            <p className="text-[10px] text-mesh-text-mute">
               Create at: dash.cloudflare.com → My Profile → API Tokens →
               Create Token. Required permissions:{" "}
-              <code className="text-slate-500">
+              <code className="text-mesh-text-mute">
                 Account:Cloudflare Tunnel:Edit
               </code>
               ,{" "}
-              <code className="text-slate-500">Zone:DNS:Edit</code>
+              <code className="text-mesh-text-mute">Zone:DNS:Edit</code>
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="cf-account-id" className="text-xs text-slate-400">
+            <Label htmlFor="cf-account-id" className="text-xs text-mesh-text-dim">
               Account ID
             </Label>
             <div className="relative">
@@ -169,34 +169,34 @@ export default function CloudflareTunnelSettingsPage() {
                 type="text"
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
+                className={`border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   accountValid === "valid"
-                    ? "border-emerald-500/40"
+                    ? "border-[#4ade80]/40"
                     : accountValid === "error"
-                      ? "border-rose-500/40"
+                      ? "border-[#fb7185]/40"
                       : ""
                 }`}
                 placeholder="e.g. 1a2b3c4d5e6f..."
               />
               {accountValid === "valid" && (
                 <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
-                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  <CheckCircle className="h-4 w-4 text-[#4ade80]" />
                 </div>
               )}
             </div>
-            <p className="text-[10px] text-slate-600">
+            <p className="text-[10px] text-mesh-text-mute">
               Found at: dash.cloudflare.com → any domain → right sidebar →
               Account ID. Format: 32-character hex string.
             </p>
             {accountValid === "error" && (
-              <p className="animate-fade-in text-xs text-rose-400">
+              <p className="animate-fade-in text-xs text-[#fb7185]">
                 Must be a 32-character hex string.
               </p>
             )}
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="cf-tunnel-id" className="text-xs text-slate-400">
+            <Label htmlFor="cf-tunnel-id" className="text-xs text-mesh-text-dim">
               Tunnel ID
             </Label>
             <div className="relative">
@@ -205,42 +205,42 @@ export default function CloudflareTunnelSettingsPage() {
                 type="text"
                 value={tunnelId}
                 onChange={(e) => setTunnelId(e.target.value)}
-                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
+                className={`border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
                   tunnelValid === "valid"
-                    ? "border-emerald-500/40"
+                    ? "border-[#4ade80]/40"
                     : tunnelValid === "error"
-                      ? "border-rose-500/40"
+                      ? "border-[#fb7185]/40"
                       : ""
                 }`}
                 placeholder="e.g. a1b2c3d4-e5f6-..."
               />
               {tunnelValid === "valid" && (
                 <div className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 animate-check-scale">
-                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                  <CheckCircle className="h-4 w-4 text-[#4ade80]" />
                 </div>
               )}
             </div>
-            <p className="text-[10px] text-slate-600">
+            <p className="text-[10px] text-mesh-text-mute">
               Found at: dash.cloudflare.com → Zero Trust → Networks →
               Tunnels → your tunnel → Overview. Format: UUID.
             </p>
             {tunnelValid === "error" && (
-              <p className="animate-fade-in text-xs text-rose-400">
+              <p className="animate-fade-in text-xs text-[#fb7185]">
                 Must be a valid UUID format.
               </p>
             )}
           </div>
 
           {status === "success" && msg && (
-            <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-              <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-              <p className="text-xs text-emerald-400">{msg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+              <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+              <p className="text-xs text-[#4ade80]">{msg}</p>
             </div>
           )}
           {status === "error" && msg && (
-            <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-              <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-              <p className="text-xs text-rose-400">{msg}</p>
+            <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+              <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+              <p className="text-xs text-[#fb7185]">{msg}</p>
             </div>
           )}
 

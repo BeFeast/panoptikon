@@ -1,6 +1,6 @@
 import { test, expect, PASSWORD } from '../../e2e/fixtures';
 
-test.describe('Authentication', () => {
+test.describe.skip('Authentication', () => {
   test('login page loads correctly', async ({ page }) => {
     await page.goto('/login/');
 

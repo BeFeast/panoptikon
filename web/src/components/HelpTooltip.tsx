@@ -17,7 +17,7 @@ export function HelpTooltip({ text }: { text: string }) {
       <TooltipTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center justify-center rounded-full text-slate-500 hover:text-slate-300 transition-colors"
+          className="inline-flex items-center justify-center rounded-full text-mesh-text-mute hover:text-mesh-text transition-colors"
           aria-label="Help"
         >
           <HelpCircle className="h-4 w-4" />
@@ -25,7 +25,7 @@ export function HelpTooltip({ text }: { text: string }) {
       </TooltipTrigger>
       <TooltipContent
         side="right"
-        className="max-w-xs border-mesh-border-strong bg-mesh-surface-1 text-slate-200"
+        className="max-w-xs border-mesh-border bg-mesh-surface-1 text-mesh-text"
       >
         {text}
       </TooltipContent>

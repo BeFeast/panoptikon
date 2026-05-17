@@ -191,7 +191,7 @@ function PfsensePanel() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Label htmlFor="pf-enabled" className="text-xs text-slate-400">
+        <Label htmlFor="pf-enabled" className="text-xs text-mesh-text-dim">
           Enable pfSense integration
         </Label>
         <Switch
@@ -202,7 +202,7 @@ function PfsensePanel() {
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="pf-host" className="text-xs text-slate-400">
+        <Label htmlFor="pf-host" className="text-xs text-mesh-text-dim">
           Host
         </Label>
         <Input
@@ -210,13 +210,13 @@ function PfsensePanel() {
           type="text"
           value={host}
           onChange={(e) => setHost(e.target.value)}
-          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+          className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
           placeholder="10.10.0.1"
         />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="pf-port" className="text-xs text-slate-400">
+        <Label htmlFor="pf-port" className="text-xs text-mesh-text-dim">
           Port
         </Label>
         <Input
@@ -224,13 +224,13 @@ function PfsensePanel() {
           type="number"
           value={port}
           onChange={(e) => setPort(Number(e.target.value) || 22)}
-          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+          className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
           placeholder="22"
         />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="pf-username" className="text-xs text-slate-400">
+        <Label htmlFor="pf-username" className="text-xs text-mesh-text-dim">
           Username
         </Label>
         <Input
@@ -238,21 +238,21 @@ function PfsensePanel() {
           type="text"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+          className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
           placeholder="root"
         />
       </div>
 
       <div className="space-y-1.5">
-        <Label className="text-xs text-slate-400">Authentication</Label>
-        <div className="flex gap-1 rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-1">
+        <Label className="text-xs text-mesh-text-dim">Authentication</Label>
+        <div className="flex gap-1 rounded-md border border-mesh-border bg-mesh-surface-1 p-1">
           <button
             type="button"
             onClick={() => setAuthType("password")}
             className={`flex-1 rounded px-3 py-1.5 text-xs font-medium transition-colors ${
               authType === "password"
-                ? "bg-blue-600 text-white"
-                : "text-slate-400 hover:text-white"
+                ? "bg-mesh-primary text-white"
+                : "text-mesh-text-dim hover:text-white"
             }`}
           >
             Password
@@ -262,8 +262,8 @@ function PfsensePanel() {
             onClick={() => setAuthType("key")}
             className={`flex-1 rounded px-3 py-1.5 text-xs font-medium transition-colors ${
               authType === "key"
-                ? "bg-blue-600 text-white"
-                : "text-slate-400 hover:text-white"
+                ? "bg-mesh-primary text-white"
+                : "text-mesh-text-dim hover:text-white"
             }`}
           >
             SSH Key
@@ -273,16 +273,16 @@ function PfsensePanel() {
 
       {authType === "password" ? (
         <div className="space-y-1.5">
-          <Label htmlFor="pf-password" className="text-xs text-slate-400">
+          <Label htmlFor="pf-password" className="text-xs text-mesh-text-dim">
             Password{" "}
-            {passwordSet && <span className="text-emerald-500">(saved)</span>}
+            {passwordSet && <span className="text-[#4ade80]">(saved)</span>}
           </Label>
           <Input
             id="pf-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+            className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
             placeholder={
               passwordSet
                 ? "••••••••  (leave blank to keep current)"
@@ -292,16 +292,16 @@ function PfsensePanel() {
         </div>
       ) : (
         <div className="space-y-1.5">
-          <Label htmlFor="pf-key" className="text-xs text-slate-400">
+          <Label htmlFor="pf-key" className="text-xs text-mesh-text-dim">
             Private key path{" "}
-            {privateKeySet && <span className="text-emerald-500">(saved)</span>}
+            {privateKeySet && <span className="text-[#4ade80]">(saved)</span>}
           </Label>
           <Input
             id="pf-key"
             type="text"
             value={privateKey}
             onChange={(e) => setPrivateKey(e.target.value)}
-            className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
+            className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
             placeholder={
               privateKeySet
                 ? "(leave blank to keep current)"
@@ -322,7 +322,7 @@ function PfsensePanel() {
         <Button
           onClick={handleSave}
           disabled={!dirty || saveStatus === "loading"}
-          className="bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40"
+          className="bg-mesh-primary text-white hover:bg-mesh-primary disabled:opacity-40"
         >
           {saveStatus === "loading" && (
             <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -333,7 +333,7 @@ function PfsensePanel() {
           variant="outline"
           onClick={handleTest}
           disabled={!host || testStatus === "loading"}
-          className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55 disabled:opacity-40"
+          className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55 disabled:opacity-40"
         >
           {testStatus === "loading" ? (
             <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -363,27 +363,27 @@ function StatusMessages({
   return (
     <>
       {saveStatus === "success" && saveMsg && (
-        <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-          <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-          <p className="text-xs text-emerald-400">{saveMsg}</p>
+        <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+          <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+          <p className="text-xs text-[#4ade80]">{saveMsg}</p>
         </div>
       )}
       {saveStatus === "error" && saveMsg && (
-        <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-          <p className="text-xs text-rose-400">{saveMsg}</p>
+        <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+          <p className="text-xs text-[#fb7185]">{saveMsg}</p>
         </div>
       )}
       {testStatus === "success" && testMsg && (
-        <div className="flex items-center gap-2 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2">
-          <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-          <p className="text-xs text-emerald-400">{testMsg}</p>
+        <div className="flex items-center gap-2 rounded-md border border-[#4ade80]/30 bg-[#4ade80]/10 px-3 py-2">
+          <CheckCircle className="h-4 w-4 shrink-0 text-[#4ade80]" />
+          <p className="text-xs text-[#4ade80]">{testMsg}</p>
         </div>
       )}
       {testStatus === "error" && testMsg && (
-        <div className="flex items-center gap-2 rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2">
-          <AlertCircle className="h-4 w-4 shrink-0 text-rose-400" />
-          <p className="text-xs text-rose-400">{testMsg}</p>
+        <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
+          <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
+          <p className="text-xs text-[#fb7185]">{testMsg}</p>
         </div>
       )}
     </>
@@ -399,7 +399,7 @@ export default function PfsenseSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -408,17 +408,17 @@ export default function PfsenseSettingsPage() {
           </h1>
         </div>
 
-        <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+        <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
-                <Shield className="h-4 w-4 text-blue-400" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-mesh-primary/10">
+                <Shield className="h-4 w-4 text-mesh-primary" />
               </div>
               <div>
-                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
+                <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                   pfSense Connection
                 </CardTitle>
-                <CardDescription className="text-xs text-slate-500">
+                <CardDescription className="text-xs text-mesh-text-mute">
                   Configure pfSense router integration via SSH.
                 </CardDescription>
               </div>
