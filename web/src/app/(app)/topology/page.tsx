@@ -49,6 +49,8 @@ import {
 import type { TopologyDevice, TopologyRouter } from '@/lib/types'
 import { getDeviceIcon } from '@/lib/device-icons'
 import { PageTransition } from '@/components/PageTransition'
+import { EmptyState } from '@/components/EmptyState'
+import { ErrorState } from '@/components/ErrorState'
 import {
   Sheet,
   SheetContent,
@@ -256,6 +258,8 @@ function RouterNode({ data }: NodeProps<RouterNodeType>) {
   const routerLabel =
     data.routerType === 'mikrotik'
       ? 'MikroTik'
+      : data.routerType === 'pfsense'
+        ? 'pfSense'
       : 'Router'
 
   return (
@@ -924,7 +928,16 @@ function TopologyPageInner() {
   const onNodeDragStop = useCallback(
     (_event: React.MouseEvent, node: TopologyNode) => {
       if (node.type === 'subnetGroup') return
-      const pos = { x: node.position.x, y: node.position.y }
+      const pos =
+        node.type === 'routerNode'
+          ? {
+              x: node.position.x + ROUTER_WIDTH / 2,
+              y: node.position.y + ROUTER_HEIGHT / 2,
+            }
+          : {
+              x: node.position.x + DEVICE_WIDTH / 2,
+              y: node.position.y + DEVICE_HEIGHT / 2,
+            }
       pinnedRef.current.set(node.id, pos)
       saveTopologyPositions([
         { node_id: node.id, x: pos.x, y: pos.y, pinned: true },
@@ -1075,20 +1088,13 @@ function TopologyPageInner() {
   if (error) {
     return (
       <PageTransition>
-        <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-          <div className="text-center">
-            <p className="text-sm text-rose-400">{error}</p>
-            <button
-              onClick={() => {
-                setLoading(true)
-                buildGraph(true)
-              }}
-              className="mt-3 text-xs text-blue-400 hover:underline"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
+        <ErrorState
+          message={error}
+          onRetry={() => {
+            setLoading(true)
+            buildGraph(true)
+          }}
+        />
       </PageTransition>
     )
   }
@@ -1133,12 +1139,21 @@ function TopologyPageInner() {
           />
 
           {/* Floating toolbar */}
-          <div className="absolute right-4 top-4 z-10 flex items-center gap-3 rounded-lg border border-slate-700/50 bg-slate-900/80 px-4 py-2 backdrop-blur-sm">
+          <div className="absolute left-4 top-4 z-10 max-w-[calc(100vw-2rem)] rounded-lg border border-slate-700/50 bg-slate-900/85 px-4 py-3 backdrop-blur-sm">
+            <div className="mb-2 flex items-center gap-2">
+              <Network className="h-4 w-4 text-cyan-400" />
+              <h1 className="text-sm font-semibold text-white">Topology</h1>
+              <span className="rounded border border-slate-700 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-slate-500">
+                {routerInfoRef.current?.router_type ?? 'router'}
+              </span>
+            </div>
             <span className="text-[11px] text-slate-400">
               {stats.total} devices · {stats.online} online · {stats.subnets}{' '}
               subnet{stats.subnets !== 1 ? 's' : ''}
             </span>
-            <div className="h-3 w-px bg-slate-700" />
+          </div>
+
+          <div className="absolute right-4 top-4 z-10 flex items-center gap-3 rounded-lg border border-slate-700/50 bg-slate-900/80 px-4 py-2 backdrop-blur-sm">
             <button
               onClick={autoLayout}
               className="text-slate-400 transition-colors hover:text-white"
@@ -1177,6 +1192,20 @@ function TopologyPageInner() {
               </span>
             )}
           </div>
+
+          {stats.total === 0 && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-4">
+              <div className="pointer-events-auto rounded-lg border border-slate-800 bg-slate-950/90 px-8 py-4 shadow-2xl">
+                <EmptyState
+                  icon={Network}
+                  title="No topology devices"
+                  description="Discovered devices will appear here after a network scan returns inventory data."
+                  actionLabel="Open Devices"
+                  actionHref="/devices"
+                />
+              </div>
+            </div>
+          )}
         </ReactFlow>
       </div>
 
