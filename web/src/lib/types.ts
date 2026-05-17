@@ -342,7 +342,7 @@ export interface TopologyDevice {
 
 /** Router hub node in the topology graph. */
 export interface TopologyRouter {
-  router_type: string; // "mikrotik" | "pfsense" | "unknown"
+  router_type: DashboardRouterType | "unknown";
   is_online: boolean;
   wan_ip: string | null;
   hostname: string | null;

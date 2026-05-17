@@ -38,8 +38,7 @@ test.describe("Card Layout Quality (#538)", () => {
       const title = page.getByText(label, { exact: true }).first();
       await expect(title).toBeVisible();
 
-      const letterSpacing = await title.evaluate((el) => getComputedStyle(el).letterSpacing);
-      expect(letterSpacing === "normal" || parseFloat(letterSpacing) >= 0).toBeTruthy();
+      await expect(title).toHaveCSS("text-transform", "uppercase");
     }
 
     await page.screenshot({

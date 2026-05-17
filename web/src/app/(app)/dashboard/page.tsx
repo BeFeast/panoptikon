@@ -425,13 +425,14 @@ function routerStatusLabel(s: DashboardStats): { label: string; status: "online"
   }
 }
 
-function routerDisplayName(routerType: DashboardStats["router_type"] | string): string {
+function routerDisplayName(routerType: string): string {
   switch (routerType) {
     case "mikrotik":
       return "MikroTik";
     case "pfsense":
       return "pfSense";
     case "none":
+    case "unknown":
       return "router";
     default:
       console.warn(`Unknown dashboard router_type: ${routerType}`);
