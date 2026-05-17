@@ -230,7 +230,7 @@ export function Sidebar() {
           "group/nav relative flex items-center gap-3 rounded-md px-3 py-1.5 text-xs font-medium transition-colors duration-150",
           active
             ? "bg-cyan-500/10 text-cyan-500"
-            : "text-slate-400 hover:bg-cyan-950/35 hover:text-white",
+            : "text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white",
           sidebarCollapsed && "justify-center px-0",
         )}
       >
@@ -264,12 +264,12 @@ export function Sidebar() {
     <TooltipProvider delayDuration={0}>
       <aside
         className={cn(
-          "relative z-20 hidden md:flex flex-col border-r border-cyan-900/50 bg-[#060b13]/88 shadow-[12px_0_36px_-30px_rgba(34,211,238,0.42)] backdrop-blur-xl transition-all duration-200",
+          "relative z-20 hidden md:flex flex-col border-r border-mesh-border-strong bg-mesh-bg/90 shadow-[12px_0_36px_-30px_rgba(56,189,248,0.30)] backdrop-blur-xl transition-all duration-200",
           sidebarCollapsed ? "w-16" : "w-60",
         )}
       >
         {/* Brand lockup — design source `Lockup direction="mesh"` */}
-        <div className="flex h-[3.75rem] items-center justify-between border-b border-cyan-900/45 px-3">
+        <div className="flex h-[3.75rem] items-center justify-between border-b border-mesh-border-strong px-3">
           <Link
             href="/dashboard"
             className="flex items-center gap-2.5 min-w-0"
@@ -284,7 +284,7 @@ export function Sidebar() {
           </Link>
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-cyan-950/35 hover:text-slate-300"
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-500 transition-colors hover:bg-mesh-surface-2/55 hover:text-slate-300"
             aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
             {sidebarCollapsed ? (
@@ -319,7 +319,7 @@ export function Sidebar() {
                     >
                       <button
                         onClick={() => toggleGroup(group.key)}
-                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors text-slate-500 hover:bg-cyan-950/35 hover:text-slate-300"
+                        className="flex h-5 w-5 shrink-0 items-center justify-center rounded transition-colors text-slate-500 hover:bg-mesh-surface-2/55 hover:text-slate-300"
                         aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.label}`}
                         aria-expanded={!isCollapsed}
                       >

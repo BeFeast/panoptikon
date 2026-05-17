@@ -314,7 +314,7 @@ export default function CertificatesPage() {
               <Button
                 variant="outline"
                 onClick={() => setLeDialogOpen(true)}
-                className="border-slate-700 text-slate-300 hover:bg-cyan-950/35"
+                className="border-slate-700 text-slate-300 hover:bg-mesh-surface-2/55"
               >
                 <Plus className="mr-1.5 h-3.5 w-3.5" />
                 Let&apos;s Encrypt
@@ -329,7 +329,7 @@ export default function CertificatesPage() {
               <Button
                 variant="outline"
                 onClick={() => setCustomDialogOpen(true)}
-                className="border-slate-700 text-slate-300 hover:bg-cyan-950/35"
+                className="border-slate-700 text-slate-300 hover:bg-mesh-surface-2/55"
               >
                 <Upload className="mr-1.5 h-3.5 w-3.5" />
                 Upload Custom
@@ -354,7 +354,7 @@ export default function CertificatesPage() {
       )}
 
       {/* Certificates table */}
-      <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+      <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-md border border-cyan-500/20 bg-cyan-500/10">
@@ -396,7 +396,7 @@ export default function CertificatesPage() {
                   {certs.map((cert) => (
                     <TableRow
                       key={cert.id}
-                      className="border-slate-800 hover:bg-cyan-950/35"
+                      className="border-slate-800 hover:bg-mesh-surface-2/55"
                     >
                       <TableCell className="font-medium text-white">
                         {cert.nice_name}
@@ -477,7 +477,7 @@ export default function CertificatesPage() {
 
       {/* Let's Encrypt Dialog */}
       <Dialog open={leDialogOpen} onOpenChange={setLeDialogOpen}>
-        <DialogContent className="border-cyan-900/45 bg-[#0b1220]/72 text-white sm:max-w-md">
+        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 text-white sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Request Let&apos;s Encrypt Certificate</DialogTitle>
             <DialogDescription className="text-slate-400">
@@ -494,7 +494,7 @@ export default function CertificatesPage() {
                 id="le-domains"
                 value={leDomains}
                 onChange={(e) => setLeDomains(e.target.value)}
-                className="border-cyan-900/45 bg-[#0b1220]/72 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
                 placeholder="example.com, *.example.com"
               />
             </div>
@@ -507,7 +507,7 @@ export default function CertificatesPage() {
                 type="email"
                 value={leEmail}
                 onChange={(e) => setLeEmail(e.target.value)}
-                className="border-cyan-900/45 bg-[#0b1220]/72 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
                 placeholder="admin@example.com"
               />
             </div>
@@ -545,7 +545,7 @@ export default function CertificatesPage() {
 
       {/* Upload Custom Certificate Dialog */}
       <Dialog open={customDialogOpen} onOpenChange={setCustomDialogOpen}>
-        <DialogContent className="border-cyan-900/45 bg-[#0b1220]/72 text-white sm:max-w-lg">
+        <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 text-white sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>Upload Custom Certificate</DialogTitle>
             <DialogDescription className="text-slate-400">
@@ -565,7 +565,7 @@ export default function CertificatesPage() {
                 id="custom-name"
                 value={customName}
                 onChange={(e) => setCustomName(e.target.value)}
-                className="border-cyan-900/45 bg-[#0b1220]/72 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
                 placeholder="My Certificate"
               />
             </div>
@@ -594,7 +594,7 @@ export default function CertificatesPage() {
                 value={customCert}
                 onChange={(e) => setCustomCert(e.target.value)}
                 rows={4}
-                className="w-full rounded-md border border-cyan-900/45 bg-[#0b1220]/72 px-3 py-2 font-mono text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2 font-mono text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                 placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
               />
             </div>
@@ -623,7 +623,7 @@ export default function CertificatesPage() {
                 value={customKey}
                 onChange={(e) => setCustomKey(e.target.value)}
                 rows={4}
-                className="w-full rounded-md border border-cyan-900/45 bg-[#0b1220]/72 px-3 py-2 font-mono text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2 font-mono text-xs text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-cyan-500"
                 placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
               />
             </div>
@@ -660,7 +660,7 @@ export default function CertificatesPage() {
         open={!!deleteTarget}
         onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
-        <AlertDialogContent className="border-cyan-900/45 bg-[#0b1220]/72">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-white">
               Delete Certificate

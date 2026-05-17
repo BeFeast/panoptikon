@@ -237,7 +237,7 @@ export default function CaddyPage() {
                   size="sm"
                   onClick={handleTestConnection}
                   disabled={testing}
-                  className="border-slate-800 text-slate-300 hover:bg-cyan-950/35"
+                  className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55"
                 >
                   {testing ? (
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -258,7 +258,7 @@ export default function CaddyPage() {
                   size="sm"
                   onClick={handleSync}
                   disabled={syncing}
-                  className="border-slate-800 text-slate-300 hover:bg-cyan-950/35"
+                  className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55"
                 >
                   {syncing ? (
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -284,7 +284,7 @@ export default function CaddyPage() {
         </div>
 
         {/* Admin URL Configuration */}
-        <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+        <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-white">
               Caddy Admin API
@@ -303,7 +303,7 @@ export default function CaddyPage() {
                   id="admin-url"
                   value={adminUrl}
                   onChange={(e) => setAdminUrl(e.target.value)}
-                  className="border-cyan-900/45 bg-[#0b1220]/72 text-white placeholder:text-slate-600"
+                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
                   placeholder="http://localhost:2019"
                 />
               </div>
@@ -329,12 +329,12 @@ export default function CaddyPage() {
             placeholder="Filter by domain or upstream..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border-cyan-900/45 bg-[#0b1220]/72 pl-10 text-white placeholder:text-slate-600"
+            className="border-mesh-border-strong bg-mesh-surface-1/95 pl-10 text-white placeholder:text-slate-600"
           />
         </div>
 
         {/* Table */}
-        <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+        <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -391,7 +391,7 @@ export default function CaddyPage() {
                   filtered.map((host) => (
                     <TableRow
                       key={host.id}
-                      className="border-slate-800 hover:bg-cyan-950/35"
+                      className="border-slate-800 hover:bg-mesh-surface-2/55"
                     >
                       <TableCell className="font-medium text-white">
                         <a
@@ -473,7 +473,7 @@ export default function CaddyPage() {
             if (!open) setPendingDelete(null);
           }}
         >
-          <AlertDialogContent className="border-cyan-900/45 bg-[#0b1220]/72">
+          <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-white">
                 Delete Proxy Host
@@ -487,7 +487,7 @@ export default function CaddyPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-slate-800 text-slate-300 hover:bg-cyan-950/35">
+              <AlertDialogCancel className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
@@ -591,7 +591,7 @@ function ProxyHostFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-cyan-900/45 bg-[#0b1220]/72 sm:max-w-md">
+      <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white">
             {isEdit ? "Edit Proxy Host" : "Add Proxy Host"}
@@ -606,7 +606,7 @@ function ProxyHostFormDialog({
               id="domain"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
-              className="border-cyan-900/45 bg-[#0b1220]/72 text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
               placeholder="app.example.com"
             />
           </div>
@@ -623,7 +623,7 @@ function ProxyHostFormDialog({
                 id="forward-scheme"
                 value={forwardScheme}
                 onChange={(e) => setForwardScheme(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-cyan-900/45 bg-[#0b1220]/72 px-3 py-1 text-sm text-white"
+                className="flex h-9 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-1 text-sm text-white"
               >
                 <option value="http">http</option>
                 <option value="https">https</option>
@@ -640,7 +640,7 @@ function ProxyHostFormDialog({
                 id="forward-host"
                 value={forwardHost}
                 onChange={(e) => setForwardHost(e.target.value)}
-                className="border-cyan-900/45 bg-[#0b1220]/72 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
                 placeholder="10.0.0.5"
               />
             </div>
@@ -658,7 +658,7 @@ function ProxyHostFormDialog({
                 max={65535}
                 value={forwardPort}
                 onChange={(e) => setForwardPort(e.target.value)}
-                className="border-cyan-900/45 bg-[#0b1220]/72 text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1/95 text-white placeholder:text-slate-600"
                 placeholder="80"
               />
             </div>
@@ -687,7 +687,7 @@ function ProxyHostFormDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="border-slate-800 text-slate-300 hover:bg-cyan-950/35"
+              className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55"
             >
               Cancel
             </Button>

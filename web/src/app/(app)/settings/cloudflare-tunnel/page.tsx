@@ -114,7 +114,7 @@ export default function CloudflareTunnelSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-900/45 text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -141,7 +141,7 @@ export default function CloudflareTunnelSettingsPage() {
               type="password"
               value={apiToken}
               onChange={(e) => setApiToken(e.target.value)}
-              className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
               placeholder={
                 apiTokenSet
                   ? "••••••••  (leave blank to keep current)"
@@ -169,7 +169,7 @@ export default function CloudflareTunnelSettingsPage() {
                 type="text"
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
-                className={`border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600 ${
+                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
                   accountValid === "valid"
                     ? "border-emerald-500/40"
                     : accountValid === "error"
@@ -205,7 +205,7 @@ export default function CloudflareTunnelSettingsPage() {
                 type="text"
                 value={tunnelId}
                 onChange={(e) => setTunnelId(e.target.value)}
-                className={`border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600 ${
+                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
                   tunnelValid === "valid"
                     ? "border-emerald-500/40"
                     : tunnelValid === "error"

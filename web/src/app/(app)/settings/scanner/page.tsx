@@ -165,7 +165,7 @@ export default function ScannerSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-900/45 text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -174,7 +174,7 @@ export default function ScannerSettingsPage() {
 
         {/* Scan Configuration Section */}
         <SettingsSection
-          icon={<Search className="h-4 w-4 text-cyan-400" />}
+          icon={<Search className="h-4 w-4 text-mesh-accent" />}
           iconBg="bg-cyan-500/10"
           title="Scan Configuration"
           description="Configure ARP scanning interval, target subnets, and ping sweep."
@@ -190,7 +190,7 @@ export default function ScannerSettingsPage() {
                 min={10}
                 value={scanInterval}
                 onChange={(e) => setScanInterval(e.target.value)}
-                className={`border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600 ${
+                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
                   intervalValid === "valid"
                     ? "border-emerald-500/40"
                     : intervalValid === "error"
@@ -221,7 +221,7 @@ export default function ScannerSettingsPage() {
               type="text"
               value={scanSubnets}
               onChange={(e) => setScanSubnets(e.target.value)}
-              className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
               placeholder="10.0.0.0/24, 192.168.1.0/24"
             />
             <p className="text-[10px] text-slate-600">

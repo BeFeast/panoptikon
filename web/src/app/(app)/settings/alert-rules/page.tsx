@@ -136,7 +136,7 @@ export default function AlertRulesPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-900/45 text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -157,7 +157,7 @@ export default function AlertRulesPage() {
         )}
 
         {status === "loading" && rules.length === 0 ? (
-          <Card className="border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
             <CardContent className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-slate-500" />
             </CardContent>
@@ -165,7 +165,7 @@ export default function AlertRulesPage() {
         ) : (
           <>
             {rules.length === 0 && (
-              <Card className="border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
+              <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
                 <CardContent className="py-8 text-center">
                   <p className="text-sm text-slate-500">
                     No alert rules configured. Add a rule below.
@@ -177,7 +177,7 @@ export default function AlertRulesPage() {
             {rules.map((rule) => {
               const meta = RULE_TYPE_LABELS[rule.rule_type];
               return (
-                <Card key={rule.id} className="border-cyan-900/45 bg-[#0b1220]/72">
+                <Card key={rule.id} className="border-mesh-border-strong bg-mesh-surface-1/95">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -243,7 +243,7 @@ export default function AlertRulesPage() {
                               threshold_value: rule.threshold_value,
                             })
                           }
-                          className="w-32 border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
+                          className="w-32 border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
                           placeholder={
                             rule.rule_type === "device_offline" ? "5" : "100"
                           }
@@ -288,7 +288,7 @@ export default function AlertRulesPage() {
             })}
 
             {availableTypes.length > 0 && (
-              <Card className="border-dashed border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
+              <Card className="border-dashed border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
                 <CardContent className="py-4">
                   <p className="mb-3 text-xs font-medium text-slate-500">
                     Add a rule
@@ -300,7 +300,7 @@ export default function AlertRulesPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleCreate(type_key)}
-                        className="border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35"
+                        className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
                       >
                         <Plus className="mr-1.5 h-3.5 w-3.5" />
                         {RULE_TYPE_LABELS[type_key]?.label ?? type_key}

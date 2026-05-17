@@ -24,7 +24,7 @@ export function SystemTab({ status }: { status: PfsenseStatus }) {
         value={status.hostname ?? "\u2014"}
       />
       <InfoStatCard
-        icon={<Globe className="h-5 w-5 text-cyan-400" />}
+        icon={<Globe className="h-5 w-5 text-mesh-accent" />}
         iconColorClass="bg-cyan-500/10"
         label="Version"
         value={status.version ?? "\u2014"}

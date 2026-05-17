@@ -41,8 +41,8 @@ import type { VpnInterfaceStatus, VpnStatusResponse } from "@/lib/types";
 // ─── Mesh design tokens ───────────────────────────────────
 
 const meshSurface =
-  "border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]";
-const meshSurfaceQuiet = "border-cyan-900/35 bg-[#08111e]/62";
+  "border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]";
+const meshSurfaceQuiet = "border-mesh-border bg-mesh-surface-1/62";
 const meshSectionTitle =
   "text-[11px] font-medium uppercase tracking-wider text-slate-500";
 
@@ -162,9 +162,9 @@ export default function VpnStatusPage() {
     <PageTransition>
       <div className="space-y-6">
         {/* ─── Page header ─────────────────────────────── */}
-        <section className="flex flex-col gap-4 border-b border-cyan-900/35 pb-5 md:flex-row md:items-end md:justify-between">
+        <section className="flex flex-col gap-4 border-b border-mesh-border pb-5 md:flex-row md:items-end md:justify-between">
           <div className="flex items-center gap-3">
-            <Shield className="h-5 w-5 text-cyan-400" />
+            <Shield className="h-5 w-5 text-mesh-accent" />
             <div>
               <p className={meshSectionTitle}>Network · secure overlay</p>
               <h1 className="mt-1 text-xl font-semibold tracking-tight text-slate-100">
@@ -180,9 +180,9 @@ export default function VpnStatusPage() {
             variant="outline"
             size="sm"
             onClick={load}
-            className="border-cyan-900/45 bg-[#0b1220]/70 text-slate-300 hover:border-cyan-700/50 hover:bg-cyan-950/40 hover:text-white"
+            className="border-mesh-border-strong bg-mesh-surface-1/70 text-slate-300 hover:border-mesh-accent/40 hover:bg-mesh-surface-2/60 hover:text-white"
           >
-            <RefreshCw className="mr-1.5 h-3.5 w-3.5 text-cyan-400" />
+            <RefreshCw className="mr-1.5 h-3.5 w-3.5 text-mesh-accent" />
             Refresh
           </Button>
         </section>
@@ -219,17 +219,17 @@ export default function VpnStatusPage() {
 
         {/* ─── Tabs ────────────────────────────────────── */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="h-auto rounded-md border border-cyan-900/45 bg-[#0b1220]/70 p-1">
+          <TabsList className="h-auto rounded-md border border-mesh-border-strong bg-mesh-surface-1/70 p-1">
             <TabsTrigger
               value="overview"
-              className="rounded px-3.5 py-1.5 text-xs uppercase tracking-wider text-slate-500 data-[state=active]:bg-cyan-950/60 data-[state=active]:text-cyan-200"
+              className="rounded px-3.5 py-1.5 text-xs uppercase tracking-wider text-slate-500 data-[state=active]:bg-mesh-surface-2 data-[state=active]:text-cyan-200"
             >
               Overview
             </TabsTrigger>
             {data?.mikrotik_available && (
               <TabsTrigger
                 value="mikrotik"
-                className="rounded px-3.5 py-1.5 text-xs uppercase tracking-wider text-slate-500 data-[state=active]:bg-cyan-950/60 data-[state=active]:text-cyan-200"
+                className="rounded px-3.5 py-1.5 text-xs uppercase tracking-wider text-slate-500 data-[state=active]:bg-mesh-surface-2 data-[state=active]:text-cyan-200"
               >
                 WireGuard
               </TabsTrigger>
@@ -237,7 +237,7 @@ export default function VpnStatusPage() {
             {data?.openvpn_available && (
               <TabsTrigger
                 value="openvpn"
-                className="rounded px-3.5 py-1.5 text-xs uppercase tracking-wider text-slate-500 data-[state=active]:bg-cyan-950/60 data-[state=active]:text-cyan-200"
+                className="rounded px-3.5 py-1.5 text-xs uppercase tracking-wider text-slate-500 data-[state=active]:bg-mesh-surface-2 data-[state=active]:text-cyan-200"
               >
                 OpenVPN
               </TabsTrigger>
@@ -249,7 +249,7 @@ export default function VpnStatusPage() {
             <Card className={meshSurface}>
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-cyan-400" />
+                  <Shield className="h-4 w-4 text-mesh-accent" />
                   <CardTitle className={meshSectionTitle}>
                     Tunnel overview
                   </CardTitle>
@@ -472,7 +472,7 @@ function SummaryCard({
     <Card className={cn("h-full min-h-[8.25rem]", meshSurface)}>
       <CardHeader className="flex flex-row items-start justify-between pb-3">
         <CardTitle className={meshSectionTitle}>{label}</CardTitle>
-        <span className="text-cyan-400">{icon}</span>
+        <span className="text-mesh-accent">{icon}</span>
       </CardHeader>
       <CardContent className="space-y-2">
         {loading ? (
@@ -510,12 +510,12 @@ function FilterInput({
 }) {
   return (
     <div className="relative max-w-md">
-      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cyan-400/70" />
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-mesh-accent/70" />
       <Input
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border-cyan-900/45 bg-[#0b1220]/70 pl-10 text-slate-200 placeholder:text-slate-600 focus-visible:border-cyan-700/60 focus-visible:ring-cyan-500/30"
+        className="border-mesh-border-strong bg-mesh-surface-1/70 pl-10 text-slate-200 placeholder:text-slate-600 focus-visible:border-mesh-accent/45 focus-visible:ring-cyan-500/30"
       />
     </div>
   );
@@ -537,7 +537,7 @@ function EmptyState({
   return (
     <Card className={meshSurface}>
       <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-        <Icon className="h-10 w-10 text-cyan-900/60" />
+        <Icon className="h-10 w-10 text-mesh-text-faint/80" />
         <p className="text-sm text-slate-300">{title}</p>
         <p className="max-w-md text-sm text-slate-400">{message}</p>
         {hint && (
@@ -565,11 +565,11 @@ function InterfaceSkeleton() {
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="border-t border-cyan-900/35">
+        <div className="border-t border-mesh-border">
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="grid grid-cols-7 gap-3 border-b border-cyan-900/25 px-4 py-3"
+              className="grid grid-cols-7 gap-3 border-b border-mesh-border-strong/25 px-4 py-3"
             >
               {[0, 1, 2, 3, 4, 5, 6].map((c) => (
                 <Skeleton key={c} className="h-4 w-full" />
@@ -596,7 +596,7 @@ function StatusPill({
       ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300"
       : tone === "offline"
         ? "border-rose-500/30 bg-rose-500/10 text-rose-300"
-        : "border-cyan-900/45 bg-[#0b1220]/70 text-slate-400";
+        : "border-mesh-border-strong bg-mesh-surface-1/70 text-slate-400";
 
   return (
     <span
@@ -622,7 +622,7 @@ function InterfaceCard({ iface }: { iface: VpnInterfaceStatus }) {
       <CardHeader className="space-y-3 pb-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <Cable className="h-4 w-4 text-cyan-400" />
+            <Cable className="h-4 w-4 text-mesh-accent" />
             <CardTitle className="font-mono text-sm font-semibold text-white">
               {iface.name}
             </CardTitle>
@@ -685,7 +685,7 @@ function InterfaceCard({ iface }: { iface: VpnInterfaceStatus }) {
                 meshSurfaceQuiet,
               )}
             >
-              <KeyRound className="h-3 w-3 text-cyan-400" />
+              <KeyRound className="h-3 w-3 text-mesh-accent" />
               <span className="truncate">
                 {iface.public_key.substring(0, 16)}…
               </span>
@@ -695,10 +695,10 @@ function InterfaceCard({ iface }: { iface: VpnInterfaceStatus }) {
       </CardHeader>
 
       <CardContent className="p-0">
-        <div className="overflow-x-auto border-t border-cyan-900/35">
+        <div className="overflow-x-auto border-t border-mesh-border">
           <Table>
             <TableHeader>
-              <TableRow className="border-cyan-900/35 hover:bg-transparent">
+              <TableRow className="border-mesh-border hover:bg-transparent">
                 <TableHead className={meshSectionTitle}>Status</TableHead>
                 <TableHead className={meshSectionTitle}>
                   {isOpenvpn ? "Client" : "Peer"}
@@ -725,13 +725,13 @@ function InterfaceCard({ iface }: { iface: VpnInterfaceStatus }) {
 
             <TableBody>
               {iface.peers.length === 0 ? (
-                <TableRow className="border-cyan-900/35 hover:bg-transparent">
+                <TableRow className="border-mesh-border hover:bg-transparent">
                   <TableCell
                     colSpan={7}
                     className="py-10 text-center"
                   >
                     <div className="flex flex-col items-center gap-2">
-                      <WifiOff className="h-7 w-7 text-cyan-900/60" />
+                      <WifiOff className="h-7 w-7 text-mesh-text-faint/80" />
                       <p className="text-sm text-slate-400">
                         {isOpenvpn
                           ? "No clients connected."
@@ -744,7 +744,7 @@ function InterfaceCard({ iface }: { iface: VpnInterfaceStatus }) {
                 iface.peers.map((peer, idx) => (
                   <TableRow
                     key={peer.public_key ?? `${iface.name}-${idx}`}
-                    className="border-cyan-900/30 hover:bg-cyan-950/20"
+                    className="border-mesh-border-strong/30 hover:bg-mesh-surface-2/40"
                   >
                     <TableCell>
                       <div className="flex items-center gap-2">

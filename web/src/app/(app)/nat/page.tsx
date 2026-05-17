@@ -186,7 +186,7 @@ export default function NatPage() {
   return (
     <PageTransition>
       <div className="space-y-8">
-        <section className="flex flex-col gap-5 rounded-2xl border border-cyan-900/45 bg-[#0b1220]/72 p-4 md:flex-row md:items-center md:justify-between">
+        <section className="flex flex-col gap-5 rounded-2xl border border-mesh-border-strong bg-mesh-surface-1/95 p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-5">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-violet-500/30 bg-gradient-to-br from-violet-500/20 via-fuchsia-500/10 to-blue-500/10 text-violet-300">
               <ArrowRightLeft className="h-6 w-6" />
@@ -209,7 +209,7 @@ export default function NatPage() {
               load();
               loadMt();
             }}
-            className="border-slate-700 bg-slate-900/60 text-slate-200 hover:bg-cyan-950/35"
+            className="border-slate-700 bg-slate-900/60 text-slate-200 hover:bg-mesh-surface-2/55"
           >
             <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
             Refresh
@@ -245,7 +245,7 @@ export default function NatPage() {
         <section className="space-y-3">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as NatTab)}>
-              <TabsList className="h-auto rounded-xl border border-cyan-900/45 bg-[#0b1220]/72 p-1">
+              <TabsList className="h-auto rounded-xl border border-mesh-border-strong bg-mesh-surface-1/95 p-1">
                 <TabsTrigger
                   value="all"
                   className="rounded-lg px-4 data-[state=active]:bg-slate-800 data-[state=active]:text-white"
@@ -274,7 +274,7 @@ export default function NatPage() {
                   placeholder="Filter rules..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="border-cyan-900/45 bg-[#0b1220]/72 pl-10 text-white placeholder:text-slate-600"
+                  className="border-mesh-border-strong bg-mesh-surface-1/95 pl-10 text-white placeholder:text-slate-600"
                 />
               </div>
 
@@ -314,7 +314,7 @@ export default function NatPage() {
           </CardHeader>
 
           <CardContent className="p-0">
-            <div className="overflow-x-auto border-t border-cyan-900/35">
+            <div className="overflow-x-auto border-t border-mesh-border">
               {filteredMt === null ? (
                 <div className="space-y-2 p-4">
                   {[...Array(4)].map((_, i) => (
@@ -347,7 +347,7 @@ export default function NatPage() {
                     {filteredMt.map((rule, idx) => (
                       <TableRow
                         key={rule.id ?? idx}
-                        className="border-slate-800/70 hover:bg-cyan-950/35"
+                        className="border-slate-800/70 hover:bg-mesh-surface-2/55"
                       >
                         <TableCell>
                           <Badge
@@ -486,7 +486,7 @@ export default function NatPage() {
             if (!open) setPendingDeleteMt(null);
           }}
         >
-          <AlertDialogContent className="bg-[#0b1220]/72 border-cyan-900/45">
+          <AlertDialogContent className="bg-mesh-surface-1/95 border-mesh-border-strong">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-white">Delete MikroTik NAT Rule</AlertDialogTitle>
               <AlertDialogDescription className="text-slate-400">
@@ -676,7 +676,7 @@ function MikrotikNatDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-[#0b1220]/72 border-cyan-900/45 sm:max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="bg-mesh-surface-1/95 border-mesh-border-strong sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-white">{dialogTitle}</DialogTitle>
           <DialogDescription className="text-slate-400">{dialogDescription}</DialogDescription>
@@ -688,7 +688,7 @@ function MikrotikNatDialog({
             <div className="space-y-1.5">
               <Label className="text-slate-400">Chain</Label>
               <Select value={chain} onValueChange={setChain}>
-                <SelectTrigger className="bg-[#0b1220]/72 border-cyan-900/45 text-slate-200">
+                <SelectTrigger className="bg-mesh-surface-1/95 border-mesh-border-strong text-slate-200">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="border-slate-700 bg-slate-900 text-slate-200">
@@ -700,7 +700,7 @@ function MikrotikNatDialog({
             <div className="space-y-1.5">
               <Label className="text-slate-400">Action</Label>
               <Select value={action} onValueChange={setAction}>
-                <SelectTrigger className="bg-[#0b1220]/72 border-cyan-900/45 text-slate-200">
+                <SelectTrigger className="bg-mesh-surface-1/95 border-mesh-border-strong text-slate-200">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="border-slate-700 bg-slate-900 text-slate-200">
@@ -719,7 +719,7 @@ function MikrotikNatDialog({
           <div className="space-y-1.5">
             <Label className="text-slate-400">Protocol</Label>
             <Select value={protocol || "__none__"} onValueChange={(v) => setProtocol(v === "__none__" ? "" : v)}>
-              <SelectTrigger className="bg-[#0b1220]/72 border-cyan-900/45 text-slate-200">
+              <SelectTrigger className="bg-mesh-surface-1/95 border-mesh-border-strong text-slate-200">
                 <SelectValue placeholder="Any" />
               </SelectTrigger>
               <SelectContent className="border-slate-700 bg-slate-900 text-slate-200">
@@ -742,7 +742,7 @@ function MikrotikNatDialog({
                 value={srcAddress}
                 onChange={(e) => setSrcAddress(e.target.value)}
                 placeholder="e.g. 192.168.1.0/24"
-                className="bg-[#0b1220]/72 border-cyan-900/45 text-slate-200"
+                className="bg-mesh-surface-1/95 border-mesh-border-strong text-slate-200"
               />
             </div>
             <div className="space-y-1.5">
@@ -754,7 +754,7 @@ function MikrotikNatDialog({
                 value={dstAddress}
                 onChange={(e) => setDstAddress(e.target.value)}
                 placeholder="e.g. 203.0.113.10"
-                className="bg-[#0b1220]/72 border-cyan-900/45 text-slate-200"
+                className="bg-mesh-surface-1/95 border-mesh-border-strong text-slate-200"
               />
             </div>
           </div>
@@ -769,7 +769,7 @@ function MikrotikNatDialog({
               value={dstPort}
               onChange={(e) => setDstPort(e.target.value)}
               placeholder="e.g. 8080 or 80-443"
-              className="bg-[#0b1220]/72 border-cyan-900/45 text-slate-200"
+              className="bg-mesh-surface-1/95 border-mesh-border-strong text-slate-200"
             />
           </div>
 
@@ -784,7 +784,7 @@ function MikrotikNatDialog({
                 value={toAddresses}
                 onChange={(e) => setToAddresses(e.target.value)}
                 placeholder="e.g. 192.168.1.100"
-                className="bg-[#0b1220]/72 border-cyan-900/45 text-slate-200"
+                className="bg-mesh-surface-1/95 border-mesh-border-strong text-slate-200"
               />
             </div>
             <div className="space-y-1.5">
@@ -796,7 +796,7 @@ function MikrotikNatDialog({
                 value={toPorts}
                 onChange={(e) => setToPorts(e.target.value)}
                 placeholder="e.g. 80"
-                className="bg-[#0b1220]/72 border-cyan-900/45 text-slate-200"
+                className="bg-mesh-surface-1/95 border-mesh-border-strong text-slate-200"
               />
             </div>
           </div>
@@ -812,7 +812,7 @@ function MikrotikNatDialog({
                 value={inInterface}
                 onChange={(e) => setInInterface(e.target.value)}
                 placeholder="e.g. ether1"
-                className="bg-[#0b1220]/72 border-cyan-900/45 text-slate-200"
+                className="bg-mesh-surface-1/95 border-mesh-border-strong text-slate-200"
               />
             </div>
             <div className="space-y-1.5">
@@ -824,7 +824,7 @@ function MikrotikNatDialog({
                 value={outInterface}
                 onChange={(e) => setOutInterface(e.target.value)}
                 placeholder="e.g. bridge1"
-                className="bg-[#0b1220]/72 border-cyan-900/45 text-slate-200"
+                className="bg-mesh-surface-1/95 border-mesh-border-strong text-slate-200"
               />
             </div>
           </div>
@@ -836,7 +836,7 @@ function MikrotikNatDialog({
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Web server port forward"
-              className="bg-[#0b1220]/72 border-cyan-900/45 text-slate-200"
+              className="bg-mesh-surface-1/95 border-mesh-border-strong text-slate-200"
             />
           </div>
 

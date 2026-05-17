@@ -290,7 +290,7 @@ export default function CloudflareTunnelPage() {
 
         {/* Not configured message */}
         {notConfigured && (
-          <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
             <CardContent className="py-8 text-center">
               <Cloud className="mx-auto mb-4 h-12 w-12 text-slate-600" />
               <h3 className="text-lg font-medium text-slate-300">
@@ -314,7 +314,7 @@ export default function CloudflareTunnelPage() {
         {!notConfigured && status && (
           <div className="grid gap-5 md:grid-cols-3">
             {/* Tunnel Status */}
-            <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
               <CardHeader className="pb-2">
                 <CardDescription className="text-slate-400">
                   Tunnel Status
@@ -347,7 +347,7 @@ export default function CloudflareTunnelPage() {
             </Card>
 
             {/* Active Connections */}
-            <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
               <CardHeader className="pb-2">
                 <CardDescription className="text-slate-400">
                   Active Connections
@@ -373,7 +373,7 @@ export default function CloudflareTunnelPage() {
             </Card>
 
             {/* Active Routes */}
-            <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
               <CardHeader className="pb-2">
                 <CardDescription className="text-slate-400">
                   Active Routes
@@ -394,7 +394,7 @@ export default function CloudflareTunnelPage() {
 
         {/* Connections table */}
         {!notConfigured && status && status.connections.length > 0 && (
-          <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
             <CardHeader>
               <CardTitle className="text-slate-100">Connections</CardTitle>
               <CardDescription className="text-slate-400">
@@ -452,7 +452,7 @@ export default function CloudflareTunnelPage() {
 
         {/* Routes table */}
         {!notConfigured && (
-          <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
             <CardHeader>
               <CardTitle className="text-slate-100">Tunnel Routes</CardTitle>
               <CardDescription className="text-slate-400">
@@ -547,7 +547,7 @@ export default function CloudflareTunnelPage() {
 
         {/* Add Route Dialog */}
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-          <DialogContent className="border-cyan-900/45 bg-[#0b1220]/72">
+          <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
             <DialogHeader>
               <DialogTitle className="text-slate-100">
                 Add Tunnel Route
@@ -612,7 +612,7 @@ export default function CloudflareTunnelPage() {
 
         {/* Edit Route Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="border-cyan-900/45 bg-[#0b1220]/72">
+          <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
             <DialogHeader>
               <DialogTitle className="text-slate-100">
                 Edit Tunnel Route
@@ -680,7 +680,7 @@ export default function CloudflareTunnelPage() {
           open={!!deleteTarget}
           onOpenChange={(open) => !open && setDeleteTarget(null)}
         >
-          <AlertDialogContent className="border-cyan-900/45 bg-[#0b1220]/72">
+          <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-slate-100">
                 Remove Route

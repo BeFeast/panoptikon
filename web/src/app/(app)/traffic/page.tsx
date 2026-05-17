@@ -131,7 +131,7 @@ export default function TrafficPage() {
 
       {/* NetFlow Collector Status */}
       {netflow && (
-        <div className="flex items-center gap-2 rounded-lg border border-cyan-900/45 bg-[#0b1220]/72 px-4 py-2.5">
+        <div className="flex items-center gap-2 rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 px-4 py-2.5">
           <Radio className={`h-4 w-4 ${netflow.enabled ? "text-emerald-400" : "text-slate-500"}`} />
           <span className="text-sm text-slate-400">
             NetFlow collector:{" "}
@@ -150,7 +150,7 @@ export default function TrafficPage() {
       )}
 
       {/* Traffic History Chart */}
-      <div className="rounded-lg border border-cyan-900/45 bg-[#0b1220]/72 p-4">
+      <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 p-4">
         <div className="mb-3 flex items-center gap-2">
           <Activity className="h-4 w-4 text-blue-400" />
           <h2 className="text-sm font-medium text-slate-400">
@@ -261,8 +261,8 @@ export default function TrafficPage() {
       )}
 
       {/* Top Devices by Bandwidth */}
-      <div className="rounded-lg border border-cyan-900/45 bg-[#0b1220]/72">
-        <div className="border-b border-cyan-900/35 px-4 py-3">
+      <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95">
+        <div className="border-b border-mesh-border px-4 py-3">
           <h2 className="text-sm font-medium text-slate-400">
             Top Devices by Bandwidth
             <span className="ml-2 text-xs text-slate-600">Click a row to view history</span>
@@ -318,7 +318,7 @@ export default function TrafficPage() {
                   className={`border-slate-800 cursor-pointer ${
                     selectedDevice?.id === d.id
                       ? "bg-slate-800/50"
-                      : "hover:bg-cyan-950/35"
+                      : "hover:bg-mesh-surface-2/55"
                   }`}
                   onClick={() =>
                     setSelectedDevice(

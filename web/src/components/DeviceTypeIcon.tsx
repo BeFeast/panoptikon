@@ -57,7 +57,7 @@ const COLOR_MAP: Record<DeviceType, string> = {
   iot: "text-teal-400",
   gaming: "text-rose-400",
   workstation: "text-indigo-400",
-  vm: "text-cyan-400",
+  vm: "text-mesh-accent",
   container: "text-orange-400",
   nas: "text-lime-400",
   switch: "text-blue-300",

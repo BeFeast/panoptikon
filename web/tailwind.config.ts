@@ -51,6 +51,22 @@ const config: Config = {
         "status-offline": "#f43f5e",  // rose-500
         "status-warning": "#f59e0b",  // amber-500
         "status-inactive": "#6b7280", // gray-500
+        // Mesh design tokens (direction: mesh) — cornflower-blue navy palette
+        mesh: {
+          bg: "#060f25",
+          "surface-1": "#091633",
+          "surface-2": "#0e2148",
+          "surface-3": "#163065",
+          border: "rgba(96,144,212,0.20)",
+          "border-strong": "rgba(96,144,212,0.40)",
+          "border-faint": "rgba(120,160,220,0.05)",
+          text: "#e9f0fc",
+          "text-dim": "#98aecf",
+          "text-mute": "#5d7799",
+          "text-faint": "#3a5278",
+          accent: "#38bdf8",
+          primary: "#2563eb",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

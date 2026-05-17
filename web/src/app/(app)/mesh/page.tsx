@@ -418,7 +418,7 @@ export default function MeshPage() {
     return (
       <PageTransition>
         <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-          <Card className="w-full max-w-md border-cyan-900/45 bg-[#0b1220]/72">
+          <Card className="w-full max-w-md border-mesh-border-strong bg-mesh-surface-1/95">
             <CardContent className="flex flex-col items-center gap-4 py-12">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/10">
                 <WifiOff className="h-8 w-8 text-rose-400" />
@@ -432,7 +432,7 @@ export default function MeshPage() {
               <div className="flex items-center gap-3">
                 <Button
                   variant="outline"
-                  className="border-slate-800 text-slate-300 hover:bg-cyan-950/35"
+                  className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55"
                   onClick={() => {
                     setLoading(true)
                     buildGraph(true)
@@ -444,7 +444,7 @@ export default function MeshPage() {
                 <Link href="/settings/xiaomi-mesh">
                   <Button
                     variant="outline"
-                    className="border-slate-800 text-slate-300 hover:bg-cyan-950/35"
+                    className="border-slate-800 text-slate-300 hover:bg-mesh-surface-2/55"
                   >
                     <Settings className="mr-2 h-4 w-4" />
                     Settings
@@ -530,7 +530,7 @@ export default function MeshPage() {
       >
         <SheetContent
           side="right"
-          className="w-full overflow-y-auto border-cyan-900/45 bg-[#0b1220]/72 sm:max-w-md"
+          className="w-full overflow-y-auto border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-md"
         >
           {selectedNode && <MeshNodeDetailPanel node={selectedNode} />}
         </SheetContent>

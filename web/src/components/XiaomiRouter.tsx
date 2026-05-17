@@ -446,7 +446,7 @@ function FirmwareSection({ firmware }: { firmware: XiaomiFirmware }) {
     <Card className="border-slate-800 bg-slate-900">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-medium text-slate-300">
-          <HardDrive className="h-4 w-4 text-cyan-400" />
+          <HardDrive className="h-4 w-4 text-mesh-accent" />
           Firmware & Updates
         </CardTitle>
       </CardHeader>

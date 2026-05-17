@@ -199,7 +199,7 @@ export default function DnsLogsPage() {
 
         {/* Stats Cards */}
         <div className="grid gap-5 md:grid-cols-4" data-testid="dns-stats-grid">
-          <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Total Queries
@@ -216,7 +216,7 @@ export default function DnsLogsPage() {
               )}
             </CardContent>
           </Card>
-          <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Blocked
@@ -233,7 +233,7 @@ export default function DnsLogsPage() {
               )}
             </CardContent>
           </Card>
-          <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Unique Domains
@@ -250,7 +250,7 @@ export default function DnsLogsPage() {
               )}
             </CardContent>
           </Card>
-          <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                 Clients

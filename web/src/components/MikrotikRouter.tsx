@@ -261,7 +261,7 @@ function SystemTab({ status }: { status: MikrotikStatus }) {
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
       <InfoStatCard
-        icon={<Monitor className="h-5 w-5 text-cyan-400" />}
+        icon={<Monitor className="h-5 w-5 text-mesh-accent" />}
         iconColorClass="bg-cyan-500/10"
         label="Version"
         value={status.version ?? "\u2014"}
@@ -289,7 +289,7 @@ function SystemTab({ status }: { status: MikrotikStatus }) {
         }
       />
       <InfoStatCard
-        icon={<HardDrive className="h-5 w-5 text-cyan-400" />}
+        icon={<HardDrive className="h-5 w-5 text-mesh-accent" />}
         iconColorClass="bg-cyan-500/10"
         label="Platform"
         value={platformValue}
@@ -2289,7 +2289,7 @@ function SortableFilterRow({
       <td className="px-4 py-3 text-slate-300">{rule.dst_port ?? "\u2014"}</td>
       <td className="px-4 py-3">
         <div className="flex flex-col gap-0.5">
-          <span className="tabular-nums text-xs text-cyan-400" title={`${rule.packets ?? 0} packets`}>
+          <span className="tabular-nums text-xs text-mesh-accent" title={`${rule.packets ?? 0} packets`}>
             {formatPackets(rule.packets)} pkts
           </span>
           <span className="tabular-nums text-xs text-slate-500" title={`${rule.bytes ?? 0} bytes`}>

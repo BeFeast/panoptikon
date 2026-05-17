@@ -323,7 +323,7 @@ export default function DevicesPage() {
     <PageTransition>
     <div className="space-y-5">
       {/* Header */}
-      <div className="border-b border-cyan-900/35 pb-4">
+      <div className="border-b border-mesh-border pb-4">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -363,7 +363,7 @@ export default function DevicesPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="border border-slate-700/75 bg-slate-800/60 text-slate-200 hover:bg-cyan-950/35 hover:text-white"
+                  className="border border-slate-700/75 bg-slate-800/60 text-slate-200 hover:bg-mesh-surface-2/55 hover:text-white"
                   disabled={identifying}
                   onClick={async () => {
                     setIdentifying(true);
@@ -442,7 +442,7 @@ export default function DevicesPage() {
                 <Button
                   variant="secondary"
                   size="sm"
-                  className="border border-slate-700/75 bg-slate-800/60 text-slate-200 hover:bg-cyan-950/35 hover:text-white"
+                  className="border border-slate-700/75 bg-slate-800/60 text-slate-200 hover:bg-mesh-surface-2/55 hover:text-white"
                   disabled={resolving}
                   onClick={async () => {
                     setResolving(true);
@@ -483,7 +483,7 @@ export default function DevicesPage() {
       </div>
 
       {/* Filter bar */}
-      <div className="rounded-lg border border-cyan-900/45 bg-[#0b1220]/72 px-3 py-3 sm:px-4">
+      <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-3 sm:px-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2">
             {(["all", "online", "offline", "unknown"] as Filter[]).map((f) => (
@@ -495,7 +495,7 @@ export default function DevicesPage() {
                 className={`h-8 rounded-full border px-3 text-xs ${
                   filter === f
                     ? "border-slate-600 bg-slate-700/90 text-white hover:bg-slate-700"
-                    : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-cyan-950/35 hover:text-slate-100"
+                    : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
                 }`}
               >
                 {f === "all" && "All"}
@@ -525,7 +525,7 @@ export default function DevicesPage() {
             <div className="flex shrink-0 items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="secondary" size="sm" className="h-9 gap-1.5 border border-slate-700/75 bg-slate-800/60 text-slate-200 hover:bg-cyan-950/35 hover:text-white">
+                  <Button variant="secondary" size="sm" className="h-9 gap-1.5 border border-slate-700/75 bg-slate-800/60 text-slate-200 hover:bg-mesh-surface-2/55 hover:text-white">
                     <Download className="h-4 w-4" />
                     Export
                     <ChevronDown className="h-3 w-3" />
@@ -563,7 +563,7 @@ export default function DevicesPage() {
                   className={`h-9 w-9 border ${
                     view === "grid"
                       ? "border-slate-600 bg-slate-700/90 text-white hover:bg-slate-700"
-                      : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-cyan-950/35 hover:text-slate-100"
+                      : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
                   }`}
                   onClick={() => toggleView("grid")}
                   title="Grid view"
@@ -576,7 +576,7 @@ export default function DevicesPage() {
                   className={`h-9 w-9 border ${
                     view === "table"
                       ? "border-slate-600 bg-slate-700/90 text-white hover:bg-slate-700"
-                      : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-cyan-950/35 hover:text-slate-100"
+                      : "border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
                   }`}
                   onClick={() => toggleView("table")}
                   title="Table view"
@@ -590,7 +590,7 @@ export default function DevicesPage() {
                       <Button
                         variant="secondary"
                         size="icon"
-                        className="h-9 w-9 border border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-cyan-950/35 hover:text-slate-100"
+                        className="h-9 w-9 border border-slate-700/70 bg-slate-800/55 text-slate-300 hover:bg-mesh-surface-2/55 hover:text-slate-100"
                         title="Network topology"
                       >
                         <Network className="h-4 w-4" />
@@ -629,7 +629,7 @@ export default function DevicesPage() {
                   </div>
                 </div>
                 {/* Divider */}
-                <div className="my-4 border-t border-cyan-900/35" />
+                <div className="my-4 border-t border-mesh-border" />
                 {/* IP + MAC */}
                 <div className="space-y-2">
                   <div className="flex min-h-5 items-center gap-2">
@@ -755,7 +755,7 @@ export default function DevicesPage() {
       >
         <SheetContent
           side="right"
-          className="flex w-full flex-col overflow-hidden border-cyan-900/45 bg-[#0b1220]/72 sm:max-w-md"
+          className="flex w-full flex-col overflow-hidden border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-md"
         >
           {selectedDevice && <DeviceDetail device={selectedDevice} onUpdate={load} />}
         </SheetContent>
@@ -824,7 +824,7 @@ function DeviceCard({
   return (
     <Card
       data-device-row
-      className="h-full min-h-[15.5rem] cursor-pointer border-slate-700/50 bg-slate-900/55 transition-[border-color,background-color,box-shadow] hover:border-slate-600/70 hover:bg-cyan-950/35 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
+      className="h-full min-h-[15.5rem] cursor-pointer border-slate-700/50 bg-slate-900/55 transition-[border-color,background-color,box-shadow] hover:border-slate-600/70 hover:bg-mesh-surface-2/55 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
       onClick={onClick}
     >
       <CardContent className="flex h-full flex-col p-5">
@@ -906,7 +906,7 @@ function DeviceCard({
         </div>
 
         {/* ── Core network metadata ── */}
-        <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl border border-cyan-900/45 bg-[#0b1220]/72 p-3">
+        <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl border border-mesh-border-strong bg-mesh-surface-1/95 p-3">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">IP</p>
             <p className="mt-1 truncate font-mono text-[13px] tabular-nums text-slate-200" title={primaryIp}>
@@ -923,7 +923,7 @@ function DeviceCard({
 
         {/* ── Agent metrics ── */}
         {hasAgentMetrics && (
-          <div className="mt-4 space-y-2.5 rounded-xl border border-cyan-900/45 bg-[#0b1220]/72 p-3">
+          <div className="mt-4 space-y-2.5 rounded-xl border border-mesh-border-strong bg-mesh-surface-1/95 p-3">
             {device.agent!.cpu_percent != null && (
               <div className="flex items-center gap-2">
                 <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">CPU</span>
@@ -956,13 +956,13 @@ function DeviceCard({
         )}
 
         {device.status_timeline && device.status_timeline.length > 0 && (
-          <div className="mt-4 rounded-lg border border-cyan-900/45 bg-[#0b1220]/72 px-3 py-2">
+          <div className="mt-4 rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2">
             <StatusSparkline timeline={device.status_timeline} width={170} height={10} />
           </div>
         )}
 
         {/* ── Footer ── */}
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-cyan-900/35 pt-4">
+        <div className="mt-auto flex items-center justify-between gap-2 border-t border-mesh-border pt-4">
           <p className={`text-[11px] ${device.is_online ? "text-emerald-300/80" : "text-slate-500"}`}>
             {device.is_online ? "Online now" : `Last seen ${timeAgo(device.last_seen_at)}`}
           </p>
@@ -970,7 +970,7 @@ function DeviceCard({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 gap-1.5 px-2.5 text-[11px] text-slate-400 hover:bg-cyan-950/35 hover:text-slate-200"
+              className="h-7 gap-1.5 px-2.5 text-[11px] text-slate-400 hover:bg-mesh-surface-2/55 hover:text-slate-200"
               disabled={waking}
               onClick={handleWake}
             >
@@ -1085,7 +1085,7 @@ function DevicesTable({
                   ease: "easeOut",
                   delay: Math.min(index * 0.01, 0.12),
                 }}
-                className="cursor-pointer border-b border-cyan-900/35 transition-colors hover:bg-cyan-950/35 data-[state=selected]:bg-muted"
+                className="cursor-pointer border-b border-mesh-border transition-colors hover:bg-mesh-surface-2/55 data-[state=selected]:bg-muted"
                 onClick={() => onSelect(device)}
               >
                 <TableCell>
@@ -1259,7 +1259,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
                 <Badge variant="outline" className="border-slate-600 text-[10px] text-slate-400">Unknown</Badge>
               )}
               {device.custom_name && (
-                <Badge variant="outline" className="border-cyan-500/50 text-cyan-400 text-[10px]">custom</Badge>
+                <Badge variant="outline" className="border-cyan-500/50 text-mesh-accent text-[10px]">custom</Badge>
               )}
               {device.agent?.is_online && (
                 <span className="shrink-0 rounded border border-blue-500/30 bg-blue-500/20 px-1.5 py-0.5 text-xs text-blue-400">
@@ -1390,7 +1390,7 @@ function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => vo
 
 function CustomBadge() {
   return (
-    <Badge variant="outline" className="ml-1 border-cyan-500/50 text-cyan-400 text-[9px] px-1 py-0">
+    <Badge variant="outline" className="ml-1 border-cyan-500/50 text-mesh-accent text-[9px] px-1 py-0">
       custom
     </Badge>
   );
@@ -1713,7 +1713,7 @@ function DeviceSystemTab({ deviceId }: { deviceId: string }) {
       {/* Neofetch-style terminal card */}
       <div className="overflow-hidden rounded-lg border border-slate-700 bg-slate-950 font-mono text-[13px]">
         {/* Title bar */}
-        <div className="flex items-center gap-1.5 border-b border-cyan-900/35 px-3 py-2">
+        <div className="flex items-center gap-1.5 border-b border-mesh-border px-3 py-2">
           <span className="h-2.5 w-2.5 rounded-full bg-red-500/80" />
           <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/80" />
           <span className="h-2.5 w-2.5 rounded-full bg-green-500/80" />
@@ -1721,15 +1721,15 @@ function DeviceSystemTab({ deviceId }: { deviceId: string }) {
         </div>
         {/* Content */}
         <div className="p-4">
-          <p className="text-cyan-400">
+          <p className="text-mesh-accent">
             {title}
             <span className="text-slate-500">@</span>
-            <span className="text-cyan-400">panoptikon</span>
+            <span className="text-mesh-accent">panoptikon</span>
           </p>
           <p className="text-slate-700">{"─".repeat(Math.min(40, title.length + 12))}</p>
           {rows.map(([label, value]) => (
             <p key={label} className="leading-relaxed">
-              <span className="text-cyan-400">{label}</span>
+              <span className="text-mesh-accent">{label}</span>
               <span className="text-slate-500">: </span>
               <span className="text-slate-300">{value}</span>
             </p>
@@ -1875,7 +1875,7 @@ function DeviceStateTimeline({ events }: { events: DeviceEvent[] }) {
   if (events.length === 0) return null;
 
   return (
-    <div className="rounded-md border border-cyan-900/45 bg-[#0b1220]/72 p-4 space-y-3">
+    <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 p-4 space-y-3">
       <div className="text-sm font-medium text-slate-300">
         7-Day Availability
       </div>
@@ -1966,7 +1966,7 @@ function DeviceEventsTab({ deviceId }: { deviceId: string }) {
     <div className="space-y-4">
       {/* Uptime badge */}
       {uptime && (
-        <div className="flex items-center gap-3 rounded-md border border-cyan-900/45 bg-[#0b1220]/72 px-4 py-3">
+        <div className="flex items-center gap-3 rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-4 py-3">
           <div className="text-sm text-slate-400">7-day uptime</div>
           <div className="ml-auto text-lg font-semibold text-white">
             {uptime.uptime_percent.toFixed(1)}%
@@ -1986,7 +1986,7 @@ function DeviceEventsTab({ deviceId }: { deviceId: string }) {
           {events.map((event) => (
             <div
               key={event.id}
-              className="flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-cyan-950/35"
+              className="flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-mesh-surface-2/55"
             >
               <span
                 className={`h-2.5 w-2.5 shrink-0 rounded-full ${
@@ -2106,7 +2106,7 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
               No open ports found.
             </p>
           ) : (
-            <div className="rounded-md border border-cyan-900/45 bg-[#0b1220]/72">
+            <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/95">
               <Table>
                 <TableHeader>
                   <TableRow className="border-slate-800 hover:bg-transparent">
@@ -2395,7 +2395,7 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
       </div>
 
       {/* Sticky footer for Save / Reset actions */}
-      <div className="sticky bottom-0 -mx-6 border-t border-cyan-900/45 bg-[#0b1220]/72 px-6 py-3 space-y-2">
+      <div className="sticky bottom-0 -mx-6 border-t border-mesh-border-strong bg-mesh-surface-1/95 px-6 py-3 space-y-2">
         <div className="flex gap-2">
           <Button size="sm" className="flex-1 gap-1" disabled={saving} onClick={handleSave}>
             {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Pencil className="h-3 w-3" />}
@@ -2522,7 +2522,7 @@ function AddAssetDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-cyan-900/45 bg-[#0b1220]/72 sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-white">Add Asset</DialogTitle>
           <DialogDescription>
@@ -2863,7 +2863,7 @@ function DeviceWifiTab({ mac }: { mac: string }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Wifi className="h-4 w-4 text-cyan-400" />
+        <Wifi className="h-4 w-4 text-mesh-accent" />
         <p className="text-xs font-medium uppercase tracking-wider text-slate-500">
           WiFi Connection
         </p>

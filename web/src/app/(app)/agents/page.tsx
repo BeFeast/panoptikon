@@ -124,7 +124,7 @@ export default function AgentsPage() {
       </div>
 
       {/* Agents table */}
-      <div className="rounded-lg border border-cyan-900/45 bg-[#0b1220]/72">
+      <div className="rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95">
         {agents === null ? (
           <Table>
             <TableHeader>
@@ -187,7 +187,7 @@ export default function AgentsPage() {
               {agents.map((agent) => (
                 <TableRow
                   key={agent.id}
-                  className="border-slate-800 cursor-pointer hover:bg-cyan-950/35 transition-colors"
+                  className="border-slate-800 cursor-pointer hover:bg-mesh-surface-2/55 transition-colors"
                   onClick={() => router.push(`/agents/detail?id=${agent.id}`)}
                 >
                   <TableCell className="font-medium text-white">
@@ -307,7 +307,7 @@ export default function AgentsPage() {
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={!!pendingDelete} onOpenChange={(v) => { if (!v) setPendingDelete(null); }}>
-        <AlertDialogContent className="border-cyan-900/45 bg-[#0b1220]/72">
+        <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
           <AlertDialogHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-500/10">
@@ -324,7 +324,7 @@ export default function AgentsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
-              className="border-slate-800 bg-transparent text-slate-400 hover:bg-cyan-950/35 hover:text-white"
+              className="border-slate-800 bg-transparent text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white"
               disabled={deleting}
             >
               Cancel
@@ -413,7 +413,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
           Add Agent
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-full max-w-[680px] border-cyan-900/45 bg-[#0b1220]/72">
+      <DialogContent className="w-full max-w-[680px] border-mesh-border-strong bg-mesh-surface-1/95">
         <DialogHeader>
           <DialogTitle className="text-white">
             {result ? "Agent Created" : "Add New Agent"}
@@ -522,12 +522,12 @@ function CopyBlock({ text }: { text: string }) {
   };
 
   return (
-    <div className="overflow-hidden rounded-md border border-cyan-900/45 bg-[#0b1220]/72">
+    <div className="overflow-hidden rounded-md border border-mesh-border-strong bg-mesh-surface-1/95">
       {/* Header bar: copy button lives here, completely separate from scroll area */}
-      <div className="flex items-center justify-end border-b border-cyan-900/35 px-3 py-1.5">
+      <div className="flex items-center justify-end border-b border-mesh-border px-3 py-1.5">
         <button
           onClick={handleCopy}
-          className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-cyan-950/35 hover:text-white"
+          className="flex items-center gap-1.5 rounded px-2 py-1 text-xs text-slate-500 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
         >
           {copied ? (
             <Check className="h-3 w-3 text-emerald-400" />

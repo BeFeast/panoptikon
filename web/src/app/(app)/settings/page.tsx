@@ -182,9 +182,9 @@ const iconMap: Record<string, { icon: ReactNode; iconBg: string }> = {
 const toneClass: Record<Tone, string> = {
   connected: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
   enabled: "border-cyan-400/30 bg-cyan-400/10 text-cyan-200",
-  disabled: "border-cyan-900/45 bg-[#0b1220]/72 text-slate-400",
+  disabled: "border-mesh-border-strong bg-mesh-surface-1/95 text-slate-400",
   error: "border-rose-400/30 bg-rose-400/10 text-rose-200",
-  neutral: "border-cyan-900/45 bg-[#0b1220]/72 text-slate-300",
+  neutral: "border-mesh-border-strong bg-mesh-surface-1/95 text-slate-300",
 };
 
 function formatBytes(bytes: number) {
@@ -458,7 +458,7 @@ export default function SettingsPage() {
   return (
     <PageTransition>
       <div className="mx-auto max-w-6xl py-6 sm:py-8">
-        <div className="flex flex-col gap-4 border-b border-cyan-900/35 pb-5 md:flex-row md:items-end md:justify-between">
+        <div className="flex flex-col gap-4 border-b border-mesh-border pb-5 md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
             <h1 className="text-2xl font-semibold tracking-tight text-white">Settings</h1>
             <p className="max-w-2xl text-sm leading-6 text-slate-400">
@@ -472,14 +472,14 @@ export default function SettingsPage() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Filter settings"
               aria-label="Filter settings"
-              className="h-10 border-cyan-900/45 bg-[#08111e] pl-9 text-sm text-white placeholder:text-slate-600"
+              className="h-10 border-mesh-border-strong bg-mesh-surface-1 pl-9 text-sm text-white placeholder:text-slate-600"
             />
           </div>
         </div>
 
         <div className="mt-7 space-y-8">
           {groups.length === 0 ? (
-            <div className="border border-cyan-900/45 bg-[#08111e]/70 px-4 py-8 text-center text-sm text-slate-400">
+            <div className="border border-mesh-border-strong bg-mesh-surface-1/70 px-4 py-8 text-center text-sm text-slate-400">
               No settings match this filter.
             </div>
           ) : (
@@ -501,7 +501,7 @@ export default function SettingsPage() {
 
                     return (
                       <Link key={item.href} href={item.href} className="group block h-full">
-                        <Card className="h-full overflow-hidden rounded border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)] transition-colors group-hover:border-cyan-700/50 group-hover:bg-cyan-950/35">
+                        <Card className="h-full overflow-hidden rounded border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)] transition-colors group-hover:border-mesh-accent/40 group-hover:bg-mesh-surface-2/55">
                           <CardContent className="flex h-full min-h-[7.25rem] flex-col gap-4 p-4">
                             <div className="flex items-start gap-3">
                               {visual && (
@@ -527,7 +527,7 @@ export default function SettingsPage() {
                               </div>
                             </div>
 
-                            <div className="mt-auto flex items-center justify-between gap-3 border-t border-cyan-900/35 pt-3">
+                            <div className="mt-auto flex items-center justify-between gap-3 border-t border-mesh-border pt-3">
                               <span
                                 className={cn(
                                   "inline-flex h-6 shrink-0 items-center rounded-full border px-2 text-[11px] font-medium",

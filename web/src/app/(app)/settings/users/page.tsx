@@ -152,7 +152,7 @@ export default function UsersSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-900/45 text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -194,7 +194,7 @@ export default function UsersSettingsPage() {
                 const Icon = roleInfo.icon;
                 return (
                   <div key={user.id} className="flex items-center gap-3 py-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-950/35">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-mesh-surface-2/55">
                       <Icon className="h-4 w-4 text-slate-400" />
                     </div>
                     <div className="min-w-0 flex-1">
@@ -230,7 +230,7 @@ export default function UsersSettingsPage() {
 
           {/* Create/Edit form */}
           {formMode !== "idle" && (
-            <div className="space-y-3 rounded-md border border-cyan-900/45 bg-[#08111e] p-4">
+            <div className="space-y-3 rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4">
               <p className="text-sm font-medium text-white">
                 {formMode === "create" ? "New User" : "Edit User"}
               </p>
@@ -242,7 +242,7 @@ export default function UsersSettingsPage() {
                   id="user-username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="border-cyan-900/45 bg-[#0b1220]/72 text-white"
+                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
                   placeholder="johndoe"
                 />
               </div>
@@ -255,7 +255,7 @@ export default function UsersSettingsPage() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="border-cyan-900/45 bg-[#0b1220]/72 text-white"
+                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
                   placeholder={formMode === "create" ? "Min 8 characters" : "Leave blank to keep current"}
                 />
               </div>
@@ -268,7 +268,7 @@ export default function UsersSettingsPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="border-cyan-900/45 bg-[#0b1220]/72 text-white"
+                  className="border-mesh-border-strong bg-mesh-surface-1/95 text-white"
                   placeholder="user@example.com"
                 />
               </div>
@@ -280,7 +280,7 @@ export default function UsersSettingsPage() {
                   id="user-role"
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full rounded-md border border-cyan-900/45 bg-[#0b1220]/72 px-3 py-2 text-sm text-white"
+                  className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2 text-sm text-white"
                 >
                   <option value="admin">Admin</option>
                   <option value="operator">Operator</option>
@@ -306,7 +306,7 @@ export default function UsersSettingsPage() {
                   size="sm"
                   variant="outline"
                   onClick={resetForm}
-                  className="border-cyan-900/45 text-slate-300"
+                  className="border-mesh-border-strong text-slate-300"
                 >
                   Cancel
                 </Button>

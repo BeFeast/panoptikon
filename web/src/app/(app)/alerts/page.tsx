@@ -421,7 +421,7 @@ export default function AlertsPage() {
 
       {/* Severity Summary Bar */}
       {alerts && alerts.length > 0 && (criticalCount > 0 || warningCount > 0 || infoCount > 0) && (
-        <div className="flex items-center gap-3 rounded-lg border border-cyan-900/45 bg-[#0b1220]/72 px-4 py-2.5">
+        <div className="flex items-center gap-3 rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 px-4 py-2.5">
           <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Severity</span>
           <div className="flex items-center gap-3">
             {criticalCount > 0 && (
@@ -451,7 +451,7 @@ export default function AlertsPage() {
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i} className="border-cyan-900/45 bg-[#0b1220]/72">
+            <Card key={i} className="border-mesh-border-strong bg-mesh-surface-1/95">
               <CardContent className="flex items-center gap-4 py-4">
                 <Skeleton className="h-10 w-10 rounded-full" />
                 <div className="flex-1 space-y-2">
@@ -463,7 +463,7 @@ export default function AlertsPage() {
             </Card>
           ))}
           </div>
-          <Card className="hidden border-cyan-900/45 bg-[#0b1220]/72 lg:block">
+          <Card className="hidden border-mesh-border-strong bg-mesh-surface-1/95 lg:block">
             <CardContent className="space-y-3 py-4">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-16 w-full" />
@@ -472,7 +472,7 @@ export default function AlertsPage() {
           </Card>
         </div>
       ) : alerts.length === 0 ? (
-        <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+        <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
           <CardContent>
             <EmptyState
               icon={Shield}
@@ -486,8 +486,8 @@ export default function AlertsPage() {
         </Card>
       ) : (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
-          <div className="min-w-0 rounded-lg border border-cyan-900/45 bg-[#0b1220]/72">
-            <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_6rem_7.25rem] gap-3 border-b border-cyan-900/35 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 max-md:hidden">
+          <div className="min-w-0 rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95">
+            <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_6rem_7.25rem] gap-3 border-b border-mesh-border px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 max-md:hidden">
               <span>Type</span>
               <span>Message</span>
               <span>Age</span>
@@ -507,7 +507,7 @@ export default function AlertsPage() {
                       setSelectedAlertId(alert.id);
                     }
                   }}
-                  className={`grid w-full grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-l-none border-slate-800 px-3 py-3 text-left transition-colors hover:bg-cyan-950/35 lg:grid-cols-[2.25rem_minmax(0,1fr)_6rem_7.25rem] ${
+                  className={`grid w-full grid-cols-[2.25rem_minmax(0,1fr)_auto] items-center gap-3 rounded-l-none border-slate-800 px-3 py-3 text-left transition-colors hover:bg-mesh-surface-2/55 lg:grid-cols-[2.25rem_minmax(0,1fr)_6rem_7.25rem] ${
                     acknowledgingIds.has(alert.id)
                       ? "animate-ack-strike opacity-0"
                       : selectedAlert?.id === alert.id
@@ -519,7 +519,7 @@ export default function AlertsPage() {
                 >
                   <span className={`flex h-8 w-8 items-center justify-center rounded-md border ${
                     alert.acknowledged_at
-                      ? "border-cyan-900/45 bg-[#0b1220]/72 text-slate-500"
+                      ? "border-mesh-border-strong bg-mesh-surface-1/95 text-slate-500"
                       : "border-slate-700 bg-slate-900"
                   }`}>
                     {alertIcon(alert.type)}
@@ -582,7 +582,7 @@ export default function AlertsPage() {
           </div>
 
           {selectedAlert && (
-            <aside className="min-w-0 rounded-lg border border-cyan-900/45 bg-[#0b1220]/72 p-4 lg:sticky lg:top-4 lg:self-start">
+            <aside className="min-w-0 rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 p-4 lg:sticky lg:top-4 lg:self-start">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500">
@@ -599,12 +599,12 @@ export default function AlertsPage() {
                 {selectedAlert.message}
               </p>
               {selectedAlert.details && (
-                <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-cyan-900/45 bg-[#0b1220]/72 p-3 text-xs leading-5 text-slate-400">
+                <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 p-3 text-xs leading-5 text-slate-400">
                   {selectedAlert.details}
                 </pre>
               )}
 
-              <div className="mt-4 space-y-2 border-t border-cyan-900/35 pt-4 text-xs">
+              <div className="mt-4 space-y-2 border-t border-mesh-border pt-4 text-xs">
                 <TriageRow label="Created" value={new Date(selectedAlert.created_at).toLocaleString()} />
                 <TriageRow label="Status" value={selectedAlert.acknowledged_at ? "Acknowledged" : selectedAlert.is_read ? "Read" : "Unread"} />
                 {selectedAlert.device_id && <TriageRow label="Device" value={selectedAlert.device_id} mono />}
@@ -662,7 +662,7 @@ export default function AlertsPage() {
 
       {/* Acknowledge Dialog */}
       <Dialog open={ackDialogOpen} onOpenChange={setAckDialogOpen}>
-        <DialogContent className="bg-[#0b1220]/72 border-cyan-900/45">
+        <DialogContent className="bg-mesh-surface-1/95 border-mesh-border-strong">
           <DialogHeader>
             <DialogTitle>Acknowledge Alert</DialogTitle>
             <DialogDescription>
@@ -693,7 +693,7 @@ export default function AlertsPage() {
 
       {/* Clear All Confirmation Dialog */}
       <Dialog open={clearAllDialogOpen} onOpenChange={setClearAllDialogOpen}>
-        <DialogContent className="bg-[#0b1220]/72 border-cyan-900/45">
+        <DialogContent className="bg-mesh-surface-1/95 border-mesh-border-strong">
           <DialogHeader>
             <DialogTitle>Delete All Alerts</DialogTitle>
             <DialogDescription>

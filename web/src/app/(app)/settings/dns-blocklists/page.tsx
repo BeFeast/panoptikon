@@ -261,7 +261,7 @@ export default function DnsBlocklistsPage() {
           <div className="flex items-center gap-3">
             <Link
               href="/settings"
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-900/45 text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
+              className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
@@ -274,7 +274,7 @@ export default function DnsBlocklistsPage() {
               variant="outline"
               size="sm"
               onClick={handleShowConfig}
-              className="border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35"
+              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
             >
               <FileText className="mr-1.5 h-3.5 w-3.5" />
               View Config
@@ -284,7 +284,7 @@ export default function DnsBlocklistsPage() {
               size="sm"
               onClick={handleDownloadAll}
               disabled={downloading !== null}
-              className="border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35"
+              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
             >
               {downloading ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -306,35 +306,35 @@ export default function DnsBlocklistsPage() {
 
         {/* Stats cards */}
         <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-          <Card className="border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
             <CardContent className="py-3">
               <p className="text-xs text-slate-500">Blocked Domains</p>
               <p className="text-2xl font-semibold text-white">
-                {statsData ? statsData.total_blocked_domains.toLocaleString() : <Skeleton className="h-7 w-20 bg-cyan-950/35" />}
+                {statsData ? statsData.total_blocked_domains.toLocaleString() : <Skeleton className="h-7 w-20 bg-mesh-surface-2/55" />}
               </p>
             </CardContent>
           </Card>
-          <Card className="border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
             <CardContent className="py-3">
               <p className="text-xs text-slate-500">Active Lists</p>
               <p className="text-2xl font-semibold text-white">
-                {statsData ? `${statsData.enabled_blocklists} / ${statsData.total_blocklists}` : <Skeleton className="h-7 w-16 bg-cyan-950/35" />}
+                {statsData ? `${statsData.enabled_blocklists} / ${statsData.total_blocklists}` : <Skeleton className="h-7 w-16 bg-mesh-surface-2/55" />}
               </p>
             </CardContent>
           </Card>
-          <Card className="border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
             <CardContent className="py-3">
               <p className="text-xs text-slate-500">Whitelisted</p>
               <p className="text-2xl font-semibold text-white">
-                {statsData ? statsData.whitelist_count : <Skeleton className="h-7 w-10 bg-cyan-950/35" />}
+                {statsData ? statsData.whitelist_count : <Skeleton className="h-7 w-10 bg-mesh-surface-2/55" />}
               </p>
             </CardContent>
           </Card>
-          <Card className="border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
+          <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
             <CardContent className="py-3">
               <p className="text-xs text-slate-500">Last Updated</p>
               <p className="text-sm font-medium text-white">
-                {statsData ? formatDate(statsData.last_updated) : <Skeleton className="h-5 w-32 bg-cyan-950/35" />}
+                {statsData ? formatDate(statsData.last_updated) : <Skeleton className="h-5 w-32 bg-mesh-surface-2/55" />}
               </p>
             </CardContent>
           </Card>
@@ -347,27 +347,27 @@ export default function DnsBlocklistsPage() {
             placeholder="Filter blocklists or domains..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border-cyan-900/45 bg-[#08111e] pl-10 text-white placeholder:text-slate-600"
+            className="border-mesh-border-strong bg-mesh-surface-1 pl-10 text-white placeholder:text-slate-600"
           />
         </div>
 
         {/* Tabs */}
         <Tabs value={blocklistTab} onValueChange={setBlocklistTab}>
-          <TabsList className="border-cyan-900/45 bg-[#0b1220]/72">
-            <TabsTrigger value="blocklists" className="data-[state=active]:bg-cyan-950/35">
+          <TabsList className="border-mesh-border-strong bg-mesh-surface-1/95">
+            <TabsTrigger value="blocklists" className="data-[state=active]:bg-mesh-surface-2/55">
               Blocklists
             </TabsTrigger>
-            <TabsTrigger value="overrides" className="data-[state=active]:bg-cyan-950/35">
+            <TabsTrigger value="overrides" className="data-[state=active]:bg-mesh-surface-2/55">
               Overrides
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="blocklists" className="mt-4">
-            <Card className="border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
+            <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-cyan-900/45 hover:bg-transparent">
+                    <TableRow className="border-mesh-border-strong hover:bg-transparent">
                       <TableHead className="text-slate-400">Name</TableHead>
                       <TableHead className="text-slate-400">Domains</TableHead>
                       <TableHead className="text-slate-400">Last Updated</TableHead>
@@ -379,24 +379,24 @@ export default function DnsBlocklistsPage() {
                   <TableBody>
                     {filteredLists === null ? (
                       Array.from({ length: 3 }).map((_, i) => (
-                        <TableRow key={i} className="border-cyan-900/45">
-                          <TableCell><Skeleton className="h-4 w-32 bg-cyan-950/35" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-16 bg-cyan-950/35" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-24 bg-cyan-950/35" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-12 bg-cyan-950/35" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-16 bg-cyan-950/35" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-20 bg-cyan-950/35" /></TableCell>
+                        <TableRow key={i} className="border-mesh-border-strong">
+                          <TableCell><Skeleton className="h-4 w-32 bg-mesh-surface-2/55" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-16 bg-mesh-surface-2/55" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-24 bg-mesh-surface-2/55" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-12 bg-mesh-surface-2/55" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-16 bg-mesh-surface-2/55" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-20 bg-mesh-surface-2/55" /></TableCell>
                         </TableRow>
                       ))
                     ) : filteredLists.length === 0 ? (
-                      <TableRow className="border-cyan-900/45 hover:bg-transparent">
+                      <TableRow className="border-mesh-border-strong hover:bg-transparent">
                         <TableCell colSpan={6} className="py-12 text-center text-slate-500">
                           {search ? "No blocklists match your filter." : "No blocklists configured yet. Add one to start blocking ads and trackers."}
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredLists.map((bl) => (
-                        <TableRow key={bl.id} className="border-cyan-900/45 hover:bg-cyan-950/35">
+                        <TableRow key={bl.id} className="border-mesh-border-strong hover:bg-mesh-surface-2/55">
                           <TableCell>
                             <div className="min-w-0">
                               <p className="font-medium text-white">{bl.name}</p>
@@ -474,11 +474,11 @@ export default function DnsBlocklistsPage() {
                 Add Override
               </Button>
             </div>
-            <Card className="border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
+            <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-cyan-900/45 hover:bg-transparent">
+                    <TableRow className="border-mesh-border-strong hover:bg-transparent">
                       <TableHead className="text-slate-400">Domain</TableHead>
                       <TableHead className="text-slate-400">Action</TableHead>
                       <TableHead className="text-slate-400">Added</TableHead>
@@ -488,22 +488,22 @@ export default function DnsBlocklistsPage() {
                   <TableBody>
                     {filteredOverrides === null ? (
                       Array.from({ length: 2 }).map((_, i) => (
-                        <TableRow key={i} className="border-cyan-900/45">
-                          <TableCell><Skeleton className="h-4 w-40 bg-cyan-950/35" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-20 bg-cyan-950/35" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-24 bg-cyan-950/35" /></TableCell>
-                          <TableCell><Skeleton className="h-4 w-10 bg-cyan-950/35" /></TableCell>
+                        <TableRow key={i} className="border-mesh-border-strong">
+                          <TableCell><Skeleton className="h-4 w-40 bg-mesh-surface-2/55" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-20 bg-mesh-surface-2/55" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-24 bg-mesh-surface-2/55" /></TableCell>
+                          <TableCell><Skeleton className="h-4 w-10 bg-mesh-surface-2/55" /></TableCell>
                         </TableRow>
                       ))
                     ) : filteredOverrides.length === 0 ? (
-                      <TableRow className="border-cyan-900/45 hover:bg-transparent">
+                      <TableRow className="border-mesh-border-strong hover:bg-transparent">
                         <TableCell colSpan={4} className="py-12 text-center text-slate-500">
                           {search ? "No overrides match your filter." : "No domain overrides configured. Whitelist domains to allow them through, or blacklist specific domains."}
                         </TableCell>
                       </TableRow>
                     ) : (
                       filteredOverrides.map((ovr) => (
-                        <TableRow key={ovr.id} className="border-cyan-900/45 hover:bg-cyan-950/35">
+                        <TableRow key={ovr.id} className="border-mesh-border-strong hover:bg-mesh-surface-2/55">
                           <TableCell className="font-medium text-white font-mono text-sm">
                             {ovr.domain}
                           </TableCell>
@@ -574,7 +574,7 @@ export default function DnsBlocklistsPage() {
             if (!open) setPendingDelete(null);
           }}
         >
-          <AlertDialogContent className="border-cyan-900/45 bg-[#0b1220]/72">
+          <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-white">
                 Delete Blocklist
@@ -586,7 +586,7 @@ export default function DnsBlocklistsPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35">
+              <AlertDialogCancel className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
@@ -606,7 +606,7 @@ export default function DnsBlocklistsPage() {
             if (!open) setPendingDeleteOverride(null);
           }}
         >
-          <AlertDialogContent className="border-cyan-900/45 bg-[#0b1220]/72">
+          <AlertDialogContent className="border-mesh-border-strong bg-mesh-surface-1/95">
             <AlertDialogHeader>
               <AlertDialogTitle className="text-white">
                 Remove Override
@@ -620,7 +620,7 @@ export default function DnsBlocklistsPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35">
+              <AlertDialogCancel className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55">
                 Cancel
               </AlertDialogCancel>
               <AlertDialogAction
@@ -635,7 +635,7 @@ export default function DnsBlocklistsPage() {
 
         {/* Unbound Config Dialog */}
         <Dialog open={showConfig} onOpenChange={setShowConfig}>
-          <DialogContent className="border-cyan-900/45 bg-[#0b1220]/72 sm:max-w-2xl max-h-[80vh]">
+          <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-2xl max-h-[80vh]">
             <DialogHeader>
               <DialogTitle className="text-white">
                 Unbound Configuration
@@ -646,9 +646,9 @@ export default function DnsBlocklistsPage() {
                 Copy this config to your Unbound server&apos;s include directory to enable DNS blocking.
               </p>
               {unboundConfig === null ? (
-                <Skeleton className="h-64 w-full bg-cyan-950/35" />
+                <Skeleton className="h-64 w-full bg-mesh-surface-2/55" />
               ) : (
-                <pre className="max-h-96 overflow-auto rounded-md border border-cyan-900/45 bg-[#08111e] p-4 text-xs text-slate-300 font-mono">
+                <pre className="max-h-96 overflow-auto rounded-md border border-mesh-border-strong bg-mesh-surface-1 p-4 text-xs text-slate-300 font-mono">
                   {unboundConfig}
                 </pre>
               )}
@@ -662,7 +662,7 @@ export default function DnsBlocklistsPage() {
                       toast.success("Config copied to clipboard");
                     }
                   }}
-                  className="border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35"
+                  className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
                 >
                   Copy to Clipboard
                 </Button>
@@ -763,7 +763,7 @@ function BlocklistFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-cyan-900/45 bg-[#0b1220]/72 sm:max-w-md">
+      <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white">
             {isEdit ? "Edit Blocklist" : "Add Blocklist"}
@@ -778,7 +778,7 @@ function BlocklistFormDialog({
               id="bl-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
               placeholder="StevenBlack Hosts"
             />
           </div>
@@ -791,7 +791,7 @@ function BlocklistFormDialog({
               id="bl-url"
               value={url}
               onChange={(e) => setUrl(e.target.value)}
-              className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
               placeholder="https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
             />
           </div>
@@ -805,7 +805,7 @@ function BlocklistFormDialog({
                 id="bl-format"
                 value={format}
                 onChange={(e) => setFormat(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-cyan-900/45 bg-[#08111e] px-3 py-1 text-sm text-white"
+                className="flex h-9 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-1 text-sm text-white"
               >
                 <option value="hosts">Hosts file</option>
                 <option value="domains">Domain list</option>
@@ -821,7 +821,7 @@ function BlocklistFormDialog({
                 min={1}
                 value={refreshHours}
                 onChange={(e) => setRefreshHours(e.target.value)}
-                className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
+                className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
               />
             </div>
           </div>
@@ -849,7 +849,7 @@ function BlocklistFormDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35"
+              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
             >
               Cancel
             </Button>
@@ -924,7 +924,7 @@ function OverrideFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-cyan-900/45 bg-[#0b1220]/72 sm:max-w-md">
+      <DialogContent className="border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white">Add Domain Override</DialogTitle>
         </DialogHeader>
@@ -937,7 +937,7 @@ function OverrideFormDialog({
               id="ovr-domain"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
-              className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600 font-mono"
+              className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 font-mono"
               placeholder="example.com"
             />
           </div>
@@ -952,7 +952,7 @@ function OverrideFormDialog({
               onChange={(e) =>
                 setAction(e.target.value as "whitelist" | "blacklist")
               }
-              className="flex h-9 w-full rounded-md border border-cyan-900/45 bg-[#08111e] px-3 py-1 text-sm text-white"
+              className="flex h-9 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-1 text-sm text-white"
             >
               <option value="whitelist">Whitelist (allow through blocklists)</option>
               <option value="blacklist">Blacklist (always block)</option>
@@ -971,7 +971,7 @@ function OverrideFormDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35"
+              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55"
             >
               Cancel
             </Button>

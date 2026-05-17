@@ -492,7 +492,7 @@ export default function DdnsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-            <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
               <CardHeader className="pb-2">
                 <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                   Total Entries
@@ -504,7 +504,7 @@ export default function DdnsPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
               <CardHeader className="pb-2">
                 <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                   Enabled
@@ -516,7 +516,7 @@ export default function DdnsPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
               <CardHeader className="pb-2">
                 <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                   Healthy
@@ -528,7 +528,7 @@ export default function DdnsPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+            <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
               <CardHeader className="pb-2">
                 <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-slate-500">
                   Failing
@@ -554,7 +554,7 @@ export default function DdnsPage() {
         </div>
 
         {/* Table */}
-        <Card className="border-cyan-900/45 bg-[#0b1220]/72">
+        <Card className="border-mesh-border-strong bg-mesh-surface-1/95">
           {entries === null ? (
             <div className="p-6 space-y-3">
               {[...Array(3)].map((_, i) => (

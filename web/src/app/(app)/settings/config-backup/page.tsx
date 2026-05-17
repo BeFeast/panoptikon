@@ -288,7 +288,7 @@ export default function ConfigBackupPage() {
         <div className="flex items-center gap-3">
           <a
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </a>
@@ -304,7 +304,7 @@ export default function ConfigBackupPage() {
         </div>
 
         {/* Pending changes card */}
-        <Card className="border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
+        <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
@@ -324,7 +324,7 @@ export default function ConfigBackupPage() {
           <CardContent className="space-y-3">
             <Button
               variant="outline"
-              className="w-full border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35 hover:text-white"
+              className="w-full border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55 hover:text-white"
               disabled={pendingLoading}
               onClick={handleCheckPending}
             >
@@ -364,7 +364,7 @@ export default function ConfigBackupPage() {
         </Card>
 
         {/* Manual Backup card */}
-        <Card className="border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
+        <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10">
@@ -383,7 +383,7 @@ export default function ConfigBackupPage() {
           <CardContent className="space-y-4">
             <Button
               variant="outline"
-              className="w-full border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35 hover:text-white"
+              className="w-full border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55 hover:text-white"
               disabled={downloading}
               onClick={handleDownloadCurrent}
             >
@@ -405,7 +405,7 @@ export default function ConfigBackupPage() {
                   placeholder="Optional label (e.g. Before firewall change)"
                   value={snapshotLabel}
                   onChange={(e) => setSnapshotLabel(e.target.value)}
-                  className="border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600"
+                  className="border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600"
                 />
               </div>
               <Button
@@ -425,7 +425,7 @@ export default function ConfigBackupPage() {
         </Card>
 
         {/* Backup history / rollback table */}
-        <Card className="border-cyan-900/45 bg-[#0b1220]/72 shadow-[0_14px_34px_-24px_rgba(8,145,178,0.42)]">
+        <Card className="border-mesh-border-strong bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10">
@@ -459,7 +459,7 @@ export default function ConfigBackupPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-cyan-900/35 text-left text-xs text-slate-500">
+                    <tr className="border-b border-mesh-border text-left text-xs text-slate-500">
                       <th className="pb-2 pr-3 font-medium">#</th>
                       <th className="pb-2 pr-3 font-medium">Timestamp</th>
                       <th className="pb-2 pr-3 font-medium">Label</th>
@@ -481,7 +481,7 @@ export default function ConfigBackupPage() {
                               {b.label.startsWith("auto:") ? (
                                 <Badge
                                   variant="outline"
-                                  className="border-cyan-900/45 text-xs text-slate-500"
+                                  className="border-mesh-border-strong text-xs text-slate-500"
                                 >
                                   {b.label}
                                 </Badge>
@@ -621,7 +621,7 @@ function DiffLineView({ lines }: { lines: DiffLine[] }) {
   }
 
   return (
-    <pre className="overflow-auto rounded border border-cyan-900/45 bg-[#08111e] p-0 text-xs leading-5 font-mono">
+    <pre className="overflow-auto rounded border border-mesh-border-strong bg-mesh-surface-1 p-0 text-xs leading-5 font-mono">
       {lines.map((line, i) => {
         let bgClass = "";
         let textClass = "text-slate-400";
@@ -697,9 +697,9 @@ function DiffDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-lg border border-cyan-900/45 bg-[#0b1220]/72 shadow-2xl">
+      <div className="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-cyan-900/35 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-mesh-border px-5 py-4">
           <div>
             <h2 className="text-lg font-semibold text-white">
               Config Comparison
@@ -716,7 +716,7 @@ function DiffDialog({
             />
             <button
               onClick={onClose}
-              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
+              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
             >
               <X className="h-5 w-5" />
             </button>
@@ -729,12 +729,12 @@ function DiffDialog({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end border-t border-cyan-900/35 px-5 py-4">
+        <div className="flex items-center justify-end border-t border-mesh-border px-5 py-4">
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              className="border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35 hover:text-white"
+              className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55 hover:text-white"
               onClick={handleDownloadBackup}
             >
               <Download className="mr-2 h-3.5 w-3.5" />
@@ -743,7 +743,7 @@ function DiffDialog({
             <Button
               variant="outline"
               size="sm"
-              className="border-cyan-900/45 text-slate-400 hover:bg-cyan-950/35 hover:text-white"
+              className="border-mesh-border-strong text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white"
               onClick={onClose}
             >
               Close
@@ -774,9 +774,9 @@ function PendingChangesDialog({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-lg border border-cyan-900/45 bg-[#0b1220]/72 shadow-2xl">
+      <div className="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-cyan-900/35 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-mesh-border px-5 py-4">
           <div>
             <h2 className="text-lg font-semibold text-white">
               {data.has_changes
@@ -794,7 +794,7 @@ function PendingChangesDialog({
             />
             <button
               onClick={onClose}
-              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
+              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
             >
               <X className="h-5 w-5" />
             </button>
@@ -807,7 +807,7 @@ function PendingChangesDialog({
         </div>
 
         {/* Footer — Apply / Discard */}
-        <div className="flex items-center justify-between border-t border-cyan-900/35 px-5 py-4">
+        <div className="flex items-center justify-between border-t border-mesh-border px-5 py-4">
           <p className="text-xs text-slate-500">
             {data.has_changes
               ? "Apply commits and saves the config. Discard reverts staged changes."
@@ -848,7 +848,7 @@ function PendingChangesDialog({
             <Button
               variant="outline"
               size="sm"
-              className="border-cyan-900/45 text-slate-400 hover:bg-cyan-950/35 hover:text-white"
+              className="border-mesh-border-strong text-slate-400 hover:bg-mesh-surface-2/55 hover:text-white"
               onClick={onClose}
             >
               Close

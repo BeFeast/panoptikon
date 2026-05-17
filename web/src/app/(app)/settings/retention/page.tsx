@@ -190,7 +190,7 @@ export default function RetentionSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-cyan-900/45 text-slate-400 transition-colors hover:bg-cyan-950/35 hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border-strong text-slate-400 transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
@@ -215,7 +215,7 @@ export default function RetentionSettingsPage() {
                 min={1}
                 value={retTrafficHours}
                 onChange={(e) => setRetTrafficHours(e.target.value)}
-                className={`border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600 ${
+                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
                   trafficValid === "valid"
                     ? "border-emerald-500/40"
                     : trafficValid === "error"
@@ -246,7 +246,7 @@ export default function RetentionSettingsPage() {
                 min={1}
                 value={retAlertsDays}
                 onChange={(e) => setRetAlertsDays(e.target.value)}
-                className={`border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600 ${
+                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
                   alertsValid === "valid"
                     ? "border-emerald-500/40"
                     : alertsValid === "error"
@@ -277,7 +277,7 @@ export default function RetentionSettingsPage() {
                 min={1}
                 value={retAgentDays}
                 onChange={(e) => setRetAgentDays(e.target.value)}
-                className={`border-cyan-900/45 bg-[#08111e] text-white placeholder:text-slate-600 ${
+                className={`border-mesh-border-strong bg-mesh-surface-1 text-white placeholder:text-slate-600 ${
                   agentValid === "valid"
                     ? "border-emerald-500/40"
                     : agentValid === "error"
@@ -324,7 +324,7 @@ export default function RetentionSettingsPage() {
           title="Database Maintenance"
           description="Monitor database size and reclaim unused space."
         >
-          <div className="flex items-center justify-between rounded-md border border-cyan-900/45 bg-[#08111e] px-3 py-2">
+          <div className="flex items-center justify-between rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2">
             <span className="text-xs text-slate-400">Current DB size</span>
             <span className="text-sm font-medium text-white">
               {dbSizeBytes !== null ? formatBytes(dbSizeBytes) : "..."}
@@ -348,7 +348,7 @@ export default function RetentionSettingsPage() {
             variant="outline"
             onClick={handleVacuum}
             disabled={vacuumStatus === "loading"}
-            className="border-cyan-900/45 text-slate-300 hover:bg-cyan-950/35 disabled:opacity-40"
+            className="border-mesh-border-strong text-slate-300 hover:bg-mesh-surface-2/55 disabled:opacity-40"
           >
             {vacuumStatus === "loading" ? (
               <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
