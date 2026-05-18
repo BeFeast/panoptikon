@@ -363,7 +363,7 @@ export default function DashboardPage() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              className="inline-flex items-center gap-2 rounded-md border border-mesh-border bg-mesh-surface-1/70 px-3 py-1.5 text-xs text-mesh-text hover:bg-mesh-surface-2"
+              className="inline-flex items-center gap-2 mesh-card px-3 py-1.5 text-xs text-mesh-text hover:bg-mesh-surface-2"
             >
               <Icon name="filter" size={12} />
               <span>last 24h</span>
@@ -371,7 +371,7 @@ export default function DashboardPage() {
             </button>
             <Link
               href="/devices"
-              className="inline-flex items-center gap-2 rounded-md border border-mesh-border bg-mesh-surface-1/70 px-3 py-1.5 text-xs text-mesh-text hover:bg-mesh-surface-2"
+              className="inline-flex items-center gap-2 mesh-card px-3 py-1.5 text-xs text-mesh-text hover:bg-mesh-surface-2"
             >
               <Icon name="plus" size={12} />
               <span>Add device</span>
@@ -492,7 +492,7 @@ export default function DashboardPage() {
           {/* LEFT column */}
           <div className="flex flex-col gap-3">
             {/* WAN traffic card */}
-            <div className="rounded-md border border-mesh-border bg-mesh-surface-1/70 p-4">
+            <div className="mesh-card p-4">
               <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-3">
                   <h3 className="text-sm font-semibold text-white">WAN traffic</h3>
@@ -508,7 +508,7 @@ export default function DashboardPage() {
                     <span className="text-mesh-text-faint">Mbps</span>
                   </div>
                 </div>
-                <div className="flex gap-1 rounded-md border border-mesh-border bg-mesh-surface-2 p-0.5">
+                <div className="flex gap-1 mesh-card-2 p-0.5">
                   {(["1h", "6h", "24h", "7d"] as const).map((r) => (
                     <button
                       key={r}
@@ -542,7 +542,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Top talkers table */}
-            <div className="rounded-md border border-mesh-border bg-mesh-surface-1/70">
+            <div className="mesh-card">
               <div className="flex items-center justify-between px-4 py-3">
                 <h3 className="text-sm font-semibold text-white">Top talkers · 24h</h3>
                 <span className="font-mono text-[11px] text-mesh-text-mute">
@@ -621,7 +621,7 @@ export default function DashboardPage() {
           {/* RIGHT column */}
           <div className="flex flex-col gap-3">
             {/* Topology card */}
-            <div className="flex flex-col gap-2.5 rounded-md border border-mesh-border bg-mesh-surface-1/70 p-4">
+            <div className="flex flex-col gap-2.5 mesh-card p-4">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-white">Topology</h3>
                 <Link
@@ -631,7 +631,7 @@ export default function DashboardPage() {
                   open →
                 </Link>
               </div>
-              <div className="h-[220px] rounded border border-mesh-border bg-mesh-surface-2 p-2.5">
+              <div className="h-[220px] rounded mesh-card-2 p-2.5">
                 {topologyError ? (
                   <ErrorState
                     title="Failed to load topology"
@@ -659,7 +659,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Recent events */}
-            <div className="rounded-md border border-mesh-border bg-mesh-surface-1/70">
+            <div className="mesh-card">
               <div className="flex items-center justify-between px-4 py-3">
                 <h3 className="text-sm font-semibold text-white">Recent events</h3>
                 <span className="font-mono text-[11px] text-mesh-text-mute">last 1h</span>
@@ -713,7 +713,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Bottom: Subnet utilization ──────────────── */}
-        <div className="rounded-md border border-mesh-border bg-mesh-surface-1/70 p-4">
+        <div className="mesh-card p-4">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-white">Subnet utilization</h3>
             <span className="font-mono text-[11px] text-mesh-text-mute">capacity / 5min</span>
@@ -800,7 +800,7 @@ function SubnetUtilization({
         return (
           <div
             key={s.name}
-            className="flex flex-col gap-2 rounded-md border border-mesh-border bg-mesh-surface-2 p-3"
+            className="flex flex-col gap-2 mesh-card-2 p-3"
             data-testid="subnet-card"
           >
             <div className="flex items-baseline justify-between">

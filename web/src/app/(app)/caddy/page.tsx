@@ -284,7 +284,7 @@ export default function CaddyPage() {
         </div>
 
         {/* Admin URL Configuration */}
-        <Card className="border-mesh-border bg-mesh-surface-1/95">
+        <Card className="">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-white">
               Caddy Admin API
@@ -334,7 +334,7 @@ export default function CaddyPage() {
         </div>
 
         {/* Table */}
-        <Card className="border-mesh-border bg-mesh-surface-1/95">
+        <Card className="">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -623,7 +623,7 @@ function ProxyHostFormDialog({
                 id="forward-scheme"
                 value={forwardScheme}
                 onChange={(e) => setForwardScheme(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-3 py-1 text-sm text-white"
+                className="flex h-9 w-full mesh-card px-3 py-1 text-sm text-white"
               >
                 <option value="http">http</option>
                 <option value="https">https</option>

@@ -91,7 +91,7 @@ export default function PfSenseRouter() {
 
       <Tabs value={tab} onValueChange={setTab} className="w-full min-w-0">
         <TabsList
-          className="h-auto w-full justify-start gap-1 border border-mesh-border bg-mesh-surface-1 p-1"
+          className="h-auto w-full justify-start gap-1 mesh-card p-1"
           data-testid="router-tabs"
         >
           <TabsTrigger value="system" data-testid="router-tab-system" className={tabTriggerClass}>

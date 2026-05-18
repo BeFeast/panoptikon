@@ -133,7 +133,7 @@ export default function SshHostsPage() {
         </div>
 
         {/* Table */}
-        <div className="rounded-lg border border-mesh-border bg-mesh-surface-1/95">
+        <div className="mesh-card">
           {targets === null ? (
             <Table>
               <TableHeader>
@@ -496,7 +496,7 @@ function SshTargetFormDialog({
             <select
               value={authType}
               onChange={(e) => setAuthType(e.target.value as "password" | "key")}
-              className="flex h-10 w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
+              className="flex h-10 w-full mesh-card px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
             >
               <option value="password">Password</option>
               <option value="key">SSH Key</option>
@@ -528,7 +528,7 @@ function SshTargetFormDialog({
               )}
             </Label>
             <textarea
-              className="w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-3 py-2 text-sm text-white font-mono placeholder:text-mesh-text-mute focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary min-h-[100px]"
+              className="w-full mesh-card px-3 py-2 text-sm text-white font-mono placeholder:text-mesh-text-mute focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary min-h-[100px]"
               placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
               value={privateKey}
               onChange={(e) => setPrivateKey(e.target.value)}

@@ -306,7 +306,7 @@ export default function DnsBlocklistsPage() {
 
         {/* Stats cards */}
         <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-          <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+          <Card className="">
             <CardContent className="py-3">
               <p className="text-xs text-mesh-text-mute">Blocked Domains</p>
               <p className="text-2xl font-semibold text-white">
@@ -314,7 +314,7 @@ export default function DnsBlocklistsPage() {
               </p>
             </CardContent>
           </Card>
-          <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+          <Card className="">
             <CardContent className="py-3">
               <p className="text-xs text-mesh-text-mute">Active Lists</p>
               <p className="text-2xl font-semibold text-white">
@@ -322,7 +322,7 @@ export default function DnsBlocklistsPage() {
               </p>
             </CardContent>
           </Card>
-          <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+          <Card className="">
             <CardContent className="py-3">
               <p className="text-xs text-mesh-text-mute">Whitelisted</p>
               <p className="text-2xl font-semibold text-white">
@@ -330,7 +330,7 @@ export default function DnsBlocklistsPage() {
               </p>
             </CardContent>
           </Card>
-          <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+          <Card className="">
             <CardContent className="py-3">
               <p className="text-xs text-mesh-text-mute">Last Updated</p>
               <p className="text-sm font-medium text-white">
@@ -363,7 +363,7 @@ export default function DnsBlocklistsPage() {
           </TabsList>
 
           <TabsContent value="blocklists" className="mt-4">
-            <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+            <Card className="">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
@@ -474,7 +474,7 @@ export default function DnsBlocklistsPage() {
                 Add Override
               </Button>
             </div>
-            <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+            <Card className="">
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
@@ -648,7 +648,7 @@ export default function DnsBlocklistsPage() {
               {unboundConfig === null ? (
                 <Skeleton className="h-64 w-full bg-mesh-surface-2/55" />
               ) : (
-                <pre className="max-h-96 overflow-auto rounded-md border border-mesh-border bg-mesh-surface-1 p-4 text-xs text-mesh-text font-mono">
+                <pre className="max-h-96 overflow-auto mesh-card p-4 text-xs text-mesh-text font-mono">
                   {unboundConfig}
                 </pre>
               )}
@@ -805,7 +805,7 @@ function BlocklistFormDialog({
                 id="bl-format"
                 value={format}
                 onChange={(e) => setFormat(e.target.value)}
-                className="flex h-9 w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-1 text-sm text-white"
+                className="flex h-9 w-full mesh-card px-3 py-1 text-sm text-white"
               >
                 <option value="hosts">Hosts file</option>
                 <option value="domains">Domain list</option>
@@ -952,7 +952,7 @@ function OverrideFormDialog({
               onChange={(e) =>
                 setAction(e.target.value as "whitelist" | "blacklist")
               }
-              className="flex h-9 w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-1 text-sm text-white"
+              className="flex h-9 w-full mesh-card px-3 py-1 text-sm text-white"
             >
               <option value="whitelist">Whitelist (allow through blocklists)</option>
               <option value="blacklist">Blacklist (always block)</option>

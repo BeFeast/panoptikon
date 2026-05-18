@@ -280,7 +280,7 @@ function RouterNode({ data }: NodeProps<RouterNodeType>) {
 
   return (
     <div
-      className="flex items-center gap-3 rounded-md border border-mesh-border-strong bg-mesh-surface-2 px-5 py-4 shadow-[0_8px_20px_rgba(0,0,0,0.32)]"
+      className="flex items-center gap-3 mesh-card-2 px-5 py-4 shadow-[0_8px_20px_rgba(0,0,0,0.32)]"
       style={{ width: ROUTER_WIDTH, height: ROUTER_HEIGHT }}
     >
       <Handle type="source" position={Position.Bottom} style={{ background: MESH.accent }} />
@@ -337,7 +337,7 @@ function DeviceNode({ data }: NodeProps<DeviceNodeType>) {
       <Handle type="target" position={Position.Right} id="right" style={{ background: MESH.textMute }} />
       <Handle type="target" position={Position.Bottom} id="bottom" style={{ background: MESH.textMute }} />
       <div
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-mesh-border bg-mesh-surface-2"
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-sm mesh-card-2"
         style={{ color: subnetColor.text }}
       >
         <Icon className="h-4 w-4" />
@@ -501,7 +501,7 @@ function DeviceDetailPanel({
                 {ips.slice(1).map((ip) => (
                   <span
                     key={ip}
-                    className="inline-block rounded-sm border border-mesh-border bg-mesh-surface-2 px-1.5 py-0.5 font-mono text-[11px] text-mesh-text-dim"
+                    className="inline-block rounded-sm mesh-card-2 px-1.5 py-0.5 font-mono text-[11px] text-mesh-text-dim"
                   >
                     {ip}
                   </span>
@@ -626,7 +626,7 @@ function DeviceDetailPanel({
           <>
             <Link
               href={`/devices?selected=${device.id}`}
-              className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-mesh-border bg-mesh-surface-1 px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
+              className="inline-flex h-8 items-center gap-1.5 rounded-sm mesh-card px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
             >
               <ExternalLink className="h-3.5 w-3.5" />
               Open device
@@ -634,7 +634,7 @@ function DeviceDetailPanel({
             <button
               type="button"
               onClick={onClose}
-              className="inline-flex h-8 items-center rounded-sm border border-mesh-border bg-mesh-surface-1 px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
+              className="inline-flex h-8 items-center rounded-sm mesh-card px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
             >
               Close
             </button>
@@ -1056,7 +1056,7 @@ function TopologyPageInner() {
       <button
         type="button"
         onClick={resetLayout}
-        className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-mesh-border bg-mesh-surface-1 px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
+        className="inline-flex h-8 items-center gap-1.5 rounded-sm mesh-card px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
         data-testid="topology-reset-layout"
         title="Reset layout"
       >
@@ -1066,7 +1066,7 @@ function TopologyPageInner() {
       <button
         type="button"
         onClick={handleFitView}
-        className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-mesh-border bg-mesh-surface-1 px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
+        className="inline-flex h-8 items-center gap-1.5 rounded-sm mesh-card px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
         data-testid="topology-fit-view"
         title="Fit view"
       >
@@ -1076,7 +1076,7 @@ function TopologyPageInner() {
       <button
         type="button"
         onClick={autoLayout}
-        className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-mesh-border bg-mesh-surface-1 px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
+        className="inline-flex h-8 items-center gap-1.5 rounded-sm mesh-card px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
         data-testid="topology-auto-layout"
         title="Auto-layout"
       >
@@ -1086,7 +1086,7 @@ function TopologyPageInner() {
       <button
         type="button"
         onClick={() => buildGraph(false)}
-        className="inline-flex h-8 items-center gap-1.5 rounded-sm border border-mesh-border bg-mesh-surface-1 px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
+        className="inline-flex h-8 items-center gap-1.5 rounded-sm mesh-card px-2.5 text-[12px] text-mesh-text-dim transition-colors hover:bg-mesh-surface-2 hover:text-mesh-text"
         data-testid="topology-refresh"
         title="Refresh now"
       >
@@ -1105,7 +1105,7 @@ function TopologyPageInner() {
 
   const legend = (
     <div
-      className="flex flex-wrap items-center gap-3 rounded-sm border border-mesh-border bg-mesh-surface-1 px-3 py-2 font-mono text-[10.5px] text-mesh-text-dim"
+      className="flex flex-wrap items-center gap-3 rounded-sm mesh-card px-3 py-2 font-mono text-[10.5px] text-mesh-text-dim"
       data-testid="topology-legend"
     >
       <span className="uppercase tracking-[0.10em] text-mesh-text-mute">Subnets</span>
@@ -1218,7 +1218,7 @@ function TopologyPageInner() {
           {legend}
         </div>
 
-        <div className="relative mx-6 mt-3 mb-6 flex-1 overflow-hidden rounded-md border border-mesh-border bg-mesh-surface-1 shadow-[0_8px_24px_rgba(0,0,0,0.32)]">
+        <div className="relative mx-6 mt-3 mb-6 flex-1 overflow-hidden mesh-card shadow-[0_8px_24px_rgba(0,0,0,0.32)]">
           <div className="absolute inset-0" data-testid="topology-canvas">
             <ReactFlow
               nodes={nodes}

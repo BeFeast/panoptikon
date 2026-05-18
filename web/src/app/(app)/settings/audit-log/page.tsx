@@ -112,7 +112,7 @@ export default function AuditLogPage() {
           </a>
         </div>
 
-        <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+        <Card className="">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#818cf8]/10">
@@ -133,7 +133,7 @@ export default function AuditLogPage() {
                 <select
                   value={actionFilter}
                   onChange={(e) => handleFilterChange(e.target.value)}
-                  className="rounded-md border border-mesh-border bg-mesh-surface-1 px-2.5 py-1.5 text-xs text-mesh-text outline-none focus:border-[#818cf8]"
+                  className="mesh-card px-2.5 py-1.5 text-xs text-mesh-text outline-none focus:border-[#818cf8]"
                 >
                   <option value="">All actions</option>
                   {actions.map((a) => (

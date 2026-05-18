@@ -245,7 +245,7 @@ function PfsensePanel() {
 
       <div className="space-y-1.5">
         <Label className="text-xs text-mesh-text-dim">Authentication</Label>
-        <div className="flex gap-1 rounded-md border border-mesh-border bg-mesh-surface-1 p-1">
+        <div className="flex gap-1 mesh-card p-1">
           <button
             type="button"
             onClick={() => setAuthType("password")}
@@ -408,7 +408,7 @@ export default function PfsenseSettingsPage() {
           </h1>
         </div>
 
-        <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+        <Card className="">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-mesh-primary/10">

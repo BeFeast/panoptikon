@@ -27,7 +27,7 @@ export function SettingsSection({
   children,
 }: SettingsSectionProps) {
   return (
-    <Card className="border-mesh-border bg-mesh-surface-1" data-testid="settings-section">
+    <Card className="" data-testid="settings-section">
       <CardHeader>
         <div className="flex items-center gap-3">
           <div

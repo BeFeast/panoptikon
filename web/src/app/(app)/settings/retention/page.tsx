@@ -324,7 +324,7 @@ export default function RetentionSettingsPage() {
           title="Database Maintenance"
           description="Monitor database size and reclaim unused space."
         >
-          <div className="flex items-center justify-between rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2">
+          <div className="flex items-center justify-between mesh-card px-3 py-2">
             <span className="text-xs text-mesh-text-dim">Current DB size</span>
             <span className="text-sm font-medium text-white">
               {dbSizeBytes !== null ? formatBytes(dbSizeBytes) : "..."}

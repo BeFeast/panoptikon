@@ -715,7 +715,7 @@ export default function SettingsPage() {
         <div className="mt-7 space-y-8">
           {groups.length === 0 ? (
             <div
-              className="border border-mesh-border bg-mesh-surface-1/70 px-4 py-8 text-center text-sm text-mesh-text-dim"
+              className="mesh-card px-4 py-8 text-center text-sm text-mesh-text-dim"
               data-testid="settings-empty"
             >
               No settings match this filter.
@@ -764,7 +764,7 @@ export default function SettingsPage() {
                         data-testid="settings-landing-card"
                         data-href={item.href}
                       >
-                        <Card className="relative h-full overflow-hidden rounded border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)] transition-colors group-hover:border-mesh-accent/40 group-hover:bg-mesh-surface-2/55">
+                        <Card className="relative h-full overflow-hidden rounded transition-colors group-hover:border-mesh-accent/40 group-hover:bg-mesh-surface-2/55">
                           {/* Status pip top-right */}
                           <span
                             className={cn(
@@ -823,7 +823,7 @@ export default function SettingsPage() {
 
         {/* Footer tip */}
         <footer
-          className="mt-8 flex flex-col items-start justify-between gap-2 rounded border border-dashed border-mesh-border bg-mesh-surface-1/60 px-4 py-3 font-mono text-[11px] text-mesh-text-mute md:flex-row md:items-center"
+          className="mt-8 flex flex-col items-start justify-between gap-2 rounded mesh-card border-dashed px-4 py-3 font-mono text-[11px] text-mesh-text-mute md:flex-row md:items-center"
           data-testid="settings-footer"
         >
           <span>

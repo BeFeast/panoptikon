@@ -21,7 +21,7 @@ type RouterWorkspaceProps = {
 export function RouterWorkspace({ active, children }: RouterWorkspaceProps) {
   return (
     <div className="min-w-0 space-y-5" data-testid="router-workspace">
-      <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-3">
+      <div className="mesh-card p-3">
         <RouterSelector active={active} />
       </div>
       {children}
@@ -95,7 +95,7 @@ export function RouterWorkspaceHeader({
   return (
     <div
       data-testid="router-header"
-      className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4 shadow-[0_1px_0_0_rgba(255,255,255,0.02)_inset]"
+      className="mesh-card p-4 shadow-[0_1px_0_0_rgba(255,255,255,0.02)_inset]"
     >
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-3">
@@ -157,7 +157,7 @@ export function RouterWorkspaceHeader({
 export function RouterWorkspaceLoading() {
   return (
     <div className="space-y-5" data-testid="router-workspace-loading">
-      <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+      <div className="mesh-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-2">
             <Skeleton className="h-7 w-56" />
@@ -196,7 +196,7 @@ export function RouterWorkspaceState({
 
   return (
     <Card
-      className="border-mesh-border bg-mesh-surface-1 shadow-none"
+      className="shadow-none"
       data-testid="router-empty-state"
     >
       <CardContent className="grid gap-5 p-5 sm:grid-cols-[1fr_auto] sm:items-center">

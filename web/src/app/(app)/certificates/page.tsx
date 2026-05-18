@@ -354,7 +354,7 @@ export default function CertificatesPage() {
       )}
 
       {/* Certificates table */}
-      <Card className="border-mesh-border bg-mesh-surface-1/95">
+      <Card className="">
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-md border border-mesh-accent/20 bg-mesh-accent/10">
@@ -594,7 +594,7 @@ export default function CertificatesPage() {
                 value={customCert}
                 onChange={(e) => setCustomCert(e.target.value)}
                 rows={4}
-                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-3 py-2 font-mono text-xs text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-accent"
+                className="w-full mesh-card px-3 py-2 font-mono text-xs text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-accent"
                 placeholder="-----BEGIN CERTIFICATE-----&#10;...&#10;-----END CERTIFICATE-----"
               />
             </div>
@@ -623,7 +623,7 @@ export default function CertificatesPage() {
                 value={customKey}
                 onChange={(e) => setCustomKey(e.target.value)}
                 rows={4}
-                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-3 py-2 font-mono text-xs text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-accent"
+                className="w-full mesh-card px-3 py-2 font-mono text-xs text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-accent"
                 placeholder="-----BEGIN PRIVATE KEY-----&#10;...&#10;-----END PRIVATE KEY-----"
               />
             </div>

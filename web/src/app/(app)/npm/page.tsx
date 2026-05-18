@@ -470,7 +470,7 @@ function ProxyHostsTable({
                 <Label htmlFor="proxy-scheme">Scheme</Label>
                 <select
                   id="proxy-scheme"
-                  className="h-9 rounded-md border border-mesh-border bg-mesh-surface-1/95 px-2 text-sm text-white"
+                  className="h-9 mesh-card px-2 text-sm text-white"
                   value={form.forward_scheme}
                   onChange={(e) =>
                     setForm({ ...form, forward_scheme: e.target.value })
@@ -503,7 +503,7 @@ function ProxyHostsTable({
               <Label htmlFor="proxy-access-list">Access List</Label>
               <select
                 id="proxy-access-list"
-                className="h-9 w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-2 text-sm text-white"
+                className="h-9 w-full mesh-card px-2 text-sm text-white"
                 value={String(form.access_list_id)}
                 onChange={(e) =>
                   setForm({ ...form, access_list_id: Number(e.target.value) })
@@ -937,7 +937,7 @@ function RedirectionHostsTable({
                 <Label htmlFor="redir-scheme">Scheme</Label>
                 <select
                   id="redir-scheme"
-                  className="h-9 w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-2 text-sm text-white"
+                  className="h-9 w-full mesh-card px-2 text-sm text-white"
                   value={form.forward_scheme}
                   onChange={(e) =>
                     setForm({ ...form, forward_scheme: e.target.value })
@@ -966,7 +966,7 @@ function RedirectionHostsTable({
               <Label htmlFor="redir-code">HTTP Code</Label>
               <select
                 id="redir-code"
-                className="h-9 w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-2 text-sm text-white"
+                className="h-9 w-full mesh-card px-2 text-sm text-white"
                 value={form.forward_http_code}
                 onChange={(e) =>
                   setForm({
@@ -2057,7 +2057,7 @@ function AccessListsTable({
                 {form.clients.map((client, idx) => (
                   <div key={idx} className="flex items-center gap-2">
                     <select
-                      className="h-9 w-24 shrink-0 rounded-md border border-mesh-border bg-mesh-surface-1/95 px-2 text-sm text-white"
+                      className="h-9 w-24 shrink-0 mesh-card px-2 text-sm text-white"
                       value={client.directive}
                       onChange={(e) =>
                         updateClient(idx, "directive", e.target.value)
@@ -2294,7 +2294,7 @@ export default function NpmPage() {
       </div>
 
       {!configured && (
-        <Card className="border-mesh-border bg-mesh-surface-1/95">
+        <Card className="">
           <CardContent className="py-8 text-center">
             <Globe className="mx-auto mb-3 h-10 w-10 text-mesh-text-mute" />
             <p className="text-sm text-mesh-text-dim">
@@ -2374,7 +2374,7 @@ export default function NpmPage() {
           </TabsList>
 
           <TabsContent value="redirections">
-            <Card className="border-mesh-border bg-mesh-surface-1/95">
+            <Card className="">
               <CardHeader className="pb-0">
                 <CardTitle className="flex items-center gap-2 text-lg text-white">
                   <ArrowRightLeft className="h-4 w-4 text-[#fbbf24]" />
@@ -2392,7 +2392,7 @@ export default function NpmPage() {
           </TabsContent>
 
           <TabsContent value="proxy-hosts">
-            <Card className="border-mesh-border bg-mesh-surface-1/95">
+            <Card className="">
               <CardHeader className="pb-0">
                 <CardTitle className="flex items-center gap-2 text-lg text-white">
                   <ExternalLink className="h-4 w-4 text-mesh-primary" />
@@ -2406,7 +2406,7 @@ export default function NpmPage() {
           </TabsContent>
 
           <TabsContent value="streams">
-            <Card className="border-mesh-border bg-mesh-surface-1/95">
+            <Card className="">
               <CardHeader className="pb-0">
                 <CardTitle className="flex items-center gap-2 text-lg text-white">
                   <Radio className="h-4 w-4 text-[#a78bfa]" />
@@ -2424,7 +2424,7 @@ export default function NpmPage() {
           </TabsContent>
 
           <TabsContent value="dead-hosts">
-            <Card className="border-mesh-border bg-mesh-surface-1/95">
+            <Card className="">
               <CardHeader className="pb-0">
                 <CardTitle className="flex items-center gap-2 text-lg text-white">
                   <FileX2 className="h-4 w-4 text-[#fb7185]" />
@@ -2442,7 +2442,7 @@ export default function NpmPage() {
           </TabsContent>
 
           <TabsContent value="access-lists">
-            <Card className="border-mesh-border bg-mesh-surface-1/95">
+            <Card className="">
               <CardHeader className="pb-0">
                 <CardTitle className="flex items-center gap-2 text-lg text-white">
                   <Shield className="h-4 w-4 text-[#fbbf24]" />

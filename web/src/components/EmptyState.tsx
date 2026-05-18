@@ -34,8 +34,8 @@ export function EmptyState({
     variant === "success" ? "text-[#4ade80]" : "text-mesh-text";
 
   return (
-    <div className="flex flex-col items-center justify-center rounded-md border border-dashed border-mesh-border bg-mesh-surface-1 px-5 py-12 text-center">
-      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-md border border-mesh-border bg-mesh-surface-1">
+    <div className="flex flex-col items-center justify-center mesh-card border-dashed px-5 py-12 text-center">
+      <div className="mb-4 flex h-11 w-11 items-center justify-center mesh-card">
         <Icon className={`h-5 w-5 ${iconColor}`} />
       </div>
       <p className={`text-sm font-semibold uppercase tracking-[0.16em] ${titleColor}`}>{title}</p>

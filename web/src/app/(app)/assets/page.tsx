@@ -505,7 +505,7 @@ ${filtered
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="flex h-10 rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
+            className="flex h-10 mesh-card px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
           >
             <option value="">All types</option>
             {availableTypes.map((t) => (
@@ -518,7 +518,7 @@ ${filtered
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="flex h-10 rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
+            className="flex h-10 mesh-card px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
           >
             <option value="">All statuses</option>
             {availableStatuses.map((s) => (
@@ -531,7 +531,7 @@ ${filtered
           <select
             value={locationFilter}
             onChange={(e) => setLocationFilter(e.target.value)}
-            className="flex h-10 rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
+            className="flex h-10 mesh-card px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
           >
             <option value="">All locations</option>
             {availableLocations.map((l) => (
@@ -549,7 +549,7 @@ ${filtered
         </div>
 
         {/* Table */}
-        <div className="rounded-lg border border-mesh-border bg-mesh-surface-1">
+        <div className="mesh-card">
           {filtered === null ? (
             <Table>
               <TableHeader>
@@ -1012,7 +1012,7 @@ function AssetFormDialog({
             <select
               value={assetType}
               onChange={(e) => setAssetType(e.target.value as AssetType)}
-              className="flex h-10 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text focus:border-mesh-accent focus:outline-none focus:ring-2 focus:ring-mesh-accent/30"
+              className="flex h-10 w-full mesh-card px-3 py-2 text-sm text-mesh-text focus:border-mesh-accent focus:outline-none focus:ring-2 focus:ring-mesh-accent/30"
             >
               {ASSET_TYPES.map((t) => (
                 <option key={t.value} value={t.value}>
@@ -1030,7 +1030,7 @@ function AssetFormDialog({
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value as AssetStatus)}
-              className="flex h-10 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text focus:border-mesh-accent focus:outline-none focus:ring-2 focus:ring-mesh-accent/30"
+              className="flex h-10 w-full mesh-card px-3 py-2 text-sm text-mesh-text focus:border-mesh-accent focus:outline-none focus:ring-2 focus:ring-mesh-accent/30"
             >
               {ASSET_STATUSES.map((s) => (
                 <option key={s.value} value={s.value}>
@@ -1099,7 +1099,7 @@ function AssetFormDialog({
         <div className="space-y-2">
           <Label>Notes</Label>
           <textarea
-            className="w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text placeholder:text-mesh-text-mute focus:border-mesh-accent focus:outline-none focus:ring-2 focus:ring-mesh-accent/30 min-h-[80px]"
+            className="w-full mesh-card px-3 py-2 text-sm text-mesh-text placeholder:text-mesh-text-mute focus:border-mesh-accent focus:outline-none focus:ring-2 focus:ring-mesh-accent/30 min-h-[80px]"
             placeholder="Any additional notes..."
             value={notes}
             onChange={(e) => setNotes(e.target.value)}

@@ -204,7 +204,7 @@ function DdnsFormDialog({
             <div className="space-y-2">
               <Label>Provider</Label>
               <select
-                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text"
+                className="w-full mesh-card px-3 py-2 text-sm text-mesh-text"
                 value={provider}
                 onChange={(e) => setProvider(e.target.value)}
               >
@@ -219,7 +219,7 @@ function DdnsFormDialog({
               <div className="space-y-2">
                 <Label>Router Type</Label>
                 <select
-                  className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text"
+                  className="w-full mesh-card px-3 py-2 text-sm text-mesh-text"
                   value={routerType}
                   onChange={(e) => setRouterType(e.target.value)}
                 >
@@ -304,7 +304,7 @@ function DdnsFormDialog({
             <div className="space-y-2">
               <Label>IP Source</Label>
               <select
-                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text"
+                className="w-full mesh-card px-3 py-2 text-sm text-mesh-text"
                 value={ipSource}
                 onChange={(e) => setIpSource(e.target.value)}
               >
@@ -318,7 +318,7 @@ function DdnsFormDialog({
             <div className="space-y-2">
               <Label>Protocol</Label>
               <select
-                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text"
+                className="w-full mesh-card px-3 py-2 text-sm text-mesh-text"
                 value={protocol}
                 onChange={(e) => setProtocol(e.target.value)}
               >
@@ -492,7 +492,7 @@ export default function DdnsPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-            <Card className="border-mesh-border bg-mesh-surface-1/95">
+            <Card className="">
               <CardHeader className="pb-2">
                 <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                   Total Entries
@@ -504,7 +504,7 @@ export default function DdnsPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-mesh-border bg-mesh-surface-1/95">
+            <Card className="">
               <CardHeader className="pb-2">
                 <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                   Enabled
@@ -516,7 +516,7 @@ export default function DdnsPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-mesh-border bg-mesh-surface-1/95">
+            <Card className="">
               <CardHeader className="pb-2">
                 <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                   Healthy
@@ -528,7 +528,7 @@ export default function DdnsPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="border-mesh-border bg-mesh-surface-1/95">
+            <Card className="">
               <CardHeader className="pb-2">
                 <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                   Failing
@@ -554,7 +554,7 @@ export default function DdnsPage() {
         </div>
 
         {/* Table */}
-        <Card className="border-mesh-border bg-mesh-surface-1/95">
+        <Card className="">
           {entries === null ? (
             <div className="p-6 space-y-3">
               {[...Array(3)].map((_, i) => (

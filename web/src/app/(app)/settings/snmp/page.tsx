@@ -139,7 +139,7 @@ export default function SnmpSettingsPage() {
                 id="snmp-version"
                 value={version}
                 onChange={(e) => setVersion(e.target.value)}
-                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+                className="w-full mesh-card px-3 py-2 text-sm text-white"
               >
                 <option value="1">v1</option>
                 <option value="2c">v2c</option>

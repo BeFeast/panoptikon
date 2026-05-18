@@ -42,7 +42,7 @@ export default function XiaomiRouterPage() {
         ) : xiaomiEnabled ? (
           <Tabs value={tab} onValueChange={setTab} className="space-y-4">
             <TabsList
-              className="bg-mesh-surface-1 border border-mesh-border"
+              className="mesh-card"
               data-testid="router-tabs"
             >
               <TabsTrigger value="system" data-testid="router-tab-system">

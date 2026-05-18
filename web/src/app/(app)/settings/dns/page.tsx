@@ -235,7 +235,7 @@ export default function DnsSettingsPage() {
         </div>
 
         {/* Table */}
-        <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+        <Card className="">
           <CardContent className="p-0">
             <Table>
               <TableHeader>

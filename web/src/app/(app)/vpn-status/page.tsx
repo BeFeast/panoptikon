@@ -219,7 +219,7 @@ export default function VpnStatusPage() {
 
         {/* ─── Tabs ────────────────────────────────────── */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="h-auto rounded-md border border-mesh-border bg-mesh-surface-1/70 p-1">
+          <TabsList className="h-auto mesh-card p-1">
             <TabsTrigger
               value="overview"
               className="rounded px-3.5 py-1.5 text-xs uppercase tracking-wider text-mesh-text-mute data-[state=active]:bg-mesh-surface-2 data-[state=active]:text-mesh-text"

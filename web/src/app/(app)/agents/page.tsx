@@ -124,7 +124,7 @@ export default function AgentsPage() {
       </div>
 
       {/* Agents table */}
-      <div className="rounded-lg border border-mesh-border bg-mesh-surface-1/95">
+      <div className="mesh-card">
         {agents === null ? (
           <Table>
             <TableHeader>
@@ -522,7 +522,7 @@ function CopyBlock({ text }: { text: string }) {
   };
 
   return (
-    <div className="overflow-hidden rounded-md border border-mesh-border bg-mesh-surface-1/95">
+    <div className="overflow-hidden mesh-card">
       {/* Header bar: copy button lives here, completely separate from scroll area */}
       <div className="flex items-center justify-end border-b border-mesh-border px-3 py-1.5">
         <button

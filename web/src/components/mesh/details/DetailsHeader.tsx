@@ -39,7 +39,7 @@ export function DetailsHeader({
       className="flex items-start gap-4 border-b border-mesh-border bg-mesh-surface-1/70 p-4 pr-10"
     >
       <div
-        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md border border-mesh-border bg-mesh-surface-2"
+        className="flex h-14 w-14 shrink-0 items-center justify-center mesh-card-2"
         style={{ color: iconColor }}
       >
         <Icon name={icon} size={24} stroke={1.4} />

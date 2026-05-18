@@ -267,7 +267,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
             if (results && query.length >= 2) setIsOpen(true);
           }}
           placeholder="Search devices, IPs, MACs...  ⌘K"
-          className="h-8 w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 text-sm text-white placeholder-mesh-text-mute transition-all duration-150 focus:border-mesh-accent/45 focus:outline-none focus:ring-2 focus:ring-mesh-accent/18"
+          className="h-8 w-full mesh-card px-3 text-sm text-white placeholder-mesh-text-mute transition-all duration-150 focus:border-mesh-accent/45 focus:outline-none focus:ring-2 focus:ring-mesh-accent/18"
         />
 
         {/* Search Results Dropdown */}
@@ -473,7 +473,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
         ))}
       </div>
       <div
-        className="flex items-center gap-2 shrink-0 rounded-full border border-mesh-border bg-mesh-surface-1/80 px-2.5 py-1 font-mono text-[11px] text-mesh-text"
+        className="flex items-center gap-2 shrink-0 rounded-full mesh-card px-2.5 py-1 font-mono text-[11px] text-mesh-text"
         data-testid="live-status-pill"
       >
         <span

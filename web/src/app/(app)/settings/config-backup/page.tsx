@@ -304,7 +304,7 @@ export default function ConfigBackupPage() {
         </div>
 
         {/* Pending changes card */}
-        <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+        <Card className="">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-mesh-primary/10">
@@ -364,7 +364,7 @@ export default function ConfigBackupPage() {
         </Card>
 
         {/* Manual Backup card */}
-        <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+        <Card className="">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#4ade80]/10">
@@ -425,7 +425,7 @@ export default function ConfigBackupPage() {
         </Card>
 
         {/* Backup history / rollback table */}
-        <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+        <Card className="">
           <CardHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#fbbf24]/10">
@@ -621,7 +621,7 @@ function DiffLineView({ lines }: { lines: DiffLine[] }) {
   }
 
   return (
-    <pre className="overflow-auto rounded border border-mesh-border bg-mesh-surface-1 p-0 text-xs leading-5 font-mono">
+    <pre className="overflow-auto rounded mesh-card p-0 text-xs leading-5 font-mono">
       {lines.map((line, i) => {
         let bgClass = "";
         let textClass = "text-mesh-text-dim";
@@ -697,7 +697,7 @@ function DiffDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-lg border border-mesh-border bg-mesh-surface-1/95 shadow-2xl">
+      <div className="flex max-h-[85vh] w-full max-w-4xl flex-col mesh-card shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-mesh-border px-5 py-4">
           <div>
@@ -774,7 +774,7 @@ function PendingChangesDialog({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-      <div className="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-lg border border-mesh-border bg-mesh-surface-1/95 shadow-2xl">
+      <div className="flex max-h-[85vh] w-full max-w-4xl flex-col mesh-card shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-mesh-border px-5 py-4">
           <div>

@@ -1776,7 +1776,7 @@ function FirewallFilterDialog({
               <select
                 value={form.chain}
                 onChange={(e) => setForm({ ...form, chain: e.target.value })}
-                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+                className="w-full mesh-card px-3 py-2 text-sm text-white"
               >
                 <option value="forward">forward</option>
                 <option value="input">input</option>
@@ -1788,7 +1788,7 @@ function FirewallFilterDialog({
               <select
                 value={form.action}
                 onChange={(e) => setForm({ ...form, action: e.target.value })}
-                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+                className="w-full mesh-card px-3 py-2 text-sm text-white"
               >
                 <option value="accept">accept</option>
                 <option value="drop">drop</option>
@@ -1805,7 +1805,7 @@ function FirewallFilterDialog({
             <select
               value={form.protocol ?? ""}
               onChange={(e) => setForm({ ...form, protocol: e.target.value || undefined })}
-              className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+              className="w-full mesh-card px-3 py-2 text-sm text-white"
             >
               <option value="">any</option>
               <option value="tcp">tcp</option>
@@ -1975,7 +1975,7 @@ function FirewallNatDialog({
               <select
                 value={form.chain}
                 onChange={(e) => setForm({ ...form, chain: e.target.value })}
-                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+                className="w-full mesh-card px-3 py-2 text-sm text-white"
               >
                 <option value="dstnat">dstnat</option>
                 <option value="srcnat">srcnat</option>
@@ -1986,7 +1986,7 @@ function FirewallNatDialog({
               <select
                 value={form.action}
                 onChange={(e) => setForm({ ...form, action: e.target.value })}
-                className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+                className="w-full mesh-card px-3 py-2 text-sm text-white"
               >
                 <option value="dst-nat">dst-nat</option>
                 <option value="src-nat">src-nat</option>
@@ -2002,7 +2002,7 @@ function FirewallNatDialog({
             <select
               value={form.protocol ?? ""}
               onChange={(e) => setForm({ ...form, protocol: e.target.value || undefined })}
-              className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+              className="w-full mesh-card px-3 py-2 text-sm text-white"
             >
               <option value="">any</option>
               <option value="tcp">tcp</option>
@@ -2504,7 +2504,7 @@ function FirewallPanel({
 
   if (loading) {
     return (
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader>
           <CardTitle className="text-base text-white">Filter Rules</CardTitle>
         </CardHeader>
@@ -2554,7 +2554,7 @@ function FirewallPanel({
 
   if (error) {
     return (
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardContent className="py-4">
           <div className="flex items-center gap-2 rounded-md border border-[#fb7185]/30 bg-[#fb7185]/10 px-3 py-2">
             <AlertCircle className="h-4 w-4 shrink-0 text-[#fb7185]" />
@@ -2576,7 +2576,7 @@ function FirewallPanel({
   return (
     <div className="space-y-4">
       {/* Filter Rules */}
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base text-white">Filter Rules</CardTitle>
@@ -2666,7 +2666,7 @@ function FirewallPanel({
       </Card>
 
       {/* NAT Rules */}
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base text-white">NAT Rules</CardTitle>
@@ -2787,7 +2787,7 @@ function FirewallPanel({
       </Card>
 
       {/* Address Lists */}
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-base text-white">Address Lists</CardTitle>
@@ -3086,7 +3086,7 @@ function DnsPanel({
         </div>
       </div>
       <div className="grid gap-4 sm:grid-cols-3">
-        <Card className="border-mesh-border bg-mesh-surface-1">
+        <Card className="">
           <CardContent className="py-3">
             <p className="text-xs text-mesh-text-mute">Allow Remote Requests</p>
             <p className="text-sm font-medium text-white">
@@ -3094,7 +3094,7 @@ function DnsPanel({
             </p>
           </CardContent>
         </Card>
-        <Card className="border-mesh-border bg-mesh-surface-1">
+        <Card className="">
           <CardContent className="py-3">
             <p className="text-xs text-mesh-text-mute">Cache Size</p>
             <p className="text-sm font-medium text-white">
@@ -3102,7 +3102,7 @@ function DnsPanel({
             </p>
           </CardContent>
         </Card>
-        <Card className="border-mesh-border bg-mesh-surface-1">
+        <Card className="">
           <CardContent className="py-3">
             <p className="text-xs text-mesh-text-mute">Cache Used</p>
             <p className="text-sm font-medium text-white">
@@ -3156,7 +3156,7 @@ function WireGuardPanel({
       {data.interfaces.map((iface) => (
         <div
           key={iface.name}
-          className="rounded-lg border border-mesh-border bg-mesh-surface-1 p-4"
+          className="mesh-card p-4"
         >
           <div className="mb-3 flex items-center gap-3">
             <span className="font-mono text-sm font-medium text-white">
@@ -3286,7 +3286,7 @@ function TrafficTab() {
   }, [load, range]);
 
   return (
-    <Card className="border-mesh-border bg-mesh-surface-1">
+    <Card className="">
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-base text-white">
@@ -3457,7 +3457,7 @@ function PolicyRoutingTab({
   return (
     <div className="space-y-6">
       {/* Routing Tables */}
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader>
           <CardTitle className="text-base text-white">Routing Tables</CardTitle>
         </CardHeader>
@@ -3498,7 +3498,7 @@ function PolicyRoutingTab({
       </Card>
 
       {/* Mangle Rules (PBR) */}
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base text-white">Mangle Rules (Policy Routing)</CardTitle>
           <Button size="sm" variant="outline" className="border-mesh-border-strong" onClick={() => setShowCreate(true)}>
@@ -3558,7 +3558,7 @@ function PolicyRoutingTab({
       </Card>
 
       {/* Routing Rules */}
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader>
           <CardTitle className="text-base text-white">Routing Rules</CardTitle>
         </CardHeader>
@@ -3746,7 +3746,7 @@ function GatewayMonitoringTab({
       </div>
 
       {/* Netwatch Table */}
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base text-white">Gateway Health Monitors</CardTitle>
           <Button size="sm" variant="outline" className="border-mesh-border-strong" onClick={() => setShowCreate(true)}>
@@ -3878,7 +3878,7 @@ function DynamicRoutingTab({
   return (
     <div className="space-y-6">
       {/* BGP Connections */}
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader>
           <CardTitle className="text-base text-white">BGP Connections</CardTitle>
         </CardHeader>
@@ -3927,7 +3927,7 @@ function DynamicRoutingTab({
       </Card>
 
       {/* OSPF Instances */}
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader>
           <CardTitle className="text-base text-white">OSPF Instances</CardTitle>
         </CardHeader>
@@ -3969,7 +3969,7 @@ function DynamicRoutingTab({
 
       {/* OSPF Areas */}
       {dynamic.data?.ospf_areas && dynamic.data.ospf_areas.length > 0 && (
-        <Card className="border-mesh-border bg-mesh-surface-1">
+        <Card className="">
           <CardHeader>
             <CardTitle className="text-base text-white">OSPF Areas</CardTitle>
           </CardHeader>
@@ -4005,7 +4005,7 @@ function DynamicRoutingTab({
       )}
 
       {/* IPv6 Router Advertisements */}
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader>
           <CardTitle className="text-base text-white">IPv6 Router Advertisements</CardTitle>
         </CardHeader>
@@ -4137,7 +4137,7 @@ export default function MikrotikRouter() {
 
       <Tabs value={tab} onValueChange={setTab} className="min-w-0">
         <TabsList
-          className="h-auto w-full justify-start gap-1 border border-mesh-border bg-mesh-surface-1 p-1"
+          className="h-auto w-full justify-start gap-1 mesh-card p-1"
           data-testid="router-tabs"
         >
           <TabsTrigger
@@ -4243,7 +4243,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="interfaces">
-          <Card className="border-mesh-border bg-mesh-surface-1">
+          <Card className="">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 Network Interfaces
@@ -4260,7 +4260,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="vlans">
-          <Card className="border-mesh-border bg-mesh-surface-1">
+          <Card className="">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 VLAN Interfaces
@@ -4278,7 +4278,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="routes">
-          <Card className="border-mesh-border bg-mesh-surface-1">
+          <Card className="">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 Routing Table
@@ -4295,7 +4295,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="dhcp">
-          <Card className="border-mesh-border bg-mesh-surface-1">
+          <Card className="">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 DHCP Server Management
@@ -4346,7 +4346,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="dns">
-          <Card className="border-mesh-border bg-mesh-surface-1">
+          <Card className="">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 DNS Settings
@@ -4372,7 +4372,7 @@ export default function MikrotikRouter() {
         </TabsContent>
 
         <TabsContent value="vpn">
-          <Card className="border-mesh-border bg-mesh-surface-1">
+          <Card className="">
             <CardHeader>
               <CardTitle className="text-base text-white">
                 WireGuard Interfaces
