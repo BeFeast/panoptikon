@@ -258,6 +258,7 @@ export function Sidebar() {
           <BrandMark size={28} className="text-mesh-accent" />
           {!collapsed && (
             <span
+              className="font-mono"
               style={{
                 font: "600 13px var(--font-sans)",
                 fontFamily: "var(--font-mono)",

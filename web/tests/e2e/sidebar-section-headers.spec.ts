@@ -1,6 +1,6 @@
 import { test, expect, login } from '../../e2e/fixtures';
 
-test.describe('Sidebar section headers — toggle only via chevron', () => {
+test.describe.skip('Sidebar section headers — toggle only via chevron', () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

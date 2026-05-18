@@ -200,7 +200,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
         className="btn btn-ghost"
         style={{ width: 28, height: 28, padding: 0 }}
         onClick={handleRefresh}
-        aria-label="Refresh"
+        aria-label="Reload"
       >
         <RefreshCw size={14} aria-hidden="true" />
       </button>
