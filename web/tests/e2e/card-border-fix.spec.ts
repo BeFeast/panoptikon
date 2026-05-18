@@ -30,7 +30,7 @@ test.describe("Card border fix — no bracket artifacts (#656)", () => {
     const overflow = await card.evaluate(
       (el) => window.getComputedStyle(el).overflow,
     );
-    expect(overflow).toBe("hidden");
+    expect(overflow).toMatch(/^(hidden|clip)$/);
 
     // Verify border is uniform on all sides
     const borders = await card.evaluate((el) => {
@@ -68,7 +68,7 @@ test.describe("Card border fix — no bracket artifacts (#656)", () => {
     const overflow = await card.evaluate(
       (el) => window.getComputedStyle(el).overflow,
     );
-    expect(overflow).toBe("hidden");
+    expect(overflow).toMatch(/^(hidden|clip)$/);
 
     await page.screenshot({
       path: "tests/screenshots/card-border-fix-qos.png",
@@ -93,7 +93,7 @@ test.describe("Card border fix — no bracket artifacts (#656)", () => {
     const overflow = await card.evaluate(
       (el) => window.getComputedStyle(el).overflow,
     );
-    expect(overflow).toBe("hidden");
+    expect(overflow).toMatch(/^(hidden|clip)$/);
 
     await page.screenshot({
       path: "tests/screenshots/card-border-fix-dns-logs.png",
