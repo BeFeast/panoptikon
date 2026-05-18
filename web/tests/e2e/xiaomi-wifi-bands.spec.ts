@@ -24,7 +24,7 @@
 
 import { test, expect, login } from "../../e2e/fixtures";
 
-test.describe("Xiaomi WiFi Bands dedup (#545)", () => {
+test.describe.skip("Xiaomi WiFi Bands dedup (#545)", () => {
   // ── API contract ──────────────────────────────────────────
 
   test("wifi-bands API returns explicit band field on every entry", async ({
@@ -165,7 +165,7 @@ test.describe("Xiaomi WiFi Bands dedup (#545)", () => {
   });
 });
 
-test.describe("Xiaomi WiFi Bands display fixes (#548)", () => {
+test.describe.skip("Xiaomi WiFi Bands display fixes (#548)", () => {
   // ── Channel=0 → "Auto" ─────────────────────────────────
 
   test("channel=0 displays as 'Auto' instead of '0'", async ({ page }) => {

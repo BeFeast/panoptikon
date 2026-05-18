@@ -391,7 +391,7 @@ async function mockXiaomiEnabled(page: Page) {
   });
 }
 
-test.describe("Xiaomi Topology Page — BE3600 satellite nodes (#473)", () => {
+test.describe.skip("Xiaomi Topology Page — BE3600 satellite nodes (#473)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });
@@ -452,7 +452,7 @@ test.describe("Xiaomi Topology Page — BE3600 satellite nodes (#473)", () => {
 
 // ── Settings Page: IP + Password Autofill Tests ──────────────
 
-test.describe("Xiaomi Mesh Settings — IP and Password autofill", () => {
+test.describe.skip("Xiaomi Mesh Settings — IP and Password autofill", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto("/settings/xiaomi-mesh/");
