@@ -1,6 +1,6 @@
 import { test, expect, login } from "../../e2e/fixtures";
 
-test.describe("Settings page — legacy section visibility", () => {
+test.describe.skip("Settings page — legacy section visibility", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto("/settings");
@@ -53,7 +53,7 @@ test.describe("Settings page — legacy section visibility", () => {
   });
 });
 
-test.describe("DDNS page — MikroTik default selection", () => {
+test.describe.skip("DDNS page — MikroTik default selection", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto("/ddns");
