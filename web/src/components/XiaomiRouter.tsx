@@ -106,7 +106,7 @@ function SystemStats({ status }: { status: XiaomiStatus }) {
   const memUsage = status.mem_usage ? Math.round(status.mem_usage * 100) : 0;
 
   return (
-    <Card className="">
+    <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-medium text-mesh-text">
           <Cpu className="h-4 w-4 text-[#fbbf24]" />
@@ -211,7 +211,7 @@ function WanInfoSection({ wan }: { wan: XiaomiWanInfo }) {
   const dnsServers = wan.dns?.split(",").map((d) => d.trim()) ?? [];
 
   return (
-    <Card className="">
+    <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-medium text-mesh-text">
           <Globe className="h-4 w-4 text-mesh-primary" />
@@ -347,7 +347,7 @@ function WifiBandsSection({
     wifiDevices.length > 0 && wifiDevices.some((d) => d.band != null);
 
   return (
-    <Card className="">
+    <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-medium text-mesh-text">
           <Wifi className="h-4 w-4 text-[#a78bfa]" />
@@ -378,7 +378,7 @@ function WifiBandsSection({
               return (
                 <div
                   key={`${bandLabel}|${band.ssid ?? i}`}
-                  className="mesh-card p-4"
+                  className="mesh-card-2 p-4"
                 >
                   <div className="mb-3 flex items-center justify-between">
                     <Badge className="bg-[#a78bfa]/20 text-[#a78bfa]">
@@ -446,7 +446,7 @@ function WifiBandsSection({
 
 function FirmwareSection({ firmware }: { firmware: XiaomiFirmware }) {
   return (
-    <Card className="">
+    <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-sm font-medium text-mesh-text">
           <HardDrive className="h-4 w-4 text-mesh-accent" />

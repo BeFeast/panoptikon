@@ -39,7 +39,6 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 
@@ -100,15 +99,18 @@ function MeshNodeComponent({ data }: NodeProps<MeshNodeType>) {
 
   const BackhaulIcon = backhaulIcon
 
+  // ReactFlow custom node — uses the design-system .mesh-card recipe
+  // (solid surface, hairline border, recipe shadow) plus an isMain accent
+  // ring. Gradients are forbidden by CI guard #3.
+  const accentClass = isMain
+    ? 'ring-1 ring-[#fbbf24]/40'
+    : node.is_online
+      ? 'ring-1 ring-mesh-primary/30'
+      : ''
+
   return (
     <div
-      className={`flex flex-col gap-2 rounded-xl border px-4 py-3 shadow-lg transition-shadow hover:shadow-xl ${
-        isMain
-          ? 'border-[#fbbf24]/30 bg-gradient-to-br from-mesh-border-strong to-mesh-surface-1 shadow-[#fbbf24]/10'
-          : node.is_online
-            ? 'border-mesh-primary/30 bg-gradient-to-br from-mesh-border-strong to-mesh-surface-1 shadow-mesh-primary/10'
-            : 'border-mesh-text-mute/30 bg-mesh-surface-1 shadow-mesh-border-strong/10'
-      }`}
+      className={`mesh-card flex flex-col gap-2 px-4 py-3 ${accentClass}`}
       style={{ width: NODE_WIDTH, minHeight: NODE_HEIGHT }}
     >
       <Handle type="target" position={Position.Top} className="!bg-mesh-primary" />
@@ -212,7 +214,7 @@ function MeshNodeDetailPanel({ node }: { node: MeshNode }) {
         </div>
       </SheetHeader>
 
-      <Separator className="my-4 bg-mesh-surface-1" />
+      <Separator className="my-4" />
 
       <div className="space-y-3">
         <InfoRow label="IP Address" value={node.ip || '—'} mono />
@@ -423,16 +425,16 @@ export default function MeshPage() {
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#fb7185]/10">
                 <WifiOff className="h-8 w-8 text-[#fb7185]" />
               </div>
-              <h1 className="text-xl font-semibold text-white">
+              <h1 className="t-h1 text-mesh-text">
                 Mesh Topology Unavailable
               </h1>
               <p className="text-center text-sm text-mesh-text-dim">
                 Could not load mesh topology from the Xiaomi router. Make sure the router is powered on and the IP address is correct in Settings.
               </p>
               <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
+                <button
+                  type="button"
+                  className="btn"
                   onClick={() => {
                     setLoading(true)
                     buildGraph(true)
@@ -440,15 +442,10 @@ export default function MeshPage() {
                 >
                   <RefreshCw className="mr-2 h-4 w-4" />
                   Retry
-                </Button>
-                <Link href="/settings/xiaomi-mesh">
-                  <Button
-                    variant="outline"
-                    className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    Settings
-                  </Button>
+                </button>
+                <Link href="/settings/xiaomi-mesh" className="btn">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Settings
                 </Link>
               </div>
             </CardContent>
@@ -506,8 +503,9 @@ export default function MeshPage() {
             </span>
             <div className="h-3 w-px bg-mesh-border-strong" />
             <button
+              type="button"
               onClick={() => buildGraph(false)}
-              className="text-mesh-text-dim transition-colors hover:text-white"
+              className="btn btn-ghost btn-sm"
               title="Refresh now"
             >
               <RefreshCw className="h-3.5 w-3.5" />
@@ -530,7 +528,7 @@ export default function MeshPage() {
       >
         <SheetContent
           side="right"
-          className="w-full overflow-y-auto border-mesh-border bg-mesh-surface-1/95 sm:max-w-md"
+          className="w-full overflow-y-auto sm:max-w-md"
         >
           {selectedNode && <MeshNodeDetailPanel node={selectedNode} />}
         </SheetContent>
