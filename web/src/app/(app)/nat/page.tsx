@@ -21,7 +21,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -183,35 +182,46 @@ export default function NatPage() {
   return (
     <PageTransition>
       <div className="space-y-8">
-        <section className="flex flex-col gap-5 rounded-2xl mesh-card p-4 md:flex-row md:items-center md:justify-between">
+        {/* Page header — Card with eyebrow + display title */}
+        <Card className="flex flex-col gap-5 p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#a78bfa]/30 bg-gradient-to-br from-[#a78bfa]/20 via-[#e879f9]/10 to-mesh-primary/10 text-[#a78bfa]">
+            <div
+              className="flex h-12 w-12 items-center justify-center"
+              style={{
+                borderRadius: "var(--radius-lg)",
+                border: "1px solid rgba(96,144,212,0.20)",
+                background: "var(--surface-2)",
+                color: "#a78bfa",
+              }}
+            >
               <ArrowRightLeft className="h-6 w-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight text-white">NAT / Port Forwarding</h1>
+              <div className="t-micro">Network operations</div>
+              <div className="flex items-center gap-2" style={{ marginTop: 4 }}>
+                <h1 className="t-display" style={{ margin: 0 }}>
+                  NAT / Port Forwarding
+                </h1>
                 <HelpTooltip text="Manage MikroTik NAT rules — port forwarding (DNAT), outbound NAT (SNAT), 1:1 NAT, and NAT reflection." />
               </div>
-              <p className="text-sm text-mesh-text-dim">
+              <p className="t-small" style={{ marginTop: 4 }}>
                 Port forwarding, outbound NAT, 1:1 NAT, and hairpin rules.
               </p>
             </div>
           </div>
 
-          <Button
-            variant="outline"
-            size="sm"
+          <button
+            type="button"
+            className="btn"
             onClick={() => {
               load();
               loadMt();
             }}
-            className="border-mesh-border bg-mesh-surface-1 text-mesh-text hover:bg-mesh-surface-2/55"
           >
-            <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-            Refresh
-          </Button>
-        </section>
+            <RefreshCw className="h-3 w-3" />
+            <span>Refresh</span>
+          </button>
+        </Card>
 
         {/* Summary cards */}
         <section className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:max-w-2xl">
@@ -219,22 +229,25 @@ export default function NatPage() {
             title="Total NAT Rules"
             value={summary?.mikrotik_rule_count ?? null}
             available={summary?.mikrotik_available ?? null}
-            icon={<Network className="h-4 w-4 text-[#67e8f9]" />}
-            iconClass="border-mesh-accent/30 bg-mesh-accent/15"
+            icon={<Network className="h-4 w-4 text-mesh-accent" />}
+            iconBg="#0e2148"
+            iconBorder="rgba(96,144,212,0.40)"
           />
           <SummaryCard
             title="DNAT (Inbound)"
             value={summary?.dnat_count ?? null}
             available={summary?.mikrotik_available ?? null}
             icon={<ArrowDownToLine className="h-4 w-4 text-mesh-primary" />}
-            iconClass="border-mesh-primary/30 bg-mesh-primary/15"
+            iconBg="#0e2148"
+            iconBorder="rgba(37,99,235,0.40)"
           />
           <SummaryCard
             title="SNAT (Outbound)"
             value={summary?.snat_count ?? null}
             available={summary?.mikrotik_available ?? null}
-            icon={<ArrowUpFromLine className="h-4 w-4 text-[#fbbf24]" />}
-            iconClass="border-[#fbbf24]/30 bg-[#fbbf24]/15"
+            icon={<ArrowUpFromLine className="h-4 w-4" style={{ color: "#fbbf24" }} />}
+            iconBg="#0e2148"
+            iconBorder="rgba(251,191,36,0.40)"
           />
         </section>
 
@@ -245,19 +258,19 @@ export default function NatPage() {
               <TabsList className="h-auto mesh-card p-1">
                 <TabsTrigger
                   value="all"
-                  className="rounded-lg px-4 data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
+                  className="rounded-lg px-4 data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-mesh-text"
                 >
                   All Rules
                 </TabsTrigger>
                 <TabsTrigger
                   value="dnat"
-                  className="rounded-lg px-4 data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
+                  className="rounded-lg px-4 data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-mesh-text"
                 >
                   DNAT
                 </TabsTrigger>
                 <TabsTrigger
                   value="snat"
-                  className="rounded-lg px-4 data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
+                  className="rounded-lg px-4 data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-mesh-text"
                 >
                   SNAT
                 </TabsTrigger>
@@ -271,7 +284,7 @@ export default function NatPage() {
                   placeholder="Filter rules..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="border-mesh-border bg-mesh-surface-1/95 pl-10 text-white placeholder:text-mesh-text-mute"
+                  className="pl-10"
                 />
               </div>
 
@@ -287,7 +300,14 @@ export default function NatPage() {
                   setShowAddMt(true);
                 }}
               >
-                <SelectTrigger className="w-auto gap-1.5 border-mesh-border-strong bg-mesh-primary text-white hover:bg-mesh-primary [&>svg]:text-white">
+                <SelectTrigger
+                  className="w-auto gap-1.5"
+                  style={{
+                    background: "#2563eb",
+                    borderColor: "#2563eb",
+                    color: "var(--primary-fg, #ffffff)",
+                  }}
+                >
                   <Plus className="h-3.5 w-3.5" />
                   <SelectValue placeholder="Add Rule" />
                 </SelectTrigger>
@@ -304,14 +324,17 @@ export default function NatPage() {
         {/* Rules table */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base text-white">MikroTik NAT Rules</CardTitle>
-            <CardDescription className="text-xs text-mesh-text-mute">
+            <CardTitle className="t-h3">MikroTik NAT Rules</CardTitle>
+            <CardDescription className="t-small">
               Firewall NAT rules synchronized from the router.
             </CardDescription>
           </CardHeader>
 
           <CardContent className="p-0">
-            <div className="overflow-x-auto border-t border-mesh-border">
+            <div
+              className="overflow-x-auto"
+              style={{ borderTop: "1px solid rgba(96,144,212,0.20)" }}
+            >
               {filteredMt === null ? (
                 <div className="space-y-2 p-4">
                   {[...Array(4)].map((_, i) => (
@@ -319,24 +342,24 @@ export default function NatPage() {
                   ))}
                 </div>
               ) : filteredMt.length === 0 ? (
-                <div className="py-12 text-center text-sm text-mesh-text-mute">
+                <div className="py-12 text-center t-small">
                   {search ? "No matching rules." : "No NAT rules configured."}
                 </div>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                      <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Type</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Action</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Protocol</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Src Address</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Dst Address</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Dst Port</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">To Address</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">To Port</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Comment</TableHead>
-                      <TableHead className="text-xs uppercase tracking-wide text-mesh-text-mute">Status</TableHead>
-                      <TableHead className="text-right text-xs uppercase tracking-wide text-mesh-text-mute">Actions</TableHead>
+                      <TableHead className="t-micro">Type</TableHead>
+                      <TableHead className="t-micro">Action</TableHead>
+                      <TableHead className="t-micro">Protocol</TableHead>
+                      <TableHead className="t-micro">Src Address</TableHead>
+                      <TableHead className="t-micro">Dst Address</TableHead>
+                      <TableHead className="t-micro">Dst Port</TableHead>
+                      <TableHead className="t-micro">To Address</TableHead>
+                      <TableHead className="t-micro">To Port</TableHead>
+                      <TableHead className="t-micro">Comment</TableHead>
+                      <TableHead className="t-micro">Status</TableHead>
+                      <TableHead className="text-right t-micro">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
 
@@ -377,11 +400,11 @@ export default function NatPage() {
                         </TableCell>
 
                         <TableCell className="text-mesh-text">{rule.protocol ?? "any"}</TableCell>
-                        <TableCell className="font-mono text-xs text-mesh-text">{rule.src_address ?? "-"}</TableCell>
-                        <TableCell className="font-mono text-xs text-mesh-text">{rule.dst_address ?? "-"}</TableCell>
-                        <TableCell className="font-mono text-xs text-mesh-text">{rule.dst_port ?? "-"}</TableCell>
-                        <TableCell className="font-mono text-xs text-mesh-text">{rule.to_addresses ?? "-"}</TableCell>
-                        <TableCell className="font-mono text-xs text-mesh-text">{rule.to_ports ?? "-"}</TableCell>
+                        <TableCell className="mono tabular text-xs text-mesh-text">{rule.src_address ?? "-"}</TableCell>
+                        <TableCell className="mono tabular text-xs text-mesh-text">{rule.dst_address ?? "-"}</TableCell>
+                        <TableCell className="mono tabular text-xs text-mesh-text">{rule.dst_port ?? "-"}</TableCell>
+                        <TableCell className="mono tabular text-xs text-mesh-text">{rule.to_addresses ?? "-"}</TableCell>
+                        <TableCell className="mono tabular text-xs text-mesh-text">{rule.to_ports ?? "-"}</TableCell>
                         <TableCell className="max-w-[180px] truncate text-mesh-text-dim" title={rule.comment ?? undefined}>
                           {rule.comment ?? "-"}
                         </TableCell>
@@ -404,22 +427,23 @@ export default function NatPage() {
                           <div className="flex justify-end gap-1">
                             {rule.id && (
                               <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-sm"
                                   onClick={() => setEditMtRule(rule)}
-                                  className="h-7 w-7 p-0 text-mesh-text-dim hover:text-white"
+                                  aria-label="Edit rule"
                                 >
-                                  <Pencil className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
+                                  <Pencil className="h-3 w-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-sm"
                                   onClick={() => setPendingDeleteMt(rule)}
-                                  className="h-7 w-7 p-0 text-mesh-text-dim hover:text-[#fb7185]"
+                                  aria-label="Delete rule"
+                                  style={{ color: "#fb7185" }}
                                 >
-                                  <Trash2 className="h-3.5 w-3.5" />
-                                </Button>
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
                               </>
                             )}
                           </div>
@@ -483,20 +507,21 @@ export default function NatPage() {
             if (!open) setPendingDeleteMt(null);
           }}
         >
-          <AlertDialogContent className="bg-mesh-surface-1/95 border-mesh-border">
+          <AlertDialogContent className="bg-mesh-surface-1/95 border-mesh-border-strong">
             <AlertDialogHeader>
-              <AlertDialogTitle className="text-white">Delete MikroTik NAT Rule</AlertDialogTitle>
-              <AlertDialogDescription className="text-mesh-text-dim">
+              <AlertDialogTitle className="t-h2">Delete MikroTik NAT Rule</AlertDialogTitle>
+              <AlertDialogDescription className="t-small">
                 Are you sure you want to delete this NAT rule
                 {pendingDeleteMt?.comment ? ` (${pendingDeleteMt.comment})` : ""}?
                 This will remove it from the MikroTik router.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-mesh-border-strong text-mesh-text">Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="btn">Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDeleteMt}
-                className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
+                style={{ background: "#fb7185", borderColor: "#fb7185", color: "#ffffff" }}
+                className="btn"
               >
                 Delete
               </AlertDialogAction>
@@ -515,29 +540,42 @@ function SummaryCard({
   value,
   available,
   icon,
-  iconClass,
+  iconBg,
+  iconBorder,
 }: {
   title: string;
   value: number | null;
   available: boolean | null;
   icon: React.ReactNode;
-  iconClass: string;
+  iconBg: string;
+  iconBorder: string;
 }) {
   return (
     <Card>
       <CardContent className="flex min-h-[96px] items-center gap-5 p-4">
-        <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border", iconClass)}>
+        <div
+          className="flex h-11 w-11 shrink-0 items-center justify-center"
+          style={{
+            borderRadius: "var(--radius-md)",
+            border: `1px solid ${iconBorder}`,
+            background: iconBg,
+          }}
+        >
           {icon}
         </div>
 
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-mesh-text-mute">{title}</p>
+          <p className="t-micro">{title}</p>
           {available === null ? (
             <Skeleton className="mt-2 h-6 w-14 bg-mesh-surface-1" />
           ) : available ? (
-            <p className="mt-1 text-2xl font-semibold text-white">{value ?? 0}</p>
+            <p className="t-h1" style={{ marginTop: 4 }}>
+              {value ?? 0}
+            </p>
           ) : (
-            <p className="mt-1 text-sm text-mesh-text-mute">Not configured</p>
+            <p className="t-small" style={{ marginTop: 4 }}>
+              Not configured
+            </p>
           )}
         </div>
       </CardContent>
@@ -673,19 +711,19 @@ function MikrotikNatDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-mesh-surface-1/95 border-mesh-border sm:max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="bg-mesh-surface-1/95 border-mesh-border-strong sm:max-w-lg max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-white">{dialogTitle}</DialogTitle>
-          <DialogDescription className="text-mesh-text-dim">{dialogDescription}</DialogDescription>
+          <DialogTitle className="t-h2">{dialogTitle}</DialogTitle>
+          <DialogDescription className="t-small">{dialogDescription}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Chain + Action */}
           <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1.5">
-              <Label className="text-mesh-text-dim">Chain</Label>
+              <Label className="t-micro">Chain</Label>
               <Select value={chain} onValueChange={setChain}>
-                <SelectTrigger className="bg-mesh-surface-1/95 border-mesh-border text-mesh-text">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="border-mesh-border bg-mesh-surface-1 text-mesh-text">
@@ -695,9 +733,9 @@ function MikrotikNatDialog({
               </Select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-mesh-text-dim">Action</Label>
+              <Label className="t-micro">Action</Label>
               <Select value={action} onValueChange={setAction}>
-                <SelectTrigger className="bg-mesh-surface-1/95 border-mesh-border text-mesh-text">
+                <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="border-mesh-border bg-mesh-surface-1 text-mesh-text">
@@ -714,9 +752,9 @@ function MikrotikNatDialog({
 
           {/* Protocol */}
           <div className="space-y-1.5">
-            <Label className="text-mesh-text-dim">Protocol</Label>
+            <Label className="t-micro">Protocol</Label>
             <Select value={protocol || "__none__"} onValueChange={(v) => setProtocol(v === "__none__" ? "" : v)}>
-              <SelectTrigger className="bg-mesh-surface-1/95 border-mesh-border text-mesh-text">
+              <SelectTrigger>
                 <SelectValue placeholder="Any" />
               </SelectTrigger>
               <SelectContent className="border-mesh-border bg-mesh-surface-1 text-mesh-text">
@@ -731,7 +769,7 @@ function MikrotikNatDialog({
           {/* Source / Destination Addresses */}
           <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1.5">
-              <Label className="text-mesh-text-dim">
+              <Label className="t-micro">
                 Src Address
                 <HelpTooltip text="Source IP or CIDR to match. Leave empty for any." />
               </Label>
@@ -739,11 +777,10 @@ function MikrotikNatDialog({
                 value={srcAddress}
                 onChange={(e) => setSrcAddress(e.target.value)}
                 placeholder="e.g. 192.168.1.0/24"
-                className="bg-mesh-surface-1/95 border-mesh-border text-mesh-text"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-mesh-text-dim">
+              <Label className="t-micro">
                 Dst Address
                 <HelpTooltip text="Destination IP to match. For 1:1 NAT, this is the external IP." />
               </Label>
@@ -751,14 +788,13 @@ function MikrotikNatDialog({
                 value={dstAddress}
                 onChange={(e) => setDstAddress(e.target.value)}
                 placeholder="e.g. 203.0.113.10"
-                className="bg-mesh-surface-1/95 border-mesh-border text-mesh-text"
               />
             </div>
           </div>
 
           {/* Dst Port */}
           <div className="space-y-1.5">
-            <Label className="text-mesh-text-dim">
+            <Label className="t-micro">
               Dst Port
               <HelpTooltip text="Destination port to match. Leave empty for 1:1 NAT (all ports)." />
             </Label>
@@ -766,14 +802,13 @@ function MikrotikNatDialog({
               value={dstPort}
               onChange={(e) => setDstPort(e.target.value)}
               placeholder="e.g. 8080 or 80-443"
-              className="bg-mesh-surface-1/95 border-mesh-border text-mesh-text"
             />
           </div>
 
           {/* To Addresses / To Ports */}
           <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1.5">
-              <Label className="text-mesh-text-dim">
+              <Label className="t-micro">
                 To Addresses
                 <HelpTooltip text="Translate to this IP. For DNAT/1:1: internal host. For SNAT: outbound IP." />
               </Label>
@@ -781,11 +816,10 @@ function MikrotikNatDialog({
                 value={toAddresses}
                 onChange={(e) => setToAddresses(e.target.value)}
                 placeholder="e.g. 192.168.1.100"
-                className="bg-mesh-surface-1/95 border-mesh-border text-mesh-text"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-mesh-text-dim">
+              <Label className="t-micro">
                 To Ports
                 <HelpTooltip text="Translate to this port. Leave empty for 1:1 NAT." />
               </Label>
@@ -793,7 +827,6 @@ function MikrotikNatDialog({
                 value={toPorts}
                 onChange={(e) => setToPorts(e.target.value)}
                 placeholder="e.g. 80"
-                className="bg-mesh-surface-1/95 border-mesh-border text-mesh-text"
               />
             </div>
           </div>
@@ -801,7 +834,7 @@ function MikrotikNatDialog({
           {/* Interfaces */}
           <div className="grid grid-cols-2 gap-5">
             <div className="space-y-1.5">
-              <Label className="text-mesh-text-dim">
+              <Label className="t-micro">
                 In Interface
                 <HelpTooltip text="Match traffic arriving on this interface (e.g. ether1-wan)." />
               </Label>
@@ -809,11 +842,10 @@ function MikrotikNatDialog({
                 value={inInterface}
                 onChange={(e) => setInInterface(e.target.value)}
                 placeholder="e.g. ether1"
-                className="bg-mesh-surface-1/95 border-mesh-border text-mesh-text"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-mesh-text-dim">
+              <Label className="t-micro">
                 Out Interface
                 <HelpTooltip text="Match traffic leaving via this interface." />
               </Label>
@@ -821,19 +853,17 @@ function MikrotikNatDialog({
                 value={outInterface}
                 onChange={(e) => setOutInterface(e.target.value)}
                 placeholder="e.g. bridge1"
-                className="bg-mesh-surface-1/95 border-mesh-border text-mesh-text"
               />
             </div>
           </div>
 
           {/* Comment */}
           <div className="space-y-1.5">
-            <Label className="text-mesh-text-dim">Comment</Label>
+            <Label className="t-micro">Comment</Label>
             <Input
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Web server port forward"
-              className="bg-mesh-surface-1/95 border-mesh-border text-mesh-text"
             />
           </div>
 
@@ -846,28 +876,29 @@ function MikrotikNatDialog({
               onChange={(e) => setDisabled(e.target.checked)}
               className="rounded border-mesh-border bg-mesh-surface-1"
             />
-            <Label htmlFor="mt-nat-disabled" className="text-mesh-text-dim">
+            <Label htmlFor="mt-nat-disabled" className="t-small">
               Disabled
             </Label>
           </div>
 
           {/* Action buttons */}
           <div className="flex justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
+            <button
+              type="button"
+              className="btn"
               onClick={() => onOpenChange(false)}
-              className="border-mesh-border-strong text-mesh-text"
             >
               Cancel
-            </Button>
-            <Button
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
               onClick={handleSubmit}
               disabled={saving || !chain || !action}
-              className="bg-mesh-primary hover:bg-mesh-primary text-white"
             >
-              {saving && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+              {saving && <Loader2 className="h-3 w-3 animate-spin" />}
               {existing ? "Update" : "Create"}
-            </Button>
+            </button>
           </div>
         </div>
       </DialogContent>
