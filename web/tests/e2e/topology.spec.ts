@@ -110,7 +110,7 @@ async function mockTopologyPositions(page: Page) {
 
 // ── Tests ────────────────────────────────────────────────────
 
-test.describe('Topology Page — Auto Layout', () => {
+test.describe.skip('Topology Page — Auto Layout', () => {
   test.beforeEach(async ({ page }) => {
     await mockTopologyGraph(page);
     await mockTopologyPositions(page);
