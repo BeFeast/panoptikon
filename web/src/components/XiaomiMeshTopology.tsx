@@ -15,7 +15,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { fetchXiaomiTopology } from "@/lib/api";
 import type { XiaomiTopology, XiaomiTopoNode, XiaomiTopoLeaf } from "@/lib/types";
@@ -46,13 +45,7 @@ function NodeCard({
   const onlineDevices = node.online ?? 0;
 
   return (
-    <Card
-      className={`border-mesh-border bg-mesh-surface-1 transition-shadow hover:shadow-lg ${
-        isMain
-          ? "border-[#fbbf24]/30 shadow-[#fbbf24]/5"
-          : "hover:border-mesh-border"
-      }`}
-    >
+    <Card className={isMain ? "ring-1 ring-[#fbbf24]/30" : undefined}>
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
           <div
@@ -67,7 +60,7 @@ function NodeCard({
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <CardTitle className="truncate text-sm font-semibold text-white">
+            <CardTitle className="truncate text-sm font-semibold text-mesh-text">
               {node.locale || node.name || "Mesh Node"}
             </CardTitle>
             <p className="truncate font-mono text-xs text-mesh-text-dim">
@@ -77,7 +70,7 @@ function NodeCard({
           <span
             className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${
               node.ip
-                ? "bg-[#4ade80] shadow-[0_0_6px_rgba(52,211,153,0.5)]"
+                ? "bg-[#4ade80] shadow-[0_0_6px_rgba(74,222,128,0.5)]"
                 : "bg-mesh-text-mute"
             }`}
           />
@@ -146,7 +139,7 @@ function NodeCard({
                     {leaf.name || leaf.mac || "Unknown"}
                   </span>
                   <span className="shrink-0 font-mono text-mesh-text-mute">
-                    {leaf.ip || "\u2014"}
+                    {leaf.ip || "—"}
                   </span>
                 </div>
               ))}
@@ -162,7 +155,7 @@ function NodeCard({
 
 function NodeCardSkeleton() {
   return (
-    <Card className="">
+    <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
           <Skeleton className="h-10 w-10 rounded-lg" />
@@ -249,9 +242,7 @@ export default function XiaomiMeshTopology() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-white">
-            Mesh Topology
-          </h2>
+          <h2 className="t-h2 text-mesh-text">Mesh Topology</h2>
           <p className="mt-1 text-sm text-mesh-text-dim">
             Network mesh nodes from the Xiaomi router topology graph
           </p>
@@ -262,56 +253,45 @@ export default function XiaomiMeshTopology() {
               Updated {lastRefresh.toLocaleTimeString()}
             </span>
           )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={load}
-            className="border-mesh-border bg-mesh-surface-1 text-mesh-text hover:bg-mesh-surface-2"
-          >
+          <button type="button" className="btn btn-sm" onClick={load}>
             <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
             Refresh
-          </Button>
+          </button>
         </div>
       </div>
 
       {/* Summary stats */}
       {!loading && data && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Card className="">
+          <Card>
             <CardContent className="flex items-center gap-3 p-4">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-mesh-primary/20">
-                <Router className="h-4.5 w-4.5 text-mesh-primary" />
+                <Router className="h-4 w-4 text-mesh-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">
-                  {stats.nodeCount}
-                </p>
+                <p className="t-h1 text-mesh-text">{stats.nodeCount}</p>
                 <p className="text-xs text-mesh-text-dim">Mesh Nodes</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="">
+          <Card>
             <CardContent className="flex items-center gap-3 p-4">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#4ade80]/20">
-                <MonitorSmartphone className="h-4.5 w-4.5 text-[#4ade80]" />
+                <MonitorSmartphone className="h-4 w-4 text-[#4ade80]" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">
-                  {stats.totalDevices}
-                </p>
+                <p className="t-h1 text-mesh-text">{stats.totalDevices}</p>
                 <p className="text-xs text-mesh-text-dim">Online Devices</p>
               </div>
             </CardContent>
           </Card>
-          <Card className="">
+          <Card>
             <CardContent className="flex items-center gap-3 p-4">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#c084fc]/20">
-                <Wifi className="h-4.5 w-4.5 text-[#c084fc]" />
+                <Wifi className="h-4 w-4 text-[#c084fc]" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">
-                  {stats.totalLeafs}
-                </p>
+                <p className="t-h1 text-mesh-text">{stats.totalLeafs}</p>
                 <p className="text-xs text-mesh-text-dim">Connected Clients</p>
               </div>
             </CardContent>
@@ -321,15 +301,16 @@ export default function XiaomiMeshTopology() {
 
       {/* Error state */}
       {error && (
-        <Card className="border-[#fb7185]/20 bg-[#fb7185]/5">
-          <CardContent className="p-4">
+        <Card>
+          <CardContent className="space-y-2 p-4">
             <p className="text-sm text-[#fb7185]">{error}</p>
             <button
+              type="button"
+              className="btn btn-ghost btn-sm"
               onClick={() => {
                 setLoading(true);
                 load();
               }}
-              className="mt-2 text-xs text-mesh-primary hover:underline"
             >
               Retry
             </button>
@@ -362,7 +343,7 @@ export default function XiaomiMeshTopology() {
 
       {/* Empty state */}
       {!loading && !error && data && sortedNodes.length === 0 && (
-        <Card className="">
+        <Card>
           <CardContent className="flex flex-col items-center gap-3 py-12">
             <Router className="h-10 w-10 text-mesh-text-mute" />
             <p className="text-sm text-mesh-text-dim">

@@ -9,7 +9,6 @@ import {
   AlertCircle,
   ArrowLeft,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -216,11 +215,12 @@ export default function XiaomiMeshSettingsPage() {
         <div className="flex items-center gap-3">
           <Link
             href="/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-mesh-border text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/55 hover:text-white"
+            aria-label="Back to settings"
+            className="btn btn-ghost btn-sm h-8 w-8 justify-center px-0"
           >
             <ArrowLeft className="h-4 w-4" />
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Xiaomi Mesh</h1>
+          <h1 className="t-h1 text-mesh-text">Xiaomi Mesh</h1>
         </div>
 
         <SettingsSection
@@ -259,13 +259,13 @@ export default function XiaomiMeshSettingsPage() {
                 value={ip}
                 onChange={(e) => setIp(e.target.value)}
                 autoComplete="one-time-code"
-                className={`border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
+                className={
                   ipValidation === "valid"
                     ? "border-[#4ade80]/40"
                     : ipValidation === "error"
                       ? "border-[#fb7185]/40"
-                      : ""
-                }`}
+                      : undefined
+                }
                 placeholder="10.10.0.199"
               />
               {ipValidation === "valid" && (
@@ -299,7 +299,6 @@ export default function XiaomiMeshSettingsPage() {
               value={proxyHost}
               onChange={(e) => setProxyHost(e.target.value)}
               autoComplete="one-time-code"
-              className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder="e.g. 10.10.0.14:9199"
             />
             <p className="text-xs text-mesh-text-mute">
@@ -326,7 +325,6 @@ export default function XiaomiMeshSettingsPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
-              className="border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute"
               placeholder={
                 passwordSet
                   ? "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022  (leave blank to keep current)"
@@ -356,13 +354,13 @@ export default function XiaomiMeshSettingsPage() {
                 max={300}
                 value={pollInterval}
                 onChange={(e) => setPollInterval(e.target.value)}
-                className={`border-mesh-border bg-mesh-surface-1 text-white placeholder:text-mesh-text-mute ${
+                className={
                   intervalValidation === "valid"
                     ? "border-[#4ade80]/40"
                     : intervalValidation === "error"
                       ? "border-[#fb7185]/40"
-                      : ""
-                }`}
+                      : undefined
+                }
                 placeholder="30"
               />
               {intervalValidation === "valid" && (
@@ -431,11 +429,11 @@ export default function XiaomiMeshSettingsPage() {
               disabled={!canSave}
               onClick={handleSave}
             />
-            <Button
-              variant="outline"
+            <button
+              type="button"
               onClick={handleTest}
               disabled={!ip || !ipValid || testStatus === "loading"}
-              className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55 disabled:opacity-40"
+              className="btn disabled:cursor-not-allowed disabled:opacity-40"
             >
               {testStatus === "loading" ? (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -443,7 +441,7 @@ export default function XiaomiMeshSettingsPage() {
                 <Plug className="mr-1.5 h-3.5 w-3.5" />
               )}
               Test Connection
-            </Button>
+            </button>
           </div>
         </SettingsSection>
       </div>
