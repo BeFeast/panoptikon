@@ -139,7 +139,7 @@ test.describe('Topology — literal port of topology.jsx', () => {
     await expect(page.getByRole('heading', { name: 'Topology' })).toBeVisible();
 
     // Graph SVG canvas + side panel are both visible at first paint.
-    await expect(page.getByTestId('topology-canvas').locator('svg')).toBeVisible({
+    await expect(page.getByTestId('topology-canvas').locator('svg').first()).toBeVisible({
       timeout: 10_000,
     });
     await expect(page.getByTestId('topology-side-panel')).toBeVisible();
@@ -151,7 +151,7 @@ test.describe('Topology — literal port of topology.jsx', () => {
   });
 
   test('selecting an SVG node updates the side panel', async ({ page }) => {
-    await expect(page.getByTestId('topology-canvas').locator('svg')).toBeVisible({
+    await expect(page.getByTestId('topology-canvas').locator('svg').first()).toBeVisible({
       timeout: 10_000,
     });
 
@@ -167,7 +167,7 @@ test.describe('Topology — literal port of topology.jsx', () => {
   test('header trace button navigates to the device workspace', async ({
     page,
   }) => {
-    await expect(page.getByTestId('topology-canvas').locator('svg')).toBeVisible({
+    await expect(page.getByTestId('topology-canvas').locator('svg').first()).toBeVisible({
       timeout: 10_000,
     });
     await page.getByTestId('topology-trace').click();
