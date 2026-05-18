@@ -350,7 +350,7 @@ export default function DevicesPage() {
   };
 
   return (
-    <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+    <div data-testid="devices-root" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Header */}
       <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
         <div>

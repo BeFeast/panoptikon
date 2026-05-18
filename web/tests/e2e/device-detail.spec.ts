@@ -46,11 +46,17 @@ test.describe('Device detail page — enrichment display', () => {
     // The sheet should contain Info tab content
     const sheetContent = await page.getByRole('dialog').textContent() ?? '';
 
-    // Verify key sections exist
+    // Verify key sections exist. The literal-port drawer (post #788) uses
+    // an Overview tab (KPIs + Traffic + Listening ports) instead of the
+    // legacy Info/MAC labels — match either generation so the spec stays
+    // green across drawer redesigns.
     const hasInfoContent =
       sheetContent.includes('MAC Address') ||
       sheetContent.includes('IP Address') ||
-      sheetContent.includes('Info');
+      sheetContent.includes('Info') ||
+      sheetContent.includes('Overview') ||
+      sheetContent.includes('Traffic') ||
+      sheetContent.includes('Audit');
     expect(hasInfoContent).toBeTruthy();
   });
 
