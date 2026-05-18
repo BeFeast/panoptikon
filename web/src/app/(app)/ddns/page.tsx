@@ -47,6 +47,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PageTransition } from "@/components/PageTransition";
 import {
   fetchDdnsEntries,
@@ -193,7 +200,7 @@ function DdnsFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="max-w-lg bg-mesh-surface-1 border-mesh-border text-mesh-text max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {initial ? "Edit DDNS Entry" : "Add DDNS Entry"}
@@ -203,32 +210,34 @@ function DdnsFormDialog({
           <div className="grid grid-cols-2 gap-5">
             <div className="space-y-2">
               <Label>Provider</Label>
-              <select
-                className="w-full mesh-card px-3 py-2 text-sm text-mesh-text"
-                value={provider}
-                onChange={(e) => setProvider(e.target.value)}
-              >
-                {PROVIDERS.map((p) => (
-                  <option key={p} value={p}>
-                    {p.charAt(0).toUpperCase() + p.slice(1)}
-                  </option>
-                ))}
-              </select>
+              <Select value={provider} onValueChange={setProvider}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROVIDERS.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p.charAt(0).toUpperCase() + p.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             {routerTypes.length > 1 && (
               <div className="space-y-2">
                 <Label>Router Type</Label>
-                <select
-                  className="w-full mesh-card px-3 py-2 text-sm text-mesh-text"
-                  value={routerType}
-                  onChange={(e) => setRouterType(e.target.value)}
-                >
-                  {routerTypes.map((t) => (
-                    <option key={t} value={t}>
-                      MikroTik
-                    </option>
-                  ))}
-                </select>
+                <Select value={routerType} onValueChange={setRouterType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {routerTypes.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        MikroTik
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             )}
           </div>
@@ -236,7 +245,6 @@ function DdnsFormDialog({
           <div className="space-y-2">
             <Label>Hostname *</Label>
             <Input
-              className="bg-mesh-surface-1 border-mesh-border"
               placeholder="home.example.com"
               value={hostname}
               onChange={(e) => setHostname(e.target.value)}
@@ -246,7 +254,6 @@ function DdnsFormDialog({
           <div className="space-y-2">
             <Label>Zone</Label>
             <Input
-              className="bg-mesh-surface-1 border-mesh-border"
               placeholder="example.com (for Cloudflare)"
               value={zone}
               onChange={(e) => setZone(e.target.value)}
@@ -257,7 +264,6 @@ function DdnsFormDialog({
             <div className="space-y-2">
               <Label>Username</Label>
               <Input
-                className="bg-mesh-surface-1 border-mesh-border"
                 placeholder="Username or email"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -271,7 +277,6 @@ function DdnsFormDialog({
                 )}
               </Label>
               <Input
-                className="bg-mesh-surface-1 border-mesh-border"
                 type="password"
                 placeholder={initial?.has_password ? "Leave blank to keep" : "Password"}
                 value={password}
@@ -288,7 +293,6 @@ function DdnsFormDialog({
               )}
             </Label>
             <Input
-              className="bg-mesh-surface-1 border-mesh-border"
               type="password"
               placeholder={
                 initial?.has_api_token
@@ -303,36 +307,37 @@ function DdnsFormDialog({
           <div className="grid grid-cols-3 gap-5">
             <div className="space-y-2">
               <Label>IP Source</Label>
-              <select
-                className="w-full mesh-card px-3 py-2 text-sm text-mesh-text"
-                value={ipSource}
-                onChange={(e) => setIpSource(e.target.value)}
-              >
-                {IP_SOURCES.map((s) => (
-                  <option key={s} value={s}>
-                    {s.charAt(0).toUpperCase() + s.slice(1)}
-                  </option>
-                ))}
-              </select>
+              <Select value={ipSource} onValueChange={setIpSource}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {IP_SOURCES.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Protocol</Label>
-              <select
-                className="w-full mesh-card px-3 py-2 text-sm text-mesh-text"
-                value={protocol}
-                onChange={(e) => setProtocol(e.target.value)}
-              >
-                {PROTOCOLS.map((p) => (
-                  <option key={p} value={p}>
-                    {p.toUpperCase()}
-                  </option>
-                ))}
-              </select>
+              <Select value={protocol} onValueChange={setProtocol}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROTOCOLS.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p.toUpperCase()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Interface</Label>
               <Input
-                className="bg-mesh-surface-1 border-mesh-border"
                 placeholder="eth0"
                 value={interfaceName}
                 onChange={(e) => setInterfaceName(e.target.value)}
@@ -463,7 +468,9 @@ export default function DdnsPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-white">Dynamic DNS</h1>
+            <h1 className="t-display" style={{ margin: 0 }}>
+              Dynamic DNS
+            </h1>
             <p className="text-sm text-mesh-text-dim">
               Manage DDNS client configurations for automatic DNS updates
             </p>
@@ -487,24 +494,24 @@ export default function DdnsPage() {
         {statusData === null ? (
           <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
             {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-24 bg-mesh-surface-1" />
+              <Skeleton key={i} className="h-24" />
             ))}
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-5 md:grid-cols-4">
-            <Card className="">
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                   Total Entries
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-semibold tabular-nums text-white">
+                <p className="text-2xl font-semibold tabular-nums text-mesh-text">
                   {statusData.total}
                 </p>
               </CardContent>
             </Card>
-            <Card className="">
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                   Enabled
@@ -516,7 +523,7 @@ export default function DdnsPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="">
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                   Healthy
@@ -528,7 +535,7 @@ export default function DdnsPage() {
                 </p>
               </CardContent>
             </Card>
-            <Card className="">
+            <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                   Failing
@@ -546,7 +553,7 @@ export default function DdnsPage() {
         {/* Search */}
         <div className="flex items-center gap-2">
           <Input
-            className="max-w-sm bg-mesh-surface-1 border-mesh-border"
+            className="max-w-sm"
             placeholder="Search by hostname, provider, or IP..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -554,11 +561,11 @@ export default function DdnsPage() {
         </div>
 
         {/* Table */}
-        <Card className="">
+        <Card>
           {entries === null ? (
             <div className="p-6 space-y-3">
               {[...Array(3)].map((_, i) => (
-                <Skeleton key={i} className="h-12 bg-mesh-border-strong" />
+                <Skeleton key={i} className="h-12" />
               ))}
             </div>
           ) : filtered.length === 0 ? (
@@ -581,7 +588,7 @@ export default function DdnsPage() {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-mesh-border-strong">
+                <TableRow>
                   <TableHead className="text-mesh-text-dim">Provider</TableHead>
                   <TableHead className="text-mesh-text-dim">Hostname</TableHead>
                   <TableHead className="text-mesh-text-dim">Current IP</TableHead>
@@ -595,15 +602,10 @@ export default function DdnsPage() {
               </TableHeader>
               <TableBody>
                 {filtered.map((entry) => (
-                  <TableRow key={entry.id} className="border-mesh-border-strong">
+                  <TableRow key={entry.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Badge
-                          variant="outline"
-                          className="border-mesh-text-mute text-mesh-text"
-                        >
-                          {entry.provider}
-                        </Badge>
+                        <Badge variant="outline">{entry.provider}</Badge>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -646,10 +648,7 @@ export default function DdnsPage() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant="outline"
-                        className="border-mesh-text-mute text-mesh-text-dim text-xs"
-                      >
+                      <Badge variant="outline" className="text-xs">
                         MikroTik
                       </Badge>
                     </TableCell>
@@ -709,10 +708,10 @@ export default function DdnsPage() {
         open={!!pendingDelete}
         onOpenChange={(v) => !v && setPendingDelete(null)}
       >
-        <AlertDialogContent className="bg-mesh-surface-1 border-mesh-border text-mesh-text">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete DDNS Entry</AlertDialogTitle>
-            <AlertDialogDescription className="text-mesh-text-dim">
+            <AlertDialogDescription>
               Are you sure you want to delete the DDNS entry for{" "}
               <strong className="text-mesh-text">
                 {pendingDelete?.hostname}
@@ -721,12 +720,10 @@ export default function DdnsPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel className="border-mesh-text-mute text-mesh-text">
-              Cancel
-            </AlertDialogCancel>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-[#fb7185] hover:bg-[#fb7185]"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
             </AlertDialogAction>
