@@ -275,18 +275,26 @@ test.describe.skip("Section Spacing (#571)", () => {
       page.getByRole("heading", { name: "Settings", level: 1 }),
     ).toBeVisible({ timeout: 10000 });
 
-    // Settings sections should have space-y-8 (32px gap) between them
-    const container = page.locator(".space-y-8").first();
-    await expect(container).toBeVisible();
+    // Sections from the literal-port design source (settings.jsx) — group
+    // labels: Router, DNS · networking, Certificates · security,
+    // Fleet · telemetry, Notifications, Advanced. Each lands as a
+    // [data-testid="settings-section-<slug>"] container.
+    const sections = page.locator('[data-testid^="settings-section-"]');
+    await expect(sections.first()).toBeVisible();
+    const sectionCount = await sections.count();
+    expect(sectionCount).toBeGreaterThanOrEqual(6);
 
-    // Cards grid should preserve visible separation in the settings directory.
-    const grid = page.locator("main .grid").filter({ hasText: "Scanner" }).first();
+    // The design source uses inline `gridTemplateColumns: repeat(3, 1fr)`
+    // + `gap: 10` on each group's tile grid. Verify at least one tile grid
+    // renders with a visible gap >= 8px (design literal 10px, with a small
+    // tolerance for browser rounding).
+    const grid = page.locator(".settings-tile-grid").first();
     await expect(grid).toBeVisible();
-    const gap = await grid.evaluate((el) =>
-      window.getComputedStyle(el).gap,
+    const gap = await grid.evaluate(
+      (el) => window.getComputedStyle(el).gap,
     );
     const gapValue = parseInt(gap, 10);
-    expect(gapValue).toBeGreaterThanOrEqual(12);
+    expect(gapValue).toBeGreaterThanOrEqual(8);
 
     await page.screenshot({
       path: "tests/screenshots/section-spacing-settings.png",

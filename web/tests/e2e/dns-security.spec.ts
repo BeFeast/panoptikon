@@ -92,7 +92,7 @@ test.describe.skip("DNS Security settings page", () => {
     });
   });
 
-  test("settings page shows DNS Security card in Network section", async ({
+  test("settings page shows DNS security tile in DNS · networking section", async ({
     page,
   }) => {
     await page.goto("/settings");
@@ -101,11 +101,12 @@ test.describe.skip("DNS Security settings page", () => {
       page.getByRole("heading", { name: "Settings", level: 1 })
     ).toBeVisible({ timeout: 15000 });
 
-    // DNS Security card should be visible
-    await expect(page.getByText("DNS Security")).toBeVisible();
-    await expect(
-      page.getByText("Configure DNS-over-TLS (DoT) and DNSSEC validation.")
-    ).toBeVisible();
+    // Literal-port labels from panopticon/project/settings.jsx (mesh).
+    // Tile title is now "DNS security" (lowercase 's' per design source);
+    // group label is "DNS · networking".
+    const tile = page.locator('[data-testid="settings-tile"][data-tile-id="dns-security"]');
+    await expect(tile).toBeVisible();
+    await expect(tile).toContainText("DNS security");
 
     await page.screenshot({
       path: "tests/screenshots/settings-dns-security-card.png",
