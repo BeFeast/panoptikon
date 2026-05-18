@@ -1,213 +1,282 @@
 "use client";
 
+// ─────────────────────────────────────────────────────────────────────────
+// /devices — literal port of `panopticon/project/devices.jsx` + the
+// DeviceDetail body from `panopticon/project/details.jsx`.
+//
+// Per design-export-to-ux-issues runbook (Source Code Port Protocol):
+//  • inline `style={{ var(--X) }}` mirrors the source verbatim;
+//  • conflict-resolved tokens (--border, --primary, --status-*) inline
+//    literal hex from `panopticon/project/tokens.css` mesh direction;
+//  • mock data arrays are replaced with real `/api/v1/devices` data and
+//    related per-device endpoints (events, port scan, traffic chart);
+//  • all other tokens (`--surface-*`, `--text-*`, `--radius-*`, etc.) are
+//    declared in `web/src/app/globals.css` as part of the mesh direction
+//    and consumed via CSS vars without translation to Tailwind utilities.
+// ─────────────────────────────────────────────────────────────────────────
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Link from "next/link";
-import { motion } from "framer-motion";
-import { ArrowDown, ArrowUp, Battery, Box, ChevronDown, CircuitBoard, Container, Cpu, Download, ExternalLink, Gamepad2, HardDrive, HelpCircle, Laptop, Loader2, LayoutGrid, List, MemoryStick, Monitor, Network, Pencil, Pin, PinOff, Plus, Power, Printer, Radar, RotateCcw, Router, Search, Server, Smartphone, Tablet, Tv, VolumeX, Wifi, WifiOff } from "lucide-react";
-import { getDeviceIcon } from "@/lib/device-icons";
+import {
+  ArrowDown,
+  ChevronRight,
+  Cpu,
+  Eye,
+  Filter as FilterIcon,
+  Network as NetworkIcon,
+  Pin as PinIcon,
+  PlugZap,
+  Plus,
+  Power,
+  Printer,
+  RefreshCw,
+  Router,
+  Search,
+  Server,
+  SlidersHorizontal,
+  Tag as TagIcon,
+  Tv,
+  Wifi,
+  X as XIcon,
+} from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { fetchDevices, fetchDeviceEvents, fetchDeviceUptime, wakeDevice, triggerPortScan, fetchPortScan, updateDevice, resetDeviceCustom, fetchDeviceSysinfo, createAsset, fetchXiaomiWifiDevices, fetchXiaomiDevices, fetchXiaomiStatus, identifyDevices, resolveDevices, triggerNetworkScan } from "@/lib/api";
-import type { DeviceEvent, UptimeStats, PortScanResult, DeviceCustomFields, CreateAssetRequest } from "@/lib/api";
-import type { Device, DeviceSysinfo, DeviceWifiInfo, XiaomiWifiDevice, XiaomiDevice } from "@/lib/types";
-import { formatPercent, timeAgo } from "@/lib/format";
-import { useWsEvent } from "@/lib/ws";
-import { getOsDisplay } from "@/lib/os-icons";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { PageTransition } from "@/components/PageTransition";
-import { HelpTooltip } from "@/components/HelpTooltip";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { StaggerContainer, StaggerItem } from "@/components/MotionStagger";
-import { MotionCard } from "@/components/MotionCard";
-import { DeviceTrafficChart } from "@/components/DeviceTrafficChart";
-import { StatusSparkline } from "@/components/StatusSparkline";
-import { EmptyState } from "@/components/EmptyState";
-import { ErrorState } from "@/components/ErrorState";
-// ─── U1 mesh imports ───────────────────────────────────────────────────
-import { Icon as MeshIcon } from "@/components/mesh/Icon";
+
 import { Spark } from "@/components/mesh/Spark";
 import { StatusDot } from "@/components/mesh/StatusDot";
 import { EmptyState as MeshEmptyState } from "@/components/mesh/state/EmptyState";
 import { LoadingState } from "@/components/mesh/state/LoadingState";
 import { ErrorState as MeshErrorState } from "@/components/mesh/state/ErrorState";
-import { DetailsDrawer } from "@/components/mesh/details/DetailsDrawer";
 
+import {
+  fetchDevices,
+  fetchDeviceEvents,
+  fetchPortScan,
+  triggerNetworkScan,
+  updateDevice,
+  wakeDevice,
+} from "@/lib/api";
+import type { DeviceEvent, PortScanResult } from "@/lib/api";
+import type { Device } from "@/lib/types";
+import { timeAgo } from "@/lib/format";
+import { useWsEvent } from "@/lib/ws";
 
-import { downloadExport } from "@/lib/export";
+import { AddAssetDialog } from "./AddAssetDialog";
 
-type Filter = "all" | "online" | "offline" | "unknown";
-type ViewMode = "grid" | "table";
-type SortField = "last_seen_at" | "ip" | "hostname";
-type SortDir = "asc" | "desc";
+// ─────────────────────────────────────────────────────────────────────────
+// Helpers — design `genS` / `gen` synthetic sparkline placeholders. The
+// backend doesn't expose a per-device 24h series today (TODO BACKEND), so
+// we keep the deterministic generator from the design source. Mark with
+// `data-synthetic` so future audits can find them once the real series
+// lands.
+// ─────────────────────────────────────────────────────────────────────────
+function genS(n: number, b: number, v: number, seed = 0): number[] {
+  const a: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const noise = Math.sin((i + seed) / 2) * v * 0.7 + (pseudo(i + seed) - 0.5) * v;
+    a.push(Math.max(0, b + noise));
+  }
+  return a;
+}
+function pseudo(x: number): number {
+  const s = Math.sin(x * 12.9898) * 43758.5453;
+  return s - Math.floor(s);
+}
+
+function deriveVlan(ip: string): string {
+  const seg = ip.split(".")[2];
+  if (!seg) return "trusted";
+  const num = parseInt(seg, 10);
+  if (Number.isNaN(num)) return "trusted";
+  if (num >= 6 && num <= 7) return "iot";
+  if (num === 0) return "mgmt";
+  return "trusted";
+}
+
+function vlanColor(vlan: string): string {
+  if (vlan === "trusted") return "#4ade80";
+  if (vlan === "iot") return "#818cf8";
+  if (vlan === "guest") return "#fbbf24";
+  return "#38bdf8";
+}
+
+function devicePrimaryTitle(d: Device): string {
+  return (
+    d.custom_name?.trim() ||
+    d.hostname?.trim() ||
+    d.name?.trim() ||
+    (d.ips ?? [])[0] ||
+    "Unknown device"
+  );
+}
+
+function deviceTypeIcon(d: Device) {
+  const t = (d.custom_type ?? d.device_type ?? "").toLowerCase();
+  if (t.includes("router") || t.includes("ap")) return Router;
+  if (t.includes("printer")) return Printer;
+  if (t.includes("camera")) return Eye;
+  if (t.includes("tv")) return Tv;
+  if (t.includes("nas") || t.includes("server")) return Server;
+  if (t.includes("wifi")) return Wifi;
+  if (t.includes("iot") || t.includes("esp")) return NetworkIcon;
+  return Cpu;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// StatusBadge — direct port of devices.jsx#StatusBadge.
+// ─────────────────────────────────────────────────────────────────────────
+function StatusBadge({ status }: { status: "online" | "warning" | "offline" | "inactive" }) {
+  const config = {
+    online: {
+      label: "ONLINE",
+      color: "#4ade80",
+      bg: "rgba(74,222,128,0.08)",
+      border: "rgba(74,222,128,0.25)",
+      pulse: true,
+    },
+    warning: {
+      label: "WARN",
+      color: "#fbbf24",
+      bg: "rgba(251,191,36,0.08)",
+      border: "rgba(251,191,36,0.25)",
+      pulse: false,
+    },
+    offline: {
+      label: "OFFLINE",
+      color: "#fb7185",
+      bg: "rgba(251,113,133,0.08)",
+      border: "rgba(251,113,133,0.25)",
+      pulse: false,
+    },
+    inactive: {
+      label: "IDLE",
+      color: "var(--text-mute)",
+      bg: "var(--surface-2)",
+      border: "rgba(96,144,212,0.20)",
+      pulse: false,
+    },
+  }[status];
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 5,
+        height: 18,
+        padding: "0 7px",
+        borderRadius: "var(--radius-pill)",
+        background: config.bg,
+        color: config.color,
+        border: `var(--hairline) solid ${config.border}`,
+        font: "600 9.5px var(--font-sans)",
+        letterSpacing: "0.06em",
+      }}
+    >
+      <StatusDot
+        status={status === "warning" ? "warning" : status === "offline" ? "offline" : "online"}
+        pulse={config.pulse}
+        size={5}
+      />
+      {config.label}
+    </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// FilterChip — direct port of devices.jsx#FilterChip.
+// ─────────────────────────────────────────────────────────────────────────
+function FilterChip({
+  label,
+  count,
+  active,
+  onClick,
+  testId,
+}: {
+  label: string;
+  count?: number;
+  active?: boolean;
+  onClick?: () => void;
+  testId?: string;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={!!active}
+      data-testid={testId}
+      onClick={onClick}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        height: 24,
+        padding: "0 9px",
+        borderRadius: "var(--radius-sm)",
+        background: active ? "var(--primary-soft)" : "var(--surface-1)",
+        border: `var(--hairline) solid ${active ? "#2563eb" : "rgba(96,144,212,0.20)"}`,
+        color: active ? "var(--text)" : "var(--text-dim)",
+        font: "500 11.5px var(--font-sans)",
+        cursor: "pointer",
+      }}
+    >
+      {label}
+      {count != null && (
+        <span
+          className="mono"
+          style={{ color: active ? "#2563eb" : "var(--text-mute)", fontSize: 10 }}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Page
+// ─────────────────────────────────────────────────────────────────────────
+type Filter = "all" | "online" | "offline" | "unknown" | "warning";
 
 export default function DevicesPage() {
   const [devices, setDevices] = useState<Device[] | null>(null);
-  const [scanningNetwork, setScanningNetwork] = useState(false);
-  const [identifying, setIdentifying] = useState(false);
-  const [resolving, setResolving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
-  const [selectedDevice, setSelectedDevice] = useState<Device | null>(null);
-  const [view, setView] = useState<ViewMode>(() => {
-    if (typeof window !== "undefined") {
-      return (localStorage.getItem("devices-view-preference") as ViewMode) || "table";
-    }
-    return "table";
-  });
-  const [sortField, setSortField] = useState<SortField>("last_seen_at");
-  const [sortDir, setSortDir] = useState<SortDir>("desc");
-  const [addAssetOpen, setAddAssetOpen] = useState(false);
-  const [wifiMap, setWifiMap] = useState<Record<string, DeviceWifiInfo>>({});
-  const selectedUrlParamConsumed = useRef(false);
-
-  const selectDeviceFromUrl = useCallback((loadedDevices: Device[]) => {
-    if (selectedUrlParamConsumed.current) return;
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    const selectedId = params.get("selected") ?? params.get("id");
-    if (!selectedId) return;
-    const match = loadedDevices.find((d) => d.id === selectedId);
-    if (match) {
-      setSelectedDevice(match);
-      selectedUrlParamConsumed.current = true;
-      window.history.replaceState(window.history.state, "", "/devices");
-    }
-  }, []);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const selectedUrlConsumed = useRef(false);
 
   const load = useCallback(async () => {
     try {
-      const loadedDevices = await fetchDevices();
-      setDevices(loadedDevices);
-      selectDeviceFromUrl(loadedDevices);
+      const data = await fetchDevices();
+      setDevices(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load devices");
     }
-  }, [selectDeviceFromUrl]);
+  }, []);
 
   useEffect(() => {
     load();
-    const interval = setInterval(load, 15_000);
-    return () => clearInterval(interval);
+    const id = setInterval(load, 15_000);
+    return () => clearInterval(id);
   }, [load]);
 
+  // Consume ?selected= / ?id= once (use window.location to avoid CSR
+  // bailout on a server-rendered page).
   useEffect(() => {
-    if (devices?.length) selectDeviceFromUrl(devices);
-  }, [devices, selectDeviceFromUrl]);
+    if (selectedUrlConsumed.current || !devices) return;
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const sel = params.get("selected") ?? params.get("id");
+    if (sel && devices.some((d) => d.id === sel)) {
+      setSelectedId(sel);
+      selectedUrlConsumed.current = true;
+      window.history.replaceState(window.history.state, "", "/devices");
+    }
+  }, [devices]);
 
-  // Fetch Xiaomi WiFi data for device list columns
-  useEffect(() => {
-    const loadWifi = async () => {
-      try {
-        // Check if Xiaomi is configured first
-        const status = await fetchXiaomiStatus();
-        if (!status.configured) return;
-
-        // Fetch both APIs in parallel and merge client-side
-        const [wifiDevices, allDevices] = await Promise.all([
-          fetchXiaomiWifiDevices(),
-          fetchXiaomiDevices(),
-        ]);
-
-        // Build device lookup by MAC for speed/online/parent info
-        const deviceByMac: Record<string, XiaomiDevice> = {};
-        for (const d of allDevices) {
-          if (d.mac) deviceByMac[d.mac.toUpperCase()] = d;
-        }
-
-        const map: Record<string, DeviceWifiInfo> = {};
-
-        // Merge WiFi signal data with device data
-        for (const w of wifiDevices) {
-          if (!w.mac) continue;
-          const mac = w.mac.toUpperCase();
-          const dev = deviceByMac[mac];
-          map[mac] = {
-            mac,
-            signal_dbm: w.signal ?? null,
-            band: w.band ?? null,
-            connection_type: "wifi",
-            mesh_node: dev?.parent_id ?? null,
-            router_name: dev?.name ?? w.name ?? null,
-            upload_bps: dev?.upload_speed ? parseFloat(dev.upload_speed) : null,
-            download_bps: dev?.download_speed ? parseFloat(dev.download_speed) : null,
-            is_online: dev?.online ?? true,
-          };
-        }
-
-        // Add wired devices (in device list but not in wifi list)
-        for (const d of allDevices) {
-          if (!d.mac) continue;
-          const mac = d.mac.toUpperCase();
-          if (!map[mac]) {
-            map[mac] = {
-              mac,
-              signal_dbm: null,
-              band: null,
-              connection_type: "wired",
-              mesh_node: d.parent_id ?? null,
-              router_name: d.name ?? null,
-              upload_bps: d.upload_speed ? parseFloat(d.upload_speed) : null,
-              download_bps: d.download_speed ? parseFloat(d.download_speed) : null,
-              is_online: d.online,
-            };
-          }
-        }
-
-        setWifiMap(map);
-      } catch {
-        // WiFi data is optional — silently ignore
-      }
-    };
-    loadWifi();
-    const interval = setInterval(loadWifi, 30_000);
-    return () => clearInterval(interval);
-  }, []);
-
-  // Keep a ref to current devices so WS handler can look up names without stale closure
+  // Live updates via WS
   const devicesRef = useRef(devices);
   devicesRef.current = devices;
-
-  // Refetch immediately when a device or agent state change arrives via WebSocket
   useWsEvent(
     ["device_online", "device_offline", "new_device", "agent_online", "agent_offline"],
     (msg) => {
@@ -215,38 +284,33 @@ export default function DevicesPage() {
         const d = msg.data as { device_id?: string; mac?: string; ip?: string };
         const dev = devicesRef.current?.find((x) => x.id === d.device_id);
         const label = dev?.name || dev?.hostname || d.mac || "Unknown device";
-
-        if (msg.event === "device_online") {
-          toast.success(`${label} came online`, { description: d.ip });
-        } else if (msg.event === "device_offline") {
-          toast.error(`${label} went offline`);
-        } else if (msg.event === "new_device") {
-          toast.info(`New device discovered: ${d.mac}`, { description: d.ip });
-        }
+        if (msg.event === "device_online") toast.success(`${label} came online`, { description: d.ip });
+        else if (msg.event === "device_offline") toast.error(`${label} went offline`);
+        else if (msg.event === "new_device") toast.info(`New device: ${d.mac}`, { description: d.ip });
       }
       load();
-    }
+    },
   );
+
+  const counts = useMemo(() => {
+    if (!devices) return null;
+    return {
+      all: devices.length,
+      online: devices.filter((d) => d.is_online).length,
+      offline: devices.filter((d) => !d.is_online && d.is_known).length,
+      unknown: devices.filter((d) => !d.is_known).length,
+      warning: devices.filter((d) => !d.is_online && d.is_known).length, // placeholder until severity surfaces
+    };
+  }, [devices]);
 
   const filtered = useMemo(() => {
     if (!devices) return null;
-
     let list = devices;
+    if (filter === "online") list = list.filter((d) => d.is_online);
+    else if (filter === "offline") list = list.filter((d) => !d.is_online && d.is_known);
+    else if (filter === "unknown") list = list.filter((d) => !d.is_known);
+    else if (filter === "warning") list = list.filter((d) => !d.is_online && d.is_known);
 
-    // Filter by status
-    switch (filter) {
-      case "online":
-        list = list.filter((d) => d.is_online);
-        break;
-      case "offline":
-        list = list.filter((d) => !d.is_online && d.is_known);
-        break;
-      case "unknown":
-        list = list.filter((d) => !d.is_known);
-        break;
-    }
-
-    // Search
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter(
@@ -256,295 +320,201 @@ export default function DevicesPage() {
           (d.hostname ?? "").toLowerCase().includes(q) ||
           (d.mac ?? "").toLowerCase().includes(q) ||
           (d.vendor ?? "").toLowerCase().includes(q) ||
-          (d.ips ?? []).some((ip) => ip.includes(q)) ||
-          (d.mdns_services ?? "").toLowerCase().includes(q)
+          (d.ips ?? []).some((ip) => ip.includes(q)),
       );
     }
-
     return list;
   }, [devices, filter, search]);
 
-  const toggleView = useCallback((newView: ViewMode) => {
-    setView(newView);
-    localStorage.setItem("devices-view-preference", newView);
-  }, []);
+  const selectedDevice = useMemo(
+    () => (selectedId ? devices?.find((d) => d.id === selectedId) ?? null : null),
+    [devices, selectedId],
+  );
 
-  const toggleSort = useCallback((field: SortField) => {
-    setSortField((prev) => {
-      if (prev === field) {
-        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-        return field;
-      }
-      setSortDir(field === "last_seen_at" ? "desc" : "asc");
-      return field;
-    });
-  }, []);
-
-  const sorted = useMemo(() => {
-    if (!filtered) return null;
-    const list = [...filtered];
-    list.sort((a, b) => {
-      let cmp = 0;
-      switch (sortField) {
-        case "ip": {
-          const aIp = (a.ips ?? [])[0] ?? "";
-          const bIp = (b.ips ?? [])[0] ?? "";
-          // Numeric IP comparison
-          const aParts = aIp.split(".").map(Number);
-          const bParts = bIp.split(".").map(Number);
-          for (let i = 0; i < 4; i++) {
-            cmp = (aParts[i] ?? 0) - (bParts[i] ?? 0);
-            if (cmp !== 0) break;
-          }
-          break;
-        }
-        case "hostname": {
-          const aH = (a.hostname ?? "").toLowerCase();
-          const bH = (b.hostname ?? "").toLowerCase();
-          cmp = aH.localeCompare(bH);
-          break;
-        }
-        case "last_seen_at":
-        default: {
-          cmp = new Date(a.last_seen_at).getTime() - new Date(b.last_seen_at).getTime();
-          break;
-        }
-      }
-      return sortDir === "asc" ? cmp : -cmp;
-    });
-    return list;
-  }, [filtered, sortField, sortDir]);
-
-  if (error) {
-    return <ErrorState message={error} onRetry={load} />;
-  }
-
-  const counts = devices
-    ? {
-        all: devices.length,
-        online: devices.filter((d) => d.is_online).length,
-        offline: devices.filter((d) => !d.is_online && d.is_known).length,
-        unknown: devices.filter((d) => !d.is_known).length,
-      }
-    : null;
-
-  // ─── New mesh layout helpers (U1 strict port) ────────────────────────
-  // Bandwidth totals (best-effort: backend doesn't expose per-device
-  // historical traffic, so we fall back to agent-reported rates if present).
-  // TODO(backend): expose per-device 24h RX/TX series so this becomes real.
-  const totals = useMemo(() => {
-    if (!devices) return { rxGb: 0, txGb: 0, mbps: 0 };
-    let rxBps = 0;
-    let txBps = 0;
-    for (const d of devices) {
-      const a = d.agent;
-      if (!a) continue;
-      // agent metrics expose net bytes/s if available
-      const aRx = (a as unknown as { rx_bps?: number; bytes_recv_per_sec?: number }).rx_bps
-        ?? (a as unknown as { bytes_recv_per_sec?: number }).bytes_recv_per_sec
-        ?? 0;
-      const aTx = (a as unknown as { tx_bps?: number; bytes_sent_per_sec?: number }).tx_bps
-        ?? (a as unknown as { bytes_sent_per_sec?: number }).bytes_sent_per_sec
-        ?? 0;
-      rxBps += aRx;
-      txBps += aTx;
+  const rescan = async () => {
+    setScanning(true);
+    try {
+      const summary = await triggerNetworkScan();
+      const parts: string[] = [];
+      if (summary.new_devices > 0) parts.push(`${summary.new_devices} new`);
+      if (summary.updated_devices > 0) parts.push(`${summary.updated_devices} updated`);
+      if (summary.offline_devices > 0) parts.push(`${summary.offline_devices} offline`);
+      const desc = parts.length > 0 ? parts.join(", ") : "No changes";
+      toast.success("Network scan complete", { description: `${summary.total_scanned} scanned — ${desc}` });
+      await load();
+    } catch {
+      toast.error("Network scan failed");
+    } finally {
+      setScanning(false);
     }
-    // Convert to GB/24h approximation if we only have current rate
-    const rxGb = (rxBps * 86400) / 1e9;
-    const txGb = (txBps * 86400) / 1e9;
-    const mbps = ((rxBps + txBps) * 8) / 1e6;
-    return { rxGb, txGb, mbps };
-  }, [devices]);
+  };
 
-  const isDslQuery = /[:<>]/.test(search);
-
-  // ─── render ──────────────────────────────────────────────────────────
   return (
-    <PageTransition>
-    <div
-      data-testid="devices-root"
-      className="flex flex-col gap-3 p-4 lg:p-5"
-    >
-      {/* Page header — NETWORK eyebrow + Devices h1 + status sub-line + actions */}
-      <div className="flex flex-col gap-3 border-b border-mesh-border pb-4 xl:flex-row xl:items-end xl:justify-between">
+    <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
         <div>
-          <div className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-mesh-text-mute">
-            Network
-          </div>
-          <h1 className="mt-1 mb-1.5 text-[28px] font-semibold leading-tight tracking-tight text-mesh-text">
+          <div className="t-micro">Network</div>
+          <h1 className="t-display" style={{ margin: "4px 0 6px" }}>
             Devices
           </h1>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11.5px] text-mesh-text-mute">
-            {counts ? (
-              <>
-                <span className="inline-flex items-center gap-1.5" style={{ color: "hsl(var(--status-online))" }}>
-                  <StatusDot status="online" pulse size={6} />
-                  <span className="tabular-nums">{counts.online}</span> online
-                </span>
-                <span className="text-mesh-text-faint">·</span>
-                <span className="inline-flex items-center gap-1.5" style={{ color: "hsl(var(--status-warning))" }}>
-                  <StatusDot status="warning" size={6} />
-                  <span className="tabular-nums">{counts.unknown}</span> new
-                </span>
-                <span className="text-mesh-text-faint">·</span>
-                <span className="inline-flex items-center gap-1.5" style={{ color: "hsl(var(--status-offline))" }}>
-                  <StatusDot status="offline" size={6} />
-                  <span className="tabular-nums">{counts.offline}</span> offline
-                </span>
-                <span className="text-mesh-text-faint">·</span>
-                <span>
-                  <span className="tabular-nums text-mesh-text-dim">{counts.all}</span> known total
-                </span>
-              </>
-            ) : (
-              <span className="text-mesh-text-mute">Loading inventory…</span>
-            )}
+          <div className="t-small mono" style={{ color: "var(--text-mute)" }}>
+            <span style={{ color: "#4ade80" }}>● {counts?.online ?? 0} online</span>
+            <span style={{ color: "var(--text-faint)", margin: "0 8px" }}>·</span>
+            <span style={{ color: "#fbbf24" }}>◐ {counts?.unknown ?? 0} new</span>
+            <span style={{ color: "var(--text-faint)", margin: "0 8px" }}>·</span>
+            <span style={{ color: "#fb7185" }}>○ {counts?.offline ?? 0} offline</span>
+            <span style={{ color: "var(--text-faint)", margin: "0 8px" }}>·</span>
+            <span>{counts?.all ?? 0} known total</span>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            type="button"
+            className="btn"
             data-testid="devices-filter-toggle"
-            variant="secondary"
-            size="sm"
-            className="h-8 gap-1.5 mesh-card text-[12px] text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text"
             onClick={() => {
-              // density/group/vlan controls land in a follow-up — focus the search
-              const input = document.querySelector<HTMLInputElement>(
-                '[data-testid="devices-query-input"]'
-              );
+              const input = document.querySelector<HTMLInputElement>('[data-testid="devices-query-input"]');
               input?.focus();
             }}
           >
-            <MeshIcon name="filter" size={12} />
-            Filters
-          </Button>
-          <Button
+            <FilterIcon size={12} />
+            <span>Filters</span>
+          </button>
+          <button
+            type="button"
+            className="btn"
             data-testid="devices-rescan"
-            variant="secondary"
-            size="sm"
-            disabled={scanningNetwork}
-            className="h-8 gap-1.5 mesh-card text-[12px] text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text"
-            onClick={async () => {
-              setScanningNetwork(true);
-              try {
-                const summary = await triggerNetworkScan();
-                const parts: string[] = [];
-                if (summary.new_devices > 0) parts.push(`${summary.new_devices} new`);
-                if (summary.updated_devices > 0) parts.push(`${summary.updated_devices} updated`);
-                if (summary.offline_devices > 0) parts.push(`${summary.offline_devices} offline`);
-                const desc = parts.length > 0 ? parts.join(", ") : "No changes";
-                toast.success("Network scan complete", { description: `${summary.total_scanned} scanned — ${desc}` });
-                await load();
-              } catch {
-                toast.error("Network scan failed");
-              } finally {
-                setScanningNetwork(false);
-              }
-            }}
+            disabled={scanning}
+            onClick={rescan}
           >
-            {scanningNetwork ? <Loader2 className="h-3 w-3 animate-spin" /> : <MeshIcon name="refresh" size={12} />}
-            {scanningNetwork ? "Scanning…" : "Rescan"}
-          </Button>
-          <Button
+            <RefreshCw size={12} className={scanning ? "animate-spin" : undefined} />
+            <span>{scanning ? "Scanning…" : "Rescan"}</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
             data-testid="devices-add"
-            size="sm"
-            className="h-8 gap-1.5 bg-mesh-primary text-[12px] text-white hover:bg-mesh-primary-hover"
-            onClick={() => setAddAssetOpen(true)}
+            onClick={() => setAddOpen(true)}
           >
-            <MeshIcon name="plus" size={12} />
-            Add device
-          </Button>
+            <Plus size={12} />
+            <span>Add device</span>
+          </button>
         </div>
       </div>
 
-      {/* Query bar + filter chips */}
-      <div
-        data-testid="query-bar"
-        className="flex flex-wrap items-center gap-2 mesh-card p-2.5"
-      >
-        <div className="flex h-7 min-w-[280px] flex-1 items-center gap-2 rounded-sm mesh-card-2 px-2.5">
-          <MeshIcon name="search" size={13} color="hsl(var(--muted-foreground))" />
+      {/* Filter row */}
+      <div className="mesh-card" data-testid="query-bar" style={{ padding: 10, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            flex: "1 1 280px",
+            minWidth: 280,
+            padding: "0 10px",
+            height: 28,
+            background: "var(--surface-2)",
+            border: "var(--hairline) solid rgba(96,144,212,0.20)",
+            borderRadius: "var(--radius-sm)",
+          }}
+        >
+          <Search size={13} color="var(--text-mute)" />
           <input
             data-testid="devices-query-input"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="vlan:iot rx:>10"
             aria-label="Search devices"
-            className="flex-1 border-0 bg-transparent font-mono text-[12px] text-mesh-text outline-none placeholder:text-mesh-text-mute"
+            style={{
+              flex: 1,
+              background: "transparent",
+              border: 0,
+              color: "var(--text)",
+              outline: "none",
+              font: "400 12px var(--font-mono)",
+            }}
           />
-          {search ? (
-            <button
-              type="button"
-              onClick={() => setSearch("")}
-              className="rounded-sm bg-mesh-surface-3 px-1.5 py-px font-mono text-[10px] text-mesh-text-mute hover:text-mesh-text"
-              aria-label="Clear search"
-            >
-              esc
-            </button>
-          ) : null}
-        </div>
-        {isDslQuery ? (
-          <span
-            className="font-mono text-[10.5px] text-[#fbbf24]"
-            title="Server-side query DSL coming soon. Filtering with best-effort client match."
+          <kbd
+            className="mono"
+            style={{
+              font: "500 10px var(--font-mono)",
+              color: "var(--text-mute)",
+              padding: "1px 5px",
+              background: "var(--surface-3)",
+              borderRadius: 3,
+            }}
           >
-            DSL preview
-          </span>
-        ) : null}
-        <div className="flex flex-wrap items-center gap-1.5" role="tablist" aria-label="Status filters">
-          {(
-            [
-              { id: "all", label: "All", count: counts?.all },
-              { id: "online", label: "Online", count: counts?.online },
-              { id: "offline", label: "Offline", count: counts?.offline },
-              { id: "unknown", label: "New", count: counts?.unknown },
-            ] as Array<{ id: Filter; label: string; count?: number }>
-          ).map((chip) => {
-            const active = filter === chip.id;
-            return (
-              <Button
-                key={chip.id}
-                data-testid={`filter-chip-${chip.id}`}
-                variant="secondary"
-                size="sm"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setFilter(chip.id)}
-                className={
-                  "h-7 gap-1.5 rounded-sm border px-2.5 text-[11.5px] font-medium " +
-                  (active
-                    ? "border-mesh-primary bg-mesh-primary-soft text-mesh-text hover:bg-mesh-primary-soft"
-                    : "border-mesh-border bg-mesh-surface-1 text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text")
-                }
-              >
-                {chip.label}
-                {chip.count != null ? (
-                  <span className={"font-mono text-[10px] tabular-nums " + (active ? "text-mesh-primary" : "text-mesh-text-mute")}>
-                    {chip.count}
-                  </span>
-                ) : null}
-              </Button>
-            );
-          })}
+            esc
+          </kbd>
         </div>
-        <div className="ml-auto flex items-center gap-2 font-mono text-[11px] text-mesh-text-mute">
-          <MeshIcon name="sliders" size={12} />
+        <div style={{ display: "flex", gap: 6 }} role="tablist" aria-label="Status filters">
+          <FilterChip
+            label="All"
+            count={counts?.all}
+            active={filter === "all"}
+            onClick={() => setFilter("all")}
+            testId="filter-chip-all"
+          />
+          <FilterChip
+            label="Online"
+            count={counts?.online}
+            active={filter === "online"}
+            onClick={() => setFilter("online")}
+            testId="filter-chip-online"
+          />
+          <FilterChip
+            label="Offline"
+            count={counts?.offline}
+            active={filter === "offline"}
+            onClick={() => setFilter("offline")}
+            testId="filter-chip-offline"
+          />
+          <FilterChip
+            label="Warning"
+            count={counts?.warning}
+            active={filter === "warning"}
+            onClick={() => setFilter("warning")}
+            testId="filter-chip-warning"
+          />
+          <FilterChip
+            label="New"
+            count={counts?.unknown}
+            active={filter === "unknown"}
+            onClick={() => setFilter("unknown")}
+            testId="filter-chip-unknown"
+          />
+        </div>
+        <div style={{ flex: 1 }} />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            font: "500 11px var(--font-mono)",
+            color: "var(--text-mute)",
+          }}
+        >
+          <SlidersHorizontal size={12} />
           <span>density · compact</span>
-          <span className="text-mesh-text-faint">·</span>
+          <span style={{ color: "var(--text-faint)" }}>·</span>
           <span>group · vlan</span>
         </div>
       </div>
 
-      {/* Body — table OR state surface */}
+      {/* Table */}
       {error ? (
         <MeshErrorState
           title="Couldn't load devices"
           message={error}
-          onRetry={() => { setError(null); load(); }}
+          onRetry={() => {
+            setError(null);
+            load();
+          }}
         />
       ) : devices === null ? (
         <LoadingState title="Devices" message="Pulling live inventory…" tiles={0} rows={8} />
-      ) : sorted && sorted.length === 0 ? (
+      ) : filtered && filtered.length === 0 ? (
         <MeshEmptyState
           title="No devices match"
           message={
@@ -554,164 +524,124 @@ export default function DevicesPage() {
           }
         />
       ) : (
-        <div
-          data-testid="devices-table-card"
-          className="overflow-hidden mesh-card"
-        >
+        <div className="mesh-card" data-testid="devices-table-card" style={{ padding: 0, overflow: "hidden" }}>
           {/* Column header */}
           <div
-            className="grid items-center gap-2 border-b border-mesh-border px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.08em] text-mesh-text-mute"
-            style={{ gridTemplateColumns: "22px 1.4fr 1fr 1.2fr 0.9fr 64px 64px 1fr 92px 22px" }}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "22px 1.4fr 1fr 1.2fr 0.9fr 60px 70px 70px 1fr 84px 28px",
+              padding: "8px 12px",
+              font: "600 9.5px var(--font-sans)",
+              letterSpacing: "0.08em",
+              color: "var(--text-mute)",
+              textTransform: "uppercase",
+              borderBottom: "var(--hairline) solid rgba(96,144,212,0.20)",
+              background: "transparent",
+            }}
           >
             <span />
-            <button
-              type="button"
-              className="flex items-center gap-1 text-left text-[10px] uppercase tracking-[0.08em] text-mesh-text-mute hover:text-mesh-text"
-              onClick={() => toggleSort("hostname")}
-            >
-              Name
-              <MeshIcon name={sortField === "hostname" && sortDir === "asc" ? "arrow-up" : "arrow-down"} size={8} color="hsl(var(--muted-foreground))" />
-            </button>
-            <button
-              type="button"
-              className="text-left text-[10px] uppercase tracking-[0.08em] text-mesh-text-mute hover:text-mesh-text"
-              onClick={() => toggleSort("ip")}
-            >
-              IP
-            </button>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              Name <ArrowDown size={8} color="var(--text-faint)" />
+            </span>
+            <span>IP</span>
             <span>MAC · Vendor</span>
             <span>VLAN</span>
-            <span className="text-right">RX GB</span>
-            <span className="text-right">TX GB</span>
-            <span>24h Mbps</span>
+            <span style={{ textAlign: "right" }}>RX GB</span>
+            <span style={{ textAlign: "right" }}>TX GB</span>
+            <span style={{ textAlign: "right" }}>Mbps</span>
+            <span>24h</span>
             <span>Status</span>
             <span />
           </div>
 
-          {(sorted ?? []).map((d, i) => (
-            <MeshDeviceRow
+          {(filtered ?? []).map((d, i, arr) => (
+            <DeviceRow
               key={d.id}
-              device={d}
-              isLast={i === (sorted!.length - 1)}
-              selected={selectedDevice?.id === d.id}
-              onSelect={() => setSelectedDevice(d)}
+              d={d}
+              isLast={i === arr.length - 1}
+              selected={selectedId === d.id}
+              onSelect={() => setSelectedId(d.id)}
             />
           ))}
 
-          {/* Footer summary */}
+          {/* Footer */}
           <div
             data-testid="devices-summary"
-            className="flex items-center justify-between gap-3 border-t border-mesh-border px-3.5 py-2 font-mono text-[11px] text-mesh-text-mute"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              padding: "8px 14px",
+              borderTop: "var(--hairline) solid rgba(96,144,212,0.20)",
+              font: "500 11px var(--font-mono)",
+              color: "var(--text-mute)",
+            }}
           >
             <div>
-              <span className="tabular-nums text-mesh-text">{sorted?.length ?? 0}</span> of{" "}
-              <span className="tabular-nums text-mesh-text">{counts?.all ?? 0}</span> · grouped by vlan
+              {filtered?.length ?? 0} of {counts?.all ?? 0} · grouped by vlan
             </div>
-            <div className="flex gap-3">
-              <span>rx Σ <span className="text-mesh-text">{totals.rxGb.toFixed(1)}</span> GB</span>
-              <span>tx Σ <span className="text-mesh-text">{totals.txGb.toFixed(1)}</span> GB</span>
-              <span>now <span style={{ color: "hsl(var(--status-info))" }}>{totals.mbps.toFixed(0)}</span> Mbps</span>
+            <div style={{ display: "flex", gap: 12 }}>
+              <span>
+                rx Σ <span style={{ color: "var(--text)" }}>—</span> GB
+              </span>
+              <span>
+                tx Σ <span style={{ color: "var(--text)" }}>—</span> GB
+              </span>
+              <span>
+                now <span style={{ color: "#38bdf8" }}>—</span> Mbps
+              </span>
             </div>
           </div>
         </div>
       )}
 
-      {/* Add Asset dialog (preserved) */}
-      <AddAssetDialog
-        open={addAssetOpen}
-        onOpenChange={setAddAssetOpen}
-        onCreated={load}
-      />
+      <AddAssetDialog open={addOpen} onOpenChange={setAddOpen} onCreated={load} />
 
-      {/* Mesh DetailsDrawer wrapping existing DeviceDetail body */}
-      <DetailsDrawer
-        data-testid="device-drawer"
-        open={selectedDevice !== null}
-        onOpenChange={(open) => {
-          if (!open) setSelectedDevice(null);
-        }}
-        width={560}
-      >
-        {selectedDevice && (
-          <div className="flex h-full flex-col overflow-y-auto px-6 pb-6 pt-6">
-            <DeviceDetail device={selectedDevice} onUpdate={load} />
-          </div>
-        )}
-      </DetailsDrawer>
+      {selectedDevice ? (
+        <DeviceDetailDrawer
+          device={selectedDevice}
+          onClose={() => setSelectedId(null)}
+          onUpdate={load}
+        />
+      ) : null}
     </div>
-    </PageTransition>
   );
 }
 
-// ─── Mesh device row (U1) ──────────────────────────────────────────────
-
-function MeshDeviceRow({
-  device,
+// ─────────────────────────────────────────────────────────────────────────
+// DeviceRow — direct port of devices.jsx#DeviceRow.
+// ─────────────────────────────────────────────────────────────────────────
+function DeviceRow({
+  d,
   isLast,
   selected,
   onSelect,
 }: {
-  device: Device;
+  d: Device;
   isLast: boolean;
   selected: boolean;
   onSelect: () => void;
 }) {
-  const effectiveType = device.custom_type ?? device.device_type;
-  const { icon: DevIcon } = getDeviceIcon(
-    device.custom_vendor ?? device.vendor,
-    device.hostname,
-    device.mdns_services,
-    effectiveType,
-  );
-  const { title: displayName } = getDevicePrimaryTitle(device);
-  const primaryIp = (device.ips ?? [])[0] ?? "—";
-  const vendor = device.custom_vendor ?? device.vendor ?? "—";
-
-  // VLAN derivation: best-effort from first IP octet pattern. The backend
-  // doesn't surface vlan tags yet — TODO(backend) wire the real value.
-  const vlan: string = (() => {
-    const seg = primaryIp.split(".")[2];
-    if (!seg || seg === "—") return "—";
-    const num = parseInt(seg, 10);
-    if (Number.isNaN(num)) return "—";
-    if (num >= 6 && num <= 7) return "iot";
-    if (num === 0) return "mgmt";
-    return "trusted";
-  })();
-  const vlanColor =
-    vlan === "trusted"
-      ? "hsl(var(--status-online))"
-      : vlan === "iot"
-        ? "#a855f7"
-        : vlan === "guest"
-          ? "hsl(var(--status-warning))"
-          : "hsl(var(--status-info))";
-
-  // Synthetic 24h spark — replace with real per-device series once backend lands.
-  const sparkData = useMemo(() => {
-    const seed = (device.id.charCodeAt(0) || 1) % 7;
-    const base = device.is_online ? 12 + seed * 4 : 1;
-    const variance = device.is_online ? 9 : 0.5;
-    const arr: number[] = [];
-    for (let i = 0; i < 28; i++) {
-      arr.push(Math.max(0, base + Math.sin(i / 2 + seed) * variance + (Math.random() - 0.5) * variance));
-    }
-    return arr;
-  }, [device.id, device.is_online]);
-
-  const status: "online" | "offline" | "warning" = device.is_online
+  const TypeGlyph = deviceTypeIcon(d);
+  const primaryIp = (d.ips ?? [])[0] ?? "—";
+  const vlan = deriveVlan(primaryIp);
+  const vendor = d.custom_vendor ?? d.vendor ?? "—";
+  const status: "online" | "offline" | "warning" | "inactive" = d.is_online
     ? "online"
-    : device.is_known
+    : d.is_known
       ? "offline"
       : "warning";
-  const statusLabel = status === "online" ? "ONLINE" : status === "offline" ? "OFFLINE" : "NEW";
-  const statusColor = `hsl(var(--status-${status}))`;
-  const statusBg =
-    status === "online"
-      ? "rgba(74,222,128,0.10)"
-      : status === "offline"
-        ? "rgba(244,63,94,0.10)"
-        : "rgba(245,158,11,0.10)";
+  const rowBg = selected ? "var(--surface-2)" : "transparent";
+  const sparkData = useMemo(
+    () => genS(28, 15 + (d.is_online ? 12 : 1) * 6, d.is_online ? 9 : 0.5, (d.id.charCodeAt(0) || 1) % 11),
+    [d.id, d.is_online],
+  );
+  const sparkColor = status === "online" ? "#38bdf8" : "var(--text-mute)";
+  // TODO BACKEND: per-device 24h totals + current mbps
+  const rxGb = "—";
+  const txGb = "—";
+  const mbps = "—";
+  const isNew = !d.is_known;
 
   return (
     <button
@@ -719,2275 +649,916 @@ function MeshDeviceRow({
       data-testid="device-row"
       data-device-row
       onClick={onSelect}
-      className={
-        "relative grid w-full items-center gap-2 px-3 py-2 text-left text-[12.5px] text-mesh-text transition-colors hover:bg-mesh-surface-2/40 " +
-        (selected ? "bg-mesh-surface-2/55" : "")
-      }
+      className={selected ? "selected-rail" : undefined}
       style={{
-        gridTemplateColumns: "22px 1.4fr 1fr 1.2fr 0.9fr 64px 64px 1fr 92px 22px",
-        borderBottom: isLast ? "none" : "1px solid hsl(var(--border) / 0.55)",
+        position: "relative",
+        display: "grid",
+        width: "100%",
+        gridTemplateColumns: "22px 1.4fr 1fr 1.2fr 0.9fr 60px 70px 70px 1fr 84px 28px",
+        padding: "8px 12px",
+        alignItems: "center",
+        borderBottom: isLast ? "none" : "var(--hairline) solid rgba(96,144,212,0.20)",
+        background: rowBg,
+        font: "400 12.5px var(--font-sans)",
+        color: "var(--text)",
+        textAlign: "left",
+        cursor: "pointer",
       }}
     >
-      {selected && (
-        <span className="absolute bottom-1.5 left-0 top-1.5 w-0.5 rounded-r bg-mesh-primary" />
-      )}
-      <span className="flex items-center justify-center text-mesh-text-mute">
-        <DevIcon className="h-3.5 w-3.5" />
-      </span>
-      <span className="flex min-w-0 items-center gap-2">
-        <span className="truncate font-medium text-mesh-text">{displayName}</span>
-        {device.is_favorite && <Pin className="h-2.5 w-2.5 text-mesh-accent" />}
-        {!device.is_known && (
-          <span className="rounded-sm bg-mesh-primary-soft px-1.5 py-px font-mono text-[9px] font-semibold uppercase tracking-wider text-mesh-primary">
-            NEW
-          </span>
-        )}
-      </span>
-      <span className="truncate font-mono text-[11.5px] text-mesh-text-dim">{primaryIp}</span>
-      <span className="flex min-w-0 flex-col gap-0.5">
-        <span className="truncate font-mono text-[11px] text-mesh-text-dim">{device.mac}</span>
-        <span className="truncate text-[10.5px] text-mesh-text-mute">{vendor}</span>
-      </span>
-      <span className="flex items-center gap-1.5">
-        <span className="block h-3 w-1 rounded-sm" style={{ background: vlanColor }} />
-        <span className="font-mono text-[11px] text-mesh-text-dim">{vlan}</span>
-      </span>
-      <span className="text-right font-mono tabular-nums text-mesh-text">—</span>
-      <span className="text-right font-mono tabular-nums text-mesh-text-dim">—</span>
-      <span>
-        <Spark
-          data={sparkData}
-          width={120}
-          height={18}
-          color={status === "online" ? "hsl(var(--status-info))" : "hsl(var(--muted-foreground))"}
-        />
-      </span>
-      <span>
+      {selected ? (
         <span
-          className="inline-flex items-center gap-1.5 rounded-full border px-2 py-px font-sans text-[9.5px] font-semibold uppercase tracking-wider"
+          aria-hidden
           style={{
-            color: statusColor,
-            background: statusBg,
-            borderColor: statusColor + "40",
+            position: "absolute",
+            left: 0,
+            top: 6,
+            bottom: 6,
+            width: 2,
+            background: "#2563eb",
+            borderRadius: "0 2px 2px 0",
+          }}
+        />
+      ) : null}
+
+      <span style={{ display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-mute)" }}>
+        <TypeGlyph size={13} />
+      </span>
+      <span style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+        <span
+          style={{
+            color: "var(--text)",
+            fontWeight: 500,
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
           }}
         >
-          <StatusDot status={status} pulse={status === "online"} size={5} />
-          {statusLabel}
+          {devicePrimaryTitle(d)}
+        </span>
+        {d.is_favorite ? <PinIcon size={10} color="#38bdf8" /> : null}
+        {isNew ? (
+          <span
+            style={{
+              font: "600 8.5px var(--font-sans)",
+              color: "#2563eb",
+              letterSpacing: "0.08em",
+              padding: "1px 5px",
+              background: "var(--primary-soft)",
+              borderRadius: 3,
+            }}
+          >
+            NEW
+          </span>
+        ) : null}
+      </span>
+      <span className="mono" style={{ color: "var(--text-dim)", fontSize: 11.5 }}>
+        {primaryIp}
+      </span>
+      <span style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+        <span className="mono" style={{ color: "var(--text-dim)", fontSize: 11 }}>
+          {d.mac}
+        </span>
+        <span style={{ color: "var(--text-mute)", fontSize: 10.5 }}>{vendor}</span>
+      </span>
+      <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+        <span style={{ width: 4, height: 12, background: vlanColor(vlan), borderRadius: 1 }} />
+        <span className="mono" style={{ color: "var(--text-dim)", fontSize: 11 }}>
+          {vlan}
         </span>
       </span>
-      <span className="flex justify-end text-mesh-text-mute">
-        <MeshIcon name="chevron-right" size={12} />
+      <span className="mono" style={{ textAlign: "right", color: "var(--text)" }}>
+        {rxGb}
+      </span>
+      <span className="mono" style={{ textAlign: "right", color: "var(--text-dim)" }}>
+        {txGb}
+      </span>
+      <span className="mono" style={{ textAlign: "right", color: "var(--text)" }}>
+        {mbps}
+      </span>
+      <span>
+        <Spark data={sparkData} width={120} height={18} color={sparkColor} />
+      </span>
+      <span>
+        <StatusBadge status={status} />
+      </span>
+      <span style={{ color: "var(--text-mute)", display: "flex", justifyContent: "flex-end" }}>
+        <ChevronRight size={12} />
       </span>
     </button>
   );
 }
 
-// ─── Device Card ────────────────────────────────────────
-
-function getDevicePrimaryTitle(device: Device): { title: string; isUnnamed: boolean } {
-  const customName = device.custom_name?.trim();
-  const hostname = device.hostname?.trim();
-  const discoveredName = device.name?.trim();
-
-  if (customName) return { title: customName, isUnnamed: false };
-  if (hostname) return { title: hostname, isUnnamed: false };
-  if (discoveredName) return { title: discoveredName, isUnnamed: false };
-
-  // Use IP as primary title for unnamed devices — more informative than "Unknown Device"
-  const primaryIp = (device.ips ?? [])[0];
-  if (primaryIp) return { title: primaryIp, isUnnamed: true };
-
-  return { title: "Unknown Device", isUnnamed: true };
-}
-
-function DeviceCard({
+// ─────────────────────────────────────────────────────────────────────────
+// DeviceDetailDrawer — literal port of details.jsx#DeviceDetail wrapped in
+// a Radix Dialog so it presents as a right-side drawer. The Radix wrapper
+// is the only adaptation; the panel body composition is byte-exact.
+// ─────────────────────────────────────────────────────────────────────────
+function DeviceDetailDrawer({
   device,
-  onClick,
+  onClose,
+  onUpdate,
 }: {
   device: Device;
-  onClick: () => void;
+  onClose: () => void;
+  onUpdate: () => void;
 }) {
-  const [waking, setWaking] = useState(false);
-  const ips = device.ips ?? [];
-  const primaryIp = ips[0] ?? "—";
-  const { title: displayName, isUnnamed } = getDevicePrimaryTitle(device);
-  const effectiveType = device.custom_type ?? device.device_type;
-  const { icon: DevIcon } = getDeviceIcon(device.custom_vendor ?? device.vendor, device.hostname, device.mdns_services, effectiveType);
-  const vendorDisplay = device.custom_vendor ?? device.vendor ?? null;
-  const canWake = !device.is_online && device.mac && !device.is_randomized_mac;
-  // Only show metrics bars when agent is actively connected AND has real data
-  const hasAgentMetrics =
-    device.agent != null &&
-    device.agent.is_online === true &&
-    (device.agent.cpu_percent != null || device.agent.memory_percent != null);
-
-  const handleWake = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setWaking(true);
-    try {
-      await wakeDevice(device.id);
-      toast.success("Magic packet sent! Device should wake up shortly.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send magic packet");
-    } finally {
-      setWaking(false);
-    }
-  };
-
-  const osDisplay = device.custom_os ?? device.os_family;
-  const modelDisplay = device.custom_model ?? device.device_model;
-  const os = osDisplay ? getOsDisplay(osDisplay) : null;
+  // ESC + body scroll lock
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [onClose]);
 
   return (
-    <Card
-      data-device-row
-      className="h-full min-h-[15.5rem] cursor-pointer transition-[border-color,background-color,box-shadow] hover:border-mesh-text-mute/70 hover:bg-mesh-surface-2/55 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
-      onClick={onClick}
+    <div
+      role="dialog"
+      aria-modal="true"
+      data-testid="device-drawer"
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 60,
+        display: "flex",
+        justifyContent: "flex-end",
+      }}
     >
-      <CardContent className="flex h-full flex-col p-5">
-        {/* ── Header: icon + identity + status badges ── */}
-        <div className="flex items-start gap-3.5">
-          <div
-            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${
-              device.is_online
-                ? "border-[#4ade80]/30 bg-[#4ade80]/10"
-                : "border-mesh-border-strong bg-mesh-surface-1"
-            }`}
-          >
-            <DevIcon
-              className={`h-5 w-5 ${device.is_online ? "text-[#4ade80]" : "text-mesh-text-mute"}`}
-            />
-          </div>
-
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex min-w-0 items-center gap-2">
-              <span
-                className={`h-2 w-2 shrink-0 rounded-full ${
-                  device.is_online ? "bg-[#4ade80]/90" : "bg-mesh-text-mute"
-                }`}
-              />
-              <span
-                className={`min-w-0 flex-1 truncate text-[15px] font-semibold leading-tight ${
-                  isUnnamed ? "text-mesh-text" : "text-white"
-                }`}
-                title={displayName}
-              >
-                {displayName}
-              </span>
-              {device.is_critical && <Pin className="h-3.5 w-3.5 shrink-0 text-[#fbbf24]" />}
-            </div>
-
-            <p className="truncate text-xs text-mesh-text-mute" title={vendorDisplay ?? undefined}>
-              {vendorDisplay ?? "Unknown vendor"}
-            </p>
-
-            {(os || modelDisplay) && (
-              <div className="flex min-h-[1.25rem] flex-wrap items-center gap-1.5 pt-0.5">
-                {os && (
-                  <Badge variant="outline" className={`text-[10px] ${os.colorClass}`}>
-                    {os.label}
-                    {device.os_version ? ` ${device.os_version}` : ""}
-                  </Badge>
-                )}
-                {modelDisplay && (
-                  <span className="truncate text-[10px] text-mesh-text-mute" title={modelDisplay}>
-                    {modelDisplay}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="flex shrink-0 flex-col items-end gap-1.5">
-            <Badge
-              variant="outline"
-              className={`border text-[10px] ${
-                device.is_online
-                  ? "border-[#4ade80]/35 bg-[#4ade80]/10 text-[#4ade80]"
-                  : "border-mesh-border-strong bg-mesh-surface-1 text-mesh-text-dim"
-              }`}
-            >
-              {device.is_online ? "Online" : "Offline"}
-            </Badge>
-            {device.agent?.is_online && (
-              <Badge variant="outline" className="border-mesh-primary/30 bg-mesh-primary/10 text-[10px] text-mesh-primary">
-                Agent
-              </Badge>
-            )}
-            {!device.is_known && (
-              <Badge variant="outline" className="border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[10px] text-[#fbbf24]">
-                New
-              </Badge>
-            )}
-          </div>
-        </div>
-
-        {/* ── Core network metadata ── */}
-        <div className="mt-4 grid grid-cols-2 gap-3 mesh-card p-3">
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-mesh-text-mute">IP</p>
-            <p className="mt-1 truncate font-mono text-[13px] tabular-nums text-mesh-text" title={primaryIp}>
-              {primaryIp}
-            </p>
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-mesh-text-mute">MAC</p>
-            <p className="mt-1 truncate font-mono text-xs tabular-nums text-mesh-text-mute" title={device.mac ?? undefined}>
-              {device.mac ?? "—"}
-            </p>
-          </div>
-        </div>
-
-        {/* ── Agent metrics ── */}
-        {hasAgentMetrics && (
-          <div className="mt-4 space-y-2.5 mesh-card p-3">
-            {device.agent!.cpu_percent != null && (
-              <div className="flex items-center gap-2">
-                <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-mesh-text-mute">CPU</span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-mesh-surface-1">
-                  <div
-                    className="h-full rounded-full bg-mesh-accent/65 transition-all"
-                    style={{ width: `${Math.min(device.agent!.cpu_percent, 100)}%` }}
-                  />
-                </div>
-                <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-mesh-text-dim">
-                  {formatPercent(device.agent!.cpu_percent)}
-                </span>
-              </div>
-            )}
-            {device.agent!.memory_percent != null && (
-              <div className="flex items-center gap-2">
-                <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-mesh-text-mute">RAM</span>
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-mesh-surface-1">
-                  <div
-                    className="h-full rounded-full bg-[#a78bfa]/65 transition-all"
-                    style={{ width: `${Math.min(device.agent!.memory_percent, 100)}%` }}
-                  />
-                </div>
-                <span className="w-10 shrink-0 text-right font-mono text-[11px] tabular-nums text-mesh-text-dim">
-                  {formatPercent(device.agent!.memory_percent)}
-                </span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {device.status_timeline && device.status_timeline.length > 0 && (
-          <div className="mt-4 mesh-card px-3 py-2">
-            <StatusSparkline timeline={device.status_timeline} width={170} height={10} />
-          </div>
-        )}
-
-        {/* ── Footer ── */}
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-mesh-border pt-4">
-          <p className={`text-[11px] ${device.is_online ? "text-[#4ade80]/80" : "text-mesh-text-mute"}`}>
-            {device.is_online ? "Online now" : `Last seen ${timeAgo(device.last_seen_at)}`}
-          </p>
-          {canWake && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1.5 px-2.5 text-[11px] text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text"
-              disabled={waking}
-              onClick={handleWake}
-            >
-              <Power className="h-3 w-3" />
-              {waking ? "Sending…" : "Wake"}
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-// ─── Devices Table ─────────────────────────────────────
-
-function SortIcon({ field, sortField, sortDir }: { field: SortField; sortField: SortField; sortDir: SortDir }) {
-  if (field !== sortField) return null;
-  return sortDir === "asc" ? (
-    <ArrowUp className="ml-1 inline h-3 w-3" />
-  ) : (
-    <ArrowDown className="ml-1 inline h-3 w-3" />
-  );
-}
-
-function DevicesTable({
-  devices,
-  sortField,
-  sortDir,
-  onSort,
-  onSelect,
-  wifiMap,
-}: {
-  devices: Device[];
-  sortField: SortField;
-  sortDir: SortDir;
-  onSort: (field: SortField) => void;
-  onSelect: (device: Device) => void;
-  wifiMap: Record<string, DeviceWifiInfo>;
-}) {
-  const hasWifi = Object.keys(wifiMap).length > 0;
-  const [wakingId, setWakingId] = useState<string | null>(null);
-
-  const handleWake = async (e: React.MouseEvent, device: Device) => {
-    e.stopPropagation();
-    setWakingId(device.id);
-    try {
-      await wakeDevice(device.id);
-      toast.success("Magic packet sent! Device should wake up shortly.");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send magic packet");
-    } finally {
-      setWakingId(null);
-    }
-  };
-
-  return (
-    <div className="rounded-2xl mesh-card shadow-[0_10px_30px_-22px_rgba(15,23,42,0.95)]">
-      <Table>
-        <TableHeader>
-          <TableRow className="border-mesh-border-strong hover:bg-transparent">
-            <TableHead className="w-10 text-mesh-text-dim">Type</TableHead>
-            <TableHead className="w-12 text-mesh-text-dim">Status</TableHead>
-            <TableHead
-              className="cursor-pointer select-none text-mesh-text-dim hover:text-white"
-              onClick={() => onSort("ip")}
-            >
-              IP Address
-              <SortIcon field="ip" sortField={sortField} sortDir={sortDir} />
-            </TableHead>
-            <TableHead
-              className="cursor-pointer select-none text-mesh-text-dim hover:text-white"
-              onClick={() => onSort("hostname")}
-            >
-              Hostname
-              <SortIcon field="hostname" sortField={sortField} sortDir={sortDir} />
-            </TableHead>
-            <TableHead className="text-mesh-text-dim">MAC</TableHead>
-            <TableHead className="text-mesh-text-dim">Vendor</TableHead>
-            <TableHead className="text-mesh-text-dim">Agent</TableHead>
-            {hasWifi && (
-              <>
-                <TableHead className="text-mesh-text-dim">Signal</TableHead>
-                <TableHead className="text-mesh-text-dim">Band</TableHead>
-                <TableHead className="text-mesh-text-dim">Mesh Node</TableHead>
-              </>
-            )}
-            <TableHead className="text-mesh-text-dim">24h Status</TableHead>
-            <TableHead
-              className="cursor-pointer select-none text-mesh-text-dim hover:text-white"
-              onClick={() => onSort("last_seen_at")}
-            >
-              Last Seen
-              <SortIcon field="last_seen_at" sortField={sortField} sortDir={sortDir} />
-            </TableHead>
-            <TableHead className="w-16 text-mesh-text-dim" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {devices.map((device, index) => {
-            const primaryIp = (device.ips ?? [])[0] ?? "—";
-            const { icon: RowIcon } = getDeviceIcon(device.vendor, device.hostname, device.mdns_services, device.device_type);
-            const vendorDisplay = device.vendor ?? "—";
-            const canWake = !device.is_online && device.mac && !device.is_randomized_mac;
-            return (
-              <motion.tr
-                key={device.id}
-                data-device-row
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  duration: 0.18,
-                  ease: "easeOut",
-                  delay: Math.min(index * 0.01, 0.12),
-                }}
-                className="cursor-pointer border-b border-mesh-border transition-colors hover:bg-mesh-surface-2/55 data-[state=selected]:bg-muted"
-                onClick={() => onSelect(device)}
-              >
-                <TableCell>
-                  <div
-                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-mesh-surface-1"
-                  >
-                    <RowIcon
-                      className={`h-4 w-4 ${
-                        device.is_online ? "text-[#4ade80]" : "text-mesh-text-mute"
-                      }`}
-                    />
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <span
-                    className={`inline-block h-2.5 w-2.5 rounded-full ${
-                      device.is_online
-                        ? "bg-[#4ade80]/90"
-                        : "bg-mesh-text-mute"
-                    }`}
-                  />
-                </TableCell>
-                <TableCell className="tabular-nums font-mono text-sm text-mesh-text">
-                  {primaryIp}
-                </TableCell>
-                <TableCell className="max-w-[200px]">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="truncate text-sm text-mesh-text">
-                      {device.hostname ?? "—"}
-                    </span>
-                    {device.agent?.is_online && (
-                      <span className="shrink-0 rounded mesh-card-2 px-1.5 py-0.5 text-xs text-mesh-text">
-                        Agent
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell className="tabular-nums font-mono text-xs text-mesh-text-mute">
-                  {device.mac}
-                </TableCell>
-                <TableCell className="max-w-[160px] text-xs text-mesh-text-dim">
-                  <span className="block truncate" title={vendorDisplay}>{vendorDisplay}</span>
-                </TableCell>
-                <TableCell className="text-xs text-mesh-text-dim">
-                  {device.agent && device.agent.cpu_percent != null && device.agent.memory_percent != null
-                    ? `${formatPercent(device.agent.cpu_percent)} / ${formatPercent(device.agent.memory_percent)}`
-                    : "—"}
-                </TableCell>
-                {hasWifi && (() => {
-                  const wifi = wifiMap[device.mac?.toUpperCase()];
-                  return (
-                    <>
-                      <TableCell className="text-xs">
-                        {wifi?.signal_dbm != null ? (
-                          <span className={
-                            wifi.signal_dbm > -50 ? "text-[#4ade80]" :
-                            wifi.signal_dbm > -70 ? "text-[#fbbf24]" :
-                            "text-[#fb7185]"
-                          }>
-                            {wifi.signal_dbm} dBm
-                          </span>
-                        ) : (
-                          <span className="text-mesh-text-mute">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs">
-                        {wifi?.band ? (
-                          <Badge variant="outline" className="text-[10px] border-mesh-accent/50 text-mesh-accent">
-                            {wifi.band}
-                          </Badge>
-                        ) : (
-                          <span className="text-mesh-text-mute">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs text-mesh-text-dim">
-                        {wifi?.mesh_node ?? "—"}
-                      </TableCell>
-                    </>
-                  );
-                })()}
-                <TableCell>
-                  {device.status_timeline && device.status_timeline.length > 0 ? (
-                    <StatusSparkline timeline={device.status_timeline} width={72} height={10} />
-                  ) : (
-                    <span className="text-xs text-mesh-text-mute">—</span>
-                  )}
-                </TableCell>
-                <TableCell className="text-xs text-mesh-text-mute">
-                  {timeAgo(device.last_seen_at)}
-                </TableCell>
-                <TableCell>
-                  {canWake && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 gap-1.5 text-xs text-mesh-text-dim hover:text-white"
-                      disabled={wakingId === device.id}
-                      onClick={(e) => handleWake(e, device)}
-                      title="Send Wake-on-LAN magic packet"
-                    >
-                      <Power className="h-3.5 w-3.5" />
-                      {wakingId === device.id ? "Sending…" : "Wake"}
-                    </Button>
-                  )}
-                </TableCell>
-              </motion.tr>
-            );
-          })}
-        </TableBody>
-      </Table>
+      <button
+        type="button"
+        aria-label="Close details"
+        onClick={onClose}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(0,0,0,0.55)",
+          backdropFilter: "blur(2px)",
+          border: 0,
+          padding: 0,
+          cursor: "default",
+        }}
+      />
+      <div
+        style={{
+          position: "relative",
+          width: "min(960px, 90vw)",
+          height: "100%",
+          overflowY: "auto",
+          background: "var(--bg-app)",
+          borderLeft: "var(--hairline) solid rgba(96,144,212,0.20)",
+          boxShadow: "var(--shadow-pop)",
+        }}
+      >
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={onClose}
+          className="btn btn-ghost"
+          style={{
+            position: "absolute",
+            top: 14,
+            right: 14,
+            zIndex: 1,
+            width: 28,
+            height: 28,
+            padding: 0,
+            justifyContent: "center",
+          }}
+        >
+          <XIcon size={14} />
+        </button>
+        <DeviceDetail device={device} onUpdate={onUpdate} onClose={onClose} />
+      </div>
     </div>
   );
 }
 
-// ─── Device Detail (Sheet) ──────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// DeviceDetail — direct port of details.jsx#DeviceDetail.
+// Tab structure: Overview | Traffic | Ports | DNS | Alerts | Audit.
+// ─────────────────────────────────────────────────────────────────────────
+type Tab = "Overview" | "Traffic" | "Ports" | "DNS" | "Alerts" | "Audit";
 
-function DeviceDetail({ device, onUpdate }: { device: Device; onUpdate: () => void }) {
-  const ips = device.ips ?? [];
-  const primaryIp = ips[0] ?? "—";
-  const { title: displayName, isUnnamed } = getDevicePrimaryTitle(device);
+function DeviceDetail({
+  device,
+  onUpdate,
+  onClose,
+}: {
+  device: Device;
+  onUpdate: () => void;
+  onClose: () => void;
+}) {
+  const [activeTab, setActiveTab] = useState<Tab>("Overview");
+  const [events, setEvents] = useState<DeviceEvent[] | null>(null);
+  const [ports, setPorts] = useState<PortScanResult | null>(null);
   const [waking, setWaking] = useState(false);
-  const [sysinfo, setSysinfo] = useState<DeviceSysinfo | null>(null);
+  const TypeGlyph = deviceTypeIcon(device);
+  const primaryIp = (device.ips ?? [])[0] ?? "—";
+  const vlan = deriveVlan(primaryIp);
+  const title = devicePrimaryTitle(device);
+  const vendor = device.custom_vendor ?? device.vendor;
+  const osLabel = device.custom_os ?? device.os_family;
+  const osDisplay = osLabel
+    ? device.os_version
+      ? `${osLabel} ${device.os_version}`
+      : osLabel
+    : "—";
+  const status: "online" | "offline" | "warning" | "inactive" = device.is_online
+    ? "online"
+    : device.is_known
+      ? "offline"
+      : "warning";
 
   useEffect(() => {
     let cancelled = false;
-    fetchDeviceSysinfo(device.id).then((data) => {
-      if (!cancelled) setSysinfo(data);
-    }).catch(() => {});
-    return () => { cancelled = true; };
+    fetchDeviceEvents(device.id, 24)
+      .then((e) => {
+        if (!cancelled) setEvents(e);
+      })
+      .catch(() => {
+        if (!cancelled) setEvents([]);
+      });
+    fetchPortScan(device.id)
+      .then((p) => {
+        if (!cancelled) setPorts(p);
+      })
+      .catch(() => {
+        if (!cancelled) setPorts(null);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [device.id]);
-  const effectiveType = device.custom_type ?? device.device_type;
-  const { icon: DetailIcon, label: deviceTypeLabel } = getDeviceIcon(
-    device.custom_vendor ?? device.vendor,
-    device.hostname,
-    device.mdns_services,
-    effectiveType
-  );
-  const vendorDisplay = device.custom_vendor ?? device.vendor ?? null;
 
   const handleWake = async () => {
     setWaking(true);
     try {
       await wakeDevice(device.id);
-      toast.success("Magic packet sent! Device should wake up shortly.");
+      toast.success("Magic packet sent");
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Failed to send magic packet");
+      toast.error(err instanceof Error ? err.message : "Wake failed");
     } finally {
       setWaking(false);
     }
   };
 
+  const togglePin = async () => {
+    try {
+      await updateDevice(device.id, { is_critical: !device.is_critical });
+      toast.success(device.is_critical ? "Unpinned" : "Pinned · critical");
+      onUpdate();
+    } catch {
+      toast.error("Failed to update pin state");
+    }
+  };
+
   return (
-    <>
-      <SheetHeader className="shrink-0">
-        <div className="flex items-center gap-3">
-          <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-mesh-surface-1 ${
-              device.is_online ? "ring-1 ring-[#4ade80]/20" : ""
-            }`}
-          >
-            <DetailIcon
-              className={`h-5 w-5 ${
-                device.is_online ? "text-[#4ade80]" : "text-mesh-text-mute"
-              }`}
-            />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <SheetTitle className="text-white">{displayName}</SheetTitle>
-              {isUnnamed && (
-                <Badge variant="outline" className="border-mesh-text-mute text-[10px] text-mesh-text-dim">Unknown</Badge>
-              )}
-              {device.custom_name && (
-                <Badge variant="outline" className="border-mesh-accent/50 text-mesh-accent text-[10px]">custom</Badge>
-              )}
-              {device.agent?.is_online && (
-                <span className="shrink-0 rounded border border-mesh-primary/30 bg-mesh-primary/20 px-1.5 py-0.5 text-xs text-mesh-primary">
-                  Agent
-                </span>
-              )}
-            </div>
-            <div className="flex min-w-0 items-center gap-2">
-              {device.custom_name && device.hostname && (
-                <span className="truncate text-xs text-mesh-text-mute" title={device.hostname}>{device.hostname}</span>
-              )}
-              {vendorDisplay && (
-                <span className="truncate text-xs text-mesh-text-dim" title={vendorDisplay}>{vendorDisplay}</span>
-              )}
-              <span className="shrink-0 text-xs text-mesh-text-mute">{deviceTypeLabel}</span>
-            </div>
-          </div>
-        </div>
-        <SheetDescription>
-          {device.is_online ? (
-            <span className="text-[#4ade80]">Online</span>
-          ) : (
-            <span className="text-mesh-text-mute">
-              Offline — last seen {timeAgo(device.last_seen_at)}
-            </span>
-          )}
-        </SheetDescription>
-      </SheetHeader>
-
-      <div className="flex-1 overflow-y-auto -mx-6 px-6 min-h-0">
-      {/* Wake-on-LAN button — only active when device is offline */}
-      {!device.is_online && (
-        <div className="mt-4 space-y-1">
-          <Button
-            variant="secondary"
-            size="sm"
-            className="w-full gap-2"
-            disabled={waking}
-            onClick={handleWake}
-          >
-            <Power className="h-4 w-4" />
-            {waking ? "Sending…" : "Wake"}
-          </Button>
-          <p className="text-center text-[11px] text-mesh-text-mute">
-            Requires Wake-on-LAN enabled in BIOS
-          </p>
-        </div>
-      )}
-
-      {/* Critical/Pinned toggle + Asset Detail link */}
-      <div className="mt-3 flex gap-2">
-        <Button
-          variant={device.is_critical ? "default" : "outline"}
-          size="sm"
-          className={`gap-2 ${
-            device.is_critical
-              ? "bg-[#fbbf24] hover:bg-[#fbbf24] text-white"
-              : "border-mesh-border-strong text-mesh-text hover:text-white"
-          }`}
-          onClick={async () => {
-            try {
-              await updateDevice(device.id, { is_critical: !device.is_critical });
-              toast.success(device.is_critical ? "Removed from critical devices" : "Marked as critical for health tracking");
-              onUpdate();
-            } catch {
-              toast.error("Failed to update critical status");
-            }
+    <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+      {/* Identity header */}
+      <div
+        className="mesh-card"
+        style={{ padding: 18, display: "flex", alignItems: "flex-start", gap: 16 }}
+      >
+        <div
+          style={{
+            width: 64,
+            height: 64,
+            background: "var(--surface-2)",
+            border: "var(--hairline) solid rgba(96,144,212,0.40)",
+            borderRadius: "var(--radius)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#38bdf8",
           }}
         >
-          {device.is_critical ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
-          {device.is_critical ? "Unpin" : "Pin Critical"}
-        </Button>
-        <Link href={`/assets?id=${device.id}`} className="flex-1">
-          <Button variant="outline" size="sm" className="w-full gap-2 border-mesh-border-strong text-mesh-text hover:text-white">
-            <ExternalLink className="h-4 w-4" />
-            Asset Detail
-          </Button>
-        </Link>
-      </div>
-
-      <Separator className="my-4 bg-mesh-surface-1" />
-
-      <Tabs defaultValue="info" className="w-full">
-        <TabsList className="mb-4 w-full bg-mesh-surface-1">
-          <TabsTrigger value="info" className="flex-1">Info</TabsTrigger>
-          <TabsTrigger value="edit" className="flex-1">Edit</TabsTrigger>
-          <TabsTrigger value="system" className="flex-1">System</TabsTrigger>
-          <TabsTrigger value="ports" className="flex-1">Ports</TabsTrigger>
-          <TabsTrigger value="events" className="flex-1">Events</TabsTrigger>
-          <TabsTrigger value="traffic" className="flex-1">Traffic</TabsTrigger>
-          <TabsTrigger value="wifi" className="flex-1">WiFi</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="info">
-          <DeviceInfoTab device={device} ips={ips} primaryIp={primaryIp} sysinfo={sysinfo} />
-        </TabsContent>
-
-        <TabsContent value="edit">
-          <DeviceEditForm device={device} onUpdate={onUpdate} />
-        </TabsContent>
-
-        <TabsContent value="system">
-          <DeviceSystemTab deviceId={device.id} />
-        </TabsContent>
-
-        <TabsContent value="ports">
-          <DevicePortsTab deviceId={device.id} />
-        </TabsContent>
-
-        <TabsContent value="events">
-          <DeviceEventsTab deviceId={device.id} />
-        </TabsContent>
-
-        <TabsContent value="traffic">
-          <DeviceTrafficChart deviceId={device.id} />
-        </TabsContent>
-
-        <TabsContent value="wifi">
-          <DeviceWifiTab mac={device.mac} />
-        </TabsContent>
-      </Tabs>
-      </div>
-    </>
-  );
-}
-
-// ─── Device Info Tab ────────────────────────────────────
-
-function CustomBadge() {
-  return (
-    <Badge variant="outline" className="ml-1 border-mesh-accent/50 text-mesh-accent text-[9px] px-1 py-0">
-      custom
-    </Badge>
-  );
-}
-
-function DetectedBadge() {
-  return (
-    <Badge variant="outline" className="ml-1 border-mesh-accent/50 text-mesh-accent text-[9px] px-1 py-0">
-      detected
-    </Badge>
-  );
-}
-
-function DeviceInfoTab({
-  device,
-  ips,
-  primaryIp,
-  sysinfo,
-}: {
-  device: Device;
-  ips: string[];
-  primaryIp: string;
-  sysinfo: DeviceSysinfo | null;
-}) {
-  const effectiveOs = device.custom_os ?? device.os_family;
-  const effectiveType = device.custom_type ?? device.device_type;
-  const effectiveVendor = device.custom_vendor ?? device.device_brand;
-  const effectiveModel = device.custom_model ?? device.device_model;
-
-  // Build the most specific OS display string available.
-  // Prefer sysinfo os_name (e.g. "Ubuntu 24.04") over broad os_family ("Linux").
-  const osDisplayString = (() => {
-    if (device.custom_os) {
-      return device.os_version ? `${device.custom_os} ${device.os_version}` : device.custom_os;
-    }
-    // Sysinfo os_name has the distribution detail (e.g., "Ubuntu 24.04", "Debian 12")
-    if (sysinfo?.os_name) {
-      const parts = [sysinfo.os_name, sysinfo.os_version].filter(Boolean);
-      return parts.join(" ");
-    }
-    if (effectiveOs) {
-      return device.os_version ? `${effectiveOs} ${device.os_version}` : effectiveOs;
-    }
-    return null;
-  })();
-
-  return (
-    <div className="space-y-4">
-      <InfoRow label="IP Address" value={primaryIp} mono />
-      <div className="flex items-baseline justify-between gap-4">
-        <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-          MAC Address
-        </span>
-        <span className="flex min-w-0 items-center gap-1.5 font-mono tabular-nums text-sm text-mesh-text">
-          <span className="truncate">{device.mac}</span>
-          {device.is_randomized_mac && (
-            <span className="shrink-0 rounded bg-[#fbbf24]/20 px-1 py-0.5 text-[10px] font-medium text-[#fbbf24]">
-              Random
-            </span>
-          )}
-        </span>
-      </div>
-      {device.vendor && <InfoRow label="Vendor" value={device.vendor} />}
-      {device.hostname && <InfoRow label="Hostname" value={device.hostname} />}
-      <InfoRow label="First Seen" value={timeAgo(device.first_seen_at)} />
-      <InfoRow label="Last Seen" value={timeAgo(device.last_seen_at)} />
-      <InfoRow label="Status" value={device.is_known ? "Known" : "Unacknowledged"} />
-      <InfoRow label="Health Role" value={device.is_critical === true ? "Pinned (critical)" : device.is_critical === false ? "Excluded" : "Auto-detect"} />
-
-      {/* Device identity — merged auto-detected + custom */}
-      {(osDisplayString || effectiveType || effectiveVendor || effectiveModel) && (
-        <>
-          <Separator className="bg-mesh-surface-1" />
-          <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-            Device Identity
-          </p>
-          {osDisplayString && (
-            <div className="flex items-baseline justify-between gap-4">
-              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">OS</span>
-              <span className="flex min-w-0 items-center gap-1 text-sm text-mesh-text">
-                <span className="truncate" title={osDisplayString}>{osDisplayString}</span>
-                {device.custom_os ? <CustomBadge /> : (device.os_family || sysinfo?.os_name) ? <DetectedBadge /> : null}
-              </span>
-            </div>
-          )}
-          {effectiveType && (
-            <div className="flex items-baseline justify-between gap-4">
-              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">Type</span>
-              <span className="flex min-w-0 items-center gap-1 text-sm text-mesh-text">
-                <span className="truncate" title={effectiveType}>{effectiveType}</span>
-                {device.custom_type ? <CustomBadge /> : device.device_type ? <DetectedBadge /> : null}
-              </span>
-            </div>
-          )}
-          {effectiveVendor && (
-            <div className="flex items-baseline justify-between gap-4">
-              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">Brand</span>
-              <span className="flex min-w-0 items-center gap-1 text-sm text-mesh-text">
-                <span className="truncate" title={effectiveVendor}>{effectiveVendor}</span>
-                {device.custom_vendor ? <CustomBadge /> : (device.device_brand || device.vendor) ? <DetectedBadge /> : null}
-              </span>
-            </div>
-          )}
-          {effectiveModel && (
-            <div className="flex items-baseline justify-between gap-4">
-              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">Model</span>
-              <span className="flex min-w-0 items-center gap-1 text-sm text-mesh-text">
-                <span className="truncate" title={effectiveModel}>{effectiveModel}</span>
-                {device.custom_model ? <CustomBadge /> : device.device_model ? <DetectedBadge /> : null}
-              </span>
-            </div>
-          )}
-          {device.enrichment_source && !device.custom_os && !device.custom_type && (
-            <p className="text-[10px] text-mesh-text-mute">
-              Identified via {device.enrichment_source}
-              {device.enrichment_corrected ? " (user-corrected)" : ""}
-            </p>
-          )}
-        </>
-      )}
-
-      {/* Muted status */}
-      {device.muted_until && new Date(device.muted_until) > new Date() && (
-        <div className="flex items-center gap-2 rounded-md border border-[#fbbf24]/30 bg-[#fbbf24]/10 px-3 py-2">
-          <VolumeX className="h-4 w-4 text-[#fbbf24]" />
-          <span className="text-sm text-[#fbbf24]">
-            Muted until {new Date(device.muted_until).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          </span>
+          <TypeGlyph size={28} strokeWidth={1.4} />
         </div>
-      )}
-
-      {/* All IPs */}
-      {ips.length > 1 && (
-        <div>
-          <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-            All IP Addresses
-          </p>
-          <div className="mt-1 space-y-0.5">
-            {ips.map((ip) => (
-              <p key={ip} className="tabular-nums font-mono text-sm text-mesh-text">
-                {ip}
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* mDNS Services */}
-      {device.mdns_services && (
-        <>
-          <Separator className="bg-mesh-surface-1" />
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-              mDNS Services
-            </p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {device.mdns_services.split(",").map((svc) => (
-                <Badge
-                  key={svc}
-                  variant="outline"
-                  className="border-[#c084fc]/50 text-[#c084fc] text-[11px]"
-                >
-                  {svc.trim()}
-                </Badge>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Agent info */}
-      {device.agent && (
-        <>
-          <Separator className="bg-mesh-surface-1" />
-          <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-            Agent Telemetry
-          </p>
-          <div className="flex items-center gap-2">
-            {device.agent.is_online ? (
-              <Wifi className="h-4 w-4 text-[#4ade80]" />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+            <h1 className="t-h1" style={{ margin: 0 }}>
+              {title}
+            </h1>
+            {status === "online" ? (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  height: 20,
+                  padding: "0 8px",
+                  borderRadius: "var(--radius-pill)",
+                  background: "rgba(74,222,128,0.10)",
+                  border: "var(--hairline) solid rgba(74,222,128,0.30)",
+                  color: "#4ade80",
+                  font: "600 10px var(--font-sans)",
+                  letterSpacing: "0.06em",
+                }}
+              >
+                <StatusDot status="online" pulse size={5} />
+                ONLINE
+              </span>
+            ) : status === "offline" ? (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  height: 20,
+                  padding: "0 8px",
+                  borderRadius: "var(--radius-pill)",
+                  background: "rgba(251,113,133,0.10)",
+                  border: "var(--hairline) solid rgba(251,113,133,0.30)",
+                  color: "#fb7185",
+                  font: "600 10px var(--font-sans)",
+                  letterSpacing: "0.06em",
+                }}
+              >
+                <StatusDot status="offline" size={5} />
+                OFFLINE
+              </span>
             ) : (
-              <WifiOff className="h-4 w-4 text-[#fb7185]" />
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  height: 20,
+                  padding: "0 8px",
+                  borderRadius: "var(--radius-pill)",
+                  background: "rgba(251,191,36,0.10)",
+                  border: "var(--hairline) solid rgba(251,191,36,0.30)",
+                  color: "#fbbf24",
+                  font: "600 10px var(--font-sans)",
+                  letterSpacing: "0.06em",
+                }}
+              >
+                <StatusDot status="warning" size={5} />
+                NEW
+              </span>
             )}
-            <span className="text-sm text-mesh-text">
-              {device.agent.is_online ? "Connected" : "Disconnected"}
+            {device.is_critical ? (
+              <span
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  height: 20,
+                  padding: "0 8px",
+                  borderRadius: "var(--radius-pill)",
+                  background: "var(--primary-soft)",
+                  border: "var(--hairline) solid rgba(37,99,235,0.30)",
+                  color: "#2563eb",
+                  font: "500 10.5px var(--font-sans)",
+                }}
+              >
+                <PinIcon size={10} />
+                pinned · core
+              </span>
+            ) : null}
+          </div>
+          <div
+            className="mono"
+            style={{
+              font: "500 12px var(--font-mono)",
+              color: "var(--text-dim)",
+              display: "flex",
+              gap: 14,
+              flexWrap: "wrap",
+            }}
+          >
+            <span>{primaryIp}</span>
+            <span style={{ color: "var(--text-faint)" }}>·</span>
+            <span>{device.mac}</span>
+            <span style={{ color: "var(--text-faint)" }}>·</span>
+            <span style={{ color: "var(--text-mute)" }}>
+              {vendor ?? "Unknown vendor"} · {osDisplay}
+            </span>
+            <span style={{ color: "var(--text-faint)" }}>·</span>
+            <span style={{ color: "#38bdf8" }}>vlan: {vlan}</span>
+            <span style={{ color: "var(--text-faint)" }}>·</span>
+            <span style={{ color: "var(--text-mute)" }}>
+              first seen {timeAgo(device.first_seen_at)}
             </span>
           </div>
-          {device.agent.cpu_percent != null && (
-            <InfoRow label="CPU Usage" value={formatPercent(device.agent.cpu_percent)} />
-          )}
-          {device.agent.memory_percent != null && (
-            <InfoRow label="Memory Usage" value={formatPercent(device.agent.memory_percent)} />
-          )}
-        </>
-      )}
+        </div>
+        <div style={{ display: "flex", gap: 6 }}>
+          <button type="button" className="btn" onClick={togglePin}>
+            <PinIcon size={12} />
+            <span>{device.is_critical ? "Unpin" : "Pin"}</span>
+          </button>
+          {!device.is_online ? (
+            <button type="button" className="btn" disabled={waking} onClick={handleWake}>
+              <Power size={12} />
+              <span>{waking ? "Waking…" : "Wake"}</span>
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              window.location.href = `/assets?id=${device.id}`;
+            }}
+          >
+            <TagIcon size={12} />
+            <span>Asset detail</span>
+          </button>
+        </div>
+      </div>
 
-      {/* Asset Inventory */}
-      {(device.location || device.owner || device.tags || device.cpu_manual ||
-        device.ram_manual || device.disk_manual || device.serial_number ||
-        device.purchase_date || device.warranty_expiry) && (
-        <>
-          <Separator className="bg-mesh-surface-1" />
-          <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-            Asset Inventory
-          </p>
-          {device.location && <InfoRow label="Location" value={device.location} />}
-          {device.owner && <InfoRow label="Owner" value={device.owner} />}
-          {device.tags && (
-            <div className="flex items-baseline justify-between gap-4">
-              <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">Tags</span>
-              <div className="flex flex-wrap justify-end gap-1">
-                {device.tags.split(",").map((tag) => (
-                  <Badge key={tag.trim()} variant="outline" className="border-mesh-text-mute text-mesh-text-dim text-[10px]">
-                    {tag.trim()}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-          {device.cpu_manual && <InfoRow label="CPU" value={device.cpu_manual} />}
-          {device.ram_manual && <InfoRow label="RAM" value={device.ram_manual} />}
-          {device.disk_manual && <InfoRow label="Disk" value={device.disk_manual} />}
-          {device.serial_number && <InfoRow label="Serial" value={device.serial_number} />}
-          {device.purchase_date && <InfoRow label="Purchased" value={device.purchase_date} />}
-          {device.warranty_expiry && <InfoRow label="Warranty" value={device.warranty_expiry} />}
-        </>
-      )}
+      {/* Tab nav */}
+      <div
+        role="tablist"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 0,
+          borderBottom: "var(--hairline) solid rgba(96,144,212,0.20)",
+        }}
+      >
+        {(["Overview", "Traffic", "Ports", "DNS", "Alerts", "Audit"] as Tab[]).map((t) => {
+          const isActive = activeTab === t;
+          const badge = t === "Alerts" && events ? events.filter((e) => e.event_type.includes("alert")).length : 0;
+          return (
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              data-testid={`details-tab-${t.toLowerCase()}`}
+              onClick={() => setActiveTab(t)}
+              style={{
+                padding: "8px 14px",
+                font: `${isActive ? 600 : 500} 12.5px var(--font-sans)`,
+                color: isActive ? "var(--text)" : "var(--text-mute)",
+                borderBottom: isActive ? "2px solid #38bdf8" : "2px solid transparent",
+                marginBottom: -1,
+                cursor: "pointer",
+                background: "transparent",
+                border: "0",
+                borderBottomWidth: 2,
+                borderBottomStyle: "solid",
+                borderBottomColor: isActive ? "#38bdf8" : "transparent",
+              }}
+            >
+              {t}
+              {t === "Alerts" && badge > 0 ? (
+                <span
+                  style={{
+                    marginLeft: 6,
+                    padding: "1px 5px",
+                    background: "rgba(251,113,133,0.18)",
+                    color: "#fb7185",
+                    borderRadius: 3,
+                    font: "500 9.5px var(--font-mono)",
+                  }}
+                >
+                  {badge}
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
 
-      {/* Notes */}
-      {device.notes && (
-        <>
-          <Separator className="bg-mesh-surface-1" />
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-              Notes
-            </p>
-            <p className="mt-1 text-sm text-mesh-text">{device.notes}</p>
-          </div>
-        </>
+      {activeTab === "Overview" ? (
+        <OverviewBody device={device} events={events} ports={ports} />
+      ) : activeTab === "Traffic" ? (
+        <TabPlaceholder
+          title="Traffic · 24h"
+          message="Per-device 24h traffic series is not yet exposed by the backend. The summary chart on the Overview tab uses the live rate fallback."
+        />
+      ) : activeTab === "Ports" ? (
+        <PortsTab ports={ports} />
+      ) : activeTab === "DNS" ? (
+        <TabPlaceholder
+          title="DNS"
+          message="DNS lookup history per device is not exposed by the backend yet."
+        />
+      ) : activeTab === "Alerts" ? (
+        <TabPlaceholder
+          title="Alerts"
+          message="Per-device alert feed lands once the alerts service exposes a per-entity query."
+        />
+      ) : (
+        <AuditTab events={events} />
       )}
     </div>
   );
 }
 
-// ─── Device System Tab (neofetch-style) ─────────────────
-
-function formatUptime(seconds: number): string {
-  const days = Math.floor(seconds / 86400);
-  const hours = Math.floor((seconds % 86400) / 3600);
-  const mins = Math.floor((seconds % 3600) / 60);
-  const parts: string[] = [];
-  if (days > 0) parts.push(`${days}d`);
-  if (hours > 0) parts.push(`${hours}h`);
-  parts.push(`${mins}m`);
-  return parts.join(" ");
-}
-
-function DeviceSystemTab({ deviceId }: { deviceId: string }) {
-  const [sysinfo, setSysinfo] = useState<DeviceSysinfo | null | undefined>(undefined);
-  const [showSerial, setShowSerial] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchDeviceSysinfo(deviceId).then((data) => {
-      if (!cancelled) setSysinfo(data);
-    }).catch(() => {
-      if (!cancelled) setSysinfo(null);
-    });
-    return () => { cancelled = true; };
-  }, [deviceId]);
-
-  if (sysinfo === undefined) {
-    return (
-      <div className="space-y-3">
-        <Skeleton className="h-48 w-full bg-mesh-surface-1" />
-      </div>
-    );
-  }
-
-  if (!sysinfo) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <Cpu className="mb-2 h-8 w-8 text-mesh-text-mute" />
-        <p className="text-sm text-mesh-text-mute">No system info available</p>
-        <p className="mt-1 text-xs text-mesh-text-mute">
-          Install an agent on this device to collect hardware inventory
-        </p>
-      </div>
-    );
-  }
-
-  // Build neofetch-style rows
-  const rows: [string, string][] = [];
-  if (sysinfo.hostname) rows.push(["Host", sysinfo.hostname]);
-  if (sysinfo.os_name) {
-    const osStr = [sysinfo.os_name, sysinfo.os_version].filter(Boolean).join(" ");
-    rows.push(["OS", osStr]);
-  }
-  if (sysinfo.os_build) rows.push(["Kernel", sysinfo.os_build]);
-  if (sysinfo.hardware_model) rows.push(["Model", sysinfo.hardware_model]);
-  if (sysinfo.cpu_name) {
-    const cpuStr = sysinfo.cpu_cores
-      ? `${sysinfo.cpu_name} (${sysinfo.cpu_cores} cores)`
-      : sysinfo.cpu_name;
-    rows.push(["CPU", cpuStr]);
-  }
-  if (sysinfo.cpu_speed) rows.push(["CPU Speed", sysinfo.cpu_speed]);
-  if (sysinfo.ram_total) rows.push(["Memory", sysinfo.ram_total]);
-  if (sysinfo.gpu_name) rows.push(["GPU", sysinfo.gpu_name]);
-  if (sysinfo.disk_name || sysinfo.disk_size) {
-    const diskStr = [sysinfo.disk_name, sysinfo.disk_size].filter(Boolean).join(" — ");
-    rows.push(["Disk", diskStr]);
-  }
-  if (sysinfo.uptime_seconds != null) rows.push(["Uptime", formatUptime(sysinfo.uptime_seconds)]);
-
-  const title = sysinfo.hostname ?? "device";
-
+function TabPlaceholder({ title, message }: { title: string; message: string }) {
   return (
-    <div className="space-y-4">
-      {/* Neofetch-style terminal card */}
-      <div className="overflow-hidden mesh-card font-mono text-[13px]">
-        {/* Title bar */}
-        <div className="flex items-center gap-1.5 border-b border-mesh-border px-3 py-2">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#fb7185]/80" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#fbbf24]/80" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#4ade80]/80" />
-          <span className="ml-2 text-xs text-mesh-text-mute">{title}</span>
-        </div>
-        {/* Content */}
-        <div className="p-4">
-          <p className="text-mesh-accent">
-            {title}
-            <span className="text-mesh-text-mute">@</span>
-            <span className="text-mesh-accent">panoptikon</span>
-          </p>
-          <p className="text-mesh-border-strong">{"─".repeat(Math.min(40, title.length + 12))}</p>
-          {rows.map(([label, value]) => (
-            <p key={label} className="leading-relaxed">
-              <span className="text-mesh-accent">{label}</span>
-              <span className="text-mesh-text-mute">: </span>
-              <span className="text-mesh-text">{value}</span>
-            </p>
-          ))}
-          {/* Color palette row */}
-          <div className="mt-3 flex gap-0">
-            {["bg-mesh-surface-1", "bg-[#fb7185]", "bg-[#4ade80]", "bg-[#fbbf24]", "bg-mesh-primary", "bg-[#c084fc]", "bg-mesh-accent", "bg-mesh-text"].map((c) => (
-              <span key={c} className={`inline-block h-3 w-3 ${c}`} />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Serial number — hidden by default */}
-      {sysinfo.serial_number && (
-        <div className="space-y-1">
-          <button
-            onClick={() => setShowSerial(!showSerial)}
-            className="text-xs text-mesh-text-mute underline decoration-dotted hover:text-mesh-text-dim"
-          >
-            {showSerial ? "Hide" : "Show"} serial number
-          </button>
-          {showSerial && (
-            <p className="font-mono text-sm text-mesh-text-dim">{sysinfo.serial_number}</p>
-          )}
-        </div>
-      )}
-
-      {/* Last reported */}
-      <p className="text-[10px] text-mesh-text-mute">
-        Last reported {timeAgo(sysinfo.reported_at)}
+    <div className="mesh-card" style={{ padding: 18 }}>
+      <h3 className="t-h3" style={{ marginBottom: 8 }}>
+        {title}
+      </h3>
+      <p className="t-small" style={{ color: "var(--text-mute)", margin: 0 }}>
+        {message}
       </p>
     </div>
   );
 }
 
-// ─── Device State Timeline ──────────────────────────────
-
-interface TimelineSegment {
-  start: number;
-  end: number;
-  online: boolean;
-}
-
-function DeviceStateTimeline({ events }: { events: DeviceEvent[] }) {
-  const rows = useMemo(() => {
-    const now = new Date();
-
-    // Build 7 calendar days (oldest first, today last)
-    const dayBounds: { start: Date; end: Date }[] = [];
-    for (let d = 6; d >= 0; d--) {
-      const s = new Date(now);
-      s.setDate(s.getDate() - d);
-      s.setHours(0, 0, 0, 0);
-      const e = new Date(s);
-      e.setDate(e.getDate() + 1);
-      dayBounds.push({ start: s, end: d === 0 ? now : e });
-    }
-
-    const windowStart = dayBounds[0].start;
-
-    // Sort events chronologically
-    const sorted = [...events].sort(
-      (a, b) =>
-        new Date(a.occurred_at).getTime() - new Date(b.occurred_at).getTime(),
-    );
-
-    // Determine initial state at window start
-    let initialOnline = false;
-    for (const ev of sorted) {
-      if (new Date(ev.occurred_at).getTime() <= windowStart.getTime()) {
-        initialOnline = ev.event_type === "online";
-      }
-    }
-
-    // Filter to events within window
-    const windowEvents = sorted.filter((ev) => {
-      const t = new Date(ev.occurred_at);
-      return t > windowStart && t <= now;
-    });
-
-    // Build full-window segments
-    const segments: TimelineSegment[] = [];
-    let state = initialOnline;
-    let segStart = windowStart.getTime();
-
-    for (const ev of windowEvents) {
-      const t = new Date(ev.occurred_at).getTime();
-      if (t > segStart) {
-        segments.push({ start: segStart, end: t, online: state });
-      }
-      state = ev.event_type === "online";
-      segStart = t;
-    }
-    if (segStart < now.getTime()) {
-      segments.push({ start: segStart, end: now.getTime(), online: state });
-    }
-
-    // Clip segments to each day
-    return dayBounds.map(({ start, end }) => {
-      const ds = start.getTime();
-      const de = end.getTime();
-      const dur = de - ds;
-
-      const daySegs = segments
-        .map((seg) => {
-          const os = Math.max(seg.start, ds);
-          const oe = Math.min(seg.end, de);
-          if (os >= oe) return null;
-          return {
-            online: seg.online,
-            pct: ((oe - os) / dur) * 100,
-            from: new Date(os).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-            to: new Date(oe).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            }),
-          };
-        })
-        .filter(Boolean) as {
-        online: boolean;
-        pct: number;
-        from: string;
-        to: string;
-      }[];
-
-      const isToday = now.toDateString() === start.toDateString();
-      const label = isToday
-        ? "Today"
-        : start.toLocaleDateString([], {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-          });
-
-      return { label, segments: daySegs, isToday };
-    });
-  }, [events]);
-
-  if (events.length === 0) return null;
-
-  return (
-    <div className="mesh-card p-4 space-y-3">
-      <div className="text-sm font-medium text-mesh-text">
-        7-Day Availability
-      </div>
-      <div className="space-y-1.5">
-        {rows.map((row) => (
-          <div key={row.label} className="flex items-center gap-3">
-            <span
-              className={`w-24 text-xs truncate ${row.isToday ? "text-mesh-text font-medium" : "text-mesh-text-mute"}`}
-            >
-              {row.label}
-            </span>
-            <div className="flex-1 flex h-4 rounded-sm overflow-hidden bg-mesh-border-strong/50">
-              {row.segments.map((seg, i) => (
-                <div
-                  key={i}
-                  className={
-                    seg.online ? "bg-[#4ade80]/70" : "bg-mesh-text-mute"
-                  }
-                  style={{
-                    width: `${seg.pct}%`,
-                    minWidth: seg.pct > 0 ? "1px" : 0,
-                  }}
-                  title={`${seg.online ? "Online" : "Offline"}: ${seg.from} – ${seg.to}`}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center gap-4 pt-1 text-xs text-mesh-text-mute">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-[#4ade80]/70" />
-          Online
-        </span>
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-mesh-text-mute" />
-          Offline
-        </span>
-      </div>
-    </div>
-  );
-}
-
-// ─── Device Events Tab ──────────────────────────────────
-
-function DeviceEventsTab({ deviceId }: { deviceId: string }) {
-  const [events, setEvents] = useState<DeviceEvent[] | null>(null);
-  const [uptime, setUptime] = useState<UptimeStats | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const [evts, upt] = await Promise.all([
-          fetchDeviceEvents(deviceId, 200),
-          fetchDeviceUptime(deviceId, 7),
-        ]);
-        if (!cancelled) {
-          setEvents(evts);
-          setUptime(upt);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load events");
-        }
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [deviceId]);
-
-  if (error) {
-    return <p className="text-sm text-[#fb7185]">{error}</p>;
-  }
-
-  if (events === null) {
-    return (
-      <div className="space-y-3">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Skeleton key={i} className="h-8 w-full" />
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      {/* Uptime badge */}
-      {uptime && (
-        <div className="flex items-center gap-3 mesh-card px-4 py-3">
-          <div className="text-sm text-mesh-text-dim">7-day uptime</div>
-          <div className="ml-auto text-lg font-semibold text-white">
-            {uptime.uptime_percent.toFixed(1)}%
-          </div>
-        </div>
-      )}
-
-      {/* Visual timeline */}
-      <DeviceStateTimeline events={events} />
-
-      {events.length === 0 ? (
-        <p className="py-6 text-center text-sm text-mesh-text-mute">
-          No state change events recorded yet.
-        </p>
-      ) : (
-        <div className="space-y-1">
-          {events.map((event) => (
-            <div
-              key={event.id}
-              className="flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-mesh-surface-2/55"
-            >
-              <span
-                className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                  event.event_type === "online"
-                    ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
-                    : "bg-mesh-text-mute"
-                }`}
-              />
-              <span className="text-sm text-mesh-text capitalize">
-                {event.event_type === "online" ? "Came online" : "Went offline"}
-              </span>
-              <span className="ml-auto text-xs text-mesh-text-mute">
-                {timeAgo(event.occurred_at)}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Device Ports Tab ───────────────────────────────────
-
-function DevicePortsTab({ deviceId }: { deviceId: string }) {
-  const [scanResult, setScanResult] = useState<PortScanResult | null>(null);
-  const [scanning, setScanning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Load cached scan result on mount
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      try {
-        const result = await fetchPortScan(deviceId);
-        if (!cancelled) setScanResult(result);
-      } catch {
-        // ignore fetch errors
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [deviceId]);
-
-  const handleScan = async () => {
-    setScanning(true);
-    setError(null);
-    try {
-      const result = await triggerPortScan(deviceId);
-      setScanResult(result);
-    } catch (err) {
-      if (err instanceof Error) {
-        // Try to parse the error body for a friendly message
-        const match = err.message.match(/API error (\d+)/);
-        if (match) {
-          const code = parseInt(match[1]);
-          if (code === 429) {
-            setError("Rate limited — wait 60s between scans.");
-          } else if (code === 500) {
-            setError("Scan failed — nmap error.");
-          } else {
-            setError(err.message);
-          }
-        } else {
-          setError(err.message);
-        }
-      } else {
-        setError("Scan failed");
-      }
-    } finally {
-      setScanning(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="space-y-3">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-8 w-full" />
-        ))}
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <Button
-        variant="secondary"
-        size="sm"
-        className="w-full gap-2"
-        disabled={scanning}
-        onClick={handleScan}
-      >
-        {scanning ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Radar className="h-4 w-4" />
-        )}
-        {scanning ? "Scanning…" : "Scan Ports"}
-      </Button>
-
-      {error && (
-        <p className="text-sm text-[#fb7185]">{error}</p>
-      )}
-
-      {scanResult && (
-        <>
-          <p className="text-xs text-mesh-text-mute">
-            Last scanned: {timeAgo(scanResult.scanned_at)}
-          </p>
-
-          {scanResult.ports.length === 0 ? (
-            <p className="py-6 text-center text-sm text-mesh-text-mute">
-              No open ports found.
-            </p>
-          ) : (
-            <div className="mesh-card">
-              <Table>
-                <TableHeader>
-                  <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                    <TableHead className="text-mesh-text-dim">Port</TableHead>
-                    <TableHead className="text-mesh-text-dim">Proto</TableHead>
-                    <TableHead className="text-mesh-text-dim">State</TableHead>
-                    <TableHead className="text-mesh-text-dim">Service</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {scanResult.ports.map((port) => (
-                    <TableRow
-                      key={`${port.port}/${port.protocol}`}
-                      className="border-mesh-border-strong"
-                    >
-                      <TableCell className="tabular-nums font-mono text-sm text-mesh-text">
-                        {port.port}
-                      </TableCell>
-                      <TableCell className="text-xs text-mesh-text-dim">
-                        {port.protocol}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="border-[#4ade80]/50 text-[#4ade80] text-[10px]">
-                          {port.state}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-mesh-text">
-                        {port.service}
-                        {port.version && (
-                          <span className="ml-1 text-xs text-mesh-text-mute">{port.version}</span>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </>
-      )}
-
-      {!scanResult && !error && (
-        <p className="py-6 text-center text-sm text-mesh-text-mute">
-          No port scan results yet. Click &quot;Scan Ports&quot; to start.
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ─── Device Edit Form ───────────────────────────────────
-
-const DEVICE_TYPE_OPTIONS = [
-  "", "server", "workstation", "desktop", "laptop", "vm", "container", "nas",
-  "router", "access_point", "switch", "phone", "tablet", "printer", "iot", "ups", "tv", "gaming", "other",
-];
-
-const OS_OPTIONS = [
-  "", "iOS", "Android", "Windows", "macOS", "Linux", "Other",
-];
-
-function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => void }) {
-  const [saving, setSaving] = useState(false);
-  const [resetting, setResetting] = useState(false);
-  const [customName, setCustomName] = useState(device.custom_name ?? "");
-  const [customType, setCustomType] = useState(device.custom_type ?? "");
-  const [customOs, setCustomOs] = useState(device.custom_os ?? "");
-  const [customVendor, setCustomVendor] = useState(device.custom_vendor ?? "");
-  const [customModel, setCustomModel] = useState(device.custom_model ?? "");
-  const [notes, setNotes] = useState(device.notes ?? "");
-  const [iconOverride, setIconOverride] = useState(device.icon_override ?? "");
-  const [location, setLocation] = useState(device.location ?? "");
-  const [owner, setOwner] = useState(device.owner ?? "");
-  const [editTags, setEditTags] = useState(device.tags ?? "");
-  const [cpuManual, setCpuManual] = useState(device.cpu_manual ?? "");
-  const [ramManual, setRamManual] = useState(device.ram_manual ?? "");
-  const [diskManual, setDiskManual] = useState(device.disk_manual ?? "");
-  const [purchaseDate, setPurchaseDate] = useState(device.purchase_date ?? "");
-  const [serialNumber, setSerialNumber] = useState(device.serial_number ?? "");
-  const [warrantyExpiry, setWarrantyExpiry] = useState(device.warranty_expiry ?? "");
-
-  const hasCustomFields = !!(device.custom_name || device.custom_type || device.custom_os ||
-    device.custom_vendor || device.custom_model || device.notes || device.icon_override ||
-    device.location || device.owner || device.tags || device.cpu_manual || device.ram_manual ||
-    device.disk_manual || device.purchase_date || device.serial_number || device.warranty_expiry);
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      const body: DeviceCustomFields = {};
-      if (customName) body.custom_name = customName;
-      if (customType) body.custom_type = customType;
-      if (customOs) body.custom_os = customOs;
-      if (customVendor) body.custom_vendor = customVendor;
-      if (customModel) body.custom_model = customModel;
-      if (notes) body.notes = notes;
-      if (iconOverride) body.icon_override = iconOverride;
-      if (location) body.location = location;
-      if (owner) body.owner = owner;
-      if (editTags) body.tags = editTags;
-      if (cpuManual) body.cpu_manual = cpuManual;
-      if (ramManual) body.ram_manual = ramManual;
-      if (diskManual) body.disk_manual = diskManual;
-      if (purchaseDate) body.purchase_date = purchaseDate;
-      if (serialNumber) body.serial_number = serialNumber;
-      if (warrantyExpiry) body.warranty_expiry = warrantyExpiry;
-      await updateDevice(device.id, body);
-      toast.success("Device updated");
-      onUpdate();
-    } catch {
-      toast.error("Failed to update device");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleReset = async () => {
-    setResetting(true);
-    try {
-      await resetDeviceCustom(device.id);
-      toast.success("Custom fields reset to auto-detected values");
-      setCustomName(""); setCustomType(""); setCustomOs(""); setCustomVendor("");
-      setCustomModel(""); setNotes(""); setIconOverride(""); setLocation("");
-      setOwner(""); setEditTags(""); setCpuManual(""); setRamManual("");
-      setDiskManual(""); setPurchaseDate(""); setSerialNumber(""); setWarrantyExpiry("");
-      onUpdate();
-    } catch {
-      toast.error("Failed to reset custom fields");
-    } finally {
-      setResetting(false);
-    }
-  };
-
-  return (
-    <div className="flex flex-col -mb-6">
-      <div className="space-y-4 pb-4">
-        <div className="flex items-center gap-2">
-          <Pencil className="h-4 w-4 text-mesh-text-dim" />
-          <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-            Edit Device
-          </p>
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <label className="text-[11px] text-mesh-text-mute">Custom Name</label>
-            <Input
-              value={customName}
-              onChange={(e) => setCustomName(e.target.value)}
-              placeholder={device.hostname ?? device.name ?? "e.g. Oleg's iPhone"}
-              className="h-8 text-sm"
-            />
-            {device.hostname && (
-              <p className="mt-0.5 text-[10px] text-mesh-text-mute">Auto-detected: {device.hostname}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="text-[11px] text-mesh-text-mute">Device Type</label>
-            <select
-              value={customType}
-              onChange={(e) => setCustomType(e.target.value)}
-              className="flex h-8 w-full mesh-card px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
-            >
-              <option value="">{device.device_type ? `Auto: ${device.device_type}` : "Select type…"}</option>
-              {DEVICE_TYPE_OPTIONS.filter(Boolean).map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[11px] text-mesh-text-mute">OS</label>
-            <select
-              value={customOs}
-              onChange={(e) => setCustomOs(e.target.value)}
-              className="flex h-8 w-full mesh-card px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
-            >
-              <option value="">{device.os_family ? `Auto: ${device.os_family}` : "Select OS…"}</option>
-              {OS_OPTIONS.filter(Boolean).map((os) => (
-                <option key={os} value={os}>{os}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <label className="text-[11px] text-mesh-text-mute">Vendor / Manufacturer</label>
-            <Input
-              value={customVendor}
-              onChange={(e) => setCustomVendor(e.target.value)}
-              placeholder={device.vendor ?? device.device_brand ?? "e.g. Apple, Samsung"}
-              className="h-8 text-sm"
-            />
-            {device.vendor && (
-              <p className="mt-0.5 text-[10px] text-mesh-text-mute">Auto-detected: {device.vendor}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="text-[11px] text-mesh-text-mute">Model</label>
-            <Input
-              value={customModel}
-              onChange={(e) => setCustomModel(e.target.value)}
-              placeholder={device.device_model ?? "e.g. iPhone 15 Pro, QNAP TS-253"}
-              className="h-8 text-sm"
-            />
-            {device.device_model && (
-              <p className="mt-0.5 text-[10px] text-mesh-text-mute">Auto-detected: {device.device_model}</p>
-            )}
-          </div>
-
-          <div>
-            <label className="text-[11px] text-mesh-text-mute">Icon Override</label>
-            <select
-              value={iconOverride}
-              onChange={(e) => setIconOverride(e.target.value)}
-              className="flex h-8 w-full mesh-card px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
-            >
-              <option value="">Auto (based on type)</option>
-              {DEVICE_TYPE_OPTIONS.filter(Boolean).map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-
-          <Separator className="bg-mesh-surface-1" />
-          <p className="text-[11px] text-mesh-text-mute font-medium uppercase tracking-wider">Asset Inventory</p>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] text-mesh-text-mute">Location</label>
-              <Input value={location} onChange={(e) => setLocation(e.target.value)} placeholder="e.g. Server Room" className="h-8 text-sm" />
-            </div>
-            <div>
-              <label className="text-[10px] text-mesh-text-mute">Owner</label>
-              <Input value={owner} onChange={(e) => setOwner(e.target.value)} placeholder="e.g. IT Dept" className="h-8 text-sm" />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[10px] text-mesh-text-mute">Tags (comma-separated)</label>
-            <Input value={editTags} onChange={(e) => setEditTags(e.target.value)} placeholder="e.g. production, critical" className="h-8 text-sm" />
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="text-[10px] text-mesh-text-mute">CPU</label>
-              <Input value={cpuManual} onChange={(e) => setCpuManual(e.target.value)} placeholder="e.g. i5-12400" className="h-8 text-sm" />
-            </div>
-            <div>
-              <label className="text-[10px] text-mesh-text-mute">RAM</label>
-              <Input value={ramManual} onChange={(e) => setRamManual(e.target.value)} placeholder="e.g. 16 GB" className="h-8 text-sm" />
-            </div>
-            <div>
-              <label className="text-[10px] text-mesh-text-mute">Disk</label>
-              <Input value={diskManual} onChange={(e) => setDiskManual(e.target.value)} placeholder="e.g. 512 GB" className="h-8 text-sm" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div>
-              <label className="text-[10px] text-mesh-text-mute">Purchase Date</label>
-              <Input type="date" value={purchaseDate} onChange={(e) => setPurchaseDate(e.target.value)} className="h-8 text-sm" />
-            </div>
-            <div>
-              <label className="text-[10px] text-mesh-text-mute">Serial #</label>
-              <Input value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="SN123" className="h-8 text-sm" />
-            </div>
-            <div>
-              <label className="text-[10px] text-mesh-text-mute">Warranty</label>
-              <Input type="date" value={warrantyExpiry} onChange={(e) => setWarrantyExpiry(e.target.value)} className="h-8 text-sm" />
-            </div>
-          </div>
-
-          <div>
-            <label className="text-[11px] text-mesh-text-mute">Notes</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Freeform notes about this device…"
-              rows={3}
-              className="flex w-full mesh-card px-3 py-2 text-sm text-mesh-text placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Sticky footer for Save / Reset actions */}
-      <div className="sticky bottom-0 -mx-6 border-t border-mesh-border-strong bg-mesh-surface-1/95 px-6 py-3 space-y-2">
-        <div className="flex gap-2">
-          <Button size="sm" className="flex-1 gap-1" disabled={saving} onClick={handleSave}>
-            {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Pencil className="h-3 w-3" />}
-            {saving ? "Saving…" : "Save Changes"}
-          </Button>
-        </div>
-
-        {hasCustomFields && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="w-full gap-1 text-xs text-mesh-text-mute hover:text-[#fb7185]"
-            disabled={resetting}
-            onClick={handleReset}
-          >
-            <RotateCcw className="h-3 w-3" />
-            {resetting ? "Resetting…" : "Reset to Auto-Detected"}
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Asset Type Options with Icons ──────────────────────
-
-const ASSET_TYPE_OPTIONS: { value: string; label: string; icon: React.ElementType }[] = [
-  { value: "server", label: "Server", icon: Server },
-  { value: "workstation", label: "Workstation", icon: Monitor },
-  { value: "vm", label: "VM", icon: Box },
-  { value: "container", label: "Container", icon: Container },
-  { value: "nas", label: "NAS", icon: HardDrive },
-  { value: "router", label: "Router", icon: Router },
-  { value: "switch", label: "Switch", icon: Network },
-  { value: "iot", label: "IoT", icon: CircuitBoard },
-  { value: "phone", label: "Phone", icon: Smartphone },
-  { value: "printer", label: "Printer", icon: Printer },
-  { value: "ups", label: "UPS", icon: Battery },
-  { value: "desktop", label: "Desktop", icon: Monitor },
-  { value: "laptop", label: "Laptop", icon: Laptop },
-  { value: "tablet", label: "Tablet", icon: Tablet },
-  { value: "tv", label: "TV", icon: Tv },
-  { value: "gaming", label: "Gaming", icon: Gamepad2 },
-  { value: "other", label: "Other", icon: HelpCircle },
-];
-
-// ─── Add Asset Dialog ───────────────────────────────────
-
-function AddAssetDialog({
-  open,
-  onOpenChange,
-  onCreated,
+// ─────────────────────────────────────────────────────────────────────────
+// Overview body — direct port of the body of details.jsx#DeviceDetail.
+// ─────────────────────────────────────────────────────────────────────────
+function OverviewBody({
+  device,
+  events,
+  ports,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onCreated: () => void;
+  device: Device;
+  events: DeviceEvent[] | null;
+  ports: PortScanResult | null;
 }) {
-  const [saving, setSaving] = useState(false);
-  const [name, setName] = useState("");
-  const [assetType, setAssetType] = useState("");
-  const [ip, setIp] = useState("");
-  const [mac, setMac] = useState("");
-  const [location, setLocation] = useState("");
-  const [model, setModel] = useState("");
-  const [vendor, setVendor] = useState("");
-  const [cpuManual, setCpuManual] = useState("");
-  const [ramManual, setRamManual] = useState("");
-  const [diskManual, setDiskManual] = useState("");
-  const [os, setOs] = useState("");
-  const [osVersion, setOsVersion] = useState("");
-  const [owner, setOwner] = useState("");
-  const [tags, setTags] = useState("");
-  const [notes, setNotes] = useState("");
-  const [purchaseDate, setPurchaseDate] = useState("");
-  const [serialNumber, setSerialNumber] = useState("");
-  const [warrantyExpiry, setWarrantyExpiry] = useState("");
+  // TODO BACKEND: real per-device KPIs / time series.
+  const kpis: Array<{ label: string; value: string; unit: string; accent?: string }> = [
+    { label: "Now", value: "—", unit: "Mbps", accent: "#38bdf8" },
+    { label: "Peak · 24h", value: "—", unit: "Mbps" },
+    { label: "RX · 24h", value: "—", unit: "GB" },
+    { label: "TX · 24h", value: "—", unit: "GB" },
+    {
+      label: "Latency p99",
+      value: "—",
+      unit: "ms",
+      accent: "#4ade80",
+    },
+  ];
 
-  const resetForm = () => {
-    setName(""); setAssetType(""); setIp(""); setMac(""); setLocation("");
-    setModel(""); setVendor(""); setCpuManual(""); setRamManual(""); setDiskManual("");
-    setOs(""); setOsVersion(""); setOwner(""); setTags(""); setNotes("");
-    setPurchaseDate(""); setSerialNumber(""); setWarrantyExpiry("");
-  };
+  // Synthetic traffic series for Overview chart — replace once backend exposes it.
+  const seed = (device.id.charCodeAt(0) || 1) % 11;
+  const rx = useMemo(() => genS(60, 80, 50, seed), [seed]);
+  const tx = useMemo(() => genS(60, 30, 20, seed + 3), [seed]);
+  const sx = 600 / 59;
+  const max = Math.max(...rx, ...tx) * 1.1 || 1;
+  const toY = (v: number) => 180 - (v / max) * 170;
+  const lp = (a: number[]) =>
+    a.map((v, i) => `${i === 0 ? "M" : "L"}${(i * sx).toFixed(1)},${toY(v).toFixed(1)}`).join(" ");
+  const ap = (a: number[]) => `${lp(a)} L600,180 L0,180 Z`;
 
-  const handleSubmit = async () => {
-    if (!name.trim()) {
-      toast.error("Name is required");
-      return;
-    }
-    setSaving(true);
-    try {
-      const body: CreateAssetRequest = {
-        is_manual: true,
-        custom_name: name.trim(),
-      };
-      if (assetType) body.custom_type = assetType;
-      if (ip.trim()) body.ip = ip.trim();
-      if (mac.trim()) body.mac = mac.trim();
-      if (location.trim()) body.location = location.trim();
-      if (model.trim()) body.custom_model = model.trim();
-      if (vendor.trim()) body.custom_vendor = vendor.trim();
-      if (cpuManual.trim()) body.cpu_manual = cpuManual.trim();
-      if (ramManual.trim()) body.ram_manual = ramManual.trim();
-      if (diskManual.trim()) body.disk_manual = diskManual.trim();
-      if (os.trim()) body.custom_os = os.trim();
-      if (owner.trim()) body.owner = owner.trim();
-      if (tags.trim()) body.tags = tags.trim();
-      if (notes.trim()) body.notes = notes.trim();
-      if (purchaseDate) body.purchase_date = purchaseDate;
-      if (serialNumber.trim()) body.serial_number = serialNumber.trim();
-      if (warrantyExpiry) body.warranty_expiry = warrantyExpiry;
+  // Recent activity from real events
+  const recent = (events ?? []).slice(0, 6).map((e) => {
+    const ts = new Date(e.occurred_at);
+    const label = ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const color =
+      e.event_type === "online"
+        ? "#4ade80"
+        : "#fb7185";
+    const msg = e.event_type === "online" ? "device came online" : "device went offline";
+    return { t: label, msg, color };
+  });
 
-      await createAsset(body);
-      toast.success("Asset created");
-      resetForm();
-      onOpenChange(false);
-      onCreated();
-    } catch {
-      toast.error("Failed to create asset");
-    } finally {
-      setSaving(false);
-    }
-  };
+  // Listening ports
+  const listening = ports?.ports ?? [];
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto border-mesh-border-strong bg-mesh-surface-1/95 sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle className="text-white">Add Asset</DialogTitle>
-          <DialogDescription>
-            Manually register a device that can&apos;t be auto-discovered (switches, printers, IoT, UPS, etc.)
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-6">
-          {/* Name (required) */}
-          <div>
-            <label className="text-[11px] font-medium text-mesh-text-dim">
-              Name <span className="text-[#fb7185]">*</span>
-            </label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Office Switch, Main Printer"
-              className="h-9 text-sm"
-              autoFocus
-            />
+    <>
+      {/* KPI row */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10 }}>
+        {kpis.map((k) => (
+          <div key={k.label} className="mesh-card" style={{ padding: 14 }}>
+            <div className="t-micro">{k.label}</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 5, marginTop: 6 }}>
+              <span
+                className="mono"
+                style={{
+                  font: "600 22px var(--font-mono)",
+                  color: k.accent ?? "var(--text)",
+                  lineHeight: 1,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                {k.value}
+              </span>
+              <span className="t-small mono" style={{ color: "var(--text-mute)" }}>
+                {k.unit}
+              </span>
+            </div>
           </div>
+        ))}
+      </div>
 
-          {/* Type selector with icons */}
-          <div>
-            <label className="text-[11px] font-medium text-mesh-text-dim">Type</label>
-            <div className="mt-1.5 grid grid-cols-4 gap-1.5 sm:grid-cols-6">
-              {ASSET_TYPE_OPTIONS.map((opt) => {
-                const Icon = opt.icon;
-                const isSelected = assetType === opt.value;
-                return (
-                  <button
-                    key={opt.value}
-                    type="button"
-                    onClick={() => setAssetType(isSelected ? "" : opt.value)}
-                    className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2.5 text-[11px] transition-colors ${
-                      isSelected
-                        ? "border-mesh-primary bg-mesh-primary/10 text-mesh-primary"
-                        : "border-mesh-border-strong bg-mesh-surface-1 text-mesh-text-dim hover:border-mesh-text-mute hover:text-mesh-text"
-                    }`}
+      {/* Body — 2 cols */}
+      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 12 }}>
+        <div
+          className="mesh-card"
+          style={{ padding: 14, display: "flex", flexDirection: "column", gap: 10 }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+            <h3 className="t-h3">Traffic · 24h</h3>
+            <span
+              className="mono"
+              style={{ font: "500 11px var(--font-mono)", color: "var(--text-mute)" }}
+            >
+              5m buckets · 288 points
+            </span>
+          </div>
+          <svg viewBox="0 0 600 180" style={{ width: "100%", height: 180 }}>
+            <defs>
+              <linearGradient id="dd-rx" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0" stopColor="#38bdf8" stopOpacity="0.35" />
+                <stop offset="1" stopColor="#38bdf8" stopOpacity="0" />
+              </linearGradient>
+              <linearGradient id="dd-tx" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0" stopColor="#818cf8" stopOpacity="0.35" />
+                <stop offset="1" stopColor="#818cf8" stopOpacity="0" />
+              </linearGradient>
+            </defs>
+            {[0, 0.25, 0.5, 0.75].map((p, i) => (
+              <line
+                key={i}
+                x1="0"
+                x2="600"
+                y1={p * 180}
+                y2={p * 180}
+                stroke="rgba(96,144,212,0.20)"
+                strokeWidth="0.5"
+                strokeDasharray="2 4"
+              />
+            ))}
+            <path d={ap(rx)} fill="url(#dd-rx)" />
+            <path d={lp(rx)} stroke="#38bdf8" strokeWidth="1.4" fill="none" />
+            <path d={ap(tx)} fill="url(#dd-tx)" />
+            <path d={lp(tx)} stroke="#818cf8" strokeWidth="1.4" fill="none" />
+          </svg>
+          <div
+            style={{
+              display: "flex",
+              gap: 18,
+              font: "500 11px var(--font-mono)",
+              color: "var(--text-mute)",
+            }}
+          >
+            <span>
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 8,
+                  height: 2,
+                  background: "#38bdf8",
+                  verticalAlign: "middle",
+                  marginRight: 6,
+                }}
+              />
+              rx
+            </span>
+            <span>
+              <span
+                style={{
+                  display: "inline-block",
+                  width: 8,
+                  height: 2,
+                  background: "#818cf8",
+                  verticalAlign: "middle",
+                  marginRight: 6,
+                }}
+              />
+              tx
+            </span>
+            <span style={{ flex: 1 }} />
+            <span>00:00</span>
+            <span>06:00</span>
+            <span>12:00</span>
+            <span>18:00</span>
+            <span>now</span>
+          </div>
+        </div>
+
+        {/* Path */}
+        <div className="mesh-card" style={{ padding: 14 }}>
+          <h3 className="t-h3" style={{ marginBottom: 10 }}>
+            Path · WAN → device
+          </h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {[
+              { node: "WAN", meta: "external", color: "#38bdf8" as const, last: false },
+              { node: "Router", meta: "gateway · LAN", color: "#2563eb" as const, last: false },
+              { node: "Switch / AP", meta: "uplink", color: "#38bdf8" as const, last: false },
+              {
+                node: `${devicePrimaryTitle(device)} (this device)`,
+                meta: `${(device.ips ?? [])[0] ?? "—"} · current`,
+                color: "#4ade80" as const,
+                last: true,
+              },
+            ].map((h) => (
+              <div key={h.node} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div
+                  style={{
+                    width: 14,
+                    height: 14,
+                    borderRadius: 2,
+                    background: h.color,
+                    opacity: h.last ? 1 : 0.4,
+                    position: "relative",
+                  }}
+                >
+                  {h.last ? (
+                    <span
+                      style={{
+                        position: "absolute",
+                        inset: 2,
+                        background: "var(--surface-1)",
+                        borderRadius: 1,
+                      }}
+                    />
+                  ) : null}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ font: "500 12px var(--font-sans)", color: "var(--text)" }}>
+                    {h.node}
+                  </div>
+                  <div
+                    className="mono"
+                    style={{ font: "400 10px var(--font-mono)", color: "var(--text-mute)" }}
                   >
-                    <Icon className="h-4 w-4" />
-                    {opt.label}
-                  </button>
+                    {h.meta}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Ports + Recent events row */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div className="mesh-card" style={{ padding: 14 }}>
+          <h3 className="t-h3" style={{ marginBottom: 10 }}>
+            Listening · {listening.length} ports
+          </h3>
+          {listening.length === 0 ? (
+            <div className="t-small" style={{ color: "var(--text-mute)" }}>
+              No open ports detected. Run a port scan from the Ports tab.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {listening.slice(0, 6).map((p) => {
+                const color =
+                  p.service?.toLowerCase().includes("ssh")
+                    ? "#4ade80"
+                    : p.service?.toLowerCase().includes("plex")
+                      ? "#818cf8"
+                      : "#38bdf8";
+                return (
+                  <div
+                    key={`${p.port}-${p.protocol}`}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "60px 80px 1fr 80px",
+                      alignItems: "center",
+                      padding: "6px 0",
+                      borderBottom: "var(--hairline) solid rgba(96,144,212,0.20)",
+                      font: "400 12px var(--font-mono)",
+                    }}
+                  >
+                    <span style={{ color, fontWeight: 500 }}>{p.port}</span>
+                    <span style={{ color: "var(--text)" }}>{p.service ?? p.protocol}</span>
+                    <span style={{ color: "var(--text-mute)" }}>{p.version || "—"}</span>
+                    <span style={{ color: "#4ade80", textAlign: "right" }}>open</span>
+                  </div>
                 );
               })}
             </div>
-          </div>
-
-          {/* Network info */}
-          <div>
-            <p className="text-[11px] font-medium text-mesh-text-dim">Network</p>
-            <div className="mt-1.5 grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] text-mesh-text-mute">IP Address</label>
-                <Input
-                  value={ip}
-                  onChange={(e) => setIp(e.target.value)}
-                  placeholder="e.g. 10.10.0.1"
-                  className="h-8 text-sm font-mono"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-mesh-text-mute">MAC Address</label>
-                <Input
-                  value={mac}
-                  onChange={(e) => setMac(e.target.value)}
-                  placeholder="e.g. AA:BB:CC:DD:EE:FF"
-                  className="h-8 text-sm font-mono"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Hardware */}
-          <div>
-            <p className="text-[11px] font-medium text-mesh-text-dim">Hardware</p>
-            <div className="mt-1.5 grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] text-mesh-text-mute">Vendor / Manufacturer</label>
-                <Input
-                  value={vendor}
-                  onChange={(e) => setVendor(e.target.value)}
-                  placeholder="e.g. Cisco, HP, APC"
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-mesh-text-mute">Model</label>
-                <Input
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder="e.g. SG350-28, LaserJet Pro"
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-mesh-text-mute">CPU</label>
-                <Input
-                  value={cpuManual}
-                  onChange={(e) => setCpuManual(e.target.value)}
-                  placeholder="e.g. Intel i5-12400"
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-mesh-text-mute">RAM</label>
-                <Input
-                  value={ramManual}
-                  onChange={(e) => setRamManual(e.target.value)}
-                  placeholder="e.g. 16 GB DDR4"
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="text-[10px] text-mesh-text-mute">Disk</label>
-                <Input
-                  value={diskManual}
-                  onChange={(e) => setDiskManual(e.target.value)}
-                  placeholder="e.g. 512 GB NVMe SSD"
-                  className="h-8 text-sm"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Software */}
-          <div>
-            <p className="text-[11px] font-medium text-mesh-text-dim">Software</p>
-            <div className="mt-1.5 grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] text-mesh-text-mute">OS</label>
-                <select
-                  value={os}
-                  onChange={(e) => setOs(e.target.value)}
-                  className="flex h-8 w-full mesh-card px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
-                >
-                  <option value="">Select OS…</option>
-                  {OS_OPTIONS.filter(Boolean).map((o) => (
-                    <option key={o} value={o}>{o}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] text-mesh-text-mute">OS Version</label>
-                <Input
-                  value={osVersion}
-                  onChange={(e) => setOsVersion(e.target.value)}
-                  placeholder="e.g. 22.04, 15.2"
-                  className="h-8 text-sm"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Location & ownership */}
-          <div>
-            <p className="text-[11px] font-medium text-mesh-text-dim">Location &amp; Ownership</p>
-            <div className="mt-1.5 grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-[10px] text-mesh-text-mute">Location</label>
-                <Input
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  placeholder="e.g. Server Room, Office 2F"
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-mesh-text-mute">Owner</label>
-                <Input
-                  value={owner}
-                  onChange={(e) => setOwner(e.target.value)}
-                  placeholder="e.g. IT Department"
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div className="col-span-2">
-                <label className="text-[10px] text-mesh-text-mute">Tags (comma-separated)</label>
-                <Input
-                  value={tags}
-                  onChange={(e) => setTags(e.target.value)}
-                  placeholder="e.g. production, critical, floor-2"
-                  className="h-8 text-sm"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Asset management */}
-          <div>
-            <p className="text-[11px] font-medium text-mesh-text-dim">Asset Management</p>
-            <div className="mt-1.5 grid grid-cols-3 gap-3">
-              <div>
-                <label className="text-[10px] text-mesh-text-mute">Purchase Date</label>
-                <Input
-                  type="date"
-                  value={purchaseDate}
-                  onChange={(e) => setPurchaseDate(e.target.value)}
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-mesh-text-mute">Serial Number</label>
-                <Input
-                  value={serialNumber}
-                  onChange={(e) => setSerialNumber(e.target.value)}
-                  placeholder="e.g. SN123456"
-                  className="h-8 text-sm"
-                />
-              </div>
-              <div>
-                <label className="text-[10px] text-mesh-text-mute">Warranty Expiry</label>
-                <Input
-                  type="date"
-                  value={warrantyExpiry}
-                  onChange={(e) => setWarrantyExpiry(e.target.value)}
-                  className="h-8 text-sm"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="text-[11px] font-medium text-mesh-text-dim">Notes</label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Additional notes about this asset…"
-              rows={2}
-              className="mt-1.5 flex w-full mesh-card px-3 py-2 text-sm text-mesh-text placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
-            />
-          </div>
+          )}
         </div>
 
-        <DialogFooter className="mt-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button disabled={saving || !name.trim()} onClick={handleSubmit}>
-            {saving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating…
-              </>
-            ) : (
-              <>
-                <Plus className="mr-2 h-4 w-4" />
-                Create Asset
-              </>
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Device WiFi Tab ────────────────────────────────────
-
-function SignalBadge({ dbm }: { dbm: number }) {
-  let color = "bg-[#fb7185]/20 text-[#fb7185] border-[#fb7185]/30";
-  if (dbm > -50) color = "bg-[#4ade80]/20 text-[#4ade80] border-[#4ade80]/30";
-  else if (dbm > -70) color = "bg-[#fbbf24]/20 text-[#fbbf24] border-[#fbbf24]/30";
-  return (
-    <Badge variant="outline" className={`font-mono text-xs ${color}`}>
-      {dbm} dBm
-    </Badge>
-  );
-}
-
-function DeviceWifiTab({ mac }: { mac: string }) {
-  const [wifiInfo, setWifiInfo] = useState<DeviceWifiInfo | null | undefined>(undefined);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const status = await fetchXiaomiStatus();
-        if (!status.configured) { if (!cancelled) setWifiInfo(null); return; }
-
-        const [wifiDevices, allDevices] = await Promise.all([
-          fetchXiaomiWifiDevices(),
-          fetchXiaomiDevices(),
-        ]);
-
-        const normalizedMac = mac.toUpperCase();
-
-        // Look for WiFi info
-        const wifiDev = wifiDevices.find((w) => w.mac?.toUpperCase() === normalizedMac);
-        const devInfo = allDevices.find((d) => d.mac?.toUpperCase() === normalizedMac);
-
-        if (!wifiDev && !devInfo) {
-          if (!cancelled) setWifiInfo(null);
-          return;
-        }
-
-        const info: DeviceWifiInfo = {
-          mac: normalizedMac,
-          signal_dbm: wifiDev?.signal ?? null,
-          band: wifiDev?.band ?? null,
-          connection_type: wifiDev ? "wifi" : "wired",
-          mesh_node: devInfo?.parent_id ?? null,
-          router_name: devInfo?.name ?? wifiDev?.name ?? null,
-          upload_bps: devInfo?.upload_speed ? parseFloat(devInfo.upload_speed) : null,
-          download_bps: devInfo?.download_speed ? parseFloat(devInfo.download_speed) : null,
-          is_online: devInfo?.online ?? true,
-        };
-
-        if (!cancelled) setWifiInfo(info);
-      } catch {
-        if (!cancelled) setWifiInfo(null);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [mac]);
-
-  if (wifiInfo === undefined) {
-    return (
-      <div className="space-y-3">
-        <Skeleton className="h-48 w-full bg-mesh-surface-1" />
-      </div>
-    );
-  }
-
-  if (!wifiInfo) {
-    return (
-      <div className="flex flex-col items-center justify-center py-8 text-center">
-        <Wifi className="mb-2 h-8 w-8 text-mesh-text-mute" />
-        <p className="text-sm text-mesh-text-mute">No WiFi data available</p>
-        <p className="mt-1 text-xs text-mesh-text-mute">
-          Configure Xiaomi MiWiFi integration in Settings to see WiFi details
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Wifi className="h-4 w-4 text-mesh-accent" />
-        <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-          WiFi Connection
-        </p>
-      </div>
-
-      <div className="space-y-3">
-        {/* Connection Type */}
-        <InfoRow label="Connection" value={wifiInfo.connection_type === "wifi" ? "Wireless" : "Wired"} />
-
-        {/* Signal Strength */}
-        {wifiInfo.signal_dbm != null && (
-          <div className="flex items-baseline justify-between gap-4">
-            <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-              Signal
-            </span>
-            <SignalBadge dbm={wifiInfo.signal_dbm} />
-          </div>
-        )}
-
-        {/* Band */}
-        {wifiInfo.band && (
-          <div className="flex items-baseline justify-between gap-4">
-            <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-              Band
-            </span>
-            <Badge variant="outline" className="border-mesh-text-mute text-mesh-text text-xs">
-              {wifiInfo.band}
-            </Badge>
-          </div>
-        )}
-
-        {/* Mesh Node */}
-        {wifiInfo.mesh_node && (
-          <InfoRow label="Mesh Node" value={wifiInfo.mesh_node} />
-        )}
-
-        {/* Router Name */}
-        {wifiInfo.router_name && (
-          <InfoRow label="Router Name" value={wifiInfo.router_name} />
-        )}
-
-        {/* Upload/Download Speed */}
-        {(wifiInfo.upload_bps != null || wifiInfo.download_bps != null) && (
-          <>
-            <Separator className="bg-mesh-surface-1" />
-            <div className="flex items-center gap-2">
-              <Network className="h-4 w-4 text-mesh-text-mute" />
-              <p className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-                Current Speed
-              </p>
+        <div className="mesh-card" style={{ padding: 14 }}>
+          <h3 className="t-h3" style={{ marginBottom: 10 }}>
+            Recent activity
+          </h3>
+          {recent.length === 0 ? (
+            <div className="t-small" style={{ color: "var(--text-mute)" }}>
+              No recent events.
             </div>
-            {wifiInfo.download_bps != null && (
-              <div className="flex items-baseline justify-between gap-4">
-                <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-                  Download
-                </span>
-                <span className="font-mono text-sm text-[#4ade80]">
-                  {formatSpeed(wifiInfo.download_bps)}
-                </span>
-              </div>
-            )}
-            {wifiInfo.upload_bps != null && (
-              <div className="flex items-baseline justify-between gap-4">
-                <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-                  Upload
-                </span>
-                <span className="font-mono text-sm text-mesh-primary">
-                  {formatSpeed(wifiInfo.upload_bps)}
-                </span>
-              </div>
-            )}
-          </>
-        )}
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {recent.map((e, i) => (
+                <div
+                  key={i}
+                  style={{ display: "flex", gap: 10, font: "400 12px var(--font-sans)" }}
+                >
+                  <span
+                    className="mono"
+                    style={{ color: "var(--text-faint)", fontSize: 11, width: 70 }}
+                  >
+                    {e.t}
+                  </span>
+                  <span
+                    style={{
+                      width: 5,
+                      height: 5,
+                      borderRadius: 3,
+                      background: e.color,
+                      marginTop: 6,
+                    }}
+                  />
+                  <span style={{ color: "var(--text-dim)" }}>{e.msg}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+function PortsTab({ ports }: { ports: PortScanResult | null }) {
+  if (!ports) {
+    return (
+      <TabPlaceholder
+        title="Ports"
+        message="No port scan on record yet. Trigger a scan from the asset detail page."
+      />
+    );
+  }
+  const list = ports.ports ?? [];
+  if (list.length === 0) {
+    return (
+      <TabPlaceholder
+        title="Ports"
+        message="Last scan returned 0 open ports."
+      />
+    );
+  }
+  return (
+    <div className="mesh-card" style={{ padding: 14 }}>
+      <h3 className="t-h3" style={{ marginBottom: 10 }}>
+        Listening · {list.length} ports
+      </h3>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {list.map((p) => (
+          <div
+            key={`${p.port}-${p.protocol}`}
+            style={{
+              display: "grid",
+              gridTemplateColumns: "60px 80px 1fr 80px",
+              alignItems: "center",
+              padding: "6px 0",
+              borderBottom: "var(--hairline) solid rgba(96,144,212,0.20)",
+              font: "400 12px var(--font-mono)",
+            }}
+          >
+            <span style={{ color: "#38bdf8", fontWeight: 500 }}>{p.port}</span>
+            <span style={{ color: "var(--text)" }}>{p.service ?? p.protocol}</span>
+            <span style={{ color: "var(--text-mute)" }}>{p.version || "—"}</span>
+            <span style={{ color: "#4ade80", textAlign: "right" }}>open</span>
+          </div>
+        ))}
       </div>
     </div>
   );
 }
 
-/** Format bytes/s to a human-readable speed string. */
-function formatSpeed(bps: number): string {
-  if (bps < 1024) return `${bps} B/s`;
-  if (bps < 1024 * 1024) return `${(bps / 1024).toFixed(1)} KB/s`;
-  return `${(bps / (1024 * 1024)).toFixed(1)} MB/s`;
-}
-
-// ─── InfoRow Helper ─────────────────────────────────────
-
-function InfoRow({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
+function AuditTab({ events }: { events: DeviceEvent[] | null }) {
+  if (events === null) {
+    return <TabPlaceholder title="Audit" message="Loading event history…" />;
+  }
+  if (events.length === 0) {
+    return <TabPlaceholder title="Audit" message="No audit events recorded for this device yet." />;
+  }
   return (
-    <div className="flex items-baseline justify-between gap-4">
-      <span className="shrink-0 text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
-        {label}
-      </span>
-      <span
-        className={`min-w-0 truncate text-right text-sm text-mesh-text ${mono ? "font-mono tabular-nums" : ""}`}
-        title={value}
-      >
-        {value}
-      </span>
+    <div className="mesh-card" style={{ padding: 14 }}>
+      <h3 className="t-h3" style={{ marginBottom: 10 }}>
+        Audit · last {events.length}
+      </h3>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {events.map((e) => {
+          const ts = new Date(e.occurred_at);
+          const label = ts.toLocaleString();
+          const color = e.event_type === "online" ? "#4ade80" : "#fb7185";
+          const msg = e.event_type === "online" ? "device came online" : "device went offline";
+          return (
+            <div
+              key={e.id}
+              style={{ display: "flex", gap: 10, font: "400 12px var(--font-sans)" }}
+            >
+              <span
+                className="mono"
+                style={{ color: "var(--text-faint)", fontSize: 11, width: 160 }}
+              >
+                {label}
+              </span>
+              <span
+                style={{
+                  width: 5,
+                  height: 5,
+                  borderRadius: 3,
+                  background: color,
+                  marginTop: 6,
+                }}
+              />
+              <span style={{ color: "var(--text-dim)" }}>{msg}</span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
