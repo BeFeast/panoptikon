@@ -40,6 +40,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { PageTransition } from "@/components/PageTransition";
+import { EmptyState } from "@/components/mesh/state";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import {
   Tooltip,
@@ -150,12 +151,10 @@ export default function DnsLogsPage() {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-semibold tracking-tight text-white">
-                DNS Query Log
-              </h1>
+              <h1 className="t-h1 text-mesh-text">DNS Query Log</h1>
               <HelpTooltip text="Shows DNS queries made by devices on your network. Useful for spotting suspicious domains and debugging connectivity. Data is kept for 7 days." />
             </div>
-            <p className="text-muted-foreground">
+            <p className="text-mesh-text-mute">
               Per-device DNS query history and statistics (7-day retention)
             </p>
           </div>
@@ -167,7 +166,7 @@ export default function DnsLogsPage() {
                   Refresh
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-mesh-border bg-mesh-surface-1 text-mesh-text">
+              <TooltipContent className="max-w-xs">
                 Reload the query log with the latest entries
               </TooltipContent>
             </Tooltip>
@@ -333,6 +332,18 @@ export default function DnsLogsPage() {
             </div>
 
             {/* Query Log Table */}
+            {!loading && logData?.entries.length === 0 ? (
+              <EmptyState
+                icon={Globe}
+                title="No DNS queries recorded yet"
+                message="Configure Unbound log ingestion to start collecting per-device DNS history."
+                action={
+                  <a href="/settings/dns" className="btn btn-primary">
+                    DNS Settings
+                  </a>
+                }
+              />
+            ) : (
             <Card>
               <CardContent className="p-0">
                 <Table>
@@ -358,16 +369,6 @@ export default function DnsLogsPage() {
                           ))}
                         </TableRow>
                       ))
-                    ) : logData?.entries.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={7}
-                          className="h-24 text-center text-muted-foreground"
-                        >
-                          No DNS queries recorded yet. Configure Unbound log
-                          ingestion to start collecting data.
-                        </TableCell>
-                      </TableRow>
                     ) : (
                       logData?.entries.map((entry: DnsQueryLogEntry) => (
                         <TableRow key={entry.id}>
@@ -417,6 +418,7 @@ export default function DnsLogsPage() {
                 </Table>
               </CardContent>
             </Card>
+            )}
 
             {/* Pagination */}
             {totalPages > 1 && (
@@ -457,7 +459,7 @@ export default function DnsLogsPage() {
               {/* Top Queried Domains */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Top Queried Domains</CardTitle>
+                  <CardTitle className="t-h2">Top Queried Domains</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {statsLoading ? (
@@ -498,7 +500,7 @@ export default function DnsLogsPage() {
               {/* Top Blocked Domains */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">Top Blocked Domains</CardTitle>
+                  <CardTitle className="t-h2">Top Blocked Domains</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {statsLoading ? (

@@ -31,7 +31,7 @@ import type {
   DnsQueryStats,
 } from "@/lib/types";
 import { PageTransition } from "@/components/PageTransition";
-import { EmptyState } from "@/components/EmptyState";
+import { EmptyState } from "@/components/mesh/state";
 import { ErrorState } from "@/components/ErrorState";
 
 type TimeRange = "1h" | "6h" | "24h" | "48h" | "7d";
@@ -133,7 +133,7 @@ export default function DnsQueriesPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight text-white">DNS Query Log</h1>
+            <h1 className="t-h1 text-mesh-text">DNS Query Log</h1>
             {stats && (
               <Badge variant="secondary" className="gap-1">
                 <Globe className="h-3 w-3" />
@@ -308,11 +308,6 @@ export default function DnsQueriesPage() {
                 variant={timeRange === t.value ? "default" : "outline"}
                 size="sm"
                 onClick={() => setTimeRange(t.value)}
-                className={
-                  timeRange === t.value
-                    ? ""
-                    : "border-mesh-border-strong text-mesh-text-dim hover:text-mesh-text"
-                }
               >
                 {t.label}
               </Button>
@@ -327,11 +322,6 @@ export default function DnsQueriesPage() {
                 variant={blockedFilter === f ? "default" : "outline"}
                 size="sm"
                 onClick={() => setBlockedFilter(f)}
-                className={
-                  blockedFilter === f
-                    ? ""
-                    : "border-mesh-border-strong text-mesh-text-dim hover:text-mesh-text"
-                }
               >
                 {f === "all" ? "All" : f === "blocked" ? "Blocked" : "Allowed"}
               </Button>
@@ -345,7 +335,7 @@ export default function DnsQueriesPage() {
               placeholder="Filter by domain..."
               value={domainSearch}
               onChange={(e) => setDomainSearch(e.target.value)}
-              className="pl-9 bg-[#12121a] border-mesh-border-strong text-sm"
+              className="pl-9 text-sm"
             />
           </div>
         </div>
@@ -360,17 +350,16 @@ export default function DnsQueriesPage() {
             </CardContent>
           </Card>
         ) : logData.items.length === 0 ? (
-          <Card className="">
-            <CardContent>
-              <EmptyState
-                icon={Globe}
-                title="No DNS queries recorded"
-                description="No queries match the selected filters. Check that DNS logging is enabled in Settings → DNS."
-                actionLabel="DNS Settings"
-                actionHref="/settings/dns"
-              />
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={Globe}
+            title="No DNS queries recorded"
+            message="No queries match the selected filters. Check that DNS logging is enabled in Settings → DNS."
+            action={
+              <a href="/settings/dns" className="btn btn-primary">
+                DNS Settings
+              </a>
+            }
+          />
         ) : (
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
@@ -476,7 +465,6 @@ export default function DnsQueriesPage() {
                     size="sm"
                     disabled={page <= 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="border-mesh-border-strong text-mesh-text-dim h-7 px-2"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
@@ -485,7 +473,6 @@ export default function DnsQueriesPage() {
                     size="sm"
                     disabled={page >= totalPages}
                     onClick={() => setPage((p) => p + 1)}
-                    className="border-mesh-border-strong text-mesh-text-dim h-7 px-2"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
