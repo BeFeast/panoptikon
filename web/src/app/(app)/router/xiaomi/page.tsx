@@ -1,22 +1,53 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useHashTab } from "@/hooks/useHashTab";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { fetchSettings } from "@/lib/api";
 import XiaomiRouter from "@/components/XiaomiRouter";
 import XiaomiMeshTopology from "@/components/XiaomiMeshTopology";
+import XiaomiRouterDesign from "@/components/router/XiaomiRouterDesign";
 import { PageTransition } from "@/components/PageTransition";
 import {
   RouterWorkspace,
+  RouterWorkspaceLoading,
   RouterWorkspaceState,
 } from "@/components/router/RouterWorkspace";
 
+const XIAOMI_TAB_IDS = [
+  "system",
+  "mesh",
+  "wifi",
+  "wan",
+  "lan",
+  "devices",
+] as const;
+type XiaomiTab = (typeof XIAOMI_TAB_IDS)[number];
+
 export default function XiaomiRouterPage() {
-  const [tab, setTab] = useHashTab("system", ["system", "mesh"]);
+  return (
+    <Suspense
+      fallback={
+        <PageTransition>
+          <RouterWorkspace active="xiaomi">
+            <RouterWorkspaceLoading />
+          </RouterWorkspace>
+        </PageTransition>
+      }
+    >
+      <XiaomiRouterPageInner />
+    </Suspense>
+  );
+}
+
+function XiaomiRouterPageInner() {
+  const [tab, setTab] = useHashTab<XiaomiTab>("system", [...XIAOMI_TAB_IDS]);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [xiaomiEnabled, setXiaomiEnabled] = useState(false);
+  const search = useSearchParams();
+  const legacy = search?.get("legacy") === "1";
 
   useEffect(() => {
     const loadSettings = async () => {
@@ -40,25 +71,45 @@ export default function XiaomiRouterPage() {
             <Skeleton className="h-96 w-full" />
           </div>
         ) : xiaomiEnabled ? (
-          <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-            <TabsList
-              className="mesh-card"
-              data-testid="router-tabs"
+          legacy ? (
+            <Tabs
+              value={tab}
+              onValueChange={(v) =>
+                setTab(
+                  (XIAOMI_TAB_IDS as readonly string[]).includes(v)
+                    ? (v as XiaomiTab)
+                    : "system",
+                )
+              }
+              className="space-y-4"
             >
-              <TabsTrigger value="system" data-testid="router-tab-system">
-                System
-              </TabsTrigger>
-              <TabsTrigger value="mesh" data-testid="router-tab-mesh">
-                Mesh Topology
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="system">
-              <XiaomiRouter />
-            </TabsContent>
-            <TabsContent value="mesh">
-              <XiaomiMeshTopology />
-            </TabsContent>
-          </Tabs>
+              <TabsList className="mesh-card" data-testid="router-tabs">
+                <TabsTrigger value="system" data-testid="router-tab-system">
+                  System
+                </TabsTrigger>
+                <TabsTrigger value="mesh" data-testid="router-tab-mesh">
+                  Mesh Topology
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="system">
+                <XiaomiRouter />
+              </TabsContent>
+              <TabsContent value="mesh">
+                <XiaomiMeshTopology />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <XiaomiRouterDesign
+              activeTab={tab}
+              onTabChange={(v) =>
+                setTab(
+                  (XIAOMI_TAB_IDS as readonly string[]).includes(v)
+                    ? (v as XiaomiTab)
+                    : "system",
+                )
+              }
+            />
+          )
         ) : (
           <RouterWorkspaceState
             title="Xiaomi Mesh Not Configured"
