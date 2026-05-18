@@ -35,13 +35,15 @@ test.describe("Sidebar user pill (P0 relocation)", () => {
   test("TopBar no longer has a user avatar dropdown", async ({
     authenticatedPage: page,
   }) => {
-    // Old contract: TopBar contained a 'A' avatar trigger opening Settings/
-    // Change password/Logout. New contract: no such trigger exists.
+    // Old contract: TopBar contained an 'A' avatar trigger opening Settings/
+    // Change password/Logout. New contract: no such trigger exists; user pill
+    // lives in the sidebar footer instead.
     const header = page.locator("header").first();
     await expect(header).toBeVisible();
-    // The old dropdown trigger was the only button with single-letter "A" label.
-    const oldAvatar = header.getByRole("button", { name: "A" });
-    await expect(oldAvatar).toHaveCount(0);
+    // The user pill — and any "operator" / "core · …" text — must not appear
+    // anywhere inside the topbar.
+    await expect(header.getByText("operator", { exact: true })).toHaveCount(0);
+    await expect(header.getByText(/core · /)).toHaveCount(0);
   });
 
   test("clicking the sidebar pill opens dropdown with Logout", async ({

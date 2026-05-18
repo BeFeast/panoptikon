@@ -31,8 +31,9 @@ test.describe("Display font (Space Grotesk)", () => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto("/dashboard");
 
-    // The sidebar "Panoptikon" text in the logo area
-    const logoText = page.locator("aside span.font-mono");
+    // The sidebar "Panoptikon" text in the logo area. Scope to the brand
+    // header so it doesn't match the user-pill mono text in the footer.
+    const logoText = page.locator("aside header span.font-mono");
     await expect(logoText).toBeVisible({ timeout: 15000 });
     await expect(logoText).toHaveText("Panoptikon");
 
