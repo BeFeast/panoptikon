@@ -71,9 +71,6 @@ import type {
 } from "@/lib/types";
 import { toast } from "sonner";
 
-const surfaceClass =
-  "border-mesh-border-strong bg-gradient-to-b from-mesh-surface-1/80 to-mesh-surface-1/55 shadow-[0_12px_30px_rgba(2,6,23,0.35)]";
-
 const LIVE_POLL_INTERVAL = 5000;
 
 export default function QosPage() {
@@ -288,7 +285,7 @@ export default function QosPage() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4 pt-2">
-            <Card className={surfaceClass}>
+            <Card>
               <CardHeader>
                 <CardTitle className="text-base text-white">Traffic Shaping Overview</CardTitle>
                 <CardDescription className="text-mesh-text-dim">
@@ -361,7 +358,7 @@ export default function QosPage() {
             </div>
 
             {/* Simple Queues Table */}
-            <Card className={surfaceClass}>
+            <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base text-white">Simple Queues</CardTitle>
                 <CardDescription className="text-xs text-mesh-text-mute">
@@ -462,7 +459,7 @@ export default function QosPage() {
             </Card>
 
             {/* Queue Tree Table */}
-            <Card className={surfaceClass}>
+            <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base text-white">Queue Tree</CardTitle>
                 <CardDescription className="text-xs text-mesh-text-mute">
@@ -687,7 +684,7 @@ function SummaryCard({
   iconClass: string;
 }) {
   return (
-    <Card className={surfaceClass}>
+    <Card>
       <CardContent className="flex min-h-[96px] items-center gap-5 p-4">
         <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border", iconClass)}>
           {icon}

@@ -76,9 +76,6 @@ import type {
 } from "@/lib/types";
 import { toast } from "sonner";
 
-const surfaceClass =
-  "border-mesh-border-strong bg-gradient-to-b from-mesh-surface-1/80 to-mesh-surface-1/55 shadow-[0_12px_30px_rgba(2,6,23,0.35)]";
-
 type NatTab = "all" | "dnat" | "snat";
 
 export default function NatPage() {
@@ -305,7 +302,7 @@ export default function NatPage() {
         </section>
 
         {/* Rules table */}
-        <Card className={surfaceClass}>
+        <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base text-white">MikroTik NAT Rules</CardTitle>
             <CardDescription className="text-xs text-mesh-text-mute">
@@ -527,7 +524,7 @@ function SummaryCard({
   iconClass: string;
 }) {
   return (
-    <Card className={surfaceClass}>
+    <Card>
       <CardContent className="flex min-h-[96px] items-center gap-5 p-4">
         <div className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border", iconClass)}>
           {icon}
