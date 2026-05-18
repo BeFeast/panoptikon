@@ -115,7 +115,7 @@ export default function AgentsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Agents</h1>
+          <h1 className="t-display text-mesh-text">Agents</h1>
           <HelpTooltip text="Lightweight agents installed on your machines that report system info (CPU, memory, disk, OS) back to Panoptikon." />
         </div>
         <AddAgentDialog
@@ -218,7 +218,7 @@ export default function AgentsPage() {
                             autoFocus
                             value={renameValue}
                             onChange={(e) => setRenameValue(e.target.value)}
-                            className="h-7 w-40 bg-mesh-surface-1 border-mesh-primary text-white text-sm px-2"
+                            className="h-7 w-40 text-sm px-2"
                           />
                           <button type="submit" className="text-[#4ade80] hover:text-[#4ade80] transition-colors">
                             <Check size={14} />
@@ -307,7 +307,7 @@ export default function AgentsPage() {
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={!!pendingDelete} onOpenChange={(v) => { if (!v) setPendingDelete(null); }}>
-        <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fb7185]/10">
@@ -324,7 +324,7 @@ export default function AgentsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
-              className="border-mesh-border bg-transparent text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-white"
+              className="bg-transparent text-mesh-text-dim hover:bg-mesh-surface-2 hover:text-mesh-text"
               disabled={deleting}
             >
               Cancel
@@ -333,7 +333,7 @@ export default function AgentsPage() {
               onClick={handleDelete}
               disabled={deleting}
               autoFocus
-              className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
+              className="bg-[#fb7185] text-white hover:bg-[#fb7185]/90"
             >
               {deleting ? "Deleting…" : "Delete"}
             </AlertDialogAction>
@@ -413,7 +413,7 @@ function AddAgentDialog({ onCreated }: { onCreated: () => void }) {
           Add Agent
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-full max-w-[680px] border-mesh-border bg-mesh-surface-1/95">
+      <DialogContent className="w-full max-w-[680px]">
         <DialogHeader>
           <DialogTitle className="text-white">
             {result ? "Agent Created" : "Add New Agent"}

@@ -402,7 +402,7 @@ ${filtered
       <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Assets</h1>
+          <h1 className="t-display text-mesh-text">Assets</h1>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -490,7 +490,7 @@ ${filtered
               placeholder="Search by name, location, IP, owner, tag..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="border-mesh-border bg-mesh-surface-1 pl-9 pr-8"
+              className="pl-9 pr-8"
             />
             {search && (
               <button
@@ -505,7 +505,7 @@ ${filtered
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="flex h-10 mesh-card px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
+            className="flex h-10 mesh-card px-3 py-2 text-sm text-mesh-text focus:border-mesh-accent focus:outline-none focus:ring-2 focus:ring-mesh-accent/30"
           >
             <option value="">All types</option>
             {availableTypes.map((t) => (
@@ -518,7 +518,7 @@ ${filtered
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="flex h-10 mesh-card px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
+            className="flex h-10 mesh-card px-3 py-2 text-sm text-mesh-text focus:border-mesh-accent focus:outline-none focus:ring-2 focus:ring-mesh-accent/30"
           >
             <option value="">All statuses</option>
             {availableStatuses.map((s) => (
@@ -531,7 +531,7 @@ ${filtered
           <select
             value={locationFilter}
             onChange={(e) => setLocationFilter(e.target.value)}
-            className="flex h-10 mesh-card px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
+            className="flex h-10 mesh-card px-3 py-2 text-sm text-mesh-text focus:border-mesh-accent focus:outline-none focus:ring-2 focus:ring-mesh-accent/30"
           >
             <option value="">All locations</option>
             {availableLocations.map((l) => (
@@ -718,7 +718,7 @@ ${filtered
             if (!v) setPendingDelete(null);
           }}
         >
-          <AlertDialogContent className="border-mesh-border bg-mesh-surface-1">
+          <AlertDialogContent>
             <AlertDialogHeader>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fb7185]/10">
@@ -737,7 +737,7 @@ ${filtered
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel
-                className="border-mesh-border bg-transparent text-mesh-text-dim hover:bg-mesh-surface-2 hover:text-white"
+                className="bg-transparent text-mesh-text-dim hover:bg-mesh-surface-2 hover:text-mesh-text"
                 disabled={deleting}
               >
                 Cancel
@@ -746,7 +746,7 @@ ${filtered
                 onClick={handleDelete}
                 disabled={deleting}
                 autoFocus
-                className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
+                className="bg-[#fb7185] text-white hover:bg-[#fb7185]/90"
               >
                 {deleting ? "Deleting..." : "Delete"}
               </AlertDialogAction>
@@ -855,7 +855,7 @@ function ImportCSVDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-full max-w-[520px] border-mesh-border bg-mesh-surface-1">
+      <DialogContent className="w-full max-w-[520px]">
         <DialogHeader>
           <DialogTitle className="text-white">Import Assets from CSV</DialogTitle>
           <DialogDescription>
@@ -870,7 +870,7 @@ function ImportCSVDialog({
             type="file"
             accept=".csv,text/csv"
             onChange={handleFileChange}
-            className="border-mesh-border bg-mesh-surface-1 file:text-mesh-text-dim"
+            className="file:text-mesh-text-dim"
           />
 
           {rows.length > 0 && (
@@ -984,7 +984,7 @@ function AssetFormDialog({
   };
 
   const dialogContent = (
-    <DialogContent className="w-full max-w-[560px] border-mesh-border bg-mesh-surface-1">
+    <DialogContent className="w-full max-w-[560px]">
       <DialogHeader>
         <DialogTitle className="text-white">
           {isEdit ? "Edit Asset" : "Add Asset"}
