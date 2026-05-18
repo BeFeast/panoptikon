@@ -203,7 +203,7 @@ export default function QosPage() {
   return (
     <PageTransition>
       <div className="space-y-8">
-        <section className="flex flex-col gap-5 rounded-xl border border-mesh-border bg-mesh-surface-1/95 p-4 md:flex-row md:items-center md:justify-between">
+        <section className="flex flex-col gap-5 mesh-card p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-5">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-mesh-primary/30 bg-gradient-to-br from-mesh-primary/20 via-mesh-accent/10 to-[#818cf8]/10 text-mesh-primary">
               <Gauge className="h-6 w-6" />
@@ -269,7 +269,7 @@ export default function QosPage() {
         </section>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="h-auto rounded-xl border border-mesh-border bg-mesh-surface-1/95 p-1">
+          <TabsList className="h-auto mesh-card p-1">
             <TabsTrigger
               value="overview"
               className="rounded-lg px-4 data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"
@@ -299,7 +299,7 @@ export default function QosPage() {
               <CardContent>
                 {summary?.mikrotik_available ? (
                   <div className="grid gap-3 text-sm text-mesh-text md:grid-cols-2">
-                    <div className="rounded-lg border border-mesh-border bg-mesh-surface-1/95 p-3">
+                    <div className="mesh-card-2 p-3">
                       <p className="text-[11px] uppercase tracking-[0.2em] text-mesh-text-mute">Simple queues</p>
                       <p className="mt-1 text-mesh-text">
                         <span className="font-semibold text-white">
@@ -308,7 +308,7 @@ export default function QosPage() {
                         configured
                       </p>
                     </div>
-                    <div className="rounded-lg border border-mesh-border bg-mesh-surface-1/95 p-3">
+                    <div className="mesh-card-2 p-3">
                       <p className="text-[11px] uppercase tracking-[0.2em] text-mesh-text-mute">Queue tree</p>
                       <p className="mt-1 text-mesh-text">
                         <span className="font-semibold text-white">

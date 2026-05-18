@@ -147,7 +147,7 @@ export default function TailscaleSettingsPage() {
 
         {/* Node Info Card */}
         {data && isConnected && (
-          <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+          <Card className="">
             <CardHeader>
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">This Node</CardTitle>
               <CardDescription className="text-mesh-text-dim">
@@ -188,7 +188,7 @@ export default function TailscaleSettingsPage() {
 
         {/* Not Connected State */}
         {!loading && !isConnected && (
-          <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+          <Card className="">
             <CardContent className="py-12 text-center">
               <WifiOff className="mx-auto mb-3 h-10 w-10 text-mesh-text-mute" />
               <p className="text-sm text-mesh-text-dim">
@@ -208,7 +208,7 @@ export default function TailscaleSettingsPage() {
 
         {/* Peers Table */}
         {data && isConnected && (
-          <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+          <Card className="">
             <CardHeader>
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">Connected Peers</CardTitle>
               <CardDescription className="text-mesh-text-dim">
@@ -258,7 +258,7 @@ export default function TailscaleSettingsPage() {
 
         {/* Loading skeleton */}
         {loading && !data && (
-          <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+          <Card className="">
             <CardContent className="space-y-3 py-6">
               <Skeleton className="h-4 w-3/4 bg-mesh-surface-2/55" />
               <Skeleton className="h-4 w-1/2 bg-mesh-surface-2/55" />
@@ -289,7 +289,7 @@ function SummaryCard({
   isText?: boolean;
 }) {
   return (
-    <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+    <Card className="">
       <CardContent className="flex items-center gap-5 p-5">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-mesh-surface-2/55">
           {icon}

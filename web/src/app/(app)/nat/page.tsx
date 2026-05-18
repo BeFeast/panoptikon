@@ -186,7 +186,7 @@ export default function NatPage() {
   return (
     <PageTransition>
       <div className="space-y-8">
-        <section className="flex flex-col gap-5 rounded-2xl border border-mesh-border bg-mesh-surface-1/95 p-4 md:flex-row md:items-center md:justify-between">
+        <section className="flex flex-col gap-5 rounded-2xl mesh-card p-4 md:flex-row md:items-center md:justify-between">
           <div className="flex items-center gap-5">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-[#a78bfa]/30 bg-gradient-to-br from-[#a78bfa]/20 via-[#e879f9]/10 to-mesh-primary/10 text-[#a78bfa]">
               <ArrowRightLeft className="h-6 w-6" />
@@ -245,7 +245,7 @@ export default function NatPage() {
         <section className="space-y-3">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as NatTab)}>
-              <TabsList className="h-auto rounded-xl border border-mesh-border bg-mesh-surface-1/95 p-1">
+              <TabsList className="h-auto mesh-card p-1">
                 <TabsTrigger
                   value="all"
                   className="rounded-lg px-4 data-[state=active]:bg-mesh-surface-1 data-[state=active]:text-white"

@@ -406,7 +406,7 @@ export default function DevicesPage() {
             data-testid="devices-filter-toggle"
             variant="secondary"
             size="sm"
-            className="h-8 gap-1.5 border border-mesh-border bg-mesh-surface-1 text-[12px] text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text"
+            className="h-8 gap-1.5 mesh-card text-[12px] text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text"
             onClick={() => {
               // density/group/vlan controls land in a follow-up — focus the search
               const input = document.querySelector<HTMLInputElement>(
@@ -423,7 +423,7 @@ export default function DevicesPage() {
             variant="secondary"
             size="sm"
             disabled={scanningNetwork}
-            className="h-8 gap-1.5 border border-mesh-border bg-mesh-surface-1 text-[12px] text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text"
+            className="h-8 gap-1.5 mesh-card text-[12px] text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-mesh-text"
             onClick={async () => {
               setScanningNetwork(true);
               try {
@@ -460,9 +460,9 @@ export default function DevicesPage() {
       {/* Query bar + filter chips */}
       <div
         data-testid="query-bar"
-        className="flex flex-wrap items-center gap-2 rounded-md border border-mesh-border bg-mesh-surface-1 p-2.5"
+        className="flex flex-wrap items-center gap-2 mesh-card p-2.5"
       >
-        <div className="flex h-7 min-w-[280px] flex-1 items-center gap-2 rounded-sm border border-mesh-border bg-mesh-surface-2 px-2.5">
+        <div className="flex h-7 min-w-[280px] flex-1 items-center gap-2 rounded-sm mesh-card-2 px-2.5">
           <MeshIcon name="search" size={13} color="hsl(var(--muted-foreground))" />
           <input
             data-testid="devices-query-input"
@@ -556,7 +556,7 @@ export default function DevicesPage() {
       ) : (
         <div
           data-testid="devices-table-card"
-          className="overflow-hidden rounded-md border border-mesh-border bg-mesh-surface-1"
+          className="overflow-hidden mesh-card"
         >
           {/* Column header */}
           <div
@@ -841,7 +841,7 @@ function DeviceCard({
   return (
     <Card
       data-device-row
-      className="h-full min-h-[15.5rem] cursor-pointer border-mesh-border-strong bg-mesh-surface-1 transition-[border-color,background-color,box-shadow] hover:border-mesh-text-mute/70 hover:bg-mesh-surface-2/55 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
+      className="h-full min-h-[15.5rem] cursor-pointer transition-[border-color,background-color,box-shadow] hover:border-mesh-text-mute/70 hover:bg-mesh-surface-2/55 hover:shadow-[0_14px_32px_-22px_rgba(15,23,42,0.95)]"
       onClick={onClick}
     >
       <CardContent className="flex h-full flex-col p-5">
@@ -923,7 +923,7 @@ function DeviceCard({
         </div>
 
         {/* ── Core network metadata ── */}
-        <div className="mt-4 grid grid-cols-2 gap-3 rounded-xl border border-mesh-border-strong bg-mesh-surface-1/95 p-3">
+        <div className="mt-4 grid grid-cols-2 gap-3 mesh-card p-3">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-mesh-text-mute">IP</p>
             <p className="mt-1 truncate font-mono text-[13px] tabular-nums text-mesh-text" title={primaryIp}>
@@ -940,7 +940,7 @@ function DeviceCard({
 
         {/* ── Agent metrics ── */}
         {hasAgentMetrics && (
-          <div className="mt-4 space-y-2.5 rounded-xl border border-mesh-border-strong bg-mesh-surface-1/95 p-3">
+          <div className="mt-4 space-y-2.5 mesh-card p-3">
             {device.agent!.cpu_percent != null && (
               <div className="flex items-center gap-2">
                 <span className="w-8 shrink-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-mesh-text-mute">CPU</span>
@@ -973,7 +973,7 @@ function DeviceCard({
         )}
 
         {device.status_timeline && device.status_timeline.length > 0 && (
-          <div className="mt-4 rounded-lg border border-mesh-border-strong bg-mesh-surface-1/95 px-3 py-2">
+          <div className="mt-4 mesh-card px-3 py-2">
             <StatusSparkline timeline={device.status_timeline} width={170} height={10} />
           </div>
         )}
@@ -1044,7 +1044,7 @@ function DevicesTable({
   };
 
   return (
-    <div className="rounded-2xl border border-mesh-border-strong bg-mesh-surface-1 shadow-[0_10px_30px_-22px_rgba(15,23,42,0.95)]">
+    <div className="rounded-2xl mesh-card shadow-[0_10px_30px_-22px_rgba(15,23,42,0.95)]">
       <Table>
         <TableHeader>
           <TableRow className="border-mesh-border-strong hover:bg-transparent">
@@ -1134,7 +1134,7 @@ function DevicesTable({
                       {device.hostname ?? "—"}
                     </span>
                     {device.agent?.is_online && (
-                      <span className="shrink-0 rounded border border-mesh-border-strong bg-mesh-surface-1 px-1.5 py-0.5 text-xs text-mesh-text">
+                      <span className="shrink-0 rounded mesh-card-2 px-1.5 py-0.5 text-xs text-mesh-text">
                         Agent
                       </span>
                     )}
@@ -1728,7 +1728,7 @@ function DeviceSystemTab({ deviceId }: { deviceId: string }) {
   return (
     <div className="space-y-4">
       {/* Neofetch-style terminal card */}
-      <div className="overflow-hidden rounded-lg border border-mesh-border-strong bg-mesh-surface-1 font-mono text-[13px]">
+      <div className="overflow-hidden mesh-card font-mono text-[13px]">
         {/* Title bar */}
         <div className="flex items-center gap-1.5 border-b border-mesh-border px-3 py-2">
           <span className="h-2.5 w-2.5 rounded-full bg-[#fb7185]/80" />
@@ -1892,7 +1892,7 @@ function DeviceStateTimeline({ events }: { events: DeviceEvent[] }) {
   if (events.length === 0) return null;
 
   return (
-    <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 p-4 space-y-3">
+    <div className="mesh-card p-4 space-y-3">
       <div className="text-sm font-medium text-mesh-text">
         7-Day Availability
       </div>
@@ -1983,7 +1983,7 @@ function DeviceEventsTab({ deviceId }: { deviceId: string }) {
     <div className="space-y-4">
       {/* Uptime badge */}
       {uptime && (
-        <div className="flex items-center gap-3 rounded-md border border-mesh-border-strong bg-mesh-surface-1/95 px-4 py-3">
+        <div className="flex items-center gap-3 mesh-card px-4 py-3">
           <div className="text-sm text-mesh-text-dim">7-day uptime</div>
           <div className="ml-auto text-lg font-semibold text-white">
             {uptime.uptime_percent.toFixed(1)}%
@@ -2123,7 +2123,7 @@ function DevicePortsTab({ deviceId }: { deviceId: string }) {
               No open ports found.
             </p>
           ) : (
-            <div className="rounded-md border border-mesh-border-strong bg-mesh-surface-1/95">
+            <div className="mesh-card">
               <Table>
                 <TableHeader>
                   <TableRow className="border-mesh-border-strong hover:bg-transparent">
@@ -2286,7 +2286,7 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
             <select
               value={customType}
               onChange={(e) => setCustomType(e.target.value)}
-              className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
+              className="flex h-8 w-full mesh-card px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
             >
               <option value="">{device.device_type ? `Auto: ${device.device_type}` : "Select type…"}</option>
               {DEVICE_TYPE_OPTIONS.filter(Boolean).map((t) => (
@@ -2300,7 +2300,7 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
             <select
               value={customOs}
               onChange={(e) => setCustomOs(e.target.value)}
-              className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
+              className="flex h-8 w-full mesh-card px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
             >
               <option value="">{device.os_family ? `Auto: ${device.os_family}` : "Select OS…"}</option>
               {OS_OPTIONS.filter(Boolean).map((os) => (
@@ -2340,7 +2340,7 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
             <select
               value={iconOverride}
               onChange={(e) => setIconOverride(e.target.value)}
-              className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
+              className="flex h-8 w-full mesh-card px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
             >
               <option value="">Auto (based on type)</option>
               {DEVICE_TYPE_OPTIONS.filter(Boolean).map((t) => (
@@ -2405,7 +2405,7 @@ function DeviceEditForm({ device, onUpdate }: { device: Device; onUpdate: () => 
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Freeform notes about this device…"
               rows={3}
-              className="flex w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
+              className="flex w-full mesh-card px-3 py-2 text-sm text-mesh-text placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
             />
           </div>
         </div>
@@ -2674,7 +2674,7 @@ function AddAssetDialog({
                 <select
                   value={os}
                   onChange={(e) => setOs(e.target.value)}
-                  className="flex h-8 w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
+                  className="flex h-8 w-full mesh-card px-3 text-sm text-mesh-text focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
                 >
                   <option value="">Select OS…</option>
                   {OS_OPTIONS.filter(Boolean).map((o) => (
@@ -2770,7 +2770,7 @@ function AddAssetDialog({
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Additional notes about this asset…"
               rows={2}
-              className="mt-1.5 flex w-full rounded-md border border-mesh-border-strong bg-mesh-surface-1 px-3 py-2 text-sm text-mesh-text placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
+              className="mt-1.5 flex w-full mesh-card px-3 py-2 text-sm text-mesh-text placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-text-mute"
             />
           </div>
         </div>

@@ -59,7 +59,7 @@ export function InterfacesTab() {
   const filtered = (interfaces ?? []).filter((i) => matchesFilter(i, filter));
 
   return (
-    <Card className="border-mesh-border bg-mesh-surface-1">
+    <Card className="">
       <CardHeader className="flex flex-row items-center justify-between pb-4">
         <CardTitle className="flex items-center gap-2 text-white">
           <Network className="h-4 w-4 text-mesh-primary" />

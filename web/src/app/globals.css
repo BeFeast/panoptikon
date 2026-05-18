@@ -330,3 +330,31 @@
   background-repeat: repeat-x;
   background-position: bottom left;
 }
+
+/* ── Card recipes (byte-exact port from design-source mesh direction) ──
+ * Source: /tmp/panopticon-design/panopticon/project/base.css + tokens.css
+ * --surface-1: #091633; --surface-2: #0e2148;
+ * --border: rgba(96,144,212,0.20); --hairline: 1px; --radius-md: 6px;
+ * --shadow-card: 0 0 0 1px var(--border), 0 1px 0 rgba(255,255,255,0.03) inset;
+ *
+ * Use .mesh-card for outer chrome, .mesh-card-2 for single-level nested
+ * elevation. Do NOT introduce ad-hoc "border-mesh-* bg-mesh-surface-*"
+ * combos — CI guard in scripts/check-design-tokens.sh blocks regress. */
+.mesh-card {
+  background: #091633;
+  border: 1px solid rgba(96, 144, 212, 0.20);
+  border-radius: 6px;
+  box-shadow: 0 0 0 1px rgba(96, 144, 212, 0.20), 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+}
+.mesh-card-2 {
+  background: #0e2148;
+  border: 1px solid rgba(96, 144, 212, 0.20);
+  border-radius: 6px;
+}
+.mesh-hairline {
+  border-bottom: 1px solid rgba(96, 144, 212, 0.20);
+}
+.mesh-divider {
+  height: 1px;
+  background: rgba(96, 144, 212, 0.20);
+}

@@ -230,7 +230,7 @@ export default function UsersSettingsPage() {
 
           {/* Create/Edit form */}
           {formMode !== "idle" && (
-            <div className="space-y-3 rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+            <div className="space-y-3 mesh-card p-4">
               <p className="text-sm font-medium text-white">
                 {formMode === "create" ? "New User" : "Edit User"}
               </p>
@@ -280,7 +280,7 @@ export default function UsersSettingsPage() {
                   id="user-role"
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
-                  className="w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-3 py-2 text-sm text-white"
+                  className="w-full mesh-card px-3 py-2 text-sm text-white"
                 >
                   <option value="admin">Admin</option>
                   <option value="operator">Operator</option>

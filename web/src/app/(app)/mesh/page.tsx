@@ -418,7 +418,7 @@ export default function MeshPage() {
     return (
       <PageTransition>
         <div className="flex h-[calc(100vh-64px)] items-center justify-center">
-          <Card className="w-full max-w-md border-mesh-border bg-mesh-surface-1/95">
+          <Card className="w-full max-w-md">
             <CardContent className="flex flex-col items-center gap-4 py-12">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#fb7185]/10">
                 <WifiOff className="h-8 w-8 text-[#fb7185]" />
@@ -496,7 +496,7 @@ export default function MeshPage() {
           />
 
           {/* Floating toolbar */}
-          <div className="absolute right-4 top-4 z-10 flex items-center gap-3 rounded-lg border border-mesh-border bg-mesh-surface-1 px-4 py-2 backdrop-blur-sm">
+          <div className="absolute right-4 top-4 z-10 flex items-center gap-3 mesh-card px-4 py-2 backdrop-blur-sm">
             <span className="text-[11px] text-mesh-text-dim">
               <span>{stats.total} node{stats.total !== 1 ? 's' : ''}</span>
               {' · '}

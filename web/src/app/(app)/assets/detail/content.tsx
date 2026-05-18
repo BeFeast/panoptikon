@@ -537,7 +537,7 @@ function InfoGrid({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
       {/* Hardware Column */}
-      <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+      <div className="mesh-card p-4">
         <h3 className="text-sm font-medium text-mesh-text-dim mb-3 flex items-center gap-2">
           <HardDrive size={14} />
           Hardware
@@ -594,7 +594,7 @@ function InfoGrid({
       </div>
 
       {/* Software Column */}
-      <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+      <div className="mesh-card p-4">
         <h3 className="text-sm font-medium text-mesh-text-dim mb-3 flex items-center gap-2">
           <Monitor size={14} />
           Software
@@ -652,7 +652,7 @@ function InfoGrid({
       </div>
 
       {/* Network Column */}
-      <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+      <div className="mesh-card p-4">
         <h3 className="text-sm font-medium text-mesh-text-dim mb-3 flex items-center gap-2">
           <Cpu size={14} />
           Network
@@ -683,7 +683,7 @@ function InfoGrid({
 
       {/* Asset Management (extra row) */}
       {(device.purchase_date || device.warranty_expiry) && (
-        <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4 md:col-span-2 lg:col-span-3">
+        <div className="mesh-card p-4 md:col-span-2 lg:col-span-3">
           <h3 className="text-sm font-medium text-mesh-text-dim mb-3 flex items-center gap-2">
             <Tag size={14} />
             Asset Management
@@ -728,7 +728,7 @@ function LiveMetricsPanel({ chartData }: { chartData: ChartPoint[] }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
       {/* CPU Chart */}
-      <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+      <div className="mesh-card p-4">
         <h2 className="text-sm font-medium text-mesh-text-dim mb-3">CPU Usage %</h2>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
@@ -771,7 +771,7 @@ function LiveMetricsPanel({ chartData }: { chartData: ChartPoint[] }) {
       </div>
 
       {/* RAM Chart */}
-      <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+      <div className="mesh-card p-4">
         <h2 className="text-sm font-medium text-mesh-text-dim mb-3">RAM Usage %</h2>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
@@ -829,11 +829,11 @@ function LinkedSources({
   if (!hasAny) return null;
 
   return (
-    <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+    <div className="mesh-card p-4">
       <h3 className="text-sm font-medium text-mesh-text-dim mb-3">Linked Sources</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {/* Network Device */}
-        <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-3">
+        <div className="mesh-card-2 p-3">
           <div className="flex items-center gap-2 mb-2">
             <Monitor size={14} className="text-mesh-text-mute" />
             <span className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
@@ -856,7 +856,7 @@ function LinkedSources({
 
         {/* Agent */}
         {device.agent ? (
-          <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-3">
+          <div className="mesh-card-2 p-3">
             <div className="flex items-center gap-2 mb-2">
               <Server size={14} className="text-mesh-text-mute" />
               <span className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
@@ -884,7 +884,7 @@ function LinkedSources({
             </Link>
           </div>
         ) : (
-          <div className="rounded-md border border-dashed border-mesh-border bg-mesh-surface-1 p-3 flex flex-col items-center justify-center text-center">
+          <div className="mesh-card-2 border-dashed p-3 flex flex-col items-center justify-center text-center">
             <Server size={16} className="text-mesh-border-strong mb-1" />
             <p className="text-xs text-mesh-text-mute">No Agent Linked</p>
           </div>
@@ -892,7 +892,7 @@ function LinkedSources({
 
         {/* SSH Target */}
         {linkedSshTarget ? (
-          <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-3">
+          <div className="mesh-card-2 p-3">
             <div className="flex items-center gap-2 mb-2">
               <Terminal size={14} className="text-mesh-text-mute" />
               <span className="text-xs font-medium uppercase tracking-wider text-mesh-text-mute">
@@ -920,7 +920,7 @@ function LinkedSources({
             </Link>
           </div>
         ) : (
-          <div className="rounded-md border border-dashed border-mesh-border bg-mesh-surface-1 p-3 flex flex-col items-center justify-center text-center">
+          <div className="mesh-card-2 border-dashed p-3 flex flex-col items-center justify-center text-center">
             <Terminal size={16} className="text-mesh-border-strong mb-1" />
             <p className="text-xs text-mesh-text-mute">No SSH Target Linked</p>
           </div>
@@ -948,12 +948,12 @@ function NotesSection({
   cancelEdit: () => void;
 }) {
   return (
-    <div className="rounded-md border border-mesh-border bg-mesh-surface-1 p-4">
+    <div className="mesh-card p-4">
       <h3 className="text-sm font-medium text-mesh-text-dim mb-3">Notes</h3>
       {edit.field === "notes" ? (
         <div className="space-y-2">
           <textarea
-            className="w-full min-h-[80px] rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-accent"
+            className="w-full min-h-[80px] mesh-card px-3 py-2 text-sm text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-1 focus:ring-mesh-accent"
             value={edit.value}
             onChange={(e) => setEdit({ ...edit, value: e.target.value })}
             placeholder="Add notes about this asset..."

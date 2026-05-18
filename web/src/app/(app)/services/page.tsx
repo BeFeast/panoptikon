@@ -74,7 +74,7 @@ import type {
 
 // ─── Styled select matching the dark theme ──────────────────
 const selectCls =
-  "w-full rounded-md border border-mesh-border bg-mesh-surface-1/95 px-3 py-2 text-sm text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-2 focus:ring-mesh-primary";
+  "w-full mesh-card px-3 py-2 text-sm text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-2 focus:ring-mesh-primary";
 
 // ─── Page ───────────────────────────────────────────────────
 export default function ServicesPage() {
@@ -359,7 +359,7 @@ export default function ServicesPage() {
         </div>
 
         {/* Services table */}
-        <div className="rounded-lg border border-mesh-border bg-mesh-surface-1/95">
+        <div className="mesh-card">
           {loading ? (
             <div className="space-y-2 p-4">
               {[...Array(3)].map((_, i) => (

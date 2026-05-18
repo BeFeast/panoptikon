@@ -76,7 +76,7 @@ export function DnsTab() {
   return (
     <div className="space-y-6">
       {/* DNS Resolver Config */}
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
             <Globe className="h-4 w-4 text-mesh-primary" />
@@ -121,7 +121,7 @@ export function DnsTab() {
       </Card>
 
       {/* Host Overrides */}
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
             <Globe className="h-4 w-4 text-mesh-primary" />

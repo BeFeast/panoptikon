@@ -199,7 +199,7 @@ export default function DnsLogsPage() {
 
         {/* Stats Cards */}
         <div className="grid gap-5 md:grid-cols-4" data-testid="dns-stats-grid">
-          <Card className="border-mesh-border bg-mesh-surface-1/95">
+          <Card className="">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                 Total Queries
@@ -216,7 +216,7 @@ export default function DnsLogsPage() {
               )}
             </CardContent>
           </Card>
-          <Card className="border-mesh-border bg-mesh-surface-1/95">
+          <Card className="">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                 Blocked
@@ -233,7 +233,7 @@ export default function DnsLogsPage() {
               )}
             </CardContent>
           </Card>
-          <Card className="border-mesh-border bg-mesh-surface-1/95">
+          <Card className="">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                 Unique Domains
@@ -250,7 +250,7 @@ export default function DnsLogsPage() {
               )}
             </CardContent>
           </Card>
-          <Card className="border-mesh-border bg-mesh-surface-1/95">
+          <Card className="">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-[11px] font-medium uppercase tracking-wider text-mesh-text-mute">
                 Clients

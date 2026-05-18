@@ -90,7 +90,7 @@ export function ConfigTab() {
   return (
     <div className="space-y-6">
       {/* Config Backups */}
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
             <FileArchive className="h-4 w-4 text-mesh-primary" />
@@ -167,7 +167,7 @@ export function ConfigTab() {
       </Card>
 
       {/* Audit Log */}
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-white">
             <FileArchive className="h-4 w-4 text-mesh-primary" />

@@ -157,7 +157,7 @@ export default function AlertRulesPage() {
         )}
 
         {status === "loading" && rules.length === 0 ? (
-          <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+          <Card className="">
             <CardContent className="flex items-center justify-center py-8">
               <Loader2 className="h-5 w-5 animate-spin text-mesh-text-mute" />
             </CardContent>
@@ -165,7 +165,7 @@ export default function AlertRulesPage() {
         ) : (
           <>
             {rules.length === 0 && (
-              <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+              <Card className="">
                 <CardContent className="py-8 text-center">
                   <p className="text-sm text-mesh-text-mute">
                     No alert rules configured. Add a rule below.
@@ -177,7 +177,7 @@ export default function AlertRulesPage() {
             {rules.map((rule) => {
               const meta = RULE_TYPE_LABELS[rule.rule_type];
               return (
-                <Card key={rule.id} className="border-mesh-border bg-mesh-surface-1/95">
+                <Card key={rule.id} className="">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -288,7 +288,7 @@ export default function AlertRulesPage() {
             })}
 
             {availableTypes.length > 0 && (
-              <Card className="border-dashed border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+              <Card className="mesh-card border-dashed">
                 <CardContent className="py-4">
                   <p className="mb-3 text-xs font-medium text-mesh-text-mute">
                     Add a rule

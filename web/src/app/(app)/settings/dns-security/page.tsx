@@ -154,7 +154,7 @@ export default function DnsSecurityPage() {
         ) : (
           <>
             {/* DNSSEC Section */}
-            <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+            <Card className="">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -180,7 +180,7 @@ export default function DnsSecurityPage() {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <div className="rounded-md border border-mesh-border bg-mesh-surface-1/90 px-4 py-3">
+                <div className="mesh-card-2 px-4 py-3">
                   <p className="text-xs text-mesh-text-dim">
                     When enabled, Unbound validates DNSSEC signatures on
                     responses. Domains with invalid or missing signatures will
@@ -192,7 +192,7 @@ export default function DnsSecurityPage() {
             </Card>
 
             {/* DoT Section */}
-            <Card className="border-mesh-border bg-mesh-surface-1/95 shadow-[0_18px_40px_-28px_rgba(56,189,248,0.45)]">
+            <Card className="">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">

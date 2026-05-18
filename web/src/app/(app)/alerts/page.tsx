@@ -533,7 +533,7 @@ function AlertsPageInner() {
             />
           )
         ) : (
-          <div className="overflow-hidden rounded-md border border-mesh-border bg-mesh-surface-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <div className="overflow-hidden mesh-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
             <div className="grid grid-cols-[32px_72px_minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-mesh-border bg-mesh-surface-1/80 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-mesh-text-mute max-md:hidden">
               <span />
               <span>Severity</span>
@@ -894,7 +894,7 @@ function AlertDrawerBody({
             <DetailsSection title="Message">
               <p className="text-[13px] leading-6 text-mesh-text">{alert.message}</p>
               {alert.details ? (
-                <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded-md border border-mesh-border bg-mesh-surface-2 p-3 font-mono text-[11.5px] leading-5 text-mesh-text-dim">
+                <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap mesh-card-2 p-3 font-mono text-[11.5px] leading-5 text-mesh-text-dim">
                   {alert.details}
                 </pre>
               ) : null}

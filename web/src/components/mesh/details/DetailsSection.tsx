@@ -40,7 +40,7 @@ export function DetailsSection({
       data-testid={testId}
       className={
         variant === "card"
-          ? "flex flex-col gap-2.5 rounded-md border border-mesh-border bg-mesh-surface-1 p-3.5"
+          ? "flex flex-col gap-2.5 mesh-card p-3.5"
           : "flex flex-col gap-2.5"
       }
     >

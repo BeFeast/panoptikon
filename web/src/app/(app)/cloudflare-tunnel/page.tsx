@@ -290,7 +290,7 @@ export default function CloudflareTunnelPage() {
 
         {/* Not configured message */}
         {notConfigured && (
-          <Card className="border-mesh-border bg-mesh-surface-1/95">
+          <Card className="">
             <CardContent className="py-8 text-center">
               <Cloud className="mx-auto mb-4 h-12 w-12 text-mesh-text-mute" />
               <h3 className="text-lg font-medium text-mesh-text">
@@ -314,7 +314,7 @@ export default function CloudflareTunnelPage() {
         {!notConfigured && status && (
           <div className="grid gap-5 md:grid-cols-3">
             {/* Tunnel Status */}
-            <Card className="border-mesh-border bg-mesh-surface-1/95">
+            <Card className="">
               <CardHeader className="pb-2">
                 <CardDescription className="text-mesh-text-dim">
                   Tunnel Status
@@ -347,7 +347,7 @@ export default function CloudflareTunnelPage() {
             </Card>
 
             {/* Active Connections */}
-            <Card className="border-mesh-border bg-mesh-surface-1/95">
+            <Card className="">
               <CardHeader className="pb-2">
                 <CardDescription className="text-mesh-text-dim">
                   Active Connections
@@ -373,7 +373,7 @@ export default function CloudflareTunnelPage() {
             </Card>
 
             {/* Active Routes */}
-            <Card className="border-mesh-border bg-mesh-surface-1/95">
+            <Card className="">
               <CardHeader className="pb-2">
                 <CardDescription className="text-mesh-text-dim">
                   Active Routes
@@ -394,7 +394,7 @@ export default function CloudflareTunnelPage() {
 
         {/* Connections table */}
         {!notConfigured && status && status.connections.length > 0 && (
-          <Card className="border-mesh-border bg-mesh-surface-1/95">
+          <Card className="">
             <CardHeader>
               <CardTitle className="text-mesh-text">Connections</CardTitle>
               <CardDescription className="text-mesh-text-dim">
@@ -452,7 +452,7 @@ export default function CloudflareTunnelPage() {
 
         {/* Routes table */}
         {!notConfigured && (
-          <Card className="border-mesh-border bg-mesh-surface-1/95">
+          <Card className="">
             <CardHeader>
               <CardTitle className="text-mesh-text">Tunnel Routes</CardTitle>
               <CardDescription className="text-mesh-text-dim">

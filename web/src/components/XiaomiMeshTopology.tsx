@@ -162,7 +162,7 @@ function NodeCard({
 
 function NodeCardSkeleton() {
   return (
-    <Card className="border-mesh-border bg-mesh-surface-1">
+    <Card className="">
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
           <Skeleton className="h-10 w-10 rounded-lg" />
@@ -277,7 +277,7 @@ export default function XiaomiMeshTopology() {
       {/* Summary stats */}
       {!loading && data && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Card className="border-mesh-border bg-mesh-surface-1">
+          <Card className="">
             <CardContent className="flex items-center gap-3 p-4">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-mesh-primary/20">
                 <Router className="h-4.5 w-4.5 text-mesh-primary" />
@@ -290,7 +290,7 @@ export default function XiaomiMeshTopology() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-mesh-border bg-mesh-surface-1">
+          <Card className="">
             <CardContent className="flex items-center gap-3 p-4">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#4ade80]/20">
                 <MonitorSmartphone className="h-4.5 w-4.5 text-[#4ade80]" />
@@ -303,7 +303,7 @@ export default function XiaomiMeshTopology() {
               </div>
             </CardContent>
           </Card>
-          <Card className="border-mesh-border bg-mesh-surface-1">
+          <Card className="">
             <CardContent className="flex items-center gap-3 p-4">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#c084fc]/20">
                 <Wifi className="h-4.5 w-4.5 text-[#c084fc]" />
@@ -362,7 +362,7 @@ export default function XiaomiMeshTopology() {
 
       {/* Empty state */}
       {!loading && !error && data && sortedNodes.length === 0 && (
-        <Card className="border-mesh-border bg-mesh-surface-1">
+        <Card className="">
           <CardContent className="flex flex-col items-center gap-3 py-12">
             <Router className="h-10 w-10 text-mesh-text-mute" />
             <p className="text-sm text-mesh-text-dim">

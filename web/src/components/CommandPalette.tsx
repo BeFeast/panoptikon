@@ -140,7 +140,7 @@ export function CommandPalette() {
       label="Command palette"
       className="flex flex-col flex-1 min-h-0"
       overlayClassName="fixed inset-0 z-[99] bg-black/70 backdrop-blur-sm"
-      contentClassName="fixed left-1/2 top-[15vh] -translate-x-1/2 z-[100] w-[min(560px,calc(100vw-2rem))] max-h-[min(480px,60vh)] flex flex-col overflow-hidden rounded-lg border border-mesh-border bg-mesh-surface-1 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.8)]"
+      contentClassName="fixed left-1/2 top-[15vh] -translate-x-1/2 z-[100] w-[min(560px,calc(100vw-2rem))] max-h-[min(480px,60vh)] flex flex-col overflow-hidden mesh-card shadow-[0_24px_80px_-12px_rgba(0,0,0,0.8)]"
       shouldFilter={!hasResults}
     >
       {/* Search input */}

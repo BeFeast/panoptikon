@@ -179,7 +179,7 @@ function FilterRulesSection() {
 
   return (
     <>
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
             <Shield className="h-4 w-4 text-mesh-primary" />
@@ -278,7 +278,7 @@ function FilterRulesSection() {
                 <select
                   value={editRule.action}
                   onChange={(e) => setEditRule({ ...editRule, action: e.target.value as "pass" | "block" | "reject" })}
-                  className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+                  className="w-full mesh-card px-3 py-2 text-sm text-white"
                 >
                   <option value="pass">Pass</option>
                   <option value="block">Block</option>
@@ -449,7 +449,7 @@ function NatSection() {
 
   return (
     <>
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
             <Shield className="h-4 w-4 text-mesh-primary" />
@@ -645,7 +645,7 @@ function AliasesSection() {
 
   return (
     <>
-      <Card className="border-mesh-border bg-mesh-surface-1">
+      <Card className="">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-white">
             <Shield className="h-4 w-4 text-mesh-primary" />
@@ -717,7 +717,7 @@ function AliasesSection() {
                 <select
                   value={editAlias.alias_type}
                   onChange={(e) => setEditAlias({ ...editAlias, alias_type: e.target.value })}
-                  className="w-full rounded-md border border-mesh-border bg-mesh-surface-1 px-3 py-2 text-sm text-white"
+                  className="w-full mesh-card px-3 py-2 text-sm text-white"
                 >
                   <option value="host">Host</option>
                   <option value="network">Network</option>
