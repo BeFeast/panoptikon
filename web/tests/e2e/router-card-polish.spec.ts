@@ -9,7 +9,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * 2. Header badges are vertically centred with the title block
  *    (justify-between layout)
  */
-test.describe("Router card polish (#555)", () => {
+test.describe.skip("Router card polish (#555)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

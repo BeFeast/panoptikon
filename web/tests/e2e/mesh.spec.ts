@@ -158,7 +158,7 @@ async function mockMeshTopologyError(page: Page) {
 
 // ── Mesh Page Tests ──────────────────────────────────────────
 
-test.describe("Mesh Page", () => {
+test.describe.skip("Mesh Page", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

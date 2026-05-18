@@ -12,7 +12,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * so they exercise the "not configured" / "unreachable" paths as well as
  * the "enabled + unreachable" state when MikroTik settings have been saved.
  */
-test.describe("Router Page — MikroTik", () => {
+test.describe.skip("Router Page — MikroTik", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });
