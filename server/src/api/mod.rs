@@ -10,8 +10,14 @@ use axum::{
     Json, Router,
 };
 use sqlx::SqlitePool;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
+use std::time::Instant;
 use tower_http::cors::CorsLayer;
+
+/// Process start time, materialized on first access. Read once during router
+/// construction (see build_router) so the value reflects server boot, not the
+/// first /version request.
+static SERVER_START: LazyLock<Instant> = LazyLock::new(Instant::now);
 
 pub mod agents;
 pub mod alert_rules;
@@ -109,6 +115,10 @@ impl AppState {
 
 /// Build the main application router with all API routes.
 pub fn router(state: AppState) -> Router {
+    // Materialize SERVER_START so uptime is measured from router construction
+    // (server boot) rather than the first /version request.
+    let _ = *SERVER_START;
+
     let cors = CorsLayer::new()
         .allow_origin(tower_http::cors::AllowOrigin::mirror_request())
         .allow_methods([
@@ -703,7 +713,10 @@ async fn health() -> &'static str {
     "ok"
 }
 
-/// Returns the server binary version from Cargo.toml.
+/// Returns the server binary version from Cargo.toml and process uptime.
 async fn server_version() -> impl IntoResponse {
-    Json(serde_json::json!({ "version": env!("CARGO_PKG_VERSION") }))
+    Json(serde_json::json!({
+        "version": env!("CARGO_PKG_VERSION"),
+        "uptime_seconds": SERVER_START.elapsed().as_secs(),
+    }))
 }

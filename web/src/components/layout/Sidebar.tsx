@@ -37,6 +37,15 @@ import {
 } from "@/components/ui/tooltip";
 import { useWsConnected } from "@/components/providers/WebSocketProvider";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { StatusDot } from "@/components/mesh/StatusDot";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { logout } from "@/lib/api";
+import { LogOut } from "lucide-react";
 
 /* -------------------------------------------------------------------------- */
 /*  Navigation structure                                                      */
@@ -186,20 +195,57 @@ export function useGroupCollapse(groups: NavGroup[], pathname: string | null) {
   return { collapsed, toggle };
 }
 
-/** Fetches the server binary version from the backend. */
-export function useServerVersion(): string | null {
-  const [version, setVersion] = useState<string | null>(null);
+interface ServerStatus {
+  version: string | null;
+  uptimeSeconds: number | null;
+}
+
+/** Fetches the server binary version + uptime, polls every 60s. */
+export function useServerStatus(): ServerStatus {
+  const [state, setState] = useState<ServerStatus>({
+    version: null,
+    uptimeSeconds: null,
+  });
 
   useEffect(() => {
-    fetch("/api/v1/version", { credentials: "include" })
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.version) setVersion(`v${data.version}`);
-      })
-      .catch(() => {});
+    let cancelled = false;
+    async function tick() {
+      try {
+        const res = await fetch("/api/v1/version", { credentials: "include", cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+        setState({
+          version: data?.version ? `v${data.version}` : null,
+          uptimeSeconds: typeof data?.uptime_seconds === "number" ? data.uptime_seconds : null,
+        });
+      } catch {
+        /* swallow */
+      }
+    }
+    void tick();
+    const id = setInterval(tick, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, []);
 
-  return version;
+  return state;
+}
+
+/**
+ * Formats uptime in seconds into the design's compact "14d 6h" / "6h 23m" /
+ * "42m" style. Per shell.jsx footer: "core · 14d 6h".
+ */
+function formatUptime(seconds: number | null): string {
+  if (seconds == null || seconds < 0) return "—";
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -210,7 +256,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const wsConnected = useWsConnected();
-  const serverVersion = useServerVersion();
+  const serverStatus = useServerStatus();
   const { collapsed: groupCollapsed, toggle: toggleGroup } = useGroupCollapse(
     navGroups,
     pathname,
@@ -364,55 +410,54 @@ export function Sidebar() {
           </div>
         </nav>
 
-        {/* Version + connection status */}
-        <div className="border-t border-mesh-border-strong p-2">
-          {!sidebarCollapsed ? (
-            <div className="flex items-center gap-1.5 px-3 py-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span
-                    className={cn(
-                      "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
-                      wsConnected
-                        ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
-                        : "bg-mesh-text-mute",
-                    )}
-                  />
-                </TooltipTrigger>
-                <TooltipContent
-                  side="top"
-                  className="border-mesh-border bg-mesh-surface-1"
+        {/* Footer — user pill (per shell.jsx 122-144). Hidden when collapsed.
+         * Dropdown-wrapped for logout discoverability after removing TopBar
+         * user menu — pill visual is unchanged. */}
+        {!sidebarCollapsed && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex w-full items-center gap-2 border-t border-mesh-border-strong px-2.5 py-2 text-left transition-colors hover:bg-mesh-surface-2/55 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-mesh-accent"
+              >
+                <span
+                  aria-hidden="true"
+                  className="flex h-[26px] w-[26px] items-center justify-center rounded-full text-[11px] font-semibold text-white"
+                  style={{ background: "linear-gradient(135deg, #2563eb, #8b5cf6)" }}
                 >
-                  <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
-                </TooltipContent>
-              </Tooltip>
-              <p className="text-[10px] text-mesh-border-strong">
-                Panoptikon {serverVersion ?? "..."}
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center gap-1 py-1">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span
-                    className={cn(
-                      "inline-block h-1.5 w-1.5 rounded-full",
-                      wsConnected
-                        ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
-                        : "bg-mesh-text-mute",
-                    )}
-                  />
-                </TooltipTrigger>
-                <TooltipContent
-                  side="right"
-                  className="border-mesh-border bg-mesh-surface-1"
-                >
-                  <p>{wsConnected ? "Live — connected" : "Disconnected"}</p>
-                </TooltipContent>
-              </Tooltip>
-            </div>
-          )}
-        </div>
+                  op
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[12px] font-medium text-mesh-text">operator</span>
+                  <span className="flex items-center gap-1.5 font-mono text-[10px] text-mesh-text-mute">
+                    <StatusDot status={wsConnected ? "online" : "offline"} pulse={wsConnected} size={6} />
+                    <span>core · {formatUptime(serverStatus.uptimeSeconds)}</span>
+                  </span>
+                </span>
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent
+              side="top"
+              align="start"
+              className="w-40 border-mesh-border bg-mesh-surface-1"
+            >
+              <DropdownMenuItem
+                className="cursor-pointer text-mesh-text"
+                onClick={async () => {
+                  try {
+                    await logout();
+                  } catch {
+                    /* even if API fails, redirect to login */
+                  }
+                  window.location.href = "/login";
+                }}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                Logout
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </aside>
     </TooltipProvider>
   );

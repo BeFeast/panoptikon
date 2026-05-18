@@ -5,7 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown, Menu, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isNavItemActive, navGroups, useGroupCollapse, useServerVersion } from "./Sidebar";
+import { isNavItemActive, navGroups, useGroupCollapse, useServerStatus } from "./Sidebar";
+import { StatusDot } from "@/components/mesh/StatusDot";
 import {
   Sheet,
   SheetContent,
@@ -13,11 +14,21 @@ import {
 } from "@/components/ui/sheet";
 import { useWsConnected } from "@/components/providers/WebSocketProvider";
 
+function formatUptime(seconds: number | null): string {
+  if (seconds == null || seconds < 0) return "—";
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
 export function MobileSidebar() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const wsConnected = useWsConnected();
-  const serverVersion = useServerVersion();
+  const serverStatus = useServerStatus();
   const { collapsed: groupCollapsed, toggle: toggleGroup } = useGroupCollapse(
     navGroups,
     pathname,
@@ -147,23 +158,21 @@ export function MobileSidebar() {
             </div>
           </nav>
 
-          {/* Status */}
-          <div className="shrink-0 border-t border-mesh-border p-3">
-            <div className="flex items-center gap-1.5 px-2">
-              <span
-                className={cn(
-                  "inline-block h-1.5 w-1.5 shrink-0 rounded-full",
-                  wsConnected
-                    ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
-                    : "bg-mesh-text-mute"
-                )}
-              />
-              <span className="text-xs text-mesh-text-mute">
-                {wsConnected ? "Live" : "Disconnected"}
-              </span>
-              <p className="ml-auto text-[10px] text-mesh-border-strong">
-                Panoptikon {serverVersion ?? "..."}
-              </p>
+          {/* Footer — user pill (per shell.jsx 122-144). */}
+          <div className="flex shrink-0 items-center gap-2 border-t border-mesh-border-strong px-2.5 py-2">
+            <div
+              aria-hidden="true"
+              className="flex h-[26px] w-[26px] items-center justify-center rounded-full text-[11px] font-semibold text-white"
+              style={{ background: "linear-gradient(135deg, #2563eb, #8b5cf6)" }}
+            >
+              op
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[12px] font-medium text-mesh-text">operator</div>
+              <div className="flex items-center gap-1.5 font-mono text-[10px] text-mesh-text-mute">
+                <StatusDot status={wsConnected ? "online" : "offline"} pulse={wsConnected} size={6} />
+                <span>core · {formatUptime(serverStatus.uptimeSeconds)}</span>
+              </div>
             </div>
           </div>
         </SheetContent>

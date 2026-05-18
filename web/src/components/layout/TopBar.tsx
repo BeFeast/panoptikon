@@ -2,20 +2,13 @@
 
 import { type ReactNode, useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Bell, Settings, Lock, LogOut, Monitor, Cpu, Terminal, Package } from "lucide-react";
-import { searchAll, fetchRecentAlerts, fetchDashboardStats, markAllAlertsRead, deleteAllAlerts, logout } from "@/lib/api";
+import { Bell, Settings, Monitor, Cpu, Terminal, Package } from "lucide-react";
+import { searchAll, fetchRecentAlerts, fetchDashboardStats, markAllAlertsRead, deleteAllAlerts } from "@/lib/api";
 import { useWsEvent } from "@/lib/ws";
 import { useWsConnected } from "@/components/providers/WebSocketProvider";
 import { timeAgo } from "@/lib/format";
 import type { SearchResponse, SearchDevice, SearchAgent, SearchAlert, SearchSshTarget, SearchAsset, Alert } from "@/lib/types";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+
 
 export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
   const router = useRouter();
@@ -124,15 +117,6 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
     } catch {
       // ignore
     }
-  }
-
-  async function handleLogout() {
-    try {
-      await logout();
-    } catch {
-      // Even if the API call fails, redirect to login
-    }
-    window.location.href = "/login";
   }
 
   // ── Search logic (unchanged) ──
@@ -577,42 +561,6 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
           )}
         </div>
 
-        {/* ── User Avatar Menu ── */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="flex h-8 w-8 items-center justify-center rounded-md border border-[#67e8f9]/35 bg-mesh-accent/12 text-sm font-medium text-mesh-text transition-colors hover:bg-mesh-accent/18">
-              A
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel className="text-xs text-mesh-text-dim font-normal">
-              Admin
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="cursor-pointer"
-              onClick={() => router.push("/settings")}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              Settings
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="cursor-pointer"
-              onClick={() => router.push("/settings/password")}
-            >
-              <Lock className="mr-2 h-4 w-4" />
-              Change password
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              className="cursor-pointer text-[#fb7185] focus:text-[#fb7185]"
-              onClick={handleLogout}
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              Logout
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
     </header>
   );
