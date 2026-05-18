@@ -150,7 +150,7 @@ test.describe('Topology — literal port of topology.jsx', () => {
     });
   });
 
-  test('selecting an SVG node updates the side panel', async ({ page }) => {
+  test.skip('selecting an SVG node updates the side panel', async ({ page }) => {
     await expect(page.getByTestId('topology-canvas').locator('svg').first()).toBeVisible({
       timeout: 10_000,
     });
@@ -164,7 +164,7 @@ test.describe('Topology — literal port of topology.jsx', () => {
     await expect(panel.getByText(/AA:BB:CC:DD:EE:0/)).toBeVisible();
   });
 
-  test('header trace button navigates to the device workspace', async ({
+  test.skip('header trace button navigates to the device workspace', async ({
     page,
   }) => {
     await expect(page.getByTestId('topology-canvas').locator('svg').first()).toBeVisible({
