@@ -591,5 +591,17 @@
   }
   .dashboard-subnet-grid {
     grid-template-columns: repeat(2, 1fr) !important;
+
+/* ── Settings tile grid — responsive override on the design-source
+ *    `gridTemplateColumns: repeat(3, 1fr)` so tiles don't crush below
+ *    the 3-col breakpoint. Desktop renders identical to source. */
+@media (max-width: 1023px) {
+  .settings-tile-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+@media (max-width: 639px) {
+  .settings-tile-grid {
+    grid-template-columns: 1fr !important;
   }
 }
