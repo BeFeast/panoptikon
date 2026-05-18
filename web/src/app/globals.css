@@ -546,28 +546,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* `.btn-primary` — base.css 68-74. Solid primary CTA button.
- * `--primary` and `--primary-hover` are declared as HSL aliases at :root
- * for shadcn compatibility; the design recipe wants the literal hex, so
- * we inline the values from tokens.css mesh direction.
- *   --primary:       #2563eb (royal blue)
- *   --primary-hover: #3672f0
- *   --primary-fg:    #ffffff
- *   --primary-glow:  rgba(56, 189, 248, 0.5)
- *   --shadow-glow:   0 0 0 1px var(--accent-cyan)
- */
-.btn-primary {
-  background: #2563eb;
-  border-color: #2563eb;
-  color: #ffffff;
-  box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.5);
-}
-.btn-primary:hover {
-  background: #3672f0;
-  border-color: #3672f0;
-  box-shadow: 0 0 0 1px #38bdf8;
-}
-
 /* ── Dashboard responsive grid breakpoints ──
  * dashboard.jsx is desktop-first: KPI row = 6 columns, main grid = 2 cols
  * (2fr | 1fr), subnet utilization = 5 columns. On narrower viewports we
