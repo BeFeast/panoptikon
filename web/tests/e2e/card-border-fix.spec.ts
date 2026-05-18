@@ -22,7 +22,7 @@ test.describe("Card border fix — no bracket artifacts (#656)", () => {
 
     // Find a Card element (rounded-lg + border + overflow-hidden)
     const card = page
-      .locator('.mesh-card')
+      .locator('.mesh-card.overflow-hidden')
       .first();
     await expect(card).toBeVisible({ timeout: 10000 });
 
@@ -61,7 +61,7 @@ test.describe("Card border fix — no bracket artifacts (#656)", () => {
     ).toBeVisible({ timeout: 15000 });
 
     const card = page
-      .locator('.mesh-card')
+      .locator('.mesh-card.overflow-hidden')
       .first();
     await expect(card).toBeVisible({ timeout: 10000 });
 

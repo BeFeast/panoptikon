@@ -20,8 +20,8 @@ test.describe('Alerts page severity indicators', () => {
       return;
     }
 
-    // Verify that alert cards are rendered
-    const cards = page.locator('[class*="border-mesh-border-strong"]').filter({ hasText: /.+/ });
+    // Verify that alert cards are rendered (post-#785 mesh-card recipe)
+    const cards = page.locator('[class*="mesh-card"]').filter({ hasText: /.+/ });
     const count = await cards.count();
     expect(count).toBeGreaterThan(0);
 
