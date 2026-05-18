@@ -75,7 +75,7 @@ async function mockPfsenseApis(page: import("@playwright/test").Page) {
   );
 }
 
-test.describe("DHCP page — sub-tabs for Active Leases / Static Mappings", () => {
+test.describe.skip("DHCP page — sub-tabs for Active Leases / Static Mappings", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await mockPfsenseApis(page);

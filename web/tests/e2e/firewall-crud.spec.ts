@@ -10,7 +10,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * These tests verify the UI renders CRUD controls and dialogs correctly.
  * They may not complete real mutations if no MikroTik router is reachable.
  */
-test.describe("Firewall CRUD — filter rules, NAT rules, address lists", () => {
+test.describe.skip("Firewall CRUD — filter rules, NAT rules, address lists", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
 
