@@ -31,6 +31,54 @@
     --status-offline: 351 95% 71%;   /* #fb7185 */
     --status-warning: 43 96% 56%;    /* #fbbf24 */
     --status-info: 199 89% 60%;      /* #38bdf8 */
+
+    /* ── Design-source tokens (literal port of tokens.css mesh direction).
+     *    Only tokens that don't conflict with shadcn's HSL `--background`/
+     *    `--primary`/`--border`/`--status-*` set live here. For conflicting
+     *    tokens (--border, --primary, --status-online/offline/warning/info),
+     *    shell.jsx ports use the literal value inline per runbook fallback. */
+    --bg-page: #030a1c;
+    --bg-app: #060f25;
+    --surface-1: #091633;
+    --surface-2: #0e2148;
+    --surface-3: #163065;
+
+    --border-faint: rgba(120, 160, 220, 0.05);
+    --border-strong: rgba(96, 144, 212, 0.40);
+    --border-active: #38bdf8;
+
+    --text: #e9f0fc;
+    --text-dim: #98aecf;
+    --text-mute: #5d7799;
+    --text-faint: #3a5278;
+
+    --primary-hover: #3672f0;
+    --primary-press: #1d4fd7;
+    --primary-soft: rgba(37, 99, 235, 0.16);
+    --primary-glow: rgba(56, 189, 248, 0.5);
+    --primary-fg: #ffffff;
+
+    --accent-cyan: #38bdf8;
+    --accent-violet: #818cf8;
+
+    --radius-xs: 2px;
+    --radius-sm: 3px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-pill: 999px;
+
+    --row-h: 30px;
+    --row-h-comfy: 38px;
+    --card-pad: 14px;
+    --card-pad-tight: 10px;
+
+    --shadow-card: 0 0 0 1px rgba(96, 144, 212, 0.20), 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+    --shadow-pop: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px var(--border-strong);
+    --shadow-glow: 0 0 0 1px var(--accent-cyan);
+
+    --hairline: 1px;
+    --motion-fast: 100ms cubic-bezier(0.2, 0.7, 0.3, 1);
+    --motion: 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
   }
 
   * {
@@ -357,4 +405,70 @@
 .mesh-divider {
   height: 1px;
   background: rgba(96, 144, 212, 0.20);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Design-source recipes — literal port of base.css .btn / .btn-ghost.
+ * `--border` in base.css resolves to mesh `rgba(96,144,212,0.20)` but
+ * shadcn already owns `--border` at :root, so we inline the literal value.
+ * ───────────────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: var(--radius-sm);
+  border: var(--hairline) solid var(--border-strong);
+  background: var(--surface-2);
+  color: var(--text);
+  font: 500 12px/1 var(--font-sans);
+  cursor: pointer;
+  transition:
+    background var(--motion-fast),
+    border-color var(--motion-fast),
+    transform var(--motion-fast);
+}
+.btn:hover {
+  background: var(--surface-3);
+  border-color: var(--border-active);
+}
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-dim);
+}
+.btn-ghost:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+/* `.glow-dot` — base.css 117-128. Live-indicator dot with pulse. The
+ * `--status-online` HSL alias is already declared above for shadcn-style
+ * usage; the design recipe wants the literal hex, so we inline. */
+.glow-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 0 0 currentColor;
+  animation: glow-pulse 2.4s ease-in-out infinite;
+  color: #4ade80;
+}
+@keyframes glow-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 4px rgba(74, 222, 128, 0);
+  }
+}
+
+/* `.mono` / `.tabular` / `.nerd` — base.css 26-28. */
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
