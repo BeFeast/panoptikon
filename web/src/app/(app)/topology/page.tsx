@@ -26,6 +26,7 @@ import {
   useState,
 } from "react";
 import { useRouter } from "next/navigation";
+import XiaomiMeshTopology from "@/components/XiaomiMeshTopology";
 import {
   fetchTopologyGraph,
   deleteTopologyPositions,
@@ -404,6 +405,7 @@ export default function TopologyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"subnets" | "mesh">("subnets");
   const pinnedRef = useRef<Map<string, { x: number; y: number }>>(new Map());
 
   // Animated flow offset for dashed links — verbatim from source.
@@ -578,6 +580,56 @@ export default function TopologyPage() {
           onTrace={tracePath}
         />
 
+        {/* Tab switcher — Subnets (literal port of topology.jsx) vs Mesh
+         * (XiaomiMeshTopology, restored from /mesh route per user request). */}
+        <div
+          role="tablist"
+          aria-label="Topology views"
+          data-testid="topology-tabs"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 24,
+            borderBottom: "1px solid rgba(96,144,212,0.20)",
+            paddingBottom: 8,
+          }}
+        >
+          {(["subnets", "mesh"] as const).map((key) => {
+            const active = activeTab === key;
+            const label = key === "subnets" ? "Subnets" : "Mesh";
+            return (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                data-testid={`topology-tab-${key}`}
+                onClick={() => setActiveTab(key)}
+                style={{
+                  background: "transparent",
+                  border: 0,
+                  padding: "4px 0",
+                  cursor: "pointer",
+                  font: `${active ? 500 : 400} 13px var(--font-sans)`,
+                  color: active ? "var(--text)" : "var(--text-mute)",
+                  borderBottom: active
+                    ? "2px solid var(--accent-cyan)"
+                    : "2px solid transparent",
+                  marginBottom: -9,
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {activeTab === "mesh" ? (
+          <div style={{ flex: 1, minHeight: 0, overflow: "auto" }} data-testid="topology-mesh-pane">
+            <XiaomiMeshTopology />
+          </div>
+        ) : (
+        <>
         {/* Body grid — verbatim grid template from source */}
         <div
           style={{
@@ -906,6 +958,8 @@ export default function TopologyPage() {
             }
           />
         </div>
+        </>
+        )}
       </div>
     </PageTransition>
   );
