@@ -84,9 +84,7 @@ export const navGroups: NavGroup[] = [
     key: "services",
     label: "Services",
     items: [
-      { href: "/router", label: "Router", icon: Router, exact: true },
-      { href: "/router/mikrotik", label: "MikroTik", icon: Router },
-      { href: "/router/pfsense", label: "pfSense", icon: Shield },
+      { href: "/router", label: "Router", icon: Router },
       { href: "/caddy", label: "Caddy", icon: Shield },
       { href: "/services", label: "Services", icon: Workflow },
       { href: "/vpn-status", label: "VPN Status", icon: Shield },
