@@ -1,25 +1,62 @@
 "use client";
 
+/**
+ * Alerts surface — literal port of the ALERTS section from
+ * `/tmp/panopticon-design/panopticon/project/alerts-login.jsx`.
+ *
+ * Per design-export-to-ux-issues-runbook:
+ *  - Inline `style={{ var(--X) }}` from source kept verbatim where possible.
+ *  - Mock `ALERTS` array → real `fetchAlerts` from `@/lib/api`.
+ *  - `<Icon name="X" />` → `lucide-react` glyphs (closest semantic match).
+ *  - Severity badges → literal `style={{ background, color, border }}` per
+ *    source `SevBadge`.
+ *  - Action buttons → `.btn` / `.btn-primary` / `.btn-sm` recipes (globals.css).
+ *  - Tokens: `var(--border)`, `var(--primary)`, `var(--status-*)` → literal
+ *    hex per runbook (shadcn HSL aliases clash with mesh literals).
+ *
+ * Compatibility hooks preserved for existing E2E suites:
+ *  - `data-testid="alerts-root"`, `data-testid="alert-row"` (smoke / severity).
+ *  - `<h1>Alerts</h1>` (level 1).
+ *  - "All clear!" empty-state copy.
+ *  - `.mesh-card` recipe present on outer/list/detail panels.
+ *  - "N critical · N warning · N info" subtitle counts.
+ */
+
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams, useRouter, usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  Activity,
   AlertTriangle,
   Bell,
   Check,
   CheckCheck,
-  ChevronDown,
-  Clock,
-  Download,
   Filter as FilterIcon,
-  MonitorSmartphone,
-  Shield,
+  Plug,
+  Plus,
   Trash2,
   VolumeX,
-  Wifi,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+
+import {
+  acknowledgeAlert,
+  deleteAlert,
+  deleteAllAlerts,
+  fetchAlerts,
+  markAlertRead,
+  markAlertUnread,
+  markAllAlertsRead,
+  muteDevice,
+} from "@/lib/api";
+import type { Alert } from "@/lib/types";
+import { timeAgo } from "@/lib/format";
+import { useApiFetch } from "@/hooks/useApiFetch";
+import { useWsEvent } from "@/lib/ws";
+import { PageTransition } from "@/components/PageTransition";
+import { HelpTooltip } from "@/components/HelpTooltip";
+import { Spark } from "@/components/mesh";
+import { EmptyState } from "@/components/mesh/state/EmptyState";
+import { ErrorState } from "@/components/mesh/state/ErrorState";
+import { LoadingState } from "@/components/mesh/state/LoadingState";
 import {
   Dialog,
   DialogContent,
@@ -28,45 +65,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
-import {
-  fetchAlerts,
-  markAlertRead,
-  markAlertUnread,
-  acknowledgeAlert,
-  muteDevice,
-  deleteAlert,
-  deleteAllAlerts,
-  markAllAlertsRead,
-} from "@/lib/api";
-import type { Alert } from "@/lib/types";
-import { timeAgo } from "@/lib/format";
-import { downloadExport } from "@/lib/export";
-import { useApiFetch } from "@/hooks/useApiFetch";
-import { useWsEvent } from "@/lib/ws";
-import { PageTransition } from "@/components/PageTransition";
-import { HelpTooltip } from "@/components/HelpTooltip";
+// ── Severity model ───────────────────────────────────────────────
+// Source `SevBadge` (alerts-login.jsx 24-41) + `SevIcon` 13-23.
 
-import { LoadingState } from "@/components/mesh/state/LoadingState";
-import { EmptyState } from "@/components/mesh/state/EmptyState";
-import { ErrorState } from "@/components/mesh/state/ErrorState";
-import {
-  DetailsDrawer,
-  DetailsHeader,
-  DetailsTabs,
-  DetailsSection,
-  DetailsField,
-  DetailsFooter,
-} from "@/components/mesh/details";
-
-// Severity helpers
 type SevKey = "critical" | "warning" | "info" | "resolved";
 
 function sevFromAlert(alert: Alert): SevKey {
@@ -81,114 +85,124 @@ function sevFromAlert(alert: Alert): SevKey {
   }
 }
 
+// Literal-port of `SevBadge` style table (alerts-login.jsx 26-31).
+const SEV_BADGE: Record<
+  SevKey,
+  { bg: string; color: string; border: string; label: string }
+> = {
+  critical: {
+    bg: "rgba(244,63,94,0.10)",
+    color: "#fb7185",
+    border: "rgba(244,63,94,0.30)",
+    label: "CRITICAL",
+  },
+  warning: {
+    bg: "rgba(245,158,11,0.10)",
+    color: "#fbbf24",
+    border: "rgba(245,158,11,0.30)",
+    label: "WARNING",
+  },
+  info: {
+    bg: "rgba(56,189,248,0.10)",
+    color: "#38bdf8",
+    border: "rgba(56,189,248,0.30)",
+    label: "INFO",
+  },
+  resolved: {
+    bg: "var(--surface-2)",
+    color: "var(--text-mute)",
+    border: "var(--border)",
+    label: "RESOLVED",
+  },
+};
+
+// Literal-port of `SevIcon` color table — for the rail / left-border on rows.
 const SEV_COLOR: Record<SevKey, string> = {
-  critical: "#fb7185",
-  warning: "#fbbf24",
-  info: "#38bdf8",
-  resolved: "#4ade80",
+  critical: "#fb7185", // var(--status-offline) in source
+  warning: "#fbbf24", // var(--status-warning)
+  info: "#38bdf8", // var(--status-info)
+  resolved: "#4ade80", // var(--status-online)
 };
 
-const SEV_LABEL: Record<SevKey, string> = {
-  critical: "CRITICAL",
-  warning: "WARNING",
-  info: "INFO",
-  resolved: "RESOLVED",
-};
-
-function SevPill({ sev }: { sev: SevKey }) {
-  const color = SEV_COLOR[sev];
+function SevBadge({ sev }: { sev: SevKey }) {
+  const cfg = SEV_BADGE[sev];
   return (
     <span
-      className="inline-flex items-center rounded-full border px-2 py-0.5 font-mono text-[9.5px] font-semibold uppercase tracking-[0.08em]"
       style={{
-        background: `${color}1a`,
-        color,
-        borderColor: `${color}4d`,
+        display: "inline-flex",
+        alignItems: "center",
+        height: 18,
+        padding: "0 7px",
+        borderRadius: "var(--radius-pill)",
+        background: cfg.bg,
+        color: cfg.color,
+        border: `var(--hairline) solid ${cfg.border}`,
+        font: "600 9.5px var(--font-sans)",
+        letterSpacing: "0.08em",
       }}
     >
-      {SEV_LABEL[sev]}
+      {cfg.label}
     </span>
   );
 }
 
-function SevRail({ sev }: { sev: SevKey }) {
-  return (
-    <span
-      aria-hidden
-      className="absolute left-0 top-0 bottom-0 w-[2px] rounded-r"
-      style={{ background: SEV_COLOR[sev] }}
-    />
-  );
-}
-
-function alertIcon(type: Alert["type"], sev: SevKey) {
+// Map alert.type → lucide glyph + colored stroke per severity.
+// Source uses `<Icon name="alert|plug|check" />` semantically
+// (alerts-login.jsx 14-22). We keep the same 3-way mapping.
+function SevIcon({ sev, size = 13 }: { sev: SevKey; size?: number }) {
   const color = SEV_COLOR[sev];
-  const cls = "h-4 w-4 shrink-0";
-  switch (type) {
-    case "new_device":
-      return <MonitorSmartphone className={cls} style={{ color }} />;
-    case "device_offline":
-      return <Wifi className={cls} style={{ color }} />;
-    case "device_online":
-      return <Wifi className={cls} style={{ color }} />;
+  if (sev === "critical" || sev === "warning") {
+    return <AlertTriangle size={size} color={color} strokeWidth={1.8} />;
+  }
+  if (sev === "info") {
+    return <Plug size={size} color={color} strokeWidth={1.8} />;
+  }
+  return <Check size={size} color={color} strokeWidth={1.8} />;
+}
+
+// Map alert.type → label for the row title (replaces source's hand-written title string).
+function alertTitle(a: Alert): string {
+  switch (a.type) {
     case "agent_offline":
-      return <Activity className={cls} style={{ color }} />;
-    case "high_bandwidth":
-      return <AlertTriangle className={cls} style={{ color }} />;
-    default:
-      return <Shield className={cls} style={{ color }} />;
-  }
-}
-
-function alertTypeLabel(type: Alert["type"]): string {
-  switch (type) {
-    case "new_device":
-      return "New Device";
+      return "agent · offline";
     case "device_offline":
-      return "Device Offline";
+      return "device · offline";
     case "device_online":
-      return "Device Online";
-    case "agent_offline":
-      return "Agent Offline";
+      return "device · online";
+    case "new_device":
+      return "discovery · new device";
     case "high_bandwidth":
-      return "High Bandwidth";
+      return "qos · high bandwidth";
     default:
-      return "Alert";
+      return "alert";
   }
 }
 
-// Filter chips
-type ChipKey = "all" | "critical" | "warning" | "info" | "ack";
-
-const CHIPS: { key: ChipKey; label: string; testid: string }[] = [
-  { key: "all", label: "All", testid: "filter-chip-all" },
-  { key: "critical", label: "Critical", testid: "filter-chip-critical" },
-  { key: "warning", label: "Warning", testid: "filter-chip-warning" },
-  { key: "info", label: "Info", testid: "filter-chip-info" },
-  { key: "ack", label: "Acknowledged", testid: "filter-chip-ack" },
-];
-
-function filterAlerts(alerts: Alert[], chip: ChipKey): Alert[] {
-  switch (chip) {
-    case "critical":
-      return alerts.filter((a) => !a.acknowledged_at && a.severity === "CRITICAL");
-    case "warning":
-      return alerts.filter((a) => !a.acknowledged_at && a.severity === "WARNING");
-    case "info":
-      return alerts.filter((a) => !a.acknowledged_at && a.severity === "INFO");
-    case "ack":
-      return alerts.filter((a) => !!a.acknowledged_at);
-    default:
-      return alerts;
-  }
+function alertSource(a: Alert): string {
+  if (a.agent_id) return "fleet";
+  if (a.device_id && a.type === "high_bandwidth") return "qos";
+  if (a.device_id && a.type === "new_device") return "scanner";
+  if (a.device_id) return "fleet";
+  return "system";
 }
+
+function alertTarget(a: Alert): string {
+  return a.device_id ?? a.agent_id ?? "system";
+}
+
+// ── Page ────────────────────────────────────────────────────────
 
 export default function AlertsPage() {
   return (
     <Suspense
       fallback={
         <div className="space-y-5" data-testid="alerts-root">
-          <LoadingState title="Loading alerts" message="Pulling open alerts…" tiles={0} rows={6} />
+          <LoadingState
+            title="Loading alerts"
+            message="Pulling open alerts…"
+            tiles={0}
+            rows={6}
+          />
         </div>
       }
     >
@@ -197,28 +211,30 @@ export default function AlertsPage() {
   );
 }
 
+type ViewFilter = "All" | "Open" | "Ack" | "Resolved";
+
 function AlertsPageInner() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const initialChip = (searchParams.get("filter") as ChipKey) ?? "all";
-  const [chip, setChip] = useState<ChipKey>(
-    CHIPS.some((c) => c.key === initialChip) ? initialChip : "all",
-  );
-
-  const [drawerOpen, setDrawerOpen] = useState(false);
-  const [selectedAlertId, setSelectedAlertId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<string>("overview");
-
+  // Read initial filter from URL (?filter=open|ack|resolved).
+  const initialFilter = ((): ViewFilter => {
+    const q = searchParams.get("filter");
+    if (q === "open") return "Open";
+    if (q === "ack") return "Ack";
+    if (q === "resolved") return "Resolved";
+    return "All";
+  })();
+  const [view, setView] = useState<ViewFilter>(initialFilter);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [ackDialogOpen, setAckDialogOpen] = useState(false);
   const [ackAlertId, setAckAlertId] = useState<string | null>(null);
   const [ackNote, setAckNote] = useState("");
-  const [clearAllDialogOpen, setClearAllDialogOpen] = useState(false);
-  const [acknowledgingIds, setAcknowledgingIds] = useState<Set<string>>(new Set());
+  const [clearAllOpen, setClearAllOpen] = useState(false);
 
   const { data: alerts, error, mutate, isLoading } = useApiFetch<Alert[]>(
-    `/api/v1/alerts?all`,
+    "/api/v1/alerts?all",
     async () => {
       const data = await fetchAlerts(200);
       return Array.isArray(data) ? data : [];
@@ -226,86 +242,70 @@ function AlertsPageInner() {
     { refreshInterval: 30_000 },
   );
 
-  // WS refresh on alert-related events
+  // Refresh on alert-related WS events.
   useWsEvent(
-    ["device_online", "device_offline", "new_device", "agent_offline", "agent_online"],
-    () => {
-      mutate();
-    },
+    [
+      "device_online",
+      "device_offline",
+      "new_device",
+      "agent_offline",
+      "agent_online",
+    ],
+    () => mutate(),
   );
 
-  // Sync chip -> URL
+  // Sync URL with current filter for shareable links.
   useEffect(() => {
     const sp = new URLSearchParams(searchParams.toString());
-    if (chip === "all") {
-      sp.delete("filter");
-    } else {
-      sp.set("filter", chip);
-    }
+    if (view === "All") sp.delete("filter");
+    else sp.set("filter", view.toLowerCase());
     const qs = sp.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chip]);
+  }, [view]);
 
-  const counts = useMemo(() => {
+  // Bucket counts — design header: "4 open · 1 acknowledged · 18 resolved · 24h".
+  const buckets = useMemo(() => {
     const list = alerts ?? [];
-    const active = list.filter((a) => !a.acknowledged_at);
+    const open = list.filter((a) => !a.acknowledged_at);
+    const ack = list.filter((a) => !!a.acknowledged_at);
     return {
+      critical: open.filter((a) => a.severity === "CRITICAL").length,
+      warning: open.filter((a) => a.severity === "WARNING").length,
+      info: open.filter((a) => a.severity === "INFO").length,
+      resolved: ack.length, // backend collapses resolved/ack into acknowledged_at.
+      open: open.length,
       all: list.length,
-      critical: active.filter((a) => a.severity === "CRITICAL").length,
-      warning: active.filter((a) => a.severity === "WARNING").length,
-      info: active.filter((a) => a.severity === "INFO").length,
-      ack: list.filter((a) => !!a.acknowledged_at).length,
-      unread: list.filter((a) => !a.is_read).length,
-      active: active.length,
     };
   }, [alerts]);
 
-  const filtered = useMemo(
-    () => filterAlerts(alerts ?? [], chip),
-    [alerts, chip],
+  // Apply the segmented filter to the list pane.
+  const filtered = useMemo(() => {
+    const list = alerts ?? [];
+    if (view === "Open") return list.filter((a) => !a.acknowledged_at);
+    if (view === "Ack" || view === "Resolved")
+      return list.filter((a) => !!a.acknowledged_at);
+    return list;
+  }, [alerts, view]);
+
+  // Pin a default selection — first item once data arrives.
+  useEffect(() => {
+    if (!selectedId && filtered.length > 0) {
+      setSelectedId(filtered[0].id);
+    }
+  }, [filtered, selectedId]);
+
+  const selectedAlert = useMemo(
+    () => filtered.find((a) => a.id === selectedId) ?? null,
+    [filtered, selectedId],
   );
 
-  const selectedAlert = useMemo(() => {
-    if (!alerts || !selectedAlertId) return null;
-    return alerts.find((a) => a.id === selectedAlertId) ?? null;
-  }, [alerts, selectedAlertId]);
-
-  const openDrawer = useCallback((alertId: string) => {
-    setSelectedAlertId(alertId);
-    setActiveTab("overview");
-    setDrawerOpen(true);
-  }, []);
-
-  async function handleMarkRead(id: string) {
-    try {
-      await markAlertRead(id);
-      mutate(
-        (prev) => (prev ?? []).map((a) => (a.id === id ? { ...a, is_read: true } : a)),
-        { revalidate: false },
-      );
-    } catch {
-      /* noop */
-    }
-  }
-
-  async function handleMarkUnread(id: string) {
-    try {
-      await markAlertUnread(id);
-      mutate(
-        (prev) => (prev ?? []).map((a) => (a.id === id ? { ...a, is_read: false } : a)),
-        { revalidate: false },
-      );
-    } catch {
-      /* noop */
-    }
-  }
-
-  function openAckDialog(alertId: string) {
-    setAckAlertId(alertId);
+  // ── Actions ──
+  const openAckDialog = useCallback((id: string) => {
+    setAckAlertId(id);
     setAckNote("");
     setAckDialogOpen(true);
-  }
+  }, []);
 
   async function handleAcknowledge() {
     if (!ackAlertId) return;
@@ -313,28 +313,20 @@ function AlertsPageInner() {
     try {
       await acknowledgeAlert(id, ackNote || undefined);
       setAckDialogOpen(false);
-      setAcknowledgingIds((prev) => new Set(prev).add(id));
-      setTimeout(() => {
-        setAcknowledgingIds((prev) => {
-          const next = new Set(prev);
-          next.delete(id);
-          return next;
-        });
-        mutate(
-          (prev) =>
-            (prev ?? []).map((a) =>
-              a.id === id
-                ? {
-                    ...a,
-                    acknowledged_at: new Date().toISOString(),
-                    acknowledged_by: ackNote || null,
-                    is_read: true,
-                  }
-                : a,
-            ),
-          { revalidate: false },
-        );
-      }, 400);
+      mutate(
+        (prev) =>
+          (prev ?? []).map((a) =>
+            a.id === id
+              ? {
+                  ...a,
+                  acknowledged_at: new Date().toISOString(),
+                  acknowledged_by: ackNote || null,
+                  is_read: true,
+                }
+              : a,
+          ),
+        { revalidate: false },
+      );
       toast.success("Alert acknowledged");
     } catch {
       toast.error("Failed to acknowledge");
@@ -344,11 +336,10 @@ function AlertsPageInner() {
   async function handleDeleteOne(id: string) {
     try {
       await deleteAlert(id);
-      mutate((prev) => (prev ?? []).filter((a) => a.id !== id), { revalidate: false });
-      if (selectedAlertId === id) {
-        setDrawerOpen(false);
-        setSelectedAlertId(null);
-      }
+      mutate((prev) => (prev ?? []).filter((a) => a.id !== id), {
+        revalidate: false,
+      });
+      if (selectedId === id) setSelectedId(null);
     } catch {
       /* noop */
     }
@@ -358,9 +349,8 @@ function AlertsPageInner() {
     try {
       await deleteAllAlerts();
       mutate([], { revalidate: false });
-      setClearAllDialogOpen(false);
-      setDrawerOpen(false);
-      setSelectedAlertId(null);
+      setClearAllOpen(false);
+      setSelectedId(null);
       toast.success("All alerts cleared");
     } catch {
       toast.error("Failed to clear alerts");
@@ -373,18 +363,17 @@ function AlertsPageInner() {
       mutate((prev) => (prev ?? []).map((a) => ({ ...a, is_read: true })), {
         revalidate: false,
       });
-      toast.success("All alerts marked as read");
+      toast.success("All alerts marked read");
     } catch {
-      toast.error("Failed to mark all as read");
+      toast.error("Failed to mark all read");
     }
   }
 
-  async function handleSnooze(alertId: string, hours: number) {
-    // Snooze maps onto mute when alert has device_id; otherwise just acknowledge.
-    const alert = (alerts ?? []).find((a) => a.id === alertId);
-    if (alert?.device_id) {
+  async function handleSnooze(id: string, hours: number) {
+    const a = (alerts ?? []).find((x) => x.id === id);
+    if (a?.device_id) {
       try {
-        await muteDevice(alert.device_id, hours);
+        await muteDevice(a.device_id, hours);
         toast.success(`Snoozed ${hours}h`);
       } catch {
         toast.error("Failed to snooze");
@@ -396,11 +385,34 @@ function AlertsPageInner() {
     }
   }
 
+  async function handleToggleRead(a: Alert) {
+    try {
+      if (a.is_read) {
+        await markAlertUnread(a.id);
+        mutate(
+          (prev) =>
+            (prev ?? []).map((x) => (x.id === a.id ? { ...x, is_read: false } : x)),
+          { revalidate: false },
+        );
+      } else {
+        await markAlertRead(a.id);
+        mutate(
+          (prev) =>
+            (prev ?? []).map((x) => (x.id === a.id ? { ...x, is_read: true } : x)),
+          { revalidate: false },
+        );
+      }
+    } catch {
+      /* noop */
+    }
+  }
+
+  // ── Error state ──
   if (error) {
     return (
       <PageTransition>
         <div className="space-y-6" data-testid="alerts-root">
-          <PageHeader counts={counts} disabled />
+          <PageHeader buckets={buckets} disabled />
           <ErrorState
             title="Couldn't reach the alerts service"
             message={String(error)}
@@ -411,670 +423,864 @@ function AlertsPageInner() {
     );
   }
 
-  return (
-    <PageTransition>
-      <div className="space-y-5" data-testid="alerts-root">
-        <PageHeader
-          counts={counts}
-          onMarkAllRead={counts.unread > 0 ? handleMarkAllRead : undefined}
-          onClearAll={counts.all > 0 ? () => setClearAllDialogOpen(true) : undefined}
-        />
-
-        {/* Filter chip strip */}
-        <div className="flex flex-wrap items-center gap-2">
-          {CHIPS.map((c) => {
-            const count = counts[c.key];
-            const active = chip === c.key;
-            return (
-              <button
-                key={c.key}
-                type="button"
-                data-testid={c.testid}
-                aria-pressed={active}
-                onClick={() => setChip(c.key)}
-                className={
-                  "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors " +
-                  (active
-                    ? "border-mesh-accent bg-mesh-primary-soft text-mesh-text"
-                    : "border-mesh-border bg-mesh-surface-1 text-mesh-text-mute hover:bg-mesh-surface-2 hover:text-mesh-text")
-                }
-              >
-                <span>{c.label}</span>
-                <span
-                  className="rounded font-mono text-[10.5px]"
-                  style={{ color: active ? undefined : "var(--mesh-text-mute)" }}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-
-          <div className="ms-auto flex items-center gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-mesh-border bg-mesh-surface-1 text-mesh-text-dim hover:text-mesh-text gap-1.5"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  Export
-                  <ChevronDown className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={async () => {
-                    try {
-                      await downloadExport(
-                        "/api/v1/alerts/export?format=csv",
-                        "panoptikon-alerts.csv",
-                      );
-                      toast.success("Alerts exported as CSV");
-                    } catch {
-                      toast.error("Export failed");
-                    }
-                  }}
-                >
-                  Export CSV
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={async () => {
-                    try {
-                      await downloadExport(
-                        "/api/v1/alerts/export?format=json",
-                        "panoptikon-alerts.json",
-                      );
-                      toast.success("Alerts exported as JSON");
-                    } catch {
-                      toast.error("Export failed");
-                    }
-                  }}
-                >
-                  Export JSON
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
-
-        {/* Alert list / states */}
-        {isLoading && !alerts ? (
+  // ── Loading state ──
+  if (isLoading && !alerts) {
+    return (
+      <PageTransition>
+        <div className="space-y-5" data-testid="alerts-root">
+          <PageHeader buckets={buckets} disabled />
           <LoadingState
             title="Loading alerts"
             message="Pulling open alerts and their history…"
-            tiles={0}
+            tiles={4}
             rows={6}
           />
-        ) : filtered.length === 0 ? (
-          chip === "all" && counts.all === 0 ? (
-            <EmptyState
-              title="All clear"
-              message="No active alerts. New events from devices, agents, or rules will show up here."
-              action={
-                <Button asChild variant="outline" size="sm">
-                  <a href="/settings/alert-rules">
-                    <FilterIcon className="h-3.5 w-3.5" />
-                    <span>Configure rules</span>
-                  </a>
-                </Button>
-              }
-            />
-          ) : (
-            <EmptyState
-              title="No alerts in this filter"
-              message={`Nothing matches "${CHIPS.find((c) => c.key === chip)?.label ?? chip}" right now. Try a different filter or clear it.`}
-              action={
-                <Button variant="outline" size="sm" onClick={() => setChip("all")}>
-                  Show all
-                </Button>
-              }
-            />
-          )
-        ) : (
-          <div className="overflow-hidden mesh-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-            <div className="grid grid-cols-[32px_72px_minmax(0,1fr)_120px_120px] items-center gap-3 border-b border-mesh-border bg-mesh-surface-1/80 px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-mesh-text-mute max-md:hidden">
-              <span />
-              <span>Severity</span>
-              <span>Event</span>
-              <span>Age</span>
-              <span className="text-right">Actions</span>
-            </div>
-            <ul className="divide-y divide-mesh-border">
-              {filtered.map((alert) => {
-                const sev = sevFromAlert(alert);
-                const animating = acknowledgingIds.has(alert.id);
-                const isSelected = selectedAlertId === alert.id && drawerOpen;
-                return (
-                  <li
-                    key={alert.id}
-                    data-testid="alert-row"
-                    data-severity={sev}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => openDrawer(alert.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === " ") {
-                        e.preventDefault();
-                        openDrawer(alert.id);
-                      }
-                    }}
-                    className={
-                      "relative grid cursor-pointer grid-cols-[32px_minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 transition-colors md:grid-cols-[32px_72px_minmax(0,1fr)_120px_120px] " +
-                      (animating
-                        ? "opacity-30"
-                        : isSelected
-                          ? "bg-mesh-surface-2"
-                          : "hover:bg-mesh-surface-2/60")
-                    }
-                  >
-                    <SevRail sev={sev} />
-                    <span className="flex items-center justify-center">
-                      {alertIcon(alert.type, sev)}
-                    </span>
-                    <span className="max-md:hidden">
-                      <SevPill sev={sev} />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="truncate text-[11px] font-semibold uppercase tracking-wider text-mesh-text-mute">
-                          {alertTypeLabel(alert.type)}
-                        </span>
-                        {!alert.is_read && !alert.acknowledged_at && (
-                          <span
-                            aria-label="unread"
-                            className="h-1.5 w-1.5 rounded-full"
-                            style={{ background: SEV_COLOR.info }}
-                          />
-                        )}
-                        <span className="md:hidden">
-                          <SevPill sev={sev} />
-                        </span>
-                      </span>
-                      <span
-                        className={
-                          "mt-0.5 block truncate text-[13px] " +
-                          (alert.acknowledged_at
-                            ? "text-mesh-text-mute"
-                            : !alert.is_read
-                              ? "font-medium text-mesh-text"
-                              : "text-mesh-text-dim")
-                        }
-                      >
-                        {alert.message}
-                      </span>
-                      {(alert.device_id || alert.agent_id) && (
-                        <span className="mt-1 block truncate font-mono text-[11px] text-mesh-text-mute">
-                          {alert.device_id
-                            ? `device · ${alert.device_id}`
-                            : `agent · ${alert.agent_id}`}
-                        </span>
-                      )}
-                    </span>
-                    <span className="shrink-0 font-mono text-[11px] text-mesh-text-mute max-md:hidden">
-                      <Clock className="me-1 inline h-3 w-3 align-[-2px]" />
-                      {timeAgo(alert.created_at)}
-                    </span>
-                    <span
-                      className="flex items-center justify-end gap-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {!alert.acknowledged_at &&
-                        (alert.is_read ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-mesh-text-mute hover:text-mesh-accent"
-                            onClick={() => handleMarkUnread(alert.id)}
-                            title="Mark unread"
-                          >
-                            <Bell className="h-3.5 w-3.5" />
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 px-2 text-mesh-text-mute hover:text-mesh-text"
-                            onClick={() => handleMarkRead(alert.id)}
-                            title="Mark read"
-                          >
-                            <Check className="h-3.5 w-3.5" />
-                          </Button>
-                        ))}
-                      {!alert.acknowledged_at && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 px-2 text-mesh-text-mute hover:text-[#4ade80]"
-                          onClick={() => openAckDialog(alert.id)}
-                          title="Acknowledge"
-                        >
-                          <CheckCheck className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-mesh-text-mute hover:text-[#fb7185]"
-                        onClick={() => handleDeleteOne(alert.id)}
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        )}
+        </div>
+      </PageTransition>
+    );
+  }
 
-        {/* Details Drawer */}
-        <DetailsDrawer
-          open={drawerOpen}
-          onOpenChange={(open) => {
-            setDrawerOpen(open);
-            if (!open) setSelectedAlertId(null);
+  // ── Empty state ──
+  if (buckets.all === 0) {
+    return (
+      <PageTransition>
+        <div className="space-y-5" data-testid="alerts-root">
+          <PageHeader
+            buckets={buckets}
+            onMarkAllRead={undefined}
+            onClearAll={undefined}
+          />
+          <EmptyState
+            title="All clear!"
+            message="No active alerts. New events from devices, agents, or rules will show up here."
+            action={
+              <Button asChild variant="outline" size="sm">
+                <a href="/settings/alert-rules">
+                  <FilterIcon className="h-3.5 w-3.5" />
+                  <span>Configure rules</span>
+                </a>
+              </Button>
+            }
+          />
+        </div>
+      </PageTransition>
+    );
+  }
+
+  // ── Body: literal port of `Alerts` (alerts-login.jsx 43-216) ──
+  // Outer wrapper keeps `padding: 18px / gap: 14px` per source.
+  return (
+    <PageTransition>
+      <div
+        data-testid="alerts-root"
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 14,
+        }}
+      >
+        <PageHeader
+          buckets={buckets}
+          onMarkAllRead={
+            buckets.open > 0 && (alerts ?? []).some((a) => !a.is_read)
+              ? handleMarkAllRead
+              : undefined
+          }
+          onClearAll={buckets.all > 0 ? () => setClearAllOpen(true) : undefined}
+        />
+
+        {/* Severity bucket KPIs — source 79-93 */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 10,
           }}
-          data-testid="alert-drawer"
+          aria-label="Severity"
         >
-          {selectedAlert ? (
-            <AlertDrawerBody
-              alert={selectedAlert}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              onAcknowledge={() => openAckDialog(selectedAlert.id)}
-              onSnooze={(hours) => handleSnooze(selectedAlert.id, hours)}
-              onDelete={() => handleDeleteOne(selectedAlert.id)}
-              onMarkRead={() => handleMarkRead(selectedAlert.id)}
-              onMarkUnread={() => handleMarkUnread(selectedAlert.id)}
-            />
-          ) : null}
-        </DetailsDrawer>
-
-        {/* Acknowledge Dialog */}
-        <Dialog open={ackDialogOpen} onOpenChange={setAckDialogOpen}>
-          <DialogContent className="border-mesh-border bg-mesh-surface-1">
-            <DialogHeader>
-              <DialogTitle>Acknowledge Alert</DialogTitle>
-              <DialogDescription>
-                Optionally add a note about why this alert is being acknowledged.
-              </DialogDescription>
-            </DialogHeader>
-            <Input
-              placeholder="Add a note (optional)..."
-              value={ackNote}
-              onChange={(e) => setAckNote(e.target.value)}
-              className="border-mesh-border bg-mesh-surface-2"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleAcknowledge();
+          {(
+            [
+              { sev: "critical", count: buckets.critical, color: "#fb7185" },
+              { sev: "warning", count: buckets.warning, color: "#fbbf24" },
+              { sev: "info", count: buckets.info, color: "#38bdf8" },
+              { sev: "resolved", count: buckets.resolved, color: "#4ade80" },
+            ] as const
+          ).map((b) => (
+            <div
+              key={b.sev}
+              className="mesh-card"
+              style={{
+                padding: "var(--card-pad)",
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
               }}
-            />
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setAckDialogOpen(false)}
-                className="border-mesh-border"
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleAcknowledge}>Acknowledge</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            >
+              <span
+                style={{
+                  width: 3,
+                  alignSelf: "stretch",
+                  background: b.color,
+                  borderRadius: 2,
+                }}
+              />
+              <div style={{ flex: 1 }}>
+                <div
+                  className="t-micro"
+                  style={{ color: "var(--text-mute)" }}
+                >
+                  {b.sev}
+                </div>
+                <div
+                  className="mono"
+                  style={{
+                    fontSize: 28,
+                    fontWeight: 600,
+                    color: "var(--text)",
+                    lineHeight: 1,
+                    marginTop: 2,
+                  }}
+                >
+                  {b.count}
+                </div>
+              </div>
+              <Spark
+                data={sparkSeed(b.count)}
+                width={64}
+                height={28}
+                color={b.color}
+              />
+            </div>
+          ))}
+        </div>
 
-        {/* Clear-all Dialog */}
-        <Dialog open={clearAllDialogOpen} onOpenChange={setClearAllDialogOpen}>
-          <DialogContent className="border-mesh-border bg-mesh-surface-1">
-            <DialogHeader>
-              <DialogTitle>Delete All Alerts</DialogTitle>
-              <DialogDescription>
-                Delete all {counts.all} alerts? This cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setClearAllDialogOpen(false)}
-                className="border-mesh-border"
+        {/* Two-pane: list + detail — source 96-216 */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1.2fr) minmax(0, 1fr)",
+            gap: 12,
+          }}
+        >
+          {/* List pane — source 98-138 */}
+          <div className="mesh-card" style={{ padding: 0 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 14px",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
               >
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={handleDeleteAll}>
-                Delete all
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+                <h3 className="t-h3" style={{ margin: 0 }}>
+                  Open alerts
+                </h3>
+                <span
+                  style={{
+                    font: "500 11px var(--font-mono)",
+                    color: "var(--text-mute)",
+                  }}
+                >
+                  · chronological
+                </span>
+              </div>
+              <div
+                role="tablist"
+                aria-label="Alert view"
+                style={{
+                  display: "flex",
+                  gap: 4,
+                  background: "var(--surface-2)",
+                  padding: 2,
+                  borderRadius: "var(--radius-sm)",
+                  border: "var(--hairline) solid rgba(96,144,212,0.20)",
+                }}
+              >
+                {(["All", "Open", "Ack", "Resolved"] as ViewFilter[]).map(
+                  (r) => {
+                    const active = view === r;
+                    return (
+                      <button
+                        key={r}
+                        type="button"
+                        role="tab"
+                        aria-selected={active}
+                        onClick={() => setView(r)}
+                        style={{
+                          padding: "3px 9px",
+                          font: "500 11px var(--font-sans)",
+                          borderRadius: "var(--radius-xs)",
+                          color: active ? "var(--text)" : "var(--text-mute)",
+                          background: active
+                            ? "var(--surface-3)"
+                            : "transparent",
+                          border: "none",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {r}
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+            </div>
+            <div
+              style={{
+                borderTop: "var(--hairline) solid rgba(96,144,212,0.20)",
+              }}
+            >
+              {filtered.length === 0 ? (
+                <div
+                  style={{
+                    padding: 24,
+                    textAlign: "center",
+                    color: "var(--text-mute)",
+                    font: "400 12px var(--font-sans)",
+                  }}
+                >
+                  Nothing matches "{view}".
+                </div>
+              ) : (
+                filtered.map((a, i) => {
+                  const sev = sevFromAlert(a);
+                  const isSelected = a.id === selectedId;
+                  const railColor = SEV_COLOR[sev];
+                  return (
+                    <div
+                      key={a.id}
+                      data-testid="alert-row"
+                      data-severity={sev}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => setSelectedId(a.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedId(a.id);
+                        }
+                      }}
+                      style={{
+                        position: "relative",
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: 10,
+                        padding: "11px 14px",
+                        borderBottom:
+                          i < filtered.length - 1
+                            ? "var(--hairline) solid rgba(96,144,212,0.20)"
+                            : "none",
+                        background: isSelected
+                          ? "var(--surface-2)"
+                          : "transparent",
+                        borderLeft: `2px solid ${railColor}`,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {isSelected && (
+                        <span
+                          style={{
+                            position: "absolute",
+                            left: 0,
+                            top: 6,
+                            bottom: 6,
+                            width: 2,
+                            background: "#2563eb",
+                          }}
+                        />
+                      )}
+                      <div style={{ marginTop: 2 }}>
+                        <SevIcon sev={sev} size={13} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            gap: 8,
+                          }}
+                        >
+                          <span
+                            style={{
+                              font: "500 13px var(--font-sans)",
+                              color: "var(--text)",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {alertTitle(a)}
+                          </span>
+                          <span
+                            className="mono"
+                            style={{
+                              font: "500 11px var(--font-mono)",
+                              color: "var(--text-mute)",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {timeAgo(a.created_at)}
+                          </span>
+                        </div>
+                        <div
+                          className="mono"
+                          style={{
+                            font: "400 11px var(--font-mono)",
+                            color: "var(--text-mute)",
+                            marginTop: 3,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {alertSource(a)} · {alertTarget(a)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Detail pane — source 140-215 */}
+          <div
+            className="mesh-card"
+            style={{
+              padding: 0,
+              display: "flex",
+              flexDirection: "column",
+            }}
+          >
+            {selectedAlert ? (
+              <AlertDetail
+                alert={selectedAlert}
+                onAcknowledge={() => openAckDialog(selectedAlert.id)}
+                onDelete={() => handleDeleteOne(selectedAlert.id)}
+                onSnooze={(h) => handleSnooze(selectedAlert.id, h)}
+                onToggleRead={() => handleToggleRead(selectedAlert)}
+              />
+            ) : (
+              <div
+                style={{
+                  padding: 24,
+                  textAlign: "center",
+                  color: "var(--text-mute)",
+                  font: "400 12px var(--font-sans)",
+                }}
+              >
+                Select an alert to view details.
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Acknowledge dialog */}
+      <Dialog open={ackDialogOpen} onOpenChange={setAckDialogOpen}>
+        <DialogContent
+          className="mesh-card"
+          style={{ background: "var(--surface-1)" }}
+        >
+          <DialogHeader>
+            <DialogTitle>Acknowledge alert</DialogTitle>
+            <DialogDescription>
+              Optionally add a note about why this alert is being acknowledged.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            placeholder="Add a note (optional)…"
+            value={ackNote}
+            onChange={(e) => setAckNote(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleAcknowledge();
+            }}
+            style={{
+              background: "var(--surface-2)",
+              border: "var(--hairline) solid rgba(96,144,212,0.40)",
+            }}
+          />
+          <DialogFooter>
+            <button
+              className="btn"
+              type="button"
+              onClick={() => setAckDialogOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={handleAcknowledge}
+            >
+              Acknowledge
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Clear-all dialog */}
+      <Dialog open={clearAllOpen} onOpenChange={setClearAllOpen}>
+        <DialogContent
+          className="mesh-card"
+          style={{ background: "var(--surface-1)" }}
+        >
+          <DialogHeader>
+            <DialogTitle>Delete all alerts</DialogTitle>
+            <DialogDescription>
+              Delete all {buckets.all} alerts? This cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <button
+              className="btn"
+              type="button"
+              onClick={() => setClearAllOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="btn btn-primary"
+              type="button"
+              onClick={handleDeleteAll}
+              style={{
+                background: "#fb7185",
+                borderColor: "#fb7185",
+              }}
+            >
+              Delete all
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </PageTransition>
   );
 }
 
-// Header
+// ── Header — source 60-77 ──────────────────────────────────────
+
 function PageHeader({
-  counts,
+  buckets,
   onMarkAllRead,
   onClearAll,
   disabled,
 }: {
-  counts: {
-    all: number;
+  buckets: {
     critical: number;
     warning: number;
     info: number;
-    ack: number;
-    unread: number;
-    active: number;
+    resolved: number;
+    open: number;
+    all: number;
   };
   onMarkAllRead?: () => void;
   onClearAll?: () => void;
   disabled?: boolean;
 }) {
+  // Source subtitle: "4 open · 1 acknowledged · 18 resolved · 24h".
+  // Compatibility: existing alerts-severity test asserts "N critical",
+  // "N warning", "N info" text — keep those phrases visible in subtitle.
   return (
-    <header className="flex flex-wrap items-end justify-between gap-3">
+    <div
+      style={{
+        display: "flex",
+        alignItems: "flex-end",
+        justifyContent: "space-between",
+        flexWrap: "wrap",
+        gap: 12,
+      }}
+    >
       <div>
-        <div className="font-mono text-[10.5px] font-medium uppercase tracking-[0.16em] text-mesh-text-mute">
-          Operations
-        </div>
-        <div className="mt-1 flex items-center gap-2">
-          <h1 className="m-0 text-[24px] font-semibold tracking-tight text-mesh-text">
+        <div className="t-micro">Operations</div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            margin: "4px 0 6px",
+          }}
+        >
+          <h1 className="t-display" style={{ margin: 0 }}>
             Alerts
           </h1>
           <HelpTooltip text="Network events that need attention — devices joining/leaving, agents going offline, and configured rule violations." />
         </div>
-        <div className="mt-1 font-mono text-[12px] text-mesh-text-mute">
-          {counts.all} total
-          {" · "}
-          <span style={{ color: counts.critical > 0 ? SEV_COLOR.critical : undefined }}>
-            {counts.critical} critical
+        <div
+          className="t-small mono"
+          style={{ color: "var(--text-mute)" }}
+        >
+          {buckets.all} total · {" "}
+          <span
+            style={{
+              color: buckets.critical > 0 ? "#fb7185" : undefined,
+            }}
+          >
+            {buckets.critical} critical
           </span>
           {" · "}
-          <span style={{ color: counts.warning > 0 ? SEV_COLOR.warning : undefined }}>
-            {counts.warning} warning
+          <span
+            style={{
+              color: buckets.warning > 0 ? "#fbbf24" : undefined,
+            }}
+          >
+            {buckets.warning} warning
           </span>
           {" · "}
-          {counts.unread} unread
+          <span
+            style={{
+              color: buckets.info > 0 ? "#38bdf8" : undefined,
+            }}
+          >
+            {buckets.info} info
+          </span>
           {" · "}
-          {counts.ack} acknowledged
+          {buckets.resolved} acknowledged
         </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div style={{ display: "flex", gap: 8 }}>
         {onMarkAllRead && (
-          <Button
+          <button
+            type="button"
             data-testid="alerts-mark-all-read"
-            variant="outline"
-            size="sm"
+            className="btn"
             disabled={disabled}
             onClick={onMarkAllRead}
-            className="border-mesh-border bg-mesh-surface-1 text-mesh-text-dim hover:text-mesh-text gap-1.5"
           >
-            <CheckCheck className="h-3.5 w-3.5" />
-            Mark all read
-          </Button>
+            <CheckCheck size={12} />
+            <span>Ack all</span>
+          </button>
         )}
+        <a className="btn" href="/settings/alert-rules">
+          <FilterIcon size={12} />
+          <span>Rules</span>
+        </a>
         {onClearAll && (
-          <Button
+          <button
+            type="button"
             data-testid="alerts-clear-all"
-            variant="outline"
-            size="sm"
+            className="btn btn-primary"
             disabled={disabled}
             onClick={onClearAll}
-            className="border-mesh-border bg-mesh-surface-1 text-mesh-text-dim hover:text-[#fb7185] gap-1.5"
+            style={{
+              background: "#fb7185",
+              borderColor: "#fb7185",
+            }}
           >
-            <Trash2 className="h-3.5 w-3.5" />
-            Clear all
-          </Button>
+            <Trash2 size={12} />
+            <span>Clear all</span>
+          </button>
+        )}
+        {!onClearAll && (
+          <a className="btn btn-primary" href="/settings/alert-rules">
+            <Plus size={12} />
+            <span>New rule</span>
+          </a>
         )}
       </div>
-    </header>
+    </div>
   );
 }
 
-// Drawer body
-function AlertDrawerBody({
+// ── Detail pane — source 140-215 ───────────────────────────────
+
+function AlertDetail({
   alert,
-  activeTab,
-  onTabChange,
   onAcknowledge,
-  onSnooze,
   onDelete,
-  onMarkRead,
-  onMarkUnread,
+  onSnooze,
+  onToggleRead,
 }: {
   alert: Alert;
-  activeTab: string;
-  onTabChange: (id: string) => void;
   onAcknowledge: () => void;
-  onSnooze: (hours: number) => void;
   onDelete: () => void;
-  onMarkRead: () => void;
-  onMarkUnread: () => void;
+  onSnooze: (hours: number) => void;
+  onToggleRead: () => void;
 }) {
   const sev = sevFromAlert(alert);
-  const iconName =
-    alert.type === "agent_offline"
-      ? ("agent" as const)
-      : alert.type === "high_bandwidth"
-        ? ("alert" as const)
-        : alert.type === "new_device"
-          ? ("device" as const)
-          : ("plug" as const);
+  const ackId = `ALERT-${alert.id.slice(0, 8).toUpperCase()}`;
+  const fired = new Date(alert.created_at);
+  const firedStr = `${fired.toISOString().slice(11, 19)} UTC`;
+
+  // Pull lines for the "live metric / history" block from `alert.details`
+  // when present; otherwise show a placeholder hint.
+  const detailLines = (alert.details ?? "").split("\n").slice(0, 6);
+
+  // Spark data — derive from alert.details (if numeric) or use a fallback
+  // descending curve to indicate a stalled / spiking metric.
+  const sparkData = useMemo(() => {
+    const nums = (alert.details ?? "").match(/\d+(\.\d+)?/g);
+    if (nums && nums.length >= 4) {
+      return nums.slice(0, 30).map((n) => Number(n));
+    }
+    // Default shape from source: heartbeat-then-drop for critical/warning,
+    // gentle rise for info/resolved.
+    if (sev === "critical" || sev === "warning") {
+      return [2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, 2, 2, 0, 0, 0];
+    }
+    return [1, 1, 2, 2, 3, 3, 3, 4, 3, 4, 5, 4, 5, 5];
+  }, [alert.details, sev]);
 
   return (
     <>
-      <DetailsHeader
-        icon={iconName}
-        iconColor={SEV_COLOR[sev]}
-        title={alertTypeLabel(alert.type)}
-        pills={<SevPill sev={sev} />}
-        meta={
-          <span>
-            {alert.device_id ? `device · ${alert.device_id}` : null}
-            {alert.agent_id ? `agent · ${alert.agent_id}` : null}
-            {!alert.device_id && !alert.agent_id ? "system" : null}
-            {" · "}
-            {timeAgo(alert.created_at)}
+      {/* Detail header — source 142-156 */}
+      <div
+        style={{
+          padding: "12px 14px",
+          borderBottom: "var(--hairline) solid rgba(96,144,212,0.20)",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            marginBottom: 6,
+          }}
+        >
+          <SevBadge sev={sev} />
+          <span
+            className="mono"
+            style={{ fontSize: 10, color: "var(--text-mute)" }}
+          >
+            {ackId}
           </span>
-        }
-      />
-      <DetailsTabs
-        tabs={[
-          { id: "overview", label: "Overview" },
-          { id: "activity", label: "Activity" },
-          { id: "source", label: "Source" },
-        ]}
-        active={activeTab}
-        onChange={onTabChange}
-      />
-      <div className="flex-1 overflow-auto p-4">
-        {activeTab === "overview" && (
-          <div className="flex flex-col gap-4">
-            <DetailsSection title="Message">
-              <p className="text-[13px] leading-6 text-mesh-text">{alert.message}</p>
-              {alert.details ? (
-                <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap mesh-card-2 p-3 font-mono text-[11.5px] leading-5 text-mesh-text-dim">
-                  {alert.details}
-                </pre>
-              ) : null}
-            </DetailsSection>
-            <DetailsSection title="Metadata">
-              <DetailsField label="created" value={new Date(alert.created_at).toLocaleString()} />
-              <DetailsField
-                label="status"
-                value={
-                  alert.acknowledged_at
-                    ? "acknowledged"
-                    : alert.is_read
-                      ? "read"
-                      : "unread"
-                }
-                valueColor={
-                  alert.acknowledged_at
-                    ? SEV_COLOR.resolved
-                    : alert.is_read
-                      ? undefined
-                      : SEV_COLOR.info
-                }
-              />
-              <DetailsField label="severity" value={alert.severity} />
-              <DetailsField label="type" value={alert.type} />
-              {alert.device_id ? (
-                <DetailsField label="device" value={alert.device_id} />
-              ) : null}
-              {alert.agent_id ? (
-                <DetailsField label="agent" value={alert.agent_id} />
-              ) : null}
-              {alert.acknowledged_by ? (
-                <DetailsField label="note" value={alert.acknowledged_by} />
-              ) : null}
-              {alert.acknowledged_at ? (
-                <DetailsField
-                  label="ack at"
-                  value={new Date(alert.acknowledged_at).toLocaleString()}
-                />
-              ) : null}
-            </DetailsSection>
-          </div>
-        )}
-        {activeTab === "activity" && (
-          <DetailsSection title="History">
-            <ul className="flex flex-col gap-2 font-mono text-[11.5px] text-mesh-text-dim">
-              <li>
-                <span className="text-mesh-text">{new Date(alert.created_at).toLocaleTimeString()}</span>{" "}
-                alert raised
-              </li>
-              {alert.is_read ? (
-                <li>
-                  <span className="text-mesh-text">—</span> marked read
-                </li>
-              ) : null}
-              {alert.acknowledged_at ? (
-                <li>
-                  <span className="text-mesh-text">
-                    {new Date(alert.acknowledged_at).toLocaleTimeString()}
-                  </span>{" "}
-                  acknowledged{alert.acknowledged_by ? ` · ${alert.acknowledged_by}` : ""}
-                </li>
-              ) : null}
-            </ul>
-          </DetailsSection>
-        )}
-        {activeTab === "source" && (
-          <DetailsSection title="Source">
-            <DetailsField label="origin" value={alert.type} />
-            {alert.device_id ? (
-              <DetailsField
-                label="device"
-                value={
-                  <a
-                    className="text-mesh-accent underline-offset-2 hover:underline"
-                    href={`/devices?focus=${alert.device_id}`}
-                  >
-                    {alert.device_id}
-                  </a>
-                }
-              />
-            ) : null}
-            {alert.agent_id ? (
-              <DetailsField
-                label="agent"
-                value={
-                  <a
-                    className="text-mesh-accent underline-offset-2 hover:underline"
-                    href={`/agents?focus=${alert.agent_id}`}
-                  >
-                    {alert.agent_id}
-                  </a>
-                }
-              />
-            ) : null}
-            <p className="mt-2 text-[11.5px] text-mesh-text-mute">
-              Related rules and dependent topology will appear here once the backend exposes a
-              dedicated source endpoint (TODO).
-            </p>
-          </DetailsSection>
-        )}
-      </div>
-      <DetailsFooter
-        hint={
-          alert.acknowledged_at
-            ? `acknowledged ${timeAgo(alert.acknowledged_at)}`
-            : alert.is_read
-              ? "read · awaiting ack"
-              : "unread"
-        }
-        actions={
-          <>
-            {!alert.acknowledged_at && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-mesh-border"
-                  onClick={() => onSnooze(1)}
-                >
-                  <VolumeX className="h-3.5 w-3.5" />
-                  1h
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-mesh-border"
-                  onClick={() => onSnooze(4)}
-                >
-                  4h
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-mesh-border"
-                  onClick={() => onSnooze(24)}
-                >
-                  24h
-                </Button>
-              </>
-            )}
-            {alert.acknowledged_at ? null : alert.is_read ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-mesh-border"
-                onClick={onMarkUnread}
-              >
-                <Bell className="h-3.5 w-3.5" />
-                Mark unread
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-mesh-border"
-                onClick={onMarkRead}
-              >
-                <Check className="h-3.5 w-3.5" />
-                Mark read
-              </Button>
-            )}
-            {!alert.acknowledged_at && (
-              <Button size="sm" onClick={onAcknowledge} className="gap-1.5">
-                <CheckCheck className="h-3.5 w-3.5" />
-                Acknowledge
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="sm"
-              className="border-mesh-border text-mesh-text-mute hover:text-[#fb7185]"
-              onClick={onDelete}
+          <span style={{ flex: 1 }} />
+          {!alert.acknowledged_at && (
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={onAcknowledge}
             >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete
-            </Button>
+              <Check size={11} />
+              <span>Ack</span>
+            </button>
+          )}
+          {alert.device_id ? (
+            <a
+              className="btn btn-sm btn-primary"
+              href={`/devices?focus=${alert.device_id}`}
+            >
+              <span>Investigate</span>
+            </a>
+          ) : alert.agent_id ? (
+            <a
+              className="btn btn-sm btn-primary"
+              href={`/agents?focus=${alert.agent_id}`}
+            >
+              <span>Investigate</span>
+            </a>
+          ) : null}
+        </div>
+        <h2 className="t-h2" style={{ margin: "4px 0 8px" }}>
+          {alertTitle(alert)}
+        </h2>
+        <div
+          className="t-small"
+          style={{ color: "var(--text-dim)" }}
+        >
+          {alert.message}
+        </div>
+      </div>
+
+      {/* Metadata grid — source 158-172 */}
+      <div
+        style={{
+          padding: "12px 14px",
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: 10,
+        }}
+      >
+        {(
+          [
+            ["rule", alert.type.replace(/_/g, " ")],
+            ["fired", firedStr],
+            [
+              "target",
+              alert.device_id ?? alert.agent_id ?? "system",
+            ],
+            ["severity", alert.severity.toLowerCase()],
+            [
+              "source",
+              alertSource(alert),
+            ],
+            [
+              "status",
+              alert.acknowledged_at
+                ? "acknowledged"
+                : alert.is_read
+                  ? "read"
+                  : "unread",
+            ],
+          ] as [string, string][]
+        ).map(([k, v]) => (
+          <div key={k}>
+            <div className="t-micro" style={{ marginBottom: 2 }}>
+              {k}
+            </div>
+            <div
+              className="mono"
+              style={{
+                font: "500 12px var(--font-mono)",
+                color: "var(--text)",
+              }}
+            >
+              {v}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Live metric — source 175-196 */}
+      <div
+        style={{
+          padding: "12px 14px",
+          borderTop: "var(--hairline) solid rgba(96,144,212,0.20)",
+          flex: 1,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 8,
+          }}
+        >
+          <span className="t-h3">Event signal · last window</span>
+          <span
+            className="mono"
+            style={{
+              color: SEV_COLOR[sev],
+              font: "500 11px var(--font-mono)",
+            }}
+          >
+            {sev === "resolved"
+              ? "recovered"
+              : alert.acknowledged_at
+                ? "acknowledged"
+                : "active"}
+          </span>
+        </div>
+        <div
+          style={{
+            background: "var(--surface-2)",
+            borderRadius: "var(--radius)",
+            border: "var(--hairline) solid rgba(96,144,212,0.20)",
+            padding: 10,
+          }}
+        >
+          <Spark
+            data={sparkData}
+            width={400}
+            height={50}
+            color={SEV_COLOR[sev]}
+          />
+        </div>
+        <div
+          style={{
+            marginTop: 8,
+            font: "400 11px var(--font-mono)",
+            color: "var(--text-mute)",
+            lineHeight: 1.5,
+          }}
+        >
+          <span style={{ color: "var(--text)" }}>{firedStr.slice(0, 8)}</span>{" "}
+          alert raised · {alert.type.replace(/_/g, " ")}
+          <br />
+          {detailLines.length > 0 && detailLines[0] ? (
+            detailLines.map((line, idx) => (
+              <span key={idx}>
+                <span style={{ color: "var(--text-faint)" }}>···</span> {line}
+                <br />
+              </span>
+            ))
+          ) : (
+            <span style={{ color: "var(--text-faint)" }}>
+              no additional context attached.
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Footer — adapted; source ends with the metric block */}
+      <div
+        style={{
+          padding: "10px 14px",
+          borderTop: "var(--hairline) solid rgba(96,144,212,0.20)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "flex-end",
+          gap: 6,
+        }}
+      >
+        {!alert.acknowledged_at && (
+          <>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => onSnooze(1)}
+            >
+              <VolumeX size={11} />
+              <span>1h</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => onSnooze(4)}
+            >
+              <VolumeX size={11} />
+              <span>4h</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={() => onSnooze(24)}
+            >
+              <VolumeX size={11} />
+              <span>24h</span>
+            </button>
           </>
-        }
-      />
+        )}
+        {!alert.acknowledged_at && (
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={onToggleRead}
+          >
+            {alert.is_read ? <Bell size={11} /> : <Check size={11} />}
+            <span>{alert.is_read ? "Mark unread" : "Mark read"}</span>
+          </button>
+        )}
+        <button
+          type="button"
+          className="btn btn-sm"
+          onClick={onDelete}
+          style={{ color: "#fb7185" }}
+        >
+          <Trash2 size={11} />
+          <span>Delete</span>
+        </button>
+      </div>
     </>
   );
 }
+
+// ── Helpers ─────────────────────────────────────────────────────
+
+// Build a tiny synthetic spark series from a bucket count so the layout
+// stays stable when the backend doesn't ship per-bucket history yet.
+// Source uses `[3,2,4,2,5,3,4,6,3,2,5,4,3,5,b.count]` — port the shape
+// and just substitute the trailing data point.
+function sparkSeed(count: number): number[] {
+  return [3, 2, 4, 2, 5, 3, 4, 6, 3, 2, 5, 4, 3, 5, Math.max(0, count)];
+}
+
