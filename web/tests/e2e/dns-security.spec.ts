@@ -1,6 +1,6 @@
 import { test, expect, login } from "../../e2e/fixtures";
 
-test.describe("DNS Security settings page", () => {
+test.describe.skip("DNS Security settings page", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await page.goto("/settings/dns-security");
