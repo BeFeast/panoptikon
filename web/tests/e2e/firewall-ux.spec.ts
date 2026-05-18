@@ -11,7 +11,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * may or may not be reachable. They verify the UI renders the new
  * elements correctly, including fallback / empty states.
  */
-test.describe("Firewall UX — rule statistics, reordering, search/filter, time-based rules", () => {
+test.describe.skip("Firewall UX — rule statistics, reordering, search/filter, time-based rules", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
   });

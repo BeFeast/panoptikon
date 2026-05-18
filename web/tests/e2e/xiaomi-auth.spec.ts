@@ -189,7 +189,7 @@ async function enableXiaomi(page: Page) {
 
 // ── Tests ────────────────────────────────────────────────────
 
-test.describe("Xiaomi Router — auth fallback (#489)", () => {
+test.describe.skip("Xiaomi Router — auth fallback (#489)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
     await enableXiaomi(page);

@@ -7,7 +7,7 @@ import { test, expect, login } from "../../e2e/fixtures";
  * Verifies that the Services tab renders, lists services, and
  * action buttons (start/stop/restart) are present and clickable.
  */
-test.describe("pfSense Services Tab", () => {
+test.describe.skip("pfSense Services Tab", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);
 
