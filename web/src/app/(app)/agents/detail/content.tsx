@@ -111,7 +111,7 @@ export default function AgentDetailContent() {
           Back to Agents
         </Link>
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">
+          <h1 className="t-display text-mesh-text">
             {agent.name ?? agent.id.slice(0, 8)}
           </h1>
           <Badge
@@ -151,25 +151,25 @@ export default function AgentDetailContent() {
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(96,144,212,0.20)" />
                   <XAxis
                     dataKey="time"
-                    tick={{ fill: "#6b7280", fontSize: 11 }}
-                    stroke="#1e293b"
+                    tick={{ fill: "#5d7799", fontSize: 11 }}
+                    stroke="rgba(96,144,212,0.20)"
                     interval="preserveStartEnd"
                   />
                   <YAxis
                     domain={[0, 100]}
-                    tick={{ fill: "#6b7280", fontSize: 11 }}
-                    stroke="#1e293b"
+                    tick={{ fill: "#5d7799", fontSize: 11 }}
+                    stroke="rgba(96,144,212,0.20)"
                     width={35}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#0f172a",
-                      border: "1px solid #1e293b",
+                      backgroundColor: "#091633",
+                      border: "1px solid rgba(96,144,212,0.20)",
                       borderRadius: "6px",
-                      color: "#fff",
+                      color: "#e9f0fc",
                       fontSize: "12px",
                     }}
                     formatter={(value: number) => [`${value.toFixed(1)}%`, "CPU"]}
@@ -177,7 +177,7 @@ export default function AgentDetailContent() {
                   <Line
                     type="monotone"
                     dataKey="cpu"
-                    stroke="#22d3ee"
+                    stroke="#38bdf8"
                     strokeWidth={2}
                     dot={false}
                     connectNulls
@@ -194,25 +194,25 @@ export default function AgentDetailContent() {
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(96,144,212,0.20)" />
                   <XAxis
                     dataKey="time"
-                    tick={{ fill: "#6b7280", fontSize: 11 }}
-                    stroke="#1e293b"
+                    tick={{ fill: "#5d7799", fontSize: 11 }}
+                    stroke="rgba(96,144,212,0.20)"
                     interval="preserveStartEnd"
                   />
                   <YAxis
                     domain={[0, 100]}
-                    tick={{ fill: "#6b7280", fontSize: 11 }}
-                    stroke="#1e293b"
+                    tick={{ fill: "#5d7799", fontSize: 11 }}
+                    stroke="rgba(96,144,212,0.20)"
                     width={35}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#0f172a",
-                      border: "1px solid #1e293b",
+                      backgroundColor: "#091633",
+                      border: "1px solid rgba(96,144,212,0.20)",
                       borderRadius: "6px",
-                      color: "#fff",
+                      color: "#e9f0fc",
                       fontSize: "12px",
                     }}
                     formatter={(value: number) => [`${value.toFixed(1)}%`, "RAM"]}
@@ -220,7 +220,7 @@ export default function AgentDetailContent() {
                   <Line
                     type="monotone"
                     dataKey="ram"
-                    stroke="#10b981"
+                    stroke="#4ade80"
                     strokeWidth={2}
                     dot={false}
                     connectNulls

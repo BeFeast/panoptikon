@@ -337,7 +337,7 @@ function AssetHeader({
           />
         ) : (
           <h1
-            className="text-2xl font-semibold text-white cursor-pointer hover:text-[#67e8f9] transition-colors group flex items-center gap-2"
+            className="t-display text-mesh-text cursor-pointer hover:text-mesh-accent transition-colors group flex items-center gap-2"
             onClick={() => setEdit({ field: "custom_name", value: device.custom_name || device.name || device.hostname || "" })}
           >
             {effectiveName}
@@ -396,7 +396,7 @@ function AssetHeader({
           </div>
         ) : (
           <span
-            className="flex items-center gap-1 cursor-pointer hover:text-[#67e8f9] transition-colors group"
+            className="flex items-center gap-1 cursor-pointer hover:text-mesh-accent transition-colors group"
             onClick={() => setEdit({ field: "tags", value: device.tags || "" })}
           >
             <Tag size={14} className="text-mesh-text-mute" />
@@ -432,7 +432,7 @@ function AssetHeader({
           </div>
         ) : (
           <span
-            className="flex items-center gap-1 cursor-pointer hover:text-[#67e8f9] transition-colors group"
+            className="flex items-center gap-1 cursor-pointer hover:text-mesh-accent transition-colors group"
             onClick={() => setEdit({ field: "location", value: device.location || "" })}
           >
             <MapPin size={14} className="text-mesh-text-mute" />
@@ -458,7 +458,7 @@ function AssetHeader({
           </div>
         ) : (
           <span
-            className="flex items-center gap-1 cursor-pointer hover:text-[#67e8f9] transition-colors group"
+            className="flex items-center gap-1 cursor-pointer hover:text-mesh-accent transition-colors group"
             onClick={() => setEdit({ field: "owner", value: device.owner || "" })}
           >
             <User size={14} className="text-mesh-text-mute" />
@@ -733,25 +733,25 @@ function LiveMetricsPanel({ chartData }: { chartData: ChartPoint[] }) {
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(96,144,212,0.20)" />
               <XAxis
                 dataKey="time"
-                tick={{ fill: "#6b7280", fontSize: 11 }}
-                stroke="#1e293b"
+                tick={{ fill: "#5d7799", fontSize: 11 }}
+                stroke="rgba(96,144,212,0.20)"
                 interval="preserveStartEnd"
               />
               <YAxis
                 domain={[0, 100]}
-                tick={{ fill: "#6b7280", fontSize: 11 }}
-                stroke="#1e293b"
+                tick={{ fill: "#5d7799", fontSize: 11 }}
+                stroke="rgba(96,144,212,0.20)"
                 width={35}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#0f172a",
-                  border: "1px solid #1e293b",
+                  backgroundColor: "#091633",
+                  border: "1px solid rgba(96,144,212,0.20)",
                   borderRadius: "6px",
-                  color: "#fff",
+                  color: "#e9f0fc",
                   fontSize: "12px",
                 }}
                 formatter={(value: number) => [`${value.toFixed(1)}%`, "CPU"]}
@@ -759,7 +759,7 @@ function LiveMetricsPanel({ chartData }: { chartData: ChartPoint[] }) {
               <Line
                 type="monotone"
                 dataKey="cpu"
-                stroke="#22d3ee"
+                stroke="#38bdf8"
                 strokeWidth={2}
                 dot={false}
                 connectNulls
@@ -776,25 +776,25 @@ function LiveMetricsPanel({ chartData }: { chartData: ChartPoint[] }) {
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(96,144,212,0.20)" />
               <XAxis
                 dataKey="time"
-                tick={{ fill: "#6b7280", fontSize: 11 }}
-                stroke="#1e293b"
+                tick={{ fill: "#5d7799", fontSize: 11 }}
+                stroke="rgba(96,144,212,0.20)"
                 interval="preserveStartEnd"
               />
               <YAxis
                 domain={[0, 100]}
-                tick={{ fill: "#6b7280", fontSize: 11 }}
-                stroke="#1e293b"
+                tick={{ fill: "#5d7799", fontSize: 11 }}
+                stroke="rgba(96,144,212,0.20)"
                 width={35}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: "#0f172a",
-                  border: "1px solid #1e293b",
+                  backgroundColor: "#091633",
+                  border: "1px solid rgba(96,144,212,0.20)",
                   borderRadius: "6px",
-                  color: "#fff",
+                  color: "#e9f0fc",
                   fontSize: "12px",
                 }}
                 formatter={(value: number) => [`${value.toFixed(1)}%`, "RAM"]}
@@ -802,7 +802,7 @@ function LiveMetricsPanel({ chartData }: { chartData: ChartPoint[] }) {
               <Line
                 type="monotone"
                 dataKey="ram"
-                stroke="#10b981"
+                stroke="#4ade80"
                 strokeWidth={2}
                 dot={false}
                 connectNulls
@@ -848,7 +848,7 @@ function LinkedSources({
           </div>
           <Link
             href={`/devices`}
-            className="mt-2 inline-flex items-center gap-1 text-xs text-[#67e8f9] hover:text-mesh-text transition-colors"
+            className="mt-2 inline-flex items-center gap-1 text-xs text-mesh-accent hover:text-mesh-text transition-colors"
           >
             View in Devices <ExternalLink size={10} />
           </Link>
@@ -878,7 +878,7 @@ function LinkedSources({
             </div>
             <Link
               href={`/agents/detail?id=${device.agent.id}`}
-              className="mt-2 inline-flex items-center gap-1 text-xs text-[#67e8f9] hover:text-mesh-text transition-colors"
+              className="mt-2 inline-flex items-center gap-1 text-xs text-mesh-accent hover:text-mesh-text transition-colors"
             >
               Agent Detail <ExternalLink size={10} />
             </Link>
@@ -914,7 +914,7 @@ function LinkedSources({
             </div>
             <Link
               href="/ssh-hosts"
-              className="mt-2 inline-flex items-center gap-1 text-xs text-[#67e8f9] hover:text-mesh-text transition-colors"
+              className="mt-2 inline-flex items-center gap-1 text-xs text-mesh-accent hover:text-mesh-text transition-colors"
             >
               SSH Hosts <ExternalLink size={10} />
             </Link>
@@ -982,7 +982,7 @@ function NotesSection({
         </div>
       ) : (
         <p
-          className="text-sm text-mesh-text cursor-pointer hover:text-[#67e8f9] transition-colors group"
+          className="text-sm text-mesh-text cursor-pointer hover:text-mesh-accent transition-colors group"
           onClick={() => setEdit({ field: "notes", value: device.notes || "" })}
         >
           {device.notes || (
@@ -1137,7 +1137,7 @@ function InlineEditInput({
         placeholder={placeholder}
         autoFocus
         disabled={saving}
-        className={`h-7 bg-mesh-surface-1 border-mesh-border text-white text-sm ${className || ""}`}
+        className={`h-7 text-sm ${className || ""}`}
       />
       <Button
         size="sm"

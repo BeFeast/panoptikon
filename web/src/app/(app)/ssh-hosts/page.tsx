@@ -121,7 +121,7 @@ export default function SshHostsPage() {
       <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-2xl font-semibold tracking-tight text-white">SSH Hosts</h1>
+          <h1 className="t-display text-mesh-text">SSH Hosts</h1>
           <SshTargetFormDialog
             open={addOpen}
             onOpenChange={setAddOpen}
@@ -285,7 +285,7 @@ export default function SshHostsPage() {
 
         {/* Delete confirmation */}
         <AlertDialog open={!!pendingDelete} onOpenChange={(v) => { if (!v) setPendingDelete(null); }}>
-          <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
+          <AlertDialogContent>
             <AlertDialogHeader>
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#fb7185]/10">
@@ -300,7 +300,7 @@ export default function SshHostsPage() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel
-                className="border-mesh-border bg-transparent text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-white"
+                className="bg-transparent text-mesh-text-dim hover:bg-mesh-surface-2 hover:text-mesh-text"
                 disabled={deleting}
               >
                 Cancel
@@ -309,7 +309,7 @@ export default function SshHostsPage() {
                 onClick={handleDelete}
                 disabled={deleting}
                 autoFocus
-                className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
+                className="bg-[#fb7185] text-white hover:bg-[#fb7185]/90"
               >
                 {deleting ? "Deleting..." : "Delete"}
               </AlertDialogAction>
@@ -442,7 +442,7 @@ function SshTargetFormDialog({
   };
 
   const dialogContent = (
-    <DialogContent className="w-full max-w-[520px] border-mesh-border bg-mesh-surface-1/95">
+    <DialogContent className="w-full max-w-[520px]">
       <DialogHeader>
         <DialogTitle className="text-white">
           {isEdit ? "Edit SSH Host" : "Add SSH Host"}
@@ -496,7 +496,7 @@ function SshTargetFormDialog({
             <select
               value={authType}
               onChange={(e) => setAuthType(e.target.value as "password" | "key")}
-              className="flex h-10 w-full mesh-card px-3 py-2 text-sm text-white focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary"
+              className="flex h-10 w-full mesh-card px-3 py-2 text-sm text-mesh-text focus:border-mesh-accent focus:outline-none focus:ring-2 focus:ring-mesh-accent/30"
             >
               <option value="password">Password</option>
               <option value="key">SSH Key</option>
@@ -528,7 +528,7 @@ function SshTargetFormDialog({
               )}
             </Label>
             <textarea
-              className="w-full mesh-card px-3 py-2 text-sm text-white font-mono placeholder:text-mesh-text-mute focus:border-mesh-primary focus:outline-none focus:ring-1 focus:ring-mesh-primary min-h-[100px]"
+              className="w-full mesh-card px-3 py-2 text-sm text-mesh-text font-mono placeholder:text-mesh-text-mute focus:border-mesh-accent focus:outline-none focus:ring-2 focus:ring-mesh-accent/30 min-h-[100px]"
               placeholder="-----BEGIN OPENSSH PRIVATE KEY-----"
               value={privateKey}
               onChange={(e) => setPrivateKey(e.target.value)}
