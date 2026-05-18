@@ -1,57 +1,65 @@
 "use client";
 
-import { type ReactNode, useMemo, useState, useEffect, useRef, useCallback } from "react";
+/* eslint-disable react/jsx-no-comment-textnodes */
+
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Bell, Settings, Monitor, Cpu, Terminal, Package } from "lucide-react";
-import { searchAll, fetchRecentAlerts, fetchDashboardStats, markAllAlertsRead, deleteAllAlerts } from "@/lib/api";
+import { Bell, ChevronRight, RefreshCw, Settings } from "lucide-react";
+import { fetchDashboardStats, fetchRecentAlerts, markAllAlertsRead, deleteAllAlerts } from "@/lib/api";
 import { useWsEvent } from "@/lib/ws";
 import { useWsConnected } from "@/components/providers/WebSocketProvider";
+import { StatusDot } from "@/components/mesh/StatusDot";
+import type { Alert } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
-import type { SearchResponse, SearchDevice, SearchAgent, SearchAlert, SearchSshTarget, SearchAsset, Alert } from "@/lib/types";
 
-
+/**
+ * Literal port of shell.jsx `function TopBar(...)` (lines 198-262).
+ *
+ *   <header style={{ height: 52, ..., background: 'var(--surface-1)' }}>
+ *     breadcrumbs (chevron-right separators, last segment text+500w, prior text-mute+400w)
+ *     live · ws · {Nms} pill (StatusDot online pulse + mono 11)
+ *     btn btn-ghost 28x28 refresh
+ *     btn btn-ghost 28x28 bell — status-offline 7x7 dot top-right
+ *     btn btn-ghost 28x28 settings
+ *
+ * Conflict-resolved tokens (shadcn already owns these HSL vars at :root):
+ *   var(--border)          → literal rgba(96,144,212,0.20)
+ *   var(--primary)         → literal #2563eb  (not used here)
+ *   var(--status-offline)  → literal #fb7185
+ */
 export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const wsConnected = useWsConnected();
-  const breadcrumb = useMemo(() => breadcrumbFromPath(pathname || ""), [pathname]);
+  const breadcrumbs = useMemo(() => breadcrumbFromPath(pathname || ""), [pathname]);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResponse | null>(null);
-  const [isOpen, setIsOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  // Lightweight liveness ping for the "live · ws · Nms" pill from the design.
+  // /version ping for the "live · ws · Nms" pill latency.
   useEffect(() => {
     let cancelled = false;
     async function ping() {
       const started = performance.now();
       try {
         await fetch("/api/v1/version", { credentials: "include", cache: "no-store" });
-        if (!cancelled) {
-          setLatencyMs(Math.round(performance.now() - started));
-        }
+        if (!cancelled) setLatencyMs(Math.round(performance.now() - started));
       } catch {
         if (!cancelled) setLatencyMs(null);
       }
     }
     void ping();
-    const interval = setInterval(ping, 15_000);
+    const id = setInterval(ping, 15_000);
     return () => {
       cancelled = true;
-      clearInterval(interval);
+      clearInterval(id);
     };
   }, []);
 
-  // ── Notification bell state ──
+  // ── Bell flyout state (production extension; shell.jsx is icon-only at rest) ──
   const [bellOpen, setBellOpen] = useState(false);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const bellRef = useRef<HTMLDivElement>(null);
 
-  // Fetch unread count + recent alerts
   const refreshAlerts = useCallback(async () => {
     try {
       const [statsData, alertsData] = await Promise.all([
@@ -61,18 +69,16 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
       setUnreadCount(statsData.alerts_unread);
       setAlerts(alertsData);
     } catch {
-      // Silently fail — topbar should not break the app
+      /* topbar must not break the app */
     }
   }, []);
 
-  // Initial load + periodic refresh
   useEffect(() => {
     refreshAlerts();
-    const interval = setInterval(refreshAlerts, 30_000);
-    return () => clearInterval(interval);
+    const id = setInterval(refreshAlerts, 30_000);
+    return () => clearInterval(id);
   }, [refreshAlerts]);
 
-  // Debounced refresh — coalesce rapid WS events into a single API call
   const wsDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const debouncedRefresh = useCallback(() => {
     if (wsDebounceRef.current) clearTimeout(wsDebounceRef.current);
@@ -82,21 +88,19 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
     }, 2_000);
   }, [refreshAlerts]);
 
-  // Refresh on WebSocket device/agent events (often accompany alerts)
   useWsEvent(
     ["device_online", "device_offline", "new_device", "agent_offline"],
     debouncedRefresh,
   );
 
-  // Click outside to close bell dropdown
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    function onClickOutside(e: MouseEvent) {
       if (bellRef.current && !bellRef.current.contains(e.target as Node)) {
         setBellOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener("mousedown", onClickOutside);
+    return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
   async function handleMarkAllRead() {
@@ -105,489 +109,317 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
       setUnreadCount(0);
       setAlerts((prev) => prev.map((a) => ({ ...a, is_read: true })));
     } catch {
-      // ignore
+      /* ignore */
     }
   }
-
   async function handleClearAll() {
     try {
       await deleteAllAlerts();
       setUnreadCount(0);
       setAlerts([]);
     } catch {
-      // ignore
+      /* ignore */
     }
   }
-
-  // ── Search logic (unchanged) ──
-
-  // Build a flat list of navigable items for keyboard navigation
-  const flatItems = useCallback((): Array<{ type: string; id: string; label: string }> => {
-    if (!results) return [];
-    const items: Array<{ type: string; id: string; label: string }> = [];
-    for (const d of results.devices) {
-      items.push({ type: "device", id: d.id, label: d.ip_address || d.hostname || d.mac_address });
-    }
-    for (const a of results.agents) {
-      items.push({ type: "agent", id: a.id, label: a.name || a.id });
-    }
-    for (const st of results.ssh_targets) {
-      items.push({ type: "ssh_target", id: st.id, label: st.name });
-    }
-    for (const asset of results.assets) {
-      items.push({ type: "asset", id: asset.id, label: asset.name });
-    }
-    for (const al of results.alerts) {
-      items.push({ type: "alert", id: al.id, label: al.message });
-    }
-    return items;
-  }, [results]);
-
-  // Debounced search
-  useEffect(() => {
-    if (query.length < 2) {
-      setResults(null);
-      setIsOpen(false);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      try {
-        const data = await searchAll(query);
-        setResults(data);
-        setIsOpen(true);
-        setActiveIndex(-1);
-      } catch {
-        setResults(null);
-        setIsOpen(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  // Click outside to close search
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  function navigateTo(type: string, id: string) {
-    setIsOpen(false);
-    setQuery("");
-    if (type === "device") {
-      router.push(`/devices?highlight=${id}`);
-    } else if (type === "agent") {
-      router.push(`/agents`);
-    } else if (type === "ssh_target") {
-      router.push(`/ssh-hosts`);
-    } else if (type === "asset") {
-      router.push(`/assets`);
-    } else if (type === "alert") {
-      router.push(`/alerts`);
-    }
+  function handleRefresh() {
+    void refreshAlerts();
+    router.refresh();
   }
-
-  function handleKeyDown(e: React.KeyboardEvent) {
-    const items = flatItems();
-    if (!isOpen || items.length === 0) {
-      if (e.key === "Escape") {
-        setIsOpen(false);
-        inputRef.current?.blur();
-      }
-      return;
-    }
-
-    switch (e.key) {
-      case "ArrowDown":
-        e.preventDefault();
-        setActiveIndex((prev) => (prev + 1) % items.length);
-        break;
-      case "ArrowUp":
-        e.preventDefault();
-        setActiveIndex((prev) => (prev <= 0 ? items.length - 1 : prev - 1));
-        break;
-      case "Enter":
-        e.preventDefault();
-        if (activeIndex >= 0 && activeIndex < items.length) {
-          navigateTo(items[activeIndex].type, items[activeIndex].id);
-        }
-        break;
-      case "Escape":
-        e.preventDefault();
-        setIsOpen(false);
-        inputRef.current?.blur();
-        break;
-    }
-  }
-
-  const hasResults =
-    results &&
-    (results.devices.length > 0 || results.agents.length > 0 || results.ssh_targets.length > 0 || results.assets.length > 0 || results.alerts.length > 0);
-  const noResults = results && !hasResults;
-
-  // Track running index across sections for keyboard nav
-  let runningIndex = 0;
 
   return (
-    <header className="sticky top-0 z-40 flex h-[3.75rem] items-center justify-between gap-3 border-b border-mesh-border-strong bg-mesh-bg/70 px-3 shadow-[0_12px_34px_-30px_rgba(56,189,248,0.30)] backdrop-blur-xl supports-[backdrop-filter]:bg-mesh-bg/60 md:px-6">
-      {/* Mobile menu button */}
+    <header
+      style={{
+        height: 52,
+        display: "flex",
+        alignItems: "center",
+        padding: "0 18px",
+        gap: 14,
+        borderBottom: "1px solid rgba(96,144,212,0.20)",
+        background: "var(--surface-1)",
+        backdropFilter: "blur(8px)",
+        position: "sticky",
+        top: 0,
+        zIndex: 40,
+      }}
+    >
       {mobileMenu}
 
-      {/* Search */}
-      <div className="relative max-w-lg flex-1" ref={containerRef}>
-        <input
-          ref={inputRef}
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onFocus={() => {
-            if (results && query.length >= 2) setIsOpen(true);
-          }}
-          placeholder="Search devices, IPs, MACs...  ⌘K"
-          className="h-8 w-full mesh-card px-3 text-sm text-white placeholder-mesh-text-mute transition-all duration-150 focus:border-mesh-accent/45 focus:outline-none focus:ring-2 focus:ring-mesh-accent/18"
-        />
-
-        {/* Search Results Dropdown */}
-        {isOpen && (
-          <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-80 overflow-y-auto rounded-lg border border-mesh-border-strong bg-mesh-bg/95 shadow-2xl backdrop-blur-md">
-            {noResults && (
-              <div className="px-4 py-3 text-sm text-mesh-text-mute">
-                No results for &ldquo;{query}&rdquo;
-              </div>
+      {/* Breadcrumbs */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
+        {breadcrumbs.map((b, i) => (
+          <span key={i} style={{ display: "contents" }}>
+            {i > 0 && (
+              <ChevronRight
+                size={11}
+                color="var(--text-faint)"
+                aria-hidden="true"
+                style={{ flexShrink: 0 }}
+              />
             )}
-
-            {hasResults && (
-              <>
-                {/* Devices */}
-                {results.devices.length > 0 && (
-                  <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-mesh-text-mute">
-                      Devices
-                    </div>
-                    {results.devices.map((d: SearchDevice) => {
-                      const idx = runningIndex++;
-                      return (
-                        <button
-                          key={d.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-mesh-surface-2/55 ${
-                            activeIndex === idx ? "bg-mesh-surface-2/55" : ""
-                          }`}
-                          onClick={() => navigateTo("device", d.id)}
-                          onMouseEnter={() => setActiveIndex(idx)}
-                        >
-                          <Monitor className="h-4 w-4 shrink-0 text-mesh-text-dim" />
-                          <span
-                            className={`inline-block h-2 w-2 rounded-full ${
-                              d.is_online
-                                ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
-                                : "bg-mesh-text-mute"
-                            }`}
-                          />
-                          <span className="min-w-0 truncate font-mono tabular-nums text-white">
-                            {d.name || d.ip_address || d.mac_address}
-                          </span>
-                          {d.hostname && (
-                            <span className="min-w-0 truncate text-mesh-text-mute">({d.hostname})</span>
-                          )}
-                          {d.vendor && (
-                            <span className="ml-auto shrink-0 truncate text-xs text-mesh-text-mute max-w-[120px]">{d.vendor}</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Agents */}
-                {results.agents.length > 0 && (
-                  <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-mesh-text-mute border-t border-mesh-border-strong">
-                      Agents
-                    </div>
-                    {results.agents.map((a: SearchAgent) => {
-                      const idx = runningIndex++;
-                      return (
-                        <button
-                          key={a.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-mesh-surface-2/55 ${
-                            activeIndex === idx ? "bg-mesh-surface-2/55" : ""
-                          }`}
-                          onClick={() => navigateTo("agent", a.id)}
-                          onMouseEnter={() => setActiveIndex(idx)}
-                        >
-                          <Cpu className="h-4 w-4 shrink-0 text-mesh-text-dim" />
-                          <span
-                            className={`inline-block h-2 w-2 rounded-full ${
-                              a.is_online
-                                ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
-                                : "bg-mesh-text-mute"
-                            }`}
-                          />
-                          <span className="min-w-0 truncate text-white">{a.name || a.id}</span>
-                          {a.hostname && (
-                            <span className="min-w-0 truncate text-mesh-text-mute">({a.hostname})</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* SSH Hosts */}
-                {results.ssh_targets.length > 0 && (
-                  <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-mesh-text-mute border-t border-mesh-border-strong">
-                      SSH Hosts
-                    </div>
-                    {results.ssh_targets.map((st: SearchSshTarget) => {
-                      const idx = runningIndex++;
-                      return (
-                        <button
-                          key={st.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-mesh-surface-2/55 ${
-                            activeIndex === idx ? "bg-mesh-surface-2/55" : ""
-                          }`}
-                          onClick={() => navigateTo("ssh_target", st.id)}
-                          onMouseEnter={() => setActiveIndex(idx)}
-                        >
-                          <Terminal className="h-4 w-4 shrink-0 text-mesh-text-dim" />
-                          <span
-                            className={`inline-block h-2 w-2 rounded-full ${
-                              st.is_online
-                                ? "bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online"
-                                : "bg-mesh-text-mute"
-                            }`}
-                          />
-                          <span className="min-w-0 truncate text-white">{st.name}</span>
-                          <span className="min-w-0 truncate text-mesh-text-mute font-mono text-xs">
-                            {st.username}@{st.host}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Assets */}
-                {results.assets.length > 0 && (
-                  <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-mesh-text-mute border-t border-mesh-border-strong">
-                      Assets
-                    </div>
-                    {results.assets.map((asset: SearchAsset) => {
-                      const idx = runningIndex++;
-                      return (
-                        <button
-                          key={asset.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-mesh-surface-2/55 ${
-                            activeIndex === idx ? "bg-mesh-surface-2/55" : ""
-                          }`}
-                          onClick={() => navigateTo("asset", asset.id)}
-                          onMouseEnter={() => setActiveIndex(idx)}
-                        >
-                          <Package className="h-4 w-4 shrink-0 text-mesh-text-dim" />
-                          <span className="min-w-0 truncate text-white">{asset.name}</span>
-                          <span className="shrink-0 text-mesh-text-mute text-xs">{asset.asset_type}</span>
-                          {asset.location && (
-                            <span className="ml-auto shrink-0 truncate text-xs text-mesh-text-mute max-w-[120px]">{asset.location}</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Alerts */}
-                {results.alerts.length > 0 && (
-                  <div>
-                    <div className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-mesh-text-mute border-t border-mesh-border-strong">
-                      Alerts
-                    </div>
-                    {results.alerts.map((al: SearchAlert) => {
-                      const idx = runningIndex++;
-                      return (
-                        <button
-                          key={al.id}
-                          className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-mesh-surface-2/55 ${
-                            activeIndex === idx ? "bg-mesh-surface-2/55" : ""
-                          }`}
-                          onClick={() => navigateTo("alert", al.id)}
-                          onMouseEnter={() => setActiveIndex(idx)}
-                        >
-                          <SeverityBadge severity={al.severity} />
-                          <span className="text-white truncate max-w-[300px]">
-                            {al.message.length > 60
-                              ? al.message.slice(0, 60) + "…"
-                              : al.message}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Realm context + live status pill — mirrors the design source TopBar */}
-      <div className="hidden lg:flex items-center gap-2 shrink-0 font-mono text-[11px] text-mesh-text-dim">
-        <span className="text-mesh-text-mute">core.lan</span>
-        {breadcrumb.map((label, i) => (
-          <span key={`${label}-${i}`} className="contents">
-            <span className="text-mesh-border-strong">›</span>
             <span
-              className={
-                i === breadcrumb.length - 1
-                  ? "text-mesh-text"
-                  : "text-mesh-text-dim"
-              }
+              style={{
+                font: `${i === breadcrumbs.length - 1 ? 500 : 400} 13px var(--font-sans)`,
+                color: i === breadcrumbs.length - 1 ? "var(--text)" : "var(--text-mute)",
+                whiteSpace: "nowrap",
+              }}
             >
-              {label}
+              {b}
             </span>
           </span>
         ))}
       </div>
+
+      {/* Live status pill */}
       <div
-        className="flex items-center gap-2 shrink-0 rounded-full mesh-card px-2.5 py-1 font-mono text-[11px] text-mesh-text"
         data-testid="live-status-pill"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "0 10px",
+          height: 24,
+          background: "var(--surface-2)",
+          border: "1px solid rgba(96,144,212,0.20)",
+          borderRadius: "var(--radius-pill)",
+          font: "500 11px var(--font-mono)",
+          color: "var(--text-dim)",
+          flexShrink: 0,
+        }}
       >
-        <span
-          className={cnLive(wsConnected)}
-          aria-hidden="true"
-        />
+        <StatusDot status={wsConnected ? "online" : "offline"} pulse={wsConnected} size={6} />
         <span>live · ws</span>
-        <span className="text-mesh-text-mute">·</span>
-        <span className="text-mesh-text-dim tabular-nums">
+        <span style={{ color: "var(--text-faint)" }}>·</span>
+        <span style={{ color: "var(--text-mute)" }}>
           {latencyMs == null ? "—" : `${latencyMs}ms`}
         </span>
       </div>
 
-      {/* Right side: alerts bell + user avatar */}
-      <div className="flex items-center gap-2">
-        {/* ── Notification Bell ── */}
-        <div className="relative" ref={bellRef}>
-          <button
-            onClick={() => setBellOpen((v) => !v)}
-            className="relative flex h-9 w-9 items-center justify-center rounded-md text-mesh-text-dim transition-colors hover:bg-mesh-surface-2/75 hover:text-white"
-            aria-label="Notifications"
+      {/* Action buttons */}
+      <button
+        type="button"
+        className="btn btn-ghost"
+        style={{ width: 28, height: 28, padding: 0 }}
+        onClick={handleRefresh}
+        aria-label="Refresh"
+      >
+        <RefreshCw size={14} aria-hidden="true" />
+      </button>
+
+      <div ref={bellRef} style={{ position: "relative" }}>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          style={{ width: 28, height: 28, padding: 0, position: "relative" }}
+          onClick={() => setBellOpen((v) => !v)}
+          aria-label="Notifications"
+        >
+          <Bell size={14} aria-hidden="true" />
+          {unreadCount > 0 && (
+            <span
+              aria-hidden="true"
+              style={{
+                position: "absolute",
+                top: 4,
+                right: 5,
+                width: 7,
+                height: 7,
+                borderRadius: "50%",
+                background: "#fb7185",
+                border: "2px solid var(--surface-1)",
+              }}
+            />
+          )}
+        </button>
+
+        {bellOpen && (
+          <div
+            style={{
+              position: "absolute",
+              right: 0,
+              top: "100%",
+              marginTop: 4,
+              width: 320,
+              background: "var(--surface-1)",
+              border: "1px solid var(--border-strong)",
+              borderRadius: "var(--radius-md)",
+              boxShadow: "var(--shadow-pop)",
+              zIndex: 50,
+            }}
           >
-            <Bell className="h-5 w-5" />
-            {unreadCount > 0 && (
-              <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded bg-[#fb7185] px-1 text-[10px] font-bold text-white">
-                {unreadCount > 99 ? "99+" : unreadCount}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 14px",
+                borderBottom: "1px solid rgba(96,144,212,0.20)",
+                font: "600 13px var(--font-sans)",
+                color: "var(--text)",
+              }}
+            >
+              <span>Notifications</span>
+              <span style={{ display: "flex", gap: 12 }}>
+                {unreadCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleMarkAllRead}
+                    style={{
+                      background: "transparent",
+                      border: 0,
+                      padding: 0,
+                      font: "400 11px var(--font-sans)",
+                      color: "var(--accent-cyan)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Mark all read
+                  </button>
+                )}
+                {alerts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearAll}
+                    style={{
+                      background: "transparent",
+                      border: 0,
+                      padding: 0,
+                      font: "400 11px var(--font-sans)",
+                      color: "var(--text-dim)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Clear all
+                  </button>
+                )}
               </span>
-            )}
-          </button>
-
-          {bellOpen && (
-            <div className="absolute right-0 top-full z-50 mt-1 w-80 rounded-lg border border-mesh-border-strong bg-mesh-bg/95 shadow-2xl backdrop-blur-md">
-              <div className="flex items-center justify-between border-b border-mesh-border px-4 py-2.5">
-                <span className="text-sm font-semibold text-white">Notifications</span>
-                <div className="flex items-center gap-3">
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={handleMarkAllRead}
-                      className="text-xs text-mesh-accent hover:text-[#67e8f9] transition-colors"
-                    >
-                      Mark all read
-                    </button>
-                  )}
-                  {alerts.length > 0 && (
-                    <button
-                      onClick={handleClearAll}
-                      className="text-xs text-mesh-text-dim hover:text-[#fb7185] transition-colors"
-                    >
-                      Clear all
-                    </button>
-                  )}
+            </div>
+            <div style={{ maxHeight: 288, overflowY: "auto" }}>
+              {alerts.length === 0 ? (
+                <div
+                  style={{
+                    padding: "20px 14px",
+                    textAlign: "center",
+                    font: "400 12px var(--font-sans)",
+                    color: "var(--text-mute)",
+                  }}
+                >
+                  No recent alerts
                 </div>
-              </div>
-
-              <div className="max-h-72 overflow-y-auto">
-                {alerts.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-sm text-mesh-text-mute">
-                    No recent alerts
-                  </div>
-                ) : (
-                  alerts.map((alert) => (
-                    <button
-                      key={alert.id}
-                      className={`flex w-full flex-col gap-1 px-4 py-3 text-left transition-colors hover:bg-mesh-surface-2/55 border-b border-mesh-border last:border-b-0 ${
-                        !alert.is_read ? "bg-mesh-surface-1" : ""
-                      }`}
-                      onClick={() => {
-                        setBellOpen(false);
-                        router.push("/alerts");
+              ) : (
+                alerts.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => {
+                      setBellOpen(false);
+                      router.push("/alerts");
+                    }}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 4,
+                      width: "100%",
+                      padding: "10px 14px",
+                      textAlign: "left",
+                      background: a.is_read ? "transparent" : "var(--surface-2)",
+                      border: 0,
+                      borderBottom: "1px solid rgba(96,144,212,0.20)",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        font: "500 10px var(--font-mono)",
+                        color: severityColor(a.severity),
                       }}
                     >
-                      <div className="flex items-center gap-2">
-                        {!alert.is_read && (
-                          <span className="h-2 w-2 rounded-full bg-mesh-accent shrink-0" />
-                        )}
-                        <SeverityBadge severity={alert.severity} />
-                        <span className="text-xs text-mesh-text-mute ml-auto">
-                          {timeAgo(alert.created_at)}
-                        </span>
-                      </div>
-                      <span className="block text-sm text-mesh-text truncate">
-                        {alert.message}
+                      {!a.is_read && (
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            width: 6,
+                            height: 6,
+                            borderRadius: "50%",
+                            background: "var(--accent-cyan)",
+                            flexShrink: 0,
+                          }}
+                        />
+                      )}
+                      <span>{a.severity}</span>
+                      <span style={{ marginLeft: "auto", color: "var(--text-mute)" }}>
+                        {timeAgo(a.created_at)}
                       </span>
-                    </button>
-                  ))
-                )}
-              </div>
-
-              <div className="border-t border-mesh-border">
-                <button
-                  onClick={() => {
-                    setBellOpen(false);
-                    router.push("/alerts");
-                  }}
-                  className="flex w-full items-center justify-center px-4 py-2.5 text-sm text-mesh-accent hover:text-[#67e8f9] hover:bg-mesh-surface-2/55 transition-colors"
-                >
-                  View all alerts
-                </button>
-              </div>
+                    </div>
+                    <span
+                      style={{
+                        font: "400 12px var(--font-sans)",
+                        color: "var(--text)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {a.message}
+                    </span>
+                  </button>
+                ))
+              )}
             </div>
-          )}
-        </div>
-
+            <button
+              type="button"
+              onClick={() => {
+                setBellOpen(false);
+                router.push("/alerts");
+              }}
+              style={{
+                display: "block",
+                width: "100%",
+                padding: "10px 14px",
+                borderTop: "1px solid rgba(96,144,212,0.20)",
+                background: "transparent",
+                border: 0,
+                font: "400 12px var(--font-sans)",
+                color: "var(--accent-cyan)",
+                cursor: "pointer",
+              }}
+            >
+              View all alerts
+            </button>
+          </div>
+        )}
       </div>
+
+      <button
+        type="button"
+        className="btn btn-ghost"
+        style={{ width: 28, height: 28, padding: 0 }}
+        onClick={() => router.push("/settings")}
+        aria-label="Settings"
+      >
+        <Settings size={14} aria-hidden="true" />
+      </button>
     </header>
   );
 }
 
-function cnLive(connected: boolean) {
-  return connected
-    ? "inline-block h-1.5 w-1.5 rounded-full bg-[#4ade80] ring-2 ring-[#4ade80]/30 status-glow-online-pulse"
-    : "inline-block h-1.5 w-1.5 rounded-full bg-mesh-text-mute";
+function severityColor(severity: string): string {
+  switch (severity) {
+    case "CRITICAL":
+      return "#fb7185";
+    case "WARNING":
+      return "#fbbf24";
+    case "INFO":
+      return "#38bdf8";
+    default:
+      return "var(--text-dim)";
+  }
 }
 
-function SeverityBadge({ severity }: { severity: string }) {
-  const colors: Record<string, string> = {
-    CRITICAL: "bg-[#fb7185]/20 text-[#fb7185] border-[#fb7185]/30",
-    WARNING: "bg-[#fbbf24]/20 text-[#fbbf24] border-[#fbbf24]/30",
-    INFO: "bg-mesh-accent/18 text-[#67e8f9] border-mesh-accent/30",
-  };
-  const cls = colors[severity] || colors.WARNING;
-  return (
-    <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[10px] font-semibold ${cls}`}>
-      {severity}
-    </span>
-  );
-}
-
-// Mirrors design source shell.jsx breadcrumb pattern: realm root (core.lan) is
-// fixed by the wrapper, this function returns just the route-derived trail.
+// Realm root (core.lan) is fixed in the render. This helper returns just the
+// route-derived trail per shell.jsx breadcrumb pattern.
 const BREADCRUMB_LABELS: Record<string, string> = {
   dashboard: "Dashboard",
   alerts: "Alerts",
@@ -635,6 +467,6 @@ const BREADCRUMB_LABELS: Record<string, string> = {
 
 function breadcrumbFromPath(pathname: string): string[] {
   const segments = pathname.split("/").filter(Boolean);
-  if (segments.length === 0) return ["Overview"];
-  return segments.map((seg) => BREADCRUMB_LABELS[seg] ?? seg);
+  const trail = segments.map((seg) => BREADCRUMB_LABELS[seg] ?? seg);
+  return ["core.lan", ...trail];
 }
