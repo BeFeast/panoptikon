@@ -115,9 +115,12 @@ test.describe('Device scan endpoint — no 404 for unscanned devices', () => {
     const tabContent = await sheetContent.textContent() ?? '';
     const hasValidState =
       tabContent.includes('No port scan results yet') ||
+      tabContent.includes('No port scan on record yet') ||
       tabContent.includes('Scan Ports') ||
       tabContent.includes('Last scanned') ||
-      tabContent.includes('No open ports found');
+      tabContent.includes('No open ports found') ||
+      tabContent.includes('Last scan returned 0 open ports') ||
+      tabContent.includes('Listening · ');
     expect(hasValidState, 'Ports tab should show a valid state (not an error)').toBeTruthy();
 
     await page.screenshot({ path: 'tests/screenshots/device-scan-ports-tab.png' });
