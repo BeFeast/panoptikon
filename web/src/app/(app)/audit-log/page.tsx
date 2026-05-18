@@ -8,11 +8,11 @@ export default function AuditLogPage() {
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <ScrollText className="h-5 w-5 text-mesh-accent" />
-        <h1 className="text-xl font-semibold tracking-tight text-mesh-text">
+        <h1 className="t-h1" style={{ margin: 0 }}>
           Audit log
         </h1>
       </div>
-      <Card className="">
+      <Card>
         <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
           <ScrollText className="h-10 w-10 text-mesh-text-faint/80" />
           <p className="text-sm text-mesh-text-dim">
