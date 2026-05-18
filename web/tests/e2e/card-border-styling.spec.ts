@@ -13,7 +13,7 @@ test.describe('Card border styling — no curly-bracket borders', () => {
     // Header section is now a flat border-b panel (mesh refresh); the
     // curly-bracket bug is still covered by the rounded-lg radius check below.
     // Cards on this page should have compact radius (rounded-lg = 0.5rem)
-    const vpnCard = page.locator('[class*="rounded-lg"][class*="border"]').first();
+    const vpnCard = page.locator('.mesh-card').first();
     const vpnRadius = await vpnCard.evaluate((el) => {
       const style = window.getComputedStyle(el);
       return parseFloat(style.borderTopLeftRadius);
@@ -29,7 +29,7 @@ test.describe('Card border styling — no curly-bracket borders', () => {
 
     // Header section is now a flat border-b panel (mesh refresh); see note above.
     // Verify a Card element on QoS page has compact rounded-lg radius.
-    const qosCard = page.locator('.rounded-lg.border').first();
+    const qosCard = page.locator('.mesh-card').first();
     const qosRadius = await qosCard.evaluate((el) => {
       const style = window.getComputedStyle(el);
       return parseFloat(style.borderTopLeftRadius);
@@ -44,7 +44,7 @@ test.describe('Card border styling — no curly-bracket borders', () => {
     await expect(page.getByRole('heading', { name: /DNS Query Log/i, level: 1 })).toBeVisible({ timeout: 15000 });
 
     // Stat cards on DNS page should have compact rounded-lg corners.
-    const dnsStatCard = page.locator('[data-testid="dns-stats-grid"] .rounded-lg').first();
+    const dnsStatCard = page.locator('[data-testid="dns-stats-grid"] .mesh-card').first();
     await expect(dnsStatCard).toBeVisible();
 
     const dnsRadius = await dnsStatCard.evaluate((el) => {
