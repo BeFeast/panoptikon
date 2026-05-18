@@ -304,7 +304,7 @@ test.describe("Router Page — Xiaomi (#491)", () => {
 
     // Should see the RouterSelector with Xiaomi button
     await expect(
-      page.getByRole("link", { name: /Xiaomi/ }),
+      page.getByRole("link", { name: "Xiaomi", exact: true }),
     ).toBeVisible({ timeout: 15000 });
 
     await page.screenshot({

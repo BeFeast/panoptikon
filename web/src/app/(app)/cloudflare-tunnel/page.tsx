@@ -254,9 +254,7 @@ export default function CloudflareTunnelPage() {
           <div className="flex items-center gap-3">
             <Cloud className="h-6 w-6 text-[#fbbf24]" />
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight text-white">
-                Cloudflare Tunnel
-              </h1>
+              <h1 className="t-h1 text-white">Cloudflare Tunnel</h1>
               <p className="text-sm text-mesh-text-dim">
                 Manage tunnel routes and monitor connection status
               </p>
@@ -268,7 +266,6 @@ export default function CloudflareTunnelPage() {
               size="sm"
               onClick={load}
               disabled={loading}
-              className="border-mesh-border bg-mesh-surface-1 text-mesh-text hover:bg-mesh-border-strong"
             >
               <RefreshCw
                 className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}
@@ -276,11 +273,7 @@ export default function CloudflareTunnelPage() {
               Refresh
             </Button>
             {!notConfigured && (
-              <Button
-                size="sm"
-                onClick={() => setAddDialogOpen(true)}
-                className="bg-mesh-primary hover:bg-mesh-primary"
-              >
+              <Button size="sm" onClick={() => setAddDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Route
               </Button>
@@ -290,10 +283,10 @@ export default function CloudflareTunnelPage() {
 
         {/* Not configured message */}
         {notConfigured && (
-          <Card className="">
+          <Card>
             <CardContent className="py-8 text-center">
               <Cloud className="mx-auto mb-4 h-12 w-12 text-mesh-text-mute" />
-              <h3 className="text-lg font-medium text-mesh-text">
+              <h3 className="t-h2 text-mesh-text">
                 Cloudflare Tunnel Not Configured
               </h3>
               <p className="mt-2 text-sm text-mesh-text-mute">
@@ -314,7 +307,7 @@ export default function CloudflareTunnelPage() {
         {!notConfigured && status && (
           <div className="grid gap-5 md:grid-cols-3">
             {/* Tunnel Status */}
-            <Card className="">
+            <Card>
               <CardHeader className="pb-2">
                 <CardDescription className="text-mesh-text-dim">
                   Tunnel Status
@@ -347,7 +340,7 @@ export default function CloudflareTunnelPage() {
             </Card>
 
             {/* Active Connections */}
-            <Card className="">
+            <Card>
               <CardHeader className="pb-2">
                 <CardDescription className="text-mesh-text-dim">
                   Active Connections
@@ -373,7 +366,7 @@ export default function CloudflareTunnelPage() {
             </Card>
 
             {/* Active Routes */}
-            <Card className="">
+            <Card>
               <CardHeader className="pb-2">
                 <CardDescription className="text-mesh-text-dim">
                   Active Routes
@@ -394,7 +387,7 @@ export default function CloudflareTunnelPage() {
 
         {/* Connections table */}
         {!notConfigured && status && status.connections.length > 0 && (
-          <Card className="">
+          <Card>
             <CardHeader>
               <CardTitle className="text-mesh-text">Connections</CardTitle>
               <CardDescription className="text-mesh-text-dim">
@@ -452,7 +445,7 @@ export default function CloudflareTunnelPage() {
 
         {/* Routes table */}
         {!notConfigured && (
-          <Card className="">
+          <Card>
             <CardHeader>
               <CardTitle className="text-mesh-text">Tunnel Routes</CardTitle>
               <CardDescription className="text-mesh-text-dim">
@@ -547,7 +540,7 @@ export default function CloudflareTunnelPage() {
 
         {/* Add Route Dialog */}
         <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-          <DialogContent className="border-mesh-border bg-mesh-surface-1/95">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle className="text-mesh-text">
                 Add Tunnel Route
@@ -563,7 +556,6 @@ export default function CloudflareTunnelPage() {
                   placeholder="app.example.com"
                   value={formHostname}
                   onChange={(e) => setFormHostname(e.target.value)}
-                  className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
                 />
               </div>
               <div className="space-y-2">
@@ -575,7 +567,6 @@ export default function CloudflareTunnelPage() {
                   placeholder="http://localhost:8080"
                   value={formService}
                   onChange={(e) => setFormService(e.target.value)}
-                  className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
                 />
               </div>
               <div className="space-y-2">
@@ -587,21 +578,18 @@ export default function CloudflareTunnelPage() {
                   placeholder="/"
                   value={formPath}
                   onChange={(e) => setFormPath(e.target.value)}
-                  className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
                 />
               </div>
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setAddDialogOpen(false)}
-                  className="border-mesh-border-strong text-mesh-text"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleAddRoute}
                   disabled={saving || !formHostname || !formService}
-                  className="bg-mesh-primary hover:bg-mesh-primary"
                 >
                   {saving ? "Adding..." : "Add Route"}
                 </Button>
@@ -612,7 +600,7 @@ export default function CloudflareTunnelPage() {
 
         {/* Edit Route Dialog */}
         <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-          <DialogContent className="border-mesh-border bg-mesh-surface-1/95">
+          <DialogContent>
             <DialogHeader>
               <DialogTitle className="text-mesh-text">
                 Edit Tunnel Route
@@ -628,7 +616,6 @@ export default function CloudflareTunnelPage() {
                   placeholder="app.example.com"
                   value={editHostname}
                   onChange={(e) => setEditHostname(e.target.value)}
-                  className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
                 />
               </div>
               <div className="space-y-2">
@@ -640,7 +627,6 @@ export default function CloudflareTunnelPage() {
                   placeholder="http://localhost:8080"
                   value={editService}
                   onChange={(e) => setEditService(e.target.value)}
-                  className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
                 />
               </div>
               <div className="space-y-2">
@@ -652,21 +638,18 @@ export default function CloudflareTunnelPage() {
                   placeholder="/"
                   value={editPath}
                   onChange={(e) => setEditPath(e.target.value)}
-                  className="border-mesh-border bg-mesh-surface-1 text-mesh-text"
                 />
               </div>
               <div className="flex justify-end gap-2">
                 <Button
                   variant="outline"
                   onClick={() => setEditDialogOpen(false)}
-                  className="border-mesh-border-strong text-mesh-text"
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleEditRoute}
                   disabled={saving || !editHostname || !editService}
-                  className="bg-mesh-primary hover:bg-mesh-primary"
                 >
                   {saving ? "Saving..." : "Save Changes"}
                 </Button>
@@ -680,21 +663,19 @@ export default function CloudflareTunnelPage() {
           open={!!deleteTarget}
           onOpenChange={(open) => !open && setDeleteTarget(null)}
         >
-          <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
+          <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle className="text-mesh-text">
                 Remove Route
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-mesh-text-dim">
+              <AlertDialogDescription>
                 Are you sure you want to remove the route for{" "}
                 <strong className="text-mesh-text">{deleteTarget}</strong>? This
                 will immediately update the tunnel configuration.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-mesh-border-strong text-mesh-text">
-                Cancel
-              </AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => deleteTarget && handleDeleteRoute(deleteTarget)}
                 className="bg-[#fb7185] hover:bg-[#fb7185]"

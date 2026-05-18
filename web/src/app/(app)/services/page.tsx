@@ -55,13 +55,19 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   addService,
   removeService,
   fetchCaddyProxyHosts,
   fetchCaddyStatus,
   fetchMikrotikStatus,
   toggleCaddyProxyHost,
-  deleteCaddyProxyHost,
   updateCaddyProxyHost,
 } from "@/lib/api";
 import type {
@@ -71,10 +77,6 @@ import type {
   CaddyStatus,
   MikrotikStatus,
 } from "@/lib/types";
-
-// ─── Styled select matching the dark theme ──────────────────
-const selectCls =
-  "w-full mesh-card px-3 py-2 text-sm text-white placeholder:text-mesh-text-mute focus:outline-none focus:ring-2 focus:ring-mesh-primary";
 
 // ─── Page ───────────────────────────────────────────────────
 export default function ServicesPage() {
@@ -281,7 +283,7 @@ export default function ServicesPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight text-white">Services</h1>
+            <h1 className="t-h1 text-white">Services</h1>
             <p className="mt-1 text-sm text-mesh-text-dim">
               Manage reverse proxy entries and port-forwarding rules
             </p>
@@ -339,7 +341,6 @@ export default function ServicesPage() {
                 loadHosts();
                 loadStatuses();
               }}
-              className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
             >
               <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
               Refresh
@@ -350,7 +351,6 @@ export default function ServicesPage() {
                 resetAddForm();
                 setAddOpen(true);
               }}
-              className="bg-mesh-primary text-white hover:bg-mesh-primary"
             >
               <Plus className="mr-1.5 h-3.5 w-3.5" />
               Add Service
@@ -395,7 +395,7 @@ export default function ServicesPage() {
                 {hosts.map((host) => (
                   <TableRow
                     key={host.id}
-                    className="border-mesh-border hover:bg-mesh-surface-2/55"
+                    className="border-mesh-border-strong hover:bg-mesh-surface-2/55"
                   >
                     <TableCell className="max-w-[250px]">
                       <div className="flex items-center gap-2 min-w-0">
@@ -514,7 +514,7 @@ export default function ServicesPage() {
             setAddOpen(open);
           }}
         >
-          <DialogContent className="max-w-md border-mesh-border bg-mesh-surface-1/95 text-white">
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Add Service</DialogTitle>
             </DialogHeader>
@@ -554,7 +554,6 @@ export default function ServicesPage() {
                       setAddOpen(false);
                       resetAddForm();
                     }}
-                    className="bg-mesh-primary text-white hover:bg-mesh-primary"
                   >
                     Done
                   </Button>
@@ -571,7 +570,6 @@ export default function ServicesPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="My App"
-                    className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                   />
                 </div>
 
@@ -584,7 +582,6 @@ export default function ServicesPage() {
                       value={internalIp}
                       onChange={(e) => setInternalIp(e.target.value)}
                       placeholder="10.10.0.50"
-                      className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -596,7 +593,6 @@ export default function ServicesPage() {
                       value={internalPort}
                       onChange={(e) => setInternalPort(e.target.value)}
                       placeholder="8080"
-                      className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                     />
                   </div>
                 </div>
@@ -609,7 +605,6 @@ export default function ServicesPage() {
                     value={domain}
                     onChange={(e) => setDomain(e.target.value)}
                     placeholder="myapp.oklabs.uk"
-                    className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                   />
                 </div>
 
@@ -618,14 +613,18 @@ export default function ServicesPage() {
                     <Label className="text-xs text-mesh-text-dim">
                       Forward Scheme
                     </Label>
-                    <select
+                    <Select
                       value={forwardScheme}
-                      onChange={(e) => setForwardScheme(e.target.value)}
-                      className={selectCls}
+                      onValueChange={setForwardScheme}
                     >
-                      <option value="http">HTTP</option>
-                      <option value="https">HTTPS</option>
-                    </select>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="http">HTTP</SelectItem>
+                        <SelectItem value="https">HTTPS</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="flex items-end pb-1">
                     <div className="flex items-center gap-2">
@@ -640,8 +639,8 @@ export default function ServicesPage() {
                   </div>
                 </div>
 
-                {/* MikroTik port-forward section */}
-                <div className="rounded-md border border-mesh-border-strong p-3">
+                {/* MikroTik port-forward section — inner-tier surface */}
+                <div className="mesh-card-2 p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Network className="h-4 w-4 text-mesh-text-mute" />
@@ -665,22 +664,25 @@ export default function ServicesPage() {
                           value={externalPort}
                           onChange={(e) => setExternalPort(e.target.value)}
                           placeholder="443"
-                          className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                         />
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs text-mesh-text-dim">
                           Protocol
                         </Label>
-                        <select
+                        <Select
                           value={protocol}
-                          onChange={(e) => setProtocol(e.target.value)}
-                          className={selectCls}
+                          onValueChange={setProtocol}
                         >
-                          <option value="tcp">TCP</option>
-                          <option value="udp">UDP</option>
-                          <option value="tcp,udp">TCP+UDP</option>
-                        </select>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="tcp">TCP</SelectItem>
+                            <SelectItem value="udp">UDP</SelectItem>
+                            <SelectItem value="tcp,udp">TCP+UDP</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   )}
@@ -693,14 +695,12 @@ export default function ServicesPage() {
                       setAddOpen(false);
                       resetAddForm();
                     }}
-                    className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={handleAddService}
                     disabled={!addValid || adding}
-                    className="bg-mesh-primary text-white hover:bg-mesh-primary disabled:opacity-40"
                   >
                     {adding && (
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -715,7 +715,7 @@ export default function ServicesPage() {
 
         {/* ── Edit Dialog ── */}
         <Dialog open={editOpen} onOpenChange={setEditOpen}>
-          <DialogContent className="max-w-md border-mesh-border bg-mesh-surface-1/95 text-white">
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Edit Service</DialogTitle>
             </DialogHeader>
@@ -725,7 +725,6 @@ export default function ServicesPage() {
                 <Input
                   value={editDomain}
                   onChange={(e) => setEditDomain(e.target.value)}
-                  className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -736,7 +735,6 @@ export default function ServicesPage() {
                   <Input
                     value={editForwardHost}
                     onChange={(e) => setEditForwardHost(e.target.value)}
-                    className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -747,7 +745,6 @@ export default function ServicesPage() {
                     type="number"
                     value={editForwardPort}
                     onChange={(e) => setEditForwardPort(e.target.value)}
-                    className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                   />
                 </div>
               </div>
@@ -756,14 +753,18 @@ export default function ServicesPage() {
                   <Label className="text-xs text-mesh-text-dim">
                     Forward Scheme
                   </Label>
-                  <select
+                  <Select
                     value={editForwardScheme}
-                    onChange={(e) => setEditForwardScheme(e.target.value)}
-                    className={selectCls}
+                    onValueChange={setEditForwardScheme}
                   >
-                    <option value="http">HTTP</option>
-                    <option value="https">HTTPS</option>
-                  </select>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="http">HTTP</SelectItem>
+                      <SelectItem value="https">HTTPS</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="flex items-end pb-1">
                   <div className="flex items-center gap-2">
@@ -779,18 +780,10 @@ export default function ServicesPage() {
               </div>
             </div>
             <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setEditOpen(false)}
-                className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
-              >
+              <Button variant="outline" onClick={() => setEditOpen(false)}>
                 Cancel
               </Button>
-              <Button
-                onClick={handleEditSave}
-                disabled={editSaving}
-                className="bg-mesh-primary text-white hover:bg-mesh-primary disabled:opacity-40"
-              >
+              <Button onClick={handleEditSave} disabled={editSaving}>
                 {editSaving && (
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                 )}
@@ -802,12 +795,12 @@ export default function ServicesPage() {
 
         {/* ── Delete Confirmation ── */}
         <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-          <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
+          <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle className="text-white">
                 Delete Service
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-mesh-text-dim">
+              <AlertDialogDescription>
                 This will remove the Caddy proxy host for{" "}
                 <span className="font-medium text-white">
                   {deleteHost?.domain}
@@ -816,9 +809,7 @@ export default function ServicesPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55">
-                Cancel
-              </AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
                 disabled={deleting}

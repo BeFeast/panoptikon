@@ -41,6 +41,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -207,9 +214,7 @@ export default function CaddyPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight text-white">
-              Caddy Reverse Proxy
-            </h1>
+            <h1 className="t-h1 text-white">Caddy Reverse Proxy</h1>
             <HelpTooltip text="Manage reverse-proxy hosts that Caddy serves. Add domains, point them to internal services, and enable automatic HTTPS." />
           </div>
           <div className="flex items-center gap-2">
@@ -237,7 +242,6 @@ export default function CaddyPage() {
                   size="sm"
                   onClick={handleTestConnection}
                   disabled={testing}
-                  className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
                 >
                   {testing ? (
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -247,7 +251,7 @@ export default function CaddyPage() {
                   Test Connection
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-mesh-border bg-mesh-surface-1 text-mesh-text">
+              <TooltipContent className="max-w-xs">
                 Verify that Panoptikon can reach the Caddy admin API
               </TooltipContent>
             </Tooltip>
@@ -258,7 +262,6 @@ export default function CaddyPage() {
                   size="sm"
                   onClick={handleSync}
                   disabled={syncing}
-                  className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
                 >
                   {syncing ? (
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -268,15 +271,11 @@ export default function CaddyPage() {
                   Sync to Caddy
                 </Button>
               </TooltipTrigger>
-              <TooltipContent className="max-w-xs border-mesh-border bg-mesh-surface-1 text-mesh-text">
+              <TooltipContent className="max-w-xs">
                 Push current proxy host configuration to the Caddy reverse proxy
               </TooltipContent>
             </Tooltip>
-            <Button
-              size="sm"
-              onClick={() => setShowAdd(true)}
-              className="bg-mesh-primary text-white hover:bg-mesh-primary"
-            >
+            <Button size="sm" onClick={() => setShowAdd(true)}>
               <Plus className="mr-1.5 h-3.5 w-3.5" />
               Add Host
             </Button>
@@ -284,7 +283,7 @@ export default function CaddyPage() {
         </div>
 
         {/* Admin URL Configuration */}
-        <Card className="">
+        <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-white">
               Caddy Admin API
@@ -303,7 +302,6 @@ export default function CaddyPage() {
                   id="admin-url"
                   value={adminUrl}
                   onChange={(e) => setAdminUrl(e.target.value)}
-                  className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                   placeholder="http://localhost:2019"
                 />
               </div>
@@ -311,7 +309,6 @@ export default function CaddyPage() {
                 size="sm"
                 onClick={handleSaveUrl}
                 disabled={savingUrl || adminUrl.trim() === savedAdminUrl}
-                className="bg-mesh-primary text-white hover:bg-mesh-primary"
               >
                 {savingUrl && (
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -329,12 +326,12 @@ export default function CaddyPage() {
             placeholder="Filter by domain or upstream..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="border-mesh-border bg-mesh-surface-1/95 pl-10 text-white placeholder:text-mesh-text-mute"
+            className="pl-10"
           />
         </div>
 
         {/* Table */}
-        <Card className="">
+        <Card>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
@@ -391,7 +388,7 @@ export default function CaddyPage() {
                   filtered.map((host) => (
                     <TableRow
                       key={host.id}
-                      className="border-mesh-border hover:bg-mesh-surface-2/55"
+                      className="border-mesh-border-strong hover:bg-mesh-surface-2/55"
                     >
                       <TableCell className="font-medium text-white">
                         <a
@@ -473,12 +470,12 @@ export default function CaddyPage() {
             if (!open) setPendingDelete(null);
           }}
         >
-          <AlertDialogContent className="border-mesh-border bg-mesh-surface-1/95">
+          <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle className="text-white">
                 Delete Proxy Host
               </AlertDialogTitle>
-              <AlertDialogDescription className="text-mesh-text-dim">
+              <AlertDialogDescription>
                 Are you sure you want to delete{" "}
                 <span className="font-medium text-white">
                   {pendingDelete?.domain}
@@ -487,9 +484,7 @@ export default function CaddyPage() {
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55">
-                Cancel
-              </AlertDialogCancel>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
                 className="bg-[#fb7185] text-white hover:bg-[#fb7185]"
@@ -591,7 +586,7 @@ function ProxyHostFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="border-mesh-border bg-mesh-surface-1/95 sm:max-w-md">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-white">
             {isEdit ? "Edit Proxy Host" : "Add Proxy Host"}
@@ -606,7 +601,6 @@ function ProxyHostFormDialog({
               id="domain"
               value={domain}
               onChange={(e) => setDomain(e.target.value)}
-              className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
               placeholder="app.example.com"
             />
           </div>
@@ -619,15 +613,18 @@ function ProxyHostFormDialog({
               >
                 Scheme
               </Label>
-              <select
-                id="forward-scheme"
+              <Select
                 value={forwardScheme}
-                onChange={(e) => setForwardScheme(e.target.value)}
-                className="flex h-9 w-full mesh-card px-3 py-1 text-sm text-white"
+                onValueChange={setForwardScheme}
               >
-                <option value="http">http</option>
-                <option value="https">https</option>
-              </select>
+                <SelectTrigger id="forward-scheme" className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="http">http</SelectItem>
+                  <SelectItem value="https">https</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="col-span-1 space-y-1.5">
               <Label
@@ -640,7 +637,6 @@ function ProxyHostFormDialog({
                 id="forward-host"
                 value={forwardHost}
                 onChange={(e) => setForwardHost(e.target.value)}
-                className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="10.0.0.5"
               />
             </div>
@@ -658,7 +654,6 @@ function ProxyHostFormDialog({
                 max={65535}
                 value={forwardPort}
                 onChange={(e) => setForwardPort(e.target.value)}
-                className="border-mesh-border bg-mesh-surface-1/95 text-white placeholder:text-mesh-text-mute"
                 placeholder="80"
               />
             </div>
@@ -687,15 +682,10 @@ function ProxyHostFormDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              className="border-mesh-border text-mesh-text hover:bg-mesh-surface-2/55"
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={loading}
-              className="bg-mesh-primary text-white hover:bg-mesh-primary"
-            >
+            <Button type="submit" disabled={loading}>
               {loading && (
                 <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
               )}
