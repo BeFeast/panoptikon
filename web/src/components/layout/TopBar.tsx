@@ -1,7 +1,7 @@
 "use client";
 
-import { type ReactNode, useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { type ReactNode, useMemo, useState, useEffect, useRef, useCallback } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import { Bell, Settings, Lock, LogOut, Monitor, Cpu, Terminal, Package } from "lucide-react";
 import { searchAll, fetchRecentAlerts, fetchDashboardStats, markAllAlertsRead, deleteAllAlerts, logout } from "@/lib/api";
 import { useWsEvent } from "@/lib/ws";
@@ -19,7 +19,9 @@ import {
 
 export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const wsConnected = useWsConnected();
+  const breadcrumb = useMemo(() => breadcrumbFromPath(pathname || ""), [pathname]);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResponse | null>(null);
@@ -455,8 +457,20 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
       {/* Realm context + live status pill — mirrors the design source TopBar */}
       <div className="hidden lg:flex items-center gap-2 shrink-0 font-mono text-[11px] text-mesh-text-dim">
         <span className="text-mesh-text-mute">core.lan</span>
-        <span className="text-mesh-border-strong">›</span>
-        <span className="text-mesh-text">Overview</span>
+        {breadcrumb.map((label, i) => (
+          <span key={`${label}-${i}`} className="contents">
+            <span className="text-mesh-border-strong">›</span>
+            <span
+              className={
+                i === breadcrumb.length - 1
+                  ? "text-mesh-text"
+                  : "text-mesh-text-dim"
+              }
+            >
+              {label}
+            </span>
+          </span>
+        ))}
       </div>
       <div
         className="flex items-center gap-2 shrink-0 rounded-full border border-mesh-border bg-mesh-surface-1/80 px-2.5 py-1 font-mono text-[11px] text-mesh-text"
@@ -622,4 +636,57 @@ function SeverityBadge({ severity }: { severity: string }) {
       {severity}
     </span>
   );
+}
+
+// Mirrors design source shell.jsx breadcrumb pattern: realm root (core.lan) is
+// fixed by the wrapper, this function returns just the route-derived trail.
+const BREADCRUMB_LABELS: Record<string, string> = {
+  dashboard: "Dashboard",
+  alerts: "Alerts",
+  "audit-log": "Audit log",
+  devices: "Devices",
+  assets: "Assets",
+  topology: "Topology",
+  mesh: "Mesh",
+  traffic: "Traffic",
+  qos: "QoS",
+  nat: "NAT",
+  router: "Router",
+  mikrotik: "MikroTik",
+  pfsense: "pfSense",
+  xiaomi: "Xiaomi",
+  caddy: "Caddy",
+  services: "Services",
+  "vpn-status": "VPN status",
+  ddns: "DDNS",
+  "dns-logs": "DNS logs",
+  "dns-queries": "DNS queries",
+  certificates: "Certificates",
+  "cloudflare-tunnel": "Cloudflare tunnel",
+  agents: "Agents",
+  "ssh-hosts": "SSH hosts",
+  settings: "Settings",
+  "alert-rules": "Alert rules",
+  "config-backup": "Config backup",
+  "dns-blocklists": "DNS blocklists",
+  "dns-security": "DNS security",
+  email: "Email",
+  password: "Password",
+  retention: "Retention",
+  scanner: "Scanner",
+  snmp: "SNMP",
+  speedtest: "Speed test",
+  tailscale: "Tailscale",
+  users: "Users",
+  webhook: "Webhook",
+  "xiaomi-mesh": "Xiaomi mesh",
+  advanced: "Advanced",
+  detail: "Detail",
+  npm: "NPM",
+};
+
+function breadcrumbFromPath(pathname: string): string[] {
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments.length === 0) return ["Overview"];
+  return segments.map((seg) => BREADCRUMB_LABELS[seg] ?? seg);
 }
