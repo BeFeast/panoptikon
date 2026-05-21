@@ -400,11 +400,18 @@ pub async fn status(
         false
     };
 
+    let sso_enabled = state.config.auth.sso_enabled && state.config.auth.sso_login_url.is_some();
+    let sso_login_url = if sso_enabled {
+        state.config.auth.sso_login_url.clone()
+    } else {
+        None
+    };
+
     Ok(Json(AuthStatusResponse {
         authenticated,
         needs_setup,
-        sso_enabled: false,
-        sso_login_url: None,
+        sso_enabled,
+        sso_login_url,
     }))
 }
 

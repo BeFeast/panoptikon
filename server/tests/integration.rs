@@ -365,6 +365,76 @@ async fn test_auth_status_needs_setup() {
         body["needs_setup"], true,
         "should need setup on fresh DB (no password set)"
     );
+    assert_eq!(
+        body["sso_enabled"], false,
+        "SSO should be disabled by default (no config)"
+    );
+    assert!(
+        body["sso_login_url"].is_null(),
+        "SSO login URL must be absent when SSO is disabled"
+    );
+}
+
+// ── Auth status reports configured SSO ──────────────────────────────
+
+#[tokio::test]
+async fn test_auth_status_reports_configured_sso() {
+    let mut app_config = config::AppConfig::default();
+    app_config.auth.sso_enabled = true;
+    app_config.auth.sso_login_url = Some("/api/v1/auth/sso".to_string());
+
+    let (base_url, _pool) = spawn_test_server_with_config(app_config).await;
+    let client = http_client();
+
+    let resp = client
+        .get(format!("{base_url}/api/v1/auth/status"))
+        .send()
+        .await
+        .expect("auth status request failed");
+
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: Value = resp.json().await.expect("failed to parse JSON");
+    assert_eq!(
+        body["sso_enabled"], true,
+        "SSO must be enabled when configured"
+    );
+    assert_eq!(
+        body["sso_login_url"], "/api/v1/auth/sso",
+        "SSO login URL must reflect configured value"
+    );
+}
+
+// ── Auth status hides SSO when enabled but no URL set ──────────────
+
+#[tokio::test]
+async fn test_auth_status_hides_sso_without_url() {
+    // sso_enabled=true but sso_login_url=None must still report disabled
+    // — never surface a button that has nowhere to send the user.
+    let mut app_config = config::AppConfig::default();
+    app_config.auth.sso_enabled = true;
+    app_config.auth.sso_login_url = None;
+
+    let (base_url, _pool) = spawn_test_server_with_config(app_config).await;
+    let client = http_client();
+
+    let resp = client
+        .get(format!("{base_url}/api/v1/auth/status"))
+        .send()
+        .await
+        .expect("auth status request failed");
+
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let body: Value = resp.json().await.expect("failed to parse JSON");
+    assert_eq!(
+        body["sso_enabled"], false,
+        "SSO must be reported disabled when no login URL is set"
+    );
+    assert!(
+        body["sso_login_url"].is_null(),
+        "SSO login URL must be absent when disabled"
+    );
 }
 
 // ── Test 11: Auth status after setup ────────────────────────────────
@@ -400,6 +470,10 @@ async fn test_auth_status_after_setup() {
     assert_eq!(
         body["authenticated"], true,
         "should be authenticated after setup (auto-login)"
+    );
+    assert_eq!(
+        body["sso_enabled"], false,
+        "SSO should remain disabled without explicit config"
     );
 }
 
