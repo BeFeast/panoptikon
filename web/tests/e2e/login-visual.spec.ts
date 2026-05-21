@@ -47,9 +47,12 @@ test.describe("Login page visual upgrade", () => {
     await expect(page.locator("#password")).toBeVisible();
     await expect(page.getByRole("button", { name: /Sign in/i })).toBeVisible();
     // Continue with SSO is rendered only when authStatus.sso_enabled is true (default: false).
+    // The element is an <a> link; assert by both role and text so a future
+    // change to element type cannot silently mask the assertion.
     await expect(
-      page.getByRole("button", { name: "Continue with SSO" }),
+      page.getByRole("link", { name: "Continue with SSO" }),
     ).toHaveCount(0);
+    await expect(page.getByText("Continue with SSO")).toHaveCount(0);
     await expect(page.getByText("all systems healthy")).toBeVisible();
 
     const eyeToggle = page.locator('button[aria-label="Show password"]');
@@ -81,8 +84,9 @@ test.describe("Login page visual upgrade", () => {
     await expect(page.getByRole("button", { name: /Sign in/i })).toBeVisible();
     // Continue with SSO is rendered only when authStatus.sso_enabled is true (default: false).
     await expect(
-      page.getByRole("button", { name: "Continue with SSO" }),
+      page.getByRole("link", { name: "Continue with SSO" }),
     ).toHaveCount(0);
+    await expect(page.getByText("Continue with SSO")).toHaveCount(0);
 
     await page.screenshot({
       path: "tests/screenshots/login-visual-mobile.png",

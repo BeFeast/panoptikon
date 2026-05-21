@@ -9,7 +9,9 @@ test.describe.skip('Authentication', () => {
     await expect(page.getByRole('button', { name: 'reset key' })).toBeVisible();
     // Continue with SSO is only rendered when authStatus.sso_enabled is true
     // (default backend response has sso_enabled=false), so it must not be visible.
-    await expect(page.getByRole('button', { name: 'Continue with SSO' })).toHaveCount(0);
+    // Rendered as <a>; assert by link role AND visible text.
+    await expect(page.getByRole('link', { name: 'Continue with SSO' })).toHaveCount(0);
+    await expect(page.getByText('Continue with SSO')).toHaveCount(0);
     await expect(page.getByText('all systems healthy')).toBeVisible();
     await expect(page.locator('#password')).toBeVisible();
     await expect(page.getByRole('button', { name: /Sign in/i })).toBeVisible();

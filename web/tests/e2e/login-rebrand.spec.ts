@@ -16,7 +16,9 @@ test.describe("Login page rebrand", () => {
     await expect(page.getByLabel("Operator")).toHaveValue("operator");
     await expect(page.getByRole("button", { name: "reset key" })).toBeVisible();
     // Continue with SSO is only rendered when authStatus.sso_enabled is true (default: false).
-    await expect(page.getByRole("button", { name: "Continue with SSO" })).toHaveCount(0);
+    // Element is an <a> link, not a <button>; querying by text guards against role drift.
+    await expect(page.getByRole("link", { name: "Continue with SSO" })).toHaveCount(0);
+    await expect(page.getByText("Continue with SSO")).toHaveCount(0);
     await expect(page.getByText("all systems healthy")).toBeVisible();
 
     await page.screenshot({
