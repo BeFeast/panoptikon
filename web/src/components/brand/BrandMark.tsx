@@ -16,11 +16,11 @@ interface BrandMarkProps {
  */
 export function BrandMark({ size = 32, className, glow = true }: BrandMarkProps) {
   const nodes = [
-    { x: 14, y: 18, r: 4 },
-    { x: 50, y: 14, r: 3 },
-    { x: 32, y: 32, r: 5 },
-    { x: 12, y: 48, r: 3 },
-    { x: 52, y: 50, r: 4 },
+    { x: 14, y: 18, r: 2.6 },
+    { x: 50, y: 14, r: 2.2 },
+    { x: 32, y: 32, r: 3.2 },
+    { x: 12, y: 48, r: 2.2 },
+    { x: 52, y: 50, r: 2.6 },
   ];
   const links: Array<[number, number]> = [
     [0, 2],
@@ -58,8 +58,8 @@ export function BrandMark({ size = 32, className, glow = true }: BrandMarkProps)
             x2={nodes[b].x}
             y2={nodes[b].y}
             stroke={isAxis ? "url(#panoptikonMeshAxis)" : "rgba(96,144,212,0.35)"}
-            strokeWidth={isAxis ? 1.5 : 1}
-            strokeDasharray={isAxis ? undefined : "2 3"}
+            strokeWidth={isAxis ? 1 : 0.75}
+            strokeDasharray={isAxis ? undefined : "2 4"}
             strokeLinecap="round"
           />
         );
@@ -69,7 +69,7 @@ export function BrandMark({ size = 32, className, glow = true }: BrandMarkProps)
         return (
           <g key={i}>
             {isCenter && glow && (
-              <circle cx={n.x} cy={n.y} r={n.r + 4} fill="#2563eb" opacity="0.18" />
+              <circle cx={n.x} cy={n.y} r={n.r + 4} fill="#2563eb" opacity="0.14" />
             )}
             <circle
               cx={n.x}
@@ -77,9 +77,9 @@ export function BrandMark({ size = 32, className, glow = true }: BrandMarkProps)
               r={n.r}
               fill={isCenter ? "#2563eb" : "#0c1b30"}
               stroke={isCenter ? "#5eead4" : "#38bdf8"}
-              strokeWidth={1.5}
+              strokeWidth={1}
             />
-            {isCenter && <circle cx={n.x} cy={n.y} r={1.5} fill="#5eead4" />}
+            {isCenter && <circle cx={n.x} cy={n.y} r={1} fill="#5eead4" />}
           </g>
         );
       })}

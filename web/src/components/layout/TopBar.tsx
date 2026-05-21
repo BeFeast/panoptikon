@@ -8,6 +8,7 @@ import { Bell, ChevronRight, RefreshCw, Settings } from "lucide-react";
 import { fetchDashboardStats, fetchRecentAlerts, markAllAlertsRead, deleteAllAlerts } from "@/lib/api";
 import { useWsEvent } from "@/lib/ws";
 import { useWsConnected } from "@/components/providers/WebSocketProvider";
+import { BrandMark } from "@/components/brand/BrandMark";
 import { StatusDot } from "@/components/mesh/StatusDot";
 import type { Alert } from "@/lib/types";
 import { timeAgo } from "@/lib/format";
@@ -143,6 +144,8 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
       }}
     >
       {mobileMenu}
+
+      <BrandMark size={18} className="hidden text-mesh-accent md:block" glow={false} />
 
       {/* Breadcrumbs */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>
@@ -421,7 +424,7 @@ function severityColor(severity: string): string {
 // Realm root (core.lan) is fixed in the render. This helper returns just the
 // route-derived trail per shell.jsx breadcrumb pattern.
 const BREADCRUMB_LABELS: Record<string, string> = {
-  dashboard: "Dashboard",
+  dashboard: "Overview",
   alerts: "Alerts",
   "audit-log": "Audit log",
   devices: "Devices",
