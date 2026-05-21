@@ -2,14 +2,25 @@
 
 /**
  * PfSenseRouterDesign — pfSense vendor wrapper for the literal-port
- * RouterPage. Same recipe as MikrotikRouterDesign, with pfSense-specific
- * data hooks. The design source only ships a MikroTik artboard, so the
- * tab set is adapted to pfSense's surfaces (Status / Interfaces / Firewall
- * / NAT / DHCP / DNS / Routing / Config / Services) but the chrome,
- * spacing and recipes are byte-exact from router-page.jsx.
+ * RouterPage. Same chrome (header + stats + tabs + footer) as the
+ * MikroTik wrapper, but with pfSense-specific data hooks and per-tab
+ * panel switching:
+ *
+ *   - system      → SystemTab (legacy CRUD card grid)
+ *   - interfaces  → literal-port Interfaces table
+ *   - firewall    → literal-port Firewall rules panel
+ *   - dhcp        → literal-port DHCP leases panel
+ *   - dns         → DnsTab
+ *   - services    → ServicesTab
+ *   - routing     → RoutingTab
+ *   - config      → ConfigTab
+ *
+ * The legacy tab components are reused for the non-design sub-routes
+ * because the design source only ships interfaces / firewall / dhcp as
+ * literal artboards.
  */
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, type ReactNode } from "react";
 import { Shield, RefreshCcw, Save, TerminalSquare } from "lucide-react";
 import { useData } from "@/hooks/useData";
 import {
@@ -29,6 +40,11 @@ import {
 } from "@/components/router/RouterPage";
 import type { RouterTab } from "@/components/router/RouterTabs";
 import type { RouterHeaderMeta } from "@/components/router/RouterHeader";
+import { SystemTab } from "@/components/pfsense/tabs/SystemTab";
+import { DnsTab } from "@/components/pfsense/tabs/DnsTab";
+import { ServicesTab } from "@/components/pfsense/tabs/ServicesTab";
+import { RoutingTab } from "@/components/pfsense/tabs/RoutingTab";
+import { ConfigTab } from "@/components/pfsense/tabs/ConfigTab";
 
 const PFSENSE_TABS: RouterTab[] = [
   { id: "system", label: "System" },
@@ -184,6 +200,49 @@ export default function PfSenseRouterDesign({
     ? `pfSense · ${status.data.hostname}`
     : "pfSense Firewall";
 
+  // ── Per-tab panel selection. The header/stats/tabs strip + footer stay
+  //    identical across tabs; only the body content swaps. ───────────────
+  const showInterfaces = activeTab === "interfaces";
+  const showFirewall = activeTab === "firewall";
+  const showDhcp = activeTab === "dhcp";
+
+  const extraContent: ReactNode = (() => {
+    switch (activeTab) {
+      case "system":
+        return status.data ? (
+          <div data-testid="pfsense-panel-system">
+            <SystemTab status={status.data} />
+          </div>
+        ) : null;
+      case "dns":
+        return (
+          <div data-testid="pfsense-panel-dns">
+            <DnsTab />
+          </div>
+        );
+      case "services":
+        return (
+          <div data-testid="pfsense-panel-services">
+            <ServicesTab />
+          </div>
+        );
+      case "routing":
+        return (
+          <div data-testid="pfsense-panel-routing">
+            <RoutingTab />
+          </div>
+        );
+      case "config":
+        return (
+          <div data-testid="pfsense-panel-config">
+            <ConfigTab />
+          </div>
+        );
+      default:
+        return null;
+    }
+  })();
+
   return (
     <RouterPage
       headerTitle={title}
@@ -197,6 +256,7 @@ export default function PfSenseRouterDesign({
       activeTab={activeTab}
       onTabChange={onTabChange}
       interfaces={ifaceRows}
+      showInterfaces={showInterfaces}
       interfacesTotalsLabel={
         totalIfaces > 0
           ? `${totalIfaces} total · ${runningIfaces} up · ${downIfaces} down`
@@ -204,24 +264,33 @@ export default function PfSenseRouterDesign({
             ? "loading…"
             : "no data"
       }
-      firewall={{
-        rules: fwRows,
-        label:
-          fwRows.length > 0
-            ? `${fwRows.length} rules · ${disabledRules} disabled`
-            : rules.loading
-              ? "loading…"
-              : "no rules",
-      }}
-      dhcp={{
-        leases: dhcpRows,
-        label:
-          dhcpRows.length > 0
-            ? `${dhcpRows.length} · ${staticLeases} static`
-            : leases.loading
-              ? "loading…"
-              : "no leases",
-      }}
+      firewall={
+        showFirewall
+          ? {
+              rules: fwRows,
+              label:
+                fwRows.length > 0
+                  ? `${fwRows.length} rules · ${disabledRules} disabled`
+                  : rules.loading
+                    ? "loading…"
+                    : "no rules",
+            }
+          : undefined
+      }
+      dhcp={
+        showDhcp
+          ? {
+              leases: dhcpRows,
+              label:
+                dhcpRows.length > 0
+                  ? `${dhcpRows.length} · ${staticLeases} static`
+                  : leases.loading
+                    ? "loading…"
+                    : "no leases",
+            }
+          : undefined
+      }
+      extraContent={extraContent}
       footer={{
         snapshotLabel: "Live pfSense state",
         driftLabel: status.data?.domain

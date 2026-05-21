@@ -184,6 +184,9 @@ export type RouterPageProps = {
   interfacesTotalsLabel?: string; // e.g. "9 total · 8 running · 1 down"
   onAddInterface?: () => void;
   onFilterInterface?: () => void;
+  /** Pass `false` to hide the interfaces panel entirely (e.g. when another
+   *  tab owns the body slot). Defaults to `true` for backward compatibility. */
+  showInterfaces?: boolean;
 
   // Firewall panel (omit to hide the panel — e.g. Xiaomi)
   firewall?: {
@@ -198,6 +201,12 @@ export type RouterPageProps = {
     label?: string; // e.g. "6 · 3 static"
     onFilter?: () => void;
   };
+
+  /** Additional content rendered below the interfaces/firewall/dhcp panels
+   *  and above the footer. Used by per-tab vendor wrappers (pfSense) to slot
+   *  in DNS / Services / Routing / Config sub-pages while keeping the page
+   *  chrome (header + stats + tabs + footer) intact. */
+  extraContent?: ReactNode;
 
   // Quick actions footer (omit to hide)
   footer?: {
@@ -259,8 +268,10 @@ export function RouterPage(props: RouterPageProps) {
     interfacesTotalsLabel,
     onAddInterface,
     onFilterInterface,
+    showInterfaces = true,
     firewall,
     dhcp,
+    extraContent,
     footer,
   } = props;
 
@@ -321,6 +332,7 @@ export function RouterPage(props: RouterPageProps) {
       <RouterTabs tabs={tabs} active={activeTab} onChange={onTabChange} />
 
       {/* Interfaces table — router-page.jsx lines 73-141 */}
+      {showInterfaces && (
       <div className="card" style={{ padding: 0 }}>
         <div
           style={{
@@ -505,6 +517,7 @@ export function RouterPage(props: RouterPageProps) {
           </div>
         ))}
       </div>
+      )}
 
       {/* Two-pane — Firewall + DHCP — router-page.jsx lines 143-200 */}
       {(firewall || dhcp) && (
@@ -768,6 +781,11 @@ export function RouterPage(props: RouterPageProps) {
           )}
         </div>
       )}
+
+      {/* Per-tab slot — used by vendor wrappers (e.g. pfSense) to render
+          DNS / Services / Routing / Config / System sub-panels in place of
+          the literal-port interfaces/firewall/dhcp grid. */}
+      {extraContent}
 
       {/* Quick actions footer — router-page.jsx lines 203-216 */}
       {footer && (
