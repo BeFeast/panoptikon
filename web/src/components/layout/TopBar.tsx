@@ -174,6 +174,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
 
       {/* Live status pill */}
       <div
+        className="topbar-live-status"
         data-testid="live-status-pill"
         style={{
           display: "flex",
@@ -198,41 +199,40 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
       </div>
 
       {/* Action buttons */}
-      <button
-        type="button"
-        className="btn btn-ghost"
-        style={{ width: 28, height: 28, padding: 0 }}
-        onClick={handleRefresh}
-        aria-label="Reload"
-      >
-        <RefreshCw size={14} aria-hidden="true" />
-      </button>
-
-      <div ref={bellRef} style={{ position: "relative" }}>
+      <div className="topbar-actions" data-testid="topbar-actions">
         <button
           type="button"
-          className="btn btn-ghost"
-          style={{ width: 28, height: 28, padding: 0, position: "relative" }}
-          onClick={() => setBellOpen((v) => !v)}
-          aria-label="Notifications"
+          className="btn btn-ghost topbar-icon-button"
+          onClick={handleRefresh}
+          aria-label="Reload"
         >
-          <Bell size={14} aria-hidden="true" />
-          {unreadCount > 0 && (
-            <span
-              aria-hidden="true"
-              style={{
-                position: "absolute",
-                top: 4,
-                right: 5,
-                width: 7,
-                height: 7,
-                borderRadius: "50%",
-                background: "#fb7185",
-                border: "2px solid var(--surface-1)",
-              }}
-            />
-          )}
+          <RefreshCw size={14} aria-hidden="true" />
         </button>
+
+        <div ref={bellRef} className="topbar-notification-control">
+          <button
+            type="button"
+            className="btn btn-ghost topbar-icon-button"
+            onClick={() => setBellOpen((v) => !v)}
+            aria-label="Notifications"
+          >
+            <Bell size={14} aria-hidden="true" />
+            {unreadCount > 0 && (
+              <span
+                aria-hidden="true"
+                style={{
+                  position: "absolute",
+                  top: 4,
+                  right: 5,
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: "#fb7185",
+                  border: "2px solid var(--surface-1)",
+                }}
+              />
+            )}
+          </button>
 
         {bellOpen && (
           <div
@@ -393,17 +393,17 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
             </button>
           </div>
         )}
-      </div>
+        </div>
 
-      <button
-        type="button"
-        className="btn btn-ghost"
-        style={{ width: 28, height: 28, padding: 0 }}
-        onClick={() => router.push("/settings")}
-        aria-label="Settings"
-      >
-        <Settings size={14} aria-hidden="true" />
-      </button>
+        <button
+          type="button"
+          className="btn btn-ghost topbar-icon-button"
+          onClick={() => router.push("/settings")}
+          aria-label="Settings"
+        >
+          <Settings size={14} aria-hidden="true" />
+        </button>
+      </div>
     </header>
   );
 }
