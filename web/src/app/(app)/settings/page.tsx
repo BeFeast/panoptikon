@@ -44,6 +44,7 @@ import {
   User as UserIcon,
 } from "lucide-react";
 import { PageTransition } from "@/components/PageTransition";
+import { ShortcutKey } from "@/components/ShortcutKey";
 import {
   fetchAlertRules,
   fetchCaddyStatus,
@@ -917,7 +918,7 @@ export default function SettingsPage() {
                 border: "var(--hairline) solid rgba(96,144,212,0.20)",
               }}
             >
-              ⌘K
+              <ShortcutKey actionKey="k" />
             </kbd>
           </div>
           <div
@@ -1012,7 +1013,7 @@ export default function SettingsPage() {
           }}
         >
           <span>
-            Tip · ⌘K from anywhere to search across settings, devices, alerts,
+            Tip · <ShortcutKey actionKey="k" /> from anywhere to search across settings, devices, alerts,
             and runbooks.
           </span>
           <span>

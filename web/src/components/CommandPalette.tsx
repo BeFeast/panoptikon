@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Command } from 'cmdk'
 import {
@@ -57,13 +57,16 @@ export function CommandPalette() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResults>(EMPTY_RESULTS)
   const [scanning, setScanning] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   // ── Global Cmd+K / Ctrl+K listener ──
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        if (isEditableShortcutTarget(e.target)) return
         e.preventDefault()
-        setOpen((prev) => !prev)
+        setOpen(true)
+        requestAnimationFrame(() => inputRef.current?.focus())
       }
     }
     document.addEventListener('keydown', handleKeyDown)
@@ -147,6 +150,7 @@ export function CommandPalette() {
       <div className="flex items-center gap-3 border-b border-mesh-border-strong px-4 py-3">
         <Search className="h-5 w-5 shrink-0 text-mesh-text-dim" />
         <Command.Input
+          ref={inputRef}
           value={query}
           onValueChange={setQuery}
           placeholder="Search pages, devices, actions…"
@@ -311,4 +315,17 @@ export function CommandPalette() {
       </Command.List>
     </Command.Dialog>
   )
+}
+
+function isEditableShortcutTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false
+
+  const tagName = target.tagName.toLowerCase()
+  if (target.isContentEditable || tagName === 'textarea') return true
+
+  if (tagName !== 'input') return false
+
+  const input = target as HTMLInputElement
+  const type = input.type.toLowerCase()
+  return !['button', 'checkbox', 'color', 'file', 'radio', 'range', 'reset', 'submit'].includes(type)
 }
