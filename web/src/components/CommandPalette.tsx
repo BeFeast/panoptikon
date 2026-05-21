@@ -59,10 +59,15 @@ export function CommandPalette() {
   const [scanning, setScanning] = useState(false)
 
   // ── Global Cmd+K / Ctrl+K listener ──
+  // Captured at the document level so it triggers consistently from any
+  // authenticated route — including while focus is inside a text input,
+  // textarea, or contentEditable region. preventDefault overrides the
+  // browser's default Cmd/Ctrl+K (e.g. focus the URL bar search box).
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'k') {
         e.preventDefault()
+        e.stopPropagation()
         setOpen((prev) => !prev)
       }
     }
