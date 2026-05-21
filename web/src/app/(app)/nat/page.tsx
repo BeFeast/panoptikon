@@ -29,6 +29,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableEmptyRow,
   TableHead,
   TableHeader,
   TableRow,
@@ -322,7 +323,7 @@ export default function NatPage() {
         </section>
 
         {/* Rules table */}
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader className="pb-3">
             <CardTitle className="t-h3">MikroTik NAT Rules</CardTitle>
             <CardDescription className="t-small">
@@ -331,40 +332,56 @@ export default function NatPage() {
           </CardHeader>
 
           <CardContent className="p-0">
-            <div
-              className="overflow-x-auto"
-              style={{ borderTop: "1px solid rgba(96,144,212,0.20)" }}
-            >
-              {filteredMt === null ? (
-                <div className="space-y-2 p-4">
-                  {[...Array(4)].map((_, i) => (
-                    <Skeleton key={i} className="h-10 bg-mesh-surface-1" />
-                  ))}
-                </div>
-              ) : filteredMt.length === 0 ? (
-                <div className="py-12 text-center t-small">
-                  {search ? "No matching rules." : "No NAT rules configured."}
-                </div>
-              ) : (
-                <Table>
+                <Table wrapperClassName="rounded-none border-x-0 border-b-0">
                   <TableHeader>
                     <TableRow className="border-mesh-border-strong hover:bg-transparent">
                       <TableHead className="t-micro">Type</TableHead>
                       <TableHead className="t-micro">Action</TableHead>
                       <TableHead className="t-micro">Protocol</TableHead>
-                      <TableHead className="t-micro">Src Address</TableHead>
-                      <TableHead className="t-micro">Dst Address</TableHead>
-                      <TableHead className="t-micro">Dst Port</TableHead>
+                      <TableHead className="t-micro" aria-label="Src Address">
+                        Source
+                      </TableHead>
+                      <TableHead className="t-micro" aria-label="Dst Address">
+                        Destination
+                      </TableHead>
+                      <TableHead className="t-micro" aria-label="Dst Port">
+                        Port
+                      </TableHead>
                       <TableHead className="t-micro">To Address</TableHead>
                       <TableHead className="t-micro">To Port</TableHead>
-                      <TableHead className="t-micro">Comment</TableHead>
+                      <TableHead className="t-micro" aria-label="Comment">
+                        Note
+                      </TableHead>
                       <TableHead className="t-micro">Status</TableHead>
-                      <TableHead className="text-right t-micro">Actions</TableHead>
+                      <TableHead className="text-right t-micro" aria-label="Rule controls">
+                        Ops
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
 
                   <TableBody>
-                    {filteredMt.map((rule, idx) => (
+                    {filteredMt === null ? (
+                      Array.from({ length: 4 }).map((_, i) => (
+                        <TableRow key={i} className="border-mesh-border-strong">
+                          {Array.from({ length: 11 }).map((_, j) => (
+                            <TableCell key={j}>
+                              <Skeleton className="h-4 w-20 bg-mesh-surface-1" />
+                            </TableCell>
+                          ))}
+                        </TableRow>
+                      ))
+                    ) : filteredMt.length === 0 ? (
+                      <TableEmptyRow
+                        colSpan={11}
+                        title={search ? "No matching rules" : "No NAT rules configured"}
+                        description={
+                          search
+                            ? "Adjust the filter or switch tabs to widen the rule set."
+                            : "Add a DNAT, SNAT, or 1:1 rule to populate this table."
+                        }
+                      />
+                    ) : (
+                    filteredMt.map((rule, idx) => (
                       <TableRow
                         key={rule.id ?? idx}
                         className="border-mesh-border hover:bg-mesh-surface-2/55"
@@ -449,11 +466,10 @@ export default function NatPage() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    ))
+                    )}
                   </TableBody>
                 </Table>
-              )}
-            </div>
           </CardContent>
         </Card>
 

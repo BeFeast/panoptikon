@@ -21,6 +21,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableEmptyRow,
   TableHead,
   TableHeader,
   TableRow,
@@ -31,7 +32,6 @@ import type {
   DnsQueryStats,
 } from "@/lib/types";
 import { PageTransition } from "@/components/PageTransition";
-import { EmptyState } from "@/components/mesh/state";
 import { ErrorState } from "@/components/ErrorState";
 
 type TimeRange = "1h" | "6h" | "24h" | "48h" | "7d";
@@ -349,21 +349,10 @@ export default function DnsQueriesPage() {
               ))}
             </CardContent>
           </Card>
-        ) : logData.items.length === 0 ? (
-          <EmptyState
-            icon={Globe}
-            title="No DNS queries recorded"
-            message="No queries match the selected filters. Check that DNS logging is enabled in Settings → DNS."
-            action={
-              <a href="/settings/dns" className="btn btn-primary">
-                DNS Settings
-              </a>
-            }
-          />
         ) : (
           <Card className="overflow-hidden">
             <div className="overflow-x-auto">
-              <Table>
+              <Table wrapperClassName="rounded-none border-0">
                 <TableHeader>
                   <TableRow className="border-mesh-border-strong hover:bg-transparent">
                     <TableHead className="text-mesh-text-mute">Time</TableHead>
@@ -376,7 +365,19 @@ export default function DnsQueriesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {logData.items.map((entry) => (
+                  {logData.items.length === 0 ? (
+                    <TableEmptyRow
+                      colSpan={7}
+                      title="No DNS queries recorded"
+                      description="No queries match the selected filters. Check that DNS logging is enabled in Settings > DNS."
+                      action={
+                        <a href="/settings/dns" className="btn btn-primary">
+                          DNS Settings
+                        </a>
+                      }
+                    />
+                  ) : (
+                  logData.items.map((entry) => (
                     <TableRow
                       key={entry.id}
                       className="border-mesh-border hover:bg-mesh-surface-2/55"
@@ -448,7 +449,8 @@ export default function DnsQueriesPage() {
                           : "-"}
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ))
+                  )}
                 </TableBody>
               </Table>
             </div>

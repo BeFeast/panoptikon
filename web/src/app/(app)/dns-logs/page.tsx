@@ -21,6 +21,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableEmptyRow,
   TableHead,
   TableHeader,
   TableRow,
@@ -40,7 +41,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { PageTransition } from "@/components/PageTransition";
-import { EmptyState } from "@/components/mesh/state";
 import { HelpTooltip } from "@/components/HelpTooltip";
 import {
   Tooltip,
@@ -332,21 +332,9 @@ export default function DnsLogsPage() {
             </div>
 
             {/* Query Log Table */}
-            {!loading && logData?.entries.length === 0 ? (
-              <EmptyState
-                icon={Globe}
-                title="No DNS queries recorded yet"
-                message="Configure Unbound log ingestion to start collecting per-device DNS history."
-                action={
-                  <a href="/settings/dns" className="btn btn-primary">
-                    DNS Settings
-                  </a>
-                }
-              />
-            ) : (
-            <Card>
+            <Card className="overflow-hidden">
               <CardContent className="p-0">
-                <Table>
+                <Table wrapperClassName="rounded-none border-0">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Time</TableHead>
@@ -369,6 +357,17 @@ export default function DnsLogsPage() {
                           ))}
                         </TableRow>
                       ))
+                    ) : logData?.entries.length === 0 ? (
+                      <TableEmptyRow
+                        colSpan={7}
+                        title="No DNS queries recorded yet"
+                        description="Configure Unbound log ingestion to start collecting per-device DNS history."
+                        action={
+                          <a href="/settings/dns" className="btn btn-primary">
+                            DNS Settings
+                          </a>
+                        }
+                      />
                     ) : (
                       logData?.entries.map((entry: DnsQueryLogEntry) => (
                         <TableRow key={entry.id}>
@@ -418,7 +417,6 @@ export default function DnsLogsPage() {
                 </Table>
               </CardContent>
             </Card>
-            )}
 
             {/* Pagination */}
             {totalPages > 1 && (
@@ -540,12 +538,12 @@ export default function DnsLogsPage() {
             </div>
 
             {/* Per-device Stats */}
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader>
                 <CardTitle className="text-lg">Per-Device Statistics</CardTitle>
               </CardHeader>
               <CardContent className="p-0">
-                <Table>
+                <Table wrapperClassName="rounded-none border-0">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Client IP</TableHead>
@@ -571,14 +569,11 @@ export default function DnsLogsPage() {
                         </TableRow>
                       ))
                     ) : stats?.device_stats.length === 0 ? (
-                      <TableRow>
-                        <TableCell
-                          colSpan={5}
-                          className="h-16 text-center text-muted-foreground"
-                        >
-                          No per-device data available
-                        </TableCell>
-                      </TableRow>
+                      <TableEmptyRow
+                        colSpan={5}
+                        title="No per-device data available"
+                        description="DNS query statistics will appear here after devices send traffic."
+                      />
                     ) : (
                       stats?.device_stats.map((ds) => (
                         <TableRow key={ds.client_ip}>
