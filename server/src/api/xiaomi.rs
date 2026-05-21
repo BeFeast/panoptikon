@@ -263,6 +263,33 @@ fn parse_online_value(v: &serde_json::Value) -> Option<i32> {
     }
 }
 
+/// Pick the best human-readable mesh node label from the raw MiWiFi fields.
+///
+/// MiWiFi firmware reports the satellite/main router name in **two** fields:
+///
+/// * `name`   — the radio/internal identifier. Frequently emitted as the
+///   literal string `"default"` (or empty) for satellite mesh routers that
+///   the user has not renamed via the Xiaomi app.
+/// * `locale` — the user-facing room/location label set via the Mi Home app
+///   (e.g. "Live Studio", "Basement"). Empty when the user hasn't named the
+///   node.
+///
+/// Pre-#807 we passed both fields through verbatim and the frontend rendered
+/// `locale || name`. That meant any satellite without a `locale` (which is
+/// every satellite on some BE3600 firmware paths) rendered as the literal
+/// `"default"`. This helper trims, drops the `"default"` sentinel, and
+/// returns the first usable value so the UI never shows a placeholder when a
+/// real name exists in either field.
+pub(crate) fn effective_mesh_name(name: Option<&str>, locale: Option<&str>) -> Option<String> {
+    fn clean(s: Option<&str>) -> Option<String> {
+        s.map(str::trim)
+            .filter(|v| !v.is_empty())
+            .filter(|v| !v.eq_ignore_ascii_case("default"))
+            .map(|v| v.to_string())
+    }
+    clean(locale).or_else(|| clean(name))
+}
+
 /// GET /xiaomi/topology — mesh topology graph (no auth required).
 pub async fn topology(
     State(state): State<AppState>,
@@ -291,7 +318,7 @@ pub async fn topology(
                 .into_iter()
                 .map(|n| XiaomiTopoNodeResponse {
                     mac: n.mac,
-                    name: n.name,
+                    name: effective_mesh_name(n.name.as_deref(), n.locale.as_deref()),
                     locale: n.locale,
                     ip: n.ip,
                     online: n.online,
@@ -312,7 +339,7 @@ pub async fn topology(
                     let main_online = graph.online.as_ref().and_then(parse_online_value);
                     nodes.push(XiaomiTopoNodeResponse {
                         mac: None,
-                        name: graph.name,
+                        name: effective_mesh_name(graph.name.as_deref(), graph.locale.as_deref()),
                         locale: graph.locale,
                         ip: graph.ip,
                         online: main_online,
@@ -326,7 +353,7 @@ pub async fn topology(
                     if leaf.link_type.is_some() {
                         nodes.push(XiaomiTopoNodeResponse {
                             mac: leaf.mac,
-                            name: leaf.name,
+                            name: effective_mesh_name(leaf.name.as_deref(), leaf.locale.as_deref()),
                             locale: leaf.locale,
                             ip: leaf.ip,
                             online: leaf.online,
@@ -337,7 +364,7 @@ pub async fn topology(
                         leafs_out.push(XiaomiTopoLeafResponse {
                             mac: leaf.mac,
                             ip: leaf.ip,
-                            name: leaf.name,
+                            name: effective_mesh_name(leaf.name.as_deref(), leaf.locale.as_deref()),
                             online: leaf.online,
                             parent_id: leaf.parent_id,
                         });
@@ -350,7 +377,7 @@ pub async fn topology(
                     .map(|l| XiaomiTopoLeafResponse {
                         mac: l.mac,
                         ip: l.ip,
-                        name: l.name,
+                        name: effective_mesh_name(l.name.as_deref(), l.locale.as_deref()),
                         online: l.online,
                         parent_id: l.parent_id,
                     })
@@ -852,6 +879,63 @@ mod tests {
             result.len(),
             2,
             "different SSIDs on same band must both survive"
+        );
+    }
+
+    // ── effective_mesh_name (#807) ────────────────────────
+
+    #[test]
+    fn effective_mesh_name_prefers_locale_when_name_is_default_sentinel() {
+        // Production root-cause case for #807: MiWiFi emits `name="default"`
+        // for every satellite mesh router that hasn't been renamed via the
+        // radio settings, even when the user has set a room label in
+        // `locale`. Pre-fix we showed "default" for every satellite except
+        // the one with a non-empty `locale` ("Live Studio").
+        assert_eq!(
+            effective_mesh_name(Some("default"), Some("Live Studio")),
+            Some("Live Studio".to_string()),
+        );
+    }
+
+    #[test]
+    fn effective_mesh_name_prefers_locale_case_insensitively() {
+        assert_eq!(
+            effective_mesh_name(Some("DEFAULT"), Some("Basement")),
+            Some("Basement".to_string()),
+        );
+        assert_eq!(
+            effective_mesh_name(Some("Default"), Some("Floor 2")),
+            Some("Floor 2".to_string()),
+        );
+    }
+
+    #[test]
+    fn effective_mesh_name_falls_back_to_name_when_locale_is_empty() {
+        assert_eq!(
+            effective_mesh_name(Some("OK Home"), Some("")),
+            Some("OK Home".to_string()),
+        );
+        assert_eq!(
+            effective_mesh_name(Some("OK Home"), None),
+            Some("OK Home".to_string()),
+        );
+    }
+
+    #[test]
+    fn effective_mesh_name_returns_none_when_both_fields_are_unusable() {
+        assert_eq!(effective_mesh_name(Some("default"), Some("")), None);
+        assert_eq!(effective_mesh_name(Some(""), Some("default")), None);
+        assert_eq!(effective_mesh_name(Some("default"), Some("default")), None);
+        assert_eq!(effective_mesh_name(None, None), None);
+        // Whitespace-only fields are treated as empty.
+        assert_eq!(effective_mesh_name(Some("   "), Some("\t")), None);
+    }
+
+    #[test]
+    fn effective_mesh_name_trims_surrounding_whitespace() {
+        assert_eq!(
+            effective_mesh_name(Some("default"), Some("  Live Studio  ")),
+            Some("Live Studio".to_string()),
         );
     }
 }

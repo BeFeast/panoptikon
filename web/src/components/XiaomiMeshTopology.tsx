@@ -21,6 +21,28 @@ import type { XiaomiTopology, XiaomiTopoNode, XiaomiTopoLeaf } from "@/lib/types
 
 // ─── Helpers ─────────────────────────────────────────────
 
+/**
+ * Pick the best human-readable mesh node label.
+ *
+ * MiWiFi reports a name in two fields — `locale` (user-facing room label set
+ * via the Mi Home app) and `name` (internal radio identifier). The router
+ * frequently emits the literal string `"default"` in `name` for satellites
+ * the user has not renamed via the radio settings. The backend
+ * (`effective_mesh_name` in `server/src/api/xiaomi.rs`) already strips this
+ * sentinel, but we mirror the logic here so the UI degrades gracefully if a
+ * stale build of the backend is in play (#807).
+ */
+function meshNodeLabel(node: { name?: string | null; locale?: string | null; ip?: string | null }): string {
+  const clean = (s: string | null | undefined): string | null => {
+    if (!s) return null;
+    const trimmed = s.trim();
+    if (!trimmed) return null;
+    if (trimmed.toLowerCase() === "default") return null;
+    return trimmed;
+  };
+  return clean(node.locale) ?? clean(node.name) ?? node.ip?.trim() ?? "Mesh Node";
+}
+
 /** Get leafs attached to a given node MAC. */
 function leafsForNode(
   nodeMac: string | null,
@@ -28,6 +50,222 @@ function leafsForNode(
 ): XiaomiTopoLeaf[] {
   if (!nodeMac) return [];
   return leafs.filter((l) => l.parent_id === nodeMac);
+}
+
+// ─── SVG topology map ────────────────────────────────────
+
+const SVG_W = 720;
+const SVG_H = 360;
+const SVG_CX = SVG_W / 2;
+const SVG_CY = SVG_H / 2;
+const SAT_RING = 130;
+
+interface PositionedNode {
+  node: XiaomiTopoNode;
+  isMain: boolean;
+  x: number;
+  y: number;
+  leafCount: number;
+}
+
+/**
+ * Lay out the mesh nodes radially: main router at the centre, satellites on a
+ * ring around it. Mirrors the SVG geometry used on `/topology` (Subnets tab)
+ * so the two views read as the same family.
+ */
+function layoutNodes(
+  data: XiaomiTopology,
+  mainMac: string | null,
+): PositionedNode[] {
+  const main = data.nodes.find((n) => n.mac === mainMac) ?? data.nodes[0];
+  const satellites = data.nodes.filter((n) => n !== main);
+
+  const out: PositionedNode[] = [];
+  if (main) {
+    out.push({
+      node: main,
+      isMain: true,
+      x: SVG_CX,
+      y: SVG_CY,
+      leafCount: leafsForNode(main.mac, data.leafs).length,
+    });
+  }
+  satellites.forEach((sat, i) => {
+    const angle = (2 * Math.PI * i) / Math.max(satellites.length, 1) - Math.PI / 2;
+    out.push({
+      node: sat,
+      isMain: false,
+      x: SVG_CX + Math.cos(angle) * SAT_RING,
+      y: SVG_CY + Math.sin(angle) * SAT_RING,
+      leafCount: leafsForNode(sat.mac, data.leafs).length,
+    });
+  });
+  return out;
+}
+
+function MeshTopologyMap({
+  data,
+  mainMac,
+}: {
+  data: XiaomiTopology;
+  mainMac: string | null;
+}) {
+  const positioned = useMemo(() => layoutNodes(data, mainMac), [data, mainMac]);
+  const main = positioned.find((p) => p.isMain) ?? null;
+
+  if (positioned.length === 0) return null;
+
+  return (
+    <div
+      className="mesh-card relative overflow-hidden"
+      style={{ padding: 0, height: SVG_H }}
+      data-testid="xiaomi-mesh-svg-card"
+    >
+      {/* Blueprint grid background — matches /topology canvas */}
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(96,144,212,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(96,144,212,0.08) 1px, transparent 1px)",
+          backgroundSize: "40px 40px",
+        }}
+      />
+      <div
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 50% 50%, rgba(56,189,248,0.05), transparent 60%)",
+        }}
+      />
+
+      <svg
+        viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+        role="img"
+        aria-label="Xiaomi mesh topology"
+        data-testid="xiaomi-mesh-svg"
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+        }}
+      >
+        <defs>
+          <radialGradient id="xmesh-glow" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stopColor="#38bdf8" stopOpacity="0.35" />
+            <stop offset="1" stopColor="#38bdf8" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
+        {/* Edges: main → each satellite */}
+        {main &&
+          positioned
+            .filter((p) => !p.isMain)
+            .map((sat) => (
+              <line
+                key={`edge-${sat.node.mac ?? sat.node.ip}`}
+                x1={main.x}
+                y1={main.y}
+                x2={sat.x}
+                y2={sat.y}
+                stroke="rgba(56,189,248,0.45)"
+                strokeWidth={1.2}
+                strokeDasharray="6 4"
+              />
+            ))}
+
+        {/* Nodes */}
+        {positioned.map((p) => {
+          const label = meshNodeLabel(p.node);
+          const fill = p.isMain ? "#fbbf24" : "#2563eb";
+          const stroke = p.isMain ? "#fbbf24" : "#38bdf8";
+          const r = p.isMain ? 20 : 16;
+          return (
+            <g
+              key={`node-${p.node.mac ?? p.node.ip ?? label}`}
+              transform={`translate(${p.x},${p.y})`}
+              data-testid="xiaomi-mesh-svg-node"
+              data-node-name={label}
+              data-node-role={p.isMain ? "main" : "satellite"}
+            >
+              <circle r={r + 12} fill="url(#xmesh-glow)" />
+              <rect
+                x={-r}
+                y={-r}
+                width={r * 2}
+                height={r * 2}
+                rx={4}
+                fill={fill}
+                fillOpacity={0.2}
+                stroke={stroke}
+                strokeWidth={1.5}
+              />
+              <text
+                y={-r - 8}
+                textAnchor="middle"
+                fontSize="11"
+                fill="var(--text, #e2e8f0)"
+                fontFamily="var(--font-sans)"
+                fontWeight={600}
+              >
+                {label.length > 22 ? `${label.slice(0, 21)}…` : label}
+              </text>
+              <text
+                y={r + 14}
+                textAnchor="middle"
+                fontSize="9"
+                fill="var(--text-mute, #94a3b8)"
+                fontFamily="var(--font-mono)"
+              >
+                {p.node.ip ?? "—"} · {p.node.online ?? 0} dev
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+
+      {/* Legend */}
+      <div
+        className="absolute"
+        style={{
+          bottom: 10,
+          left: 12,
+          display: "flex",
+          gap: 12,
+          padding: "6px 10px",
+          background: "rgba(6,15,37,0.85)",
+          border: "var(--hairline) solid rgba(96,144,212,0.20)",
+          borderRadius: "var(--radius-sm)",
+          font: "500 10px var(--font-mono)",
+          color: "var(--text-dim)",
+          backdropFilter: "blur(8px)",
+        }}
+      >
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              background: "#fbbf24",
+              borderRadius: 1,
+            }}
+          />
+          main router
+        </span>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <span
+            style={{
+              width: 8,
+              height: 8,
+              background: "#2563eb",
+              borderRadius: 1,
+            }}
+          />
+          satellite
+        </span>
+      </div>
+    </div>
+  );
 }
 
 // ─── Node Card ───────────────────────────────────────────
@@ -43,9 +281,14 @@ function NodeCard({
 }) {
   const connectedLeafs = leafsForNode(node.mac, leafs);
   const onlineDevices = node.online ?? 0;
+  const label = meshNodeLabel(node);
 
   return (
-    <Card className={isMain ? "ring-1 ring-[#fbbf24]/30" : undefined}>
+    <Card
+      className={isMain ? "ring-1 ring-[#fbbf24]/30" : undefined}
+      data-testid="xiaomi-mesh-node-card"
+      data-node-name={label}
+    >
       <CardHeader className="pb-3">
         <div className="flex items-center gap-3">
           <div
@@ -61,7 +304,7 @@ function NodeCard({
           </div>
           <div className="min-w-0 flex-1">
             <CardTitle className="truncate text-sm font-semibold text-mesh-text">
-              {node.locale || node.name || "Mesh Node"}
+              {label}
             </CardTitle>
             <p className="truncate font-mono text-xs text-mesh-text-dim">
               {node.ip || "No IP"}
@@ -136,7 +379,7 @@ function NodeCard({
                   className="flex items-center justify-between rounded px-1.5 py-0.5 text-[11px] hover:bg-mesh-surface-2"
                 >
                   <span className="truncate text-mesh-text">
-                    {leaf.name || leaf.mac || "Unknown"}
+                    {meshNodeLabel(leaf) || leaf.mac || "Unknown"}
                   </span>
                   <span className="shrink-0 font-mono text-mesh-text-mute">
                     {leaf.ip || "—"}
@@ -238,7 +481,7 @@ export default function XiaomiMeshTopology() {
   }, [data]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-testid="xiaomi-mesh-topology">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -325,6 +568,11 @@ export default function XiaomiMeshTopology() {
             <NodeCardSkeleton key={i} />
           ))}
         </div>
+      )}
+
+      {/* SVG topology map */}
+      {!loading && data && sortedNodes.length > 0 && (
+        <MeshTopologyMap data={data} mainMac={mainMac} />
       )}
 
       {/* Node cards */}

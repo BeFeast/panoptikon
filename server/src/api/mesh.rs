@@ -212,11 +212,8 @@ pub async fn topology(
     nodes.push(MeshNode {
         ip: graph.ip.clone(),
         mac: main_mac.clone(),
-        name: if graph.name.is_empty() {
-            graph.locale.clone()
-        } else {
-            graph.name
-        },
+        name: super::xiaomi::effective_mesh_name(Some(&graph.name), Some(&graph.locale))
+            .unwrap_or_default(),
         model: String::new(),
         hardware: graph.hardware,
         is_main: true,
@@ -246,11 +243,8 @@ pub async fn topology(
         nodes.push(MeshNode {
             ip: leaf.ip.clone(),
             mac: leaf_mac,
-            name: if leaf.name.is_empty() {
-                leaf.locale.clone()
-            } else {
-                leaf.name
-            },
+            name: super::xiaomi::effective_mesh_name(Some(&leaf.name), Some(&leaf.locale))
+                .unwrap_or_default(),
             model: String::new(),
             hardware: leaf.hardware,
             is_main: false,
