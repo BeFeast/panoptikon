@@ -19,6 +19,7 @@ import {
   fetchXiaomiWanInfo,
   fetchXiaomiLanInfo,
 } from "@/lib/api";
+import { meshNodeLabel } from "@/lib/mesh-labels";
 import {
   RouterPage,
   type RouterInterfaceRow,
@@ -163,7 +164,7 @@ export default function XiaomiRouterDesign({
     }
     for (const node of topology.data?.nodes ?? []) {
       rows.push({
-        name: node.name ?? node.mac ?? "node",
+        name: meshNodeLabel(node),
         type: "bridge",
         running: !!node.online,
         ip: node.ip ?? "—",

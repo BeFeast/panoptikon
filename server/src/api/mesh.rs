@@ -110,6 +110,30 @@ fn parse_onlines(v: &serde_json::Value) -> i32 {
     }
 }
 
+/// True for the Xiaomi locale placeholders (`default`, `node`, …) that the
+/// firmware ships before the user gives a mesh node a real label — they
+/// must not be treated as a display name.
+fn is_placeholder_label(s: &str) -> bool {
+    matches!(
+        s.trim().to_ascii_lowercase().as_str(),
+        "" | "default" | "node" | "router" | "mesh" | "unknown"
+    )
+}
+
+/// Pick the best human-readable label for a mesh node. Prefer `name` (what the
+/// user typed in the MiWiFi app for the device), fall back to `locale` only
+/// when it's not a Xiaomi placeholder like `default`. Returns the first
+/// non-placeholder candidate, or an empty string when neither qualifies.
+fn pick_mesh_label(name: &str, locale: &str) -> String {
+    if !is_placeholder_label(name) {
+        return name.to_string();
+    }
+    if !is_placeholder_label(locale) {
+        return locale.to_string();
+    }
+    String::new()
+}
+
 // ── API response types ──────────────────────────────────────
 
 /// A mesh node returned to the frontend.
@@ -212,11 +236,7 @@ pub async fn topology(
     nodes.push(MeshNode {
         ip: graph.ip.clone(),
         mac: main_mac.clone(),
-        name: if graph.name.is_empty() {
-            graph.locale.clone()
-        } else {
-            graph.name
-        },
+        name: pick_mesh_label(&graph.name, &graph.locale),
         model: String::new(),
         hardware: graph.hardware,
         is_main: true,
@@ -246,11 +266,7 @@ pub async fn topology(
         nodes.push(MeshNode {
             ip: leaf.ip.clone(),
             mac: leaf_mac,
-            name: if leaf.name.is_empty() {
-                leaf.locale.clone()
-            } else {
-                leaf.name
-            },
+            name: pick_mesh_label(&leaf.name, &leaf.locale),
             model: String::new(),
             hardware: leaf.hardware,
             is_main: false,
@@ -267,4 +283,51 @@ pub async fn topology(
         total_devices,
         nodes,
     }))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn placeholder_label_detected_case_insensitively() {
+        assert!(is_placeholder_label(""));
+        assert!(is_placeholder_label("default"));
+        assert!(is_placeholder_label("DEFAULT"));
+        assert!(is_placeholder_label("  Default  "));
+        assert!(is_placeholder_label("node"));
+        assert!(is_placeholder_label("router"));
+        assert!(is_placeholder_label("mesh"));
+        assert!(is_placeholder_label("unknown"));
+
+        assert!(!is_placeholder_label("Live Studio"));
+        assert!(!is_placeholder_label("Basement"));
+        assert!(!is_placeholder_label("master"));
+        assert!(!is_placeholder_label("slave"));
+    }
+
+    #[test]
+    fn pick_mesh_label_prefers_real_name_over_default_locale() {
+        // The screenshot bug: BE3600 firmware returns locale="default" for
+        // satellite nodes while the actual node label lives in `name`.
+        // Picking the locale first collapses every node to "default".
+        assert_eq!(pick_mesh_label("Live Studio", "default"), "Live Studio");
+        assert_eq!(pick_mesh_label("Basement", "default"), "Basement");
+        assert_eq!(pick_mesh_label("Floor 2", "default"), "Floor 2");
+    }
+
+    #[test]
+    fn pick_mesh_label_falls_back_to_locale_when_name_is_placeholder() {
+        // Older firmwares put the user-set label in `locale` (e.g. "master").
+        assert_eq!(pick_mesh_label("", "master"), "master");
+        assert_eq!(pick_mesh_label("default", "slave"), "slave");
+        assert_eq!(pick_mesh_label("router", "OK Home"), "OK Home");
+    }
+
+    #[test]
+    fn pick_mesh_label_returns_empty_when_both_are_placeholders() {
+        assert_eq!(pick_mesh_label("default", "default"), "");
+        assert_eq!(pick_mesh_label("", ""), "");
+        assert_eq!(pick_mesh_label("router", "node"), "");
+    }
 }
