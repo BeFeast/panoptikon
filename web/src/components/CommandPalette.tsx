@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Command } from 'cmdk'
 import {
@@ -57,18 +57,34 @@ export function CommandPalette() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResults>(EMPTY_RESULTS)
   const [scanning, setScanning] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   // ── Global Cmd+K / Ctrl+K listener ──
+  // Toggles the dialog open/closed. Fires regardless of focused element so the
+  // shortcut works from text inputs (Linear/GitHub/Slack convention). Uses
+  // case-insensitive match so Shift+Cmd+K still triggers.
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'k') {
         e.preventDefault()
+        e.stopPropagation()
         setOpen((prev) => !prev)
       }
     }
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
+
+  // Belt-and-braces: cmdk's autoFocus normally focuses the input, but Radix
+  // focus-trap timing can briefly hand focus to the dialog root first. Force
+  // focus to the input whenever the dialog opens.
+  useEffect(() => {
+    if (!open) return
+    const id = requestAnimationFrame(() => {
+      inputRef.current?.focus()
+    })
+    return () => cancelAnimationFrame(id)
+  }, [open])
 
   // ── Reset state when closed ──
   useEffect(() => {
@@ -147,6 +163,7 @@ export function CommandPalette() {
       <div className="flex items-center gap-3 border-b border-mesh-border-strong px-4 py-3">
         <Search className="h-5 w-5 shrink-0 text-mesh-text-dim" />
         <Command.Input
+          ref={inputRef}
           value={query}
           onValueChange={setQuery}
           placeholder="Search pages, devices, actions…"
