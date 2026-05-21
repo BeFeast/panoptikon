@@ -20,6 +20,9 @@ import {
 } from "@/lib/api";
 import {
   RouterPage,
+  RouterInterfacesPanel,
+  RouterFirewallPanel,
+  RouterDhcpPanel,
   type RouterFirewallRow,
   type RouterDhcpRow,
   type RouterInterfaceRow,
@@ -29,6 +32,11 @@ import {
 } from "@/components/router/RouterPage";
 import type { RouterTab } from "@/components/router/RouterTabs";
 import type { RouterHeaderMeta } from "@/components/router/RouterHeader";
+import { SystemTab } from "@/components/pfsense/tabs/SystemTab";
+import { DnsTab } from "@/components/pfsense/tabs/DnsTab";
+import { ServicesTab } from "@/components/pfsense/tabs/ServicesTab";
+import { RoutingTab } from "@/components/pfsense/tabs/RoutingTab";
+import { ConfigTab } from "@/components/pfsense/tabs/ConfigTab";
 
 const PFSENSE_TABS: RouterTab[] = [
   { id: "system", label: "System" },
@@ -184,6 +192,99 @@ export default function PfSenseRouterDesign({
     ? `pfSense · ${status.data.hostname}`
     : "pfSense Firewall";
 
+  const interfacesTotalsLabel =
+    totalIfaces > 0
+      ? `${totalIfaces} total · ${runningIfaces} up · ${downIfaces} down`
+      : interfaces.loading
+        ? "loading…"
+        : "no data";
+
+  const firewallSection = {
+    rules: fwRows,
+    label:
+      fwRows.length > 0
+        ? `${fwRows.length} rules · ${disabledRules} disabled`
+        : rules.loading
+          ? "loading…"
+          : "no rules",
+  };
+
+  const dhcpSection = {
+    leases: dhcpRows,
+    label:
+      dhcpRows.length > 0
+        ? `${dhcpRows.length} · ${staticLeases} static`
+        : leases.loading
+          ? "loading…"
+          : "no leases",
+  };
+
+  const tabPanels = (() => {
+    switch (activeTab) {
+      case "system":
+        return status.data ? (
+          <div data-testid="router-tabpanel-system">
+            <SystemTab status={status.data} />
+          </div>
+        ) : (
+          <div
+            data-testid="router-tabpanel-system"
+            className="mono"
+            style={{ color: "var(--text-mute)", padding: 14 }}
+          >
+            {status.loading ? "loading…" : "no system data"}
+          </div>
+        );
+      case "interfaces":
+        return (
+          <div data-testid="router-tabpanel-interfaces">
+            <RouterInterfacesPanel
+              interfaces={ifaceRows}
+              interfacesTotalsLabel={interfacesTotalsLabel}
+            />
+          </div>
+        );
+      case "firewall":
+        return (
+          <div data-testid="router-tabpanel-firewall">
+            <RouterFirewallPanel firewall={firewallSection} />
+          </div>
+        );
+      case "dhcp":
+        return (
+          <div data-testid="router-tabpanel-dhcp">
+            <RouterDhcpPanel dhcp={dhcpSection} />
+          </div>
+        );
+      case "dns":
+        return (
+          <div data-testid="router-tabpanel-dns">
+            <DnsTab />
+          </div>
+        );
+      case "services":
+        return (
+          <div data-testid="router-tabpanel-services">
+            <ServicesTab />
+          </div>
+        );
+      case "routing":
+        return (
+          <div data-testid="router-tabpanel-routing">
+            <RoutingTab />
+          </div>
+        );
+      case "config":
+        return (
+          <div data-testid="router-tabpanel-config">
+            <ConfigTab />
+          </div>
+        );
+      default:
+        return null;
+    }
+  })();
+
   return (
     <RouterPage
       headerTitle={title}
@@ -197,31 +298,10 @@ export default function PfSenseRouterDesign({
       activeTab={activeTab}
       onTabChange={onTabChange}
       interfaces={ifaceRows}
-      interfacesTotalsLabel={
-        totalIfaces > 0
-          ? `${totalIfaces} total · ${runningIfaces} up · ${downIfaces} down`
-          : interfaces.loading
-            ? "loading…"
-            : "no data"
-      }
-      firewall={{
-        rules: fwRows,
-        label:
-          fwRows.length > 0
-            ? `${fwRows.length} rules · ${disabledRules} disabled`
-            : rules.loading
-              ? "loading…"
-              : "no rules",
-      }}
-      dhcp={{
-        leases: dhcpRows,
-        label:
-          dhcpRows.length > 0
-            ? `${dhcpRows.length} · ${staticLeases} static`
-            : leases.loading
-              ? "loading…"
-              : "no leases",
-      }}
+      interfacesTotalsLabel={interfacesTotalsLabel}
+      firewall={firewallSection}
+      dhcp={dhcpSection}
+      tabPanels={tabPanels}
       footer={{
         snapshotLabel: "Live pfSense state",
         driftLabel: status.data?.domain
