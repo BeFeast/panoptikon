@@ -415,9 +415,11 @@
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   height: 28px;
   padding: 0 12px;
+  box-sizing: border-box;
   border-radius: var(--radius-sm);
   border: var(--hairline) solid var(--border-strong);
   background: var(--surface-2);
@@ -428,6 +430,10 @@
     background var(--motion-fast),
     border-color var(--motion-fast),
     transform var(--motion-fast);
+}
+.btn:focus-visible {
+  outline: 2px solid rgba(56, 189, 248, 0.80);
+  outline-offset: 2px;
 }
 .btn:hover {
   background: var(--surface-3);
@@ -453,6 +459,10 @@
   color: var(--text);
   background: var(--surface-2);
 }
+.btn-ghost:focus-visible {
+  color: var(--text);
+  background: var(--surface-2);
+}
 .btn-sm {
   height: 24px;
   padding: 0 9px;
@@ -462,6 +472,53 @@
   height: 36px;
   padding: 0 16px;
   font-size: 13px;
+}
+
+.topbar-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.topbar-icon-button {
+  position: relative;
+  width: 28px;
+  min-width: 28px;
+  max-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  padding: 0;
+  flex: 0 0 28px;
+  overflow: visible;
+  transform: none;
+}
+
+.topbar-icon-button:hover,
+.topbar-icon-button:focus-visible,
+.topbar-icon-button:active {
+  width: 28px;
+  min-width: 28px;
+  max-width: 28px;
+  height: 28px;
+  min-height: 28px;
+  max-height: 28px;
+  padding: 0;
+  transform: none;
+}
+
+.topbar-notification-control {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+}
+
+@media (max-width: 520px) {
+  .topbar-live-status {
+    display: none !important;
+  }
 }
 
 /* ── Type scale — literal port of base.css 47-54 ──
