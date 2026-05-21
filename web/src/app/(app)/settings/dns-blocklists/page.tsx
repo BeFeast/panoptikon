@@ -34,6 +34,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableEmptyRow,
   TableHead,
   TableHeader,
   TableRow,
@@ -363,9 +364,9 @@ export default function DnsBlocklistsPage() {
           </TabsList>
 
           <TabsContent value="blocklists" className="mt-4">
-            <Card className="">
+            <Card className="overflow-hidden">
               <CardContent className="p-0">
-                <Table>
+                <Table wrapperClassName="rounded-none border-0">
                   <TableHeader>
                     <TableRow className="border-mesh-border-strong hover:bg-transparent">
                       <TableHead className="text-mesh-text-dim">Name</TableHead>
@@ -389,11 +390,15 @@ export default function DnsBlocklistsPage() {
                         </TableRow>
                       ))
                     ) : filteredLists.length === 0 ? (
-                      <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                        <TableCell colSpan={6} className="py-12 text-center text-mesh-text-mute">
-                          {search ? "No blocklists match your filter." : "No blocklists configured yet. Add one to start blocking ads and trackers."}
-                        </TableCell>
-                      </TableRow>
+                      <TableEmptyRow
+                        colSpan={6}
+                        title={search ? "No blocklists match your filter" : "No blocklists configured yet"}
+                        description={
+                          search
+                            ? "Clear the filter to show all DNS blocklists."
+                            : "Add one to start blocking ads and trackers."
+                        }
+                      />
                     ) : (
                       filteredLists.map((bl) => (
                         <TableRow key={bl.id} className="border-mesh-border hover:bg-mesh-surface-2/55">
@@ -474,9 +479,9 @@ export default function DnsBlocklistsPage() {
                 Add Override
               </Button>
             </div>
-            <Card className="">
+            <Card className="overflow-hidden">
               <CardContent className="p-0">
-                <Table>
+                <Table wrapperClassName="rounded-none border-0">
                   <TableHeader>
                     <TableRow className="border-mesh-border-strong hover:bg-transparent">
                       <TableHead className="text-mesh-text-dim">Domain</TableHead>
@@ -496,11 +501,15 @@ export default function DnsBlocklistsPage() {
                         </TableRow>
                       ))
                     ) : filteredOverrides.length === 0 ? (
-                      <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                        <TableCell colSpan={4} className="py-12 text-center text-mesh-text-mute">
-                          {search ? "No overrides match your filter." : "No domain overrides configured. Whitelist domains to allow them through, or blacklist specific domains."}
-                        </TableCell>
-                      </TableRow>
+                      <TableEmptyRow
+                        colSpan={4}
+                        title={search ? "No overrides match your filter" : "No domain overrides configured"}
+                        description={
+                          search
+                            ? "Clear the filter to show all domain overrides."
+                            : "Whitelist domains to allow them through, or blacklist specific domains."
+                        }
+                      />
                     ) : (
                       filteredOverrides.map((ovr) => (
                         <TableRow key={ovr.id} className="border-mesh-border hover:bg-mesh-surface-2/55">

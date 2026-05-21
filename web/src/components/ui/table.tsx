@@ -2,18 +2,26 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-const Table = React.forwardRef<
-  HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto rounded-lg border border-mesh-border-strong">
-    <table
-      ref={ref}
-      className={cn("w-full caption-bottom text-xs tabular-nums", className)}
-      {...props}
-    />
-  </div>
-))
+type TableProps = React.HTMLAttributes<HTMLTableElement> & {
+  wrapperClassName?: string
+}
+
+const Table = React.forwardRef<HTMLTableElement, TableProps>(
+  ({ className, wrapperClassName, ...props }, ref) => (
+    <div
+      className={cn(
+        "relative w-full overflow-auto rounded-md border border-mesh-border-strong",
+        wrapperClassName
+      )}
+    >
+      <table
+        ref={ref}
+        className={cn("w-full caption-bottom text-xs tabular-nums", className)}
+        {...props}
+      />
+    </div>
+  )
+)
 Table.displayName = "Table"
 
 const TableHeader = React.forwardRef<
@@ -105,6 +113,36 @@ const TableCaption = React.forwardRef<
 ))
 TableCaption.displayName = "TableCaption"
 
+function TableEmptyRow({
+  colSpan,
+  title,
+  description,
+  action,
+}: {
+  colSpan: number
+  title: React.ReactNode
+  description?: React.ReactNode
+  action?: React.ReactNode
+}) {
+  return (
+    <TableRow className="hover:bg-transparent">
+      <TableCell colSpan={colSpan} className="px-4 py-6 text-center">
+        <div className="mx-auto flex max-w-md flex-col items-center gap-1.5">
+          <p className="text-xs font-semibold uppercase tracking-[0.04em] text-mesh-text-dim">
+            {title}
+          </p>
+          {description ? (
+            <p className="text-xs leading-relaxed text-mesh-text-mute">
+              {description}
+            </p>
+          ) : null}
+          {action ? <div className="mt-2">{action}</div> : null}
+        </div>
+      </TableCell>
+    </TableRow>
+  )
+}
+
 export {
   Table,
   TableHeader,
@@ -114,4 +152,5 @@ export {
   TableRow,
   TableCell,
   TableCaption,
+  TableEmptyRow,
 }

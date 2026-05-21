@@ -28,6 +28,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableEmptyRow,
   TableHead,
   TableHeader,
   TableRow,
@@ -235,9 +236,9 @@ export default function DnsSettingsPage() {
         </div>
 
         {/* Table */}
-        <Card className="">
+        <Card className="overflow-hidden">
           <CardContent className="p-0">
-            <Table>
+            <Table wrapperClassName="rounded-none border-0">
               <TableHeader>
                 <TableRow className="border-mesh-border-strong hover:bg-transparent">
                   <TableHead className="text-mesh-text-dim">Hostname</TableHead>
@@ -267,16 +268,15 @@ export default function DnsSettingsPage() {
                     </TableRow>
                   ))
                 ) : filtered.length === 0 ? (
-                  <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                    <TableCell
-                      colSpan={4}
-                      className="py-12 text-center text-mesh-text-mute"
-                    >
-                      {search
-                        ? "No records match your filter."
-                        : "No DNS records configured yet."}
-                    </TableCell>
-                  </TableRow>
+                  <TableEmptyRow
+                    colSpan={4}
+                    title={search ? "No records match your filter" : "No DNS records configured yet"}
+                    description={
+                      search
+                        ? "Clear the filter to show all static DNS records."
+                        : "Add a hostname and IP address to populate this table."
+                    }
+                  />
                 ) : (
                   filtered.map((record) => (
                     <TableRow

@@ -29,6 +29,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableEmptyRow,
   TableHead,
   TableHeader,
   TableRow,
@@ -286,7 +287,7 @@ export default function QosPage() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-4 pt-2">
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader>
                 <CardTitle className="t-h3">Traffic Shaping Overview</CardTitle>
                 <CardDescription className="t-small">
@@ -366,11 +367,7 @@ export default function QosPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <div
-                  className="overflow-x-auto"
-                  style={{ borderTop: "1px solid rgba(96,144,212,0.20)" }}
-                >
-                  <Table>
+                  <Table wrapperClassName="rounded-none border-x-0 border-b-0">
                     <TableHeader>
                       <TableRow className="border-mesh-border-strong hover:bg-transparent">
                         <TableHead className="t-micro">Name</TableHead>
@@ -395,11 +392,15 @@ export default function QosPage() {
                           </TableRow>
                         ))
                       ) : filteredMtQueues.length === 0 ? (
-                        <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                          <TableCell colSpan={7} className="py-12 text-center t-small">
-                            {search ? "No queues match your filter." : "No simple queues configured."}
-                          </TableCell>
-                        </TableRow>
+                        <TableEmptyRow
+                          colSpan={7}
+                          title={search ? "No queues match your filter" : "No simple queues configured"}
+                          description={
+                            search
+                              ? "Clear the filter to show all simple queues."
+                              : "Add a queue to define per-target bandwidth limits."
+                          }
+                        />
                       ) : (
                         filteredMtQueues.map((queue) => (
                           <TableRow
@@ -460,12 +461,11 @@ export default function QosPage() {
                       )}
                     </TableBody>
                   </Table>
-                </div>
               </CardContent>
             </Card>
 
             {/* Queue Tree Table */}
-            <Card>
+            <Card className="overflow-hidden">
               <CardHeader className="pb-3">
                 <CardTitle className="t-h3">Queue Tree</CardTitle>
                 <CardDescription className="t-small">
@@ -473,11 +473,7 @@ export default function QosPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <div
-                  className="overflow-x-auto"
-                  style={{ borderTop: "1px solid rgba(96,144,212,0.20)" }}
-                >
-                  <Table>
+                  <Table wrapperClassName="rounded-none border-x-0 border-b-0">
                     <TableHeader>
                       <TableRow className="border-mesh-border-strong hover:bg-transparent">
                         <TableHead className="t-micro">Name</TableHead>
@@ -503,11 +499,15 @@ export default function QosPage() {
                           </TableRow>
                         ))
                       ) : filteredMtTree.length === 0 ? (
-                        <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                          <TableCell colSpan={8} className="py-12 text-center t-small">
-                            {search ? "No tree entries match your filter." : "No queue tree entries."}
-                          </TableCell>
-                        </TableRow>
+                        <TableEmptyRow
+                          colSpan={8}
+                          title={search ? "No tree entries match your filter" : "No queue tree entries"}
+                          description={
+                            search
+                              ? "Clear the filter to show all queue tree entries."
+                              : "Add a tree entry to shape packet-marked traffic."
+                          }
+                        />
                       ) : (
                         filteredMtTree.map((entry) => (
                           <TableRow
@@ -569,7 +569,6 @@ export default function QosPage() {
                       )}
                     </TableBody>
                   </Table>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>

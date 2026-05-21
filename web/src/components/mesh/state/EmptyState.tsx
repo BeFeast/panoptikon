@@ -61,7 +61,7 @@ export function EmptyState({
         background: "hsl(var(--card))",
         border: "1px solid hsl(var(--border))",
         borderRadius: "var(--radius)",
-        padding: inline ? 20 : 36,
+        padding: inline ? 16 : 24,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -72,7 +72,7 @@ export function EmptyState({
       {IconOverride ? (
         <IconOverride
           aria-hidden="true"
-          size={inline ? 22 : 28}
+          size={inline ? 20 : 24}
           color="#38bdf8"
           strokeWidth={1.5}
         />
@@ -136,9 +136,9 @@ export function EmptyState({
 function EmptyBlueprint() {
   return (
     <svg
-      width="120"
-      height="80"
-      viewBox="0 0 120 80"
+      width="96"
+      height="56"
+      viewBox="0 0 96 56"
       aria-hidden="true"
       focusable="false"
       data-component="mesh-empty-blueprint"
@@ -158,17 +158,17 @@ function EmptyBlueprint() {
           />
         </pattern>
       </defs>
-      <rect width="120" height="80" fill="url(#mesh-empty-grid)" />
+      <rect width="96" height="56" fill="url(#mesh-empty-grid)" />
       <circle
-        cx="60"
-        cy="40"
+        cx="48"
+        cy="28"
         r="14"
         fill="#091633"
         stroke="#38bdf8"
         strokeWidth="1"
         strokeDasharray="2 3"
       />
-      <circle cx="60" cy="40" r="3" fill="#38bdf8" />
+      <circle cx="48" cy="28" r="3" fill="#38bdf8" />
     </svg>
   );
 }

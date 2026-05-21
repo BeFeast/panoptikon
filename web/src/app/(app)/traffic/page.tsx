@@ -27,6 +27,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableEmptyRow,
   TableHead,
   TableHeader,
   TableRow,
@@ -34,7 +35,6 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageTransition } from "@/components/PageTransition";
 import { HelpTooltip } from "@/components/HelpTooltip";
-import { EmptyState } from "@/components/EmptyState";
 import { downloadExport } from "@/lib/export";
 import { DeviceTrafficChart } from "@/components/DeviceTrafficChart";
 
@@ -271,7 +271,7 @@ export default function TrafficPage() {
         )}
 
         {/* Top Devices by Bandwidth */}
-        <Card>
+        <Card className="overflow-hidden">
           <div className="px-4 py-3" style={{ borderBottom: "1px solid rgba(96,144,212,0.20)" }}>
             <h2 className="t-h3">
               Top Devices by Bandwidth
@@ -281,7 +281,7 @@ export default function TrafficPage() {
             </h2>
           </div>
           {loading && topDevices.length === 0 ? (
-            <Table>
+            <Table wrapperClassName="rounded-none border-x-0 border-b-0">
               <TableHeader>
                 <TableRow className="border-mesh-border-strong hover:bg-transparent">
                   <TableHead className="t-micro">Device</TableHead>
@@ -301,16 +301,8 @@ export default function TrafficPage() {
                 ))}
               </TableBody>
             </Table>
-          ) : topDevices.length === 0 ? (
-            <EmptyState
-              icon={Activity}
-              title="No traffic data"
-              description="No active devices with bandwidth usage. Make sure NetFlow/sFlow is configured in Settings."
-              actionLabel="Traffic Settings"
-              actionHref="/settings/router"
-            />
           ) : (
-            <Table>
+            <Table wrapperClassName="rounded-none border-x-0 border-b-0">
               <TableHeader>
                 <TableRow className="border-mesh-border-strong hover:bg-transparent">
                   <TableHead className="t-micro">Device</TableHead>
@@ -320,7 +312,19 @@ export default function TrafficPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {topDevices.map((d) => (
+                {topDevices.length === 0 ? (
+                  <TableEmptyRow
+                    colSpan={4}
+                    title="No traffic data"
+                    description="No active devices with bandwidth usage. Make sure NetFlow or sFlow is configured in Settings."
+                    action={
+                      <a href="/settings/router" className="btn btn-primary">
+                        Traffic Settings
+                      </a>
+                    }
+                  />
+                ) : (
+                topDevices.map((d) => (
                   <TableRow
                     key={d.id}
                     className={`border-mesh-border cursor-pointer ${
@@ -347,7 +351,8 @@ export default function TrafficPage() {
                       {formatBps(d.tx_bps)}
                     </TableCell>
                   </TableRow>
-                ))}
+                ))
+                )}
               </TableBody>
             </Table>
           )}

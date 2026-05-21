@@ -24,6 +24,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  TableEmptyRow,
   TableHead,
   TableHeader,
   TableRow,
@@ -233,7 +234,7 @@ export default function DnsSecurityPage() {
                   </Button>
                 </div>
 
-                <Table>
+                <Table wrapperClassName="rounded-md">
                   <TableHeader>
                     <TableRow className="border-mesh-border-strong hover:bg-transparent">
                       <TableHead className="text-mesh-text-dim">Name</TableHead>
@@ -247,15 +248,11 @@ export default function DnsSecurityPage() {
                   </TableHeader>
                   <TableBody>
                     {settings.dot_servers.length === 0 ? (
-                      <TableRow className="border-mesh-border-strong hover:bg-transparent">
-                        <TableCell
-                          colSpan={5}
-                          className="py-8 text-center text-mesh-text-mute"
-                        >
-                          No DoT upstream servers configured. Add a server to
-                          encrypt DNS queries.
-                        </TableCell>
-                      </TableRow>
+                      <TableEmptyRow
+                        colSpan={5}
+                        title="No DoT upstream servers configured"
+                        description="Add a server to encrypt DNS queries."
+                      />
                     ) : (
                       settings.dot_servers.map((server, index) => (
                         <TableRow
