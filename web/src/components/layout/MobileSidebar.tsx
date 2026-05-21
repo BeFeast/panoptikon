@@ -13,6 +13,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useWsConnected } from "@/components/providers/WebSocketProvider";
+import { BrandMark } from "@/components/brand/BrandMark";
 
 function formatUptime(seconds: number | null): string {
   if (seconds == null || seconds < 0) return "—";
@@ -52,10 +53,8 @@ export function MobileSidebar() {
           <SheetTitle className="sr-only">Navigation</SheetTitle>
           {/* Logo */}
           <div className="flex h-14 shrink-0 items-center border-b border-mesh-border-strong px-4">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-mesh-accent/40 bg-mesh-accent/12 text-sm font-bold text-mesh-accent">
-              P
-            </div>
-            <span className="ml-2 text-lg font-semibold text-white">
+            <BrandMark size={30} className="text-mesh-accent" />
+            <span className="ml-2 font-mono text-[13px] font-semibold uppercase tracking-[0.08em] text-white">
               Panoptikon
             </span>
           </div>

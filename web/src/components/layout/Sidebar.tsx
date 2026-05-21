@@ -98,6 +98,7 @@ export const navGroups: NavGroup[] = [
       { href: "/dns-queries", label: "DNS queries", icon: SearchIcon },
       { href: "/certificates", label: "Certificates", icon: Shield },
       { href: "/caddy", label: "Caddy", icon: Server },
+      { href: "/vpn-status", label: "VPN status", icon: Shield },
       { href: "/cloudflare-tunnel", label: "Cloudflare tunnel", icon: Cloud },
       { href: "/services", label: "Services", icon: Share2 },
     ],

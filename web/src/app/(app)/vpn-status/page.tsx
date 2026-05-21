@@ -156,14 +156,14 @@ export default function VpnStatusPage() {
 
   return (
     <PageTransition>
-      <div className="space-y-6">
+      <div data-testid="vpn-status-root" className="space-y-4">
         {/* ─── Page header ─────────────────────────────── */}
-        <section className="flex flex-col gap-4 border-b border-mesh-border pb-5 md:flex-row md:items-end md:justify-between">
+        <section className="flex flex-col gap-4 border-b border-mesh-border pb-4 md:flex-row md:items-end md:justify-between">
           <div className="flex items-center gap-3">
             <Shield className="h-5 w-5 text-mesh-accent" />
             <div>
               <p className={meshSectionTitle}>Network · secure overlay</p>
-              <h1 className="t-h1 mt-1 text-mesh-text">VPN status</h1>
+              <h1 className="t-h1 mt-1 text-mesh-text">VPN Status</h1>
               <p className="mt-1 font-mono text-xs text-mesh-text-mute">
                 {subtitle}
               </p>
@@ -177,7 +177,7 @@ export default function VpnStatusPage() {
         </section>
 
         {/* ─── KPI row ─────────────────────────────────── */}
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
             label="Interfaces"
             value={data ? overviewInterfaces.length.toString() : null}
@@ -234,7 +234,7 @@ export default function VpnStatusPage() {
           </TabsList>
 
           {/* ─── Overview tab ─────────────────────────── */}
-          <TabsContent value="overview" className="space-y-4 pt-4">
+          <TabsContent value="overview" className="space-y-3 pt-3">
             <Card>
               <CardHeader className="pb-3">
                 <div className="flex items-center gap-2">
@@ -348,7 +348,7 @@ export default function VpnStatusPage() {
           </TabsContent>
 
           {/* ─── MikroTik / WireGuard tab ─────────────── */}
-          <TabsContent value="mikrotik" className="space-y-4 pt-4">
+          <TabsContent value="mikrotik" className="space-y-3 pt-3">
             <FilterInput
               value={search}
               onChange={setSearch}
@@ -383,7 +383,7 @@ export default function VpnStatusPage() {
           </TabsContent>
 
           {/* ─── OpenVPN tab ──────────────────────────── */}
-          <TabsContent value="openvpn" className="space-y-4 pt-4">
+          <TabsContent value="openvpn" className="space-y-3 pt-3">
             <FilterInput
               value={search}
               onChange={setSearch}
@@ -443,18 +443,18 @@ function SummaryCard({
     accent === "emerald" ? "text-[#4ade80]" : "text-white";
 
   return (
-    <Card className="h-full min-h-[8.25rem]">
-      <CardHeader className="flex flex-row items-start justify-between pb-3">
+    <Card className="h-full min-h-[6.5rem]">
+      <CardHeader className="flex flex-row items-start justify-between p-3 pb-2">
         <CardTitle className={meshSectionTitle}>{label}</CardTitle>
         <span className="text-mesh-accent">{icon}</span>
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-1.5 p-3 pt-0">
         {loading ? (
           <Skeleton className="h-7 w-24" />
         ) : (
           <p
             className={cn(
-              "truncate text-[1.65rem] font-semibold leading-none tabular-nums",
+              "truncate text-[1.45rem] font-semibold leading-none tabular-nums",
               valueClass,
             )}
           >
@@ -510,7 +510,7 @@ function EmptyState({
 }) {
   return (
     <Card>
-      <CardContent className="flex flex-col items-center justify-center gap-3 py-16 text-center">
+      <CardContent className="flex flex-col items-center justify-center gap-3 py-12 text-center">
         <Icon className="h-10 w-10 text-mesh-text-faint/80" />
         <p className="text-sm text-mesh-text">{title}</p>
         <p className="max-w-md text-sm text-mesh-text-dim">{message}</p>
@@ -527,7 +527,7 @@ function EmptyState({
 function InterfaceSkeleton() {
   return (
     <Card>
-      <CardHeader className="space-y-3 pb-3">
+      <CardHeader className="space-y-3 p-3 pb-3">
         <div className="flex items-center gap-2">
           <Skeleton className="h-4 w-32" />
           <Skeleton className="h-5 w-12" />
@@ -593,7 +593,7 @@ function InterfaceCard({ iface }: { iface: VpnInterfaceStatus }) {
 
   return (
     <Card>
-      <CardHeader className="space-y-3 pb-3">
+      <CardHeader className="space-y-3 p-3 pb-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <Cable className="h-4 w-4 text-mesh-accent" />
