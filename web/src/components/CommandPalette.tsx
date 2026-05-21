@@ -59,15 +59,20 @@ export function CommandPalette() {
   const [scanning, setScanning] = useState(false)
 
   // ── Global Cmd+K / Ctrl+K listener ──
+  // Captures the shortcut at the window level so it fires consistently
+  // regardless of where focus is (sidebar search, settings page input, etc.).
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-        e.preventDefault()
-        setOpen((prev) => !prev)
-      }
+      if (e.key.toLowerCase() !== 'k') return
+      if (!(e.metaKey || e.ctrlKey)) return
+      // Ignore Cmd+Shift+K / Cmd+Alt+K — those are reserved for browser tools.
+      if (e.shiftKey || e.altKey) return
+      e.preventDefault()
+      e.stopPropagation()
+      setOpen((prev) => !prev)
     }
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   // ── Reset state when closed ──

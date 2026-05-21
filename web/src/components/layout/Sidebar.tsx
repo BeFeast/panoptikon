@@ -560,17 +560,6 @@ function SidebarSearch() {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  useEffect(() => {
-    function onHotkey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    }
-    window.addEventListener("keydown", onHotkey);
-    return () => window.removeEventListener("keydown", onHotkey);
-  }, []);
-
   const flatItems = useMemo(() => {
     if (!results) return [] as Array<{ type: string; id: string; label: string }>;
     const items: Array<{ type: string; id: string; label: string }> = [];
