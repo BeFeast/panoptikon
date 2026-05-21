@@ -1,179 +1,111 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import {
-  Crown,
-  MonitorSmartphone,
-  RefreshCw,
-  Router,
-  Wifi,
-} from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Crown, RefreshCw, Router, Wifi, Cable } from "lucide-react";
 import { fetchXiaomiTopology } from "@/lib/api";
 import type { XiaomiTopology, XiaomiTopoNode, XiaomiTopoLeaf } from "@/lib/types";
 
-// ─── Helpers ─────────────────────────────────────────────
-
-/** Get leafs attached to a given node MAC. */
-function leafsForNode(
-  nodeMac: string | null,
-  leafs: XiaomiTopoLeaf[],
-): XiaomiTopoLeaf[] {
-  if (!nodeMac) return [];
-  return leafs.filter((l) => l.parent_id === nodeMac);
+// ─── Name resolution ─────────────────────────────────────
+//
+// Issue #807: Xiaomi mesh satellites that were never renamed in the router
+// admin send `name: "default"`. The backend now strips that placeholder, so
+// `node.name` arrives as `null` when the user has not customized it. Resolve
+// to the next most-specific identifier instead of rendering a wall of
+// "Mesh Node" cards.
+function resolveNodeLabel(node: XiaomiTopoNode, fallbackIndex: number): string {
+  const candidates = [node.name, node.locale, node.ip, node.mac];
+  for (const c of candidates) {
+    if (c && c.trim()) return c;
+  }
+  return node.is_main ? "Main Router" : `Satellite ${fallbackIndex + 1}`;
 }
 
-// ─── Node Card ───────────────────────────────────────────
+function resolveLeafLabel(leaf: XiaomiTopoLeaf): string {
+  const candidates = [leaf.name, leaf.ip, leaf.mac];
+  for (const c of candidates) {
+    if (c && c.trim()) return c;
+  }
+  return "Unknown";
+}
 
-function NodeCard({
-  node,
-  leafs,
-  isMain,
-}: {
+function roleLabel(node: XiaomiTopoNode): string {
+  if (node.is_main || node.role === "main") return "Main";
+  const backhaul = (node.backhaul || "").toLowerCase();
+  if (backhaul === "wired" || backhaul === "wire") return "Satellite · Wired";
+  if (backhaul === "wireless" || backhaul === "wifi") return "Satellite · Wi-Fi";
+  // Legacy locale-as-role fallback ("master"/"slave" from older firmware).
+  if (node.locale && node.locale.trim()) {
+    return `Satellite · ${node.locale}`;
+  }
+  return "Satellite";
+}
+
+// ─── SVG layout ──────────────────────────────────────────
+//
+// Compact radial layout: main router at center, satellites arranged on a ring
+// around it. Tuned for the topology-page Mesh tab (lives inside a scroll
+// container, so we cap height around 480px) but the viewBox scales.
+
+const VIEW_W = 720;
+const VIEW_H = 480;
+const CENTER_X = VIEW_W / 2;
+const CENTER_Y = VIEW_H / 2;
+const SAT_RING_R = 160;
+const MAIN_RECT_W = 168;
+const MAIN_RECT_H = 64;
+const SAT_RECT_W = 148;
+const SAT_RECT_H = 58;
+
+interface PositionedNode {
   node: XiaomiTopoNode;
+  x: number;
+  y: number;
   leafs: XiaomiTopoLeaf[];
-  isMain: boolean;
-}) {
-  const connectedLeafs = leafsForNode(node.mac, leafs);
-  const onlineDevices = node.online ?? 0;
-
-  return (
-    <Card className={isMain ? "ring-1 ring-[#fbbf24]/30" : undefined}>
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-3">
-          <div
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
-              isMain ? "bg-[#fbbf24]/20" : "bg-mesh-primary/20"
-            }`}
-          >
-            {isMain ? (
-              <Crown className="h-5 w-5 text-[#fbbf24]" />
-            ) : (
-              <Router className="h-5 w-5 text-mesh-primary" />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <CardTitle className="truncate text-sm font-semibold text-mesh-text">
-              {node.locale || node.name || "Mesh Node"}
-            </CardTitle>
-            <p className="truncate font-mono text-xs text-mesh-text-dim">
-              {node.ip || "No IP"}
-            </p>
-          </div>
-          <span
-            className={`inline-block h-2.5 w-2.5 shrink-0 rounded-full ${
-              node.ip
-                ? "bg-[#4ade80] shadow-[0_0_6px_rgba(74,222,128,0.5)]"
-                : "bg-mesh-text-mute"
-            }`}
-          />
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {/* Stats row */}
-        <div className="flex flex-wrap items-center gap-3 text-xs text-mesh-text-dim">
-          <span className="flex items-center gap-1.5">
-            <MonitorSmartphone className="h-3.5 w-3.5" />
-            {onlineDevices} device{onlineDevices !== 1 ? "s" : ""} online
-          </span>
-          {connectedLeafs.length > 0 && (
-            <span className="flex items-center gap-1.5">
-              <Wifi className="h-3.5 w-3.5" />
-              {connectedLeafs.length} connected
-            </span>
-          )}
-        </div>
-
-        {/* Badges */}
-        <div className="flex flex-wrap items-center gap-1.5">
-          {node.model && (
-            <Badge
-              variant="outline"
-              className="border-mesh-border-strong text-[10px] text-mesh-text-mute"
-            >
-              {node.model}
-            </Badge>
-          )}
-          {node.hardware && node.hardware !== node.model && (
-            <Badge
-              variant="outline"
-              className="border-mesh-border-strong text-[10px] text-mesh-text-mute"
-            >
-              {node.hardware}
-            </Badge>
-          )}
-          {isMain && (
-            <Badge className="border-[#fbbf24]/20 bg-[#fbbf24]/10 text-[10px] text-[#fbbf24]">
-              Main Router
-            </Badge>
-          )}
-        </div>
-
-        {/* MAC address */}
-        {node.mac && (
-          <p className="font-mono text-[10px] text-mesh-text-mute">
-            MAC: {node.mac}
-          </p>
-        )}
-
-        {/* Connected devices list */}
-        {connectedLeafs.length > 0 && (
-          <div className="mt-2 space-y-1 border-t border-mesh-border-strong pt-2">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-mesh-text-mute">
-              Connected Devices
-            </p>
-            <div className="max-h-32 space-y-0.5 overflow-y-auto">
-              {connectedLeafs.map((leaf) => (
-                <div
-                  key={leaf.mac || leaf.ip}
-                  className="flex items-center justify-between rounded px-1.5 py-0.5 text-[11px] hover:bg-mesh-surface-2"
-                >
-                  <span className="truncate text-mesh-text">
-                    {leaf.name || leaf.mac || "Unknown"}
-                  </span>
-                  <span className="shrink-0 font-mono text-mesh-text-mute">
-                    {leaf.ip || "—"}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
 }
 
-// ─── Loading skeleton ────────────────────────────────────
+function layoutTopology(
+  data: XiaomiTopology,
+): {
+  main: PositionedNode | null;
+  satellites: PositionedNode[];
+} {
+  const nodes = data.nodes;
+  if (nodes.length === 0) return { main: null, satellites: [] };
 
-function NodeCardSkeleton() {
-  return (
-    <Card>
-      <CardHeader className="pb-3">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-10 w-10 rounded-lg" />
-          <div className="flex-1 space-y-2">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-3 w-20" />
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Skeleton className="h-3 w-32" />
-        <div className="flex gap-1.5">
-          <Skeleton className="h-4 w-16 rounded-full" />
-          <Skeleton className="h-4 w-12 rounded-full" />
-        </div>
-      </CardContent>
-    </Card>
-  );
+  const mainIdx = nodes.findIndex((n) => n.is_main || n.role === "main");
+  const mainNode = mainIdx >= 0 ? nodes[mainIdx] : nodes[0];
+  const satNodes = nodes.filter((n) => n !== mainNode);
+
+  const leafsByParent = new Map<string, XiaomiTopoLeaf[]>();
+  for (const leaf of data.leafs) {
+    const key = leaf.parent_id ?? "";
+    const list = leafsByParent.get(key) ?? [];
+    list.push(leaf);
+    leafsByParent.set(key, list);
+  }
+  const leafsFor = (n: XiaomiTopoNode): XiaomiTopoLeaf[] => {
+    if (n.mac && leafsByParent.has(n.mac)) return leafsByParent.get(n.mac)!;
+    return [];
+  };
+
+  const main: PositionedNode = {
+    node: mainNode,
+    x: CENTER_X,
+    y: CENTER_Y,
+    leafs: leafsFor(mainNode),
+  };
+
+  const satellites: PositionedNode[] = satNodes.map((n, i) => {
+    const angle = (2 * Math.PI * i) / Math.max(satNodes.length, 1) - Math.PI / 2;
+    return {
+      node: n,
+      x: CENTER_X + Math.cos(angle) * SAT_RING_R,
+      y: CENTER_Y + Math.sin(angle) * SAT_RING_R,
+      leafs: leafsFor(n),
+    };
+  });
+
+  return { main, satellites };
 }
 
 // ─── Main Component ──────────────────────────────────────
@@ -183,6 +115,7 @@ export default function XiaomiMeshTopology() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -199,31 +132,20 @@ export default function XiaomiMeshTopology() {
     }
   }, []);
 
-  // Initial load
   useEffect(() => {
     load();
   }, [load]);
 
-  // Poll every 30s
   useEffect(() => {
     const interval = setInterval(load, 30_000);
     return () => clearInterval(interval);
   }, [load]);
 
-  // Determine which node is "main" (first node, typically the primary router)
-  const { sortedNodes, mainMac } = useMemo(() => {
-    if (!data) return { sortedNodes: [], mainMac: null };
-    const main = data.nodes[0] ?? null;
-    const mainMac = main?.mac ?? null;
-    const sorted = [...data.nodes].sort((a, b) => {
-      if (a.mac === mainMac) return -1;
-      if (b.mac === mainMac) return 1;
-      return (b.online ?? 0) - (a.online ?? 0);
-    });
-    return { sortedNodes: sorted, mainMac };
-  }, [data]);
+  const layout = useMemo(
+    () => (data ? layoutTopology(data) : { main: null, satellites: [] }),
+    [data],
+  );
 
-  // Stats
   const stats = useMemo(() => {
     if (!data) return { nodeCount: 0, totalDevices: 0, totalLeafs: 0 };
     const totalDevices = data.nodes.reduce(
@@ -237,10 +159,14 @@ export default function XiaomiMeshTopology() {
     };
   }, [data]);
 
+  const allPositioned = layout.main
+    ? [layout.main, ...layout.satellites]
+    : layout.satellites;
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-4" data-testid="xiaomi-mesh-topology">
+      {/* Header row — title + refresh */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="t-h2 text-mesh-text">Mesh Topology</h2>
           <p className="mt-1 text-sm text-mesh-text-dim">
@@ -260,99 +186,345 @@ export default function XiaomiMeshTopology() {
         </div>
       </div>
 
-      {/* Summary stats */}
+      {/* Compact stats strip */}
       {!loading && data && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Card>
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-mesh-primary/20">
-                <Router className="h-4 w-4 text-mesh-primary" />
-              </div>
-              <div>
-                <p className="t-h1 text-mesh-text">{stats.nodeCount}</p>
-                <p className="text-xs text-mesh-text-dim">Mesh Nodes</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#4ade80]/20">
-                <MonitorSmartphone className="h-4 w-4 text-[#4ade80]" />
-              </div>
-              <div>
-                <p className="t-h1 text-mesh-text">{stats.totalDevices}</p>
-                <p className="text-xs text-mesh-text-dim">Online Devices</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="flex items-center gap-3 p-4">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#c084fc]/20">
-                <Wifi className="h-4 w-4 text-[#c084fc]" />
-              </div>
-              <div>
-                <p className="t-h1 text-mesh-text">{stats.totalLeafs}</p>
-                <p className="text-xs text-mesh-text-dim">Connected Clients</p>
-              </div>
-            </CardContent>
-          </Card>
+        <div
+          className="mesh-card flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2 text-[11px]"
+          style={{ fontFamily: "var(--font-mono)" }}
+        >
+          <span className="text-mesh-text-dim">
+            <span className="text-mesh-text">{stats.nodeCount}</span>{" "}
+            mesh node{stats.nodeCount !== 1 ? "s" : ""}
+          </span>
+          <span className="text-mesh-text-dim">
+            <span className="text-mesh-text">{stats.totalDevices}</span>{" "}
+            online device{stats.totalDevices !== 1 ? "s" : ""}
+          </span>
+          <span className="text-mesh-text-dim">
+            <span className="text-mesh-text">{stats.totalLeafs}</span>{" "}
+            connected client{stats.totalLeafs !== 1 ? "s" : ""}
+          </span>
         </div>
       )}
 
-      {/* Error state */}
+      {/* Error */}
       {error && (
-        <Card>
-          <CardContent className="space-y-2 p-4">
-            <p className="text-sm text-[#fb7185]">{error}</p>
-            <button
-              type="button"
-              className="btn btn-ghost btn-sm"
-              onClick={() => {
-                setLoading(true);
-                load();
-              }}
-            >
-              Retry
-            </button>
-          </CardContent>
-        </Card>
+        <div className="mesh-card space-y-2 p-4">
+          <p className="text-sm text-[#fb7185]">{error}</p>
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm"
+            onClick={() => {
+              setLoading(true);
+              load();
+            }}
+          >
+            Retry
+          </button>
+        </div>
       )}
 
-      {/* Loading state */}
+      {/* Loading */}
       {loading && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <NodeCardSkeleton key={i} />
-          ))}
+        <div
+          className="mesh-card flex items-center justify-center p-12 text-sm text-mesh-text-dim"
+          data-testid="xiaomi-mesh-loading"
+        >
+          Loading mesh topology…
         </div>
       )}
 
-      {/* Node cards */}
-      {!loading && data && sortedNodes.length > 0 && (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {sortedNodes.map((node) => (
-            <NodeCard
-              key={node.mac || node.ip}
-              node={node}
-              leafs={data.leafs}
-              isMain={node.mac === mainMac}
-            />
-          ))}
+      {/* SVG topology map */}
+      {!loading && data && allPositioned.length > 0 && (
+        <div
+          className="mesh-card relative overflow-hidden"
+          style={{ padding: 0 }}
+          data-testid="xiaomi-mesh-svg-container"
+        >
+          {/* Blueprint grid background — mirrors /topology canvas chrome */}
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              inset: 0,
+              backgroundImage:
+                "linear-gradient(rgba(96,144,212,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(96,144,212,0.06) 1px, transparent 1px)",
+              backgroundSize: "32px 32px",
+            }}
+          />
+          <svg
+            role="img"
+            aria-label="Xiaomi mesh topology"
+            data-testid="xiaomi-mesh-svg"
+            viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+            style={{
+              position: "relative",
+              width: "100%",
+              height: "auto",
+              maxHeight: 520,
+              display: "block",
+            }}
+          >
+            {/* Edges: main → satellites */}
+            {layout.main &&
+              layout.satellites.map((sat, i) => {
+                const isWired =
+                  (sat.node.backhaul ?? "").toLowerCase() === "wired";
+                return (
+                  <line
+                    key={`edge-${i}`}
+                    x1={layout.main!.x}
+                    y1={layout.main!.y}
+                    x2={sat.x}
+                    y2={sat.y}
+                    stroke={
+                      isWired
+                        ? "var(--accent-cyan)"
+                        : "var(--accent-violet)"
+                    }
+                    strokeWidth={isWired ? 1.4 : 1}
+                    strokeDasharray={isWired ? undefined : "5 4"}
+                    opacity={0.6}
+                  />
+                );
+              })}
+
+            {/* Nodes */}
+            {allPositioned.map((pn, i) => {
+              const isMain = pn.node.is_main || pn.node.role === "main";
+              const w = isMain ? MAIN_RECT_W : SAT_RECT_W;
+              const h = isMain ? MAIN_RECT_H : SAT_RECT_H;
+              const label = resolveNodeLabel(pn.node, i);
+              const role = roleLabel(pn.node);
+              const key =
+                pn.node.mac || pn.node.ip || `node-${i}`;
+              const isSelected = selectedKey === key;
+              const accent = isMain
+                ? "var(--status-warning)"
+                : "var(--accent-cyan)";
+
+              return (
+                <g
+                  key={key}
+                  transform={`translate(${pn.x},${pn.y})`}
+                  onClick={() =>
+                    setSelectedKey((prev) => (prev === key ? null : key))
+                  }
+                  style={{ cursor: "pointer" }}
+                  data-testid={`xiaomi-mesh-node-${
+                    isMain ? "main" : "sat"
+                  }`}
+                  data-node-label={label}
+                  data-node-role={role}
+                >
+                  <rect
+                    x={-w / 2}
+                    y={-h / 2}
+                    width={w}
+                    height={h}
+                    rx={4}
+                    fill="var(--surface-2)"
+                    stroke={isSelected ? accent : "rgba(96,144,212,0.30)"}
+                    strokeWidth={isSelected ? 1.5 : 1}
+                  />
+                  {/* Role line */}
+                  <text
+                    x={0}
+                    y={-h / 2 + 14}
+                    textAnchor="middle"
+                    fontSize="9"
+                    fill={accent}
+                    fontFamily="var(--font-mono)"
+                    style={{
+                      letterSpacing: "0.06em",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    {role}
+                  </text>
+                  {/* Name line — truncated to fit the box */}
+                  <text
+                    x={0}
+                    y={-h / 2 + 30}
+                    textAnchor="middle"
+                    fontSize="12"
+                    fontWeight={600}
+                    fill="var(--text)"
+                    fontFamily="var(--font-sans)"
+                  >
+                    {label.length > 18 ? `${label.slice(0, 17)}…` : label}
+                  </text>
+                  {/* IP + device count */}
+                  <text
+                    x={0}
+                    y={-h / 2 + 46}
+                    textAnchor="middle"
+                    fontSize="10"
+                    fill="var(--text-dim)"
+                    fontFamily="var(--font-mono)"
+                  >
+                    {(pn.node.ip || "—") +
+                      "  ·  " +
+                      (pn.node.online ?? 0) +
+                      " dev"}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
         </div>
+      )}
+
+      {/* Detail panel for selected node */}
+      {!loading && data && selectedKey && (
+        <SelectedNodePanel
+          allPositioned={allPositioned}
+          selectedKey={selectedKey}
+          onClose={() => setSelectedKey(null)}
+        />
       )}
 
       {/* Empty state */}
-      {!loading && !error && data && sortedNodes.length === 0 && (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-3 py-12">
-            <Router className="h-10 w-10 text-mesh-text-mute" />
-            <p className="text-sm text-mesh-text-dim">
-              No mesh nodes found. Make sure the Xiaomi mesh integration is
-              configured in Settings.
-            </p>
-          </CardContent>
-        </Card>
+      {!loading && !error && data && allPositioned.length === 0 && (
+        <div className="mesh-card flex flex-col items-center gap-3 py-12">
+          <Router className="h-10 w-10 text-mesh-text-mute" />
+          <p className="text-sm text-mesh-text-dim">
+            No mesh nodes found. Make sure the Xiaomi mesh integration is
+            configured in Settings.
+          </p>
+        </div>
       )}
+    </div>
+  );
+}
+
+// ─── Selected node detail ────────────────────────────────
+
+function SelectedNodePanel({
+  allPositioned,
+  selectedKey,
+  onClose,
+}: {
+  allPositioned: PositionedNode[];
+  selectedKey: string;
+  onClose: () => void;
+}) {
+  const found = allPositioned.find(
+    (pn, i) => (pn.node.mac || pn.node.ip || `node-${i}`) === selectedKey,
+  );
+  if (!found) return null;
+  const isMain = found.node.is_main || found.node.role === "main";
+  const label = resolveNodeLabel(found.node, 0);
+  const role = roleLabel(found.node);
+  const backhaul = (found.node.backhaul ?? "").toLowerCase();
+  const Icon = isMain ? Crown : backhaul === "wired" ? Cable : Wifi;
+
+  return (
+    <div
+      className="mesh-card p-4"
+      data-testid="xiaomi-mesh-node-detail"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg"
+            style={{
+              background: isMain
+                ? "rgba(251,191,36,0.16)"
+                : "rgba(56,189,248,0.16)",
+              color: isMain
+                ? "var(--status-warning)"
+                : "var(--accent-cyan)",
+            }}
+          >
+            <Icon className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-mesh-text">{label}</p>
+            <p
+              className="text-[11px] uppercase tracking-wider text-mesh-text-mute"
+              style={{ fontFamily: "var(--font-mono)" }}
+            >
+              {role}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={onClose}
+        >
+          Close
+        </button>
+      </div>
+
+      <div className="mt-3 grid grid-cols-1 gap-2 text-[12px] sm:grid-cols-2">
+        <DetailRow label="IP" value={found.node.ip || "—"} mono />
+        <DetailRow label="MAC" value={found.node.mac || "—"} mono />
+        <DetailRow label="Hardware" value={found.node.hardware || "—"} />
+        <DetailRow
+          label="Online devices"
+          value={String(found.node.online ?? 0)}
+        />
+      </div>
+
+      {found.leafs.length > 0 && (
+        <div className="mt-3 border-t border-mesh-border-strong pt-3">
+          <p
+            className="mb-2 text-[10px] uppercase tracking-wider text-mesh-text-mute"
+            style={{ fontFamily: "var(--font-mono)" }}
+          >
+            Connected clients ({found.leafs.length})
+          </p>
+          <ul className="max-h-40 space-y-1 overflow-y-auto text-[12px]">
+            {found.leafs.map((leaf, i) => (
+              <li
+                key={leaf.mac || leaf.ip || `leaf-${i}`}
+                className="flex items-center justify-between gap-3"
+              >
+                <span className="truncate text-mesh-text">
+                  {resolveLeafLabel(leaf)}
+                </span>
+                <span
+                  className="shrink-0 text-mesh-text-mute"
+                  style={{ fontFamily: "var(--font-mono)" }}
+                >
+                  {leaf.ip || "—"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-3">
+      <span
+        className="shrink-0 text-[10px] uppercase tracking-wider text-mesh-text-mute"
+        style={{ fontFamily: "var(--font-mono)" }}
+      >
+        {label}
+      </span>
+      <span
+        className={`min-w-0 truncate text-mesh-text ${
+          mono ? "tabular-nums" : ""
+        }`}
+        style={mono ? { fontFamily: "var(--font-mono)" } : undefined}
+      >
+        {value}
+      </span>
     </div>
   );
 }

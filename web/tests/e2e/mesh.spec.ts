@@ -391,6 +391,131 @@ async function mockXiaomiEnabled(page: Page) {
   });
 }
 
+// ── Topology -> Mesh tab — name fallback / SVG (#807) ───────
+//
+// Regression for #807: Xiaomi mesh satellites the user has never renamed in
+// the router admin come back as `name: "default"`. The backend strips that
+// placeholder and the SVG view falls back to locale → IP so every node gets
+// a meaningful label. One node ("Live Studio") was renamed in admin and
+// must show its real name. The tab must render an SVG topology map, not a
+// grid of generic cards.
+
+const MOCK_XIAOMI_TOPOLOGY_WITH_DEFAULTS = {
+  nodes: [
+    {
+      mac: "AA:BB:CC:DD:EE:01",
+      name: "OK Home",
+      locale: null,
+      ip: "10.10.0.199",
+      online: 8,
+      hardware: "RD15",
+      model: null,
+      role: "main",
+      is_main: true,
+      backhaul: null,
+    },
+    {
+      mac: "AA:BB:CC:DD:EE:02",
+      name: "Live Studio",
+      locale: null,
+      ip: "10.10.0.52",
+      online: 5,
+      hardware: "RD15",
+      model: null,
+      role: "satellite",
+      is_main: false,
+      backhaul: "wired",
+    },
+    // These satellites were never renamed in router admin — the backend
+    // dropped the "default" placeholder, so name is null and the UI falls
+    // back to IP. Crucially the tab must NOT render the literal "default".
+    {
+      mac: "AA:BB:CC:DD:EE:03",
+      name: null,
+      locale: null,
+      ip: "10.10.0.53",
+      online: 4,
+      hardware: "RD15",
+      model: null,
+      role: "satellite",
+      is_main: false,
+      backhaul: "wired",
+    },
+    {
+      mac: "AA:BB:CC:DD:EE:04",
+      name: null,
+      locale: null,
+      ip: "10.10.0.54",
+      online: 3,
+      hardware: "RD15",
+      model: null,
+      role: "satellite",
+      is_main: false,
+      backhaul: "wireless",
+    },
+  ],
+  leafs: [],
+};
+
+test.describe("Topology -> Mesh tab — Wi-Fi mesh names (#807)", () => {
+  test.beforeEach(async ({ page }) => {
+    await login(page);
+  });
+
+  test("renders SVG topology map with real mesh names — no 'default' labels", async ({
+    page,
+  }) => {
+    await page.route("**/api/v1/xiaomi/topology", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(MOCK_XIAOMI_TOPOLOGY_WITH_DEFAULTS),
+      }),
+    );
+
+    await page.goto("/topology/");
+    await expect(page.getByTestId("topology-root")).toBeVisible({
+      timeout: 15000,
+    });
+
+    // Switch to the Mesh tab where XiaomiMeshTopology renders.
+    await page.getByTestId("topology-tab-mesh").click();
+
+    // The SVG topology map must be present — not a grid of cards.
+    await expect(page.getByTestId("xiaomi-mesh-svg")).toBeVisible({
+      timeout: 15000,
+    });
+
+    // Real named nodes must appear in the SVG.
+    const svg = page.getByTestId("xiaomi-mesh-svg");
+    await expect(svg.getByText("OK Home")).toBeVisible();
+    await expect(svg.getByText("Live Studio")).toBeVisible();
+
+    // The placeholder "default" name must NOT leak into the UI.
+    await expect(page.getByTestId("xiaomi-mesh-svg-container")).not.toContainText(
+      "default",
+    );
+
+    // Each unnamed satellite must still render — falls back to IP so the
+    // user can identify which physical router they are looking at.
+    await expect(svg.getByText("10.10.0.53")).toBeVisible();
+    await expect(svg.getByText("10.10.0.54")).toBeVisible();
+
+    // Role line must be rendered — main + at least one satellite.
+    await expect(svg.getByText("Main", { exact: true })).toBeVisible();
+    await expect(svg.getByText(/Satellite/).first()).toBeVisible();
+
+    // All four nodes must exist in the SVG (1 main + 3 satellites).
+    await expect(page.getByTestId("xiaomi-mesh-node-main")).toHaveCount(1);
+    await expect(page.getByTestId("xiaomi-mesh-node-sat")).toHaveCount(3);
+
+    await page.screenshot({
+      path: "tests/screenshots/topology-mesh-tab-pan-40.png",
+      fullPage: true,
+    });
+  });
+});
+
 test.describe.skip("Xiaomi Topology Page — BE3600 satellite nodes (#473)", () => {
   test.beforeEach(async ({ page }) => {
     await login(page);

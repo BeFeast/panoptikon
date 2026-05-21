@@ -75,6 +75,18 @@ pub struct XiaomiTopoNodeResponse {
     pub online: Option<i32>,
     pub hardware: Option<String>,
     pub model: Option<String>,
+    /// Logical role within the mesh: "main" for the CAP router, "satellite" for
+    /// downstream nodes. Lets the frontend label nodes without re-deriving role.
+    #[serde(default)]
+    pub role: Option<String>,
+    /// True for the CAP/main router, false for satellites. Mirrors `role` for
+    /// callers that prefer a boolean check.
+    #[serde(default)]
+    pub is_main: bool,
+    /// Backhaul connection type from the Xiaomi `link_type` field: "wired",
+    /// "wireless", or `None` for the main router.
+    #[serde(default)]
+    pub backhaul: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -263,6 +275,28 @@ fn parse_online_value(v: &serde_json::Value) -> Option<i32> {
     }
 }
 
+/// Xiaomi mesh nodes that were never customized in the router admin UI come
+/// back with `name: "default"`. Treat that — along with empty/whitespace — as
+/// "no user-set name" so the frontend can fall back to locale/role/IP instead
+/// of rendering a wall of indistinguishable `default` labels (issue #807).
+pub(crate) fn sanitize_mesh_name(raw: Option<String>) -> Option<String> {
+    raw.and_then(|s| {
+        let trimmed = s.trim();
+        if trimmed.is_empty() || trimmed.eq_ignore_ascii_case("default") {
+            None
+        } else {
+            Some(trimmed.to_string())
+        }
+    })
+}
+
+/// Locale on satellite mesh nodes is the user-set room/location ("Live Studio",
+/// "Basement"). Apply the same "default" sanitization so role-coded locales
+/// like `master`/`slave` survive while the placeholder string does not.
+pub(crate) fn sanitize_mesh_locale(raw: Option<String>) -> Option<String> {
+    sanitize_mesh_name(raw)
+}
+
 /// GET /xiaomi/topology — mesh topology graph (no auth required).
 pub async fn topology(
     State(state): State<AppState>,
@@ -289,14 +323,23 @@ pub async fn topology(
             let mut nodes: Vec<XiaomiTopoNodeResponse> = graph
                 .nodes
                 .into_iter()
-                .map(|n| XiaomiTopoNodeResponse {
-                    mac: n.mac,
-                    name: n.name,
-                    locale: n.locale,
-                    ip: n.ip,
-                    online: n.online,
-                    hardware: n.hardware,
-                    model: n.model,
+                .enumerate()
+                .map(|(idx, n)| {
+                    let locale = sanitize_mesh_locale(n.locale);
+                    // `nodes[0]` is the CAP/main router; the rest are satellites.
+                    let is_main = idx == 0;
+                    XiaomiTopoNodeResponse {
+                        mac: n.mac,
+                        name: sanitize_mesh_name(n.name),
+                        locale: locale.clone(),
+                        ip: n.ip,
+                        online: n.online,
+                        hardware: n.hardware,
+                        model: n.model,
+                        role: Some(if is_main { "main" } else { "satellite" }.to_string()),
+                        is_main,
+                        backhaul: None,
+                    }
                 })
                 .collect();
 
@@ -312,32 +355,43 @@ pub async fn topology(
                     let main_online = graph.online.as_ref().and_then(parse_online_value);
                     nodes.push(XiaomiTopoNodeResponse {
                         mac: None,
-                        name: graph.name,
-                        locale: graph.locale,
+                        name: sanitize_mesh_name(graph.name),
+                        locale: sanitize_mesh_locale(graph.locale),
                         ip: graph.ip,
                         online: main_online,
                         hardware: graph.hardware,
                         model: None,
+                        role: Some("main".to_string()),
+                        is_main: true,
+                        backhaul: None,
                     });
                 }
 
                 // Promote satellite leafs (those with link_type) to nodes.
                 for leaf in graph.leafs {
-                    if leaf.link_type.is_some() {
+                    if let Some(link_type) = leaf.link_type.as_deref() {
+                        let backhaul = match link_type {
+                            "wire" | "wired" => "wired".to_string(),
+                            "" => "unknown".to_string(),
+                            other => other.to_string(),
+                        };
                         nodes.push(XiaomiTopoNodeResponse {
                             mac: leaf.mac,
-                            name: leaf.name,
-                            locale: leaf.locale,
+                            name: sanitize_mesh_name(leaf.name),
+                            locale: sanitize_mesh_locale(leaf.locale),
                             ip: leaf.ip,
                             online: leaf.online,
                             hardware: leaf.hardware,
                             model: None,
+                            role: Some("satellite".to_string()),
+                            is_main: false,
+                            backhaul: Some(backhaul),
                         });
                     } else {
                         leafs_out.push(XiaomiTopoLeafResponse {
                             mac: leaf.mac,
                             ip: leaf.ip,
-                            name: leaf.name,
+                            name: sanitize_mesh_name(leaf.name),
                             online: leaf.online,
                             parent_id: leaf.parent_id,
                         });
@@ -350,7 +404,7 @@ pub async fn topology(
                     .map(|l| XiaomiTopoLeafResponse {
                         mac: l.mac,
                         ip: l.ip,
-                        name: l.name,
+                        name: sanitize_mesh_name(l.name),
                         online: l.online,
                         parent_id: l.parent_id,
                     })
@@ -852,6 +906,56 @@ mod tests {
             result.len(),
             2,
             "different SSIDs on same band must both survive"
+        );
+    }
+
+    // ── sanitize_mesh_name / locale ─────────────────────────────
+    //
+    // Regression for #807: Xiaomi mesh satellites that were never renamed in
+    // the router admin come back with `name: "default"`. Returning that
+    // verbatim to the UI made every satellite render as the literal string
+    // "default". The sanitizer drops "default"/empty/whitespace so the
+    // frontend can fall back to a real identifier.
+
+    #[test]
+    fn sanitize_drops_literal_default() {
+        assert_eq!(sanitize_mesh_name(Some("default".to_string())), None);
+        assert_eq!(sanitize_mesh_name(Some("DEFAULT".to_string())), None);
+        assert_eq!(sanitize_mesh_name(Some("Default".to_string())), None);
+    }
+
+    #[test]
+    fn sanitize_drops_empty_and_whitespace() {
+        assert_eq!(sanitize_mesh_name(None), None);
+        assert_eq!(sanitize_mesh_name(Some(String::new())), None);
+        assert_eq!(sanitize_mesh_name(Some("   ".to_string())), None);
+        assert_eq!(sanitize_mesh_name(Some("\t".to_string())), None);
+    }
+
+    #[test]
+    fn sanitize_preserves_real_names() {
+        assert_eq!(
+            sanitize_mesh_name(Some("Live Studio".to_string())),
+            Some("Live Studio".to_string())
+        );
+        assert_eq!(
+            sanitize_mesh_name(Some("  Basement  ".to_string())),
+            Some("Basement".to_string()),
+            "trims surrounding whitespace"
+        );
+    }
+
+    #[test]
+    fn sanitize_locale_keeps_role_strings() {
+        // `locale` on the older firmware encodes the mesh role
+        // (master/slave). Those are meaningful and must survive.
+        assert_eq!(
+            sanitize_mesh_locale(Some("master".to_string())),
+            Some("master".to_string())
+        );
+        assert_eq!(
+            sanitize_mesh_locale(Some("slave".to_string())),
+            Some("slave".to_string())
         );
     }
 }

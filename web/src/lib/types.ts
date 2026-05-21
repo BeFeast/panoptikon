@@ -2331,6 +2331,12 @@ export interface XiaomiTopoNode {
   online: number | null;
   hardware: string | null;
   model: string | null;
+  /** Logical role: "main" for the CAP router, "satellite" for downstream. */
+  role?: string | null;
+  /** True for the main/CAP router. Mirror of `role === "main"`. */
+  is_main?: boolean;
+  /** Backhaul link type for satellites: "wired" | "wireless" | "unknown". */
+  backhaul?: string | null;
 }
 
 export interface XiaomiTopoLeaf {
