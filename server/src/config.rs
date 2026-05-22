@@ -117,6 +117,14 @@ pub struct AuthConfig {
     /// Only add addresses you control. Defaults to loopback only.
     #[serde(default = "default_trusted_proxies")]
     pub trusted_proxies: Vec<String>,
+
+    /// Show the SSO login action when an external SSO endpoint is configured.
+    #[serde(default)]
+    pub sso_enabled: bool,
+
+    /// External SSO login URL. Used only when `sso_enabled` is true.
+    #[serde(default)]
+    pub sso_login_url: Option<String>,
 }
 
 fn default_session_expiry() -> u64 {
@@ -132,6 +140,8 @@ impl Default for AuthConfig {
         Self {
             session_expiry_seconds: default_session_expiry(),
             trusted_proxies: default_trusted_proxies(),
+            sso_enabled: false,
+            sso_login_url: None,
         }
     }
 }
