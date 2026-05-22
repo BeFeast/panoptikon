@@ -114,11 +114,11 @@ export const navGroups: NavGroup[] = [
   },
 ];
 
-const settingsItem: NavItem = {
+export const utilityNavItems: NavItem[] = [{
   href: "/settings",
   label: "Settings",
   icon: SettingsIcon,
-};
+}];
 
 export function isNavItemActive(pathname: string, item: NavItem): boolean {
   if (!pathname) return false;
@@ -334,13 +334,16 @@ export function Sidebar() {
             </div>
           </div>
         ))}
-        {/* Settings — pinned after groups, mirrors prior layout */}
+        {/* Utility nav — pinned after groups, shared with mobile sidebar */}
         <div style={{ marginTop: 8 }}>
-          <NavItemLink
-            item={settingsItem}
-            collapsed={collapsed}
-            active={isNavItemActive(pathname, settingsItem)}
-          />
+          {utilityNavItems.map((item) => (
+            <NavItemLink
+              key={item.href}
+              item={item}
+              collapsed={collapsed}
+              active={isNavItemActive(pathname, item)}
+            />
+          ))}
         </div>
       </nav>
 
@@ -462,6 +465,8 @@ function NavItemLink({
   return (
     <Link
       href={item.href}
+      aria-label={collapsed ? item.label : undefined}
+      title={collapsed ? item.label : undefined}
       style={{
         position: "relative",
         display: "flex",
