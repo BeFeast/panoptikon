@@ -100,6 +100,14 @@ function timeAgo(iso: string | null): string {
   }
 }
 
+function normalizePathMatcher(path: string): string | undefined {
+  const trimmed = path.trim();
+  if (!trimmed || trimmed === "/") {
+    return undefined;
+  }
+  return trimmed;
+}
+
 export default function CloudflareTunnelPage() {
   const [status, setStatus] = useState<CloudflareTunnelStatus | null>(null);
   const [routes, setRoutes] = useState<CloudflareTunnelRoute[]>([]);
@@ -152,7 +160,8 @@ export default function CloudflareTunnelPage() {
         hostname: formHostname,
         service: formService,
       };
-      if (formPath) body.path = formPath;
+      const normalizedPath = normalizePathMatcher(formPath);
+      if (normalizedPath) body.path = normalizedPath;
       const result = await addCloudflareTunnelRoute(body);
       if (result.success) {
         toast.success(result.message);
@@ -207,7 +216,8 @@ export default function CloudflareTunnelPage() {
         hostname: editHostname,
         service: editService,
       };
-      if (editPath) body.path = editPath;
+      const normalizedPath = normalizePathMatcher(editPath);
+      if (normalizedPath) body.path = normalizedPath;
       const result = await updateCloudflareTunnelRoute(
         editOriginalHostname,
         body
@@ -507,7 +517,7 @@ export default function CloudflareTunnelPage() {
                           <span className="block truncate">{route.service}</span>
                         </TableCell>
                         <TableCell className="text-mesh-text-dim">
-                          {route.path || "/"}
+                          {route.path ?? ""}
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
@@ -575,10 +585,13 @@ export default function CloudflareTunnelPage() {
                 </Label>
                 <Input
                   id="path"
-                  placeholder="/"
+                  placeholder="/api"
                   value={formPath}
                   onChange={(e) => setFormPath(e.target.value)}
                 />
+                <p className="text-xs text-mesh-text-dim">
+                  Optional. Leave empty to match the whole hostname.
+                </p>
               </div>
               <div className="flex justify-end gap-2">
                 <Button
@@ -635,10 +648,13 @@ export default function CloudflareTunnelPage() {
                 </Label>
                 <Input
                   id="edit-path"
-                  placeholder="/"
+                  placeholder="/api"
                   value={editPath}
                   onChange={(e) => setEditPath(e.target.value)}
                 />
+                <p className="text-xs text-mesh-text-dim">
+                  Optional. Leave empty to match the whole hostname.
+                </p>
               </div>
               <div className="flex justify-end gap-2">
                 <Button
