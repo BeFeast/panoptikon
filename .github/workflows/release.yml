@@ -4,6 +4,16 @@ on:
   push:
     tags:
       - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish, for example v1.0.0"
+        required: true
+        type: string
+      include_macos:
+        description: "Build expensive macOS server and agent artifacts"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -17,6 +27,8 @@ jobs:
     runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
       - uses: oven-sh/setup-bun@v2
         with:
@@ -48,6 +60,8 @@ jobs:
             arch: arm64
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -79,6 +93,7 @@ jobs:
   build-macos:
     name: macOS (${{ matrix.arch }})
     needs: frontend
+    if: ${{ (github.event_name == 'workflow_dispatch' && inputs.include_macos) || (github.event_name == 'push' && endsWith(github.ref_name, '.0.0')) }}
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
@@ -91,6 +106,8 @@ jobs:
             runner: blacksmith-6vcpu-macos-15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -122,9 +139,12 @@ jobs:
   release:
     name: Create GitHub Release
     needs: [build-linux, build-macos]
+    if: ${{ always() && needs.build-linux.result == 'success' && (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') }}
     runs-on: blacksmith-4vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
 
       - name: Download all artifacts
         uses: actions/download-artifact@v4
@@ -143,6 +163,7 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
           generate_release_notes: true
           body: |
             ## Quick Install
