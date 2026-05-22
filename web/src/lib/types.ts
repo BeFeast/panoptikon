@@ -2257,8 +2257,8 @@ export interface PfsenseRoute {
 }
 
 export interface PfsenseDnsConfig {
-  resolver_enabled: boolean;
-  servers: string[];
+  resolver_enabled: boolean | null;
+  servers: string[] | null;
 }
 
 export interface PfsenseDnsOverride {

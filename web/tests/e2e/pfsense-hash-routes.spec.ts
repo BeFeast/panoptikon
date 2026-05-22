@@ -85,6 +85,19 @@ async function mockPfsenseApis(page: Page) {
   await page.route("**/api/v1/pfsense/dhcp/leases", (route) =>
     route.fulfill({ json: [] }),
   );
+
+  await page.route("**/api/v1/pfsense/dns/config", (route) =>
+    route.fulfill({
+      json: {
+        resolver_enabled: true,
+        servers: ["1.1.1.1", "9.9.9.9"],
+      },
+    }),
+  );
+
+  await page.route("**/api/v1/pfsense/dns/overrides", (route) =>
+    route.fulfill({ json: [] }),
+  );
 }
 
 async function gotoPfsense(page: Page, hash = "") {
