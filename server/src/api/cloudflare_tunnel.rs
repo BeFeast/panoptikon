@@ -4,6 +4,7 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
+use std::env;
 use tracing::{error, info, warn};
 
 use super::{AppError, AppState};
@@ -39,6 +40,20 @@ pub struct TunnelRoute {
     pub hostname: String,
     pub service: String,
     pub path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub dns: Option<TunnelRouteDns>,
+}
+
+/// Cloudflare DNS status for a tunnel route hostname.
+#[derive(Debug, Serialize, Clone)]
+pub struct TunnelRouteDns {
+    pub configured: bool,
+    pub status: String,
+    pub message: String,
+    pub zone_name: Option<String>,
+    pub record_type: Option<String>,
+    pub proxied: Option<bool>,
+    pub target: Option<String>,
 }
 
 /// Response for the routes endpoint.
@@ -121,6 +136,10 @@ fn normalize_path_matcher(path: Option<String>) -> Option<String> {
     }
 }
 
+fn cf_api_base() -> String {
+    env::var("PANOPTIKON_CF_API_BASE").unwrap_or_else(|_| CF_API_BASE.to_string())
+}
+
 // ─── Handlers ───────────────────────────────────────────────
 
 /// GET /api/v1/cloudflare-tunnel/status
@@ -145,8 +164,10 @@ pub async fn status(State(state): State<AppState>) -> Json<TunnelStatus> {
 
     // Fetch tunnel details.
     let tunnel_url = format!(
-        "{CF_API_BASE}/accounts/{}/cfd_tunnel/{}",
-        config.account_id, config.tunnel_id
+        "{}/accounts/{}/cfd_tunnel/{}",
+        cf_api_base(),
+        config.account_id,
+        config.tunnel_id
     );
 
     let tunnel_resp = client
@@ -220,6 +241,7 @@ pub async fn list_routes(
         error!("Failed to fetch tunnel routes: {e}");
         AppError::Internal(e.to_string())
     })?;
+    let routes = annotate_dns_status(&config, routes).await;
 
     Ok(Json(TunnelRoutesResponse { routes }))
 }
@@ -256,11 +278,16 @@ pub async fn add_route(
         ));
     }
 
+    ensure_route_dns(&config, &body.hostname)
+        .await
+        .map_err(DnsEnsureError::into_app_error)?;
+
     // Add new route.
     routes.push(TunnelRoute {
         hostname: body.hostname.clone(),
         service: body.service.clone(),
         path: normalize_path_matcher(body.path.clone()),
+        dns: None,
     });
 
     // Write back to Cloudflare.
@@ -369,11 +396,16 @@ pub async fn update_route(
         }));
     }
 
+    ensure_route_dns(&config, &body.hostname)
+        .await
+        .map_err(DnsEnsureError::into_app_error)?;
+
     // Update the route in place.
     routes[idx] = TunnelRoute {
         hostname: body.hostname.clone(),
         service: body.service.clone(),
         path: normalize_path_matcher(body.path.clone()),
+        dns: None,
     };
 
     // Write back to Cloudflare.
@@ -401,8 +433,10 @@ pub async fn update_route(
 async fn fetch_ingress_routes(config: &CfConfig) -> anyhow::Result<Vec<TunnelRoute>> {
     let client = cf_http_client();
     let url = format!(
-        "{CF_API_BASE}/accounts/{}/cfd_tunnel/{}/configurations",
-        config.account_id, config.tunnel_id
+        "{}/accounts/{}/cfd_tunnel/{}/configurations",
+        cf_api_base(),
+        config.account_id,
+        config.tunnel_id
     );
 
     let resp = client
@@ -434,11 +468,429 @@ async fn fetch_ingress_routes(config: &CfConfig) -> anyhow::Result<Vec<TunnelRou
                 hostname: hostname.to_string(),
                 service,
                 path,
+                dns: None,
             })
         })
         .collect();
 
     Ok(routes)
+}
+
+#[derive(Debug, Deserialize)]
+struct CfListResponse<T> {
+    success: bool,
+    #[serde(default = "empty_cf_result")]
+    result: Vec<T>,
+    #[serde(default)]
+    errors: Vec<CfApiError>,
+}
+
+fn empty_cf_result<T>() -> Vec<T> {
+    Vec::new()
+}
+
+#[derive(Debug, Deserialize)]
+struct CfItemResponse<T> {
+    success: bool,
+    result: Option<T>,
+    #[serde(default)]
+    errors: Vec<CfApiError>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CfApiError {
+    message: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct CfZone {
+    id: String,
+    name: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+struct CfDnsRecord {
+    id: String,
+    #[serde(rename = "type")]
+    record_type: String,
+    name: String,
+    content: String,
+    proxied: Option<bool>,
+}
+
+#[derive(Debug)]
+enum DnsEnsureError {
+    MissingZone(String),
+    Conflict(String),
+    Upstream(String),
+}
+
+impl DnsEnsureError {
+    fn into_app_error(self) -> AppError {
+        match self {
+            DnsEnsureError::MissingZone(message) => AppError::PreconditionRequired(message),
+            DnsEnsureError::Conflict(message) => AppError::Conflict(message),
+            DnsEnsureError::Upstream(message) => AppError::BadGateway(message),
+        }
+    }
+}
+
+fn tunnel_dns_target(config: &CfConfig) -> String {
+    format!("{}.cfargotunnel.com", config.tunnel_id)
+}
+
+fn normalize_dns_value(value: &str) -> String {
+    value.trim().trim_end_matches('.').to_ascii_lowercase()
+}
+
+fn hostname_zone_candidates(hostname: &str) -> Vec<String> {
+    let labels: Vec<&str> = hostname.trim().trim_end_matches('.').split('.').collect();
+    if labels.len() < 2 {
+        return vec![];
+    }
+    (0..labels.len() - 1)
+        .map(|idx| labels[idx..].join(".").to_ascii_lowercase())
+        .collect()
+}
+
+fn cf_error_message(errors: &[CfApiError], fallback: &str) -> String {
+    errors
+        .first()
+        .map(|e| e.message.clone())
+        .unwrap_or_else(|| fallback.to_string())
+}
+
+async fn find_managed_zone(
+    client: &reqwest::Client,
+    config: &CfConfig,
+    hostname: &str,
+) -> Result<Option<CfZone>, DnsEnsureError> {
+    let url = format!("{}/zones", cf_api_base());
+
+    for name in hostname_zone_candidates(hostname) {
+        let resp = client
+            .get(&url)
+            .bearer_auth(&config.api_token)
+            .query(&[("name", name.as_str()), ("status", "active")])
+            .send()
+            .await
+            .map_err(|e| {
+                DnsEnsureError::Upstream(format!(
+                    "Unable to query Cloudflare zones for '{hostname}': {e}"
+                ))
+            })?;
+
+        let status = resp.status();
+        let body: CfListResponse<CfZone> = resp.json().await.map_err(|e| {
+            DnsEnsureError::Upstream(format!(
+                "Unable to parse Cloudflare zone lookup for '{hostname}': {e}"
+            ))
+        })?;
+
+        if !status.is_success() || !body.success {
+            return Err(DnsEnsureError::Upstream(format!(
+                "Cloudflare zone lookup failed for '{hostname}': {}. Ensure the API token has Zone:Read permission.",
+                cf_error_message(&body.errors, &status.to_string())
+            )));
+        }
+
+        if let Some(zone) = body.result.into_iter().find(|zone| zone.name == name) {
+            return Ok(Some(zone));
+        }
+    }
+
+    Ok(None)
+}
+
+async fn fetch_dns_records(
+    client: &reqwest::Client,
+    config: &CfConfig,
+    zone: &CfZone,
+    hostname: &str,
+) -> Result<Vec<CfDnsRecord>, DnsEnsureError> {
+    let url = format!("{}/zones/{}/dns_records", cf_api_base(), zone.id);
+    let resp = client
+        .get(&url)
+        .bearer_auth(&config.api_token)
+        .query(&[("name", hostname), ("per_page", "100")])
+        .send()
+        .await
+        .map_err(|e| {
+            DnsEnsureError::Upstream(format!(
+                "Unable to query Cloudflare DNS records for '{hostname}': {e}"
+            ))
+        })?;
+
+    let status = resp.status();
+    let body: CfListResponse<CfDnsRecord> = resp.json().await.map_err(|e| {
+        DnsEnsureError::Upstream(format!(
+            "Unable to parse Cloudflare DNS records for '{hostname}': {e}"
+        ))
+    })?;
+
+    if !status.is_success() || !body.success {
+        return Err(DnsEnsureError::Upstream(format!(
+            "Cloudflare DNS lookup failed for '{hostname}': {}. Ensure the API token has Zone:Read permission for '{}'.",
+            cf_error_message(&body.errors, &status.to_string()),
+            zone.name
+        )));
+    }
+
+    Ok(body.result)
+}
+
+fn matching_cname<'a>(records: &'a [CfDnsRecord], target: &str) -> Option<&'a CfDnsRecord> {
+    records.iter().find(|record| {
+        record.record_type.eq_ignore_ascii_case("CNAME")
+            && normalize_dns_value(&record.content) == normalize_dns_value(target)
+    })
+}
+
+fn dns_status_from_records(
+    hostname: &str,
+    zone: &CfZone,
+    target: &str,
+    records: &[CfDnsRecord],
+) -> TunnelRouteDns {
+    if records.is_empty() {
+        return TunnelRouteDns {
+            configured: false,
+            status: "missing".to_string(),
+            message: format!("Create a proxied CNAME for {hostname} to {target}."),
+            zone_name: Some(zone.name.clone()),
+            record_type: None,
+            proxied: None,
+            target: Some(target.to_string()),
+        };
+    }
+
+    if let Some(record) = matching_cname(records, target) {
+        let proxied = record.proxied.unwrap_or(false);
+        return TunnelRouteDns {
+            configured: proxied,
+            status: if proxied { "configured" } else { "unproxied" }.to_string(),
+            message: if proxied {
+                format!("{hostname} has a proxied CNAME to {target}.")
+            } else {
+                format!("{hostname} points to {target}, but the CNAME is not proxied.")
+            },
+            zone_name: Some(zone.name.clone()),
+            record_type: Some(record.record_type.clone()),
+            proxied: Some(proxied),
+            target: Some(record.content.clone()),
+        };
+    }
+
+    let record = &records[0];
+    TunnelRouteDns {
+        configured: false,
+        status: "conflict".to_string(),
+        message: format!(
+            "{hostname} has a conflicting {} record pointing to '{}'. Replace it with a proxied CNAME to {target}.",
+            record.record_type, record.content
+        ),
+        zone_name: Some(zone.name.clone()),
+        record_type: Some(record.record_type.clone()),
+        proxied: record.proxied,
+        target: Some(record.content.clone()),
+    }
+}
+
+async fn route_dns_status(
+    client: &reqwest::Client,
+    config: &CfConfig,
+    hostname: &str,
+) -> TunnelRouteDns {
+    let target = tunnel_dns_target(config);
+    let zone = match find_managed_zone(client, config, hostname).await {
+        Ok(Some(zone)) => zone,
+        Ok(None) => {
+            return TunnelRouteDns {
+                configured: false,
+                status: "zone_missing".to_string(),
+                message: format!(
+                    "No managed Cloudflare zone was found for {hostname}. Add the zone to Cloudflare or create a proxied CNAME for {hostname} to {target}."
+                ),
+                zone_name: None,
+                record_type: None,
+                proxied: None,
+                target: Some(target),
+            };
+        }
+        Err(err) => {
+            return TunnelRouteDns {
+                configured: false,
+                status: "unknown".to_string(),
+                message: match err {
+                    DnsEnsureError::MissingZone(message)
+                    | DnsEnsureError::Conflict(message)
+                    | DnsEnsureError::Upstream(message) => message,
+                },
+                zone_name: None,
+                record_type: None,
+                proxied: None,
+                target: Some(target),
+            };
+        }
+    };
+
+    match fetch_dns_records(client, config, &zone, hostname).await {
+        Ok(records) => dns_status_from_records(hostname, &zone, &target, &records),
+        Err(err) => TunnelRouteDns {
+            configured: false,
+            status: "unknown".to_string(),
+            message: match err {
+                DnsEnsureError::MissingZone(message)
+                | DnsEnsureError::Conflict(message)
+                | DnsEnsureError::Upstream(message) => message,
+            },
+            zone_name: Some(zone.name),
+            record_type: None,
+            proxied: None,
+            target: Some(target),
+        },
+    }
+}
+
+async fn annotate_dns_status(config: &CfConfig, routes: Vec<TunnelRoute>) -> Vec<TunnelRoute> {
+    let client = cf_http_client();
+    let mut annotated = Vec::with_capacity(routes.len());
+
+    for mut route in routes {
+        route.dns = Some(route_dns_status(&client, config, &route.hostname).await);
+        annotated.push(route);
+    }
+
+    annotated
+}
+
+async fn create_dns_record(
+    client: &reqwest::Client,
+    config: &CfConfig,
+    zone: &CfZone,
+    hostname: &str,
+    target: &str,
+) -> Result<(), DnsEnsureError> {
+    let url = format!("{}/zones/{}/dns_records", cf_api_base(), zone.id);
+    let body = serde_json::json!({
+        "type": "CNAME",
+        "name": hostname,
+        "content": target,
+        "ttl": 1,
+        "proxied": true,
+    });
+
+    let resp = client
+        .post(&url)
+        .bearer_auth(&config.api_token)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| {
+            DnsEnsureError::Upstream(format!(
+                "Unable to create Cloudflare DNS record for '{hostname}': {e}"
+            ))
+        })?;
+
+    let status = resp.status();
+    let body: CfItemResponse<CfDnsRecord> = resp.json().await.map_err(|e| {
+        DnsEnsureError::Upstream(format!(
+            "Unable to parse Cloudflare DNS create response for '{hostname}': {e}"
+        ))
+    })?;
+
+    if !status.is_success() || !body.success {
+        return Err(DnsEnsureError::Upstream(format!(
+            "Cloudflare could not create the DNS record for '{hostname}': {}. Create a proxied CNAME for {hostname} to {target}.",
+            cf_error_message(&body.errors, &status.to_string())
+        )));
+    }
+
+    let _ = body.result;
+    Ok(())
+}
+
+async fn update_dns_record_to_proxied(
+    client: &reqwest::Client,
+    config: &CfConfig,
+    zone: &CfZone,
+    record: &CfDnsRecord,
+    hostname: &str,
+    target: &str,
+) -> Result<(), DnsEnsureError> {
+    let url = format!(
+        "{}/zones/{}/dns_records/{}",
+        cf_api_base(),
+        zone.id,
+        record.id
+    );
+    let body = serde_json::json!({
+        "type": "CNAME",
+        "name": hostname,
+        "content": target,
+        "ttl": 1,
+        "proxied": true,
+    });
+
+    let resp = client
+        .put(&url)
+        .bearer_auth(&config.api_token)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| {
+            DnsEnsureError::Upstream(format!(
+                "Unable to update Cloudflare DNS record for '{hostname}': {e}"
+            ))
+        })?;
+
+    let status = resp.status();
+    let body: CfItemResponse<CfDnsRecord> = resp.json().await.map_err(|e| {
+        DnsEnsureError::Upstream(format!(
+            "Unable to parse Cloudflare DNS update response for '{hostname}': {e}"
+        ))
+    })?;
+
+    if !status.is_success() || !body.success {
+        return Err(DnsEnsureError::Upstream(format!(
+            "Cloudflare could not update the DNS record for '{hostname}': {}. Ensure the API token has DNS:Edit permission for '{}'.",
+            cf_error_message(&body.errors, &status.to_string()),
+            zone.name
+        )));
+    }
+
+    let _ = body.result;
+    Ok(())
+}
+
+async fn ensure_route_dns(config: &CfConfig, hostname: &str) -> Result<(), DnsEnsureError> {
+    let client = cf_http_client();
+    let target = tunnel_dns_target(config);
+    let zone = find_managed_zone(&client, config, hostname).await?.ok_or_else(|| {
+        DnsEnsureError::MissingZone(format!(
+            "No managed Cloudflare zone was found for {hostname}. Add the zone to Cloudflare or create a proxied CNAME for {hostname} to {target} before creating this tunnel route."
+        ))
+    })?;
+    let records = fetch_dns_records(&client, config, &zone, hostname).await?;
+
+    if records.is_empty() {
+        create_dns_record(&client, config, &zone, hostname, &target).await?;
+        return Ok(());
+    }
+
+    if let Some(record) = matching_cname(&records, &target) {
+        if record.proxied.unwrap_or(false) {
+            return Ok(());
+        }
+        update_dns_record_to_proxied(&client, config, &zone, record, hostname, &target).await?;
+        return Ok(());
+    }
+
+    let record = &records[0];
+    Err(DnsEnsureError::Conflict(format!(
+        "{hostname} already has a conflicting Cloudflare DNS record: {} {} -> '{}'. Replace it with a proxied CNAME to {target}.",
+        record.record_type, record.name, record.content
+    )))
 }
 
 /// Write ingress routes back to the Cloudflare Tunnel configuration.
@@ -448,8 +900,10 @@ async fn fetch_ingress_routes(config: &CfConfig) -> anyhow::Result<Vec<TunnelRou
 async fn write_ingress_routes(config: &CfConfig, routes: &[TunnelRoute]) -> anyhow::Result<()> {
     let client = cf_http_client();
     let url = format!(
-        "{CF_API_BASE}/accounts/{}/cfd_tunnel/{}/configurations",
-        config.account_id, config.tunnel_id
+        "{}/accounts/{}/cfd_tunnel/{}/configurations",
+        cf_api_base(),
+        config.account_id,
+        config.tunnel_id
     );
 
     // Build ingress array: user routes + catch-all.
@@ -496,7 +950,24 @@ async fn write_ingress_routes(config: &CfConfig, routes: &[TunnelRoute]) -> anyh
 
 #[cfg(test)]
 mod tests {
-    use super::normalize_path_matcher;
+    use super::*;
+
+    fn zone() -> CfZone {
+        CfZone {
+            id: "zone-1".to_string(),
+            name: "oklabs.uk".to_string(),
+        }
+    }
+
+    fn record(record_type: &str, content: &str, proxied: Option<bool>) -> CfDnsRecord {
+        CfDnsRecord {
+            id: "record-1".to_string(),
+            record_type: record_type.to_string(),
+            name: "scribe.oklabs.uk".to_string(),
+            content: content.to_string(),
+            proxied,
+        }
+    }
 
     #[test]
     fn normalizes_empty_and_root_path_matchers() {
@@ -517,5 +988,63 @@ mod tests {
             normalize_path_matcher(Some(" ^/api ".to_string())),
             Some("^/api".to_string())
         );
+    }
+
+    #[test]
+    fn cloudflare_tunnel_dns_candidates_include_parent_zones() {
+        assert_eq!(
+            hostname_zone_candidates("scribe.oklabs.uk"),
+            vec!["scribe.oklabs.uk", "oklabs.uk"]
+        );
+    }
+
+    #[test]
+    fn cloudflare_tunnel_dns_accepts_existing_proxied_cname() {
+        let status = dns_status_from_records(
+            "scribe.oklabs.uk",
+            &zone(),
+            "abc.cfargotunnel.com",
+            &[record("CNAME", "abc.cfargotunnel.com.", Some(true))],
+        );
+
+        assert!(status.configured);
+        assert_eq!(status.status, "configured");
+    }
+
+    #[test]
+    fn cloudflare_tunnel_dns_marks_unproxied_cname_not_configured() {
+        let status = dns_status_from_records(
+            "scribe.oklabs.uk",
+            &zone(),
+            "abc.cfargotunnel.com",
+            &[record("CNAME", "abc.cfargotunnel.com", Some(false))],
+        );
+
+        assert!(!status.configured);
+        assert_eq!(status.status, "unproxied");
+    }
+
+    #[test]
+    fn cloudflare_tunnel_dns_reports_conflicting_record() {
+        let status = dns_status_from_records(
+            "scribe.oklabs.uk",
+            &zone(),
+            "abc.cfargotunnel.com",
+            &[record("A", "203.0.113.10", None)],
+        );
+
+        assert!(!status.configured);
+        assert_eq!(status.status, "conflict");
+        assert!(status.message.contains("proxied CNAME"));
+    }
+
+    #[test]
+    fn cloudflare_tunnel_dns_reports_missing_record_action() {
+        let status =
+            dns_status_from_records("scribe.oklabs.uk", &zone(), "abc.cfargotunnel.com", &[]);
+
+        assert!(!status.configured);
+        assert_eq!(status.status, "missing");
+        assert!(status.message.contains("Create a proxied CNAME"));
     }
 }

@@ -2470,6 +2470,17 @@ export interface CloudflareTunnelRoute {
   hostname: string;
   service: string;
   path: string | null;
+  dns?: CloudflareTunnelRouteDns | null;
+}
+
+export interface CloudflareTunnelRouteDns {
+  configured: boolean;
+  status: string;
+  message: string;
+  zone_name: string | null;
+  record_type: string | null;
+  proxied: boolean | null;
+  target: string | null;
 }
 
 export interface CloudflareTunnelRoutesResponse {

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Cloud,
   ExternalLink,
+  AlertTriangle,
+  CheckCircle2,
   Pencil,
   Plus,
   RefreshCw,
@@ -106,6 +108,29 @@ function normalizePathMatcher(path: string): string | undefined {
     return undefined;
   }
   return trimmed;
+}
+
+function dnsBadgeClass(configured: boolean, status?: string): string {
+  if (configured) return "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]";
+  if (status === "conflict") return "border-[#fb7185]/30 bg-[#fb7185]/10 text-[#fb7185]";
+  return "border-[#fbbf24]/30 bg-[#fbbf24]/10 text-[#fbbf24]";
+}
+
+function dnsBadgeLabel(status?: string): string {
+  switch (status) {
+    case "configured":
+      return "DNS ready";
+    case "unproxied":
+      return "Unproxied";
+    case "missing":
+      return "DNS missing";
+    case "zone_missing":
+      return "Zone missing";
+    case "conflict":
+      return "DNS conflict";
+    default:
+      return "DNS unknown";
+  }
 }
 
 export default function CloudflareTunnelPage() {
@@ -479,6 +504,7 @@ export default function CloudflareTunnelPage() {
                         Backend Service
                       </TableHead>
                       <TableHead className="text-mesh-text-dim">Path</TableHead>
+                      <TableHead className="text-mesh-text-dim">DNS</TableHead>
                       <TableHead className="w-[100px] text-mesh-text-dim">
                         Actions
                       </TableHead>
@@ -518,6 +544,31 @@ export default function CloudflareTunnelPage() {
                         </TableCell>
                         <TableCell className="text-mesh-text-dim">
                           {route.path ?? ""}
+                        </TableCell>
+                        <TableCell>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge
+                                  variant="outline"
+                                  className={dnsBadgeClass(
+                                    route.dns?.configured ?? false,
+                                    route.dns?.status
+                                  )}
+                                >
+                                  {route.dns?.configured ? (
+                                    <CheckCircle2 className="mr-1 h-3 w-3" />
+                                  ) : (
+                                    <AlertTriangle className="mr-1 h-3 w-3" />
+                                  )}
+                                  {dnsBadgeLabel(route.dns?.status)}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                <p>{route.dns?.message || "DNS status unavailable"}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
