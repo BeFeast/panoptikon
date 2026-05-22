@@ -3,9 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ChevronDown, Menu, Settings } from "lucide-react";
+import { ChevronDown, Menu } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { isNavItemActive, navGroups, useGroupCollapse, useServerStatus } from "./Sidebar";
+import {
+  isNavItemActive,
+  navGroups,
+  useGroupCollapse,
+  useServerStatus,
+  utilityNavItems,
+} from "./Sidebar";
 import { StatusDot } from "@/components/mesh/StatusDot";
 import {
   Sheet,
@@ -136,24 +142,32 @@ export function MobileSidebar() {
               );
             })}
 
-            {/* Settings — pinned after groups */}
+            {/* Utility nav — pinned after groups */}
             <div className="mt-1 border-t border-mesh-border pt-1">
-              <Link
-                href="/settings"
-                onClick={() => setOpen(false)}
-                className={cn(
-                  "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
-                  pathname?.startsWith("/settings")
-                    ? "bg-mesh-accent/10 text-mesh-accent"
-                    : "text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-white",
-                )}
-              >
-                {pathname?.startsWith("/settings") && (
-                  <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-mesh-accent" />
-                )}
-                <Settings className="h-[18px] w-[18px] shrink-0 transition-transform duration-150 group-hover/nav:scale-105" />
-                <span>Settings</span>
-              </Link>
+              {utilityNavItems.map((item) => {
+                const active = isNavItemActive(pathname, item);
+                const Icon = item.icon;
+
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      "group/nav relative flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors duration-150",
+                      active
+                        ? "bg-mesh-accent/10 text-mesh-accent"
+                        : "text-mesh-text-dim hover:bg-mesh-surface-2/55 hover:text-white",
+                    )}
+                  >
+                    {active && (
+                      <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-full bg-mesh-accent" />
+                    )}
+                    <Icon className="h-[18px] w-[18px] shrink-0 transition-transform duration-150 group-hover/nav:scale-105" />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
             </div>
           </nav>
 
