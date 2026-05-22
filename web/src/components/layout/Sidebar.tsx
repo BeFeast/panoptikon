@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { StatusDot } from "@/components/mesh/StatusDot";
+import { ShortcutKey } from "@/components/ShortcutKey";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -560,17 +561,6 @@ function SidebarSearch() {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  useEffect(() => {
-    function onHotkey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        inputRef.current?.focus();
-      }
-    }
-    window.addEventListener("keydown", onHotkey);
-    return () => window.removeEventListener("keydown", onHotkey);
-  }, []);
-
   const flatItems = useMemo(() => {
     if (!results) return [] as Array<{ type: string; id: string; label: string }>;
     const items: Array<{ type: string; id: string; label: string }> = [];
@@ -674,7 +664,7 @@ function SidebarSearch() {
             border: "1px solid rgba(96,144,212,0.20)",
           }}
         >
-          ⌘K
+          <ShortcutKey actionKey="k" />
         </kbd>
       </div>
 
