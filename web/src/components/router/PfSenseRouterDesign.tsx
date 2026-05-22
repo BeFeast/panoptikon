@@ -2,11 +2,11 @@
 
 /**
  * PfSenseRouterDesign — pfSense vendor wrapper for the literal-port
- * RouterPage. Same recipe as MikrotikRouterDesign, with pfSense-specific
- * data hooks. The design source only ships a MikroTik artboard, so the
- * tab set is adapted to pfSense's surfaces (Status / Interfaces / Firewall
- * / NAT / DHCP / DNS / Routing / Config / Services) but the chrome,
- * spacing and recipes are byte-exact from router-page.jsx.
+ * RouterPage. The page header, stats grid, tab strip and footer come from
+ * the literal design recipe, while each tab's panel content is provided by
+ * the dedicated `pfsense/tabs/*` components so hash sub-routes (`#system`,
+ * `#interfaces`, `#firewall`, `#dhcp`, `#dns`, `#services`, `#routing`,
+ * `#config`) render the matching pfSense section in place.
  */
 
 import { useCallback, useMemo } from "react";
@@ -20,8 +20,6 @@ import {
 } from "@/lib/api";
 import {
   RouterPage,
-  type RouterFirewallRow,
-  type RouterDhcpRow,
   type RouterInterfaceRow,
   type RouterStatRow,
   gen,
@@ -29,6 +27,14 @@ import {
 } from "@/components/router/RouterPage";
 import type { RouterTab } from "@/components/router/RouterTabs";
 import type { RouterHeaderMeta } from "@/components/router/RouterHeader";
+import { SystemTab } from "@/components/pfsense/tabs/SystemTab";
+import { InterfacesTab } from "@/components/pfsense/tabs/InterfacesTab";
+import { FirewallTab } from "@/components/pfsense/tabs/FirewallTab";
+import { DhcpTab } from "@/components/pfsense/tabs/DhcpTab";
+import { DnsTab } from "@/components/pfsense/tabs/DnsTab";
+import { ServicesTab } from "@/components/pfsense/tabs/ServicesTab";
+import { RoutingTab } from "@/components/pfsense/tabs/RoutingTab";
+import { ConfigTab } from "@/components/pfsense/tabs/ConfigTab";
 
 const PFSENSE_TABS: RouterTab[] = [
   { id: "system", label: "System" },
@@ -149,40 +155,32 @@ export default function PfSenseRouterDesign({
     }));
   }, [interfaces.data]);
 
-  const fwRows: RouterFirewallRow[] = useMemo(() => {
-    return (rules.data ?? []).map((r, idx) => ({
-      idx,
-      chain: r.interface,
-      action: r.action,
-      src: r.source,
-      dst: r.destination,
-      comment: r.description ?? "",
-      hits: r.tracker ?? "—",
-      enabled: !r.disabled,
-    }));
-  }, [rules.data]);
-
-  const dhcpRows: RouterDhcpRow[] = useMemo(() => {
-    return (leases.data ?? []).map((l) => ({
-      ip: l.ip,
-      mac: l.mac,
-      name: l.hostname ?? "(unknown)",
-      exp: l.end ?? "—",
-      server: l.interface,
-      static: l.status === "static",
-    }));
-  }, [leases.data]);
-
   const totalIfaces = ifaceRows.length;
   const runningIfaces = ifaceRows.filter((r) => r.running).length;
   const downIfaces = totalIfaces - runningIfaces;
-  const staticLeases = dhcpRows.filter((r) => r.static).length;
-  const disabledRules = fwRows.filter((r) => !r.enabled).length;
 
   const connected = !!status.data?.reachable;
   const title = status.data?.hostname
     ? `pfSense · ${status.data.hostname}`
     : "pfSense Firewall";
+
+  // Per-tab content. Each hash subroute (`#system`, `#interfaces`, etc.) maps
+  // to one of these nodes. RouterPage renders only the entry matching
+  // `activeTab` below the tabs strip, so direct URL load + tab clicks +
+  // browser back/forward all swap the panel in place.
+  const tabContent = useMemo(
+    () => ({
+      system: status.data ? <SystemTab status={status.data} /> : null,
+      interfaces: <InterfacesTab />,
+      firewall: <FirewallTab />,
+      dhcp: <DhcpTab />,
+      dns: <DnsTab />,
+      services: <ServicesTab />,
+      routing: <RoutingTab />,
+      config: <ConfigTab />,
+    }),
+    [status.data],
+  );
 
   return (
     <RouterPage
@@ -204,24 +202,7 @@ export default function PfSenseRouterDesign({
             ? "loading…"
             : "no data"
       }
-      firewall={{
-        rules: fwRows,
-        label:
-          fwRows.length > 0
-            ? `${fwRows.length} rules · ${disabledRules} disabled`
-            : rules.loading
-              ? "loading…"
-              : "no rules",
-      }}
-      dhcp={{
-        leases: dhcpRows,
-        label:
-          dhcpRows.length > 0
-            ? `${dhcpRows.length} · ${staticLeases} static`
-            : leases.loading
-              ? "loading…"
-              : "no leases",
-      }}
+      tabContent={tabContent}
       footer={{
         snapshotLabel: "Live pfSense state",
         driftLabel: status.data?.domain

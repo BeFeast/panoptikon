@@ -40,6 +40,8 @@ export function DnsTab() {
   const overridesFetcher = useCallback(() => fetchPfsenseDnsOverrides(), []);
   const { data: config, loading: configLoading } = useData(configFetcher);
   const { data: overrides, loading: overridesLoading, reload: reloadOverrides } = useData(overridesFetcher);
+  const resolverEnabled = config?.resolver_enabled ?? false;
+  const servers = config?.servers ?? [];
 
   const [showCreate, setShowCreate] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PfsenseDnsOverride | null>(null);
@@ -93,19 +95,19 @@ export function DnsTab() {
                 <Badge
                   variant="outline"
                   className={
-                    config.resolver_enabled
+                    resolverEnabled
                       ? "border-[#4ade80]/30 bg-[#4ade80]/10 text-[#4ade80]"
                       : "border-mesh-text-mute/30 bg-mesh-text-mute/10 text-mesh-text-mute"
                   }
                 >
-                  {config.resolver_enabled ? "Enabled" : "Disabled"}
+                  {resolverEnabled ? "Enabled" : "Disabled"}
                 </Badge>
               </div>
-              {config.servers.length > 0 && (
+              {servers.length > 0 && (
                 <div>
                   <span className="text-sm text-mesh-text-dim">Upstream DNS Servers:</span>
                   <div className="mt-1 flex flex-wrap gap-2">
-                    {config.servers.map((s) => (
+                    {servers.map((s) => (
                       <Badge key={s} variant="outline" className="border-mesh-border-strong font-mono text-mesh-text">
                         {s}
                       </Badge>

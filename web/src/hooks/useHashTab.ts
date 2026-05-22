@@ -23,7 +23,14 @@ export function useHashTab<T extends string>(
 
   const setTab = useCallback((value: string) => {
     setTabState(value as T);
-    window.history.replaceState(null, "", `#${value}`);
+    const next = `#${value}`;
+    // Use pushState so browser back/forward steps between tab selections
+    // (acceptance for #806). When the URL is already at `next` — e.g. the
+    // hashchange listener fired on a back/forward event and we are syncing
+    // local state — skip the push to avoid duplicate history entries.
+    if (window.location.hash !== next) {
+      window.history.pushState(null, "", next);
+    }
   }, []);
 
   // Listen for hash changes (browser back/forward)
