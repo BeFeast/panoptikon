@@ -68,10 +68,11 @@ test.describe("Settings landing — design-source literal port", () => {
     await expect(search).toBeVisible();
     await expect(search).toHaveAttribute("placeholder", /search settings/i);
 
-    // ⌘K hint inside the settings search card (scoped — TopBar also
-    // renders one ⌘K affordance).
+    // Shortcut hint inside the settings search card (scoped — TopBar also
+    // renders one affordance). The hydrated label is platform-aware: ⌘K on
+    // macOS and Ctrl+K in Linux CI.
     await expect(
-      page.locator('kbd', { hasText: "⌘K" }).first(),
+      page.locator("kbd", { hasText: /(?:⌘K|Ctrl\+K)/ }).first(),
     ).toBeVisible();
 
     // Quick filter labels (settings.jsx L146-150). "Experimental" also
@@ -89,7 +90,7 @@ test.describe("Settings landing — design-source literal port", () => {
     // Footer (settings.jsx L184-196).
     const footer = page.locator('[data-testid="settings-footer"]');
     await expect(footer).toBeVisible();
-    await expect(footer).toContainText("Tip · ⌘K");
+    await expect(footer).toContainText(/Tip · (?:⌘K|Ctrl\+K)/);
     await expect(footer).toContainText("Last config change");
 
     await page.screenshot({
