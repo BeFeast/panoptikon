@@ -112,6 +112,15 @@ fn cf_http_client() -> reqwest::Client {
         .expect("cloudflare HTTP client")
 }
 
+fn normalize_path_matcher(path: Option<String>) -> Option<String> {
+    let path = path?.trim().to_string();
+    if path.is_empty() || path == "/" {
+        None
+    } else {
+        Some(path)
+    }
+}
+
 // ─── Handlers ───────────────────────────────────────────────
 
 /// GET /api/v1/cloudflare-tunnel/status
@@ -251,7 +260,7 @@ pub async fn add_route(
     routes.push(TunnelRoute {
         hostname: body.hostname.clone(),
         service: body.service.clone(),
-        path: body.path.clone(),
+        path: normalize_path_matcher(body.path.clone()),
     });
 
     // Write back to Cloudflare.
@@ -364,7 +373,7 @@ pub async fn update_route(
     routes[idx] = TunnelRoute {
         hostname: body.hostname.clone(),
         service: body.service.clone(),
-        path: body.path.clone(),
+        path: normalize_path_matcher(body.path.clone()),
     };
 
     // Write back to Cloudflare.
@@ -420,7 +429,7 @@ async fn fetch_ingress_routes(config: &CfConfig) -> anyhow::Result<Vec<TunnelRou
             // Skip the catch-all rule (no hostname).
             let hostname = entry["hostname"].as_str()?;
             let service = entry["service"].as_str().unwrap_or("").to_string();
-            let path = entry["path"].as_str().map(|s| s.to_string());
+            let path = normalize_path_matcher(entry["path"].as_str().map(|s| s.to_string()));
             Some(TunnelRoute {
                 hostname: hostname.to_string(),
                 service,
@@ -451,7 +460,7 @@ async fn write_ingress_routes(config: &CfConfig, routes: &[TunnelRoute]) -> anyh
                 "hostname": r.hostname,
                 "service": r.service,
             });
-            if let Some(ref path) = r.path {
+            if let Some(path) = normalize_path_matcher(r.path.clone()) {
                 entry["path"] = serde_json::json!(path);
             }
             entry
@@ -483,4 +492,30 @@ async fn write_ingress_routes(config: &CfConfig, routes: &[TunnelRoute]) -> anyh
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_path_matcher;
+
+    #[test]
+    fn normalizes_empty_and_root_path_matchers() {
+        assert_eq!(normalize_path_matcher(None), None);
+        assert_eq!(normalize_path_matcher(Some(String::new())), None);
+        assert_eq!(normalize_path_matcher(Some("   ".to_string())), None);
+        assert_eq!(normalize_path_matcher(Some("/".to_string())), None);
+        assert_eq!(normalize_path_matcher(Some(" / ".to_string())), None);
+    }
+
+    #[test]
+    fn preserves_specific_path_matchers() {
+        assert_eq!(
+            normalize_path_matcher(Some("/api".to_string())),
+            Some("/api".to_string())
+        );
+        assert_eq!(
+            normalize_path_matcher(Some(" ^/api ".to_string())),
+            Some("^/api".to_string())
+        );
+    }
 }
