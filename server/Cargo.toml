@@ -10,7 +10,7 @@ name = "panoptikon-server"
 path = "src/main.rs"
 
 [dependencies]
-axum = { version = "0.7", features = ["ws", "macros"] }
+axum = { version = "0.8", features = ["ws", "macros"] }
 tokio = { version = "1", features = ["full"] }
 sqlx = { version = "0.7", features = ["sqlite", "runtime-tokio", "macros", "migrate"] }
 serde = { version = "1", features = ["derive"] }
