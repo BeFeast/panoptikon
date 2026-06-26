@@ -27,7 +27,7 @@ anyhow = "1"
 tokio-tungstenite = "0.24"
 chrono = { version = "0.4", features = ["serde"] }
 toml = "0.8"
-hickory-resolver = "0.24"
+hickory-resolver = "0.26"
 dashmap = "5"
 ipnetwork = "0.20"
 mdns-sd = "0.18"
