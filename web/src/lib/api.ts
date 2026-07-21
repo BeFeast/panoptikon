@@ -457,8 +457,8 @@ export function fetchDeviceTraffic(
 
 // ─── Auth ───────────────────────────────────────────────
 
-export function fetchAuthStatus(): Promise<AuthStatus> {
-  return apiGet<AuthStatus>("/api/v1/auth/status");
+export function fetchAuthStatus(opts?: { timeoutMs?: number }): Promise<AuthStatus> {
+  return apiGet<AuthStatus>("/api/v1/auth/status", opts);
 }
 
 export function login(password: string): Promise<LoginResponse> {

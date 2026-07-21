@@ -6,6 +6,25 @@ import { fetchAuthStatus, login } from "@/lib/api";
 import { BrandMark } from "@/components/brand/BrandMark";
 import type { AuthStatus } from "@/lib/types";
 
+// Maestro's live UX gate has a 15-second process budget. Keep optional login
+// bootstrap calls well inside that budget so a slow API response cannot hold
+// Playwright's `networkidle` wait until the gate itself is killed.
+const LOGIN_BOOTSTRAP_TIMEOUT_MS = 4_000;
+
+async function fetchVersionWithTimeout(): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(
+    () => controller.abort(),
+    LOGIN_BOOTSTRAP_TIMEOUT_MS,
+  );
+
+  try {
+    return await fetch("/api/v1/version", { signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 function NetworkBackdrop() {
   return (
     <svg
@@ -74,7 +93,7 @@ export default function LoginPage() {
   const [authStatus, setAuthStatus] = useState<AuthStatus | null>(null);
 
   useEffect(() => {
-    fetchAuthStatus()
+    fetchAuthStatus({ timeoutMs: LOGIN_BOOTSTRAP_TIMEOUT_MS })
       .then((status) => {
         if (status.authenticated) {
           window.location.href = "/dashboard";
@@ -89,7 +108,7 @@ export default function LoginPage() {
       })
       .catch(() => setReady(true));
 
-    fetch("/api/v1/version")
+    fetchVersionWithTimeout()
       .then((r) => r.json())
       .then((data) => {
         if (data.version) setVersion(data.version);
