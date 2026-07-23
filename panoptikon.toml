@@ -1,3 +1,5 @@
+# Current Controller configuration example. This file does not configure the
+# planned Gateway packet path or privileged panoptikon-routerd process.
 listen = "0.0.0.0:8080"
 db_path = "./panoptikon.db"
 

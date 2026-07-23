@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 #
 # setup-vlan20-lxc.sh — Create LXC test containers on VLAN 20
+# This is current MikroTik Controller test infrastructure, not the planned
+# isolated Proxmox Gateway fabric.
 #
 # Run this script ON the Proxmox host (10.10.0.11) as root.
 # Creates 2 lightweight containers that act as DHCP clients on VLAN 20,

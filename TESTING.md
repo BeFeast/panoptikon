@@ -1,8 +1,19 @@
 # Panoptikon — End-to-End Testing Plan
 
+> **Profile boundary:** This file covers the **current** Controller stack and its
+> managed-router integrations. Native Gateway packet-path testing is **planned**
+> for the isolated Proxmox VM fabric and is currently **blocked**; see
+> [`docs/test-plan.md`](docs/test-plan.md) and the canonical
+> [`docs/GATEWAY-ARCHITECTURE.md`](docs/GATEWAY-ARCHITECTURE.md). The working
+> production router and Controller-mode LXC 115 are never Gateway test targets.
+> ER605 V1 is sacrificial HIL/recovery hardware only.
+
 This document describes how to manually verify each major Panoptikon integration in a real or near-real environment. For the automated integration test suite, see `server/tests/integration.rs`.
 
-> **Prerequisites** — a running Panoptikon stack (`docker compose up`) with the services described in `docker-compose.yml`: Panoptikon (`:8080`), Caddy (`:80/:443`), and Unbound (`:53`). A MikroTik CHR or hardware router on the same network. See `docs/test-environment.md` for the full Proxmox-based lab setup.
+> **Prerequisites** — a running Panoptikon Controller stack (`docker compose up`)
+> with the services described in `docker-compose.yml`: Panoptikon (`:8080`),
+> Caddy (`:80/:443`), and Unbound (`:53`). A MikroTik CHR or hardware router on
+> the same network. See `docs/test-environment.md` for the full current lab setup.
 
 ---
 

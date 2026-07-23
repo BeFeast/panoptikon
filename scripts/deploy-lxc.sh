@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
 # deploy-lxc.sh — Deploy a pre-built panoptikon binary to LXC 115 via DevBox.
+# LXC 115 is the current Controller deployment, never a Gateway experiment target.
 #
 # This script is now artifact-driven: it receives a pre-built binary and
 # deploys it. Building is handled by CI; orchestration by deploy-worker.sh.

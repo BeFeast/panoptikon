@@ -1,5 +1,10 @@
 # Panoptikon — Code Review Report
 
+> **Historical snapshot:** Architecture observations in this review describe the
+> code at review time, primarily the current Controller. They are not a competing
+> roadmap. The canonical planned architecture is
+> [`GATEWAY-ARCHITECTURE.md`](./GATEWAY-ARCHITECTURE.md).
+
 **Date:** 2026-02-20
 **Reviewer:** Claude Code Review Agent Team
 **Scope:** Full codebase audit — server (Rust/axum), agent (Rust), web (Next.js/React), CI, tests

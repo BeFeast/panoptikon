@@ -1,43 +1,51 @@
 # Panoptikon
 
-*The all-seeing eye for your home network.*
+*The all-seeing eye for your network.*
 
-Panoptikon gives your homelab a local-first control surface for discovery, telemetry, and router operations — without shipping your network metadata to someone else's cloud.
+Panoptikon is building a local-first network control platform around a primary
+**x86-64 co-located Gateway**, an isolated **Proxmox Gateway VM** verification
+profile, and an embedded **Panoptikon Edge / OpenWrt** profile.
 
-**Panoptikon** is a self-hosted network operations dashboard that combines discovery, router management, asset intelligence, and lightweight telemetry in one operator-focused interface.
+**Current:** the shipped product is a self-hosted Controller for discovery,
+telemetry, asset intelligence, and managed-router operations through MikroTik
+and pfSense integrations. **Planned:** native Gateway forwarding uses separate
+`panoptikon-core` and privileged `panoptikon-routerd` processes. Native
+forwarding, routerd, OpenWrt firmware, and commit-confirm are not implemented yet.
+The former VyOS integration was removed by database migration 026 and is retained
+only in explicitly historical design documents.
 
 ---
 
-## Architecture
+## Architecture and product profiles
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    Browser (User)                   │
-│              Next.js SPA (shadcn/ui, dark)          │
-└────────────┬────────────────────┬───────────────────┘
-             │ REST (CRUD)        │ WebSocket (live)
-             ▼                    ▼
-┌─────────────────────────────────────────────────────┐
-│                Rust API Server (axum)               │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌────────┐  │
-│  │ REST API │ │ WS Hub   │ │ Scanner  │ │ Router │  │
-│  │          │ │          │ │ (ARP)    │ │ Client │  │
-│  │          │ │          │ │          │ │MT/VyOS │  │
-│  └──────────┘ └──────────┘ └──────────┘ └────────┘  │
-│                     │                               │
-│              ┌──────┴──────┐                        │
-│              │   SQLite    │                        │
-│              └─────────────┘                        │
-└─────────────────────┬───────────────────────────────┘
-                      │ WebSocket (persistent)
-          ┌───────────┼───────────┐
-          ▼           ▼           ▼
-     ┌─────────┐ ┌─────────┐ ┌─────────┐
-     │ Agent   │ │ Agent   │ │ Agent   │
-     └─────────┘ └─────────┘ └─────────┘
+                         Browser / API clients
+                                  |
+                                  v
+                    +---------------------------+
+                    |     panoptikon-core       |
+                    | UI/API, telemetry, policy |
+                    | desired state and history |
+                    +-------------+-------------+
+                                  |
+                  capability / desired-state /
+                      transaction contract
+                                  |
+             +--------------------+--------------------+
+             | local Unix socket                       | remote mTLS
+             v                                         v
+  +---------------------------+             +---------------------------+
+  | panoptikon-routerd        |             | panoptikon-routerd        |
+  | x86 Linux/Netlink adapter |             | OpenWrt ubus/UCI adapter  |
+  +---------------------------+             +---------------------------+
+
+Current Controller path:
+panoptikon-server ---- router APIs ----> MikroTik / pfSense
 ```
 
-📋 **[Product Requirements Document (PRD)](docs/PRD.md)** — full feature spec, architecture decisions, and roadmap.
+- [Product Requirements Document](docs/PRD.md)
+- [Canonical Gateway architecture](docs/GATEWAY-ARCHITECTURE.md)
+- [Gateway product decision (#834)](https://github.com/BeFeast/panoptikon/issues/834)
 
 ---
 
@@ -52,7 +60,7 @@ Panoptikon gives your homelab a local-first control surface for discovery, telem
 
 ```bash
 # Clone the repository
-git clone https://github.com/olegkossoy/panoptikon.git
+git clone https://github.com/BeFeast/panoptikon.git
 cd panoptikon
 
 # Build the server
@@ -79,17 +87,23 @@ bun run dev
 
 ```
 panoptikon/
-├── server/     # Rust axum backend (REST API, WebSocket hub, ARP scanner, MikroTik + VyOS router clients)
+├── server/     # Rust axum backend (API, WebSocket hub, discovery, managed-router clients)
 ├── agent/      # Rust lightweight agent (system metrics collector)
 └── web/        # Next.js 15 frontend (shadcn/ui, dark theme)
 ```
 
-## Router Integration
+## Router integration
 
-Panoptikon provides a control plane for two router platforms:
+Current Controller mode remains a supported product profile:
 
 - **MikroTik (primary/default)** — connects via the RouterOS 7+ REST API. Configure in **Settings → Router → MikroTik**.
-- **VyOS (legacy/optional)** — connects via the VyOS HTTP API. Hidden by default for new users. To expose it, enable **Settings → Advanced → Show legacy routers**, then configure in **Settings → Router → VyOS (Legacy)**.
+- **pfSense** — supported managed-router integration for existing deployments.
+- **VyOS (historical/removed)** — no longer shipped. Migration 026 removes its
+  settings and legacy-router visibility flag; the old design remains in
+  [the archived VyOS PRD](docs/PRD-VyOS-Management.md) for reference only.
+
+The planned Gateway and Edge profiles add native data-plane ownership through the
+Core/routerd contract. They do not remove managed-router support.
 
 ## Prometheus Integration
 
@@ -117,7 +131,7 @@ scrape_configs:
       - targets: ['localhost:8080']
 ```
 
-## Docker Deployment
+## Current Controller deployment
 
 Build and run Panoptikon in a container:
 
@@ -129,7 +143,10 @@ docker build -t panoptikon .
 docker-compose up -d
 ```
 
-The multi-stage Dockerfile builds the Rust server and Next.js frontend into a minimal `debian:bookworm-slim` runtime image — self-hosted, single-binary, no external dependencies beyond what ships in the container.
+The multi-stage Dockerfile builds the current Rust Controller and Next.js frontend
+into a minimal `debian:bookworm-slim` runtime image. This packaging describes the
+current x86 Controller; it is not a promise that x86 Gateway and constrained
+OpenWrt Edge targets will share one binary or backend.
 
 **Important notes:**
 
@@ -143,7 +160,8 @@ The multi-stage Dockerfile builds the Rust server and Next.js frontend into a mi
 - **Self-hosted by default** — your network data stays on your network.
 - **Privacy-first and operator-controlled** — no cloud accounts, no phone-home telemetry.
 - **Transparent over magical** — configuration is explicit; behavior is predictable.
-- **Powerful without becoming brittle** — one binary, one database, minimal moving parts.
+- **Powerful without becoming brittle** — explicit contracts, bounded privilege,
+  recoverable changes, and minimal moving parts per deployment profile.
 
 ## License
 

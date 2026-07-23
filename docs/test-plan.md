@@ -1,22 +1,26 @@
 # Panoptikon — Test Plan
 
-**Version:** 0.7.0
-**Date:** 2026-02-28
+**Version:** 0.8.0
+**Date:** 2026-07-23
 **Status:** Active
 
 ---
 
 ## Table of Contents
 
+0. [Gateway Roadmap Verification](#0-gateway-roadmap-verification)
 1. [MikroTik Router Integration](#1-mikrotik-router-integration)
 2. [Caddy Reverse Proxy](#2-caddy-reverse-proxy)
 3. [Xiaomi WiFi Mesh](#3-xiaomi-wifi-mesh)
 4. [Assets / Network Inventory](#4-assets--network-inventory)
-5. [Legacy Integrations (VyOS, NPM)](#5-legacy-integrations-vyos-npm)
+5. [Historical and Legacy Integrations (VyOS, NPM)](#5-historical-and-legacy-integrations-vyos-npm)
 
 ---
 
 ## Test Environment
+
+The listed LAN systems are the **current** Controller test environment. They are
+not the planned Gateway fabric:
 
 - **MikroTik CHR:** 10.10.0.125 (RouterOS 7+, REST API enabled)
 - **Panoptikon server:** localhost:8080 (or 10.10.0.14:8080 on LAN)
@@ -24,6 +28,63 @@
 - **Xiaomi mesh main (CAP):** 10.10.0.199
 - **Xiaomi satellites:** 10.10.0.52, 10.10.0.53, 10.10.0.54
 - **Test containers:** See [test-environment.md](./test-environment.md) for Proxmox LXC setup
+
+The working production router and Controller-mode LXC 115 are excluded from all
+Gateway experiments. See [the test-environment guide](./test-environment.md) and
+the [canonical Gateway architecture](./GATEWAY-ARCHITECTURE.md).
+
+---
+
+## 0. Gateway Roadmap Verification
+
+This section is an acceptance matrix for the **planned** isolated Proxmox Gateway
+VM. It does not describe shipped functionality. The cases are **blocked** until
+the synthetic WAN/LAN/management/recovery fabric is provisioned.
+
+### 0.1 Packet-path matrix
+
+| ID | Case | Evidence | Required result | Status |
+|---|---|---|---|---|
+| G-01 | Baseline WAN↔LAN forwarding for an advertised capability | Captures on both sides, route/interface state, transaction ID | Only declared flows pass; counters and observed state agree | **Planned** |
+| G-02 | NAT apply and removal | Pre/post captures and normalized desired/observed state | Translation matches the plan and removal restores baseline | **Planned** |
+| G-03 | Firewall allow/deny ordering | Positive and negative probes with rule counters | Results match deterministic plan order; no undeclared rule is applied | **Planned** |
+| G-04 | Address/route change | Connectivity probes through old and new path | Change is atomic or rolls back; observed revision advances once | **Planned** |
+| G-05 | DHCP/DNS capability, when advertised | Lease/query transcript and packet capture | Service behavior matches target capabilities; unsupported targets reject the request | **Planned** |
+| G-06 | Capability mismatch | Submit intent available on a different adapter only | Core does not offer/send it; routerd rejects any forged request | **Planned** |
+| G-07 | Controller compatibility | Run current MikroTik/pfSense smoke coverage and verify removed VyOS settings/UI stay absent | Existing managed-router behavior remains supported without reviving removed paths | **Current regression gate** |
+
+### 0.2 Failure and recovery matrix
+
+| ID | Failure | Required result | Release gate |
+|---|---|---|---|
+| F-01 | Stop `panoptikon-core` during established traffic | Last committed forwarding continues; UI/API becomes unavailable without data-plane loss | **Blocked** until proven |
+| F-02 | Break the Core↔routerd socket or remote mTLS link | Forwarding continues; observations become stale; new mutations are unavailable or explicitly queued | **Blocked** until proven |
+| F-03 | Kill and restart routerd | Existing kernel state is reconciled before writes resume; no implicit reset | **Blocked** until proven |
+| F-04 | Submit a stale expected revision | Transaction is rejected before mutation and audited | **Blocked** until proven |
+| F-05 | Inject failure midway through a multi-operation apply | Result is rolled back or marked unknown; later writes wait for reconciliation | **Blocked** until proven |
+| F-06 | Commit-confirm acknowledged before deadline | Candidate state becomes the new last-known-good revision | **Blocked** until implemented |
+| F-07 | Commit-confirm deadline expires or reachability fails | Candidate state automatically rolls back without Core assistance | **Blocking invariant** |
+| F-08 | Power-cycle Gateway after confirmed and unconfirmed changes | Confirmed last-known-good state returns; unconfirmed candidate does not persist | **Blocking invariant** |
+| F-09 | Upgrade interruption or incompatible adapter | Previous working version/configuration is recoverable through the documented path | **Blocking invariant** |
+| F-10 | Invalid client certificate or device identity | Remote routerd connection and mutation are rejected and audited | **Blocked** until proven |
+| F-11 | Management path lost by a bad rule | Independent out-of-band access restores last-known-good state | **Blocking invariant** |
+| F-12 | Attempt to address production router or LXC 115 from the fabric | Network policy and credentials make the attempt impossible; test fails closed | **Mandatory isolation gate** |
+
+Every case records the capability set, desired-state revision, transaction ID,
+packet captures, observed-state freshness, result classification, and recovery
+action. A green API health endpoint alone is not Gateway verification.
+
+### 0.3 Embedded Edge and sacrificial HIL
+
+| ID | Target | Case | Required result | Status |
+|---|---|---|---|---|
+| E-01 | Selected OpenWrt target | `ubus`/UCI capability discovery and apply | Only target-supported operations are advertised and applied | **Planned** |
+| E-02 | Selected OpenWrt target | Core offline and reconnect | Last-known-good operation continues; stale state and reconciliation are explicit | **Planned** |
+| E-03 | Selected OpenWrt target | Signed upgrade and rollback | Failed upgrade returns to a reachable supported image | **Blocked** pending target selection |
+| H-01 | ER605 V1 | Interrupted flash / serial recovery | Device is recovered through documented out-of-band steps | **Sacrificial HIL only** |
+
+ER605 V1 results never establish the reference appliance or general OpenWrt
+support matrix.
 
 ---
 
@@ -256,18 +317,17 @@
 
 ---
 
-## 5. Legacy Integrations (VyOS, NPM)
+## 5. Historical and Legacy Integrations (VyOS, NPM)
 
-These integrations are retained for backward compatibility but are not the primary path.
+NPM is retained for backward compatibility. VyOS is a removed historical path.
 
-### 5.1 VyOS (Legacy)
+### 5.1 VyOS (Historical / Removed)
 
 | # | Test Case | Steps | Expected Result |
 |---|-----------|-------|-----------------|
-| L-01 | VyOS hidden by default | Fresh install → check sidebar | VyOS does not appear in default navigation |
-| L-02 | VyOS visible when enabled | Settings → Advanced → Show legacy routers → enable | VyOS tab appears in Router page |
-| L-03 | VyOS connection test | Configure VyOS URL + API key → Test Connection | Connection test works (if VyOS is available) |
-| L-04 | VyOS lazy loading | Load Router page with both routers configured | VyOS data only fetched when VyOS tab is selected |
+| L-01 | Removed settings migrate away | Apply migration 026 to a fixture containing `vyos%` settings and `show_legacy_routers` | Removed keys are deleted; unrelated settings remain |
+| L-02 | No current VyOS navigation | Fresh install → inspect router and Advanced settings navigation | No VyOS tab or legacy-router visibility control is exposed |
+| L-03 | No current VyOS API/client surface | Inspect compiled routes/modules and run current API smoke tests | No VyOS management endpoint or client is advertised as supported |
 
 ### 5.2 NPM (Legacy)
 
@@ -305,4 +365,5 @@ curl -s http://localhost:8080/api/v1/assets?type=server | jq '.[0].name'
 
 ---
 
-*This document is actively maintained. Last updated: 2026-02-28 (v0.7.0).*
+*This document is actively maintained. Last updated: 2026-07-23 (v0.8.0 —
+current Controller coverage plus planned, blocked Gateway/Edge verification).*

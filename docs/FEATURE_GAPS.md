@@ -1,29 +1,42 @@
 # pfSense Feature Parity Analysis — Gap Report
 
-> **Date:** 2026-02-23
+> **Date:** 2026-07-23
 > **Issue:** #245
-> **Scope:** Compare Panoptikon's current feature set against pfSense capabilities.
-> Identify gaps and prioritize missing features for the backlog.
+> **Status:** Historical comparison with a current Gateway-roadmap overlay
+> **Scope:** Preserve the earlier pfSense comparison while identifying which
+> gaps belong to the **planned** native Gateway profile.
+>
+> Roadmap context: [Gateway architecture](./GATEWAY-ARCHITECTURE.md) and
+> [decision #834](https://github.com/BeFeast/panoptikon/issues/834).
+>
+> **Accuracy note:** VyOS was removed from the shipped product by migration 026.
+> Rows whose evidence is only a VyOS path are historical and must not be read as
+> current Controller capability. Until this report is re-baselined against the
+> current MikroTik/pfSense code, the repository PRD and implementation are the
+> authority for shipped status.
 
 ---
 
 ## Methodology
 
-This analysis compares Panoptikon v0.5.0 against pfSense Plus / CE feature set.
-Each pfSense capability is rated:
+This analysis preserves a historical Panoptikon Controller comparison against the
+pfSense Plus / CE feature set. Each rating is profile-aware:
 
 | Status | Meaning |
 |--------|---------|
-| **Full** | Feature exists in Panoptikon with equivalent functionality |
-| **Partial** | Feature exists but is incomplete or limited compared to pfSense |
-| **Missing** | Feature does not exist in Panoptikon |
-| **N/A** | Feature is out of scope for Panoptikon's architecture (not a router OS) |
+| **Full** | Feature exists in the current Controller for at least one documented managed-router path; notes identify the path |
+| **Partial** | Current Controller support exists but is incomplete or limited compared to pfSense |
+| **Missing** | Feature is missing from the current Controller; it may still be planned for managed-router or native Gateway work |
+| **Historical** | The row describes removed VyOS behavior and is not current capability |
+| **N/A — Controller** | The current Controller does not own this packet-path function; this is not a permanent product-wide non-goal |
 
-**Important context:** Panoptikon is a *management and monitoring dashboard*, not a router
-OS. It manages routers (VyOS, MikroTik) via their APIs. Features that require kernel-level
-packet processing (e.g., stateful packet inspection) are inherently handled by the managed
-router, not Panoptikon. The gaps identified here focus on *management plane* parity — can
-a user configure and monitor the equivalent functionality through Panoptikon?
+**Important context:** In the **current** Controller profile, kernel packet
+processing is performed by MikroTik or pfSense. Historical VyOS-only rows remain
+visible as provenance but do not establish current support. This report asks
+whether Panoptikon can configure or observe it. In the **planned** x86 Gateway,
+native Linux/Netlink adapters may own an explicitly supported subset through
+privileged routerd. Those features remain **blocked** from shipped status until
+commit-confirm, out-of-band recovery, and isolated Proxmox verification pass.
 
 ---
 
@@ -31,27 +44,28 @@ a user configure and monitor the equivalent functionality through Panoptikon?
 
 | pfSense Capability | Panoptikon Status | Notes |
 |---|---|---|
-| View firewall rules by interface/chain | **Full** | VyOS: inbound/outbound/forward chains. MikroTik: filter rules |
-| Create firewall rules | **Full** | VyOS rule creation with protocol, port, action, source/dest |
-| Edit/update firewall rules | **Full** | VyOS rule modification supported |
-| Delete firewall rules | **Full** | VyOS rule deletion supported |
-| Enable/disable rules (toggle) | **Full** | VyOS rule toggling without deletion |
-| Address groups (aliases) | **Full** | VyOS address groups with add/remove members |
-| Network groups | **Full** | VyOS network groups (CIDR lists) |
-| Port groups | **Full** | VyOS port groups |
-| Stateful packet inspection config | **N/A** | Handled by router OS, not management plane |
+| View firewall rules by interface/chain | **Full** | Current MikroTik filter-rule view |
+| Create firewall rules | **Historical** | Removed VyOS rule creation path |
+| Edit/update firewall rules | **Historical** | Removed VyOS rule modification path |
+| Delete firewall rules | **Historical** | Removed VyOS rule deletion path |
+| Enable/disable rules (toggle) | **Historical** | Removed VyOS rule-toggle path |
+| Address groups (aliases) | **Historical** | Removed VyOS address-group path |
+| Network groups | **Historical** | Removed VyOS network-group path |
+| Port groups | **Historical** | Removed VyOS port-group path |
+| Stateful packet inspection config | **N/A — Controller** | Managed router owns enforcement today; native Gateway support is planned and capability-gated |
 | Time-based firewall rules | **Missing** | pfSense supports rules active during specific days/times |
 | Connection limits per rule | **Missing** | pfSense supports per-rule connection count limits |
 | Floating rules (cross-interface) | **Missing** | pfSense floating rules apply across all interfaces |
 | Rule ordering / drag-and-drop | **Missing** | No rule reordering UI; rules identified by number |
 | Rule hit counters / statistics | **Missing** | pfSense shows per-rule match counts |
-| Anti-spoofing configuration | **N/A** | Router-level feature |
+| Anti-spoofing configuration | **N/A — Controller** | Managed router owns enforcement today; evaluate for the planned native Gateway adapter |
 | IP/DNS geoblocking | **Missing** | pfSense supports country-level blocking via pfBlockerNG |
 | Rule import/export | **Missing** | No bulk rule management |
 | Rule search/filter | **Missing** | No search within firewall rules |
 
 ### Gap Summary — Firewall
-Panoptikon has solid CRUD for VyOS firewall rules and groups. Key gaps are **rule
+The historical snapshot recorded solid CRUD for VyOS firewall rules and groups;
+that removed path is not current capability. The recorded gaps were **rule
 statistics/hit counters**, **time-based rules**, **rule reordering UI**, and
 **geoblocking**. MikroTik firewall management is read-only (view rules only, no CRUD).
 
@@ -96,9 +110,9 @@ a significant gap for users who need fine-grained NAT control.
 ### Gap Summary — Traffic Shaping
 **This is the largest feature gap.** Panoptikon has no traffic shaping or QoS management
 whatsoever. pfSense provides comprehensive QoS with multiple scheduler types, wizards,
-limiters, and real-time queue monitoring. For VyOS (which supports traffic policies) and
-MikroTik (which supports queues), Panoptikon could expose management APIs for these
-router-native QoS features.
+limiters, and real-time queue monitoring. For current MikroTik targets (which
+support queues), Panoptikon could expose additional router-native management;
+native x86 QoS belongs to the planned Gateway capability contract.
 
 ---
 
@@ -106,7 +120,7 @@ router-native QoS features.
 
 | pfSense Capability | Panoptikon Status | Notes |
 |---|---|---|
-| WireGuard tunnel creation | **Full** | VyOS WireGuard interface CRUD |
+| WireGuard tunnel creation | **Historical** | Removed VyOS WireGuard interface path |
 | WireGuard peer management | **Full** | Add/delete peers, generate keypairs |
 | WireGuard client config generation | **Full** | Generate ready-to-use .conf files |
 | OpenVPN server configuration | **Missing** | No OpenVPN management at all |
@@ -124,7 +138,7 @@ router-native QoS features.
 | VPN user management | **Missing** | No VPN-specific user/client management |
 
 ### Gap Summary — VPN
-WireGuard management on VyOS is well-implemented with full CRUD and client config
+The historical snapshot recorded full VyOS WireGuard CRUD and client config
 generation. However, **OpenVPN management is completely absent**, and there is no IPsec
 support. VPN monitoring (connected clients, tunnel status, traffic stats) is also missing.
 MikroTik WireGuard is read-only (status view only, no management).
@@ -135,16 +149,16 @@ MikroTik WireGuard is read-only (status view only, no management).
 
 | pfSense Capability | Panoptikon Status | Notes |
 |---|---|---|
-| View DHCP leases | **Full** | Both VyOS and MikroTik lease listing |
-| Static IP mappings (reservations) | **Full** | VyOS static MAC→IP mappings CRUD |
-| Enable/disable DHCP per subnet | **Full** | VyOS subnet toggle |
+| View DHCP leases | **Full** | Current MikroTik lease listing |
+| Static IP mappings (reservations) | **Historical** | Removed VyOS static-mapping path |
+| Enable/disable DHCP per subnet | **Historical** | Removed VyOS subnet-toggle path |
 | DHCP pool range configuration | **Missing** | No pool range (start/end IP) management |
 | DHCP option configuration | **Missing** | No custom DHCP options (gateway, DNS, domain, NTP, etc.) |
 | DHCP relay configuration | **Missing** | No DHCP relay agent setup |
 | DHCPv6 server | **Missing** | No IPv6 DHCP management |
 | DHCP failover / HA | **Missing** | No DHCP high-availability configuration |
 | DHCP lease time configuration | **Missing** | No lease duration settings |
-| WINS server option | **N/A** | Legacy, not relevant |
+| WINS server option | **N/A — Controller** | Legacy capability; no current or planned product commitment |
 | TFTP/PXE boot options | **Missing** | pfSense supports network boot configuration |
 | Register DHCP leases in DNS | **Missing** | pfSense auto-registers hostnames in DNS resolver |
 | Per-interface DHCP scopes | **Missing** | No multi-scope management UI |
@@ -161,15 +175,15 @@ up a DHCP server through Panoptikon. Users must configure pools directly on the 
 
 | pfSense Capability | Panoptikon Status | Notes |
 |---|---|---|
-| DNS forwarding configuration | **Full** | VyOS DNS forwarder name servers CRUD |
-| Domain overrides (local DNS) | **Full** | VyOS domain override A/AAAA records |
+| DNS forwarding configuration | **Historical** | Removed VyOS DNS-forwarder path |
+| Domain overrides (local DNS) | **Historical** | Removed VyOS domain-override path |
 | DNS Resolver (Unbound) management | **Missing** | No recursive resolver configuration |
 | DNSSEC configuration | **Missing** | No DNSSEC toggle or trust anchor management |
 | DNS over TLS (DoT) | **Missing** | No encrypted DNS upstream configuration |
 | DNS block lists | **Missing** | pfSense + pfBlockerNG provides DNS-level ad/malware blocking |
 | Host overrides | **Partial** | Domain overrides exist but limited to A/AAAA |
 | Dynamic DNS (DDNS) client | **Missing** | pfSense supports 20+ DDNS providers |
-| DNS rebinding protection | **N/A** | Router-level feature |
+| DNS rebinding protection | **N/A — Controller** | Managed router/resolver owns enforcement today; future profile support is undecided |
 
 ### Gap Summary — DNS
 Basic DNS forwarding works. Key gaps are **DNS-over-TLS**, **DNSSEC**, **DDNS client
@@ -181,8 +195,8 @@ management**, and **DNS block lists** (comparable to pfBlockerNG/Pi-hole).
 
 | pfSense Capability | Panoptikon Status | Notes |
 |---|---|---|
-| View routing table | **Full** | VyOS route parsing |
-| Static route creation/deletion | **Full** | VyOS static route CRUD |
+| View routing table | **Full** | Current MikroTik route view |
+| Static route creation/deletion | **Full** | Current MikroTik static-route operations |
 | Policy-based routing | **Missing** | No PBR rule management |
 | Multi-WAN load balancing | **Missing** | No gateway group or load balancing config |
 | Multi-WAN failover | **Missing** | No WAN failover configuration |
@@ -201,16 +215,16 @@ protocols) is not managed through Panoptikon.
 | pfSense Capability | Panoptikon Status | Notes |
 |---|---|---|
 | Web-based management GUI | **Full** | Full web UI for router management |
-| Configuration backup/restore | **Full** | VyOS config backup, diff, restore |
+| Configuration backup/restore | **Historical** | Removed VyOS backup/restore path |
 | Setup wizard | **Partial** | Initial auth setup only; no network setup wizard |
 | Dashboard with widgets | **Full** | Dashboard with device/agent/alert stats |
 | SNMP monitoring | **Missing** | No SNMP agent or trap configuration |
-| Remote syslog | **Partial** | Can view VyOS syslog; no remote syslog target config |
+| Remote syslog | **Historical** | Removed VyOS syslog path |
 | Email/Telegram notifications | **Partial** | Telegram supported for alerts; no SMTP email notifications |
 | User privilege levels | **Missing** | Single admin user only; no RBAC |
 | Multi-language support | **Missing** | English only |
-| Serial console access | **N/A** | Not applicable to web dashboard |
-| Configuration change audit | **Full** | VyOS command audit log with timestamps |
+| Serial console access | **N/A — Controller** | Not a dashboard feature; serial remains an out-of-band recovery mechanism for supported HIL |
+| Configuration change audit | **Partial** | Current generic router/operator audit log; no universal transaction audit |
 
 ### Gap Summary — System
 Panoptikon has strong configuration backup and audit capabilities. Main gaps are **RBAC /
@@ -226,7 +240,7 @@ multi-user**, **SNMP management**, and **email notifications**.
 | Historical traffic data | **Full** | Hourly/daily rollups with configurable retention |
 | Dashboard gauges (CPU, memory) | **Full** | Via agent telemetry |
 | System health monitoring | **Full** | Agent-based CPU/memory/disk monitoring |
-| Firewall log viewing | **Partial** | VyOS syslog access; no structured firewall log parsing |
+| Firewall log viewing | **Historical** | Removed VyOS syslog path; no current structured firewall log parsing |
 | SNMP export | **Missing** | No SNMP daemon management |
 | Prometheus metrics | **Full** | `/metrics` endpoint with device/agent/traffic gauges |
 | Network topology visualization | **Full** | Force-directed graph with DHCP/bridge enrichment |
@@ -246,9 +260,9 @@ log parsing** and **SNMP export**.
 
 | pfSense Capability | Panoptikon Status | Notes |
 |---|---|---|
-| CARP failover | **N/A** | Router-level feature, not management plane |
+| CARP failover | **N/A — Controller** | Not exposed by current managed-router integrations; no native Gateway commitment yet |
 | Config synchronization | **Missing** | No multi-router config sync |
-| State table replication | **N/A** | Router-level feature |
+| State table replication | **N/A — Controller** | Not exposed by current managed-router integrations; no native Gateway commitment yet |
 | Multi-WAN failover | **Missing** | No WAN failover management |
 | Load balancer (HAProxy) | **Missing** | Reverse proxy exists (NPM/Caddy) but no L4/L7 load balancing management |
 
@@ -313,7 +327,7 @@ Panoptikon is not just playing catch-up — it exceeds pfSense in several areas:
 
 | Capability | Panoptikon | pfSense |
 |---|---|---|
-| Multi-router management | Manages VyOS + MikroTik from one UI | Single device only |
+| Multi-router management | Manages current MikroTik + pfSense integrations from one UI | Single device only |
 | Device discovery (ARP/mDNS/SSDP) | Automatic, multi-protocol | Basic ARP table only |
 | Network topology visualization | Interactive force-directed graph | Not available |
 | Agent-based monitoring | Lightweight agents for deep system metrics | Not available |
@@ -330,10 +344,10 @@ Panoptikon is not just playing catch-up — it exceeds pfSense in several areas:
 
 The following sub-issues should be created for the highest-priority gaps:
 
-1. **feat: standalone port forwarding / NAT management UI** — DNAT CRUD independent of service wizard, with list/create/edit/delete for VyOS and MikroTik
-2. **feat: OpenVPN server and client management** — configure OpenVPN on VyOS/MikroTik, export client configs, view connected clients
-3. **feat: DHCP server pool configuration** — manage pool ranges, lease times, DHCP options (gateway, DNS, domain) on VyOS and MikroTik
+1. **feat: standalone port forwarding / NAT management UI** — current MikroTik operations plus planned native-Gateway capability where safely supported
+2. **feat: OpenVPN server and client management** — evaluate current managed-router adapters and the planned Gateway contract; export client configs and view connected clients
+3. **feat: DHCP server pool configuration** — manage pool ranges, lease times, and DHCP options on current supported adapters or the planned Gateway
 4. **feat: VPN status dashboard — connected clients and tunnel health** — live WireGuard/OpenVPN session monitoring with peer status, handshake times, transfer stats
 5. **feat: MikroTik firewall rule management (CRUD)** — full create/read/update/delete for MikroTik firewall filter and NAT rules
-6. **feat: traffic shaping / QoS queue management** — manage VyOS traffic policies and MikroTik simple queues from the UI
-7. **feat: dynamic DNS client management** — configure DDNS providers on VyOS/MikroTik through Panoptikon
+6. **feat: traffic shaping / QoS queue management** — manage MikroTik queues and planned native-Gateway capabilities from the UI
+7. **feat: dynamic DNS client management** — configure DDNS through current supported adapters or the planned Gateway

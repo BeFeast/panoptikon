@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
 # setup-test-env.sh — Create LXC test containers on Proxmox for MikroTik integration testing.
+# This current Controller lab must not be reused for native Gateway experiments.
 #
 # Creates 2-3 lightweight LXC containers that use MikroTik CHR (10.10.0.125) as their
 # gateway. These containers simulate a small network for validating:

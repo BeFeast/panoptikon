@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 #
 # verify-lxc.sh — Verify LXC test containers are running and discoverable
+# This verifies the current MikroTik Controller lab, not a native Gateway.
 #
 # Run this script ON the Proxmox host (10.10.0.11) as root.
 #

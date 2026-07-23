@@ -1,8 +1,18 @@
 # Panoptikon — VyOS Management GUI (Legacy PRD Addendum)
 
+> **Architecture note:** This document is legacy Controller-mode integration
+> scope. It does not define the Gateway architecture. See
+> [`GATEWAY-ARCHITECTURE.md`](./GATEWAY-ARCHITECTURE.md) and
+> [#834](https://github.com/BeFeast/panoptikon/issues/834). VyOS support was
+> removed from the shipped product by database migration 026, which deletes the
+> `vyos%` settings and `show_legacy_routers`. This file is an archived design
+> record only; it is not a current feature or maintenance promise. New native
+> Gateway/Edge work follows the Core/routerd contract and its blocking recovery
+> invariants.
+
 **Версия:** 0.1.0-draft  
 **Дата:** 2026-02-22  
-**Статус:** Legacy Draft  
+**Статус:** Archived / Removed
 **Родительский документ:** [PRD.md](./PRD.md)
 
 ---
@@ -10,12 +20,13 @@
 ## Legacy Status & Visibility (2026-02-24)
 
 - **MikroTik is the primary/default router path** in Panoptikon product strategy.
-- **VyOS is a legacy integration** and is hidden by default in user-facing navigation for new deployments.
-- **User path:** enable `Settings → Advanced → Show legacy routers`, then configure VyOS in `Settings → Router → VyOS (Legacy)`.
+- **VyOS is a removed historical integration**, not a hidden current feature.
+- **There is no current user path:** migration 026 removes both VyOS settings and
+  the `show_legacy_routers` flag.
 - **Developer contract:**
-  - Keep `show_legacy_routers` default behavior set to `false`.
-  - Keep default router selection on MikroTik (`mikrotik`), not VyOS.
-  - Treat this document as legacy maintenance scope for existing VyOS installs, not as the primary roadmap for new router features.
+  - Do not restore or advertise VyOS without a new accepted product decision and implementation.
+  - Keep default router selection on MikroTik (`mikrotik`).
+  - Treat this document as historical context, not executable backlog or current product scope.
 
 ---
 

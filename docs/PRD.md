@@ -1,11 +1,18 @@
-# Panoptikon — Router & Network Monitor
+# Panoptikon — Network Controller, Gateway, and Edge
 
 ## Product Requirements Document
 
-**Version:** 0.7.0
+**Version:** 0.8.0
 **Author:** Oleg Kossoy (concept) / AI-assisted (document)
-**Date:** 2026-02-28
-**Status:** Active
+**Date:** 2026-07-23
+**Status:** Active roadmap
+
+> **Superseding roadmap:** The Gateway decision in
+> [#834](https://github.com/BeFeast/panoptikon/issues/834) supersedes earlier
+> statements that permanently limited Panoptikon to a managed-router dashboard.
+> [`GATEWAY-ARCHITECTURE.md`](./GATEWAY-ARCHITECTURE.md) is the canonical system
+> architecture. This PRD defines product outcomes and links to that document
+> instead of creating a second protocol or deployment design.
 
 ---
 
@@ -28,15 +35,37 @@
 
 ## 1. Overview & Vision
 
-**Panoptikon** is a self-hosted web application for managing routers (MikroTik primary/default, VyOS legacy and hidden by default), monitoring all devices on a local network, and maintaining a complete IT asset inventory — without requiring an agent on every host.
+Panoptikon is a self-hosted network control platform for operators who want one
+local system to observe, manage, and eventually route their network without
+ceding network metadata or control to a cloud service.
 
-Think of it as a mashup of **Ubiquiti UniFi's web console** (dark theme, topology map, polished device cards), **Fing** (network scanning, device discovery, online/offline tracking), and **Lansweeper / NetBox** (asset inventory, SSH-based agentless collection, categorization) — but open-source, with multi-router support (MikroTik + VyOS), embedded DNS and reverse proxy management, and deployable as a single Docker Compose stack.
+The product has an intentionally staged identity:
+
+- **Current Controller:** shipped discovery, telemetry, assets, services, and
+  managed-router operations through MikroTik and pfSense APIs. VyOS was removed
+  by migration 026 and remains historical documentation only.
+- **Planned x86-64 Gateway:** the primary product build, with separate
+  `panoptikon-core` and privileged `panoptikon-routerd` processes co-located on a
+  dedicated Linux appliance or VM.
+- **Planned Proxmox Gateway VM:** the mandatory isolated development and release
+  verification profile for native forwarding and recovery.
+- **Planned Panoptikon Edge / OpenWrt:** an embedded profile using OpenWrt-native
+  `ubus`/UCI integration and target-specific packaging.
+
+Native Gateway forwarding, routerd, OpenWrt firmware, and commit-confirm are not
+shipped. They remain **blocked** from production claims until the safety gates in
+the canonical architecture are implemented and verified.
 
 The name references Bentham's panopticon — the all-seeing observation tower — reimagined as a personal tool: *you* are the observer, your home network is the space. The `k` spelling makes it unique and ownable.
 
-**The one-liner:** The all-seeing eye for your home network. Unified monitoring and management: network devices, routers (MikroTik-first with legacy VyOS support), WiFi mesh (Xiaomi), DNS (Unbound), reverse proxy (Caddy), Cloudflare Tunnel, and IT asset inventory — all in one self-hosted Docker Compose stack.
+**The one-liner:** The all-seeing eye for your network: a local-first Controller
+today, evolving into a recoverable x86 Gateway and embedded Edge platform.
 
-**Vision:** You open a single browser tab and see your entire infrastructure: router health, every device discovered via ARP/DHCP/mDNS/SSDP, full hardware inventory collected via lightweight agents *or* direct SSH, DNS management (Unbound), reverse proxy (Caddy), and secure tunnel (Cloudflare) — all in a dark, information-dense UI that feels like a professional network operations center, not a hobbyist tool.
+**Vision:** You open a single operator console and see the entire infrastructure,
+understand fresh versus stale state, preview intended changes, and apply only the
+operations that the target advertises as safe. In Controller deployments those
+operations are performed through managed-router APIs. In planned Gateway/Edge
+deployments Core expresses desired state and routerd owns privileged execution.
 
 ### Asset Management Vision
 
@@ -52,33 +81,42 @@ The result: a single inventory view of your entire infrastructure, always up to 
 
 ## 2. Problem Statement
 
-Running a home lab or small office network with a dedicated router gives you powerful networking capabilities, but the management experience is fragmented. Meanwhile:
+Running a home lab or small office network gives operators a false choice between
+fragmented point tools and opaque vendor appliances. Today:
 
-- **MikroTik RouterOS** has WinBox and WebFig, but no unified view combining router management with network-wide device awareness and monitoring.
-- **VyOS has no built-in web GUI** for day-to-day monitoring. You SSH in, run `show interfaces`, and parse text output.
+- **MikroTik RouterOS and pfSense** provide strong routing platforms, but their
+  native tools do not provide Panoptikon's unified inventory and telemetry model.
+- **VyOS has no built-in web GUI** for day-to-day monitoring, but Panoptikon's
+  former integration for that opportunity has been removed and is not current scope.
 - **Network monitoring** requires separate tools: Fing (proprietary, SaaS-leaning), nmap (CLI), Zabbix/LibreNMS (massive overkill for a home network).
 - **Device awareness** is fragmented. You don't know what's on your network without actively scanning. New devices appear silently. Devices go offline without notification.
 - **Agent-based monitoring** (CPU, RAM, traffic per host) typically means deploying Prometheus + node_exporter + Grafana — a stack heavier than the machines being monitored.
 
-There is no single, lightweight, self-hosted tool that combines router management + network monitoring + agent telemetry in a polished web UI.
+Current Panoptikon addresses the visibility and managed-router portion. The
+roadmap additionally addresses safe native routing without collapsing the
+unprivileged control plane and privileged packet-path executor into one process.
 
 ---
 
 ## 3. Target User
 
-**Primary persona:** A technical user (developer, sysadmin, homelab enthusiast) who:
+**Primary users:**
 
-- Runs MikroTik (RouterOS 7+) as the primary router, or maintains an existing VyOS deployment that still needs support
-- Has 10–100 devices on the network (servers, workstations, IoT, phones)
-- Wants visibility into their network without deploying a full monitoring stack
-- Values self-hosting, open source, and low resource usage
-- Is comfortable with CLI for initial setup but wants a GUI for day-to-day operations
+- Homelab and small-office operators running the current Controller with
+  MikroTik or pfSense.
+- Technical operators who want a dedicated, recoverable x86-64 Gateway they can
+  inspect, back up, and operate without vendor cloud control.
+- Developers and maintainers who need an isolated Proxmox fabric for destructive
+  packet-path, upgrade, and failure verification.
+- Embedded users who may adopt the planned OpenWrt Edge profile on explicitly
+  supported hardware after its resource and recovery gates pass.
 
 **Not targeting:**
 
-- Enterprise networks (hundreds of switches, SNMP polling at scale)
-- Non-technical users who need a plug-and-play router GUI
-- Multi-site deployments (initially)
+- Enterprise-scale orchestration across hundreds of sites.
+- An unbounded generic Linux root-execution service.
+- Operators unwilling to maintain an out-of-band recovery path for native
+  Gateway experiments.
 
 ---
 
@@ -88,27 +126,27 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 
 | # | Goal | Status |
 |---|------|--------|
-| G1 | Provide a single-pane-of-glass view for a MikroTik or VyOS-based network | ✅ Done |
-| G2 | Auto-discover and track all devices on the local network | ✅ Done |
-| G3 | Offer optional lightweight agents for deep host-level telemetry | ✅ Done |
-| G4 | Deliver a polished, UniFi-quality dark UI | ✅ Done |
-| G5 | Maintain a complete IT asset inventory — hardware, OS, ownership, location — without external tools | ✅ Done |
-| G6 | Support agentless SSH-based monitoring for hosts where installing an agent is not possible or desired | ✅ Done |
-| G7 | Keep resource usage minimal — the server should run on a Raspberry Pi 4 | ✅ Done |
-| G8 | Be easy to deploy: Docker Compose stack with SQLite, minimal external dependencies | ✅ Done |
-| G9 | Open-source (MIT or Apache 2.0) with a clean, contributor-friendly codebase | ✅ Done |
-| G10 | Support multiple router backends (MikroTik primary, VyOS optional) | ✅ Done |
+| G1 | Preserve the shipped Controller experience for MikroTik and pfSense users | **Current** |
+| G2 | Discover devices and unify network, host, service, and asset telemetry locally | **Current** |
+| G3 | Make x86-64 co-located Gateway the primary product build | **Planned** |
+| G4 | Keep Core unprivileged and isolate packet-path execution in routerd | **Planned** |
+| G5 | Use one capability/desired-state/transaction contract over local Unix sockets or remote mTLS | **Planned** |
+| G6 | Continue last-known-good forwarding and show honest stale/offline state when Core or transport is unavailable | **Planned** |
+| G7 | Require commit-confirm, reconciliation, and out-of-band recovery before native forwarding is production-ready | **Blocked** pending implementation and isolated verification |
+| G8 | Verify native Gateway work in a disposable Proxmox VM fabric | **Blocked** until the isolated fabric exists |
+| G9 | Deliver a separately packaged OpenWrt Edge profile using `ubus`/UCI | **Planned** |
+| G10 | Remain self-hosted, open-source, privacy-first, and explicit about target capabilities | **Current and planned** |
 
 ### Non-Goals
 
 | # | Non-Goal | Rationale |
 |---|----------|-----------|
-| NG1 | ~~Support for non-VyOS routers~~ | **Resolved:** MikroTik is now the primary router. Multi-router architecture supports both MikroTik and VyOS. |
-| NG2 | Full configuration management for routers | Read-first approach for MikroTik. VyOS has extended write support (firewall rules, DNS, DHCP, WireGuard). |
-| NG3 | SNMP-based monitoring | Too complex, too legacy. Agents + ARP scanning + router REST APIs cover our use cases. |
-| NG4 | Multi-user / RBAC | Self-hosted, single-user. One admin password is enough. |
-| NG5 | Cloud/SaaS features | No phone-home, no accounts, no telemetry. Fully local. |
-| NG6 | Windows agents in MVP | Linux and macOS first. Windows later if demanded. |
+| NG1 | Removing Controller mode when Gateway ships | Managed-router integrations remain supported. |
+| NG2 | Testing Gateway changes on the working production router or Controller-mode LXC 115 | Experiments require the isolated Proxmox Gateway VM. |
+| NG3 | Treating ER605 V1 as the reference appliance | It is sacrificial HIL/recovery hardware only. |
+| NG4 | One identical binary/backend across x86-64 and constrained OpenWrt targets | Profiles share a contract, not necessarily packaging or implementation. |
+| NG5 | Cloud/SaaS control, required accounts, or phone-home telemetry | The product remains local and operator-controlled. |
+| NG6 | Shipping native forwarding before recovery invariants pass | Commit-confirm and out-of-band recovery are blocking gates. |
 
 ---
 
@@ -136,8 +174,11 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 
 #### F3: Router Integration ✅
 - **MikroTik (Primary/Default):** Connect to RouterOS 7+ REST API. Full management: system status (uptime, CPU, memory, board info), interfaces (IPs, MACs, TX/RX, enable/disable), routes (view + create/delete static routes), DHCP leases, VLANs, firewall rules, traffic monitoring, NAT/port forwarding, VPN status, dynamic DNS, QoS, DNS configuration, WireGuard VPN. TTL-based caching for read operations. This is the default router path in onboarding, router pages, and new feature planning.
-- **VyOS (Legacy/Optional):** Connect to VyOS HTTP API. Display: system status, syslog, interfaces, routes, DHCP leases + static mappings, firewall rules (full CRUD + groups), DNS forwarding, WireGuard VPN peers. Configuration backup/restore with diff viewing. Visibility is hidden by default and only exposed when legacy routers are explicitly enabled in Advanced settings.
-- Connection test + health indicator in UI for both routers
+- **pfSense (Supported):** Preserve the current pfSense integration and bridge for existing Controller deployments while MikroTik remains the primary/default path.
+- **VyOS (Historical/Removed):** The former HTTP API integration and its settings
+  were removed by migration 026. The archived design addendum is reference
+  material only and is not a shipped Controller capability.
+- Connection test + health indicator in the relevant managed-router UI
 
 #### F4: Authentication ✅
 - Single-user authentication: username + password (bcrypt-hashed, stored in SQLite)
@@ -185,9 +226,8 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 ### P2 — Nice to Have
 
 #### F10: Router Configuration (Write) — Partial ✅
-- ✅ **VyOS:** Edit firewall rules via GUI (create/modify/delete), firewall groups (address, network, port), interface management, DHCP static mapping management, DNS forwarding configuration, WireGuard VPN peer management
 - ✅ **MikroTik:** Interface enable/disable toggle, static route create/delete, DNS configuration, WireGuard configuration
-- ✅ **Config backup/restore** with unified diff viewing and audit trail (VyOS)
+- Historical VyOS write and config-backup flows are removed and do not count as current capability.
 - [ ] Rollback support
 
 #### F11: Wake-on-LAN ✅
@@ -241,7 +281,8 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 - Secure external access without port forwarding
 
 #### F16: Services Wizard ✅
-- Unified orchestration for deploying services: NPM proxy host + VyOS firewall rules + DNAT rules
+- Unified service orchestration with per-step status reporting; removed VyOS
+  firewall/DNAT steps are not a current capability.
 - Single API call with per-step status reporting
 
 #### F17: Global Search & Command Palette ✅
@@ -250,7 +291,7 @@ There is no single, lightweight, self-hosted tool that combines router managemen
 - Unified results with type indicators
 
 #### F18: Audit Log ✅
-- Full router operation audit trail (VyOS)
+- Router and operator action audit trail
 - Action, command, and result tracking
 - Settings page for viewing audit history
 
@@ -327,7 +368,26 @@ A structured record for every asset in the infrastructure — servers, VMs, cont
 
 ## 6. Architecture & Tech Stack
 
-### System Architecture
+The normative process boundary, transports, shared contract, adapters, recovery
+rules, and rollout phases live in
+[`GATEWAY-ARCHITECTURE.md`](./GATEWAY-ARCHITECTURE.md). The summary below defines
+product placement; the following detailed diagram documents the **current**
+Controller implementation only.
+
+| Deployment profile | Product role | Status |
+|---|---|---|
+| x86-64 co-located Gateway | Primary product build; separate local Core and routerd processes using a Unix socket | **Planned** |
+| Proxmox Gateway VM | Mandatory isolated development and verification fabric | **Planned**; packet-path work is **blocked** until available |
+| Panoptikon Edge / OpenWrt | Embedded profile with target-specific packaging and `ubus`/UCI adapter | **Planned** |
+| Managed-router Controller | Discovery, telemetry, services, and current MikroTik/pfSense integrations | **Current** and supported |
+
+The roadmap does not combine all privilege into the web/API process. Core owns
+intent, history, and operator workflows; routerd owns the minimum privileged
+execution surface. Local communication uses a restricted Unix socket. Remote
+Edge communication uses mTLS. Both carry the same versioned
+capability/desired-state/transaction contract.
+
+### Current Controller Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -348,9 +408,10 @@ A structured record for every asset in the infrastructure — servers, VMs, cont
 ║  │  │ alerts,  │ │  updates │ │ mDNS,    │ │┌────────┐│ │  ║
 ║  │  │ agents,  │ │  to UI)  │ │ SSDP,    │ ││MikroTik││ │  ║
 ║  │  │ assets,  │ │          │ │ NetFlow) │ │├────────┤│ │  ║
-║  │  │ caddy,   │ │          │ │          │ ││VyOS    ││ │  ║
+║  │  │ caddy,   │ │          │ │          │ ││pfSense ││ │  ║
 ║  │  │ unbound, │ │          │ │          │ │└────────┘│ │  ║
 ║  │  │ cf-tun)  │ │          │ │          │ │          │ │  ║
+║  │  │          │ │          │ │          │ │          │ │  ║
 ║  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ │  ║
 ║  │                     │                                  │  ║
 ║  │            ┌────────┴────────┐                         │  ║
@@ -373,22 +434,27 @@ A structured record for every asset in the infrastructure — servers, VMs, cont
    └─────────┘ └─────────┘ └─────────┘ └──────────┘
 ```
 
-### Router Integration Architecture
+### Current Managed-Router Integration Architecture
 
-Panoptikon supports a **multi-router architecture** with MikroTik as the primary/default router and VyOS as a legacy secondary integration:
+Panoptikon currently supports managed-router integrations alongside the Gateway
+roadmap. MikroTik remains the primary/default path, pfSense remains supported for
+existing deployments. VyOS was removed by migration 026:
 
 | Router | API | Status | Default |
 |--------|-----|--------|---------|
 | **MikroTik** | RouterOS 7+ REST API | ✅ Primary | Default tab and default router type |
-| **VyOS** | VyOS HTTP API (1.3+) | ⚠️ Legacy Optional | Hidden by default; shown only when legacy routers are enabled |
+| **pfSense** | pfSense integration/bridge | Supported | Existing deployments |
+| **VyOS** | Historical HTTP API design | Removed | Not shipped; archived documentation only |
 
-Both integrations use TTL-based caching for read operations and cache invalidation middleware on mutations. Each router has its own settings page and can be independently enabled/disabled. The `show_legacy_routers` setting defaults to `false`, keeping VyOS flows out of the primary UI until explicitly enabled.
+The current managed-router integrations retain their caching and mutation
+behavior. Migration 026 deletes `vyos%` settings and `show_legacy_routers`;
+operators must not be directed to a hidden VyOS UI path.
 
 ### Tech Stack Justification
 
 | Component | Choice | Why |
 |-----------|--------|-----|
-| **Backend language** | Rust | Performance (handles thousands of agent reports with minimal resources), single static binary deployment, strong type system prevents network-parsing bugs, excellent async ecosystem (tokio). Memory usage stays low even with many concurrent connections. |
+| **Backend language** | Rust | Performance, type safety for network parsing, and the async Tokio ecosystem. The current Controller can ship as one binary; the planned Gateway deliberately separates Core and routerd, and embedded targets may use different packaging. |
 | **Web framework** | axum | Tokio-native, tower middleware ecosystem, first-class WebSocket support, extractors pattern is clean. Most popular Rust web framework as of 2025. |
 | **Database** | SQLite via sqlx | Zero-config, single-file, embedded. Perfect for self-hosted single-server deployment. sqlx gives compile-time query checking. Good enough for 100K+ devices (our ceiling is ~100). |
 | **Frontend framework** | Next.js 14+ (App Router) | React ecosystem, good SSR story for initial load, excellent DX. Massive component ecosystem. |
@@ -403,9 +469,11 @@ Both integrations use TTL-based caching for read operations and cache invalidati
 | **Animations** | Framer Motion | Smooth, declarative animations for React. Card transitions, page enters, and micro-interactions. |
 | **OUI database** | Embedded IEEE MA-L CSV | Compiled into the binary. Updated on release. No runtime download needed. |
 
-### Deployment Model
+### Current Controller Deployment Model
 
-The primary deployment method is **Docker Compose**, packaging Panoptikon with its embedded services:
+The shipped Controller is currently deployed with **Docker Compose**, packaging
+Panoptikon with its companion services. This is not the planned native Gateway
+packaging:
 
 ```yaml
 # docker-compose.yml (simplified)
@@ -448,11 +516,19 @@ docker compose up -d
 # → Open http://localhost:8080
 ```
 
-The Panoptikon binary itself embeds the Next.js frontend (statically exported via `rust-embed`). The binary can also run standalone without Docker, but Docker Compose is the recommended deployment for the full stack (reverse proxy + DNS + tunnel).
+The current x86 Controller binary embeds the Next.js frontend (statically exported
+via `rust-embed`). It can also run standalone without Docker. The planned x86
+Gateway splits Core from privileged routerd, while the OpenWrt Edge profile uses
+separate, target-appropriate packaging; the roadmap does not promise one binary
+or backend across x86 and embedded targets.
 
 **Docker Hub releases** are planned for automated image publishing.
 
-### Reference Deployment: Proxmox + MikroTik + Docker Compose
+### Current Reference Controller Deployment: Proxmox + MikroTik + Docker Compose
+
+This section describes shipped infrastructure, not the planned Proxmox Gateway
+VM. The working production router and Controller-mode LXC 115 must remain outside
+Gateway experiments.
 
 **MikroTik CHR** runs as the primary router (hardware device, CHR VM, or container):
 - RouterOS 7+ with REST API enabled
@@ -474,12 +550,11 @@ The Panoptikon binary itself embeds the Next.js frontend (statically exported vi
 # cloudflared — Cloudflare Tunnel (optional, enable with --profile tunnel)
 ```
 
-**Optional VyOS** — if running VyOS alongside MikroTik (e.g. as a dedicated firewall VM):
-- VyOS VM: 2 vCPUs, 512 MB RAM, 2 NICs
-- VyOS HTTP API enabled and reachable from LAN
-- Enable in Panoptikon Settings → Advanced → Show legacy routers, then configure in Settings → Router → VyOS (Legacy)
+**Historical VyOS note:** the former optional integration is not part of the
+current deployment model. Its old sizing and API notes remain only in the
+archived VyOS addendum.
 
-### Build Pipeline
+### Current Controller Build Pipeline
 
 ```
 Frontend (Next.js):  bun run build → static export → /out/
@@ -1032,9 +1107,22 @@ This keeps the SQLite database small and fast. Target: <100 MB for a network wit
 
 ## 10. Test Environment
 
-A dedicated test environment validates MikroTik integration features before release. The environment runs on Proxmox (Forge/DevBox) using lightweight LXC containers with a MikroTik CHR instance as the gateway.
+Testing has two deliberately separate profiles. The current MikroTik Controller
+lab remains shipped infrastructure. The planned Proxmox Gateway VM fabric is the
+mandatory place for native packet-path and recovery work.
 
-### Topology
+| Profile | Purpose | Status |
+|---|---|---|
+| MikroTik CHR + LXC clients | Validate current managed-router APIs, discovery, DHCP, VLANs, and UI workflows | **Current** |
+| Isolated Proxmox Gateway VM + synthetic WAN/LAN/recovery peers | Validate Linux forwarding, Core/routerd loss, commit-confirm, rollback, upgrade, and last-known-good behavior | **Planned** and currently **blocked** pending fabric setup |
+| ER605 V1 | Destructive flash/serial/recovery exercises only | **Planned** sacrificial HIL; not the reference appliance |
+
+The working production router and current Controller-mode LXC 115 are explicitly
+excluded from Gateway experiments. See
+[`test-environment.md`](./test-environment.md) and
+[`test-plan.md`](./test-plan.md) for the detailed packet-path/failure matrix.
+
+### Current Controller topology
 
 ```
 Proxmox Host
@@ -1047,7 +1135,7 @@ Proxmox Host
 
 All test containers use `10.10.0.125` as their default gateway, placing them behind the MikroTik CHR for realistic routing, DHCP, and firewall testing.
 
-### Automated Setup
+### Current automated setup
 
 ```bash
 # Create test containers (run on Proxmox host)
@@ -1062,7 +1150,7 @@ sudo bash scripts/setup-test-env.sh destroy
 
 The script (`scripts/setup-test-env.sh`) handles container creation, template download, package installation, and cleanup.
 
-### What It Validates
+### What the current lab validates
 
 | Feature              | How It's Tested                                                    |
 |----------------------|--------------------------------------------------------------------|
@@ -1091,7 +1179,8 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 
 - [x] **Authentication:** Password setup, login, session cookies, rate limiting
 - [x] **MikroTik client:** Connect to RouterOS 7+ REST API, fetch system status, interfaces, DHCP leases, routes, firewall, DNS, WireGuard
-- [x] **VyOS client:** Connect, fetch interfaces, DHCP leases, basic stats (legacy optional, lazy-loaded, hidden by default unless legacy routers are enabled)
+- [x] **Historical VyOS client removed:** migration 026 removes its settings and
+  legacy-router visibility flag; it is not current shipped functionality
 - [x] **ARP scanner:** Periodic subnet scan, discover devices (active + passive)
 - [x] **mDNS/SSDP discovery:** Passive device discovery via Bonjour and UPnP
 - [x] **Device management:** List, auto-create on discovery, manual edit (name, icon, notes)
@@ -1102,7 +1191,9 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 - [x] **Online/offline detection:** State change tracking, ping-based uptime monitoring
 - [x] **Alerts:** New device, offline/online state changes, in-app feed with severity filtering
 - [x] **WebSocket:** Live updates to UI when device state changes
-- [x] **Settings page:** MikroTik connection (default), VyOS connection (legacy optional, hidden by default), Caddy connection, Unbound connection, Cloudflare Tunnel, NPM connection, scanner config, webhook, data retention, speedtest, audit log, config backup, password change
+- [x] **Settings page:** MikroTik connection (default), Caddy connection, Unbound
+  connection, Cloudflare Tunnel, NPM connection, scanner config, webhook, data
+  retention, speedtest, audit log, config backup, password change
 
 ### Milestone 2: Agents + Traffic + SSH ✅
 
@@ -1128,24 +1219,56 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 - [x] **Caddy proxy manager:** Admin API integration for reverse proxy management (replaces NPM as primary)
 - [x] **Unbound DNS manager:** Local DNS records, blocklists, query log visualization
 - [x] **Cloudflare Tunnel management:** Tunnel status, ingress rules, optional Docker Compose service
-- [x] **Services wizard:** Unified NPM + VyOS firewall + DNAT deployment
+- [x] **Services wizard:** Service orchestration with per-step status reporting
 - [x] **Speedtest:** Ookla integration with scheduling and history
 - [x] **Audit log:** Router operation tracking
-- [x] **Config backup:** VyOS configuration backup/restore with diff viewing
+- [x] **Historical VyOS config backup removed:** retained only in archived design records
 - [x] **Cmd+K command palette:** Quick navigation and action execution
 - [x] **Framer Motion animations:** Smooth card transitions and micro-interactions
 - [x] **Device type icons:** Visual device identification in lists and topology
 - [x] **Dashboard sparklines:** Inline bandwidth charts on dashboard cards
 
-### Milestone 4: Embedded Stack & Integrations (In Progress)
+### Milestone 4: Current Controller Hardening (In Progress)
 
 - [x] **Xiaomi BE3600 mesh integration:** WiFi client list, mesh topology (4 nodes), signal strength monitoring, device list, firmware status, WAN/LAN info, per-band WiFi details
 - [ ] **Docker Compose packaging:** Docker Hub releases, automated image builds
 - [ ] **DNS test setup:** Configure Unbound as the network-wide DNS resolver
-- [ ] **pfSense deprecation:** pfSense is deprecated; MikroTik CHR is the primary router going forward
+- [ ] **Managed-router support:** keep MikroTik primary while preserving pfSense
+  behavior for existing Controller deployments
 - [ ] **UI cleanup:** Polish, consistency, responsive improvements
 
-### Milestone 5: Future (Planned)
+### Milestone 5: Gateway Contract and Isolated Fabric (Planned)
+
+- [ ] Version the capability/desired-state/plan/transaction/result contract
+- [ ] Add an unprivileged simulator with stale-revision and failure injection
+- [ ] Build the isolated Proxmox Gateway VM fabric with synthetic WAN, LAN,
+  management, and out-of-band recovery paths
+- [ ] Prove that the working production router and Controller-mode LXC 115 are not
+  reachable from destructive Gateway tests
+
+Native forwarding remains **blocked** until this milestone's isolation gate passes.
+
+### Milestone 6: Recoverable x86-64 Gateway (Planned)
+
+- [ ] Split `panoptikon-core` from privileged `panoptikon-routerd`
+- [ ] Use a restricted Unix socket for co-located communication
+- [ ] Implement native Linux/Netlink adapters for approved capabilities
+- [ ] Preserve forwarding during Core or transport loss
+- [ ] Implement commit-confirm, last-known-good reconciliation, and tested
+  out-of-band recovery
+- [ ] Pass the packet-path and failure matrix repeatedly in the Proxmox fabric
+
+Production Gateway claims are **blocked** until every recovery invariant passes.
+
+### Milestone 7: Panoptikon Edge / OpenWrt (Planned)
+
+- [ ] Select supported targets based on resources and recoverability
+- [ ] Package the Edge runtime separately from the x86 Gateway
+- [ ] Implement the OpenWrt `ubus`/UCI adapter and remote mTLS transport
+- [ ] Validate offline operation, upgrades, rollback, and per-target capabilities
+- [ ] Use ER605 V1 only for sacrificial HIL/recovery testing
+
+### Controller backlog (Planned)
 
 - [ ] **Port scanning:** On-demand port scan with service identification
 - [ ] **LAN speed test:** iperf3 between server and agents
@@ -1166,7 +1289,10 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 | Q3 | **Next.js App Router or Pages Router?** | App Router — stable, Server Components for initial load. |
 | Q4 | **Should the frontend be SSR or static export?** | Static export — embedded in Rust binary, no Node.js runtime at deploy time. |
 | Q5 | **Router API key storage?** | SQLite — stored in settings table. |
-| Q11 | **Should we support multiple routers?** | Yes — MikroTik (primary/default) + VyOS (legacy optional, hidden by default unless explicitly enabled). Multi-router architecture implemented. |
+| Q11 | **Should we support multiple routers?** | Yes — MikroTik is primary/default and pfSense remains supported. Removed VyOS functionality is not part of the current answer. |
+| Q15 | **Can Panoptikon own the data plane?** | Yes, in the planned Gateway/Edge profiles. Current Controller behavior remains supported. |
+| Q16 | **Where does privileged networking run?** | In a separate `panoptikon-routerd` process; Core remains unprivileged. |
+| Q17 | **How do local and remote deployments communicate?** | Restricted Unix socket locally; mTLS remotely; one versioned semantic contract. |
 
 ### Technical Unknowns — Mostly Resolved
 
@@ -1177,6 +1303,9 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 | Q8 | **Agent auto-update mechanism** | Deferred: agents report version, user manually updates. |
 | Q9 | **Time-series database migration** | Resolved: SQLite with aggregation tables works well for <100 devices. |
 | Q10 | **mDNS/DNS-SD for hostname discovery** | Resolved: mDNS passive listener implemented. |
+| Q18 | **Which Linux networking APIs and capability subset ship first?** | Open; validate the smallest Netlink-backed slice in the isolated Proxmox fabric. |
+| Q19 | **What commit-confirm health signal is independent enough?** | Open and **blocking**; it must detect loss of management and packet-path reachability without relying only on Core. |
+| Q20 | **Which OpenWrt targets are supportable?** | Open; decide from storage/RAM, kernel/API availability, upgrade path, and proven recovery. ER605 V1 does not set the product baseline. |
 
 ### Product Questions
 
@@ -1185,6 +1314,8 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 | Q12 | **Should agents support custom plugins/checks?** | Deferred to post-v1. Keep the agent payload fixed. |
 | Q13 | **Is there value in a mobile companion app?** | No. Responsive web is sufficient. |
 | Q14 | **Community features: device database, shared OUI updates?** | No phone-home. OUI database ships with the binary. |
+| Q21 | **How does a Controller deployment migrate to Gateway?** | Open; migration must be reversible and must not repurpose the production router or LXC 115 as an experiment target. |
+| Q22 | **How are queued desired-state changes presented while Edge is offline?** | Open; the UI must distinguish queued intent, stale observation, unknown outcome, and confirmed apply. |
 
 ---
 
@@ -1251,8 +1382,14 @@ set service https api
 | Netdata | Agent monitoring | Excellent agent, but no network discovery or router management |
 | The Dude (MikroTik) | Network monitoring | MikroTik-only, desktop app, no modern web UI, no asset management |
 
-Panoptikon's unique position: **multi-router management (MikroTik + VyOS) + network discovery + device fingerprinting + lightweight agents + embedded DNS (Unbound) + reverse proxy (Caddy) + Cloudflare Tunnel + IT asset inventory**, all in one polished self-hosted Docker Compose stack.
+The current Controller's unique position is **managed-router operations (MikroTik
+and pfSense) + network discovery + device fingerprinting +
+lightweight agents + embedded DNS (Unbound) + reverse proxy (Caddy) + Cloudflare
+Tunnel + IT asset inventory**. The planned Gateway/Edge profiles extend that
+product without pretending their forwarding and recovery features have shipped.
 
 ---
 
-*This document is actively maintained. Last updated: 2026-02-28 (v0.7.0 — MikroTik primary, Caddy proxy, Xiaomi mesh, Assets inventory, pfSense deprecated).*
+*This document is actively maintained. Last updated: 2026-07-23 (v0.8.0 —
+Gateway roadmap aligned with #834; current Controller behavior separated from
+planned and blocked Gateway/Edge work).*
