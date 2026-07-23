@@ -46,7 +46,7 @@ pub async fn run_session(config: &AgentConfig, collector: &mut SystemCollector) 
         let json = serde_json::to_string(&report)?;
         debug!(bytes = json.len(), "Sending report");
 
-        write.send(Message::Text(json)).await?;
+        write.send(Message::Text(json.into())).await?;
 
         // Wait for ack or timeout before next report.
         let ack = tokio::time::timeout(std::time::Duration::from_secs(5), read.next()).await;

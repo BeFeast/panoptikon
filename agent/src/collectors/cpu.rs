@@ -15,7 +15,7 @@ pub fn collect(sys: &System) -> CpuInfo {
 
     CpuInfo {
         count: sys.cpus().len(),
-        usage_percent: sys.global_cpu_info().cpu_usage(),
+        usage_percent: sys.global_cpu_usage(),
         load_avg: [load.one, load.five, load.fifteen],
     }
 }

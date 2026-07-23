@@ -8,7 +8,7 @@ pub mod snmp;
 
 use anyhow::Result;
 use chrono::Utc;
-use hickory_resolver::TokioAsyncResolver;
+use hickory_resolver::TokioResolver;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::SqlitePool;
@@ -128,7 +128,7 @@ pub fn start_scanner_task(db: SqlitePool, config: ScannerConfig, ws_hub: Arc<WsH
 /// Uses a 2-second timeout. The underlying lookup is fully async via
 /// `hickory-resolver`, so dropping the future on timeout actually cancels
 /// the in-flight DNS query (no lingering background threads).
-async fn reverse_dns_lookup(resolver: &TokioAsyncResolver, ip: &str) -> Option<String> {
+async fn reverse_dns_lookup(resolver: &TokioResolver, ip: &str) -> Option<String> {
     let addr: IpAddr = match ip.parse() {
         Ok(a) => a,
         Err(_) => return None,
@@ -138,7 +138,7 @@ async fn reverse_dns_lookup(resolver: &TokioAsyncResolver, ip: &str) -> Option<S
 
     match result {
         Ok(Ok(lookup)) => {
-            let hostname = lookup.iter().next()?.to_string();
+            let hostname = lookup.answers().first()?.data.to_string();
             // Strip trailing dot from FQDN (e.g. "router.local." → "router.local").
             let hostname = hostname.trim_end_matches('.').to_string();
             // Skip if the hostname is just the IP address repeated back.
@@ -577,7 +577,7 @@ pub async fn process_scan_results(
 
     // If the system resolver config cannot be loaded, skip DNS entirely — the default
     // resolver (8.8.8.8 / 1.1.1.1) will not resolve local PTR records anyway.
-    let dns_resolver = match TokioAsyncResolver::tokio_from_system_conf() {
+    let dns_resolver = match TokioResolver::builder_tokio().and_then(|builder| builder.build()) {
         Ok(r) => Some(r),
         Err(e) => {
             warn!(error = %e, "Failed to load system DNS config; skipping reverse DNS for this scan cycle");

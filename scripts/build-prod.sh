@@ -2,7 +2,7 @@
 #
 # build-prod.sh — Build Panoptikon production binary with embedded frontend.
 #
-# rust-embed bakes web/.next/static/ into the binary at compile time.
+# rust-embed bakes the complete web/out/ static export into the binary.
 # Order matters: web MUST be built BEFORE cargo build.
 # Running cargo build alone produces a binary with STALE frontend.
 #
@@ -25,5 +25,5 @@ echo "=== Step 2/2: Building Rust server (embeds frontend via rust-embed) ==="
 
 echo ""
 echo "✅ Production binary ready: target/release/panoptikon-server"
-echo "   Frontend embedded from: web/.next/static/"
+echo "   Frontend embedded from: web/out/"
 ls -lh target/release/panoptikon-server

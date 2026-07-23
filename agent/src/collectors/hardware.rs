@@ -42,7 +42,7 @@ pub struct HardwareInfo {
 /// Collect hardware inventory (called once at startup).
 pub fn collect(sys: &System) -> HardwareInfo {
     let cpu_name = sys.cpus().first().map(|c| c.brand().to_string());
-    let cpu_cores = sys.physical_core_count();
+    let cpu_cores = System::physical_core_count();
     let cpu_speed_mhz = sys.cpus().first().map(|c| c.frequency());
     let ram_total_bytes = Some(sys.total_memory());
 
