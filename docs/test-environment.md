@@ -1,6 +1,70 @@
-# Test Environment — LXC Containers on DevBox Proxmox
+# Test Environments — Controller Lab and Gateway Fabric
 
-Setup guide for the Panoptikon test environment. Uses lightweight LXC containers on Proxmox DevBox as real DHCP clients and mDNS devices for testing device discovery, DHCP lease tracking, and mDNS identification.
+This document separates the **current** MikroTik Controller lab from the
+**planned** isolated Proxmox Gateway fabric. The architecture source of truth is
+[`GATEWAY-ARCHITECTURE.md`](./GATEWAY-ARCHITECTURE.md), based on
+[#834](https://github.com/BeFeast/panoptikon/issues/834).
+
+## Environment roles and safety boundary
+
+| Environment | Role | Status |
+|---|---|---|
+| MikroTik CHR + LXC clients described below | Managed-router API, DHCP, VLAN, discovery, and UI validation | **Current** shipped test infrastructure |
+| Disposable Proxmox Gateway VM fabric | Native x86 forwarding, Core/routerd, transaction, failure, and recovery validation | **Planned** and currently **blocked** pending provisioning |
+| ER605 V1 | Flash, serial, destructive upgrade, and recovery HIL | **Planned** sacrificial hardware only; not the reference appliance |
+
+The working production router and current Controller-mode LXC 115 are protected
+infrastructure. They must not be used as Gateway experiment targets, attached to
+the destructive fabric, or treated as the Gateway under test. Existing scripts
+that deploy or verify LXC 115 describe Controller operations only.
+
+## Planned isolated Proxmox Gateway fabric
+
+The mandatory Gateway development profile uses a disposable VM and synthetic
+packet path. It must be possible to destroy and recreate the entire fabric without
+touching production networking.
+
+```text
+                       Proxmox development host
+  +----------------------------------------------------------------+
+  | isolated management bridge                                     |
+  |   test runner / Core observer ---- mTLS or console ----+        |
+  |                                                        |        |
+  | synthetic WAN bridge       Gateway VM                  | OOB    |
+  | upstream peer -------- WAN [core + separate routerd] LAN ----+  |
+  |                              | Linux/Netlink adapter          |  |
+  |                              +--------------------------+     |  |
+  | synthetic LAN bridge                                   |     |  |
+  | client A / client B / service peer ---------------------+     |  |
+  |                                                              |  |
+  | independent recovery console --------------------------------+  |
+  +----------------------------------------------------------------+
+
+  No bridge or route to the working production router or LXC 115.
+```
+
+Required properties:
+
+- Separate WAN, LAN, management, and out-of-band recovery networks.
+- Synthetic upstream and client peers that can assert packet delivery, loss,
+  NAT/firewall effects, DNS/DHCP behavior, and management reachability.
+- Failure injection for Core, routerd, transport, VM power, interface, and partial
+  transaction loss.
+- Snapshot/rebuild support so every destructive test begins from a known state.
+- Packet capture at both sides of the Gateway, with monotonic timestamps and the
+  transaction ID recorded in test evidence.
+- No route, bridge, credentials, or automated mutation path to production targets.
+
+Provisioning for this fabric is **planned**. Until it exists and the failure matrix
+in [`test-plan.md`](./test-plan.md) passes, native Gateway forwarding and
+commit-confirm remain **blocked** from release claims.
+
+## Current MikroTik Controller lab
+
+The remainder of this guide documents the existing environment. It uses
+lightweight LXC containers on Proxmox DevBox as real DHCP clients and mDNS devices
+for testing device discovery, DHCP lease tracking, and mDNS identification. It
+must continue to work while Gateway development proceeds.
 
 ## Why LXC Containers?
 

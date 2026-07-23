@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 #
 # setup-lxc.sh — Create LXC test containers on Proxmox DevBox
+# This is current MikroTik Controller test infrastructure, not the planned
+# isolated Proxmox Gateway fabric.
 #
 # Run this script ON the Proxmox host (10.10.0.11) as root.
 # It creates 3 lightweight containers that act as real DHCP clients

@@ -1,5 +1,9 @@
 # Panoptikon — Architecture & Code Improvement Proposals
 
+> **Historical proposals:** Use this document for its original code-improvement
+> context only. Current Gateway roadmap decisions and process boundaries are
+> canonical in [`GATEWAY-ARCHITECTURE.md`](./GATEWAY-ARCHITECTURE.md).
+
 **Date:** 2026-02-20
 **Author:** Claude Code Review Agent Team
 **Based on:** Full codebase review + PRD analysis

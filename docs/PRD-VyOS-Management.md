@@ -1,5 +1,12 @@
 # Panoptikon — VyOS Management GUI (Legacy PRD Addendum)
 
+> **Architecture note:** This document is legacy Controller-mode integration
+> scope. It does not define the Gateway architecture. See
+> [`GATEWAY-ARCHITECTURE.md`](./GATEWAY-ARCHITECTURE.md) and
+> [#834](https://github.com/BeFeast/panoptikon/issues/834). Current VyOS support
+> remains available, but new native Gateway/Edge work follows the Core/routerd
+> contract and its blocking recovery invariants.
+
 **Версия:** 0.1.0-draft  
 **Дата:** 2026-02-22  
 **Статус:** Legacy Draft  

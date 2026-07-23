@@ -1,5 +1,34 @@
 # Panoptikon — Claude Code Guidelines
 
+## Gateway Roadmap Constraints (Mandatory)
+
+The canonical roadmap is
+[`docs/GATEWAY-ARCHITECTURE.md`](docs/GATEWAY-ARCHITECTURE.md), implementing the
+decision in [#834](https://github.com/BeFeast/panoptikon/issues/834). Every worker
+must preserve these boundaries:
+
+- **Current:** Controller mode and supported MikroTik, pfSense, and legacy VyOS
+  integrations remain supported.
+- **Planned:** the primary x86-64 Gateway uses separate unprivileged
+  `panoptikon-core` and privileged `panoptikon-routerd` processes; the isolated
+  Proxmox Gateway VM is mandatory for development/verification; Panoptikon Edge
+  uses OpenWrt `ubus`/UCI with target-specific packaging.
+- **Blocked:** do not claim native forwarding, routerd, OpenWrt firmware, or
+  commit-confirm is shipped until implementation and the documented packet-path,
+  failure, and recovery gates pass.
+- Local Core↔routerd transport is a restricted Unix socket; remote transport is
+  mTLS. Both use the shared capability/desired-state/transaction contract.
+- Commit-confirm and out-of-band recovery are blocking invariants, not optional
+  follow-up work.
+- Never use the working production router or current Controller-mode LXC 115 for
+  Gateway experiments.
+- ER605 V1 is sacrificial HIL/recovery hardware only, never the reference
+  appliance.
+- Do not promise one executable or backend across x86-64 and constrained
+  OpenWrt/MIPS-class targets.
+- When documenting roadmap work, use **current**, **planned**, and **blocked**
+  explicitly and keep shipped behavior separate from accepted direction.
+
 ## E2E Test Requirement (Mandatory)
 
 Every PR that implements a **feature** or **bug fix** MUST include:

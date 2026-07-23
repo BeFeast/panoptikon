@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 #
 # teardown-lxc.sh — Remove LXC test containers from Proxmox DevBox
+# This only tears down current Controller lab clients; it does not manage the
+# planned isolated Proxmox Gateway fabric.
 #
 # Run this script ON the Proxmox host (10.10.0.11) as root.
 #

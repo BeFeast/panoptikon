@@ -1,29 +1,34 @@
 # pfSense Feature Parity Analysis — Gap Report
 
-> **Date:** 2026-02-23
+> **Date:** 2026-07-23
 > **Issue:** #245
-> **Scope:** Compare Panoptikon's current feature set against pfSense capabilities.
-> Identify gaps and prioritize missing features for the backlog.
+> **Scope:** Compare Panoptikon's **current Controller** feature set against pfSense
+> capabilities, while identifying which gaps belong to the **planned** native
+> Gateway profile.
+>
+> Roadmap context: [Gateway architecture](./GATEWAY-ARCHITECTURE.md) and
+> [decision #834](https://github.com/BeFeast/panoptikon/issues/834).
 
 ---
 
 ## Methodology
 
-This analysis compares Panoptikon v0.5.0 against pfSense Plus / CE feature set.
-Each pfSense capability is rated:
+This analysis compares the current Panoptikon Controller against the pfSense Plus
+/ CE feature set. Each rating is profile-aware:
 
 | Status | Meaning |
 |--------|---------|
-| **Full** | Feature exists in Panoptikon with equivalent functionality |
-| **Partial** | Feature exists but is incomplete or limited compared to pfSense |
-| **Missing** | Feature does not exist in Panoptikon |
-| **N/A** | Feature is out of scope for Panoptikon's architecture (not a router OS) |
+| **Full** | Feature exists in the current Controller for at least one documented managed-router path; notes identify the path |
+| **Partial** | Current Controller support exists but is incomplete or limited compared to pfSense |
+| **Missing** | Feature is missing from the current Controller; it may still be planned for managed-router or native Gateway work |
+| **N/A — Controller** | The current Controller does not own this packet-path function; this is not a permanent product-wide non-goal |
 
-**Important context:** Panoptikon is a *management and monitoring dashboard*, not a router
-OS. It manages routers (VyOS, MikroTik) via their APIs. Features that require kernel-level
-packet processing (e.g., stateful packet inspection) are inherently handled by the managed
-router, not Panoptikon. The gaps identified here focus on *management plane* parity — can
-a user configure and monitor the equivalent functionality through Panoptikon?
+**Important context:** In the **current** Controller profile, kernel packet
+processing is performed by MikroTik, pfSense, or legacy VyOS, and this report asks
+whether Panoptikon can configure or observe it. In the **planned** x86 Gateway,
+native Linux/Netlink adapters may own an explicitly supported subset through
+privileged routerd. Those features remain **blocked** from shipped status until
+commit-confirm, out-of-band recovery, and isolated Proxmox verification pass.
 
 ---
 
@@ -39,13 +44,13 @@ a user configure and monitor the equivalent functionality through Panoptikon?
 | Address groups (aliases) | **Full** | VyOS address groups with add/remove members |
 | Network groups | **Full** | VyOS network groups (CIDR lists) |
 | Port groups | **Full** | VyOS port groups |
-| Stateful packet inspection config | **N/A** | Handled by router OS, not management plane |
+| Stateful packet inspection config | **N/A — Controller** | Managed router owns enforcement today; native Gateway support is planned and capability-gated |
 | Time-based firewall rules | **Missing** | pfSense supports rules active during specific days/times |
 | Connection limits per rule | **Missing** | pfSense supports per-rule connection count limits |
 | Floating rules (cross-interface) | **Missing** | pfSense floating rules apply across all interfaces |
 | Rule ordering / drag-and-drop | **Missing** | No rule reordering UI; rules identified by number |
 | Rule hit counters / statistics | **Missing** | pfSense shows per-rule match counts |
-| Anti-spoofing configuration | **N/A** | Router-level feature |
+| Anti-spoofing configuration | **N/A — Controller** | Managed router owns enforcement today; evaluate for the planned native Gateway adapter |
 | IP/DNS geoblocking | **Missing** | pfSense supports country-level blocking via pfBlockerNG |
 | Rule import/export | **Missing** | No bulk rule management |
 | Rule search/filter | **Missing** | No search within firewall rules |
@@ -144,7 +149,7 @@ MikroTik WireGuard is read-only (status view only, no management).
 | DHCPv6 server | **Missing** | No IPv6 DHCP management |
 | DHCP failover / HA | **Missing** | No DHCP high-availability configuration |
 | DHCP lease time configuration | **Missing** | No lease duration settings |
-| WINS server option | **N/A** | Legacy, not relevant |
+| WINS server option | **N/A — Controller** | Legacy capability; no current or planned product commitment |
 | TFTP/PXE boot options | **Missing** | pfSense supports network boot configuration |
 | Register DHCP leases in DNS | **Missing** | pfSense auto-registers hostnames in DNS resolver |
 | Per-interface DHCP scopes | **Missing** | No multi-scope management UI |
@@ -169,7 +174,7 @@ up a DHCP server through Panoptikon. Users must configure pools directly on the 
 | DNS block lists | **Missing** | pfSense + pfBlockerNG provides DNS-level ad/malware blocking |
 | Host overrides | **Partial** | Domain overrides exist but limited to A/AAAA |
 | Dynamic DNS (DDNS) client | **Missing** | pfSense supports 20+ DDNS providers |
-| DNS rebinding protection | **N/A** | Router-level feature |
+| DNS rebinding protection | **N/A — Controller** | Managed router/resolver owns enforcement today; future profile support is undecided |
 
 ### Gap Summary — DNS
 Basic DNS forwarding works. Key gaps are **DNS-over-TLS**, **DNSSEC**, **DDNS client
@@ -209,7 +214,7 @@ protocols) is not managed through Panoptikon.
 | Email/Telegram notifications | **Partial** | Telegram supported for alerts; no SMTP email notifications |
 | User privilege levels | **Missing** | Single admin user only; no RBAC |
 | Multi-language support | **Missing** | English only |
-| Serial console access | **N/A** | Not applicable to web dashboard |
+| Serial console access | **N/A — Controller** | Not a dashboard feature; serial remains an out-of-band recovery mechanism for supported HIL |
 | Configuration change audit | **Full** | VyOS command audit log with timestamps |
 
 ### Gap Summary — System
@@ -246,9 +251,9 @@ log parsing** and **SNMP export**.
 
 | pfSense Capability | Panoptikon Status | Notes |
 |---|---|---|
-| CARP failover | **N/A** | Router-level feature, not management plane |
+| CARP failover | **N/A — Controller** | Not exposed by current managed-router integrations; no native Gateway commitment yet |
 | Config synchronization | **Missing** | No multi-router config sync |
-| State table replication | **N/A** | Router-level feature |
+| State table replication | **N/A — Controller** | Not exposed by current managed-router integrations; no native Gateway commitment yet |
 | Multi-WAN failover | **Missing** | No WAN failover management |
 | Load balancer (HAProxy) | **Missing** | Reverse proxy exists (NPM/Caddy) but no L4/L7 load balancing management |
 

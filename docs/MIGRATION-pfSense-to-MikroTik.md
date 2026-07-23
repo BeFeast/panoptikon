@@ -1,5 +1,11 @@
 # Migration Plan: pfSense to MikroTik CHR + Panoptikon
 
+> **Scope note:** This is a managed-router migration plan for the **current**
+> Controller profile, not a native Panoptikon Gateway plan. The **planned**
+> Gateway architecture is documented in
+> [`GATEWAY-ARCHITECTURE.md`](./GATEWAY-ARCHITECTURE.md). The working production
+> router and Controller-mode LXC 115 must not be used for Gateway experiments.
+
 > **Date:** 2026-02-28
 > **Issue:** #406
 > **Status:** Draft — not urgent, execute when Panoptikon is stable
@@ -303,7 +309,7 @@ After 2 weeks with no issues:
 | Missing firewall rule causes security gap | Low | High | Thorough rule-by-rule comparison in Phase 1; parallel run catches gaps |
 | DHCP issues leave devices without IP | Low | High | Keep pfSense running during Phase 2; rollback in Phase 3 |
 | Performance regression (throughput/latency) | Low | Medium | Speedtest comparison in Phase 2; p10 license for >1 Gbit |
-| Panoptikon MikroTik integration bug | Medium | Low | Panoptikon is monitoring-only; router works independently |
+| Panoptikon MikroTik integration bug | Medium | Low | In this current Controller migration, MikroTik keeps forwarding independently of Panoptikon |
 | Caddy misconfiguration breaks proxy routes | Medium | Medium | Migrate routes one-by-one; keep NPM as fallback |
 
 ---
