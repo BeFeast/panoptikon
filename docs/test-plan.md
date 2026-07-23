@@ -13,7 +13,7 @@
 2. [Caddy Reverse Proxy](#2-caddy-reverse-proxy)
 3. [Xiaomi WiFi Mesh](#3-xiaomi-wifi-mesh)
 4. [Assets / Network Inventory](#4-assets--network-inventory)
-5. [Legacy Integrations (VyOS, NPM)](#5-legacy-integrations-vyos-npm)
+5. [Historical and Legacy Integrations (VyOS, NPM)](#5-historical-and-legacy-integrations-vyos-npm)
 
 ---
 
@@ -51,7 +51,7 @@ the synthetic WAN/LAN/management/recovery fabric is provisioned.
 | G-04 | Address/route change | Connectivity probes through old and new path | Change is atomic or rolls back; observed revision advances once | **Planned** |
 | G-05 | DHCP/DNS capability, when advertised | Lease/query transcript and packet capture | Service behavior matches target capabilities; unsupported targets reject the request | **Planned** |
 | G-06 | Capability mismatch | Submit intent available on a different adapter only | Core does not offer/send it; routerd rejects any forged request | **Planned** |
-| G-07 | Controller compatibility | Run current MikroTik/pfSense and legacy VyOS smoke coverage | Existing managed-router behavior remains supported | **Current regression gate** |
+| G-07 | Controller compatibility | Run current MikroTik/pfSense smoke coverage and verify removed VyOS settings/UI stay absent | Existing managed-router behavior remains supported without reviving removed paths | **Current regression gate** |
 
 ### 0.2 Failure and recovery matrix
 
@@ -317,18 +317,17 @@ support matrix.
 
 ---
 
-## 5. Legacy Integrations (VyOS, NPM)
+## 5. Historical and Legacy Integrations (VyOS, NPM)
 
-These integrations are retained for backward compatibility but are not the primary path.
+NPM is retained for backward compatibility. VyOS is a removed historical path.
 
-### 5.1 VyOS (Legacy)
+### 5.1 VyOS (Historical / Removed)
 
 | # | Test Case | Steps | Expected Result |
 |---|-----------|-------|-----------------|
-| L-01 | VyOS hidden by default | Fresh install → check sidebar | VyOS does not appear in default navigation |
-| L-02 | VyOS visible when enabled | Settings → Advanced → Show legacy routers → enable | VyOS tab appears in Router page |
-| L-03 | VyOS connection test | Configure VyOS URL + API key → Test Connection | Connection test works (if VyOS is available) |
-| L-04 | VyOS lazy loading | Load Router page with both routers configured | VyOS data only fetched when VyOS tab is selected |
+| L-01 | Removed settings migrate away | Apply migration 026 to a fixture containing `vyos%` settings and `show_legacy_routers` | Removed keys are deleted; unrelated settings remain |
+| L-02 | No current VyOS navigation | Fresh install → inspect router and Advanced settings navigation | No VyOS tab or legacy-router visibility control is exposed |
+| L-03 | No current VyOS API/client surface | Inspect compiled routes/modules and run current API smoke tests | No VyOS management endpoint or client is advertised as supported |
 
 ### 5.2 NPM (Legacy)
 

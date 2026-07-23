@@ -18,8 +18,10 @@ and contributor guidance link here instead of defining competing architectures.
   safety or verification dependency is satisfied.
 
 Current Panoptikon is a self-hosted Controller: it discovers devices, collects
-telemetry, and manages supported features through MikroTik, pfSense, and legacy
-VyOS integrations. That mode remains supported. Native packet forwarding,
+telemetry, and manages supported features through MikroTik and pfSense
+integrations. That mode remains supported. The former VyOS integration was
+removed by migration 026 and is historical, not a current compatibility promise.
+Native packet forwarding,
 `panoptikon-routerd`, OpenWrt firmware, and commit-confirm are planned, not current.
 
 ## Deployment profiles
@@ -63,10 +65,11 @@ runtime, storage, and adapter needs.
         x86 packet path                              embedded packet path
 
 Current Controller mode (supported in parallel):
-panoptikon-core ---- router APIs ----> MikroTik / pfSense / legacy VyOS
+panoptikon-server ---- router APIs ----> MikroTik / pfSense
 ```
 
-`panoptikon-core` is the unprivileged control and observation process. It owns the
+The Gateway diagram above the Controller line is **planned**.
+`panoptikon-core` is the planned unprivileged control and observation process. It owns the
 UI/API, identity, inventory, policy intent, desired state, audit history, and
 last-known-good records. It must not gain ambient packet-path privileges merely
 because Core and routerd are co-located.
@@ -114,8 +117,9 @@ unsafe requests before changing the packet path.
 - **OpenWrt Edge:** an OpenWrt adapter integrates with `ubus` and UCI, respecting
   OpenWrt's configuration and service lifecycle. It is separately packaged and
   tested from the x86 build.
-- **Managed routers:** current MikroTik and pfSense integrations, plus legacy VyOS
-  support, continue to use their router-native APIs in Controller mode.
+- **Managed routers:** current MikroTik and pfSense integrations continue to use
+  their router-native APIs in Controller mode. Removed VyOS code and settings are
+  not a supported adapter or Gateway commitment.
 
 ## Offline and last-known-good behavior
 
@@ -155,7 +159,7 @@ the reference appliance and does not define the supported Gateway architecture.
 
 | Phase | Outcome | Gate |
 |---|---|---|
-| **0 — Current Controller** | Preserve and improve current discovery, telemetry, MikroTik/pfSense management, and legacy VyOS support | Existing tests and deployments remain healthy |
+| **0 — Current Controller** | Preserve and improve current discovery, telemetry, and MikroTik/pfSense management | Existing tests and deployments remain healthy |
 | **1 — Contract and simulator** | Version the capability/desired-state/transaction protocol and exercise it with an unprivileged simulator | Deterministic plans, auditability, stale-revision rejection |
 | **2 — Isolated x86 Gateway** | Add split Core/routerd processes and native Linux adapters in the Proxmox VM fabric | Packet-path and failure matrix passes; no production targets used |
 | **3 — Recoverable x86 product** | Deliver commit-confirm, last-known-good reconciliation, upgrade/rollback, and out-of-band recovery | All blocking invariants pass repeatedly |

@@ -42,7 +42,8 @@ ceding network metadata or control to a cloud service.
 The product has an intentionally staged identity:
 
 - **Current Controller:** shipped discovery, telemetry, assets, services, and
-  managed-router operations through MikroTik, pfSense, and legacy VyOS APIs.
+  managed-router operations through MikroTik and pfSense APIs. VyOS was removed
+  by migration 026 and remains historical documentation only.
 - **Planned x86-64 Gateway:** the primary product build, with separate
   `panoptikon-core` and privileged `panoptikon-routerd` processes co-located on a
   dedicated Linux appliance or VM.
@@ -85,7 +86,8 @@ fragmented point tools and opaque vendor appliances. Today:
 
 - **MikroTik RouterOS and pfSense** provide strong routing platforms, but their
   native tools do not provide Panoptikon's unified inventory and telemetry model.
-- **VyOS has no built-in web GUI** for day-to-day monitoring. You SSH in, run `show interfaces`, and parse text output.
+- **VyOS has no built-in web GUI** for day-to-day monitoring, but Panoptikon's
+  former integration for that opportunity has been removed and is not current scope.
 - **Network monitoring** requires separate tools: Fing (proprietary, SaaS-leaning), nmap (CLI), Zabbix/LibreNMS (massive overkill for a home network).
 - **Device awareness** is fragmented. You don't know what's on your network without actively scanning. New devices appear silently. Devices go offline without notification.
 - **Agent-based monitoring** (CPU, RAM, traffic per host) typically means deploying Prometheus + node_exporter + Grafana — a stack heavier than the machines being monitored.
@@ -101,7 +103,7 @@ unprivileged control plane and privileged packet-path executor into one process.
 **Primary users:**
 
 - Homelab and small-office operators running the current Controller with
-  MikroTik, pfSense, or an existing VyOS deployment.
+  MikroTik or pfSense.
 - Technical operators who want a dedicated, recoverable x86-64 Gateway they can
   inspect, back up, and operate without vendor cloud control.
 - Developers and maintainers who need an isolated Proxmox fabric for destructive
@@ -124,7 +126,7 @@ unprivileged control plane and privileged packet-path executor into one process.
 
 | # | Goal | Status |
 |---|------|--------|
-| G1 | Preserve the shipped Controller experience for MikroTik, pfSense, and legacy VyOS users | **Current** |
+| G1 | Preserve the shipped Controller experience for MikroTik and pfSense users | **Current** |
 | G2 | Discover devices and unify network, host, service, and asset telemetry locally | **Current** |
 | G3 | Make x86-64 co-located Gateway the primary product build | **Planned** |
 | G4 | Keep Core unprivileged and isolate packet-path execution in routerd | **Planned** |
@@ -173,7 +175,9 @@ unprivileged control plane and privileged packet-path executor into one process.
 #### F3: Router Integration ✅
 - **MikroTik (Primary/Default):** Connect to RouterOS 7+ REST API. Full management: system status (uptime, CPU, memory, board info), interfaces (IPs, MACs, TX/RX, enable/disable), routes (view + create/delete static routes), DHCP leases, VLANs, firewall rules, traffic monitoring, NAT/port forwarding, VPN status, dynamic DNS, QoS, DNS configuration, WireGuard VPN. TTL-based caching for read operations. This is the default router path in onboarding, router pages, and new feature planning.
 - **pfSense (Supported):** Preserve the current pfSense integration and bridge for existing Controller deployments while MikroTik remains the primary/default path.
-- **VyOS (Legacy/Optional):** Connect to VyOS HTTP API. Display: system status, syslog, interfaces, routes, DHCP leases + static mappings, firewall rules (full CRUD + groups), DNS forwarding, WireGuard VPN peers. Configuration backup/restore with diff viewing. Visibility is hidden by default and only exposed when legacy routers are explicitly enabled in Advanced settings.
+- **VyOS (Historical/Removed):** The former HTTP API integration and its settings
+  were removed by migration 026. The archived design addendum is reference
+  material only and is not a shipped Controller capability.
 - Connection test + health indicator in the relevant managed-router UI
 
 #### F4: Authentication ✅
@@ -222,9 +226,8 @@ unprivileged control plane and privileged packet-path executor into one process.
 ### P2 — Nice to Have
 
 #### F10: Router Configuration (Write) — Partial ✅
-- ✅ **VyOS:** Edit firewall rules via GUI (create/modify/delete), firewall groups (address, network, port), interface management, DHCP static mapping management, DNS forwarding configuration, WireGuard VPN peer management
 - ✅ **MikroTik:** Interface enable/disable toggle, static route create/delete, DNS configuration, WireGuard configuration
-- ✅ **Config backup/restore** with unified diff viewing and audit trail (VyOS)
+- Historical VyOS write and config-backup flows are removed and do not count as current capability.
 - [ ] Rollback support
 
 #### F11: Wake-on-LAN ✅
@@ -278,7 +281,8 @@ unprivileged control plane and privileged packet-path executor into one process.
 - Secure external access without port forwarding
 
 #### F16: Services Wizard ✅
-- Unified orchestration for deploying services: NPM proxy host + VyOS firewall rules + DNAT rules
+- Unified service orchestration with per-step status reporting; removed VyOS
+  firewall/DNAT steps are not a current capability.
 - Single API call with per-step status reporting
 
 #### F17: Global Search & Command Palette ✅
@@ -287,7 +291,7 @@ unprivileged control plane and privileged packet-path executor into one process.
 - Unified results with type indicators
 
 #### F18: Audit Log ✅
-- Full router operation audit trail (VyOS)
+- Router and operator action audit trail
 - Action, command, and result tracking
 - Settings page for viewing audit history
 
@@ -375,7 +379,7 @@ Controller implementation only.
 | x86-64 co-located Gateway | Primary product build; separate local Core and routerd processes using a Unix socket | **Planned** |
 | Proxmox Gateway VM | Mandatory isolated development and verification fabric | **Planned**; packet-path work is **blocked** until available |
 | Panoptikon Edge / OpenWrt | Embedded profile with target-specific packaging and `ubus`/UCI adapter | **Planned** |
-| Managed-router Controller | Discovery, telemetry, services, and current MikroTik/pfSense/legacy VyOS integrations | **Current** and supported |
+| Managed-router Controller | Discovery, telemetry, services, and current MikroTik/pfSense integrations | **Current** and supported |
 
 The roadmap does not combine all privilege into the web/API process. Core owns
 intent, history, and operator workflows; routerd owns the minimum privileged
@@ -405,9 +409,9 @@ capability/desired-state/transaction contract.
 ║  │  │ agents,  │ │  to UI)  │ │ SSDP,    │ ││MikroTik││ │  ║
 ║  │  │ assets,  │ │          │ │ NetFlow) │ │├────────┤│ │  ║
 ║  │  │ caddy,   │ │          │ │          │ ││pfSense ││ │  ║
-║  │  │ unbound, │ │          │ │          │ │├────────┤│ │  ║
-║  │  │ cf-tun)  │ │          │ │          │ ││VyOS    ││ │  ║
-║  │  │          │ │          │ │          │ │└────────┘│ │  ║
+║  │  │ unbound, │ │          │ │          │ │└────────┘│ │  ║
+║  │  │ cf-tun)  │ │          │ │          │ │          │ │  ║
+║  │  │          │ │          │ │          │ │          │ │  ║
 ║  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ │  ║
 ║  │                     │                                  │  ║
 ║  │            ┌────────┴────────┐                         │  ║
@@ -434,18 +438,17 @@ capability/desired-state/transaction contract.
 
 Panoptikon currently supports managed-router integrations alongside the Gateway
 roadmap. MikroTik remains the primary/default path, pfSense remains supported for
-existing deployments, and VyOS remains a legacy secondary integration:
+existing deployments. VyOS was removed by migration 026:
 
 | Router | API | Status | Default |
 |--------|-----|--------|---------|
 | **MikroTik** | RouterOS 7+ REST API | ✅ Primary | Default tab and default router type |
 | **pfSense** | pfSense integration/bridge | Supported | Existing deployments |
-| **VyOS** | VyOS HTTP API (1.3+) | ⚠️ Legacy Optional | Hidden by default; shown only when legacy routers are enabled |
+| **VyOS** | Historical HTTP API design | Removed | Not shipped; archived documentation only |
 
-The managed-router integrations retain their current caching and mutation
-behavior. Each router has its own settings path and can be independently
-enabled/disabled. The `show_legacy_routers` setting defaults to `false`, keeping
-VyOS flows out of the primary UI until explicitly enabled.
+The current managed-router integrations retain their caching and mutation
+behavior. Migration 026 deletes `vyos%` settings and `show_legacy_routers`;
+operators must not be directed to a hidden VyOS UI path.
 
 ### Tech Stack Justification
 
@@ -547,10 +550,9 @@ Gateway experiments.
 # cloudflared — Cloudflare Tunnel (optional, enable with --profile tunnel)
 ```
 
-**Optional VyOS** — if running VyOS alongside MikroTik (e.g. as a dedicated firewall VM):
-- VyOS VM: 2 vCPUs, 512 MB RAM, 2 NICs
-- VyOS HTTP API enabled and reachable from LAN
-- Enable in Panoptikon Settings → Advanced → Show legacy routers, then configure in Settings → Router → VyOS (Legacy)
+**Historical VyOS note:** the former optional integration is not part of the
+current deployment model. Its old sizing and API notes remain only in the
+archived VyOS addendum.
 
 ### Current Controller Build Pipeline
 
@@ -1177,7 +1179,8 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 
 - [x] **Authentication:** Password setup, login, session cookies, rate limiting
 - [x] **MikroTik client:** Connect to RouterOS 7+ REST API, fetch system status, interfaces, DHCP leases, routes, firewall, DNS, WireGuard
-- [x] **VyOS client:** Connect, fetch interfaces, DHCP leases, basic stats (legacy optional, lazy-loaded, hidden by default unless legacy routers are enabled)
+- [x] **Historical VyOS client removed:** migration 026 removes its settings and
+  legacy-router visibility flag; it is not current shipped functionality
 - [x] **ARP scanner:** Periodic subnet scan, discover devices (active + passive)
 - [x] **mDNS/SSDP discovery:** Passive device discovery via Bonjour and UPnP
 - [x] **Device management:** List, auto-create on discovery, manual edit (name, icon, notes)
@@ -1188,7 +1191,9 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 - [x] **Online/offline detection:** State change tracking, ping-based uptime monitoring
 - [x] **Alerts:** New device, offline/online state changes, in-app feed with severity filtering
 - [x] **WebSocket:** Live updates to UI when device state changes
-- [x] **Settings page:** MikroTik connection (default), VyOS connection (legacy optional, hidden by default), Caddy connection, Unbound connection, Cloudflare Tunnel, NPM connection, scanner config, webhook, data retention, speedtest, audit log, config backup, password change
+- [x] **Settings page:** MikroTik connection (default), Caddy connection, Unbound
+  connection, Cloudflare Tunnel, NPM connection, scanner config, webhook, data
+  retention, speedtest, audit log, config backup, password change
 
 ### Milestone 2: Agents + Traffic + SSH ✅
 
@@ -1214,10 +1219,10 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 - [x] **Caddy proxy manager:** Admin API integration for reverse proxy management (replaces NPM as primary)
 - [x] **Unbound DNS manager:** Local DNS records, blocklists, query log visualization
 - [x] **Cloudflare Tunnel management:** Tunnel status, ingress rules, optional Docker Compose service
-- [x] **Services wizard:** Unified NPM + VyOS firewall + DNAT deployment
+- [x] **Services wizard:** Service orchestration with per-step status reporting
 - [x] **Speedtest:** Ookla integration with scheduling and history
 - [x] **Audit log:** Router operation tracking
-- [x] **Config backup:** VyOS configuration backup/restore with diff viewing
+- [x] **Historical VyOS config backup removed:** retained only in archived design records
 - [x] **Cmd+K command palette:** Quick navigation and action execution
 - [x] **Framer Motion animations:** Smooth card transitions and micro-interactions
 - [x] **Device type icons:** Visual device identification in lists and topology
@@ -1229,7 +1234,7 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 - [ ] **Docker Compose packaging:** Docker Hub releases, automated image builds
 - [ ] **DNS test setup:** Configure Unbound as the network-wide DNS resolver
 - [ ] **Managed-router support:** keep MikroTik primary while preserving pfSense
-  and legacy VyOS behavior for existing Controller deployments
+  behavior for existing Controller deployments
 - [ ] **UI cleanup:** Polish, consistency, responsive improvements
 
 ### Milestone 5: Gateway Contract and Isolated Fabric (Planned)
@@ -1284,7 +1289,7 @@ Production Gateway claims are **blocked** until every recovery invariant passes.
 | Q3 | **Next.js App Router or Pages Router?** | App Router — stable, Server Components for initial load. |
 | Q4 | **Should the frontend be SSR or static export?** | Static export — embedded in Rust binary, no Node.js runtime at deploy time. |
 | Q5 | **Router API key storage?** | SQLite — stored in settings table. |
-| Q11 | **Should we support multiple routers?** | Yes — MikroTik is primary/default, pfSense remains supported, and VyOS is legacy optional and hidden unless explicitly enabled. |
+| Q11 | **Should we support multiple routers?** | Yes — MikroTik is primary/default and pfSense remains supported. Removed VyOS functionality is not part of the current answer. |
 | Q15 | **Can Panoptikon own the data plane?** | Yes, in the planned Gateway/Edge profiles. Current Controller behavior remains supported. |
 | Q16 | **Where does privileged networking run?** | In a separate `panoptikon-routerd` process; Core remains unprivileged. |
 | Q17 | **How do local and remote deployments communicate?** | Restricted Unix socket locally; mTLS remotely; one versioned semantic contract. |
@@ -1377,8 +1382,8 @@ set service https api
 | Netdata | Agent monitoring | Excellent agent, but no network discovery or router management |
 | The Dude (MikroTik) | Network monitoring | MikroTik-only, desktop app, no modern web UI, no asset management |
 
-The current Controller's unique position is **managed-router operations (MikroTik,
-pfSense, and legacy VyOS) + network discovery + device fingerprinting +
+The current Controller's unique position is **managed-router operations (MikroTik
+and pfSense) + network discovery + device fingerprinting +
 lightweight agents + embedded DNS (Unbound) + reverse proxy (Caddy) + Cloudflare
 Tunnel + IT asset inventory**. The planned Gateway/Edge profiles extend that
 product without pretending their forwarding and recovery features have shipped.

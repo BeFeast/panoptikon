@@ -7,8 +7,9 @@ The canonical roadmap is
 decision in [#834](https://github.com/BeFeast/panoptikon/issues/834). Every worker
 must preserve these boundaries:
 
-- **Current:** Controller mode and supported MikroTik, pfSense, and legacy VyOS
-  integrations remain supported.
+- **Current:** Controller mode and supported MikroTik and pfSense integrations
+  remain supported. VyOS was removed by migration 026 and must not be described
+  as shipped or supported.
 - **Planned:** the primary x86-64 Gateway uses separate unprivileged
   `panoptikon-core` and privileged `panoptikon-routerd` processes; the isolated
   Proxmox Gateway VM is mandatory for development/verification; Panoptikon Edge

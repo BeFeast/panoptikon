@@ -7,10 +7,12 @@ Panoptikon is building a local-first network control platform around a primary
 profile, and an embedded **Panoptikon Edge / OpenWrt** profile.
 
 **Current:** the shipped product is a self-hosted Controller for discovery,
-telemetry, asset intelligence, and managed-router operations through MikroTik,
-pfSense, and legacy VyOS integrations. **Planned:** native Gateway forwarding uses
-separate `panoptikon-core` and privileged `panoptikon-routerd` processes. Native
+telemetry, asset intelligence, and managed-router operations through MikroTik
+and pfSense integrations. **Planned:** native Gateway forwarding uses separate
+`panoptikon-core` and privileged `panoptikon-routerd` processes. Native
 forwarding, routerd, OpenWrt firmware, and commit-confirm are not implemented yet.
+The former VyOS integration was removed by database migration 026 and is retained
+only in explicitly historical design documents.
 
 ---
 
@@ -38,7 +40,7 @@ forwarding, routerd, OpenWrt firmware, and commit-confirm are not implemented ye
   +---------------------------+             +---------------------------+
 
 Current Controller path:
-panoptikon-core ---- router APIs ----> MikroTik / pfSense / legacy VyOS
+panoptikon-server ---- router APIs ----> MikroTik / pfSense
 ```
 
 - [Product Requirements Document](docs/PRD.md)
@@ -96,7 +98,9 @@ Current Controller mode remains a supported product profile:
 
 - **MikroTik (primary/default)** — connects via the RouterOS 7+ REST API. Configure in **Settings → Router → MikroTik**.
 - **pfSense** — supported managed-router integration for existing deployments.
-- **VyOS (legacy/optional)** — connects via the VyOS HTTP API. Hidden by default for new users. To expose it, enable **Settings → Advanced → Show legacy routers**, then configure in **Settings → Router → VyOS (Legacy)**.
+- **VyOS (historical/removed)** — no longer shipped. Migration 026 removes its
+  settings and legacy-router visibility flag; the old design remains in
+  [the archived VyOS PRD](docs/PRD-VyOS-Management.md) for reference only.
 
 The planned Gateway and Edge profiles add native data-plane ownership through the
 Core/routerd contract. They do not remove managed-router support.
