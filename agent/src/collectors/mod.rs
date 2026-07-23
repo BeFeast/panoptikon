@@ -95,8 +95,8 @@ impl SystemCollector {
 
         // Heavy refresh (disks, networks) only every 5th cycle.
         if self.report_count.is_multiple_of(5) {
-            self.disks.refresh_list();
-            self.networks.refresh_list();
+            self.disks.refresh(true);
+            self.networks.refresh(true);
         }
 
         // Refresh fastfetch info every 10th cycle (~5 min at 30s interval).

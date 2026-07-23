@@ -641,7 +641,11 @@ async fn handle_ui_ws(mut socket: WebSocket, state: AppState) {
                             "event": broadcast_msg.event,
                             "data": broadcast_msg.payload,
                         });
-                        if socket.send(Message::Text(payload.to_string())).await.is_err() {
+                        if socket
+                            .send(Message::Text(payload.to_string().into()))
+                            .await
+                            .is_err()
+                        {
                             break;
                         }
                     }
@@ -686,7 +690,9 @@ async fn handle_agent_ws(mut socket: WebSocket, state: AppState, agent_id: Strin
 
     let _ = socket
         .send(Message::Text(
-            json!({"status": "authenticated", "agent_id": &agent_id}).to_string(),
+            json!({"status": "authenticated", "agent_id": &agent_id})
+                .to_string()
+                .into(),
         ))
         .await;
 
@@ -697,7 +703,7 @@ async fn handle_agent_ws(mut socket: WebSocket, state: AppState, agent_id: Strin
             cmd = cmd_rx.recv() => {
                 match cmd {
                     Some(command) => {
-                        if socket.send(Message::Text(command)).await.is_err() {
+                        if socket.send(Message::Text(command.into())).await.is_err() {
                             break;
                         }
                     }
@@ -711,7 +717,13 @@ async fn handle_agent_ws(mut socket: WebSocket, state: AppState, agent_id: Strin
                         if let Err(e) = handle_agent_report(&text, &agent_id, &state).await {
                             warn!(agent_id = %agent_id, "Failed to process agent report: {e}");
                         }
-                        if socket.send(Message::Text(json!({"status":"ok"}).to_string())).await.is_err() {
+                        if socket
+                            .send(Message::Text(
+                                json!({"status":"ok"}).to_string().into(),
+                            ))
+                            .await
+                            .is_err()
+                        {
                             break;
                         }
                     }

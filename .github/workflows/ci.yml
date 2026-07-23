@@ -32,7 +32,7 @@ jobs:
             target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-      # rust-embed requires web/.next/static/ to exist at compile time
+      # rust-embed packages the complete web/out/ static export.
       - name: Setup Bun (for rust-embed assets)
         uses: oven-sh/setup-bun@v2
         with:
@@ -40,7 +40,7 @@ jobs:
 
       - name: Build frontend assets (required by rust-embed)
         working-directory: web
-        run: bun install && bun run build
+        run: bun install --frozen-lockfile && bun run build
 
       - name: Check formatting
         run: cargo fmt --all -- --check
@@ -67,6 +67,8 @@ jobs:
           done
           curl -sf http://localhost:2019/config/ || (echo "Caddy failed to start within 30s" && exit 1)
 
+      # Canonical test split: the Caddy suite mutates shared Caddy state and
+      # must run separately and sequentially.
       - name: Test (unit + other integration)
         run: cargo test --lib --bins --test integration
 
@@ -113,7 +115,7 @@ jobs:
           bun-version: latest
 
       - name: Install dependencies
-        run: bun install
+        run: bun install --frozen-lockfile
 
       - name: Design tokens guard
         run: bash scripts/check-design-tokens.sh
@@ -151,7 +153,7 @@ jobs:
 
       - name: Build frontend assets
         working-directory: web
-        run: bun install && bun run build
+        run: bun install --frozen-lockfile && bun run build
 
       - name: Build server binary
         run: cargo build --release
