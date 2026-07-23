@@ -1,7 +1,9 @@
 # Panoptikon Gateway Architecture
 
-> **Status:** Canonical roadmap contract  
-> **Decision:** [GitHub issue #834](https://github.com/BeFeast/panoptikon/issues/834)  
+> **Status:** Canonical roadmap contract
+>
+> **Decision:** [GitHub issue #834](https://github.com/BeFeast/panoptikon/issues/834)
+>
 > **Updated:** 2026-07-23
 
 This document is the canonical architecture for Panoptikon's Gateway roadmap. The
@@ -171,4 +173,3 @@ the reference appliance and does not define the supported Gateway architecture.
 - Shipping native forwarding before commit-confirm and out-of-band recovery are
   proven in the isolated Proxmox profile.
 - Requiring cloud control, cloud identity, or phone-home telemetry.
-
