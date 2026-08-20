@@ -33,7 +33,7 @@ ipnetwork = "0.21"
 mdns-sd = "0.20"
 rust-embed = { version = "8", features = ["interpolate-folder-path"] }
 mime_guess = "2"
-similar = "2"
+similar = "3"
 ssh2 = "0.9"
 sha2 = "=0.10.9"
 lettre = { version = "0.11", default-features = false, features = ["tokio1-rustls-tls", "builder", "smtp-transport", "tokio1"] }
