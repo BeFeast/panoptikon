@@ -7,7 +7,7 @@
 > gaps belong to the **planned** native Gateway profile.
 >
 > Roadmap context: [Gateway architecture](./GATEWAY-ARCHITECTURE.md) and
-> [decision #834](https://github.com/BeFeast/panoptikon/issues/834).
+> [decision #834](https://git.oklabs.uk/BeFeast/panoptikon/issues/834).
 >
 > **Accuracy note:** VyOS was removed from the shipped product by migration 026.
 > Rows whose evidence is only a VyOS path are historical and must not be read as

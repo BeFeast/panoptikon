@@ -8,7 +8,7 @@
 **Status:** Active roadmap
 
 > **Superseding roadmap:** The Gateway decision in
-> [#834](https://github.com/BeFeast/panoptikon/issues/834) supersedes earlier
+> [#834](https://git.oklabs.uk/BeFeast/panoptikon/issues/834) supersedes earlier
 > statements that permanently limited Panoptikon to a managed-router dashboard.
 > [`GATEWAY-ARCHITECTURE.md`](./GATEWAY-ARCHITECTURE.md) is the canonical system
 > architecture. This PRD defines product outcomes and links to that document
@@ -510,7 +510,7 @@ services:
 
 ```bash
 # Quick start:
-git clone https://github.com/BeFeast/panoptikon && cd panoptikon
+git clone https://git.oklabs.uk/BeFeast/panoptikon.git && cd panoptikon
 docker compose up -d
 # → SQLite database created at ./data/panoptikon.db
 # → Open http://localhost:8080
@@ -1172,7 +1172,7 @@ Full validation procedures with step-by-step commands are documented in [`docs/t
 - [x] Rust workspace with axum skeleton (hello world, health endpoint)
 - [x] Next.js project with Tailwind + shadcn/ui configured, dark theme
 - [x] SQLite database setup with sqlx migrations
-- [x] CI: GitHub Actions for Rust build + frontend build + lint
+- [x] CI: Forgejo Actions (`.forgejo/workflows/ci.yml`) for Rust build + tests + frontend build + lint + Playwright E2E gate
 - [x] Basic Dockerfile
 
 ### Milestone 1: MVP — Device Discovery + Dashboard ✅
@@ -1274,7 +1274,7 @@ Production Gateway claims are **blocked** until every recovery invariant passes.
 - [ ] **LAN speed test:** iperf3 between server and agents
 - [ ] **Agent auto-update:** Server pushes updates to agents
 - [ ] **Topology:** Subnet grouping, device type grouping
-- [ ] **Release pipeline:** GitHub Releases, pre-built binaries (4 platforms + agent binaries)
+- [ ] **Release pipeline:** Forgejo Actions release workflow, pre-built binaries (4 platforms + agent binaries)
 
 ---
 

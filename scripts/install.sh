@@ -1,16 +1,26 @@
 #!/bin/sh
-# Panoptikon installer — detects platform and downloads the correct binary.
+# Panoptikon installer — detects platform and downloads the correct binary
+# from the Forgejo release at https://git.oklabs.uk/BeFeast/panoptikon/releases.
 # Usage:
-#   curl -fsSL https://github.com/BeFeast/panoptikon/releases/latest/download/install.sh | sh
-#   curl -fsSL .../install.sh | sh -s -- panoptikon-agent        # install agent
-#   curl -fsSL .../install.sh | sh -s -- panoptikon-server v0.2.0 # specific version
+#   # latest release — stable URL, the tag is resolved through the Forgejo API:
+#   curl -fsSL https://git.oklabs.uk/BeFeast/panoptikon/raw/branch/main/scripts/install.sh | sh
+#   # the copy attached to a release, pinned to that tag:
+#   curl -fsSL https://git.oklabs.uk/BeFeast/panoptikon/releases/download/<tag>/install.sh | sh -s -- panoptikon-server <tag>
+#   curl -fsSL .../install.sh | sh -s -- panoptikon-agent            # install agent
+#   curl -fsSL .../install.sh | sh -s -- panoptikon-server v0.6.105  # specific version
+#
+# Forgejo has no /releases/latest/download/<asset> redirect: without an explicit
+# version the latest non-draft, non-prerelease release is looked up through
+# GET /api/v1/repos/BeFeast/panoptikon/releases/latest.
 #
 # Environment variables:
 #   INSTALL_DIR  — destination directory (default: /usr/local/bin)
+#   FORGEJO_URL  — Forgejo instance (default: https://git.oklabs.uk)
 
 set -e
 
 REPO="BeFeast/panoptikon"
+FORGEJO_URL="${FORGEJO_URL:-https://git.oklabs.uk}"
 BINARY="${1:-panoptikon-server}"
 VERSION="${2:-}"
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
@@ -32,10 +42,12 @@ case "$ARCH" in
 esac
 
 # --- Version resolution -------------------------------------------------------
+# Forgejo has no /releases/latest/download/<asset> redirect; resolve the latest
+# non-draft, non-prerelease tag through the API instead.
 
 if [ -z "$VERSION" ]; then
-  VERSION="$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" \
-    | grep '"tag_name"' | head -1 | cut -d'"' -f4)"
+  VERSION="$(curl -fsSL "${FORGEJO_URL}/api/v1/repos/${REPO}/releases/latest" \
+    | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)"
 fi
 
 if [ -z "$VERSION" ]; then
@@ -44,7 +56,7 @@ if [ -z "$VERSION" ]; then
 fi
 
 ASSET="${BINARY}-${OS}-${ARCH}"
-BASE_URL="https://github.com/${REPO}/releases/download/${VERSION}"
+BASE_URL="${FORGEJO_URL}/${REPO}/releases/download/${VERSION}"
 
 echo "Downloading ${ASSET} ${VERSION}..."
 
@@ -61,9 +73,9 @@ curl -fsSL -o "${TMP}/SHA256SUMS.txt" "${BASE_URL}/SHA256SUMS.txt"
 (
   cd "$TMP"
   if command -v sha256sum >/dev/null 2>&1; then
-    grep "${ASSET}" SHA256SUMS.txt | sha256sum -c --quiet
+    grep " ${ASSET}\$" SHA256SUMS.txt | sha256sum -c --quiet
   elif command -v shasum >/dev/null 2>&1; then
-    grep "${ASSET}" SHA256SUMS.txt | shasum -a 256 -c --quiet
+    grep " ${ASSET}\$" SHA256SUMS.txt | shasum -a 256 -c --quiet
   else
     echo "Warning: could not verify checksum (sha256sum/shasum not found)" >&2
   fi

@@ -3,7 +3,7 @@
 This document separates the **current** MikroTik Controller lab from the
 **planned** isolated Proxmox Gateway fabric. The architecture source of truth is
 [`GATEWAY-ARCHITECTURE.md`](./GATEWAY-ARCHITECTURE.md), based on
-[#834](https://github.com/BeFeast/panoptikon/issues/834).
+[#834](https://git.oklabs.uk/BeFeast/panoptikon/issues/834).
 
 ## Environment roles and safety boundary
 

@@ -1,7 +1,11 @@
 services:
   # ── Panoptikon — network monitoring dashboard ──────────────────────────────
   panoptikon:
-    image: ghcr.io/befeast/panoptikon:latest
+    # No published image any more (GHCR/Docker Hub publishing was dropped with
+    # the GitHub -> Forgejo move; production is the systemd binary in the LXC).
+    # `docker compose up --build` builds the image locally from ./Dockerfile.
+    build: .
+    image: panoptikon:local
     container_name: panoptikon
     restart: unless-stopped
     networks:

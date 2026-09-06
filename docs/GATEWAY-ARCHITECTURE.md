@@ -2,7 +2,7 @@
 
 > **Status:** Canonical roadmap contract
 >
-> **Decision:** [GitHub issue #834](https://github.com/BeFeast/panoptikon/issues/834)
+> **Decision:** [issue #834](https://git.oklabs.uk/BeFeast/panoptikon/issues/834)
 >
 > **Updated:** 2026-07-23
 

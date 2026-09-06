@@ -283,6 +283,17 @@ cargo test
 
 The test suite spins up a real axum server on a random port with an in-memory SQLite database. Each test gets a fresh server instance — no external services required.
 
+The Caddy suite (`server/tests/caddy_integration.rs`, cases C-01..C-24) additionally needs a real Caddy admin API on `localhost:2019` and must run sequentially because it mutates shared Caddy state:
+
+```bash
+cargo test --lib --bins --test integration
+cargo test --test caddy_integration -- --test-threads=1
+```
+
+### Continuous integration
+
+CI runs on Forgejo Actions (`.forgejo/workflows/ci.yml` in <https://git.oklabs.uk/BeFeast/panoptikon>) for every push to `main` and every pull request. It executes the same split as above — the Caddy suite against a real Caddy 2.11.x with the `cloudflare` DNS module started inside the job — plus `cargo fmt`/`clippy`, the frontend lint/build, and the mandatory Playwright E2E gate. Because the default `ubuntu-latest` runner has no Docker socket, CI starts Caddy as a background process rather than a container; locally either approach works.
+
 ### Current test coverage
 
 - **Authentication**: login, logout, wrong password, session validation
