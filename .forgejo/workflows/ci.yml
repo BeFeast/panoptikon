@@ -471,7 +471,11 @@ jobs:
 
       - name: Run Playwright tests
         working-directory: web
-        run: bunx playwright test
+        # The act-24.04 container on baldr exposes all 14 host CPUs, so Playwright would
+        # default to 7 workers; the GitHub runner had 4 vCPUs (= 2 workers). Ten spec files
+        # write the same MikroTik/router settings and interfere at higher parallelism
+        # (observed: settings-router save/reload failed + 4 flaky at 7 workers). Keep 2.
+        run: bunx playwright test --workers=2
 
       - name: Collect server log for the report
         if: failure()
