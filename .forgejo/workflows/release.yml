@@ -1,0 +1,432 @@
+# Release — cut a Forgejo release with prebuilt binaries for a v* tag.
+#
+# Assets (same names the installer expects):
+#   panoptikon-{server,agent}-linux-{amd64,arm64}   static musl, run on any Linux
+#   panoptikon-{server,agent}-darwin-{arm64,amd64}  only when include_macos is set
+#   SHA256SUMS.txt, install.sh
+#
+# Triggers
+#   push of a tag v*   A tag pushed by a person. Forgejo never starts a
+#                      workflow for a change authored with a run's automatic
+#                      token (services/actions/notifier_helper.go::Notify drops
+#                      every event whose doer is the Actions user), so the tags
+#                      the version-bump workflow pushes do NOT trigger this —
+#                      the same silence GITHUB_TOKEN pushes had on GitHub. No
+#                      skip marker is involved: a person pushing (or deleting
+#                      and re-pushing) a v* tag at any commit, bump commits
+#                      included, does trigger it.
+#   workflow_dispatch  Pick the tag to release (the way to release a bump tag);
+#                      optionally add macOS builds; optionally overwrite an
+#                      already published release.
+#
+# Guards
+#   * the tag must be SemVer, point at the checked-out commit and be reachable
+#     from origin/main — no releases from feature branches;
+#   * every expected asset must exist before anything is published: Forgejo
+#     does not aggregate matrix rows in needs.<job>.result, so a half-failed
+#     build-linux matrix could otherwise still reach the release job;
+#   * a published release is immutable unless replace_existing is set
+#     (scripts/release-publish.sh refuses to touch it without --replace).
+#
+# Runners
+#   ubuntu-latest  isolated container on baldr (no docker socket). Linux builds
+#                  use a pinned musl cross toolchain instead of `cross`, see
+#                  scripts/release-build-linux.sh.
+#   macos          m4-laptop, native, frequently offline. Never auto-selected:
+#                  a job queued for an offline runner would hold the release
+#                  job forever, so macOS is opt-in via workflow_dispatch.
+#
+# Toolchains are pinned to what ci.yml tests (RUST_TOOLCHAIN, BUN_VERSION
+# below) — bump both files together.
+#
+# Publishing uses the run's automatic token against the Forgejo REST API
+# (scripts/release-publish.sh); there is no release secret to rotate.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish, for example v0.6.105"
+        required: true
+        type: string
+      include_macos:
+        description: "Also build macOS server and agent binaries (m4-laptop runner must be online)"
+        type: boolean
+        default: false
+      replace_existing:
+        description: "Overwrite the notes and attachments of an already published release for this tag"
+        type: boolean
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  # Same pins as ci.yml: a release is compiled by the toolchain CI exercised.
+  RUST_TOOLCHAIN: "1.98.1"
+  BUN_VERSION: "1.4.2"
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  frontend:
+    name: Build frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          # Full history with every branch and tag: the guard below needs
+          # refs/remotes/origin/main and the tag objects.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Validate release tag
+        env:
+          TAG_INPUT: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          tag="${TAG_INPUT:-$REF_NAME}"
+          printf '%s\n' "$tag" \
+            | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.]+)?$' \
+            || { echo "release tag must look like v1.2.3 or v1.2.3-rc.1, got: $tag" >&2; exit 1; }
+          test "$(git tag --points-at HEAD | grep -Fx "$tag")" = "$tag" \
+            || { echo "checked-out commit is not tagged $tag" >&2; exit 1; }
+          main="$(git rev-parse --verify --quiet refs/remotes/origin/main)" \
+            || { echo "refs/remotes/origin/main was not fetched (checkout needs fetch-depth: 0)" >&2; exit 1; }
+          tagged="$(git rev-parse --verify "refs/tags/$tag^{commit}")"
+          git merge-base --is-ancestor "$tagged" "$main" || {
+            echo "tag $tag (${tagged:0:12}) is not reachable from origin/main (${main:0:12}); releases are cut from main only" >&2
+            exit 1
+          }
+          echo "Releasing $tag from ${tagged:0:12} (on main)"
+
+      # The bun installer unpacks a zip; unzip is already in the act-24.04
+      # image (probed on baldr 2026-09-06). This is the same cheap, idempotent
+      # guard against image drift that ci.yml uses.
+      - name: Install build dependencies
+        run: |
+          set -euo pipefail
+          SUDO=""; [ "$(id -u)" = 0 ] || SUDO=sudo
+          export DEBIAN_FRONTEND=noninteractive
+          $SUDO apt-get update -qq >/dev/null
+          $SUDO apt-get install -y -qq --no-install-recommends unzip ca-certificates curl >/dev/null
+
+      - name: Install Bun
+        run: |
+          set -euo pipefail
+          curl -fsSL https://bun.sh/install | bash -s "bun-v$BUN_VERSION"
+          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
+          test "$("$HOME/.bun/bin/bun" --version)" = "$BUN_VERSION" \
+            || { echo "expected bun $BUN_VERSION, got $("$HOME/.bun/bin/bun" --version)" >&2; exit 1; }
+
+      - name: Install dependencies
+        working-directory: web
+        run: bun install --frozen-lockfile
+
+      - name: Build
+        working-directory: web
+        run: bun run build
+
+      - uses: https://code.forgejo.org/forgejo/upload-artifact@v4
+        with:
+          name: frontend
+          path: web/out/
+          retention-days: 7
+
+  build-linux:
+    name: Linux (${{ matrix.arch }})
+    needs: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            target: x86_64-unknown-linux-musl
+          - arch: arm64
+            target: aarch64-unknown-linux-musl
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          persist-credentials: false
+
+      # scripts/release-build-linux.sh needs xz, file, perl (openssl-src
+      # Configure) and make; all four are in the act-24.04 image already
+      # (probed on baldr 2026-09-06). Idempotent guard against image drift.
+      - name: Install build dependencies
+        run: |
+          set -euo pipefail
+          SUDO=""; [ "$(id -u)" = 0 ] || SUDO=sudo
+          export DEBIAN_FRONTEND=noninteractive
+          $SUDO apt-get update -qq >/dev/null
+          $SUDO apt-get install -y -qq --no-install-recommends \
+            xz-utils file perl make ca-certificates curl >/dev/null
+
+      - name: Install Rust toolchain
+        run: |
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --no-modify-path --profile minimal --default-toolchain "$RUST_TOOLCHAIN"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          "$HOME/.cargo/bin/rustc" --version | tee /tmp/rustc-version.txt
+          grep -q "^rustc $RUST_TOOLCHAIN " /tmp/rustc-version.txt \
+            || { echo "expected rustc $RUST_TOOLCHAIN" >&2; exit 1; }
+
+      # Only cargo's registry and git checkouts are cached: cargo verifies every
+      # crate against the checksum in Cargo.lock, so a stale or planted entry
+      # cannot reach the build. The runner cache is scoped to the repository,
+      # not to a ref (any PR job can write any key), which is why neither the
+      # cross toolchain (release-build-linux.sh downloads and sha256-verifies
+      # it on every run, ~80 MB) nor target/ is restored here: a release build
+      # always compiles from source (~10 min per arch on baldr, measured
+      # 2026-09-06; the two arches run in parallel on the two runner slots).
+      - name: Cache cargo registry
+        uses: https://code.forgejo.org/actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry/
+            ~/.cargo/git/
+          key: release-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            release-cargo-registry-
+
+      - name: Download frontend assets
+        uses: https://code.forgejo.org/forgejo/download-artifact@v4
+        with:
+          name: frontend
+          path: web/out/
+
+      - name: Build static binaries
+        run: bash scripts/release-build-linux.sh ${{ matrix.arch }} dist
+
+      - uses: https://code.forgejo.org/forgejo/upload-artifact@v4
+        with:
+          name: binaries-linux-${{ matrix.arch }}
+          path: dist/panoptikon-*-linux-${{ matrix.arch }}
+          retention-days: 7
+
+  build-macos:
+    name: macOS (${{ matrix.arch }})
+    needs: frontend
+    # Compared explicitly: dispatch inputs reach the runner as strings, and a
+    # bare `inputs.include_macos` would be truthy for "false" too.
+    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.include_macos == true || inputs.include_macos == 'true') }}
+    runs-on: macos
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: arm64
+            target: aarch64-apple-darwin
+          - arch: amd64
+            target: x86_64-apple-darwin
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          persist-credentials: false
+
+      # A private toolchain directory, outside the checkout and outside the
+      # laptop's own ~/.cargo: the first run installs, later runs reuse. The
+      # pinned toolchain is (re)installed idempotently and selected through
+      # RUSTUP_TOOLCHAIN. No Homebrew: OpenSSL comes from the vendored-openssl
+      # feature.
+      - name: Rust toolchain (private to CI)
+        run: |
+          set -euo pipefail
+          export RUSTUP_HOME="$HOME/.panoptikon-ci/rustup"
+          export CARGO_HOME="$HOME/.panoptikon-ci/cargo"
+          if [ ! -x "$CARGO_HOME/bin/rustup" ]; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --profile minimal --default-toolchain "$RUST_TOOLCHAIN" --no-modify-path
+          fi
+          "$CARGO_HOME/bin/rustup" toolchain install "$RUST_TOOLCHAIN" --profile minimal
+          "$CARGO_HOME/bin/rustup" target add --toolchain "$RUST_TOOLCHAIN" ${{ matrix.target }}
+          {
+            echo "RUSTUP_HOME=$RUSTUP_HOME"
+            echo "CARGO_HOME=$CARGO_HOME"
+            echo "RUSTUP_TOOLCHAIN=$RUST_TOOLCHAIN"
+          } >> "$GITHUB_ENV"
+          echo "$CARGO_HOME/bin" >> "$GITHUB_PATH"
+          RUSTUP_TOOLCHAIN="$RUST_TOOLCHAIN" "$CARGO_HOME/bin/rustc" --version | tee "$RUNNER_TEMP/rustc-version.txt"
+          grep -q "^rustc $RUST_TOOLCHAIN " "$RUNNER_TEMP/rustc-version.txt" \
+            || { echo "expected rustc $RUST_TOOLCHAIN" >&2; exit 1; }
+
+      - name: Download frontend assets
+        uses: https://code.forgejo.org/forgejo/download-artifact@v4
+        with:
+          name: frontend
+          path: web/out/
+
+      - name: Build
+        run: |
+          set -euo pipefail
+          cargo build --release --locked --target ${{ matrix.target }} \
+            -p panoptikon-server -p panoptikon-agent \
+            --features panoptikon-server/vendored-openssl
+
+      - name: Collect binaries
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          for bin in panoptikon-server panoptikon-agent; do
+            out="dist/$bin-darwin-${{ matrix.arch }}"
+            install -m 0755 "target/${{ matrix.target }}/release/$bin" "$out"
+            desc="$(file -b "$out")"
+            echo "$bin: $desc"
+            # The amd64 asset is cross-compiled on the Apple-silicon runner:
+            # prove the uploaded file really is the advertised architecture.
+            case "${{ matrix.arch }}" in
+              amd64) printf '%s\n' "$desc" | grep -q 'x86_64' ;;
+              arm64) printf '%s\n' "$desc" | grep -q 'arm64' ;;
+            esac || { echo "$out is not a ${{ matrix.arch }} Mach-O binary: $desc" >&2; exit 1; }
+          done
+          # Apple silicon runs its own architecture natively; amd64 only under Rosetta.
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            dist/panoptikon-server-darwin-arm64 --version
+            dist/panoptikon-agent-darwin-arm64 --version
+          fi
+
+      - uses: https://code.forgejo.org/forgejo/upload-artifact@v4
+        with:
+          name: binaries-darwin-${{ matrix.arch }}
+          path: dist/panoptikon-*-darwin-${{ matrix.arch }}
+          retention-days: 7
+
+  release:
+    name: Publish Forgejo release
+    needs: [build-linux, build-macos]
+    # always(): build-macos is skipped unless include_macos, and a skipped need
+    # must not skip this job. The result checks are a first filter only —
+    # Forgejo stores one row's result per matrix job id — the asset-set
+    # assertion in "Assemble" is what actually protects the release.
+    if: ${{ always() && needs.build-linux.result == 'success' && (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download all binaries
+        uses: https://code.forgejo.org/forgejo/download-artifact@v4
+        with:
+          pattern: binaries-*
+          path: artifacts
+          merge-multiple: true
+
+      - name: Assemble assets and checksums
+        env:
+          INCLUDE_MACOS: ${{ inputs.include_macos }}
+        run: |
+          set -euo pipefail
+          expected="panoptikon-server-linux-amd64 panoptikon-agent-linux-amd64 panoptikon-server-linux-arm64 panoptikon-agent-linux-arm64"
+          if [ "$INCLUDE_MACOS" = "true" ]; then
+            expected="$expected panoptikon-server-darwin-arm64 panoptikon-agent-darwin-arm64 panoptikon-server-darwin-amd64 panoptikon-agent-darwin-amd64"
+          fi
+          # needs.build-linux.result reflects a single matrix row on Forgejo,
+          # so a failed amd64 next to a green arm64 can reach this job: assert
+          # the complete asset set before anything is checksummed or uploaded.
+          missing=0
+          for f in $expected; do
+            [ -s "artifacts/$f" ] || { echo "missing release asset: $f" >&2; missing=$((missing + 1)); }
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "$missing expected binaries missing; not publishing" >&2
+            ls -la artifacts >&2
+            exit 1
+          fi
+          for f in artifacts/*; do
+            case "$(basename "$f")" in
+              panoptikon-*) ;;
+              *) echo "unexpected file among downloaded artifacts: $f" >&2; exit 1 ;;
+            esac
+          done
+          cp scripts/install.sh artifacts/install.sh
+          cd artifacts
+          chmod 0755 panoptikon-* install.sh
+          sha256sum panoptikon-* install.sh > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          printf '%s\n' $expected SHA256SUMS.txt install.sh > ../expected-assets.txt
+
+      - name: Write release notes
+        env:
+          TAG_INPUT: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          set -euo pipefail
+          tag="${TAG_INPUT:-$REF_NAME}"
+          # github.server_url ends with "/" on Forgejo (setting.AppURL).
+          repo_url="${SERVER_URL%/}/$REPO"
+          prev="$(git describe --tags --abbrev=0 "${tag}^" 2>/dev/null || true)"
+          {
+            echo "## Quick install"
+            echo
+            echo "Latest release (the installer resolves it through the Forgejo API):"
+            echo
+            echo '```sh'
+            echo "curl -fsSL $repo_url/raw/branch/main/scripts/install.sh | sh"
+            echo '```'
+            echo
+            echo "Exactly this release ($tag):"
+            echo
+            echo '```sh'
+            echo "curl -fsSL $repo_url/releases/download/$tag/install.sh | sh -s -- panoptikon-server $tag"
+            echo '```'
+            echo
+            echo "Pass \`panoptikon-agent\` instead of \`panoptikon-server\` to install the agent."
+            echo "Linux assets are static musl binaries (any distro, no libssl/glibc requirement)."
+            echo "See \`SHA256SUMS.txt\` for checksums."
+            echo
+            if [ -n "$prev" ]; then
+              echo "## Changes since $prev"
+              echo
+              git log --no-merges --pretty='- %s (%h)' "${prev}..${tag}"
+              echo
+              echo "Full diff: $repo_url/compare/${prev}...${tag}"
+            else
+              echo "## Changes"
+              echo
+              git log --no-merges --pretty='- %s (%h)' -n 50 "$tag"
+            fi
+          } > release-notes.md
+          cat release-notes.md
+
+      - name: Publish
+        env:
+          FORGEJO_TOKEN: ${{ github.token }}
+          SERVER_URL: ${{ github.server_url }}
+          REPO: ${{ github.repository }}
+          TAG_INPUT: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+          REPLACE_EXISTING: ${{ inputs.replace_existing }}
+        run: |
+          set -euo pipefail
+          # github.server_url ends with "/" on Forgejo (setting.AppURL).
+          export FORGEJO_API="${SERVER_URL%/}/api/v1"
+          args=()
+          while IFS= read -r name; do
+            [ -n "$name" ] && args+=(--expect "$name")
+          done < expected-assets.txt
+          if [ "$REPLACE_EXISTING" = "true" ]; then
+            echo "replace_existing set: an already published $TAG_INPUT will be overwritten"
+            args+=(--replace)
+          fi
+          bash scripts/release-publish.sh \
+            --tag "${TAG_INPUT:-$REF_NAME}" \
+            --assets artifacts \
+            --notes release-notes.md \
+            "${args[@]}"

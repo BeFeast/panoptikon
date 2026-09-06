@@ -1,5 +1,10 @@
 # Panoptikon
 
+> **Canonical repository: <https://git.oklabs.uk/BeFeast/panoptikon>** (self-hosted Forgejo).
+> Issues, pull requests and CI (Forgejo Actions) live there.
+> The copy on GitHub (`github.com/BeFeast/panoptikon`) is a **weekly, read-only push mirror**
+> kept for distribution and visibility — it can lag up to a week and does not accept issues or PRs.
+
 *The all-seeing eye for your network.*
 
 Panoptikon is building a local-first network control platform around a primary
@@ -45,7 +50,7 @@ panoptikon-server ---- router APIs ----> MikroTik / pfSense
 
 - [Product Requirements Document](docs/PRD.md)
 - [Canonical Gateway architecture](docs/GATEWAY-ARCHITECTURE.md)
-- [Gateway product decision (#834)](https://github.com/BeFeast/panoptikon/issues/834)
+- [Gateway product decision (#834)](https://git.oklabs.uk/BeFeast/panoptikon/issues/834)
 
 ---
 
@@ -59,8 +64,8 @@ panoptikon-server ---- router APIs ----> MikroTik / pfSense
 ### Build & Run
 
 ```bash
-# Clone the repository
-git clone https://github.com/BeFeast/panoptikon.git
+# Clone the repository (canonical Forgejo remote)
+git clone https://git.oklabs.uk/BeFeast/panoptikon.git
 cd panoptikon
 
 # Build the server
@@ -154,6 +159,16 @@ OpenWrt Edge targets will share one binary or backend.
 - **`NET_RAW` capability** is required for nmap raw socket scanning.
 - **`NET_ADMIN` capability** is required for ARP table access and network administration.
 - Data (SQLite database) is persisted in a Docker volume mounted at `/data`.
+
+## Contributing
+
+- Open issues and pull requests on Forgejo: <https://git.oklabs.uk/BeFeast/panoptikon>.
+- CI runs on Forgejo Actions (`.forgejo/workflows/ci.yml`) for every push to `main` and every
+  pull request: Rust fmt/clippy/build/tests (including the Caddy integration suite against a real
+  Caddy), frontend lint/build, and the mandatory Playwright E2E gate (see `CLAUDE.md`).
+- Pull requests get an automated review from the org's PR-Agent bot; dependency updates are
+  opened by the org-hosted Renovate (config lives in `BeFeast/renovate`, not in this repo).
+- Production rollout is artifact-driven: `scripts/deploy-worker.sh` (see `DEPLOY.md`).
 
 ## Philosophy
 

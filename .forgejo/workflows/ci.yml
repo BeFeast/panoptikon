@@ -1,0 +1,488 @@
+# CI for panoptikon on Forgejo Actions (git.oklabs.uk).
+#
+# Replaces .github/workflows/ci.yml. Same coverage, Forgejo-native mechanics:
+#
+#   rust      fmt, clippy, release build, unit + integration tests, and the Caddy
+#             integration suite (C-01..C-24) against a real Caddy 2.11.x with the
+#             cloudflare DNS module. Publishes the release binary as an artifact.
+#   frontend  design-token guard, eslint, `next build` (static export).
+#   e2e       mandatory Playwright gate against the binary built by `rust`.
+#
+# Forgejo-specific choices (each explained again where it applies):
+#   * runs-on: ubuntu-latest -> ghcr.io/catthehacker/ubuntu:act-24.04 on the
+#     "baldr" org runner. That image is built from buildpack-deps:24.04 (gcc,
+#     g++, make, libssl-dev, libsqlite3-dev, pkgconf via libglib2.0-dev, unzip,
+#     jq, git, curl present; node 24 on PATH; runs as root) but has NO Rust,
+#     NO bun and NO docker socket (container.docker_host is "-"). Everything
+#     missing is installed with plain shell; nothing needs docker, so the
+#     un-isolated `heavy` label is deliberately not used.
+#   * Actions are referenced by full URL and pinned by commit SHA (org
+#     convention, same as BeFeast/ok-gobot); the trailing comment carries the
+#     tag for Renovate. Artifacts MUST use the code.forgejo.org/forgejo/
+#     {upload,download}-artifact forks: upstream actions/upload-artifact@v4
+#     does not work on Forgejo. For those two forks the pinned commit is what
+#     their floating `v4` tag resolves to ("v4.3.1: disable GHES check" /
+#     "v4.1.4: disable GHES check"); their upstream-named tags v4.3.1 / v4.1.4
+#     are the UNPATCHED upstream commits and must not be "upgraded" to.
+#   * actions/cache works through the runner-local cache server on baldr.
+#   * concurrency + cancel-in-progress are supported (Forgejo >= 12; this
+#     instance is 16.0.3) and already used by BeFeast/hedroom.
+#   * Caddy is NOT started via `docker run` (no socket). The pinned binary is
+#     extracted from ghcr.io/caddybuilds/caddy-cloudflare:<ver> with the OCI
+#     registry API + tar, cached per version, and run in the job container.
+#     The caddyserver.com download API was rejected because it ignores the
+#     `version=` parameter (verified 2026-09-06: asking for v2.10.0 returned a
+#     v2.11.4 build), so it cannot pin.
+#   * Every third-party input this workflow pulls is pinned (action SHAs,
+#     RUST_TOOLCHAIN, BUN_VERSION, CADDY_VERSION): the binary it uploads is
+#     what scripts/deploy-worker.sh ships to production.
+#
+# Deploy contract (scripts/deploy-worker.sh, Forgejo REST API):
+#   artifact name  panoptikon-server-linux-x86_64        (env ARTIFACT_NAME)
+#   zip layout     panoptikon-server                     (ELF, x86_64, glibc)
+#                  panoptikon-server.sha256              (sha256sum format)
+#                  deploy-metadata.json                  (commit, version, branch,
+#                                                         event, built_at, run_id,
+#                                                         run_number, run_url,
+#                                                         artifact)
+#   run_id     = Forgejo's global run id  (API `id`, what the worker stores)
+#   run_number = per-repo index           (API `index_in_repo`, the number in
+#                                          the web URL /actions/runs/<n>)
+#   run_url    = <server>/<owner>/<repo>/actions/runs/<run_number>
+#   branch     = `main` on push builds; on pull_request builds Forgejo's
+#                ref_name is `<pr-number>/head` (never deployed, informational).
+#   The artifact is uploaded on EVERY run (the e2e job consumes it), so the
+#   deploy worker must select runs with branch=main, event=push, status=success.
+#   Retention: 3 days on pull requests, 30 days otherwise (push, dispatch).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# One live run per ref. For pull requests a newer push supersedes (cancels)
+# the older run. For main (push / workflow_dispatch) runs are QUEUED instead
+# of cancelled, so two quick merges both finish and both leave a deployable
+# artifact. Without this block Forgejo's default would cancel the older main
+# run too (docs: cancel-in-progress defaults to true for push events).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-Dwarnings"
+  # Incremental compilation only helps an editor loop; on CI it inflates the
+  # cached target/ (every Cargo.lock change writes a fresh multi-GB entry to
+  # baldr's cache server) and gives nothing back.
+  CARGO_INCREMENTAL: "0"
+  # Pinned toolchain (was floating `stable` via dtolnay/rust-toolchain@stable).
+  # 1.98.1 = stable on 2026-09-06. Bump deliberately; `-Dwarnings` + a moving
+  # clippy is a classic source of surprise CI breakage.
+  RUST_TOOLCHAIN: "1.98.1"
+  # Pinned bun (was `bun-version: latest`). 1.4.2 = latest on 2026-09-06.
+  BUN_VERSION: "1.4.2"
+  # Caddy used by server/tests/caddy_integration.rs. Must be 2.11.x with the
+  # cloudflare DNS module -> ghcr.io/caddybuilds/caddy-cloudflare:<CADDY_VERSION>.
+  CADDY_VERSION: "2.11.4"
+  ARTIFACT_NAME: panoptikon-server-linux-x86_64
+  NEXT_TELEMETRY_DISABLED: "1"
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  rust:
+    name: Rust build, lint & test
+    runs-on: ubuntu-latest
+    # Untested cold-run budget on baldr (apt + rustup + web build + clippy +
+    # release build + two test compilations, sharing the box with `frontend`).
+    # Tighten once the first cold run has been measured.
+    timeout-minutes: 90
+    steps:
+      - name: Check out repository
+        uses: https://code.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      # act-24.04 already carries all of this: buildpack-deps:24.04 brings
+      # gcc/g++/make/libssl-dev/libsqlite3-dev and pkgconf (a dependency of
+      # libglib2.0-dev), the act layer adds jq/curl. The workspace needs it:
+      # openssl-sys is not vendored (no openssl-src in Cargo.lock) and locates
+      # libssl through pkg-config; libssh2-sys and libsqlite3-sys compile C.
+      # So this step is a cheap, idempotent guard against image drift.
+      - name: Install build dependencies
+        run: |
+          set -euo pipefail
+          SUDO=""; [ "$(id -u)" = 0 ] || SUDO=sudo
+          export DEBIAN_FRONTEND=noninteractive
+          $SUDO apt-get update -qq
+          $SUDO apt-get install -y -qq --no-install-recommends \
+            build-essential pkg-config libssl-dev ca-certificates curl jq
+
+      # Plain rustup instead of dtolnay/rust-toolchain: no dependency on a
+      # GitHub-hosted action working here, and the toolchain download from
+      # static.rust-lang.org is ~40 s on the runner.
+      - name: Install Rust toolchain
+        run: |
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --no-modify-path --profile minimal \
+                --default-toolchain "$RUST_TOOLCHAIN" -c clippy -c rustfmt
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          "$HOME/.cargo/bin/rustc" --version | tee /tmp/rustc-version.txt
+          "$HOME/.cargo/bin/cargo" --version
+          grep -q "^rustc $RUST_TOOLCHAIN " /tmp/rustc-version.txt \
+            || { echo "expected rustc $RUST_TOOLCHAIN" >&2; exit 1; }
+
+      # ~/.cargo/bin is intentionally NOT cached: rustup just installed the
+      # proxies there and a restored copy would clobber them. The cache is
+      # saved by the action's post step only when the job succeeds.
+      - name: Cache cargo registry and target
+        uses: https://code.forgejo.org/actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install Bun
+        run: |
+          set -euo pipefail
+          curl -fsSL https://bun.sh/install | bash -s "bun-v$BUN_VERSION"
+          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
+          test "$("$HOME/.bun/bin/bun" --version)" = "$BUN_VERSION" \
+            || { echo "expected bun $BUN_VERSION, got $("$HOME/.bun/bin/bun" --version)" >&2; exit 1; }
+
+      - name: Cache Bun install cache
+        uses: https://code.forgejo.org/actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('web/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      # rust-embed packages web/out/ into the binary (server/src/static_files.rs),
+      # so the static export must exist before clippy/build/test.
+      - name: Build frontend assets (required by rust-embed)
+        working-directory: web
+        run: |
+          set -euo pipefail
+          bun install --frozen-lockfile
+          bun run build
+          test -f out/index.html
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets --all-features
+
+      # Only the shipped binaries in release mode. The GitHub workflow used
+      # --all-targets here, which also compiled every test in release profile
+      # without ever running it; tests are compiled and run in the dev profile
+      # by the `cargo test` steps below, exactly as before.
+      - name: Build (release)
+        run: cargo build --release --workspace --bins
+
+      # ── Caddy for server/tests/caddy_integration.rs ────────────────────────
+      # No docker socket on ubuntu-latest, so the same image the GitHub job ran
+      # (caddy with cloudflare DNS, 2.11.x) is unpacked by hand: anonymous GHCR
+      # token -> image index -> linux/amd64 manifest -> layers -> usr/bin/caddy.
+      # Overlay semantics: the LAST layer that carries usr/bin/caddy wins (the
+      # first one is the plain upstream caddy the image is built FROM, and it
+      # lacks the module), so layers are walked in reverse. Verified against
+      # 2.11.4 on 2026-09-06. The result is cached per version.
+      - name: Restore cached Caddy binary
+        id: caddy-cache
+        uses: https://code.forgejo.org/actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/panoptikon-ci/caddy
+          key: caddy-cloudflare-${{ env.CADDY_VERSION }}-linux-amd64
+
+      - name: Fetch Caddy ${{ env.CADDY_VERSION }} (cloudflare build) from GHCR
+        if: steps.caddy-cache.outputs.cache-hit != 'true'
+        run: |
+          set -euo pipefail
+          IMG=caddybuilds/caddy-cloudflare
+          REG=https://ghcr.io
+          DEST="$HOME/.cache/panoptikon-ci/caddy"
+          WORK=$(mktemp -d)
+          mkdir -p "$DEST"
+          TOK=$(curl -fsS "$REG/token?scope=repository:$IMG:pull" | jq -r .token)
+          auth=(-H "Authorization: Bearer $TOK")
+          INDEX=$(curl -fsS "${auth[@]}" \
+            -H 'Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json' \
+            "$REG/v2/$IMG/manifests/$CADDY_VERSION")
+          DIGEST=$(echo "$INDEX" | jq -r \
+            '.manifests[] | select(.platform.os=="linux" and .platform.architecture=="amd64") | .digest')
+          test -n "$DIGEST"
+          MANIFEST=$(curl -fsS "${auth[@]}" \
+            -H 'Accept: application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json' \
+            "$REG/v2/$IMG/manifests/$DIGEST")
+          found=0
+          for layer in $(echo "$MANIFEST" | jq -r '[.layers[].digest] | reverse | .[]'); do
+            curl -fsSL "${auth[@]}" "$REG/v2/$IMG/blobs/$layer" -o "$WORK/layer.tgz"
+            # Listing goes to a file first: under `set -o pipefail` a
+            # `tar | grep -q` pair can lose the match (grep -q exits early,
+            # tar dies with SIGPIPE, pipeline status 141) on a large layer.
+            tar -tzf "$WORK/layer.tgz" > "$WORK/layer.lst" 2>/dev/null || true
+            if grep -qx 'usr/bin/caddy' "$WORK/layer.lst"; then
+              tar -xzf "$WORK/layer.tgz" -C "$WORK" usr/bin/caddy
+              found=1
+              break
+            fi
+          done
+          test "$found" = 1 || { echo "usr/bin/caddy not found in any layer of $IMG:$CADDY_VERSION" >&2; exit 1; }
+          install -m 0755 "$WORK/usr/bin/caddy" "$DEST/caddy"
+          rm -rf "$WORK"
+
+      - name: Start Caddy for integration tests
+        run: |
+          set -euo pipefail
+          CADDY="$HOME/.cache/panoptikon-ci/caddy/caddy"
+          echo "--- caddy version"
+          "$CADDY" version | tee /tmp/caddy-version.txt
+          grep -q "^v${CADDY_VERSION} " /tmp/caddy-version.txt \
+            || { echo "expected Caddy v${CADDY_VERSION}" >&2; exit 1; }
+          echo "--- required module"
+          "$CADDY" list-modules | grep -x 'dns.providers.cloudflare' \
+            || { echo "cloudflare DNS module missing from caddy binary" >&2; exit 1; }
+          # Loopback only. The GitHub job needed 0.0.0.0 because Caddy ran in a
+          # separate container behind `-p 2019:2019`; here it shares the job
+          # container with the tests, which only ever talk to localhost:2019
+          # (server/tests/caddy_integration.rs, server/src/api/caddy.rs). The
+          # unauthenticated admin API therefore never leaves the container.
+          # Caddy's default allowed origins for a loopback listener include
+          # localhost:2019, 127.0.0.1:2019 and [::1]:2019, so the tests' Host
+          # header passes; a `localhost` -> ::1 first attempt is refused
+          # instantly and curl/hyper fall back to 127.0.0.1 (same situation as
+          # the old 0.0.0.0 bind, which was IPv4-only too).
+          # Runs as a background process that outlives this step: forgejo-runner
+          # executes each step with docker exec, and a background child that
+          # keeps the step's stdout/stderr open would hang the step, hence
+          # nohup + redirecting every fd. Nothing kills it when the shell exits.
+          echo '{"admin":{"listen":"127.0.0.1:2019"}}' > /tmp/caddy-test.json
+          nohup "$CADDY" run --config /tmp/caddy-test.json \
+            > /tmp/caddy.log 2>&1 < /dev/null &
+          for i in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:2019/config/ > /dev/null 2>&1; then
+              echo "Caddy admin API ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:2019/config/ > /dev/null \
+            || { echo "Caddy failed to start within 30s"; cat /tmp/caddy.log; exit 1; }
+          # Exactly what the tests do: resolve `localhost` + send Host localhost:2019.
+          curl -sf http://localhost:2019/config/ > /dev/null \
+            || { echo "Caddy admin API not reachable via http://localhost:2019 (name resolution / Host check)"; cat /tmp/caddy.log; exit 1; }
+
+      # Canonical test split: the Caddy suite mutates shared Caddy state and
+      # must run separately and sequentially.
+      - name: Test (unit + other integration)
+        run: cargo test --lib --bins --test integration
+
+      - name: Test (Caddy integration, sequential — shared Caddy state)
+        run: cargo test --test caddy_integration -- --test-threads=1
+
+      - name: Show Caddy log on failure
+        if: failure()
+        run: cat /tmp/caddy.log || true
+
+      # ── Deploy artifact ────────────────────────────────────────────────────
+      # Staged in dist/ so the zip is flat (upload-artifact roots the archive at
+      # the single directory given): panoptikon-server, panoptikon-server.sha256,
+      # deploy-metadata.json. Uploaded on every run because the e2e job below
+      # runs against exactly this binary; the deploy worker filters on
+      # branch=main + event=push + success.
+      # Context values reach the shell through `env:` and the JSON is built
+      # with `jq -n --arg`, so nothing is interpolated into the script text.
+      - name: Stage deploy artifact
+        env:
+          SHA: ${{ github.sha }}
+          REF_NAME: ${{ github.ref_name }}
+          EVENT: ${{ github.event_name }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_NUMBER: ${{ github.run_number }}
+          REPO: ${{ github.repository }}
+          SERVER_URL: ${{ github.server_url }}
+        run: |
+          set -euo pipefail
+          VERSION=$(grep '^version' Cargo.toml | head -1 | sed 's/version = "\(.*\)"/\1/')
+          # Forgejo web run pages are addressed by the per-repo index
+          # (github.run_number), not the global id; server_url ends with "/".
+          RUN_URL="${SERVER_URL%/}/${REPO}/actions/runs/${RUN_NUMBER}"
+          mkdir -p dist
+          cp target/release/panoptikon-server dist/panoptikon-server
+          (cd dist && sha256sum panoptikon-server > panoptikon-server.sha256)
+          jq -n \
+            --arg commit "$SHA" \
+            --arg version "$VERSION" \
+            --arg branch "$REF_NAME" \
+            --arg event "$EVENT" \
+            --arg built_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            --arg run_id "$RUN_ID" \
+            --arg run_number "$RUN_NUMBER" \
+            --arg run_url "$RUN_URL" \
+            --arg artifact "$ARTIFACT_NAME" \
+            '{commit: $commit, version: $version, branch: $branch, event: $event,
+              built_at: $built_at, run_id: $run_id, run_number: $run_number,
+              run_url: $run_url, artifact: $artifact}' \
+            > dist/deploy-metadata.json
+          cat dist/deploy-metadata.json
+          ls -l dist/
+
+      - name: Upload deploy artifact
+        uses: https://code.forgejo.org/forgejo/upload-artifact@16871d9e8cfcf27ff31822cac382bbb5450f1e1e # v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: ${{ github.event_name != 'pull_request' && 30 || 3 }}
+
+  # ───────────────────────────────────────────────────────────────────────────
+  frontend:
+    name: Frontend lint & build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - name: Check out repository
+        uses: https://code.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Install Bun
+        run: |
+          set -euo pipefail
+          curl -fsSL https://bun.sh/install | bash -s "bun-v$BUN_VERSION"
+          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
+          test "$("$HOME/.bun/bin/bun" --version)" = "$BUN_VERSION" \
+            || { echo "expected bun $BUN_VERSION, got $("$HOME/.bun/bin/bun" --version)" >&2; exit 1; }
+
+      - name: Cache Bun install cache
+        uses: https://code.forgejo.org/actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('web/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Design tokens guard
+        run: bash scripts/check-design-tokens.sh
+
+      # `|| true` carried over from the GitHub workflow: eslint is advisory
+      # there too (--max-warnings=0 reports, never fails the job).
+      - name: Lint
+        run: bunx eslint src --ext .ts,.tsx --max-warnings=0 || true
+
+      - name: Build
+        run: bun run build
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Mandatory Playwright gate. Runs against the artifact produced by `rust`
+  # instead of rebuilding the server (the GitHub job rebuilt it from cache),
+  # which keeps this job free of the Rust toolchain entirely.
+  e2e:
+    name: E2E tests (Playwright)
+    runs-on: ubuntu-latest
+    needs: [rust]
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: https://code.forgejo.org/actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Download server binary from the rust job
+        uses: https://code.forgejo.org/forgejo/download-artifact@d8d0a99033603453ad2255e58720b460a0555e1e # v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: dist
+
+      - name: Start server
+        run: |
+          set -euo pipefail
+          chmod +x dist/panoptikon-server
+          (cd dist && sha256sum -c panoptikon-server.sha256)
+          # Backgrounded with every fd redirected for the same docker-exec
+          # reason as Caddy in the rust job (plain nohup, so $! is the server).
+          nohup ./dist/panoptikon-server > /tmp/panoptikon-e2e.log 2>&1 < /dev/null &
+          SERVER_PID=$!
+          echo "Server PID: $SERVER_PID"
+          echo "Waiting for server to be ready..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8080/login > /dev/null 2>&1; then
+              echo "Server is up after ${i}s!"
+              exit 0
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              echo "Server process died unexpectedly"
+              cat /tmp/panoptikon-e2e.log
+              exit 1
+            fi
+            sleep 1
+          done
+          echo "Server failed to respond within 30 seconds"
+          cat /tmp/panoptikon-e2e.log
+          exit 1
+
+      - name: Install Bun
+        run: |
+          set -euo pipefail
+          curl -fsSL https://bun.sh/install | bash -s "bun-v$BUN_VERSION"
+          echo "$HOME/.bun/bin" >> "$GITHUB_PATH"
+          test "$("$HOME/.bun/bin/bun" --version)" = "$BUN_VERSION" \
+            || { echo "expected bun $BUN_VERSION, got $("$HOME/.bun/bin/bun" --version)" >&2; exit 1; }
+
+      - name: Cache Bun install cache
+        uses: https://code.forgejo.org/actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('web/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install web dependencies
+        working-directory: web
+        run: bun install --frozen-lockfile
+
+      # Browser download (~170 MB) keyed on the lockfile, i.e. on the pinned
+      # @playwright/test version. `--with-deps` still apt-installs the shared
+      # libraries each run (they are system packages, not cacheable), which is
+      # what lets headless Chromium run inside the act-24.04 container.
+      - name: Cache Playwright browsers
+        uses: https://code.forgejo.org/actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('web/bun.lock') }}
+
+      - name: Install Playwright browsers
+        working-directory: web
+        run: bunx playwright install chromium --with-deps
+
+      - name: Run Playwright tests
+        working-directory: web
+        run: bunx playwright test
+
+      - name: Collect server log for the report
+        if: failure()
+        run: |
+          mkdir -p web/playwright-report
+          cp /tmp/panoptikon-e2e.log web/playwright-report/server.log 2>/dev/null || true
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: https://code.forgejo.org/forgejo/upload-artifact@16871d9e8cfcf27ff31822cac382bbb5450f1e1e # v4
+        with:
+          name: playwright-report
+          path: web/playwright-report/
+          retention-days: 14

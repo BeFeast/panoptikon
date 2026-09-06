@@ -1,0 +1,133 @@
+# Auto Version Bump — after every merge to main, bump the workspace patch
+# version, commit, tag vX.Y.Z and push both refs atomically.
+#
+# Ported from .github/workflows/version-bump.yml. What changed on Forgejo:
+#
+#   * The push uses the run's automatic token (persisted by checkout). On
+#     Forgejo that token has write permission to the repository for every
+#     event except pull requests from forks, so no bot PAT is needed.
+#   * Forgejo, like GitHub, never starts a workflow for a change authored
+#     with the automatic token: services/actions/notifier_helper.go::Notify
+#     returns before workflow detection when the doer is the Actions user
+#     (docs: "no workflow will be triggered as a side effect of a change
+#     authored with this token"). The bump commit and its tag therefore start
+#     neither this workflow, nor CI, nor Release — without any skip marker.
+#     "[skip-bump]" and the "chore: bump version" prefix remain the guard
+#     checked by the `if:` below, for the day a person re-pushes or
+#     cherry-picks a bump commit by hand.
+#   * Do NOT add "[skip ci]" to the bump commit. Forgejo matches its skip
+#     strings against the commit message of every push event, tag pushes
+#     included, so a release tag pushed by a person at a bump commit (main's
+#     HEAD after every merge) would silently start no Release run.
+#   * Consequences: (a) a bump tag never releases itself — cut the release via
+#     Release -> Run workflow with the tag (a person deleting and re-pushing
+#     the tag also triggers Release's `on: push: tags`); (b) the bump commit
+#     gets no CI run, so the deploy worker ships the merge commit's binary
+#     (version N) while main's Cargo.toml already reads N+1 — the same offset
+#     GITHUB_TOKEN pushes produced on GitHub. `maestro version-bump` is the
+#     manual alternative to this workflow.
+
+name: Auto Version Bump
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: auto-version-bump-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # Same pin as ci.yml / release.yml; only `cargo update --workspace` runs here.
+  RUST_TOOLCHAIN: "1.98.1"
+
+jobs:
+  bump-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    # Skip semantics for the head commit on main:
+    # - [skip-bump] anywhere in the message skips the bump.
+    # - A message starting with "chore: bump version" skips the bump.
+    # Generated bump commits carry both markers. Their own push never reaches
+    # this `if:` (Actions-user pushes start no workflow, see header); the
+    # markers matter when a person pushes such a commit.
+    if: |
+      !contains(github.event.head_commit.message, '[skip-bump]') &&
+      !startsWith(github.event.head_commit.message, 'chore: bump version')
+
+    steps:
+      - name: Checkout
+        uses: https://code.forgejo.org/actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Install Rust toolchain
+        run: |
+          set -euo pipefail
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+            | sh -s -- -y --no-modify-path --profile minimal --default-toolchain "$RUST_TOOLCHAIN"
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          "$HOME/.cargo/bin/rustc" --version | grep -q "^rustc $RUST_TOOLCHAIN " \
+            || { echo "expected rustc $RUST_TOOLCHAIN" >&2; exit 1; }
+
+      - name: Choose next available patch version
+        id: bump
+        run: |
+          set -euo pipefail
+
+          # fetch-depth: 0 normally includes tags, but refresh immediately before
+          # selection so a queued or retried run sees the current repository state.
+          git fetch --force --tags origin
+
+          CURRENT=$(awk -F'"' '/^version = "/ { print $2; exit }' Cargo.toml)
+          echo "Current version: $CURRENT"
+
+          if [[ ! "$CURRENT" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "Invalid workspace version: $CURRENT" >&2
+            exit 1
+          fi
+
+          MAJOR=${BASH_REMATCH[1]}
+          MINOR=${BASH_REMATCH[2]}
+          PATCH=$((10#${BASH_REMATCH[3]} + 1))
+
+          while git show-ref --verify --quiet "refs/tags/v${MAJOR}.${MINOR}.${PATCH}"; do
+            echo "Tag v${MAJOR}.${MINOR}.${PATCH} already exists; trying the next patch."
+            PATCH=$((PATCH + 1))
+          done
+
+          NEW_VERSION="${MAJOR}.${MINOR}.${PATCH}"
+          echo "New version: $NEW_VERSION"
+
+          # Update Cargo.toml (first occurrence of version = "...")
+          sed -i "0,/^version = \".*\"/{s/^version = \".*\"/version = \"${NEW_VERSION}\"/}" Cargo.toml
+          # Update only the workspace packages in Cargo.lock. Regenerating the
+          # lockfile would also pull unrelated compatible dependency updates.
+          cargo update --workspace
+
+          echo "new_version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Commit, tag, and publish atomically
+        run: |
+          set -euo pipefail
+
+          VERSION="${{ steps.bump.outputs.new_version }}"
+          TAG="v${VERSION}"
+
+          git config user.name "forgejo-actions[bot]"
+          git config user.email "forgejo-actions[bot]@noreply.git.oklabs.uk"
+          git add Cargo.toml Cargo.lock
+          # No "[skip ci]": it would also mute a release tag a person pushes at
+          # this commit (see header). The Actions-user push itself starts nothing.
+          git commit -m "chore: bump version to ${VERSION} [skip-bump]"
+          git tag "$TAG"
+
+          # Publishing both refs atomically makes any failed attempt harmless:
+          # either main and the tag advance together, or neither remote ref does.
+          git push --atomic origin \
+            HEAD:refs/heads/main \
+            "refs/tags/${TAG}:refs/tags/${TAG}"

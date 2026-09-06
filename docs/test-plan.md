@@ -24,7 +24,7 @@ not the planned Gateway fabric:
 
 - **MikroTik CHR:** 10.10.0.125 (RouterOS 7+, REST API enabled)
 - **Panoptikon server:** localhost:8080 (or 10.10.0.14:8080 on LAN)
-- **Caddy admin API:** localhost:2019 (Docker container)
+- **Caddy admin API:** localhost:2019 (Docker container locally; a plain Caddy 2.11.x binary with the `cloudflare` DNS module in CI)
 - **Xiaomi mesh main (CAP):** 10.10.0.199
 - **Xiaomi satellites:** 10.10.0.52, 10.10.0.53, 10.10.0.54
 - **Test containers:** See [test-environment.md](./test-environment.md) for Proxmox LXC setup
@@ -165,6 +165,11 @@ support matrix.
 ---
 
 ## 2. Caddy Reverse Proxy
+
+> Cases C-01..C-24 are automated in `server/tests/caddy_integration.rs` and run on Forgejo
+> Actions (`.forgejo/workflows/ci.yml`) against a real Caddy 2.11.x for every push to `main`
+> and every pull request. The Docker-specific steps (e.g. C-03 "stop Caddy container") describe
+> the manual lab environment.
 
 ### 2.1 Connection & Settings
 

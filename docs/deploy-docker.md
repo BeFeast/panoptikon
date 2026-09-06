@@ -29,16 +29,20 @@ docker compose version    # Docker Compose version v2.x+
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/BeFeast/panoptikon.git
+git clone https://git.oklabs.uk/BeFeast/panoptikon.git
 cd panoptikon
 
 # 2. (Optional) Create a .env from the example
 cp .env.example .env
 # Edit .env to set router credentials, tunnel tokens, etc.
 
-# 3. Start all services
-docker compose up -d
+# 3. Build the Panoptikon image and start all services
+docker compose up -d --build
 ```
+
+No pre-built Panoptikon image is published (the GHCR/Docker Hub images were dropped with the
+move to Forgejo): `docker-compose.yml` uses `build: .`, so the first start compiles the
+frontend and the Rust server inside Docker — expect several minutes.
 
 Within a few minutes, all services will be running:
 
@@ -117,7 +121,7 @@ All variables are optional. Copy `.env.example` to `.env` and fill in the values
 
 ## Development
 
-The `docker-compose.override.yml` file is loaded automatically and builds the image from the local Dockerfile:
+The `docker-compose.override.yml` file is loaded automatically; it tags the locally built image `panoptikon:dev` and adds dev-only settings (debug logging) on top of the base Compose file, which already builds from the local Dockerfile:
 
 ```bash
 # Build and run locally
@@ -139,8 +143,9 @@ docker compose -f docker-compose.yml up -d
 ## Upgrade
 
 ```bash
-docker compose pull
-docker compose up -d
+git pull                                  # the Panoptikon image is built from the checkout
+docker compose pull --ignore-buildable    # refresh Caddy / Unbound / cloudflared images only
+docker compose up -d --build              # rebuild Panoptikon and recreate the containers
 ```
 
 Data is stored on the `panoptikon-data` volume and is preserved across upgrades.

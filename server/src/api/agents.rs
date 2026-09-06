@@ -17,6 +17,22 @@ use super::{AppError, AppState};
 use crate::api::alerts;
 use crate::webhook;
 
+/// Base URL of Forgejo release assets: `<base>/<tag>/<asset>`.
+const RELEASE_DOWNLOAD_BASE: &str = "https://git.oklabs.uk/BeFeast/panoptikon/releases/download";
+
+/// Forgejo API endpoint describing the latest published (non-draft,
+/// non-prerelease) release. Forgejo has no `/releases/latest/download/<asset>`
+/// redirect, so "latest" has to be resolved through this endpoint.
+const RELEASE_API_LATEST: &str =
+    "https://git.oklabs.uk/api/v1/repos/BeFeast/panoptikon/releases/latest";
+
+/// How long a resolved latest-release tag is reused before Forgejo is asked again.
+const RELEASE_TAG_TTL: std::time::Duration = std::time::Duration::from_secs(600);
+
+/// `tag_name` of the latest Forgejo release and when it was fetched.
+static LATEST_RELEASE_TAG: std::sync::Mutex<Option<(std::time::Instant, String)>> =
+    std::sync::Mutex::new(None);
+
 /// A single agent report as returned by the reports history endpoint.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AgentReportRow {
@@ -1469,12 +1485,79 @@ pub async fn install_script(
         .into_response()
 }
 
+/// Tag of the latest published Forgejo release, cached for [`RELEASE_TAG_TTL`].
+///
+/// Production runs CI builds of `main`, whose version is bumped on every
+/// merge, while releases are cut on demand — so a release matching this
+/// server's own `CARGO_PKG_VERSION` almost never exists and the latest
+/// release is the right fallback for an agent download. Returns `None` when
+/// Forgejo is unreachable, has no published release yet, or answers with a
+/// tag that is not safe to put into a URL.
+async fn latest_release_tag() -> Option<String> {
+    {
+        let cache = LATEST_RELEASE_TAG
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if let Some((fetched, tag)) = cache.as_ref() {
+            if fetched.elapsed() < RELEASE_TAG_TTL {
+                return Some(tag.clone());
+            }
+        }
+    }
+
+    static CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
+    let client = CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(10))
+            .user_agent(concat!("panoptikon-server/", env!("CARGO_PKG_VERSION")))
+            .build()
+            .unwrap_or_default()
+    });
+
+    let body = match client.get(RELEASE_API_LATEST).send().await {
+        Ok(resp) => match resp.error_for_status() {
+            Ok(resp) => resp.json::<serde_json::Value>().await,
+            Err(e) => Err(e),
+        },
+        Err(e) => Err(e),
+    };
+    let tag = match body {
+        Ok(v) => v
+            .get("tag_name")
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_owned),
+        Err(e) => {
+            warn!("Could not resolve the latest Forgejo release: {e}");
+            None
+        }
+    }?;
+
+    // The tag ends up in a Location header and in download URLs.
+    let sane = !tag.is_empty()
+        && tag
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'));
+    if !sane {
+        warn!("Ignoring unusable latest release tag from Forgejo: {tag:?}");
+        return None;
+    }
+
+    let mut cache = LATEST_RELEASE_TAG
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    *cache = Some((std::time::Instant::now(), tag.clone()));
+    Some(tag)
+}
+
 /// GET /api/v1/agent/install/:platform/binary
 ///
 /// Serves the pre-built agent binary for the given platform.
 /// Looks for the binary in:
 ///   1. The configured `agent_binaries_dir` on the server filesystem
-///   2. Falls back to redirecting to GitHub Releases
+///   2. Falls back to redirecting to the latest published Forgejo release
+///      (tag resolved through the API and cached for 10 minutes — Forgejo
+///      has no /releases/latest/download/ redirect). Answers 503 when
+///      Forgejo cannot be reached or has no published release yet.
 pub async fn install_binary(
     Path(platform): Path<String>,
     State(state): State<AppState>,
@@ -1516,18 +1599,29 @@ pub async fn install_binary(
                 }
                 Err(e) => {
                     error!("Failed to read agent binary {}: {}", path.display(), e);
-                    // Fall through to GitHub redirect.
+                    // Fall through to the Forgejo redirect.
                 }
             }
         }
     }
 
-    // Redirect to GitHub Releases.
-    let release_url = format!(
-        "https://github.com/BeFeast/panoptikon/releases/latest/download/{}",
-        info.artifact,
-    );
-    (StatusCode::TEMPORARY_REDIRECT, [("location", release_url)]).into_response()
+    // Redirect to the latest published Forgejo release. Forgejo has no
+    // "latest/download" redirect of its own, and a release for this exact
+    // server version rarely exists (main is bumped per merge, releases are
+    // cut on demand), so the tag is resolved through the API.
+    match latest_release_tag().await {
+        Some(tag) => {
+            let release_url = format!("{RELEASE_DOWNLOAD_BASE}/{tag}/{}", info.artifact);
+            (StatusCode::TEMPORARY_REDIRECT, [("location", release_url)]).into_response()
+        }
+        None => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            "No agent binary is staged on this server (agent_binaries_dir) and the latest \
+             Forgejo release could not be resolved; download it from \
+             https://git.oklabs.uk/BeFeast/panoptikon/releases",
+        )
+            .into_response(),
+    }
 }
 
 /// Generate a Unix (Linux / macOS) install script that downloads a pre-built binary.
@@ -1560,13 +1654,18 @@ echo "    Binary  : $INSTALL_DIR/panoptikon-agent"
 echo "    Config  : $CONFIG_DIR/config.toml"
 
 # Download the pre-built binary — try the server's own binary endpoint first,
-# then fall back to GitHub Releases.
+# then fall back to the latest published Forgejo release. Forgejo has no
+# /releases/latest/download/ redirect, so the tag is resolved through the API;
+# if that lookup fails, the release matching the server's version is tried.
 BINARY_URL="$SERVER_URL/api/v1/agent/install/{platform}/binary"
 
 echo "==> Downloading pre-built binary..."
 if ! curl -fsSL "$BINARY_URL" -o /tmp/panoptikon-agent 2>/dev/null; then
-    RELEASE_URL="https://github.com/BeFeast/panoptikon/releases/latest/download/panoptikon-agent-{platform}"
-    echo "==> Server binary not available, trying GitHub Releases..."
+    echo "==> Server binary not available, trying Forgejo Releases..."
+    RELEASE_TAG="$(curl -fsSL "{release_api_latest}" 2>/dev/null | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)"
+    [ -n "$RELEASE_TAG" ] || RELEASE_TAG="v{version}"
+    RELEASE_URL="{release_base}/$RELEASE_TAG/panoptikon-agent-{platform}"
+    echo "    Release : $RELEASE_TAG"
     curl -fsSL -L "$RELEASE_URL" -o /tmp/panoptikon-agent
 fi
 chmod +x /tmp/panoptikon-agent
@@ -1661,6 +1760,9 @@ echo "==> Done! Agent is reporting to $SERVER_URL"
         server_url = server_url,
         api_key = api_key,
         agent_id = agent_id,
+        release_base = RELEASE_DOWNLOAD_BASE,
+        release_api_latest = RELEASE_API_LATEST,
+        version = env!("CARGO_PKG_VERSION"),
     )
 }
 
@@ -1694,15 +1796,26 @@ Write-Host "    Config  : $ConfigDir\config.toml"
 New-Item -ItemType Directory -Force -Path $InstallDir | Out-Null
 New-Item -ItemType Directory -Force -Path $ConfigDir  | Out-Null
 
-# Download the pre-built binary — try the server first, then GitHub Releases.
+# Download the pre-built binary — try the server first, then the latest published
+# Forgejo release (its tag is resolved through the API: Forgejo has no
+# /releases/latest/download/ redirect); if that lookup fails, the release
+# matching the server's version is tried.
 $BinaryUrl  = "$ServerUrl/api/v1/agent/install/{platform}/binary"
-$ReleaseUrl = "https://github.com/BeFeast/panoptikon/releases/latest/download/panoptikon-agent-{platform}.exe"
 
 Write-Host "==> Downloading pre-built binary..."
 try {{
     Invoke-WebRequest -Uri $BinaryUrl -OutFile $BinaryPath -UseBasicParsing
 }} catch {{
-    Write-Host "==> Server binary not available, trying GitHub Releases..."
+    Write-Host "==> Server binary not available, trying Forgejo Releases..."
+    $ReleaseTag = $null
+    try {{
+        $ReleaseTag = (Invoke-RestMethod -Uri "{release_api_latest}" -UseBasicParsing).tag_name
+    }} catch {{
+        $ReleaseTag = $null
+    }}
+    if (-not $ReleaseTag) {{ $ReleaseTag = "v{version}" }}
+    $ReleaseUrl = "{release_base}/$ReleaseTag/panoptikon-agent-{platform}.exe"
+    Write-Host "    Release : $ReleaseTag"
     Invoke-WebRequest -Uri $ReleaseUrl -OutFile $BinaryPath -UseBasicParsing
 }}
 
@@ -1740,6 +1853,9 @@ Write-Host "==> Done! Agent is reporting to $ServerUrl"
         server_url = server_url,
         api_key = api_key,
         agent_id = agent_id,
+        release_base = RELEASE_DOWNLOAD_BASE,
+        release_api_latest = RELEASE_API_LATEST,
+        version = env!("CARGO_PKG_VERSION"),
     )
 }
 

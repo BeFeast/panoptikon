@@ -4,7 +4,7 @@
 
 The canonical roadmap is
 [`docs/GATEWAY-ARCHITECTURE.md`](docs/GATEWAY-ARCHITECTURE.md), implementing the
-decision in [#834](https://github.com/BeFeast/panoptikon/issues/834). Every worker
+decision in [#834](https://git.oklabs.uk/BeFeast/panoptikon/issues/834). Every worker
 must preserve these boundaries:
 
 - **Current:** Controller mode and supported MikroTik and pfSense integrations
@@ -68,6 +68,30 @@ Every PR that implements a **feature** or **bug fix** MUST include:
 - Dependency bumps with no behavior change
 - Infrastructure scripts that require hardware (e.g., MikroTik physical router)
 
+## Repository, CI and Deploy (Forgejo)
+
+- Canonical repo: <https://git.oklabs.uk/BeFeast/panoptikon> (Forgejo). GitHub is a weekly
+  read-only push mirror — never open issues/PRs there and never target it with tooling.
+- CI is Forgejo Actions: workflows live in `.forgejo/workflows/` (there is no `.github/`).
+  `ci.yml` must keep running on `push` to `main` and on `pull_request`, and must keep the
+  Playwright E2E gate and the Caddy integration suite (C-01..C-24, real Caddy 2.11.x) green.
+- Runner labels: `ubuntu-latest` is the isolated default (container, **no Docker socket**
+  inside the job — start services as background processes, not `docker run`); `heavy` runs
+  on the host with Docker available; `ci-interactive` is reserved and must not be used.
+- Actions: use full URLs (`https://code.forgejo.org/actions/checkout@v4`); artifacts only via
+  the Forgejo forks `https://code.forgejo.org/forgejo/upload-artifact@v4` /
+  `download-artifact@v4`; prefer plain shell over third-party GitHub actions.
+- Automated PR review comes from the org PR-Agent webhook (nothing to configure here).
+  Dependency updates come from org-hosted Renovate (`BeFeast/renovate`), not Dependabot.
+- Production deploy: `scripts/deploy-worker.sh` downloads the `panoptikon-server-linux-x86_64`
+  artifact of the latest successful `push` run of `ci.yml` on `main` through the Forgejo API
+  (read-only `FORGEJO_TOKEN`, see `DEPLOY.md`), verifies sha256 sidecar + metadata, and ships
+  it to LXC 115 where it is smoke-tested (`--version`) before the running service is swapped.
+  The artifact contract (flat zip: binary, `.sha256`, `deploy-metadata.json`) is enforced —
+  change `ci.yml` and the worker together. `scripts/deploy-lxc.sh` is the manual fallback.
+- No container image is published any more; `docker-compose.yml` builds from the Dockerfile
+  (`docker compose up -d --build`) and is the demo/self-host path only.
+
 ## Project Structure
 
 - `server/` — Rust backend (axum, SQLite)
@@ -75,6 +99,7 @@ Every PR that implements a **feature** or **bug fix** MUST include:
 - `web/tests/e2e/` — Playwright E2E tests
 - `web/e2e/fixtures.ts` — Shared test fixtures (login, setup)
 - `scripts/` — Build and deploy scripts
+- `.forgejo/workflows/` — Forgejo Actions CI workflows
 
 ## Build & Test Commands
 

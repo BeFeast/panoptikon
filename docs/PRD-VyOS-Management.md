@@ -3,7 +3,7 @@
 > **Architecture note:** This document is legacy Controller-mode integration
 > scope. It does not define the Gateway architecture. See
 > [`GATEWAY-ARCHITECTURE.md`](./GATEWAY-ARCHITECTURE.md) and
-> [#834](https://github.com/BeFeast/panoptikon/issues/834). VyOS support was
+> [#834](https://git.oklabs.uk/BeFeast/panoptikon/issues/834). VyOS support was
 > removed from the shipped product by database migration 026, which deletes the
 > `vyos%` settings and `show_legacy_routers`. This file is an archived design
 > record only; it is not a current feature or maintenance promise. New native
