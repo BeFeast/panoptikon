@@ -1,3 +1,6 @@
+// clippy 1.98 (result_large_err): handlers return Result<_, axum::response::Response>; boxing every
+// error response is churn for no runtime gain, so the lint is allowed crate-wide.
+#![allow(clippy::result_large_err)]
 pub mod api;
 pub mod config;
 pub mod db;
