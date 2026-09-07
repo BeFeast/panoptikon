@@ -75,11 +75,56 @@ async fn caddy_admin_url(state: &AppState) -> String {
         .unwrap_or_else(|| "http://localhost:2019".to_string())
 }
 
+/// `caddy_managed`: absent or "1"/"true" means Panoptikon pushes config to Caddy;
+/// "0"/"false" turns every push (startup, CRUD, manual sync) into a no-op.
+async fn caddy_managed(state: &AppState) -> bool {
+    match get_setting(state, "caddy_managed").await {
+        Some(v) => !(v == "0" || v.eq_ignore_ascii_case("false")),
+        None => true,
+    }
+}
+
+/// HTTP client for the admin endpoint. When `caddy_admin_resolve_ip` is set the
+/// hostname of `caddy_admin_url` is resolved to that IP without DNS — the
+/// production admin gate is a TLS name that deliberately has no DNS record.
+async fn caddy_client(state: &AppState) -> reqwest::Client {
+    let url = caddy_admin_url(state).await;
+    if let Some(ip) = get_setting(state, "caddy_admin_resolve_ip").await {
+        if let (Ok(parsed), Ok(addr)) = (reqwest::Url::parse(&url), ip.parse::<std::net::IpAddr>())
+        {
+            if let Some(host) = parsed.host_str() {
+                let port = parsed.port_or_known_default().unwrap_or(2019);
+                match reqwest::Client::builder()
+                    .timeout(std::time::Duration::from_secs(10))
+                    .resolve(host, std::net::SocketAddr::new(addr, port))
+                    .build()
+                {
+                    Ok(client) => return client,
+                    Err(e) => warn!("Caddy client with resolve override failed to build: {e}"),
+                }
+            }
+        }
+    }
+    state.caddy_http.clone()
+}
+
+/// Attach HTTP basic auth when `caddy_admin_user` is configured (the admin gate).
+async fn with_auth(state: &AppState, req: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
+    match get_setting(state, "caddy_admin_user").await {
+        Some(user) => req.basic_auth(user, get_setting(state, "caddy_admin_password").await),
+        None => req,
+    }
+}
+
 /// Sync proxy hosts to Caddy on server startup (fire-and-forget).
 pub fn start_caddy_sync_task(state: AppState) {
     tokio::spawn(async move {
         // Small delay to let Caddy finish starting if launched alongside Panoptikon.
         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+        if !caddy_managed(&state).await {
+            info!("caddy_managed is off — skipping initial Caddy config sync");
+            return;
+        }
         info!("Running initial Caddy config sync");
         sync_to_caddy(&state).await;
     });
@@ -90,6 +135,10 @@ pub fn start_caddy_sync_task(state: AppState) {
 /// Called after every CRUD mutation and once at startup to ensure
 /// Caddy's live config always reflects the SQLite source of truth.
 pub async fn sync_to_caddy(state: &AppState) {
+    if !caddy_managed(state).await {
+        info!("caddy_managed is off — not pushing config to Caddy");
+        return;
+    }
     let hosts: Vec<(String, String, i64, String, i64)> = match sqlx::query_as(
         "SELECT domain, forward_host, forward_port, forward_scheme, tls_enabled \
          FROM caddy_proxy_hosts WHERE enabled = 1 ORDER BY domain",
@@ -138,54 +187,59 @@ pub async fn sync_to_caddy(state: &AppState) {
         )
         .collect();
 
-    // Build the full HTTP app config.
-    // If TLS is needed, Caddy handles it automatically through the host matcher.
-    let http_app = serde_json::json!({
-        "servers": {
-            "proxy": {
-                "listen": [":443", ":80"],
-                "routes": routes
-            }
-        }
-    });
-
+    let client = caddy_client(state).await;
     let admin_url = caddy_admin_url(state).await;
     let route_count = routes.len();
 
-    // Try PATCH first (works when /config/apps/http already exists).
-    // If that fails (e.g. fresh Caddy with no apps config), fall back to
-    // POST /config/apps which creates the intermediate path.
-    let patch_url = format!("{admin_url}/config/apps/http");
+    // Primary path: replace ONLY this server's routes. Everything else Caddy
+    // holds (other servers such as the admin gate, TLS automation policies,
+    // certificates) is left untouched — PATCHing the whole http app used to
+    // wipe it.
+    let routes_url = format!("{admin_url}/config/apps/http/servers/proxy/routes");
     let patched = matches!(
-        state
-            .caddy_http
-            .patch(&patch_url)
+        with_auth(state, client.patch(&routes_url))
+            .await
             .header("Content-Type", "application/json")
-            .json(&http_app)
+            .json(&routes)
             .send()
             .await,
         Ok(resp) if resp.status().is_success()
     );
-
     if patched {
         info!("Caddy config synced successfully ({route_count} routes)");
         return;
     }
 
-    // Fallback: POST the full apps object (creates the /config/apps path).
-    let apps_payload = serde_json::json!({ "http": http_app });
-    let post_url = format!("{admin_url}/config/apps");
+    // Fallback 1: the `proxy` server does not exist yet (fresh Caddy, CI) —
+    // create it. POST on an object path creates or replaces that key only.
+    let server = serde_json::json!({ "listen": [":443", ":80"], "routes": routes });
+    let server_url = format!("{admin_url}/config/apps/http/servers/proxy");
+    let created = matches!(
+        with_auth(state, client.post(&server_url))
+            .await
+            .header("Content-Type", "application/json")
+            .json(&server)
+            .send()
+            .await,
+        Ok(resp) if resp.status().is_success()
+    );
+    if created {
+        info!("Caddy proxy server created and synced ({route_count} routes)");
+        return;
+    }
 
-    match state
-        .caddy_http
-        .post(&post_url)
+    // Fallback 2: Caddy has no apps at all — POST the full apps object.
+    let apps_payload = serde_json::json!({ "http": { "servers": { "proxy": server } } });
+    let post_url = format!("{admin_url}/config/apps");
+    match with_auth(state, client.post(&post_url))
+        .await
         .header("Content-Type", "application/json")
         .json(&apps_payload)
         .send()
         .await
     {
         Ok(resp) if resp.status().is_success() => {
-            info!("Caddy config synced via POST fallback ({route_count} routes)");
+            info!("Caddy config synced via apps fallback ({route_count} routes)");
         }
         Ok(resp) => {
             let status = resp.status();
@@ -204,8 +258,9 @@ pub async fn sync_to_caddy(state: &AppState) {
 pub async fn status(State(state): State<AppState>) -> Json<CaddyStatus> {
     let admin_url = caddy_admin_url(&state).await;
     let url = format!("{admin_url}/config/");
+    let client = caddy_client(&state).await;
 
-    match state.caddy_http.get(&url).send().await {
+    match with_auth(&state, client.get(&url)).await.send().await {
         Ok(resp) if resp.status().is_success() => Json(CaddyStatus {
             configured: true,
             reachable: true,
@@ -383,8 +438,9 @@ pub async fn sync(State(state): State<AppState>) -> StatusCode {
 pub async fn test_connection(State(state): State<AppState>) -> Json<TestConnectionResponse> {
     let admin_url = caddy_admin_url(&state).await;
     let url = format!("{admin_url}/config/");
+    let client = caddy_client(&state).await;
 
-    match state.caddy_http.get(&url).send().await {
+    match with_auth(&state, client.get(&url)).await.send().await {
         Ok(resp) if resp.status().is_success() => {
             let body = resp.text().await.unwrap_or_default();
             let version_hint = if body.contains("apps") {
