@@ -2,7 +2,11 @@
 #
 # Assets (same names the installer expects):
 #   panoptikon-{server,agent}-linux-{amd64,arm64}   static musl, run on any Linux
-#   panoptikon-{server,agent}-darwin-{arm64,amd64}  only when include_macos is set
+#   panoptikon-{server,agent}-darwin-{arm64,amd64}  only when include_macos is set;
+#     attached by the macOS job itself AFTER the release is published, together with
+#     SHA256SUMS-darwin-<arch>.txt. The macOS runner is a corporate laptop that reaches
+#     Forgejo by IP only (its VPN owns DNS), while Actions artifact URLs are built from
+#     ROOT_URL (git.oklabs.uk) - so that job neither downloads nor uploads artifacts.
 #   SHA256SUMS.txt, install.sh
 #
 # Triggers
@@ -64,6 +68,9 @@ on:
         default: false
 
 env:
+  # Forgejo API reachable by IP from the macOS runner (see header). Only the macOS
+  # job uses it; every other job talks to github.server_url like everywhere else.
+  FORGEJO_API_LAN: http://10.10.0.27:3000/api/v1
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
   # Same pins as ci.yml: a release is compiled by the toolchain CI exercised.
@@ -215,7 +222,8 @@ jobs:
 
   build-macos:
     name: macOS (${{ matrix.arch }})
-    needs: frontend
+    # Runs after the Linux release exists and appends the darwin assets to it.
+    needs: release
     # Compared explicitly: dispatch inputs reach the runner as strings, and a
     # bare `inputs.include_macos` would be truthy for "false" too.
     if: ${{ github.event_name == 'workflow_dispatch' && (inputs.include_macos == true || inputs.include_macos == 'true') }}
@@ -261,11 +269,22 @@ jobs:
           grep -q "^rustc $RUST_TOOLCHAIN " "$RUNNER_TEMP/rustc-version.txt" \
             || { echo "expected rustc $RUST_TOOLCHAIN" >&2; exit 1; }
 
-      - name: Download frontend assets
-        uses: https://code.forgejo.org/forgejo/download-artifact@v4
-        with:
-          name: frontend
-          path: web/out/
+      # No artifact download here (see header): build the frontend on the Mac with a
+      # private, pinned bun, exactly like the frontend job does on Linux.
+      - name: Frontend (bun, private to CI)
+        run: |
+          set -euo pipefail
+          export BUN_INSTALL="$HOME/.panoptikon-ci/bun"
+          if [ "$("$BUN_INSTALL/bin/bun" --version 2>/dev/null || true)" != "$BUN_VERSION" ]; then
+            curl -fsSL https://bun.sh/install | bash -s "bun-v$BUN_VERSION"
+          fi
+          test "$("$BUN_INSTALL/bin/bun" --version)" = "$BUN_VERSION" \
+            || { echo "expected bun $BUN_VERSION, got $("$BUN_INSTALL/bin/bun" --version)" >&2; exit 1; }
+          echo "$BUN_INSTALL/bin" >> "$GITHUB_PATH"
+          cd web
+          "$BUN_INSTALL/bin/bun" install --frozen-lockfile
+          "$BUN_INSTALL/bin/bun" run build
+          test -d out || { echo "web/out missing after bun run build" >&2; exit 1; }
 
       - name: Build
         run: |
@@ -296,20 +315,53 @@ jobs:
             dist/panoptikon-agent-darwin-arm64 --version
           fi
 
-      - uses: https://code.forgejo.org/forgejo/upload-artifact@v4
-        with:
-          name: binaries-darwin-${{ matrix.arch }}
-          path: dist/panoptikon-*-darwin-${{ matrix.arch }}
-          retention-days: 7
+      # No upload-artifact either: attach the two binaries plus a per-arch checksum file
+      # straight to the release that the `release` job just published, through the
+      # LAN API. Existing same-named assets are replaced only with replace_existing.
+      - name: Attach macOS assets to the release
+        env:
+          FORGEJO_TOKEN: ${{ github.token }}
+          FORGEJO_API: ${{ env.FORGEJO_API_LAN }}
+          REPO: ${{ github.repository }}
+          TAG_INPUT: ${{ inputs.tag }}
+          REF_NAME: ${{ github.ref_name }}
+          REPLACE_EXISTING: ${{ inputs.replace_existing }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          tag="${TAG_INPUT:-$REF_NAME}"
+          hdr="$RUNNER_TEMP/fj-auth"; umask 077
+          printf 'Authorization: token %s\n' "$FORGEJO_TOKEN" > "$hdr"; unset FORGEJO_TOKEN
+          cd dist
+          shasum -a 256 panoptikon-server-darwin-"$ARCH" panoptikon-agent-darwin-"$ARCH" > "SHA256SUMS-darwin-$ARCH.txt"
+          cat "SHA256SUMS-darwin-$ARCH.txt"
+          rel="$(curl -fsS -H @"$hdr" "$FORGEJO_API/repos/$REPO/releases/tags/$tag")"
+          rid="$(printf '%s' "$rel" | /usr/bin/python3 -c 'import sys,json;d=json.load(sys.stdin);print(d["id"])')"
+          echo "release $tag id=$rid"
+          for f in panoptikon-server-darwin-"$ARCH" panoptikon-agent-darwin-"$ARCH" "SHA256SUMS-darwin-$ARCH.txt"; do
+            aid="$(printf '%s' "$rel" | /usr/bin/python3 -c 'import sys,json;n=sys.argv[1];print(next((a["id"] for a in json.load(sys.stdin)["assets"] if a["name"]==n),""))' "$f")"
+            if [ -n "$aid" ]; then
+              if [ "$REPLACE_EXISTING" = "true" ]; then
+                echo "replacing existing asset $f (id $aid)"
+                curl -fsS -X DELETE -H @"$hdr" "$FORGEJO_API/repos/$REPO/releases/$rid/assets/$aid" -o /dev/null
+              else
+                echo "asset $f already exists on $tag; re-run with replace_existing to overwrite" >&2; exit 1
+              fi
+            fi
+            size="$(stat -f %z "$f")"
+            resp="$(curl -fsS -H @"$hdr" -F "attachment=@$f" "$FORGEJO_API/repos/$REPO/releases/$rid/assets?name=$f")"
+            got="$(printf '%s' "$resp" | /usr/bin/python3 -c 'import sys,json;d=json.load(sys.stdin);print(d["size"])')"
+            [ "$got" = "$size" ] || { echo "upload size mismatch for $f: $got != $size" >&2; exit 1; }
+            echo "attached $f ($size bytes)"
+          done
+          rm -f "$hdr"
 
   release:
     name: Publish Forgejo release
-    needs: [build-linux, build-macos]
-    # always(): build-macos is skipped unless include_macos, and a skipped need
-    # must not skip this job. The result checks are a first filter only —
-    # Forgejo stores one row's result per matrix job id — the asset-set
-    # assertion in "Assemble" is what actually protects the release.
-    if: ${{ always() && needs.build-linux.result == 'success' && (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') }}
+    needs: build-linux
+    # Forgejo stores one matrix row's result per job id, so needs.build-linux is a
+    # first filter only — the asset-set assertion in "Assemble" is what actually
+    # protects the release. macOS assets are appended afterwards by build-macos.
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -327,14 +379,11 @@ jobs:
           merge-multiple: true
 
       - name: Assemble assets and checksums
-        env:
-          INCLUDE_MACOS: ${{ inputs.include_macos }}
         run: |
           set -euo pipefail
+          # Linux only: the darwin assets (and SHA256SUMS-darwin-<arch>.txt) are attached
+          # by build-macos after this job has published the release.
           expected="panoptikon-server-linux-amd64 panoptikon-agent-linux-amd64 panoptikon-server-linux-arm64 panoptikon-agent-linux-arm64"
-          if [ "$INCLUDE_MACOS" = "true" ]; then
-            expected="$expected panoptikon-server-darwin-arm64 panoptikon-agent-darwin-arm64 panoptikon-server-darwin-amd64 panoptikon-agent-darwin-amd64"
-          fi
           # needs.build-linux.result reflects a single matrix row on Forgejo,
           # so a failed amd64 next to a green arm64 can reach this job: assert
           # the complete asset set before anything is checksummed or uploaded.
