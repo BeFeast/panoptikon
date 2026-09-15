@@ -12,7 +12,7 @@ bun run test
 bun run build
 ```
 
-`typecheck` generates Next route types, then explicitly executes `@typescript/native`'s compiler over the complete project, including test/config files. `build` runs this same mandatory check before static export. A failed native check stops the command before Next compilation. Next's redundant built-in check is disabled deliberately; do not invoke `next build` directly in automation. CI, release, Docker and Makefile use `bun run build`. The exported `web/out` remains embedded by Rust.
+`typecheck` generates Next route types, then explicitly executes `@typescript/native`'s compiler over the complete project, including test/config files. `build` runs this same mandatory check before static export. A failed native check stops the command before Next compilation. Only after that check succeeds, the build command sets `PANOPTIKON_NATIVE_TYPECHECK=1` for Next to skip its redundant legacy check. A direct `next build` without that marker retains the default framework check; automation must use the canonical build command. CI, release, Docker and Makefile use `bun run build`. The exported `web/out` remains embedded by Rust.
 
 `typescript@6.0.3` is retained only for ESLint's JavaScript compiler API. It does not run our typecheck gate. `@typescript/native` aliases the stable `typescript@7.0.2` package; its explicit executable path avoids ambiguity between two `tsc` binaries. The `@typescript/typescript6` compatibility wrapper produced a self-referential `@typescript/old` installation under the local Bun version, so the legacy API package is pinned directly instead.
 
