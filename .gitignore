@@ -44,3 +44,6 @@ tmux-*.log
 
 # agent-orchestrator config
 agent-orchestrator.yaml
+
+# TypeScript incremental checking cache
+*.tsbuildinfo

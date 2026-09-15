@@ -5,7 +5,7 @@
 #   rust      fmt, clippy, release build, unit + integration tests, and the Caddy
 #             integration suite (C-01..C-24) against a real Caddy 2.11.x with the
 #             cloudflare DNS module. Publishes the release binary as an artifact.
-#   frontend  design-token guard, eslint, `next build` (static export).
+#   frontend  design-token guard, eslint, native TypeScript check, static export.
 #   e2e       mandatory Playwright gate against the binary built by `rust`.
 #
 # Forgejo-specific choices (each explained again where it applies):
@@ -381,12 +381,11 @@ jobs:
       - name: Design tokens guard
         run: bash scripts/check-design-tokens.sh
 
-      # `|| true` carried over from the GitHub workflow: eslint is advisory
-      # there too (--max-warnings=0 reports, never fails the job).
       - name: Lint
-        run: bunx eslint src --ext .ts,.tsx --max-warnings=0 || true
+        run: bun run lint
 
-      - name: Build
+      # The canonical build runs native typecheck before static export locally and in CI.
+      - name: Typecheck and build
         run: bun run build
 
   # ───────────────────────────────────────────────────────────────────────────
