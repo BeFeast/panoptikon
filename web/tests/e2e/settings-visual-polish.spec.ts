@@ -136,10 +136,21 @@ test.describe("Settings pages — visual sections, inline validation, save anima
   });
 
   test("cloudflare page shows inline validation for account ID and tunnel ID", async ({ page }) => {
+    const savedAccountId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const savedTunnelId = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const preset = await page.request.patch("/api/v1/settings", {
+      data: { cloudflare_account_id: savedAccountId, cloudflare_tunnel_id: savedTunnelId },
+    });
+    expect(preset.ok()).toBeTruthy();
     await page.goto("/settings/cloudflare-tunnel");
     await expect(
       page.getByRole("heading", { name: "Cloudflare Tunnel", level: 1 }),
     ).toBeVisible({ timeout: 15000 });
+
+    // The heading renders before the initial settings response. Wait for
+    // nonempty saved values so that response cannot overwrite validation edits.
+    await expect(page.locator("#cf-account-id")).toHaveValue(savedAccountId);
+    await expect(page.locator("#cf-tunnel-id")).toHaveValue(savedTunnelId);
 
     // Type invalid account ID
     await page.locator("#cf-account-id").fill("not-hex");
