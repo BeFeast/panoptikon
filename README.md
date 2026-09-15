@@ -81,6 +81,8 @@ cargo build --release -p panoptikon-agent
 
 ### Frontend Development
 
+See [the frontend toolchain guide](docs/frontend-toolchain.md) for the shared native TypeScript check, lint, build and CI commands.
+
 ```bash
 cd web
 bun install
@@ -94,7 +96,7 @@ bun run dev
 panoptikon/
 ├── server/     # Rust axum backend (API, WebSocket hub, discovery, managed-router clients)
 ├── agent/      # Rust lightweight agent (system metrics collector)
-└── web/        # Next.js 15 frontend (shadcn/ui, dark theme)
+└── web/        # Next.js 16 frontend (shadcn/ui, dark theme)
 ```
 
 ## Router integration

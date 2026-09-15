@@ -646,7 +646,7 @@ function AlertsPageInner() {
                     font: "400 12px var(--font-sans)",
                   }}
                 >
-                  Nothing matches "{view}".
+                  Nothing matches &quot;{view}&quot;.
                 </div>
               ) : (
                 filtered.map((a, i) => {

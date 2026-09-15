@@ -119,6 +119,10 @@ test.describe("Settings save/load — MikroTik and Xiaomi", () => {
 
     await page.goto("/settings/router");
 
+    // Wait for the persisted settings load before testing unsaved edits.
+    // Otherwise its response can overwrite an early fill with the saved URL.
+    await expect(page.locator("#mt-url")).toHaveValue("http://10.10.0.250");
+    await expect(page.locator("#mt-user")).toHaveValue("saved-user");
     await page.locator("#mt-url").fill(DEFAULT_MIKROTIK_URL);
     await page.locator("#mt-user").fill("admin");
     await page.locator("#mt-password").fill("unsaved-pass");
