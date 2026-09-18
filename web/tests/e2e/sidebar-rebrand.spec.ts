@@ -12,11 +12,11 @@ test.describe.skip('Sidebar rebrand — cyan accents instead of blue', () => {
     const sidebar = page.locator('aside');
     await expect(sidebar).toBeVisible({ timeout: 15000 });
 
-    // Brand tile is now a BrandMark SVG with data-brand-mark="panoptikon"
+    // Brand tile is now a BrandMark <img> with data-brand-mark="panoptikon"
     // (replaced the legacy bg-cyan-400 "P" tile in the mesh refresh).
-    const brandMark = sidebar.locator('svg[data-brand-mark="panoptikon"]');
+    const brandMark = sidebar.locator('img[data-brand-mark="panoptikon"]');
     await expect(brandMark).toBeVisible({ timeout: 10000 });
-    await expect(brandMark).toHaveAttribute('viewBox', '0 0 64 64');
+    await expect(brandMark).toHaveAttribute('src', /\/brand\/panoptikon-mark\.svg$/);
 
     await page.screenshot({ path: 'tests/screenshots/sidebar-rebrand-logo.png', fullPage: true });
   });
