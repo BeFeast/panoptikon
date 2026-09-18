@@ -145,7 +145,7 @@ export function TopBar({ mobileMenu }: { mobileMenu?: ReactNode }) {
     >
       {mobileMenu}
 
-      <BrandMark size={18} className="hidden text-mesh-accent md:block" glow={false} />
+      <BrandMark size={18} className="hidden text-mesh-accent md:block" />
 
       {/* Breadcrumbs */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 0 }}>

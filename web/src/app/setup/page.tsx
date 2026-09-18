@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BrandMark } from "@/components/brand/BrandMark";
 import { fetchAuthStatus, runSetup } from "@/lib/api";
 
 export default function SetupPage() {
@@ -74,9 +75,7 @@ export default function SetupPage() {
       <div className="relative z-10 w-full max-w-md">
         <Card className="login-card-glow w-full rounded-md border-mesh-border/90 bg-mesh-surface-1/95 backdrop-blur-sm">
           <CardHeader className="items-center border-b border-mesh-border-strong/80 pb-4">
-            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-md border border-mesh-accent/50 bg-mesh-accent shadow-[0_0_28px_rgba(34,211,238,0.18)]">
-              <span className="font-display text-2xl font-bold text-mesh-surface-1">P</span>
-            </div>
+            <BrandMark size={48} className="mb-2 text-mesh-accent" />
             <h1 className="font-display text-center text-2xl font-bold text-white">
               Welcome to Panoptikon
             </h1>
