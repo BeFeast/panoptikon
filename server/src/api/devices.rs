@@ -1360,7 +1360,12 @@ pub async fn identify_all(State(state): State<AppState>) -> Result<Json<Identify
             .await?;
 
     let count = rows.len();
-    crate::scanner::device_identify::identify_from_external_sources(&state.db, &rows).await;
+    crate::scanner::device_identify::identify_from_external_sources(
+        &state.db,
+        &rows,
+        &state.xiaomi_clients,
+    )
+    .await;
 
     // After external identification, re-run enrichment on devices that got new hostnames.
     for (device_id, mac) in &rows {

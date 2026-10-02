@@ -80,8 +80,12 @@ pub struct AppState {
     pub mikrotik_cache: Arc<crate::mikrotik::client::MikrotikCache>,
     /// Shared reqwest::Client for Caddy Admin API.
     pub caddy_http: reqwest::Client,
-    /// Shared reqwest::Client for Xiaomi MiWiFi API.
-    pub xiaomi_http: reqwest::Client,
+    /// Long-lived Xiaomi MiWiFi clients, shared with the scanner so that the
+    /// router sees one login per token lifetime rather than one per request.
+    pub xiaomi_clients: Arc<crate::xiaomi::client::XiaomiClients>,
+    /// State shared by periodic and manual scans (router clients, HTTP
+    /// fingerprint cache).
+    pub scan_ctx: crate::scanner::ScanContext,
     /// Shared reqwest::Client for Xiaomi Mesh test-connection.
     pub xiaomi_mesh_http: reqwest::Client,
     /// TTL cache for pfSense read operations.
@@ -91,6 +95,7 @@ pub struct AppState {
 impl AppState {
     /// Create a new AppState with all shared resources.
     pub fn new(db: SqlitePool, config: AppConfig) -> Self {
+        let scan_ctx = crate::scanner::ScanContext::default();
         Self {
             db,
             config,
@@ -103,7 +108,8 @@ impl AppState {
                 .timeout(std::time::Duration::from_secs(10))
                 .build()
                 .expect("caddy HTTP client"),
-            xiaomi_http: crate::xiaomi::client::shared_http_client(),
+            xiaomi_clients: scan_ctx.xiaomi_clients.clone(),
+            scan_ctx,
             xiaomi_mesh_http: reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(10))
                 .build()

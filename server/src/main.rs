@@ -101,6 +101,7 @@ async fn main() -> Result<()> {
         state.db.clone(),
         app_config.scanner.clone(),
         state.ws_hub.clone(),
+        state.scan_ctx.clone(),
     );
 
     // Start the passive mDNS/Bonjour discovery if enabled.

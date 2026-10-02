@@ -5,6 +5,8 @@ db_path = "./panoptikon.db"
 
 [scanner]
 subnets = ["10.10.0.0/24"]
+# Default scan interval. Once "Scan interval" is saved in Settings → Network
+# Scanner, the saved value takes precedence (minimum 10 s).
 interval_seconds = 60
 offline_grace_seconds = 300  # 5 min before marking offline
 

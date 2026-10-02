@@ -210,6 +210,10 @@ export default function ScannerSettingsPage() {
                 Must be at least 10 seconds.
               </p>
             )}
+            <p data-testid="scan-interval-help" className="text-[10px] text-mesh-text-mute">
+              The scanner uses this value from its next cycle. It overrides the
+              config file default.
+            </p>
           </div>
 
           <div className="space-y-1.5">

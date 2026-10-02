@@ -13,6 +13,6 @@ use crate::device_resolver;
 /// Queries configured routers for DHCP hostnames and applies them
 /// to devices that currently show as "Unknown Device".
 pub async fn resolve(State(state): State<AppState>) -> Json<device_resolver::ResolveResult> {
-    let result = device_resolver::resolve_devices(&state.db).await;
+    let result = device_resolver::resolve_devices(&state.db, &state.xiaomi_clients).await;
     Json(result)
 }

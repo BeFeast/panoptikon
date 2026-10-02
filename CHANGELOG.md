@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Router admin API login on every scan cycle** — the scanner, the device
+  resolver and the Xiaomi API endpoints each built a new MiWiFi client per
+  call, so the cached `stok` token was discarded and the router saw a fresh
+  login every cycle (~1440 per day at a 60 s interval). One long-lived client
+  per router is now shared by all callers. Logins are single-flight, re-login
+  happens only on token expiry (30 min) or an auth error, and failed logins
+  back off up to 30 min.
+- **Scan interval had two sources** — the scanner used `[scanner]
+  interval_seconds` from the config file while the settings page edited a
+  database value the scanner ignored. The saved setting now drives the scanner
+  (re-read every cycle), the config value is the default, and intervals below
+  10 s are rejected.
+- **HTTP fingerprinting probed every host every cycle** — results, including
+  hosts without an HTTP server, are now cached per IP for 24 h; new IPs are
+  probed on the next cycle.
+
 ### Removed
 
 - **`/settings/vyos` page** — standalone VyOS settings page removed. It was

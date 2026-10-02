@@ -44,6 +44,39 @@ pub struct ScanSummary {
     pub sources: Vec<String>,
 }
 
+/// Long-lived state shared by every scan cycle, periodic or manual.
+///
+/// Router clients and the HTTP fingerprint cache must outlive a single cycle:
+/// rebuilding them per cycle makes the scanner log in to the router and probe
+/// every host again each time.
+#[derive(Clone, Default)]
+pub struct ScanContext {
+    pub xiaomi_clients: Arc<crate::xiaomi::client::XiaomiClients>,
+    pub http_fingerprint_cache: Arc<http_fingerprint::HttpFingerprintCache>,
+}
+
+/// Lowest accepted scan interval; matches the settings UI validation.
+pub const MIN_SCAN_INTERVAL_SECS: u64 = 10;
+
+/// The scan interval the scanner actually uses.
+///
+/// The `scan_interval_seconds` setting (written by the settings UI) wins; the
+/// `[scanner] interval_seconds` TOML value is only the default when the
+/// setting has never been saved. Both the scanner loop and `GET /settings`
+/// call this, so the UI always shows the interval in effect.
+pub async fn effective_scan_interval_secs(db: &SqlitePool, toml_default: u64) -> u64 {
+    sqlx::query_scalar::<_, String>(
+        "SELECT value FROM settings WHERE key = 'scan_interval_seconds'",
+    )
+    .fetch_optional(db)
+    .await
+    .ok()
+    .flatten()
+    .and_then(|v| v.trim().parse::<u64>().ok())
+    .unwrap_or(toml_default)
+    .max(MIN_SCAN_INTERVAL_SECS)
+}
+
 /// Discovered device from an ARP scan.
 #[derive(Debug, Clone)]
 pub struct DiscoveredDevice {
@@ -80,20 +113,26 @@ pub async fn scan_subnets(
 /// Start the periodic ARP scanner as a background tokio task.
 ///
 /// This task:
-/// 1. Runs ARP scans every `interval_seconds`
+/// 1. Runs ARP scans every [`effective_scan_interval_secs`] (re-read each cycle)
 /// 2. Upserts discovered devices into the `devices` table
 /// 3. Detects online/offline state changes
 /// 4. Creates alerts for new devices, devices going offline, and devices coming back
 /// 5. Broadcasts changes to connected UI clients via the WsHub
-pub fn start_scanner_task(db: SqlitePool, config: ScannerConfig, ws_hub: Arc<WsHub>) {
-    let interval = std::time::Duration::from_secs(config.interval_seconds);
+pub fn start_scanner_task(
+    db: SqlitePool,
+    config: ScannerConfig,
+    ws_hub: Arc<WsHub>,
+    ctx: ScanContext,
+) {
     let grace = config.offline_grace_seconds;
     let subnets = config.subnets.clone();
     let arp_settle_millis = config.arp_settle_millis;
 
     tokio::spawn(async move {
+        let mut interval_secs = effective_scan_interval_secs(&db, config.interval_seconds).await;
         info!(
-            interval_secs = config.interval_seconds,
+            interval_secs,
+            config_default_secs = config.interval_seconds,
             subnets = ?subnets,
             "ARP scanner started"
         );
@@ -101,16 +140,14 @@ pub fn start_scanner_task(db: SqlitePool, config: ScannerConfig, ws_hub: Arc<WsH
         // Small initial delay to let the server finish starting up.
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
 
-        let mut ticker = tokio::time::interval(interval);
-        ticker.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
-
         loop {
-            ticker.tick().await;
+            let cycle_started = tokio::time::Instant::now();
 
             match scan_subnets(&subnets, arp_settle_millis).await {
                 Ok(devices) => {
                     info!(count = devices.len(), "ARP scan completed");
-                    if let Err(e) = process_scan_results(&db, &devices, grace, &ws_hub).await {
+                    if let Err(e) = process_scan_results(&db, &devices, grace, &ws_hub, &ctx).await
+                    {
                         error!("Failed to process scan results: {e}");
                     }
                 }
@@ -118,6 +155,19 @@ pub fn start_scanner_task(db: SqlitePool, config: ScannerConfig, ws_hub: Arc<WsH
                     warn!("ARP scan failed: {e}");
                 }
             }
+
+            let next_secs = effective_scan_interval_secs(&db, config.interval_seconds).await;
+            if next_secs != interval_secs {
+                info!(
+                    old_secs = interval_secs,
+                    new_secs = next_secs,
+                    "Scan interval changed"
+                );
+                interval_secs = next_secs;
+            }
+            // Cycles start every `interval_secs`; a cycle that overruns is
+            // followed immediately by the next one.
+            tokio::time::sleep_until(cycle_started + Duration::from_secs(interval_secs)).await;
         }
     });
 }
@@ -211,6 +261,7 @@ pub async fn process_scan_results(
     discovered: &[DiscoveredDevice],
     offline_grace_secs: u64,
     ws_hub: &WsHub,
+    ctx: &ScanContext,
 ) -> Result<ScanSummary> {
     let now = Utc::now().to_rfc3339();
 
@@ -631,7 +682,8 @@ pub async fn process_scan_results(
             .iter()
             .map(|(id, _ip, mac, _hostname, _vendor, _mdns)| (id.clone(), mac.clone()))
             .collect();
-        device_identify::identify_from_external_sources(db, &device_macs).await;
+        device_identify::identify_from_external_sources(db, &device_macs, &ctx.xiaomi_clients)
+            .await;
     }
 
     // Re-read hostnames for enrichment targets after external identification,
@@ -792,7 +844,8 @@ pub async fn process_scan_results(
     // Phase 5d: HTTP fingerprinting (device model from Server header)
     if http_fp_enabled {
         sources.push("http_fingerprint".to_string());
-        let http_results = http_fingerprint::probe_hosts(&all_ips).await;
+        let http_results =
+            http_fingerprint::probe_hosts_cached(&ctx.http_fingerprint_cache, &all_ips).await;
         for hr in &http_results {
             if let Some(ref server) = hr.server_header {
                 if let Some(target) = enrichment_targets.iter().find(|t| t.1 == hr.ip) {
@@ -963,7 +1016,7 @@ mod tests {
             mac: "aa:bb:cc:dd:ee:03".to_string(),
         }];
 
-        process_scan_results(&pool, &devices, 300, &ws_hub)
+        process_scan_results(&pool, &devices, 300, &ws_hub, &ScanContext::default())
             .await
             .expect("process_scan_results should succeed");
 
@@ -1014,7 +1067,7 @@ mod tests {
             ip: "10.0.0.2".to_string(),
             mac: mac.to_string(),
         }];
-        process_scan_results(&pool, &devices, 300, &ws_hub)
+        process_scan_results(&pool, &devices, 300, &ws_hub, &ScanContext::default())
             .await
             .expect("initial scan");
 
@@ -1026,7 +1079,7 @@ mod tests {
             .expect("backdate last_seen_at");
 
         // Run scan with no devices (empty) → should mark device offline.
-        process_scan_results(&pool, &[], 60, &ws_hub)
+        process_scan_results(&pool, &[], 60, &ws_hub, &ScanContext::default())
             .await
             .expect("empty scan");
 
@@ -1038,7 +1091,7 @@ mod tests {
         assert_eq!(is_online, 0, "Device should be offline after grace period");
 
         // Step 3: Device reappears.
-        process_scan_results(&pool, &devices, 300, &ws_hub)
+        process_scan_results(&pool, &devices, 300, &ws_hub, &ScanContext::default())
             .await
             .expect("re-discovery scan");
 
@@ -1094,7 +1147,7 @@ mod tests {
         );
 
         // Phase 1–2: process scan results (upsert devices, detect state changes).
-        process_scan_results(&pool, &discovered, 300, &ws_hub)
+        process_scan_results(&pool, &discovered, 300, &ws_hub, &ScanContext::default())
             .await
             .expect("process_scan_results should succeed");
 
@@ -1170,7 +1223,7 @@ mod tests {
 
         // Run the same scan 3 times.
         for i in 0..3 {
-            process_scan_results(&pool, &devices, 300, &ws_hub)
+            process_scan_results(&pool, &devices, 300, &ws_hub, &ScanContext::default())
                 .await
                 .unwrap_or_else(|e| panic!("scan {i} failed: {e}"));
         }
@@ -1224,7 +1277,7 @@ mod tests {
             ip: "10.0.0.50".to_string(),
             mac: mac.to_string(),
         }];
-        process_scan_results(&pool, &scan1, 300, &ws_hub)
+        process_scan_results(&pool, &scan1, 300, &ws_hub, &ScanContext::default())
             .await
             .expect("scan 1");
 
@@ -1233,7 +1286,7 @@ mod tests {
             ip: "10.0.0.60".to_string(),
             mac: mac.to_string(),
         }];
-        process_scan_results(&pool, &scan2, 300, &ws_hub)
+        process_scan_results(&pool, &scan2, 300, &ws_hub, &ScanContext::default())
             .await
             .expect("scan 2");
 
@@ -1288,7 +1341,7 @@ mod tests {
             },
         ];
 
-        process_scan_results(&pool, &devices, 300, &ws_hub)
+        process_scan_results(&pool, &devices, 300, &ws_hub, &ScanContext::default())
             .await
             .expect("process_scan_results");
 
@@ -1347,7 +1400,7 @@ mod tests {
             ip: "10.0.0.5".to_string(),
             mac: mac.to_string(),
         }];
-        process_scan_results(&pool, &devices, 300, &ws_hub)
+        process_scan_results(&pool, &devices, 300, &ws_hub, &ScanContext::default())
             .await
             .expect("initial scan");
 
@@ -1372,7 +1425,7 @@ mod tests {
             .expect("clear alerts");
 
         // Step 4: Device reappears — should not create device_online alert (muted).
-        process_scan_results(&pool, &devices, 300, &ws_hub)
+        process_scan_results(&pool, &devices, 300, &ws_hub, &ScanContext::default())
             .await
             .expect("re-discovery scan");
 
@@ -1410,7 +1463,7 @@ mod tests {
                 mac: "aa:bb:cc:44:55:03".to_string(),
             },
         ];
-        process_scan_results(&pool, &all_devices, 300, &ws_hub)
+        process_scan_results(&pool, &all_devices, 300, &ws_hub, &ScanContext::default())
             .await
             .expect("initial scan");
 
@@ -1434,7 +1487,7 @@ mod tests {
             ip: "10.0.0.12".to_string(),
             mac: "aa:bb:cc:44:55:03".to_string(),
         }];
-        process_scan_results(&pool, &remaining, 60, &ws_hub)
+        process_scan_results(&pool, &remaining, 60, &ws_hub, &ScanContext::default())
             .await
             .expect("scan with missing devices");
 
@@ -1514,7 +1567,7 @@ mod tests {
             ip: "10.0.0.20".to_string(),
             mac: mac.to_string(),
         }];
-        process_scan_results(&pool, &devices, 300, &ws_hub)
+        process_scan_results(&pool, &devices, 300, &ws_hub, &ScanContext::default())
             .await
             .expect("initial scan");
 
@@ -1524,7 +1577,7 @@ mod tests {
             .execute(&pool)
             .await
             .expect("backdate");
-        process_scan_results(&pool, &[], 60, &ws_hub)
+        process_scan_results(&pool, &[], 60, &ws_hub, &ScanContext::default())
             .await
             .expect("offline scan");
 
@@ -1536,7 +1589,7 @@ mod tests {
         assert_eq!(is_online, 0);
 
         // Step 3: Device reappears.
-        process_scan_results(&pool, &devices, 300, &ws_hub)
+        process_scan_results(&pool, &devices, 300, &ws_hub, &ScanContext::default())
             .await
             .expect("re-discovery scan");
 
@@ -1592,12 +1645,12 @@ mod tests {
         let scan1_devices = arp::parse_arp_output(ARP_FIXTURE);
 
         // Scan 1: initial discovery.
-        process_scan_results(&pool, &scan1_devices, 300, &ws_hub)
+        process_scan_results(&pool, &scan1_devices, 300, &ws_hub, &ScanContext::default())
             .await
             .expect("scan 1");
 
         // Scan 2: same devices (deduplication check).
-        process_scan_results(&pool, &scan1_devices, 300, &ws_hub)
+        process_scan_results(&pool, &scan1_devices, 300, &ws_hub, &ScanContext::default())
             .await
             .expect("scan 2");
 
@@ -1623,7 +1676,7 @@ mod tests {
         .await
         .expect("backdate missing devices");
 
-        process_scan_results(&pool, &scan3_devices, 60, &ws_hub)
+        process_scan_results(&pool, &scan3_devices, 60, &ws_hub, &ScanContext::default())
             .await
             .expect("scan 3 - partial network");
 
@@ -1647,7 +1700,7 @@ mod tests {
 ? (10.10.0.50) at aa:bb:cc:dd:ee:ff [ether] on wlan0";
         let scan4_devices = arp::parse_arp_output(scan4_arp);
 
-        process_scan_results(&pool, &scan4_devices, 300, &ws_hub)
+        process_scan_results(&pool, &scan4_devices, 300, &ws_hub, &ScanContext::default())
             .await
             .expect("scan 4 - device returns");
 
