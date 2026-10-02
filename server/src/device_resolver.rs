@@ -13,6 +13,8 @@ use sqlx::SqlitePool;
 use std::collections::HashMap;
 use tracing::{debug, info, warn};
 
+use crate::xiaomi::client::XiaomiClients;
+
 /// Summary of a device resolve operation.
 #[derive(Debug, Default, Serialize)]
 pub struct ResolveResult {
@@ -131,7 +133,10 @@ async fn fetch_mikrotik_hostnames(db: &SqlitePool) -> Option<Vec<(String, Hostna
 }
 
 /// Fetch device names from Xiaomi MiWiFi and return MAC→hostname mappings.
-async fn fetch_xiaomi_hostnames(db: &SqlitePool) -> Option<Vec<(String, HostnameMapping)>> {
+async fn fetch_xiaomi_hostnames(
+    db: &SqlitePool,
+    xiaomi_clients: &XiaomiClients,
+) -> Option<Vec<(String, HostnameMapping)>> {
     let enabled = get_setting(db, "xiaomi_mesh_enabled")
         .await
         .map(|v| v == "1" || v == "true")
@@ -147,9 +152,7 @@ async fn fetch_xiaomi_hostnames(db: &SqlitePool) -> Option<Vec<(String, Hostname
     let password = get_setting(db, "xiaomi_mesh_password").await?;
     let proxy_host = get_setting(db, "xiaomi_mesh_proxy_host").await;
 
-    let http = crate::xiaomi::client::shared_http_client();
-    let client =
-        crate::xiaomi::client::XiaomiClient::new(&ip, &password, http, proxy_host.as_deref());
+    let client = xiaomi_clients.client_for(&ip, &password, proxy_host.as_deref());
 
     match client.device_list().await {
         Ok(devices) => {
@@ -188,7 +191,7 @@ async fn fetch_xiaomi_hostnames(db: &SqlitePool) -> Option<Vec<(String, Hostname
 /// 3. Xiaomi MiWiFi device list (name assigned by router)
 ///
 /// Only updates devices that have no hostname set yet.
-pub async fn resolve_devices(db: &SqlitePool) -> ResolveResult {
+pub async fn resolve_devices(db: &SqlitePool, xiaomi_clients: &XiaomiClients) -> ResolveResult {
     let mut result = ResolveResult::default();
 
     // Collect MAC→hostname mappings from all sources.
@@ -212,7 +215,7 @@ pub async fn resolve_devices(db: &SqlitePool) -> ResolveResult {
     }
 
     // Source 3: Xiaomi device list (priority 3)
-    if let Some(mappings) = fetch_xiaomi_hostnames(db).await {
+    if let Some(mappings) = fetch_xiaomi_hostnames(db, xiaomi_clients).await {
         result.sources_queried.push("xiaomi".to_string());
         for (mac, mapping) in mappings {
             mac_to_hostname.entry(mac).or_insert(mapping);
@@ -441,7 +444,7 @@ mod tests {
     #[tokio::test]
     async fn test_resolve_no_sources_configured() {
         let pool = setup_test_db().await;
-        let result = resolve_devices(&pool).await;
+        let result = resolve_devices(&pool, &XiaomiClients::new()).await;
         assert_eq!(result.resolved, 0);
         assert_eq!(result.candidates, 0);
         // Migration seed table is a built-in source for the hotfix.
@@ -455,7 +458,7 @@ mod tests {
         let pool = setup_test_db().await;
         let _id = insert_device(&pool, "aa:bb:cc:dd:ee:ff", None).await;
 
-        let result = resolve_devices(&pool).await;
+        let result = resolve_devices(&pool, &XiaomiClients::new()).await;
         assert_eq!(result.resolved, 0);
         // Built-in hotfix source is available via migration seed.
         assert!(result
@@ -484,7 +487,7 @@ mod tests {
         )
         .await;
 
-        let result = resolve_devices(&pool).await;
+        let result = resolve_devices(&pool, &XiaomiClients::new()).await;
         assert_eq!(result.resolved, 1);
         assert!(result
             .sources_queried
@@ -517,7 +520,7 @@ mod tests {
         )
         .await;
 
-        let result = resolve_devices(&pool).await;
+        let result = resolve_devices(&pool, &XiaomiClients::new()).await;
         assert_eq!(result.resolved, 0);
 
         let hostname: Option<String> =
@@ -545,7 +548,7 @@ mod tests {
         insert_setting(&pool, "mikrotik_enabled", "true").await;
         insert_setting(&pool, "mikrotik_url", "http://192.0.2.1").await;
 
-        let result = resolve_devices(&pool).await;
+        let result = resolve_devices(&pool, &XiaomiClients::new()).await;
         // MikroTik can fail, but built-in external seed source is still active.
         assert!(result
             .sources_queried
@@ -584,7 +587,7 @@ mod tests {
 
         insert_device(&pool, "aa:bb:cc:dd:ee:ff", None).await;
 
-        let result = resolve_devices(&pool).await;
+        let result = resolve_devices(&pool, &XiaomiClients::new()).await;
         // Source was attempted; it should still appear in sources_queried
         // because we enter the branch, even though it returns None from error
         // Actually the MikroTik branch adds to sources_queried only on Ok.
@@ -598,7 +601,7 @@ mod tests {
         let pool = setup_test_db().await;
         insert_setting(&pool, "xiaomi_mesh_enabled", "true").await;
         // No password set → fetch_xiaomi_hostnames returns None early
-        let result = resolve_devices(&pool).await;
+        let result = resolve_devices(&pool, &XiaomiClients::new()).await;
         assert_eq!(result.resolved, 0);
         assert!(result
             .sources_queried
@@ -613,7 +616,7 @@ mod tests {
         insert_setting(&pool, "mikrotik_enabled", "0").await;
         insert_setting(&pool, "mikrotik_url", "http://192.168.1.1").await;
 
-        let result = resolve_devices(&pool).await;
+        let result = resolve_devices(&pool, &XiaomiClients::new()).await;
         assert!(!result.sources_queried.contains(&"mikrotik".to_string()));
     }
 
@@ -622,7 +625,7 @@ mod tests {
         let pool = setup_test_db().await;
         insert_setting(&pool, "xiaomi_mesh_enabled", "false").await;
 
-        let result = resolve_devices(&pool).await;
+        let result = resolve_devices(&pool, &XiaomiClients::new()).await;
         assert!(!result.sources_queried.contains(&"xiaomi".to_string()));
     }
 
@@ -632,7 +635,7 @@ mod tests {
     async fn test_resolve_with_empty_database() {
         let pool = setup_test_db().await;
         // No devices, no settings at all
-        let result = resolve_devices(&pool).await;
+        let result = resolve_devices(&pool, &XiaomiClients::new()).await;
         assert_eq!(result.resolved, 0);
         assert_eq!(result.candidates, 0);
         assert!(result
@@ -651,7 +654,7 @@ mod tests {
         insert_setting(&pool, "mikrotik_enabled", "true").await;
         insert_setting(&pool, "mikrotik_url", "http://192.0.2.1").await;
 
-        let result = resolve_devices(&pool).await;
+        let result = resolve_devices(&pool, &XiaomiClients::new()).await;
         // All devices have hostnames, so 0 candidates
         assert_eq!(result.candidates, 0);
         assert_eq!(result.resolved, 0);
@@ -688,7 +691,7 @@ mod tests {
         // Insert a device with a non-standard MAC format
         insert_device(&pool, "not-a-mac", None).await;
 
-        let result = resolve_devices(&pool).await;
+        let result = resolve_devices(&pool, &XiaomiClients::new()).await;
         // Should not panic, just return normally
         assert_eq!(result.resolved, 0);
     }
@@ -699,7 +702,7 @@ mod tests {
         // Device already has hostname
         insert_device(&pool, "aa:bb:cc:dd:ee:ff", Some("my-server")).await;
 
-        let result = resolve_devices(&pool).await;
+        let result = resolve_devices(&pool, &XiaomiClients::new()).await;
         assert_eq!(result.resolved, 0);
 
         // Original hostname should be intact
@@ -739,5 +742,51 @@ mod tests {
         .unwrap();
         // 3 out of 5 devices have no hostname
         assert_eq!(count, 3);
+    }
+
+    // ── Xiaomi client reuse across resolve calls ─────────────────────
+
+    async fn setup_xiaomi_mock(pool: &SqlitePool) -> crate::xiaomi::mock::MockMiwifi {
+        let mock = crate::xiaomi::mock::MockMiwifi::start().await;
+        insert_setting(pool, "xiaomi_mesh_enabled", "1").await;
+        insert_setting(pool, "xiaomi_mesh_ip", &mock.addr).await;
+        insert_setting(pool, "xiaomi_mesh_password", "pw").await;
+        mock
+    }
+
+    #[tokio::test]
+    async fn test_resolve_reuses_xiaomi_login() {
+        let pool = setup_test_db().await;
+        let mock = setup_xiaomi_mock(&pool).await;
+        insert_device(&pool, "aa:bb:cc:00:00:01", None).await;
+        let clients = XiaomiClients::new();
+
+        let first = resolve_devices(&pool, &clients).await;
+        assert!(first.sources_queried.contains(&"xiaomi".to_string()));
+        assert_eq!(first.resolved, 1);
+        for _ in 0..4 {
+            resolve_devices(&pool, &clients).await;
+        }
+
+        assert_eq!(mock.logins(), 1);
+        assert_eq!(mock.authed_calls(), 5);
+    }
+
+    #[tokio::test]
+    async fn test_resolve_relogs_once_after_expiry() {
+        let pool = setup_test_db().await;
+        let mock = setup_xiaomi_mock(&pool).await;
+        let clients = XiaomiClients::new();
+
+        resolve_devices(&pool, &clients).await;
+        clients
+            .client_for(&mock.addr, "pw", None)
+            .age_stok_for_test(std::time::Duration::from_secs(31 * 60))
+            .await;
+        for _ in 0..4 {
+            resolve_devices(&pool, &clients).await;
+        }
+
+        assert_eq!(mock.logins(), 2);
     }
 }

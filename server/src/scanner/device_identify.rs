@@ -10,6 +10,8 @@ use sqlx::SqlitePool;
 use std::collections::HashMap;
 use tracing::{debug, info, warn};
 
+use crate::xiaomi::client::XiaomiClients;
+
 /// A hostname discovered from an external source.
 #[derive(Debug, Clone)]
 pub struct IdentifiedDevice {
@@ -133,7 +135,7 @@ async fn fetch_mikrotik_dhcp_hostnames(
 /// Returns a map of MAC → device name from the Xiaomi router.
 async fn fetch_xiaomi_device_names(
     db: &SqlitePool,
-    http: &reqwest::Client,
+    xiaomi_clients: &XiaomiClients,
 ) -> HashMap<String, String> {
     let mut result = HashMap::new();
 
@@ -155,12 +157,7 @@ async fn fetch_xiaomi_device_names(
     };
     let proxy_host = get_setting(db, "xiaomi_mesh_proxy_host").await;
 
-    let client = crate::xiaomi::client::XiaomiClient::new(
-        &ip,
-        &password,
-        http.clone(),
-        proxy_host.as_deref(),
-    );
+    let client = xiaomi_clients.client_for(&ip, &password, proxy_host.as_deref());
 
     match client.device_list().await {
         Ok(devices) => {
@@ -197,20 +194,22 @@ async fn fetch_xiaomi_device_names(
 /// 3. Xiaomi MiWiFi device list
 ///
 /// Never overwrites an existing hostname.
-pub async fn identify_from_external_sources(db: &SqlitePool, device_macs: &[(String, String)]) {
+pub async fn identify_from_external_sources(
+    db: &SqlitePool,
+    device_macs: &[(String, String)],
+    xiaomi_clients: &XiaomiClients,
+) {
     if device_macs.is_empty() {
         return;
     }
 
-    // Create dedicated HTTP clients for router queries.
     let mikrotik_http = crate::mikrotik::client::shared_http_client();
-    let xiaomi_http = crate::xiaomi::client::shared_http_client();
 
     // Fetch hostnames from all external sources concurrently.
     let (seeded_hostnames, mikrotik_hostnames, xiaomi_names) = tokio::join!(
         fetch_seeded_external_hostnames(db),
         fetch_mikrotik_dhcp_hostnames(db, &mikrotik_http),
-        fetch_xiaomi_device_names(db, &xiaomi_http),
+        fetch_xiaomi_device_names(db, xiaomi_clients),
     );
 
     let total_external = seeded_hostnames.len() + mikrotik_hostnames.len() + xiaomi_names.len();
@@ -309,5 +308,67 @@ pub async fn identify_from_external_sources(db: &SqlitePool, device_macs: &[(Str
             updated,
             total_external, "Devices identified from external sources"
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::scanner::{process_scan_results, DiscoveredDevice, ScanContext};
+    use crate::ws::hub::WsHub;
+    use crate::xiaomi::mock::MockMiwifi;
+
+    async fn pool_with_xiaomi(addr: &str) -> SqlitePool {
+        let pool = crate::db::init(":memory:").await.expect("DB init failed");
+        for (key, value) in [
+            ("xiaomi_mesh_enabled", "1"),
+            ("xiaomi_mesh_ip", addr),
+            ("xiaomi_mesh_password", "pw"),
+        ] {
+            sqlx::query("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)")
+                .bind(key)
+                .bind(value)
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        pool
+    }
+
+    #[tokio::test]
+    async fn scan_cycles_log_in_to_xiaomi_once() {
+        let mock = MockMiwifi::start().await;
+        let pool = pool_with_xiaomi(&mock.addr).await;
+        let ws_hub = WsHub::new();
+        let ctx = ScanContext::default();
+        let devices = vec![DiscoveredDevice {
+            ip: "127.0.0.1".to_string(),
+            mac: "aa:bb:cc:00:00:01".to_string(),
+        }];
+
+        for _ in 0..5 {
+            process_scan_results(&pool, &devices, 300, &ws_hub, &ctx)
+                .await
+                .expect("scan cycle");
+        }
+
+        assert_eq!(mock.logins(), 1, "one login across all scan cycles");
+        assert_eq!(mock.authed_calls(), 5, "device list fetched every cycle");
+    }
+
+    #[tokio::test]
+    async fn scan_cycle_relogs_once_after_token_revoked() {
+        let mock = MockMiwifi::start().await;
+        let pool = pool_with_xiaomi(&mock.addr).await;
+        let clients = XiaomiClients::new();
+        let macs = vec![("dev-1".to_string(), "aa:bb:cc:00:00:09".to_string())];
+
+        identify_from_external_sources(&pool, &macs, &clients).await;
+        mock.revoke_token();
+        for _ in 0..5 {
+            identify_from_external_sources(&pool, &macs, &clients).await;
+        }
+
+        assert_eq!(mock.logins(), 2);
     }
 }

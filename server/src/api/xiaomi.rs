@@ -21,7 +21,7 @@ async fn get_setting(state: &AppState, key: &str) -> Option<String> {
         .filter(|v| !v.is_empty())
 }
 
-/// Try to construct a Xiaomi client from saved settings.
+/// Get the shared Xiaomi client for the saved settings.
 /// Returns `None` if Xiaomi integration is not configured or not enabled.
 async fn xiaomi_client(state: &AppState) -> Option<XiaomiClient> {
     let enabled = get_setting(state, "xiaomi_mesh_enabled")
@@ -38,12 +38,11 @@ async fn xiaomi_client(state: &AppState) -> Option<XiaomiClient> {
     let password = get_setting(state, "xiaomi_mesh_password").await?;
     let proxy_host = get_setting(state, "xiaomi_mesh_proxy_host").await;
 
-    Some(XiaomiClient::new(
-        &ip,
-        &password,
-        state.xiaomi_http.clone(),
-        proxy_host.as_deref(),
-    ))
+    Some(
+        state
+            .xiaomi_clients
+            .client_for(&ip, &password, proxy_host.as_deref()),
+    )
 }
 
 // ── Response types ─────────────────────────────────────────
@@ -853,5 +852,73 @@ mod tests {
             2,
             "different SSIDs on same band must both survive"
         );
+    }
+
+    // ── shared client across API, resolver and scanner ────
+
+    async fn state_with_mock() -> (AppState, crate::xiaomi::mock::MockMiwifi) {
+        let mock = crate::xiaomi::mock::MockMiwifi::start().await;
+        let pool = crate::db::init(":memory:").await.expect("DB init failed");
+        for (key, value) in [
+            ("xiaomi_mesh_enabled", "1"),
+            ("xiaomi_mesh_ip", mock.addr.as_str()),
+            ("xiaomi_mesh_password", "pw"),
+        ] {
+            sqlx::query("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)")
+                .bind(key)
+                .bind(value)
+                .execute(&pool)
+                .await
+                .unwrap();
+        }
+        let state = AppState::new(pool, crate::config::AppConfig::default());
+        (state, mock)
+    }
+
+    #[tokio::test]
+    async fn api_requests_reuse_one_login() {
+        let (state, mock) = state_with_mock().await;
+
+        for _ in 0..10 {
+            let list = devices(State(state.clone())).await.expect("devices");
+            assert_eq!(list.0.len(), 2);
+        }
+
+        assert_eq!(mock.logins(), 1);
+    }
+
+    #[tokio::test]
+    async fn api_relogs_once_after_token_revoked() {
+        let (state, mock) = state_with_mock().await;
+
+        let _ = devices(State(state.clone())).await.expect("devices");
+        mock.revoke_token();
+        for _ in 0..5 {
+            let _ = devices(State(state.clone()))
+                .await
+                .expect("devices after revoke");
+        }
+
+        assert_eq!(mock.logins(), 2);
+    }
+
+    #[tokio::test]
+    async fn api_resolver_and_scanner_share_one_login() {
+        let (state, mock) = state_with_mock().await;
+        let macs = vec![("dev-1".to_string(), "aa:bb:cc:00:00:01".to_string())];
+
+        for _ in 0..3 {
+            let _ = devices(State(state.clone())).await.expect("devices");
+            crate::device_resolver::resolve_devices(&state.db, &state.xiaomi_clients).await;
+            crate::scanner::device_identify::identify_from_external_sources(
+                &state.db,
+                &macs,
+                &state.scan_ctx.xiaomi_clients,
+            )
+            .await;
+        }
+
+        assert_eq!(mock.authed_calls(), 9);
+        assert_eq!(mock.logins(), 1, "all three paths share one token");
     }
 }

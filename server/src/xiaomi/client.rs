@@ -15,9 +15,10 @@
 use anyhow::{Context, Result};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 use super::types::*;
 
@@ -33,6 +34,21 @@ pub fn shared_http_client() -> reqwest::Client {
         .expect("failed to build shared reqwest client for Xiaomi MiWiFi")
 }
 
+/// How long a stok token is reused before a proactive re-login.
+///
+/// Bounds logins to ~48 per day per router as long as the same client
+/// instance is reused (see [`XiaomiClients`]).
+const STOK_TTL: Duration = Duration::from_secs(30 * 60);
+
+/// Body `code` the MiWiFi API returns for a missing or expired stok.
+const AUTH_ERROR_CODE: i64 = 401;
+
+/// First retry delay after a failed login; doubles up to [`LOGIN_BACKOFF_MAX`].
+const LOGIN_BACKOFF_INITIAL: Duration = Duration::from_secs(60);
+
+/// Upper bound for the login retry delay.
+const LOGIN_BACKOFF_MAX: Duration = STOK_TTL;
+
 /// In-memory stok token with expiry tracking.
 #[derive(Debug, Clone)]
 struct StokToken {
@@ -41,19 +57,53 @@ struct StokToken {
 }
 
 impl StokToken {
-    /// Tokens are considered fresh for 30 minutes.
     fn is_valid(&self) -> bool {
-        self.obtained_at.elapsed() < Duration::from_secs(30 * 60)
+        self.obtained_at.elapsed() < STOK_TTL
+    }
+}
+
+/// Retry gate for failed logins, so a wrong password or an unreachable
+/// router does not turn every API call into a login attempt.
+#[derive(Debug, Default)]
+struct LoginBackoff {
+    failures: u32,
+    retry_at: Option<Instant>,
+}
+
+impl LoginBackoff {
+    fn record_failure(&mut self) {
+        self.failures = self.failures.saturating_add(1);
+        let delay = LOGIN_BACKOFF_INITIAL
+            .saturating_mul(1u32 << (self.failures - 1).min(16))
+            .min(LOGIN_BACKOFF_MAX);
+        self.retry_at = Some(Instant::now() + delay);
+    }
+
+    fn reset(&mut self) {
+        self.failures = 0;
+        self.retry_at = None;
+    }
+
+    fn remaining(&self) -> Option<Duration> {
+        self.retry_at
+            .and_then(|at| at.checked_duration_since(Instant::now()))
+            .filter(|d| !d.is_zero())
     }
 }
 
 /// Thread-safe Xiaomi MiWiFi API client with automatic token management.
+///
+/// Clones share the token cache, so one long-lived instance per router
+/// (obtained from [`XiaomiClients`]) logs in once per [`STOK_TTL`] no matter
+/// how many callers use it.
 #[derive(Clone)]
 pub struct XiaomiClient {
     base_url: String,
     password: String,
     http: reqwest::Client,
     stok: Arc<RwLock<Option<StokToken>>>,
+    /// Serializes logins (single-flight) and holds the failure backoff.
+    login_gate: Arc<Mutex<LoginBackoff>>,
 }
 
 impl XiaomiClient {
@@ -77,6 +127,7 @@ impl XiaomiClient {
             password: password.to_string(),
             http,
             stok: Arc::new(RwLock::new(None)),
+            login_gate: Arc::new(Mutex::new(LoginBackoff::default())),
         }
     }
 
@@ -229,32 +280,77 @@ impl XiaomiClient {
         }
     }
 
-    /// Get a valid stok token, logging in if necessary.
-    async fn get_stok(&self) -> Result<String> {
-        // Try the cached token first.
-        {
-            let cached = self.stok.read().await;
-            if let Some(ref tok) = *cached {
-                if tok.is_valid() {
-                    return Ok(tok.token.clone());
-                }
-            }
-        }
-
-        // Need to refresh.
-        let token = self.login().await?;
-        let mut cached = self.stok.write().await;
-        *cached = Some(StokToken {
-            token: token.clone(),
-            obtained_at: Instant::now(),
-        });
-        Ok(token)
+    /// Return the cached token if it is still fresh.
+    async fn cached_stok(&self) -> Option<String> {
+        self.stok
+            .read()
+            .await
+            .as_ref()
+            .filter(|tok| tok.is_valid())
+            .map(|tok| tok.token.clone())
     }
 
-    /// Invalidate the cached token (e.g., after a 401 or error response).
-    async fn invalidate_stok(&self) {
+    /// Get a valid stok token, logging in if necessary.
+    ///
+    /// Concurrent callers that find no valid token wait for a single login
+    /// instead of each logging in. After a failed login, further attempts are
+    /// refused until the backoff delay has passed.
+    async fn get_stok(&self) -> Result<String> {
+        if let Some(token) = self.cached_stok().await {
+            return Ok(token);
+        }
+
+        let mut backoff = self.login_gate.lock().await;
+
+        // Another caller may have logged in while we waited for the gate.
+        if let Some(token) = self.cached_stok().await {
+            return Ok(token);
+        }
+
+        if let Some(wait) = backoff.remaining() {
+            anyhow::bail!(
+                "MiWiFi login suspended for {}s after {} failed attempt(s)",
+                wait.as_secs(),
+                backoff.failures
+            );
+        }
+
+        match self.login().await {
+            Ok(token) => {
+                backoff.reset();
+                *self.stok.write().await = Some(StokToken {
+                    token: token.clone(),
+                    obtained_at: Instant::now(),
+                });
+                Ok(token)
+            }
+            Err(e) => {
+                backoff.record_failure();
+                Err(e)
+            }
+        }
+    }
+
+    /// Invalidate the cached token after the router rejected it.
+    ///
+    /// Only clears the cache if it still holds the rejected token, so a token
+    /// refreshed meanwhile by a concurrent caller is not thrown away.
+    async fn invalidate_stok(&self, rejected: &str) {
         let mut cached = self.stok.write().await;
-        *cached = None;
+        if cached.as_ref().is_some_and(|tok| tok.token == rejected) {
+            *cached = None;
+        }
+    }
+
+    /// Make the cached token look older than it is (tests only).
+    #[cfg(test)]
+    pub(crate) async fn age_stok_for_test(&self, by: Duration) {
+        if let Some(tok) = self.stok.write().await.as_mut() {
+            tok.obtained_at = tok
+                .obtained_at
+                .checked_sub(by)
+                .expect("test clock underflow");
+        }
     }
 
     // ── HTTP helpers ────────────────────────────────────────
@@ -296,7 +392,11 @@ impl XiaomiClient {
     }
 
     /// GET an authenticated endpoint (uses stok token in URL path).
-    /// Retries once on auth failure by refreshing the token.
+    ///
+    /// Retries once with a fresh token when the router rejects the current one
+    /// (HTTP 401/403 or body `code` 401). Other error codes are returned to the
+    /// caller as-is: they do not indicate an expired session, so logging in
+    /// again would not help.
     async fn get_authed(&self, api_path: &str) -> Result<Value> {
         for attempt in 0..2 {
             let stok = self.get_stok().await?;
@@ -333,7 +433,7 @@ impl XiaomiClient {
             {
                 if attempt == 0 {
                     tracing::warn!("MiWiFi auth failed, refreshing token");
-                    self.invalidate_stok().await;
+                    self.invalidate_stok(&stok).await;
                     continue;
                 }
                 anyhow::bail!("MiWiFi API returned HTTP {status} after token refresh");
@@ -346,12 +446,15 @@ impl XiaomiClient {
             let parsed: Value =
                 serde_json::from_str(&body).context("failed to parse MiWiFi API response JSON")?;
 
-            // Check for error code in response body.
+            // An expired or unknown stok is reported in the body with HTTP 200.
             let code = parsed.get("code").and_then(|v| v.as_i64()).unwrap_or(0);
-            if code != 0 && attempt == 0 {
-                tracing::warn!(code, "MiWiFi API error code, refreshing token");
-                self.invalidate_stok().await;
-                continue;
+            if code == AUTH_ERROR_CODE {
+                if attempt == 0 {
+                    tracing::warn!(code, "MiWiFi token rejected, refreshing token");
+                    self.invalidate_stok(&stok).await;
+                    continue;
+                }
+                anyhow::bail!("MiWiFi API rejected the token after refresh (code {code})");
             }
 
             return Ok(parsed);
@@ -458,6 +561,56 @@ impl XiaomiClient {
     }
 }
 
+/// Registry key: router IP and optional proxy host.
+type RouterKey = (String, Option<String>);
+
+/// Long-lived [`XiaomiClient`] instances keyed by router address.
+///
+/// Every caller (scanner, device resolver, API handlers) must get its client
+/// here instead of constructing one, otherwise the stok cache is lost and each
+/// call performs a fresh login on the router.
+pub struct XiaomiClients {
+    http: reqwest::Client,
+    /// Client per router, with the password it was built for.
+    clients: std::sync::Mutex<HashMap<RouterKey, (String, XiaomiClient)>>,
+}
+
+impl Default for XiaomiClients {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl XiaomiClients {
+    pub fn new() -> Self {
+        Self {
+            http: shared_http_client(),
+            clients: std::sync::Mutex::new(HashMap::new()),
+        }
+    }
+
+    /// Return the shared client for this router, creating it on first use.
+    ///
+    /// A changed password replaces the client (and its cached token).
+    pub fn client_for(
+        &self,
+        router_ip: &str,
+        password: &str,
+        proxy_host: Option<&str>,
+    ) -> XiaomiClient {
+        let key = (router_ip.to_string(), proxy_host.map(str::to_string));
+        let mut clients = self.clients.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some((known_password, client)) = clients.get(&key) {
+            if known_password == password {
+                return client.clone();
+            }
+        }
+        let client = XiaomiClient::new(router_ip, password, self.http.clone(), proxy_host);
+        clients.insert(key, (password.to_string(), client.clone()));
+        client
+    }
+}
+
 /// Extract a JavaScript variable value from HTML source.
 /// Matches patterns like `var key = "abc123"`, `key = "abc123"`, `key: "abc123"`.
 fn extract_js_var(html: &str, var_name: &str) -> Option<String> {
@@ -493,6 +646,162 @@ fn extract_js_var(html: &str, var_name: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::xiaomi::mock::MockMiwifi;
+
+    // ── stok reuse against a mock router ───────────────────────
+
+    #[tokio::test]
+    async fn repeated_calls_reuse_one_login() {
+        let mock = MockMiwifi::start().await;
+        let client = XiaomiClients::new().client_for(&mock.addr, "pw", None);
+
+        for _ in 0..10 {
+            let devices = client.device_list().await.expect("device list");
+            assert_eq!(devices.len(), 2);
+        }
+
+        assert_eq!(mock.logins(), 1, "valid stok must be reused");
+        assert_eq!(mock.authed_calls(), 10);
+    }
+
+    #[tokio::test]
+    async fn expired_stok_triggers_exactly_one_relogin() {
+        let mock = MockMiwifi::start().await;
+        let client = XiaomiClients::new().client_for(&mock.addr, "pw", None);
+
+        client.device_list().await.expect("first call");
+        client.age_stok_for_test(STOK_TTL).await;
+        for _ in 0..5 {
+            client.device_list().await.expect("call after expiry");
+        }
+
+        assert_eq!(mock.logins(), 2);
+    }
+
+    #[tokio::test]
+    async fn rejected_token_triggers_exactly_one_relogin() {
+        let mock = MockMiwifi::start().await;
+        let client = XiaomiClients::new().client_for(&mock.addr, "pw", None);
+
+        client.device_list().await.expect("first call");
+        mock.revoke_token();
+        for _ in 0..5 {
+            client
+                .device_list()
+                .await
+                .expect("call recovers after revoke");
+        }
+
+        assert_eq!(mock.logins(), 2);
+    }
+
+    #[tokio::test]
+    async fn non_auth_error_code_does_not_relogin() {
+        let mock = MockMiwifi::start().await;
+        let client = XiaomiClients::new().client_for(&mock.addr, "pw", None);
+
+        for _ in 0..5 {
+            // The mock answers code 1523 for this endpoint.
+            let _ = client.new_status().await;
+        }
+
+        assert_eq!(mock.logins(), 1);
+        assert_eq!(mock.authed_calls(), 5, "no retry for a non-auth error");
+    }
+
+    #[tokio::test]
+    async fn concurrent_calls_share_one_login() {
+        let mock = MockMiwifi::start().await;
+        let client = XiaomiClients::new().client_for(&mock.addr, "pw", None);
+
+        let calls = (0..8).map(|_| {
+            let c = client.clone();
+            async move { c.device_list().await }
+        });
+        for result in futures_join_all(calls).await {
+            result.expect("concurrent call");
+        }
+
+        assert_eq!(mock.logins(), 1);
+    }
+
+    #[tokio::test]
+    async fn failed_login_backs_off() {
+        let mock = MockMiwifi::start().await;
+        mock.reject_logins();
+        let client = XiaomiClients::new().client_for(&mock.addr, "wrong", None);
+
+        assert!(client.device_list().await.is_err());
+        let attempts = mock.login_attempts();
+        assert!(attempts > 0);
+
+        for _ in 0..5 {
+            let err = client.device_list().await.expect_err("still failing");
+            assert!(err.to_string().contains("suspended"), "{err}");
+        }
+        assert_eq!(
+            mock.login_attempts(),
+            attempts,
+            "no login attempts during backoff"
+        );
+    }
+
+    #[tokio::test]
+    async fn registry_returns_shared_client_per_router() {
+        let mock = MockMiwifi::start().await;
+        let clients = XiaomiClients::new();
+
+        for _ in 0..5 {
+            clients
+                .client_for(&mock.addr, "pw", None)
+                .device_list()
+                .await
+                .expect("device list");
+        }
+        assert_eq!(mock.logins(), 1);
+
+        // A new password replaces the client, so it logs in again once.
+        for _ in 0..3 {
+            clients
+                .client_for(&mock.addr, "new-pw", None)
+                .device_list()
+                .await
+                .expect("device list");
+        }
+        assert_eq!(mock.logins(), 2);
+    }
+
+    #[test]
+    fn login_backoff_doubles_up_to_cap() {
+        let mut backoff = LoginBackoff::default();
+        let mut delays = Vec::new();
+        for _ in 0..8 {
+            backoff.record_failure();
+            delays.push(backoff.remaining().unwrap().as_secs());
+        }
+        // 60, 120, 240, 480, 960, then capped at 1800.
+        assert!(delays[0] <= 60 && delays[0] >= 59);
+        assert!(delays[1] <= 120 && delays[1] >= 119);
+        assert!(delays.iter().all(|d| *d <= LOGIN_BACKOFF_MAX.as_secs()));
+        assert!(delays[7] >= LOGIN_BACKOFF_MAX.as_secs() - 1);
+        backoff.reset();
+        assert!(backoff.remaining().is_none());
+    }
+
+    /// Run futures concurrently on the current task (avoids a `futures` dep).
+    async fn futures_join_all<F, T>(futs: impl Iterator<Item = F>) -> Vec<T>
+    where
+        F: std::future::Future<Output = T> + Send + 'static,
+        T: Send + 'static,
+    {
+        let handles: Vec<_> = futs.map(tokio::spawn).collect();
+        let mut out = Vec::new();
+        for h in handles {
+            out.push(h.await.expect("task"));
+        }
+        out
+    }
 
     // ── extract_js_var tests ───────────────────────────────────
 

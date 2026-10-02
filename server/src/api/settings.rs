@@ -168,10 +168,14 @@ pub async fn get_settings(
     let webhook_url = webhook::get_webhook_url(&state.db).await;
 
     // Network Scanner settings (fall back to config defaults).
-    let scan_interval_seconds = get_setting(&state, "scan_interval_seconds")
-        .await
-        .and_then(|v| v.parse().ok())
-        .or(Some(state.config.scanner.interval_seconds));
+    // The interval is the one the scanner loop actually uses.
+    let scan_interval_seconds = Some(
+        crate::scanner::effective_scan_interval_secs(
+            &state.db,
+            state.config.scanner.interval_seconds,
+        )
+        .await,
+    );
 
     let scan_subnets = get_setting(&state, "scan_subnets")
         .await
@@ -395,6 +399,12 @@ pub async fn update_settings(
 
     // --- Network Scanner settings ---
     if let Some(interval) = body.scan_interval_seconds {
+        if interval < crate::scanner::MIN_SCAN_INTERVAL_SECS {
+            return Err(AppError::Validation(format!(
+                "scan_interval_seconds must be at least {}",
+                crate::scanner::MIN_SCAN_INTERVAL_SECS
+            )));
+        }
         upsert_setting(&state, "scan_interval_seconds", &interval.to_string()).await?;
         info!(scan_interval_seconds = interval, "Scan interval updated");
     }
@@ -835,4 +845,77 @@ async fn upsert_setting(state: &AppState, key: &str, value: &str) -> Result<(), 
         AppError::Internal(e.to_string())
     })?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::AppConfig;
+    use axum::response::IntoResponse;
+
+    fn ok<T>(result: Result<T, AppError>) -> T {
+        match result {
+            Ok(value) => value,
+            Err(e) => panic!("settings request failed: {:?}", e.into_response().status()),
+        }
+    }
+
+    async fn state_with_toml_interval(secs: u64) -> AppState {
+        let pool = crate::db::init(":memory:").await.expect("DB init failed");
+        let mut config = AppConfig::default();
+        config.scanner.interval_seconds = secs;
+        AppState::new(pool, config)
+    }
+
+    async fn patch_interval(
+        state: &AppState,
+        secs: u64,
+    ) -> Result<Json<SettingsResponse>, AppError> {
+        let body: UpdateSettingsRequest =
+            serde_json::from_value(serde_json::json!({ "scan_interval_seconds": secs })).unwrap();
+        update_settings(State(state.clone()), Json(body)).await
+    }
+
+    #[tokio::test]
+    async fn settings_show_the_interval_the_scanner_uses() {
+        let state = state_with_toml_interval(45).await;
+        let scanner_interval = || async {
+            crate::scanner::effective_scan_interval_secs(
+                &state.db,
+                state.config.scanner.interval_seconds,
+            )
+            .await
+        };
+
+        // Nothing saved yet: TOML value is the default for both.
+        let shown = ok(get_settings(State(state.clone())).await).0;
+        assert_eq!(shown.scan_interval_seconds, Some(45));
+        assert_eq!(scanner_interval().await, 45);
+
+        // Saved through the settings API: the scanner switches to it.
+        let _ = ok(patch_interval(&state, 180).await);
+        let shown = ok(get_settings(State(state.clone())).await).0;
+        assert_eq!(shown.scan_interval_seconds, Some(180));
+        assert_eq!(scanner_interval().await, 180);
+    }
+
+    #[tokio::test]
+    async fn interval_below_minimum_is_rejected_and_clamped() {
+        let state = state_with_toml_interval(60).await;
+
+        let rejected = patch_interval(&state, 5).await;
+        assert!(matches!(rejected, Err(AppError::Validation(_))));
+
+        // A legacy value below the minimum stored before validation existed.
+        ok(upsert_setting(&state, "scan_interval_seconds", "3").await);
+        let shown = ok(get_settings(State(state.clone())).await).0;
+        assert_eq!(
+            shown.scan_interval_seconds,
+            Some(crate::scanner::MIN_SCAN_INTERVAL_SECS)
+        );
+        assert_eq!(
+            crate::scanner::effective_scan_interval_secs(&state.db, 60).await,
+            crate::scanner::MIN_SCAN_INTERVAL_SECS
+        );
+    }
 }

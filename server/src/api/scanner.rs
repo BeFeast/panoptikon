@@ -21,13 +21,18 @@ pub async fn trigger(State(state): State<AppState>) -> Result<Json<ScanSummary>,
 
     tracing::info!(count = discovered.len(), "Manual network scan completed");
 
-    let summary =
-        crate::scanner::process_scan_results(&state.db, &discovered, grace, &state.ws_hub)
-            .await
-            .map_err(|e| {
-                tracing::error!("Failed to process manual scan results: {e}");
-                AppError::Internal(format!("Failed to process results: {e}"))
-            })?;
+    let summary = crate::scanner::process_scan_results(
+        &state.db,
+        &discovered,
+        grace,
+        &state.ws_hub,
+        &state.scan_ctx,
+    )
+    .await
+    .map_err(|e| {
+        tracing::error!("Failed to process manual scan results: {e}");
+        AppError::Internal(format!("Failed to process results: {e}"))
+    })?;
 
     tracing::info!(
         new = summary.new_devices,
