@@ -11,7 +11,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN bun run build
 
 # ── Stage 2: Build Rust server binary ─────────────────────────────────────────
-FROM rust:1.83-slim AS rust-builder
+FROM rust:1.99-slim AS rust-builder
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     pkg-config libssl-dev \
