@@ -120,7 +120,7 @@ jobs:
           export DEBIAN_FRONTEND=noninteractive
           $SUDO apt-get update -qq
           $SUDO apt-get install -y -qq --no-install-recommends \
-            build-essential pkg-config libssl-dev ca-certificates curl jq
+            build-essential pkg-config libssl-dev ca-certificates curl jq iproute2
 
       # Plain rustup instead of dtolnay/rust-toolchain: no dependency on a
       # GitHub-hosted action working here, and the toolchain download from
@@ -247,6 +247,11 @@ jobs:
         run: |
           set -euo pipefail
           CADDY="$HOME/.cache/panoptikon-ci/caddy/caddy"
+          if ss -ltn '( sport = :80 or sport = :443 or sport = :2019 or sport = :2029 or sport = :8099 )' \
+            | tail -n +2 | grep -q .; then
+            echo 'port 80/443/2019/2029/8099 busy on runner'
+            exit 1
+          fi
           echo "--- caddy version"
           "$CADDY" version | tee /tmp/caddy-version.txt
           grep -q "^v${CADDY_VERSION} " /tmp/caddy-version.txt \
@@ -268,7 +273,11 @@ jobs:
           # executes each step with docker exec, and a background child that
           # keeps the step's stdout/stderr open would hang the step, hence
           # nohup + redirecting every fd. Nothing kills it when the shell exits.
-          echo '{"admin":{"listen":"127.0.0.1:2019"}}' > /tmp/caddy-test.json
+          echo '{"admin":{"listen":"127.0.0.1:2019"},"apps":{"http":{"servers":{"legacy":{"listen":[":8099"],"automatic_https":{"disable":true},"routes":[{"handle":[{"handler":"static_response","body":"legacy"}]}]}}}}}' > /tmp/caddy-test.json
+          # The Cloudflare module validates token syntax while provisioning the
+          # JSON config. This is a syntactically valid non-secret dummy; no ACME
+          # endpoint in the tests is reachable.
+          export CLOUDFLARE_API_TOKEN=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
           nohup "$CADDY" run --config /tmp/caddy-test.json \
             > /tmp/caddy.log 2>&1 < /dev/null &
           for i in $(seq 1 30); do

@@ -110,10 +110,18 @@ pub async fn add_service(
     // ── Step 1: Create Caddy Proxy Host ──
     if has_caddy {
         let result = create_caddy_proxy_step(&state, &body).await;
-        if !result.success {
+        let created = result.success;
+        if !created {
             all_ok = false;
         }
         steps.push(result);
+        if created {
+            let sync_result = caddy_sync_step(&state).await;
+            if !sync_result.success {
+                all_ok = false;
+            }
+            steps.push(sync_result);
+        }
     }
 
     // ── Step 2: Create MikroTik Port-Forward (dst-nat) Rule ──
@@ -163,7 +171,8 @@ pub async fn add_service(
     }))
 }
 
-/// Create a Caddy proxy host in SQLite, then sync to Caddy.
+/// Create a Caddy proxy host in SQLite. The caller records sync as a separate
+/// wizard step so a failed network push never hides the successful DB write.
 async fn create_caddy_proxy_step(state: &AppState, body: &AddServiceRequest) -> StepResult {
     let domain = match &body.domain {
         Some(d) if !d.is_empty() => d.clone(),
@@ -194,9 +203,6 @@ async fn create_caddy_proxy_step(state: &AppState, body: &AddServiceRequest) -> 
 
     match insert_result {
         Ok(_) => {
-            // Sync to Caddy after insert
-            super::caddy::sync_to_caddy(state).await;
-
             info!(
                 "Caddy proxy host created: {} → {}:{}",
                 domain, body.internal_ip, body.internal_port
@@ -390,10 +396,18 @@ pub async fn remove_service(
                 resource_id: Some(resource.resource_id.clone()),
             },
         };
+        let removed_caddy = resource.resource_type == "caddy_proxy_host" && result.success;
         if !result.success {
             all_ok = false;
         }
         steps.push(result);
+        if removed_caddy {
+            let sync_result = caddy_sync_step(&state).await;
+            if !sync_result.success {
+                all_ok = false;
+            }
+            steps.push(sync_result);
+        }
     }
 
     // Audit log
@@ -442,7 +456,6 @@ async fn remove_caddy_proxy_host(state: &AppState, resource: &RemoveResource) ->
 
     match affected {
         Ok(result) if result.rows_affected() > 0 => {
-            super::caddy::sync_to_caddy(state).await;
             info!("Caddy proxy host {} deleted", resource.resource_id);
             StepResult {
                 step: "remove_caddy_proxy_host".into(),
@@ -462,6 +475,27 @@ async fn remove_caddy_proxy_host(state: &AppState, resource: &RemoveResource) ->
                 &format!("Failed to delete proxy host {}: {e}", resource.resource_id),
             )
         }
+    }
+}
+
+async fn caddy_sync_step(state: &AppState) -> StepResult {
+    match super::caddy::sync_to_caddy(state, super::caddy::SyncOptions::default()).await {
+        Ok(report) => StepResult {
+            step: "caddy_sync".into(),
+            success: true,
+            message: if report.skipped {
+                "Caddy sync skipped — managed mode is off".into()
+            } else {
+                format!("Caddy config synced ({} routes)", report.route_count)
+            },
+            resource_id: None,
+        },
+        Err(error_value) => StepResult {
+            step: "caddy_sync".into(),
+            success: false,
+            message: error_value.to_string(),
+            resource_id: None,
+        },
     }
 }
 

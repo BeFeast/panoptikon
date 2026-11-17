@@ -11,3 +11,8 @@ offline_grace_seconds = 300  # 5 min before marking offline
 [auth]
 # Password is set on first run via the web UI setup wizard
 # session_expiry_seconds = 86400  # 24 hours (default)
+
+# Caddy ownership is configured in Settings > Caddy and is deliberately
+# unmanaged by default. The compose demo remains Caddyfile-driven; enable
+# managed mode only for a dedicated LAN Caddy after completing the bootstrap
+# and recovery procedure in docs/caddy-production.md.

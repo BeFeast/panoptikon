@@ -80,6 +80,8 @@ pub struct AppState {
     pub mikrotik_cache: Arc<crate::mikrotik::client::MikrotikCache>,
     /// Shared reqwest::Client for Caddy Admin API.
     pub caddy_http: reqwest::Client,
+    /// Last attempted managed Caddy sync, shared by mutations and status.
+    pub caddy_sync: Arc<tokio::sync::RwLock<caddy::CaddySyncState>>,
     /// Shared reqwest::Client for Xiaomi MiWiFi API.
     pub xiaomi_http: reqwest::Client,
     /// Shared reqwest::Client for Xiaomi Mesh test-connection.
@@ -103,6 +105,7 @@ impl AppState {
                 .timeout(std::time::Duration::from_secs(10))
                 .build()
                 .expect("caddy HTTP client"),
+            caddy_sync: Arc::new(tokio::sync::RwLock::new(caddy::CaddySyncState::default())),
             xiaomi_http: crate::xiaomi::client::shared_http_client(),
             xiaomi_mesh_http: reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(10))
@@ -278,6 +281,7 @@ pub fn router(state: AppState) -> Router {
         .route("/npm/access-lists/{id}", delete(npm::delete_access_list))
         // Caddy Reverse Proxy
         .route("/caddy/status", get(caddy::status))
+        .route("/caddy/config", get(caddy::config_preview))
         .route("/caddy/proxy-hosts", get(caddy::list))
         .route("/caddy/proxy-hosts", post(caddy::create))
         .route("/caddy/proxy-hosts/{id}", put(caddy::update))

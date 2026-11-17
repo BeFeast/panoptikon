@@ -67,7 +67,11 @@ Data is persisted in a Docker volume mounted at `/data` (SQLite database).
 
 ### Caddy
 
-Automatically proxies HTTPS traffic to Panoptikon. The admin API is exposed on port 2019 so Panoptikon can manage Caddy configuration at runtime.
+Automatically proxies HTTPS traffic to Panoptikon. The Compose stack is a
+Caddyfile-driven demo and keeps Panoptikon's `caddy_managed` setting off;
+proxy-host management is therefore not available in this stack. Do not enable
+managed mode against this shared demo Caddy, because managed mode intentionally
+owns and atomically replaces the complete JSON configuration.
 
 **Self-signed certificate (default):** The Caddyfile uses `:443`, which serves a self-signed certificate suitable for LAN access.
 
@@ -84,6 +88,11 @@ Then restart Caddy:
 ```bash
 docker compose restart caddy
 ```
+
+For a dedicated LAN Caddy with Cloudflare DNS-01 and an authenticated TLS admin
+gate, follow [Caddy production deployment](./caddy-production.md). That profile
+requires Caddy 2.10 or newer with `dns.providers.cloudflare`; the pinned
+production build is 2.11.4.
 
 ### Unbound
 

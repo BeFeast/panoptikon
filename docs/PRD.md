@@ -261,11 +261,15 @@ unprivileged control plane and privileged packet-path executor into one process.
 - **Note:** NPM is retained for backward compatibility. New deployments should use Caddy (F15b).
 
 #### F15b: Caddy Proxy Manager ✅
-- Full integration with Caddy Admin API
+- Atomic ownership of a dedicated Caddy instance through the full-config
+  `POST /load` API; managed mode is explicitly opt-in
 - Proxy host management (create, update, delete)
-- Automatic HTTPS via Caddy's built-in ACME
-- Live configuration reload without downtime
-- Part of the embedded Docker Compose stack (replaces NPM as the primary reverse proxy)
+- Cloudflare DNS-01 certificate automation for TLS-enabled public hosts, with
+  plain HTTP isolation for LAN/fake-TLD hosts
+- Authenticated, source-allow-listed TLS admin gate with confirmed gate changes,
+  post-load reachability probes, and documented loopback recovery
+- Live atomic configuration reload without downtime; the embedded Docker Compose
+  demo remains Caddyfile-driven and does not expose proxy-host management
 
 #### F15c: Unbound DNS Manager ✅
 - Local DNS record management (A, AAAA, CNAME, PTR)

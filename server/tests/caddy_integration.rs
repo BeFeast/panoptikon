@@ -1,4 +1,4 @@
-//! Caddy integration tests (C-01 .. C-24).
+//! Caddy integration tests (C-01 .. C-38).
 //!
 //! These tests spin up a Panoptikon server *and* require a real Caddy instance
 //! with its admin API accessible at `http://localhost:2019`.
@@ -17,36 +17,42 @@
 //! Run with:  `cargo test --test caddy_integration`
 
 use std::net::SocketAddr;
+use std::time::Duration;
 
 use panoptikon_server::{api, config, db};
 use reqwest::StatusCode;
 use serde_json::Value;
 
-const CADDY_ADMIN_URL: &str = "http://localhost:2019";
+fn caddy_admin_url() -> String {
+    std::env::var("PANOPTIKON_TEST_CADDY_ADMIN_URL")
+        .unwrap_or_else(|_| "http://localhost:2019".to_string())
+}
+
+fn caddy_gate_url() -> String {
+    std::env::var("PANOPTIKON_TEST_CADDY_GATE_URL")
+        .unwrap_or_else(|_| "http://localhost:2029".to_string())
+}
 
 // ─── Helpers ────────────────────────────────────────────────
 
 /// Spawn a real axum server on a random port, pre-configured with
 /// `caddy_admin_url` pointing at the Docker Caddy container.
 async fn spawn_with_caddy() -> (reqwest::Client, String) {
-    let app_config = config::AppConfig::default();
+    let pool = db::init(":memory:").await.expect("in-memory DB");
+    seed_managed_settings(&pool).await;
+    let server = spawn_with_pool(pool).await;
+    reset_caddy().await;
+    server
+}
 
+async fn spawn_with_pool(pool: sqlx::SqlitePool) -> (reqwest::Client, String) {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
         .await
         .expect("bind random port");
     let addr = listener.local_addr().unwrap();
     let base_url = format!("http://{addr}");
 
-    let pool = db::init(":memory:").await.expect("in-memory DB");
-
-    // Pre-seed the caddy_admin_url setting so the server talks to our Docker Caddy.
-    sqlx::query("INSERT INTO settings (key, value) VALUES ('caddy_admin_url', ?)")
-        .bind(CADDY_ADMIN_URL)
-        .execute(&pool)
-        .await
-        .expect("seed caddy_admin_url");
-
-    let state = api::AppState::new(pool, app_config);
+    let state = api::AppState::new(pool, config::AppConfig::default());
     let app = api::router(state);
 
     tokio::spawn(async move {
@@ -73,27 +79,87 @@ async fn spawn_with_caddy() -> (reqwest::Client, String) {
         .expect("setup failed");
     assert_eq!(resp.status(), StatusCode::OK, "setup should succeed");
 
-    // Reset Caddy config to a clean state before each test group.
-    reset_caddy().await;
-
     (client, base_url)
 }
 
-/// Reset the Caddy config to a blank state (no routes).
+async fn seed_setting(pool: &sqlx::SqlitePool, key: &str, value: &str) {
+    sqlx::query(
+        "INSERT INTO settings (key, value) VALUES (?, ?) \
+         ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+    )
+    .bind(key)
+    .bind(value)
+    .execute(pool)
+    .await
+    .unwrap();
+}
+
+async fn seed_managed_settings(pool: &sqlx::SqlitePool) {
+    let password_hash = bcrypt::hash("ci-secret", 4).unwrap();
+    seed_setting(pool, "caddy_admin_url", &caddy_admin_url()).await;
+    for (key, value) in [
+        ("caddy_managed", "true"),
+        ("caddy_admin_user", "panoptikon-ci"),
+        ("caddy_admin_password", "ci-secret"),
+        ("caddy_admin_password_hash", &password_hash),
+        ("caddy_admin_listen", "127.0.0.1:2019"),
+        ("caddy_lan_ip", "127.0.0.1"),
+        ("caddy_admin_gate_port", "2029"),
+        ("caddy_admin_allowed_ranges", "127.0.0.1/32"),
+        ("caddy_acme_email", "ci@example.test"),
+        ("caddy_acme_ca", "https://127.0.0.1:9/directory"),
+        ("caddy_dns_resolvers", "127.0.0.1:53"),
+    ] {
+        seed_setting(pool, key, value).await;
+    }
+}
+
+/// Reset Caddy through its raw loopback admin listener.
 async fn reset_caddy() {
     let http = reqwest::Client::new();
-    // DELETE the whole config and re-seed with just the admin listener.
-    let _ = http
-        .delete(format!("{CADDY_ADMIN_URL}/config/apps"))
+    let admin_url = caddy_admin_url();
+    let parsed = reqwest::Url::parse(&admin_url).unwrap();
+    let authority = format!(
+        "{}:{}",
+        parsed.host_str().unwrap(),
+        parsed.port_or_known_default().unwrap()
+    );
+    let seed = serde_json::json!({
+        "admin": {
+            "listen": "127.0.0.1:2019",
+            "origins": ["127.0.0.1:2019", "localhost:2019", "[::1]:2019", authority]
+        },
+        "apps": {
+            "http": {
+                "servers": {
+                    "legacy": {
+                        "listen": [":8099"],
+                        "automatic_https": {"disable": true},
+                        "routes": [{"handle": [{"handler": "static_response", "body": "legacy"}]}]
+                    }
+                }
+            }
+        }
+    });
+    let response = http
+        .post(format!("{admin_url}/load"))
+        // Local isolated-container runs may publish the loopback admin on a
+        // different host port. Recovery deliberately uses the raw listener's
+        // allowed Host value, exactly like an on-host curl.
+        .header("Host", "127.0.0.1:2019")
+        .header("Content-Type", "application/json")
+        .json(&seed)
         .send()
-        .await;
+        .await
+        .expect("reset Caddy");
+    assert!(response.status().is_success(), "reset Caddy: {response:?}");
 }
 
 /// Helper: read the current Caddy HTTP config from the admin API.
 async fn caddy_http_config() -> Option<Value> {
     let http = reqwest::Client::new();
     let resp = http
-        .get(format!("{CADDY_ADMIN_URL}/config/apps/http"))
+        .get(format!("{}/config/apps/http", caddy_admin_url()))
         .send()
         .await
         .ok()?;
@@ -104,13 +170,50 @@ async fn caddy_http_config() -> Option<Value> {
     }
 }
 
+async fn caddy_full_config() -> Value {
+    reqwest::Client::new()
+        .get(format!("{}/config/", caddy_admin_url()))
+        .send()
+        .await
+        .expect("read full Caddy config")
+        .error_for_status()
+        .expect("Caddy full config status")
+        .json()
+        .await
+        .expect("Caddy full config JSON")
+}
+
+async fn create_proxy(
+    client: &reqwest::Client,
+    base_url: &str,
+    domain: &str,
+    tls_enabled: bool,
+) -> (StatusCode, Value) {
+    let response = client
+        .post(format!("{base_url}/api/v1/caddy/proxy-hosts"))
+        .json(&serde_json::json!({
+            "domain": domain,
+            "forward_host": "10.0.0.10",
+            "forward_port": 8080,
+            "forward_scheme": "http",
+            "tls_enabled": tls_enabled
+        }))
+        .send()
+        .await
+        .unwrap();
+    let status = response.status();
+    let body = response.json().await.unwrap();
+    (status, body)
+}
+
 /// Check that `caddy_admin_url` is reachable — skip tests if Caddy isn't running.
 async fn require_caddy() {
     let http = reqwest::Client::new();
-    match http.get(format!("{CADDY_ADMIN_URL}/config/")).send().await {
+    let admin_url = caddy_admin_url();
+    match http.get(format!("{admin_url}/config/")).send().await {
         Ok(resp) if resp.status().is_success() => {}
         _ => panic!(
-            "Caddy admin API not reachable at {CADDY_ADMIN_URL}. \
+            "Caddy admin API not reachable at {admin_url}. \
              Start with: docker run -d --name caddy-test -p 2019:2019 caddy:2-alpine"
         ),
     }
@@ -274,7 +377,7 @@ async fn c11_create_proxy_host_syncs_to_caddy() {
     let cfg = caddy_http_config()
         .await
         .expect("Caddy config should exist");
-    let routes = &cfg["servers"]["proxy"]["routes"];
+    let routes = &cfg["servers"]["http"]["routes"];
     assert!(routes.is_array(), "C-11: Caddy should have routes");
     let routes_arr = routes.as_array().unwrap();
     assert_eq!(routes_arr.len(), 1, "C-11: exactly one route");
@@ -338,7 +441,7 @@ async fn c12_update_proxy_host_resyncs_caddy() {
 
     // Verify Caddy config was resynced.
     let cfg = caddy_http_config().await.expect("Caddy config");
-    let routes = cfg["servers"]["proxy"]["routes"].as_array().unwrap();
+    let routes = cfg["servers"]["http"]["routes"].as_array().unwrap();
     assert_eq!(routes.len(), 1, "C-12: still one route");
     assert_eq!(
         routes[0]["match"][0]["host"][0], "new.home.lan",
@@ -375,7 +478,7 @@ async fn c13_delete_proxy_host_removes_from_caddy() {
     // Verify Caddy has the route.
     let cfg = caddy_http_config().await.expect("Caddy config");
     assert!(
-        cfg["servers"]["proxy"]["routes"].as_array().unwrap().len() == 1,
+        cfg["servers"]["http"]["routes"].as_array().unwrap().len() == 1,
         "C-13: Caddy should have one route before delete"
     );
 
@@ -395,7 +498,7 @@ async fn c13_delete_proxy_host_removes_from_caddy() {
     let cfg = caddy_http_config()
         .await
         .expect("Caddy config after delete");
-    let routes = cfg["servers"]["proxy"]["routes"].as_array().unwrap();
+    let routes = cfg["servers"]["http"]["routes"].as_array().unwrap();
     assert!(
         routes.is_empty(),
         "C-13: Caddy should have zero routes after delete"
@@ -427,7 +530,7 @@ async fn c14_toggle_proxy_host_reflects_in_caddy() {
     // Caddy should have one route.
     let cfg = caddy_http_config().await.expect("Caddy config");
     assert_eq!(
-        cfg["servers"]["proxy"]["routes"].as_array().unwrap().len(),
+        cfg["servers"]["http"]["routes"].as_array().unwrap().len(),
         1,
         "C-14: one route while enabled"
     );
@@ -449,7 +552,7 @@ async fn c14_toggle_proxy_host_reflects_in_caddy() {
     let cfg = caddy_http_config()
         .await
         .expect("Caddy config after disable");
-    let routes = cfg["servers"]["proxy"]["routes"].as_array().unwrap();
+    let routes = cfg["servers"]["http"]["routes"].as_array().unwrap();
     assert!(
         routes.is_empty(),
         "C-14: Caddy should have zero routes when host is disabled"
@@ -471,7 +574,7 @@ async fn c14_toggle_proxy_host_reflects_in_caddy() {
         .await
         .expect("Caddy config after re-enable");
     assert_eq!(
-        cfg["servers"]["proxy"]["routes"].as_array().unwrap().len(),
+        cfg["servers"]["http"]["routes"].as_array().unwrap().len(),
         1,
         "C-14: route should reappear after re-enable"
     );
@@ -501,15 +604,12 @@ async fn c20_force_sync_pushes_state() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::CREATED);
 
-    // Reset Caddy to blank — simulate config drift.
+    // Reset Caddy to the legacy seed — simulate config drift.
     reset_caddy().await;
 
-    // Verify Caddy has no routes after reset.
-    let cfg = caddy_http_config().await;
-    assert!(
-        cfg.is_none() || cfg.as_ref().unwrap().get("servers").is_none(),
-        "C-20: Caddy should have no HTTP config after reset"
-    );
+    // Verify the managed route is gone after reset.
+    let cfg = caddy_http_config().await.expect("legacy HTTP config");
+    assert!(cfg["servers"].get("http").is_none());
 
     // Force sync.
     let resp = client
@@ -517,15 +617,13 @@ async fn c20_force_sync_pushes_state() {
         .send()
         .await
         .unwrap();
-    assert_eq!(
-        resp.status(),
-        StatusCode::NO_CONTENT,
-        "C-20: sync should return 204"
-    );
+    assert_eq!(resp.status(), StatusCode::OK, "C-20: sync should return 200");
+    let sync_result = resp.json::<Value>().await.unwrap();
+    assert_eq!(sync_result["ok"], true, "C-20: {sync_result}");
 
     // Caddy should now have the route restored.
     let cfg = caddy_http_config().await.expect("Caddy config after sync");
-    let routes = cfg["servers"]["proxy"]["routes"].as_array().unwrap();
+    let routes = cfg["servers"]["http"]["routes"].as_array().unwrap();
     assert_eq!(routes.len(), 1, "C-20: one route after force sync");
     assert_eq!(
         routes[0]["match"][0]["host"][0], "sync.home.lan",
@@ -563,7 +661,7 @@ async fn c21_tls_enabled_proxy_host() {
     // When tls_enabled is true and the domain is in a host matcher,
     // Caddy's automatic HTTPS will attempt cert provisioning.
     let cfg = caddy_http_config().await.expect("Caddy config");
-    let routes = cfg["servers"]["proxy"]["routes"].as_array().unwrap();
+    let routes = cfg["servers"]["https"]["routes"].as_array().unwrap();
     assert_eq!(routes.len(), 1, "C-21: one route");
     assert_eq!(
         routes[0]["match"][0]["host"][0], "secure.home.lan",
@@ -571,7 +669,7 @@ async fn c21_tls_enabled_proxy_host() {
     );
 
     // The server listens on :443 which enables auto-HTTPS for matched domains.
-    let listen = cfg["servers"]["proxy"]["listen"].as_array().unwrap();
+    let listen = cfg["servers"]["https"]["listen"].as_array().unwrap();
     assert!(
         listen.iter().any(|l| l.as_str() == Some(":443")),
         "C-21: server should listen on :443 for TLS"
@@ -606,7 +704,7 @@ async fn c22_http_only_proxy_host() {
 
     // Route should exist in Caddy.
     let cfg = caddy_http_config().await.expect("Caddy config");
-    let routes = cfg["servers"]["proxy"]["routes"].as_array().unwrap();
+    let routes = cfg["servers"]["http"]["routes"].as_array().unwrap();
     assert_eq!(routes.len(), 1, "C-22: one route");
     assert_eq!(
         routes[0]["match"][0]["host"][0], "plain.home.lan",
@@ -640,7 +738,7 @@ async fn c23_https_upstream() {
 
     // Verify Caddy config has the transport TLS settings.
     let cfg = caddy_http_config().await.expect("Caddy config");
-    let routes = cfg["servers"]["proxy"]["routes"].as_array().unwrap();
+    let routes = cfg["servers"]["http"]["routes"].as_array().unwrap();
     assert_eq!(routes.len(), 1, "C-23: one route");
 
     let handler = &routes[0]["handle"][0];
@@ -673,12 +771,7 @@ async fn c24_startup_sync() {
     let app_config = config::AppConfig::default();
     let pool = db::init(":memory:").await.unwrap();
 
-    // Seed caddy_admin_url.
-    sqlx::query("INSERT INTO settings (key, value) VALUES ('caddy_admin_url', ?)")
-        .bind(CADDY_ADMIN_URL)
-        .execute(&pool)
-        .await
-        .unwrap();
+    seed_managed_settings(&pool).await;
 
     // Also seed a setup_complete + password so the server is usable.
     sqlx::query("INSERT INTO settings (key, value) VALUES ('setup_complete', 'true')")
@@ -706,7 +799,7 @@ async fn c24_startup_sync() {
     let cfg = caddy_http_config()
         .await
         .expect("Caddy config after startup sync");
-    let routes = cfg["servers"]["proxy"]["routes"].as_array().unwrap();
+    let routes = cfg["servers"]["http"]["routes"].as_array().unwrap();
     assert_eq!(routes.len(), 1, "C-24: one route after startup sync");
     assert_eq!(
         routes[0]["match"][0]["host"][0], "startup.home.lan",
@@ -715,5 +808,651 @@ async fn c24_startup_sync() {
     assert_eq!(
         routes[0]["handle"][0]["upstreams"][0]["dial"], "10.0.0.99:80",
         "C-24: upstream should match DB"
+    );
+}
+
+/// C-25: `/load` replaces the complete configuration rather than merging the
+/// managed HTTP subtree into the legacy seed.
+#[tokio::test]
+async fn c25_load_replaces_full_config() {
+    require_caddy().await;
+    let (client, base_url) = spawn_with_caddy().await;
+    assert!(caddy_full_config().await["apps"]["http"]["servers"]["legacy"].is_object());
+
+    let (status, _) = create_proxy(&client, &base_url, "full-load.home.lan", false).await;
+    assert_eq!(status, StatusCode::CREATED);
+    let config = caddy_full_config().await;
+    assert_eq!(config["admin"]["listen"], "127.0.0.1:2019");
+    let parsed_admin = reqwest::Url::parse(&caddy_admin_url()).unwrap();
+    let mut expected_origins = vec![
+        "127.0.0.1:2019".to_string(),
+        "127.0.0.1:2029".to_string(),
+        "[::1]:2019".to_string(),
+        "localhost:2019".to_string(),
+        format!(
+            "{}:{}",
+            parsed_admin.host_str().unwrap(),
+            parsed_admin.port_or_known_default().unwrap()
+        ),
+    ];
+    expected_origins.sort();
+    expected_origins.dedup();
+    assert_eq!(
+        config["admin"]["origins"],
+        serde_json::json!(expected_origins)
+    );
+    let servers = &config["apps"]["http"]["servers"];
+    assert!(servers["http"].is_object());
+    assert!(servers["https"].is_object());
+    assert!(servers["admin_gate"].is_object());
+    assert!(servers.get("legacy").is_none());
+}
+
+/// C-26: Caddy rejects an invalid replacement atomically and keeps the old
+/// route and raw admin listener alive.
+#[tokio::test]
+async fn c26_rejected_load_keeps_previous_config() {
+    require_caddy().await;
+    let (client, base_url) = spawn_with_caddy().await;
+    create_proxy(&client, &base_url, "kept.home.lan", false).await;
+    let before = caddy_full_config().await;
+
+    let response = client
+        .patch(format!("{base_url}/api/v1/settings"))
+        .json(&serde_json::json!({"caddy_admin_listen": "not::an::address"}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let response = client
+        .post(format!("{base_url}/api/v1/caddy/sync"))
+        .json(&serde_json::json!({"confirm_gate_change": true}))
+        .send()
+        .await
+        .unwrap();
+    let result: Value = response.json().await.unwrap();
+    assert_eq!(result["ok"], false);
+    assert!(result["error"]
+        .as_str()
+        .unwrap()
+        .to_ascii_lowercase()
+        .contains("admin"));
+
+    let after = caddy_full_config().await;
+    assert_eq!(before["apps"]["http"], after["apps"]["http"]);
+    let status: Value = client
+        .get(format!("{base_url}/api/v1/caddy/status"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(status["last_sync_ok"], false);
+    assert!(status["last_sync_at"].is_string());
+    assert!(status["last_sync_error"].as_str().is_some_and(|v| !v.is_empty()));
+}
+
+/// C-27: the generated gate authenticates and proxies back to the raw admin.
+#[tokio::test]
+async fn c27_admin_gate_survives_push() {
+    require_caddy().await;
+    let (client, base_url) = spawn_with_caddy().await;
+    create_proxy(&client, &base_url, "gate.home.lan", false).await;
+
+    let authenticated = reqwest::Client::new()
+        .get(format!("{}/config/", caddy_gate_url()))
+        .basic_auth("panoptikon-ci", Some("ci-secret"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(authenticated.status(), StatusCode::OK);
+    let anonymous = reqwest::Client::new()
+        .get(format!("{}/config/", caddy_gate_url()))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(anonymous.status(), StatusCode::UNAUTHORIZED);
+
+    let config = caddy_full_config().await;
+    let route = &config["apps"]["http"]["servers"]["admin_gate"]["routes"][0];
+    assert_eq!(
+        route["match"][0]["remote_ip"]["ranges"],
+        serde_json::json!(["127.0.0.1/32"])
+    );
+    assert_eq!(
+        route["handle"][0]["providers"]["http_basic"]["hash"]["algorithm"],
+        "bcrypt"
+    );
+    assert_eq!(
+        route["handle"][1]["headers"]["request"]["set"]["Host"],
+        serde_json::json!(["127.0.0.1:2019"])
+    );
+}
+
+/// C-28: fake-TLD HTTP hosts never create ACME policy or certificate subjects.
+#[tokio::test]
+async fn c28_http_only_hosts_get_no_tls_policy() {
+    require_caddy().await;
+    let (client, base_url) = spawn_with_caddy().await;
+    create_proxy(&client, &base_url, "plain.ok", false).await;
+    let config = caddy_full_config().await;
+    assert!(config["apps"].get("tls").is_none());
+    let servers = &config["apps"]["http"]["servers"];
+    assert_eq!(servers["http"]["automatic_https"]["disable"], true);
+    assert_eq!(servers["http"]["routes"][0]["match"][0]["host"][0], "plain.ok");
+    assert_eq!(servers["https"]["routes"], serde_json::json!([]));
+}
+
+/// C-29: TLS routes derive reusable wildcard subjects and the exact DNS-01
+/// provider shape. Apex certificates are only requested for explicit apex hosts.
+#[tokio::test]
+async fn c29_tls_hosts_derive_wildcard_policy() {
+    require_caddy().await;
+    let (client, base_url) = spawn_with_caddy().await;
+    create_proxy(&client, &base_url, "git.example.test", true).await;
+    create_proxy(&client, &base_url, "a.b.example.test", true).await;
+    create_proxy(&client, &base_url, "plain.ok", false).await;
+
+    let config = caddy_full_config().await;
+    let subjects = serde_json::json!(["*.b.example.test", "*.example.test"]);
+    assert_eq!(config["apps"]["tls"]["certificates"]["automate"], subjects);
+    assert_eq!(
+        config["apps"]["tls"]["automation"]["policies"][0]["subjects"],
+        subjects
+    );
+    let issuer = &config["apps"]["tls"]["automation"]["policies"][0]["issuers"][0];
+    assert_eq!(
+        issuer["challenges"]["dns"]["provider"],
+        serde_json::json!({
+            "name": "cloudflare",
+            "api_token": "{env.CLOUDFLARE_API_TOKEN}"
+        })
+    );
+    assert_eq!(issuer["ca"], "https://127.0.0.1:9/directory");
+    assert_eq!(issuer["challenges"]["dns"]["propagation_timeout"], -1);
+    assert_eq!(
+        config["apps"]["http"]["servers"]["http"]["routes"][0]["match"][0]["host"][0],
+        "plain.ok"
+    );
+}
+
+/// C-30: unmanaged mode performs no network I/O, including automatic CRUD sync.
+#[tokio::test]
+async fn c30_unmanaged_never_connects() {
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let dead_url = format!("http://{}", listener.local_addr().unwrap());
+    let pool = db::init(":memory:").await.unwrap();
+    seed_setting(&pool, "caddy_admin_url", &dead_url).await;
+    let (client, base_url) = spawn_with_pool(pool).await;
+
+    assert_eq!(
+        create_proxy(&client, &base_url, "unmanaged.home.lan", false)
+            .await
+            .0,
+        StatusCode::CREATED
+    );
+    let sync: Value = client
+        .post(format!("{base_url}/api/v1/caddy/sync"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(sync["skipped"], true);
+    let status: Value = client
+        .get(format!("{base_url}/api/v1/caddy/status"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(status["managed"], false);
+    assert!(status["last_sync_at"].is_null());
+    assert!(tokio::time::timeout(Duration::from_millis(500), listener.accept())
+        .await
+        .is_err());
+}
+
+/// C-31: all admin requests carry the current Basic credentials.
+#[tokio::test]
+async fn c31_basic_auth_on_admin_requests() {
+    require_caddy().await;
+    let (client, base_url) = spawn_with_caddy().await;
+    create_proxy(&client, &base_url, "auth.home.lan", false).await;
+    client
+        .patch(format!("{base_url}/api/v1/settings"))
+        .json(&serde_json::json!({"caddy_admin_url": caddy_gate_url()}))
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap();
+    let ok: Value = client
+        .post(format!("{base_url}/api/v1/caddy/test-connection"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(ok["success"], true);
+
+    // Settings changes do not push, so the gate still holds the old password hash.
+    client
+        .patch(format!("{base_url}/api/v1/settings"))
+        .json(&serde_json::json!({"caddy_admin_password": "wrong"}))
+        .send()
+        .await
+        .unwrap()
+        .error_for_status()
+        .unwrap();
+    let wrong: Value = client
+        .post(format!("{base_url}/api/v1/caddy/test-connection"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(wrong["success"], false);
+    assert!(wrong["message"].as_str().unwrap().contains("401"));
+}
+
+/// C-32: generator validation blocks a managed push and is still enforced by
+/// preview while managed mode is off.
+#[tokio::test]
+async fn c32_missing_gate_settings_refuse_push() {
+    require_caddy().await;
+    reset_caddy().await;
+    let before = caddy_full_config().await;
+    let pool = db::init(":memory:").await.unwrap();
+    seed_managed_settings(&pool).await;
+    sqlx::query("DELETE FROM settings WHERE key = 'caddy_admin_allowed_ranges'")
+        .execute(&pool)
+        .await
+        .unwrap();
+    let (client, base_url) = spawn_with_pool(pool).await;
+    let result: Value = client
+        .post(format!("{base_url}/api/v1/caddy/sync"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(result["ok"], false);
+    assert!(result["error"]
+        .as_str()
+        .unwrap()
+        .contains("caddy_admin_allowed_ranges"));
+    assert_eq!(before, caddy_full_config().await);
+
+    client
+        .patch(format!("{base_url}/api/v1/settings"))
+        .json(&serde_json::json!({"caddy_managed": false}))
+        .send()
+        .await
+        .unwrap();
+    let preview = client
+        .get(format!("{base_url}/api/v1/caddy/config"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(preview.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(preview.text().await.unwrap().contains("caddy_admin_allowed_ranges"));
+}
+
+/// C-33: the startup task honors the managed switch.
+#[tokio::test]
+async fn c33_startup_sync_respects_managed_flag() {
+    require_caddy().await;
+    reset_caddy().await;
+    let unmanaged_pool = db::init(":memory:").await.unwrap();
+    seed_setting(&unmanaged_pool, "caddy_managed", "false").await;
+    sqlx::query(
+        "INSERT INTO caddy_proxy_hosts (id, domain, forward_host, forward_port, forward_scheme, enabled) \
+         VALUES ('off', 'off.home.lan', '10.0.0.1', 80, 'http', 1)",
+    )
+    .execute(&unmanaged_pool)
+    .await
+    .unwrap();
+    api::caddy::start_caddy_sync_task(api::AppState::new(
+        unmanaged_pool,
+        config::AppConfig::default(),
+    ));
+    tokio::time::sleep(Duration::from_secs(7)).await;
+    assert!(caddy_full_config().await["apps"]["http"]["servers"]
+        .get("http")
+        .is_none());
+
+    let managed_pool = db::init(":memory:").await.unwrap();
+    seed_managed_settings(&managed_pool).await;
+    sqlx::query(
+        "INSERT INTO caddy_proxy_hosts (id, domain, forward_host, forward_port, forward_scheme, enabled) \
+         VALUES ('on', 'on.home.lan', '10.0.0.1', 80, 'http', 1)",
+    )
+    .execute(&managed_pool)
+    .await
+    .unwrap();
+    api::caddy::start_caddy_sync_task(api::AppState::new(
+        managed_pool,
+        config::AppConfig::default(),
+    ));
+    tokio::time::sleep(Duration::from_secs(7)).await;
+    assert_eq!(
+        caddy_full_config().await["apps"]["http"]["servers"]["http"]["routes"][0]["match"]
+            [0]["host"][0],
+        "on.home.lan"
+    );
+}
+
+/// C-34: settings round-trip all non-secrets and reject invalid Caddy fields
+/// before writing any part of the PATCH.
+#[tokio::test]
+async fn c34_settings_roundtrip_hides_password() {
+    let pool = db::init(":memory:").await.unwrap();
+    let (client, base_url) = spawn_with_pool(pool).await;
+    let patch = serde_json::json!({
+        "caddy_admin_url": "https://caddy-admin.example.test:2019",
+        "caddy_managed": false,
+        "caddy_admin_user": "roundtrip",
+        "caddy_admin_password": "secret",
+        "caddy_admin_listen": "127.0.0.1:2019",
+        "caddy_lan_ip": "10.0.0.2",
+        "caddy_admin_resolve_ip": "10.0.0.2",
+        "caddy_admin_gate_port": 2019,
+        "caddy_admin_allowed_ranges": "10.0.0.1/32,127.0.0.1/32",
+        "caddy_acme_email": "ci@example.test",
+        "caddy_acme_ca": "https://acme.example.test/directory",
+        "caddy_acme_zones": "example.test",
+        "caddy_dns_provider": "cloudflare",
+        "caddy_dns_token_env": "CF_TEST_TOKEN",
+        "caddy_dns_token_placeholder": "{file./run/secrets/cf_token}",
+        "caddy_dns_resolvers": "1.1.1.1:53,8.8.8.8:53"
+    });
+    let response = client
+        .patch(format!("{base_url}/api/v1/settings"))
+        .json(&patch)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let settings: Value = client
+        .get(format!("{base_url}/api/v1/settings"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    for key in [
+        "caddy_admin_url",
+        "caddy_admin_user",
+        "caddy_admin_listen",
+        "caddy_lan_ip",
+        "caddy_admin_resolve_ip",
+        "caddy_admin_allowed_ranges",
+        "caddy_acme_email",
+        "caddy_acme_ca",
+        "caddy_acme_zones",
+        "caddy_dns_provider",
+        "caddy_dns_token_env",
+        "caddy_dns_token_placeholder",
+        "caddy_dns_resolvers",
+    ] {
+        assert_eq!(settings[key], patch[key], "roundtrip key {key}");
+    }
+    assert_eq!(settings["caddy_admin_password_set"], true);
+    assert!(settings.get("caddy_admin_password").is_none());
+    assert!(settings.get("caddy_admin_password_hash").is_none());
+    assert!(settings.get("caddy_gate_fingerprint").is_none());
+
+    for invalid in [
+        serde_json::json!({"caddy_dns_provider": "route53"}),
+        serde_json::json!({"caddy_dns_token_env": "bad-name"}),
+        serde_json::json!({"caddy_admin_allowed_ranges": "not-a-cidr"}),
+        serde_json::json!({"caddy_lan_ip": "nope"}),
+        serde_json::json!({"caddy_admin_gate_port": 70000}),
+        serde_json::json!({"caddy_dns_token_placeholder": "actual-secret"}),
+    ] {
+        let response = client
+            .patch(format!("{base_url}/api/v1/settings"))
+            .json(&invalid)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        assert_eq!(response.json::<Value>().await.unwrap()["code"], "validation_error");
+    }
+    let response = client
+        .patch(format!("{base_url}/api/v1/settings"))
+        .json(&serde_json::json!({
+            "caddy_admin_user": "must-not-write",
+            "caddy_dns_provider": "route53"
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+    let settings: Value = client
+        .get(format!("{base_url}/api/v1/settings"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(settings["caddy_admin_user"], "roundtrip");
+}
+
+/// C-35: preview and pushed config share the exact generator output and remain
+/// byte-stable between requests.
+#[tokio::test]
+async fn c35_config_preview_matches_pushed() {
+    require_caddy().await;
+    let (client, base_url) = spawn_with_caddy().await;
+    create_proxy(&client, &base_url, "preview.example.test", true).await;
+    let first = client
+        .get(format!("{base_url}/api/v1/caddy/config"))
+        .send()
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
+    let second = client
+        .get(format!("{base_url}/api/v1/caddy/config"))
+        .send()
+        .await
+        .unwrap()
+        .bytes()
+        .await
+        .unwrap();
+    assert_eq!(first, second);
+    assert!(String::from_utf8_lossy(&first).contains("{env.CLOUDFLARE_API_TOKEN}"));
+    let preview: Value = serde_json::from_slice(&first).unwrap();
+    let pushed = caddy_full_config().await;
+    assert_eq!(preview["admin"], pushed["admin"]);
+    assert_eq!(
+        preview["apps"]["http"]["servers"]["admin_gate"],
+        pushed["apps"]["http"]["servers"]["admin_gate"]
+    );
+    let second_sync: Value = client
+        .post(format!("{base_url}/api/v1/caddy/sync"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(second_sync["ok"], true);
+}
+
+/// C-36: automatic and unconfirmed syncs refuse a changed gate fingerprint.
+#[tokio::test]
+async fn c36_gate_change_requires_confirmation() {
+    require_caddy().await;
+    let (client, base_url) = spawn_with_caddy().await;
+    create_proxy(&client, &base_url, "original.home.lan", false).await;
+    client
+        .patch(format!("{base_url}/api/v1/settings"))
+        .json(&serde_json::json!({
+            "caddy_admin_allowed_ranges": "127.0.0.1/32,10.0.0.0/8"
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(
+        create_proxy(&client, &base_url, "pending.home.lan", false)
+            .await
+            .0,
+        StatusCode::CREATED
+    );
+    let raw = caddy_full_config().await;
+    assert!(!raw.to_string().contains("pending.home.lan"));
+    let status: Value = client
+        .get(format!("{base_url}/api/v1/caddy/status"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(status["gate_change_pending"], true);
+
+    let refused: Value = client
+        .post(format!("{base_url}/api/v1/caddy/sync"))
+        .json(&serde_json::json!({}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(refused["ok"], false);
+    assert_eq!(refused["gate_change_pending"], true);
+    let confirmed: Value = client
+        .post(format!("{base_url}/api/v1/caddy/sync"))
+        .json(&serde_json::json!({"confirm_gate_change": true}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(confirmed["ok"], true);
+    assert!(caddy_full_config()
+        .await
+        .to_string()
+        .contains("pending.home.lan"));
+}
+
+/// C-37: a successful load followed by a gate probe failure is reported as a
+/// lockout with the documented loopback recovery path.
+#[tokio::test]
+async fn c37_post_push_probe_reports_lockout() {
+    require_caddy().await;
+    let (client, base_url) = spawn_with_caddy().await;
+    create_proxy(&client, &base_url, "lockout.home.lan", false).await;
+    client
+        .patch(format!("{base_url}/api/v1/settings"))
+        .json(&serde_json::json!({
+            "caddy_admin_url": caddy_gate_url(),
+            "caddy_admin_allowed_ranges": "10.255.255.1/32"
+        }))
+        .send()
+        .await
+        .unwrap();
+    let result: Value = client
+        .post(format!("{base_url}/api/v1/caddy/sync"))
+        .json(&serde_json::json!({"confirm_gate_change": true}))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(result["ok"], false);
+    assert_eq!(result["locked_out"], true);
+    assert!(result["error"].as_str().unwrap().contains("admin gate"));
+    let status: Value = client
+        .get(format!("{base_url}/api/v1/caddy/status"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(status["last_sync_locked_out"], true);
+    reset_caddy().await;
+}
+
+/// C-38: DB mutations stay successful when managed Caddy is unreachable, and
+/// the Services wizard exposes the separate sync failure step.
+#[tokio::test]
+async fn c38_crud_returns_2xx_when_push_fails() {
+    let pool = db::init(":memory:").await.unwrap();
+    seed_managed_settings(&pool).await;
+    seed_setting(&pool, "caddy_admin_url", "http://127.0.0.1:29998").await;
+    let (client, base_url) = spawn_with_pool(pool).await;
+    let (status, created) = create_proxy(&client, &base_url, "offline.home.lan", false).await;
+    assert_eq!(status, StatusCode::CREATED);
+    let id = created["id"].as_str().unwrap();
+    let toggled = client
+        .post(format!("{base_url}/api/v1/caddy/proxy-hosts/{id}/toggle"))
+        .json(&serde_json::json!({"enabled": false}))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(toggled.status(), StatusCode::OK);
+    let deleted = client
+        .delete(format!("{base_url}/api/v1/caddy/proxy-hosts/{id}"))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(deleted.status(), StatusCode::NO_CONTENT);
+    let status: Value = client
+        .get(format!("{base_url}/api/v1/caddy/status"))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(status["last_sync_ok"], false);
+
+    let wizard: Value = client
+        .post(format!("{base_url}/api/v1/services/add"))
+        .json(&serde_json::json!({
+            "name": "offline-service",
+            "internal_ip": "10.0.0.50",
+            "internal_port": 8080,
+            "domain": "wizard-offline.home.lan",
+            "tls_enabled": false,
+            "create_port_forward": false
+        }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let steps = wizard["steps"].as_array().unwrap();
+    assert_eq!(
+        steps
+            .iter()
+            .find(|step| step["step"] == "caddy_proxy_host")
+            .unwrap()["success"],
+        true
+    );
+    assert_eq!(
+        steps
+            .iter()
+            .find(|step| step["step"] == "caddy_sync")
+            .unwrap()["success"],
+        false
     );
 }

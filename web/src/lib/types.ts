@@ -606,6 +606,21 @@ export interface SettingsData {
   unbound_control_path: string | null;
   // Caddy Reverse Proxy
   caddy_admin_url: string | null;
+  caddy_managed: boolean;
+  caddy_admin_user: string | null;
+  caddy_admin_password_set: boolean;
+  caddy_admin_listen: string;
+  caddy_lan_ip: string | null;
+  caddy_admin_resolve_ip: string | null;
+  caddy_admin_gate_port: number;
+  caddy_admin_allowed_ranges: string | null;
+  caddy_acme_email: string | null;
+  caddy_acme_ca: string | null;
+  caddy_acme_zones: string | null;
+  caddy_dns_provider: string;
+  caddy_dns_token_env: string;
+  caddy_dns_token_placeholder: string;
+  caddy_dns_resolvers: string;
   // Xiaomi Mesh
   xiaomi_mesh_enabled: boolean;
   xiaomi_mesh_ip: string | null;
@@ -1668,6 +1683,23 @@ export interface CaddyProxyHostRequest {
 export interface CaddyStatus {
   configured: boolean;
   reachable: boolean;
+  managed: boolean;
+  auth_enabled: boolean;
+  gate_change_pending: boolean;
+  last_sync_ok: boolean | null;
+  last_sync_at: string | null;
+  last_sync_error: string | null;
+  last_sync_route_count: number | null;
+  last_sync_locked_out: boolean;
+}
+
+export interface CaddySyncReport {
+  ok: boolean;
+  skipped: boolean;
+  route_count: number;
+  error: string | null;
+  gate_change_pending: boolean;
+  locked_out: boolean;
 }
 
 export interface CaddyTestConnectionResponse {

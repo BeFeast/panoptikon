@@ -80,6 +80,44 @@ import {
 import type { CaddyProxyHost, CaddyStatus } from "@/lib/types";
 import { toast } from "sonner";
 
+type CaddySettingsForm = {
+  adminUrl: string;
+  managed: boolean;
+  adminUser: string;
+  adminPassword: string;
+  adminListen: string;
+  lanIp: string;
+  adminResolveIp: string;
+  adminGatePort: string;
+  adminAllowedRanges: string;
+  acmeEmail: string;
+  acmeCa: string;
+  acmeZones: string;
+  dnsProvider: string;
+  dnsTokenEnv: string;
+  dnsTokenPlaceholder: string;
+  dnsResolvers: string;
+};
+
+const DEFAULT_CADDY_SETTINGS: CaddySettingsForm = {
+  adminUrl: "http://localhost:2019",
+  managed: false,
+  adminUser: "",
+  adminPassword: "",
+  adminListen: "127.0.0.1:2019",
+  lanIp: "",
+  adminResolveIp: "",
+  adminGatePort: "2019",
+  adminAllowedRanges: "",
+  acmeEmail: "",
+  acmeCa: "",
+  acmeZones: "",
+  dnsProvider: "cloudflare",
+  dnsTokenEnv: "CLOUDFLARE_API_TOKEN",
+  dnsTokenPlaceholder: "{env.CLOUDFLARE_API_TOKEN}",
+  dnsResolvers: "1.1.1.1:53,8.8.8.8:53",
+};
+
 export default function CaddyPage() {
   const [hosts, setHosts] = useState<CaddyProxyHost[] | null>(null);
   const [caddyStatus, setCaddyStatus] = useState<CaddyStatus | null>(null);
@@ -91,9 +129,15 @@ export default function CaddyPage() {
   );
   const [syncing, setSyncing] = useState(false);
   const [testing, setTesting] = useState(false);
-  const [adminUrl, setAdminUrl] = useState("http://localhost:2019");
-  const [savedAdminUrl, setSavedAdminUrl] = useState("http://localhost:2019");
-  const [savingUrl, setSavingUrl] = useState(false);
+  const [settings, setSettings] = useState<CaddySettingsForm>(
+    DEFAULT_CADDY_SETTINGS
+  );
+  const [savedSettings, setSavedSettings] = useState<CaddySettingsForm>(
+    DEFAULT_CADDY_SETTINGS
+  );
+  const [passwordSet, setPasswordSet] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [confirmGateChange, setConfirmGateChange] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -104,9 +148,31 @@ export default function CaddyPage() {
       ]);
       setCaddyStatus(statusData);
       setHosts(hostsData);
-      const url = settingsData.caddy_admin_url || "http://localhost:2019";
-      setAdminUrl(url);
-      setSavedAdminUrl(url);
+      const loaded: CaddySettingsForm = {
+        adminUrl: settingsData.caddy_admin_url || "http://localhost:2019",
+        managed: settingsData.caddy_managed,
+        adminUser: settingsData.caddy_admin_user || "",
+        adminPassword: "",
+        adminListen: settingsData.caddy_admin_listen || "127.0.0.1:2019",
+        lanIp: settingsData.caddy_lan_ip || "",
+        adminResolveIp: settingsData.caddy_admin_resolve_ip || "",
+        adminGatePort: String(settingsData.caddy_admin_gate_port || 2019),
+        adminAllowedRanges: settingsData.caddy_admin_allowed_ranges || "",
+        acmeEmail: settingsData.caddy_acme_email || "",
+        acmeCa: settingsData.caddy_acme_ca || "",
+        acmeZones: settingsData.caddy_acme_zones || "",
+        dnsProvider: settingsData.caddy_dns_provider || "cloudflare",
+        dnsTokenEnv:
+          settingsData.caddy_dns_token_env || "CLOUDFLARE_API_TOKEN",
+        dnsTokenPlaceholder:
+          settingsData.caddy_dns_token_placeholder ||
+          "{env.CLOUDFLARE_API_TOKEN}",
+        dnsResolvers:
+          settingsData.caddy_dns_resolvers || "1.1.1.1:53,8.8.8.8:53",
+      };
+      setSettings(loaded);
+      setSavedSettings(loaded);
+      setPasswordSet(settingsData.caddy_admin_password_set);
     } catch {
       toast.error("Failed to load proxy hosts");
     }
@@ -117,6 +183,22 @@ export default function CaddyPage() {
     const interval = setInterval(load, 30_000);
     return () => clearInterval(interval);
   }, [load]);
+
+  const settingsDirty = useMemo(
+    () =>
+      settings.adminPassword.length > 0 ||
+      (Object.keys(settings) as Array<keyof CaddySettingsForm>).some(
+        (key) => key !== "adminPassword" && settings[key] !== savedSettings[key]
+      ),
+    [settings, savedSettings]
+  );
+
+  function setSetting<K extends keyof CaddySettingsForm>(
+    key: K,
+    value: CaddySettingsForm[K]
+  ) {
+    setSettings((current) => ({ ...current, [key]: value }));
+  }
 
   const filtered = useMemo(() => {
     if (!hosts) return null;
@@ -138,6 +220,7 @@ export default function CaddyPage() {
       toast.success(
         `${host.domain} ${updated.enabled ? "enabled" : "disabled"}`
       );
+      setCaddyStatus(await fetchCaddyStatus());
     } catch {
       toast.error("Failed to toggle proxy host");
     }
@@ -151,6 +234,7 @@ export default function CaddyPage() {
         (prev) => prev?.filter((h) => h.id !== pendingDelete.id) ?? null
       );
       toast.success(`Deleted ${pendingDelete.domain}`);
+      setCaddyStatus(await fetchCaddyStatus());
     } catch {
       toast.error("Failed to delete proxy host");
     } finally {
@@ -158,16 +242,37 @@ export default function CaddyPage() {
     }
   }
 
-  async function handleSync() {
+  async function runSync(confirm = false) {
     setSyncing(true);
     try {
-      await syncCaddyConfig();
-      toast.success("Caddy config synced");
+      const result = await syncCaddyConfig({ confirm_gate_change: confirm });
+      if (result.skipped) {
+        toast.info("Sync skipped: Caddy is unmanaged");
+      } else if (result.gate_change_pending) {
+        setConfirmGateChange(true);
+      } else if (result.ok) {
+        toast.success(`Caddy config synced (${result.route_count} routes)`);
+      } else if (result.locked_out) {
+        toast.error(
+          `Caddy loaded the config but the admin gate is unreachable: ${result.error}`
+        );
+      } else {
+        toast.error(`Caddy sync failed: ${result.error}`);
+      }
     } catch {
       toast.error("Failed to sync config to Caddy");
     } finally {
+      try {
+        setCaddyStatus(await fetchCaddyStatus());
+      } catch {
+        // The sync result above already contains the actionable failure.
+      }
       setSyncing(false);
     }
+  }
+
+  async function handleSync() {
+    await runSync(false);
   }
 
   async function handleTestConnection() {
@@ -189,16 +294,54 @@ export default function CaddyPage() {
     }
   }
 
-  async function handleSaveUrl() {
-    setSavingUrl(true);
+  async function handleSaveSettings() {
+    const body: Parameters<typeof updateSettings>[0] = {};
+    if (settings.adminUrl !== savedSettings.adminUrl)
+      body.caddy_admin_url = settings.adminUrl.trim();
+    if (settings.managed !== savedSettings.managed)
+      body.caddy_managed = settings.managed;
+    if (settings.adminUser !== savedSettings.adminUser)
+      body.caddy_admin_user = settings.adminUser.trim();
+    if (settings.adminPassword) body.caddy_admin_password = settings.adminPassword;
+    if (settings.adminListen !== savedSettings.adminListen)
+      body.caddy_admin_listen = settings.adminListen.trim();
+    if (settings.lanIp !== savedSettings.lanIp)
+      body.caddy_lan_ip = settings.lanIp.trim();
+    if (settings.adminResolveIp !== savedSettings.adminResolveIp)
+      body.caddy_admin_resolve_ip = settings.adminResolveIp.trim();
+    if (settings.adminGatePort !== savedSettings.adminGatePort)
+      body.caddy_admin_gate_port = Number(settings.adminGatePort);
+    if (settings.adminAllowedRanges !== savedSettings.adminAllowedRanges)
+      body.caddy_admin_allowed_ranges = settings.adminAllowedRanges.trim();
+    if (settings.acmeEmail !== savedSettings.acmeEmail)
+      body.caddy_acme_email = settings.acmeEmail.trim();
+    if (settings.acmeCa !== savedSettings.acmeCa)
+      body.caddy_acme_ca = settings.acmeCa.trim();
+    if (settings.acmeZones !== savedSettings.acmeZones)
+      body.caddy_acme_zones = settings.acmeZones.trim();
+    if (settings.dnsProvider !== savedSettings.dnsProvider)
+      body.caddy_dns_provider = settings.dnsProvider;
+    if (settings.dnsTokenEnv !== savedSettings.dnsTokenEnv)
+      body.caddy_dns_token_env = settings.dnsTokenEnv.trim();
+    if (settings.dnsTokenPlaceholder !== savedSettings.dnsTokenPlaceholder)
+      body.caddy_dns_token_placeholder = settings.dnsTokenPlaceholder.trim();
+    if (settings.dnsResolvers !== savedSettings.dnsResolvers)
+      body.caddy_dns_resolvers = settings.dnsResolvers.trim();
+
+    setSavingSettings(true);
     try {
-      await updateSettings({ caddy_admin_url: adminUrl.trim() });
-      setSavedAdminUrl(adminUrl.trim());
-      toast.success("Caddy admin URL saved");
+      const updated = await updateSettings(body);
+      const next = { ...settings, adminPassword: "" };
+      setSettings(next);
+      setSavedSettings(next);
+      if (settings.adminPassword || updated.caddy_admin_password_set) {
+        setPasswordSet(true);
+      }
+      toast.success("Caddy settings saved");
     } catch {
-      toast.error("Failed to save admin URL");
+      toast.error("Failed to save Caddy settings");
     } finally {
-      setSavingUrl(false);
+      setSavingSettings(false);
     }
   }
 
@@ -208,16 +351,46 @@ export default function CaddyPage() {
     load();
   }
 
+  const syncStatusLabel = !caddyStatus?.managed
+    ? "Unmanaged"
+    : caddyStatus.last_sync_locked_out
+      ? "Locked out"
+      : caddyStatus.last_sync_ok === false
+        ? "Sync failed"
+        : "Synced";
+  const syncStatusTitle = [
+    caddyStatus?.last_sync_at,
+    caddyStatus?.last_sync_error,
+  ]
+    .filter(Boolean)
+    .join(" — ");
+
   return (
     <PageTransition>
       <div className="mx-auto max-w-5xl space-y-8 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <h1 className="t-h1 text-white">Caddy Reverse Proxy</h1>
             <HelpTooltip text="Manage reverse-proxy hosts that Caddy serves. Add domains, point them to internal services, and enable automatic HTTPS." />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {caddyStatus && (
+              <Badge
+                data-testid="caddy-sync-status"
+                title={syncStatusTitle || undefined}
+                variant="outline"
+                className={
+                  syncStatusLabel === "Synced"
+                    ? "border-[#4ade80]/30 text-[#4ade80]"
+                    : syncStatusLabel === "Unmanaged"
+                      ? "border-mesh-border-strong text-mesh-text-dim"
+                      : "border-[#fb7185]/30 text-[#fb7185]"
+                }
+              >
+                {syncStatusLabel}
+              </Badge>
+            )}
             {caddyStatus && (
               <Badge
                 variant="outline"
@@ -282,35 +455,226 @@ export default function CaddyPage() {
           </div>
         </div>
 
-        {/* Admin URL Configuration */}
+        {/* Production admin gate and DNS-01 configuration */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-white">
               Caddy Admin API
             </CardTitle>
             <CardDescription className="text-xs text-mesh-text-mute">
-              URL of the Caddy admin endpoint used to push proxy config.
+              Atomic full-config ownership through an authenticated, allow-listed
+              TLS admin gate. Managed mode is off by default.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-end gap-2">
-              <div className="flex-1 space-y-1.5">
+          <CardContent className="space-y-5">
+            <div className="flex items-center justify-between rounded-md border border-mesh-border-strong bg-mesh-surface-0/40 px-3 py-2.5">
+              <div>
+                <Label htmlFor="caddy-managed" className="text-sm text-white">
+                  Managed mode
+                </Label>
+                <p className="mt-0.5 text-xs text-mesh-text-mute">
+                  Allow Panoptikon to replace Caddy&apos;s complete config.
+                </p>
+              </div>
+              <Switch
+                id="caddy-managed"
+                checked={settings.managed}
+                onCheckedChange={(value) => setSetting("managed", value)}
+              />
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-1.5 md:col-span-2">
                 <Label htmlFor="admin-url" className="text-xs text-mesh-text-dim">
-                  Admin URL
+                  Authenticated admin-gate URL
                 </Label>
                 <Input
                   id="admin-url"
-                  value={adminUrl}
-                  onChange={(e) => setAdminUrl(e.target.value)}
-                  placeholder="http://localhost:2019"
+                  value={settings.adminUrl}
+                  onChange={(event) => setSetting("adminUrl", event.target.value)}
+                  placeholder="https://caddy-admin.example.com:2019"
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="caddy-admin-user" className="text-xs text-mesh-text-dim">
+                  Basic-auth user
+                </Label>
+                <Input
+                  id="caddy-admin-user"
+                  value={settings.adminUser}
+                  onChange={(event) => setSetting("adminUser", event.target.value)}
+                  placeholder="panoptikon"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="caddy-admin-password" className="text-xs text-mesh-text-dim">
+                  Basic-auth password
+                </Label>
+                <Input
+                  id="caddy-admin-password"
+                  type="password"
+                  value={settings.adminPassword}
+                  onChange={(event) => setSetting("adminPassword", event.target.value)}
+                  placeholder={passwordSet ? "•••••• (set)" : "Set a strong password"}
+                />
+                <p className="text-[11px] text-mesh-text-mute">
+                  Rotating credentials changes the gate fingerprint and requires
+                  an explicitly confirmed sync.
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="caddy-admin-listen" className="text-xs text-mesh-text-dim">
+                  Local admin listener
+                </Label>
+                <Input
+                  id="caddy-admin-listen"
+                  value={settings.adminListen}
+                  onChange={(event) => setSetting("adminListen", event.target.value)}
+                  placeholder="127.0.0.1:2019"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="caddy-lan-ip" className="text-xs text-mesh-text-dim">
+                  Caddy LAN IP
+                </Label>
+                <Input
+                  id="caddy-lan-ip"
+                  value={settings.lanIp}
+                  onChange={(event) => setSetting("lanIp", event.target.value)}
+                  placeholder="10.10.0.32"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="caddy-admin-resolve-ip" className="text-xs text-mesh-text-dim">
+                  Admin hostname resolve IP
+                </Label>
+                <Input
+                  id="caddy-admin-resolve-ip"
+                  value={settings.adminResolveIp}
+                  onChange={(event) => setSetting("adminResolveIp", event.target.value)}
+                  placeholder="Defaults to Caddy LAN IP"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="caddy-admin-gate-port" className="text-xs text-mesh-text-dim">
+                  Admin gate port
+                </Label>
+                <Input
+                  id="caddy-admin-gate-port"
+                  type="number"
+                  min={1}
+                  max={65535}
+                  value={settings.adminGatePort}
+                  onChange={(event) => setSetting("adminGatePort", event.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="caddy-admin-allowed-ranges" className="text-xs text-mesh-text-dim">
+                  Allowed source ranges
+                </Label>
+                <Input
+                  id="caddy-admin-allowed-ranges"
+                  value={settings.adminAllowedRanges}
+                  onChange={(event) => setSetting("adminAllowedRanges", event.target.value)}
+                  placeholder="10.10.0.22/32,10.10.0.32/32,127.0.0.1/32"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="caddy-acme-email" className="text-xs text-mesh-text-dim">
+                  ACME email
+                </Label>
+                <Input
+                  id="caddy-acme-email"
+                  type="email"
+                  value={settings.acmeEmail}
+                  onChange={(event) => setSetting("acmeEmail", event.target.value)}
+                  placeholder="ops@example.com"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="caddy-acme-ca" className="text-xs text-mesh-text-dim">
+                  ACME directory override
+                </Label>
+                <Input
+                  id="caddy-acme-ca"
+                  value={settings.acmeCa}
+                  onChange={(event) => setSetting("acmeCa", event.target.value)}
+                  placeholder="Caddy default (Let's Encrypt)"
+                />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="caddy-acme-zones" className="text-xs text-mesh-text-dim">
+                  ACME zone allow-list
+                </Label>
+                <Input
+                  id="caddy-acme-zones"
+                  value={settings.acmeZones}
+                  onChange={(event) => setSetting("acmeZones", event.target.value)}
+                  placeholder="example.com,example.net"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="caddy-dns-provider" className="text-xs text-mesh-text-dim">
+                  DNS provider
+                </Label>
+                <Select
+                  value={settings.dnsProvider}
+                  onValueChange={(value) => setSetting("dnsProvider", value)}
+                >
+                  <SelectTrigger id="caddy-dns-provider">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="cloudflare">cloudflare</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="caddy-dns-token-env" className="text-xs text-mesh-text-dim">
+                  Legacy token environment name
+                </Label>
+                <Input
+                  id="caddy-dns-token-env"
+                  value={settings.dnsTokenEnv}
+                  onChange={(event) => setSetting("dnsTokenEnv", event.target.value)}
+                  placeholder="CLOUDFLARE_API_TOKEN"
+                />
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="caddy-dns-token-placeholder" className="text-xs text-mesh-text-dim">
+                  Caddy token placeholder
+                </Label>
+                <Input
+                  id="caddy-dns-token-placeholder"
+                  value={settings.dnsTokenPlaceholder}
+                  onChange={(event) => setSetting("dnsTokenPlaceholder", event.target.value)}
+                  placeholder="{file./etc/caddy/cf_token}"
+                />
+                <p className="text-[11px] text-mesh-text-mute">
+                  Store only a Caddy environment or file placeholder here—never
+                  the Cloudflare token itself.
+                </p>
+              </div>
+              <div className="space-y-1.5 md:col-span-2">
+                <Label htmlFor="caddy-dns-resolvers" className="text-xs text-mesh-text-dim">
+                  Public DNS resolvers
+                </Label>
+                <Input
+                  id="caddy-dns-resolvers"
+                  value={settings.dnsResolvers}
+                  onChange={(event) => setSetting("dnsResolvers", event.target.value)}
+                  placeholder="1.1.1.1:53,8.8.8.8:53"
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end border-t border-mesh-border-strong pt-4">
               <Button
                 size="sm"
-                onClick={handleSaveUrl}
-                disabled={savingUrl || adminUrl.trim() === savedAdminUrl}
+                onClick={handleSaveSettings}
+                disabled={savingSettings || !settingsDirty}
               >
-                {savingUrl && (
+                {savingSettings && (
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                 )}
                 Save
@@ -462,6 +826,34 @@ export default function CaddyPage() {
           existing={editHost}
           onSaved={handleSaved}
         />
+
+        <AlertDialog
+          open={confirmGateChange}
+          onOpenChange={setConfirmGateChange}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-white">
+                Confirm admin gate change
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Admin gate settings changed since the last sync. Pushing a wrong
+                gate can lock Panoptikon out of Caddy. Push anyway?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  setConfirmGateChange(false);
+                  void runSync(true);
+                }}
+              >
+                Push anyway
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Delete Confirmation */}
         <AlertDialog
