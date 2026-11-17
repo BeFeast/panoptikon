@@ -93,6 +93,12 @@ export default function CaddyPage() {
   const [testing, setTesting] = useState(false);
   const [adminUrl, setAdminUrl] = useState("http://localhost:2019");
   const [savedAdminUrl, setSavedAdminUrl] = useState("http://localhost:2019");
+  const [certProbeHost, setCertProbeHost] = useState("");
+  const [savedCertProbeHost, setSavedCertProbeHost] = useState("");
+  const [certProbeInterval, setCertProbeInterval] = useState("21600");
+  const [savedCertProbeInterval, setSavedCertProbeInterval] = useState("21600");
+  const [certExpiryThreshold, setCertExpiryThreshold] = useState("14");
+  const [savedCertExpiryThreshold, setSavedCertExpiryThreshold] = useState("14");
   const [savingUrl, setSavingUrl] = useState(false);
 
   const load = useCallback(async () => {
@@ -107,6 +113,19 @@ export default function CaddyPage() {
       const url = settingsData.caddy_admin_url || "http://localhost:2019";
       setAdminUrl(url);
       setSavedAdminUrl(url);
+      const probeHost = settingsData.caddy_cert_probe_host || "";
+      const probeInterval = String(
+        settingsData.caddy_cert_probe_interval_secs ?? 21600
+      );
+      const expiryThreshold = String(
+        settingsData.caddy_cert_expiry_threshold_days ?? 14
+      );
+      setCertProbeHost(probeHost);
+      setSavedCertProbeHost(probeHost);
+      setCertProbeInterval(probeInterval);
+      setSavedCertProbeInterval(probeInterval);
+      setCertExpiryThreshold(expiryThreshold);
+      setSavedCertExpiryThreshold(expiryThreshold);
     } catch {
       toast.error("Failed to load proxy hosts");
     }
@@ -192,8 +211,22 @@ export default function CaddyPage() {
   async function handleSaveUrl() {
     setSavingUrl(true);
     try {
-      await updateSettings({ caddy_admin_url: adminUrl.trim() });
+      const probeHost = certProbeHost.trim();
+      const probeInterval = Number(certProbeInterval);
+      const expiryThreshold = Number(certExpiryThreshold);
+      await updateSettings({
+        caddy_admin_url: adminUrl.trim(),
+        caddy_cert_probe_host: probeHost,
+        caddy_cert_probe_interval_secs: probeInterval,
+        caddy_cert_expiry_threshold_days: expiryThreshold,
+      });
       setSavedAdminUrl(adminUrl.trim());
+      setCertProbeHost(probeHost);
+      setSavedCertProbeHost(probeHost);
+      setCertProbeInterval(String(probeInterval));
+      setSavedCertProbeInterval(String(probeInterval));
+      setCertExpiryThreshold(String(expiryThreshold));
+      setSavedCertExpiryThreshold(String(expiryThreshold));
       toast.success("Caddy admin URL saved");
     } catch {
       toast.error("Failed to save admin URL");
@@ -293,8 +326,8 @@ export default function CaddyPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-end gap-2">
-              <div className="flex-1 space-y-1.5">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
                 <Label htmlFor="admin-url" className="text-xs text-mesh-text-dim">
                   Admin URL
                 </Label>
@@ -305,10 +338,63 @@ export default function CaddyPage() {
                   placeholder="http://localhost:2019"
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="cert-probe-host"
+                  className="text-xs text-mesh-text-dim"
+                >
+                  Certificate probe host (override)
+                </Label>
+                <Input
+                  id="cert-probe-host"
+                  value={certProbeHost}
+                  onChange={(e) => setCertProbeHost(e.target.value)}
+                  placeholder="Derived from admin URL"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="cert-probe-interval"
+                  className="text-xs text-mesh-text-dim"
+                >
+                  Certificate probe interval (seconds)
+                </Label>
+                <Input
+                  id="cert-probe-interval"
+                  type="number"
+                  min={0}
+                  value={certProbeInterval}
+                  onChange={(e) => setCertProbeInterval(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label
+                  htmlFor="cert-expiry-threshold"
+                  className="text-xs text-mesh-text-dim"
+                >
+                  Certificate expiry alert threshold (days)
+                </Label>
+                <Input
+                  id="cert-expiry-threshold"
+                  type="number"
+                  min={0}
+                  max={3650}
+                  value={certExpiryThreshold}
+                  onChange={(e) => setCertExpiryThreshold(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
               <Button
                 size="sm"
                 onClick={handleSaveUrl}
-                disabled={savingUrl || adminUrl.trim() === savedAdminUrl}
+                disabled={
+                  savingUrl ||
+                  (adminUrl.trim() === savedAdminUrl &&
+                    certProbeHost.trim() === savedCertProbeHost &&
+                    certProbeInterval === savedCertProbeInterval &&
+                    certExpiryThreshold === savedCertExpiryThreshold)
+                }
               >
                 {savingUrl && (
                   <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />

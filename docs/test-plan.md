@@ -24,7 +24,7 @@ not the planned Gateway fabric:
 
 - **MikroTik CHR:** 10.10.0.125 (RouterOS 7+, REST API enabled)
 - **Panoptikon server:** localhost:8080 (or 10.10.0.14:8080 on LAN)
-- **Caddy admin API:** localhost:2019 (Docker container locally; a plain Caddy 2.11.x binary with the `cloudflare` DNS module in CI)
+- **Caddy:** `docker run -p 2019:2019 -p 8443:443 …` locally; a plain Caddy 2.11.x binary with the `cloudflare` DNS module plus an equivalent loopback 8443→443 forwarder in CI
 - **Xiaomi mesh main (CAP):** 10.10.0.199
 - **Xiaomi satellites:** 10.10.0.52, 10.10.0.53, 10.10.0.54
 - **Test containers:** See [test-environment.md](./test-environment.md) for Proxmox LXC setup
@@ -206,6 +206,15 @@ support matrix.
 | C-30 | Proxy page navigation | Navigate to /proxy | Lists all proxy hosts with domain, upstream, status |
 | C-31 | Create proxy from UI | Click Add → fill domain/upstream → Save | New proxy host appears in list |
 | C-32 | Delete proxy from UI | Click Delete on a proxy host → confirm | Host removed from list |
+
+### 2.5 Certificate Probe
+
+| # | Test Case | Steps | Expected Result |
+|---|-----------|-------|-----------------|
+| C-25 | Record served internal-CA certificate | Probe a TLS-enabled host served by the dedicated test CA | Leaf metadata is cached, chain is marked untrusted, and authenticated/unauthenticated access is enforced |
+| C-26 | Record unreachable probe target | Point the probe at a closed TCP port and run a cycle | Host remains visible with a stable connection error and cleared certificate fields |
+| C-27 | Alert for short-lived certificate | Probe normal and short-lived leaves twice | Short-lived leaf is expiring and produces one deduplicated `certificate_expiring` alert |
+| C-28 | Manual probe conflict and alert disablement | Start concurrent probes, then set expiry threshold to zero and probe again | One start returns 409; certificate status remains visible and no expiry alert is created |
 
 ---
 

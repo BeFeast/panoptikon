@@ -39,6 +39,10 @@ pub struct SettingsResponse {
     pub unbound_control_path: Option<String>,
     // --- Caddy Reverse Proxy ---
     pub caddy_admin_url: Option<String>,
+    pub caddy_cert_probe_host: Option<String>,
+    pub caddy_cert_probe_port: Option<u16>,
+    pub caddy_cert_probe_interval_secs: Option<u64>,
+    pub caddy_cert_expiry_threshold_days: Option<u64>,
     // --- Xiaomi Mesh ---
     pub xiaomi_mesh_enabled: bool,
     pub xiaomi_mesh_ip: Option<String>,
@@ -112,6 +116,10 @@ pub struct UpdateSettingsRequest {
     pub unbound_control_path: Option<String>,
     // --- Caddy Reverse Proxy ---
     pub caddy_admin_url: Option<String>,
+    pub caddy_cert_probe_host: Option<String>,
+    pub caddy_cert_probe_port: Option<u16>,
+    pub caddy_cert_probe_interval_secs: Option<u64>,
+    pub caddy_cert_expiry_threshold_days: Option<u64>,
     // --- Xiaomi Mesh ---
     pub xiaomi_mesh_enabled: Option<bool>,
     pub xiaomi_mesh_ip: Option<String>,
@@ -151,7 +159,7 @@ pub struct UpdateSettingsRequest {
 }
 
 /// Helper: read a string setting from the settings table.
-async fn get_setting(state: &AppState, key: &str) -> Option<String> {
+pub(crate) async fn get_setting(state: &AppState, key: &str) -> Option<String> {
     sqlx::query_scalar::<_, String>("SELECT value FROM settings WHERE key = ?")
         .bind(key)
         .fetch_optional(&state.db)
@@ -246,6 +254,19 @@ pub async fn get_settings(
 
     // Caddy settings.
     let caddy_admin_url = get_setting(&state, "caddy_admin_url").await;
+    let caddy_cert_probe_host = get_setting(&state, "caddy_cert_probe_host").await;
+    let caddy_cert_probe_port = get_setting(&state, "caddy_cert_probe_port")
+        .await
+        .and_then(|value| value.parse().ok())
+        .or(Some(443));
+    let caddy_cert_probe_interval_secs = get_setting(&state, "caddy_cert_probe_interval_secs")
+        .await
+        .and_then(|value| value.parse().ok())
+        .or(Some(21_600));
+    let caddy_cert_expiry_threshold_days = get_setting(&state, "caddy_cert_expiry_threshold_days")
+        .await
+        .and_then(|value| value.parse().ok())
+        .or(Some(14));
 
     // Xiaomi Mesh settings.
     let xiaomi_mesh_enabled = get_setting(&state, "xiaomi_mesh_enabled")
@@ -351,6 +372,10 @@ pub async fn get_settings(
         mikrotik_enabled,
         unbound_control_path,
         caddy_admin_url,
+        caddy_cert_probe_host,
+        caddy_cert_probe_port,
+        caddy_cert_probe_interval_secs,
+        caddy_cert_expiry_threshold_days,
         xiaomi_mesh_enabled,
         xiaomi_mesh_ip,
         xiaomi_mesh_password_set,
@@ -388,6 +413,8 @@ pub async fn update_settings(
     State(state): State<AppState>,
     Json(body): Json<UpdateSettingsRequest>,
 ) -> Result<Json<SettingsResponse>, AppError> {
+    validate_caddy_probe_settings(&body)?;
+
     if let Some(ref url) = body.webhook_url {
         upsert_setting(&state, "webhook_url", url).await?;
         info!(webhook_url = %url, "Webhook URL updated");
@@ -531,6 +558,54 @@ pub async fn update_settings(
     if let Some(ref url) = body.caddy_admin_url {
         upsert_setting(&state, "caddy_admin_url", url).await?;
         info!(caddy_admin_url = %url, "Caddy admin URL updated");
+    }
+
+    if let Some(ref host) = body.caddy_cert_probe_host {
+        let host = host.trim();
+        if host.is_empty() {
+            sqlx::query("DELETE FROM settings WHERE key = 'caddy_cert_probe_host'")
+                .execute(&state.db)
+                .await
+                .map_err(AppError::Database)?;
+            info!("Caddy certificate probe host override cleared");
+        } else {
+            upsert_setting(&state, "caddy_cert_probe_host", host).await?;
+            info!(caddy_cert_probe_host = %host, "Caddy certificate probe host updated");
+        }
+    }
+
+    if let Some(port) = body.caddy_cert_probe_port {
+        upsert_setting(&state, "caddy_cert_probe_port", &port.to_string()).await?;
+        info!(
+            caddy_cert_probe_port = port,
+            "Caddy certificate probe port updated"
+        );
+    }
+
+    if let Some(interval) = body.caddy_cert_probe_interval_secs {
+        upsert_setting(
+            &state,
+            "caddy_cert_probe_interval_secs",
+            &interval.to_string(),
+        )
+        .await?;
+        info!(
+            caddy_cert_probe_interval_secs = interval,
+            "Caddy certificate probe interval updated"
+        );
+    }
+
+    if let Some(threshold) = body.caddy_cert_expiry_threshold_days {
+        upsert_setting(
+            &state,
+            "caddy_cert_expiry_threshold_days",
+            &threshold.to_string(),
+        )
+        .await?;
+        info!(
+            caddy_cert_expiry_threshold_days = threshold,
+            "Caddy certificate expiry threshold updated"
+        );
     }
 
     // --- Xiaomi Mesh settings ---
@@ -821,7 +896,11 @@ pub async fn vacuum(State(state): State<AppState>) -> Result<StatusCode, AppErro
 }
 
 /// Helper to upsert a key-value pair into the settings table.
-async fn upsert_setting(state: &AppState, key: &str, value: &str) -> Result<(), AppError> {
+pub(crate) async fn upsert_setting(
+    state: &AppState,
+    key: &str,
+    value: &str,
+) -> Result<(), AppError> {
     sqlx::query(
         r#"INSERT INTO settings (key, value) VALUES (?, ?)
            ON CONFLICT(key) DO UPDATE SET value = excluded.value"#,
@@ -835,4 +914,108 @@ async fn upsert_setting(state: &AppState, key: &str, value: &str) -> Result<(), 
         AppError::Internal(e.to_string())
     })?;
     Ok(())
+}
+
+fn validate_caddy_probe_settings(body: &UpdateSettingsRequest) -> Result<(), AppError> {
+    if let Some(ref host) = body.caddy_cert_probe_host {
+        let host = host.trim();
+        if !host.is_empty() && !is_valid_probe_host(host) {
+            return Err(AppError::Validation(
+                "Certificate probe host must be an IP address or RFC 1123 hostname".to_string(),
+            ));
+        }
+    }
+
+    if body.caddy_cert_probe_port == Some(0) {
+        return Err(AppError::Validation(
+            "Certificate probe port must be between 1 and 65535".to_string(),
+        ));
+    }
+
+    if matches!(body.caddy_cert_probe_interval_secs, Some(1..=299)) {
+        return Err(AppError::Validation(
+            "Certificate probe interval must be 0 or at least 300 seconds".to_string(),
+        ));
+    }
+
+    if matches!(body.caddy_cert_expiry_threshold_days, Some(3651..)) {
+        return Err(AppError::Validation(
+            "Certificate expiry threshold cannot exceed 3650 days".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+fn is_valid_probe_host(host: &str) -> bool {
+    if host.parse::<std::net::IpAddr>().is_ok() {
+        return true;
+    }
+    if host.len() > 253 {
+        return false;
+    }
+    host.split('.').all(|label| {
+        !label.is_empty()
+            && label.len() <= 63
+            && label
+                .as_bytes()
+                .first()
+                .is_some_and(u8::is_ascii_alphanumeric)
+            && label
+                .as_bytes()
+                .last()
+                .is_some_and(u8::is_ascii_alphanumeric)
+            && label
+                .bytes()
+                .all(|byte| byte.is_ascii_alphanumeric() || byte == b'-')
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn request(value: serde_json::Value) -> UpdateSettingsRequest {
+        serde_json::from_value(value).expect("valid update request JSON")
+    }
+
+    #[test]
+    fn validates_certificate_probe_settings() {
+        for host in ["10.10.0.23", "caddy.oklabs.uk", "::1"] {
+            let body = request(serde_json::json!({"caddy_cert_probe_host": host}));
+            assert!(validate_caddy_probe_settings(&body).is_ok());
+        }
+        let body = request(serde_json::json!({"caddy_cert_probe_host": ""}));
+        assert!(validate_caddy_probe_settings(&body).is_ok());
+        let body = request(serde_json::json!({"caddy_cert_probe_host": "not a host!"}));
+        assert!(matches!(
+            validate_caddy_probe_settings(&body),
+            Err(AppError::Validation(_))
+        ));
+
+        let body = request(serde_json::json!({"caddy_cert_probe_interval_secs": 100}));
+        assert!(matches!(
+            validate_caddy_probe_settings(&body),
+            Err(AppError::Validation(_))
+        ));
+        for interval in [0, 300] {
+            let body = request(serde_json::json!({
+                "caddy_cert_probe_interval_secs": interval
+            }));
+            assert!(validate_caddy_probe_settings(&body).is_ok());
+        }
+
+        let body = request(serde_json::json!({"caddy_cert_probe_port": 0}));
+        assert!(matches!(
+            validate_caddy_probe_settings(&body),
+            Err(AppError::Validation(_))
+        ));
+        let body = request(serde_json::json!({
+            "caddy_cert_expiry_threshold_days": 3651
+        }));
+        assert!(matches!(
+            validate_caddy_probe_settings(&body),
+            Err(AppError::Validation(_))
+        ));
+    }
 }

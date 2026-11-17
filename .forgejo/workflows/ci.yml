@@ -120,7 +120,7 @@ jobs:
           export DEBIAN_FRONTEND=noninteractive
           $SUDO apt-get update -qq
           $SUDO apt-get install -y -qq --no-install-recommends \
-            build-essential pkg-config libssl-dev ca-certificates curl jq
+            build-essential pkg-config libssl-dev ca-certificates curl jq socat
 
       # Plain rustup instead of dtolnay/rust-toolchain: no dependency on a
       # GitHub-hosted action working here, and the toolchain download from
@@ -283,6 +283,11 @@ jobs:
           # Exactly what the tests do: resolve `localhost` + send Host localhost:2019.
           curl -sf http://localhost:2019/config/ > /dev/null \
             || { echo "Caddy admin API not reachable via http://localhost:2019 (name resolution / Host check)"; cat /tmp/caddy.log; exit 1; }
+          # Caddy shares this job container, so there is no Docker `-p` layer.
+          # Mirror the manual harness' `-p 8443:443` mapping with a loopback-only
+          # TCP forwarder for C-25..C-28.
+          nohup socat TCP4-LISTEN:8443,bind=127.0.0.1,reuseaddr,fork \
+            TCP4:127.0.0.1:443 > /tmp/caddy-https-forward.log 2>&1 < /dev/null &
 
       # Canonical test split: the Caddy suite mutates shared Caddy state and
       # must run separately and sequentially.

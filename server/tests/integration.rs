@@ -273,6 +273,75 @@ async fn test_setup_stores_settings() {
     assert_eq!(setup_complete.as_deref(), Some("true"));
 }
 
+#[tokio::test]
+async fn test_certificate_probe_settings_validation_and_clear() {
+    let (base_url, pool) = spawn_test_server().await;
+    let client = http_client();
+    let response = client
+        .post(format!("{base_url}/api/v1/setup"))
+        .json(&serde_json::json!({"password": "probe_settings_password"}))
+        .send()
+        .await
+        .expect("setup request");
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let response = client
+        .patch(format!("{base_url}/api/v1/settings"))
+        .json(&serde_json::json!({"caddy_cert_probe_host": "not a host!"}))
+        .send()
+        .await
+        .expect("invalid host request");
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+    for host in ["10.10.0.23", "caddy.oklabs.uk"] {
+        let response = client
+            .patch(format!("{base_url}/api/v1/settings"))
+            .json(&serde_json::json!({"caddy_cert_probe_host": host}))
+            .send()
+            .await
+            .expect("valid host request");
+        assert_eq!(response.status(), StatusCode::OK);
+    }
+
+    let response = client
+        .patch(format!("{base_url}/api/v1/settings"))
+        .json(&serde_json::json!({"caddy_cert_probe_host": ""}))
+        .send()
+        .await
+        .expect("clear host request");
+    assert_eq!(response.status(), StatusCode::OK);
+    let stored: Option<String> =
+        sqlx::query_scalar("SELECT value FROM settings WHERE key = 'caddy_cert_probe_host'")
+            .fetch_optional(&pool)
+            .await
+            .expect("read cleared host");
+    assert!(stored.is_none());
+
+    for (interval, expected) in [
+        (100_u64, StatusCode::BAD_REQUEST),
+        (0, StatusCode::OK),
+        (300, StatusCode::OK),
+    ] {
+        let response = client
+            .patch(format!("{base_url}/api/v1/settings"))
+            .json(&serde_json::json!({
+                "caddy_cert_probe_interval_secs": interval
+            }))
+            .send()
+            .await
+            .expect("interval request");
+        assert_eq!(response.status(), expected);
+    }
+
+    let response = client
+        .patch(format!("{base_url}/api/v1/settings"))
+        .json(&serde_json::json!({"caddy_cert_probe_port": 0}))
+        .send()
+        .await
+        .expect("invalid port request");
+    assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+}
+
 // ── Test 7: Login before setup returns 428 ──────────────────────────
 
 #[tokio::test]

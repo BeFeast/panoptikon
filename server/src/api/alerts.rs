@@ -36,7 +36,7 @@ pub struct ListAlertsQuery {
     pub status: Option<String>,
     /// Filter by severity: INFO, WARNING, CRITICAL.
     pub severity: Option<String>,
-    /// Filter by alert type: new_device, device_online, device_offline, agent_offline, high_bandwidth.
+    /// Filter by alert type, including certificate_expiring.
     #[serde(rename = "type")]
     pub alert_type: Option<String>,
 }
@@ -102,7 +102,12 @@ pub async fn list(
         let t = alert_type.to_lowercase();
         if matches!(
             t.as_str(),
-            "new_device" | "device_online" | "device_offline" | "agent_offline" | "high_bandwidth"
+            "new_device"
+                | "device_online"
+                | "device_offline"
+                | "agent_offline"
+                | "high_bandwidth"
+                | "certificate_expiring"
         ) {
             conditions.push(format!("type = '{t}'"));
         }
@@ -374,7 +379,7 @@ pub fn severity_for_alert_type(alert_type: &str) -> &'static str {
     match alert_type {
         "new_device" => "INFO",
         "device_online" => "INFO",
-        "device_offline" | "agent_offline" | "high_bandwidth" => "WARNING",
+        "device_offline" | "agent_offline" | "high_bandwidth" | "certificate_expiring" => "WARNING",
         _ => "WARNING",
     }
 }

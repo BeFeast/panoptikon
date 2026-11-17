@@ -19,6 +19,7 @@ import type {
   CaddyProxyHost,
   CaddyProxyHostRequest,
   CaddyStatus,
+  CaddyCertificatesResponse,
   ConfigActionResponse,
   ConfigBackup,
   ConfigBackupListResponse,
@@ -531,6 +532,10 @@ export function updateSettings(body: {
   mikrotik_enabled?: boolean;
   unbound_control_path?: string;
   caddy_admin_url?: string;
+  caddy_cert_probe_host?: string;
+  caddy_cert_probe_port?: number;
+  caddy_cert_probe_interval_secs?: number;
+  caddy_cert_expiry_threshold_days?: number;
   xiaomi_mesh_enabled?: boolean;
   xiaomi_mesh_ip?: string;
   xiaomi_mesh_password?: string;
@@ -1498,6 +1503,14 @@ export function deleteAlertRule(id: string): Promise<void> {
 
 export function fetchCaddyStatus(): Promise<CaddyStatus> {
   return apiGet<CaddyStatus>("/api/v1/caddy/status");
+}
+
+export function fetchCaddyCertificates(): Promise<CaddyCertificatesResponse> {
+  return apiGet<CaddyCertificatesResponse>("/api/v1/caddy/certificates");
+}
+
+export function probeCaddyCertificates(): Promise<{ started: boolean }> {
+  return apiPost<{ started: boolean }>("/api/v1/caddy/certificates/probe");
 }
 
 export function fetchCaddyProxyHosts(): Promise<CaddyProxyHost[]> {

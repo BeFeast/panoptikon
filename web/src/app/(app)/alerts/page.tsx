@@ -173,12 +173,15 @@ function alertTitle(a: Alert): string {
       return "discovery · new device";
     case "high_bandwidth":
       return "qos · high bandwidth";
+    case "certificate_expiring":
+      return "tls · certificate expiring";
     default:
       return "alert";
   }
 }
 
 function alertSource(a: Alert): string {
+  if (a.type === "certificate_expiring") return "tls";
   if (a.agent_id) return "fleet";
   if (a.device_id && a.type === "high_bandwidth") return "qos";
   if (a.device_id && a.type === "new_device") return "scanner";
@@ -187,6 +190,14 @@ function alertSource(a: Alert): string {
 }
 
 function alertTarget(a: Alert): string {
+  if (a.type === "certificate_expiring") {
+    try {
+      const details = JSON.parse(a.details ?? "{}");
+      return typeof details.domain === "string" ? details.domain : "system";
+    } catch {
+      return "system";
+    }
+  }
   return a.device_id ?? a.agent_id ?? "system";
 }
 
@@ -250,6 +261,7 @@ function AlertsPageInner() {
       "new_device",
       "agent_offline",
       "agent_online",
+      "certificate_expiring",
     ],
     () => mutate(),
   );
@@ -1283,4 +1295,3 @@ function AlertDetail({
 function sparkSeed(count: number): number[] {
   return [3, 2, 4, 2, 5, 3, 4, 6, 3, 2, 5, 4, 3, 5, Math.max(0, count)];
 }
-

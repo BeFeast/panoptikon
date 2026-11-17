@@ -48,6 +48,11 @@ fn format_alert_message(alert_type: &str, data: &Value) -> String {
             let name = data["name"].as_str().unwrap_or(mac);
             format!("Agent {name} went offline")
         }
+        "certificate_expiring" => {
+            let domain = data["domain"].as_str().unwrap_or("unknown");
+            let days = data["days_remaining"].as_i64().unwrap_or_default();
+            format!("Certificate for {domain} expires in {days} days")
+        }
         "test" => data["message"]
             .as_str()
             .unwrap_or("Panoptikon webhook test")
@@ -64,6 +69,7 @@ fn humanize_alert_type(alert_type: &str) -> &str {
         "device_offline" => "Device Offline",
         "agent_offline" => "Agent Offline",
         "high_bandwidth" => "High Bandwidth",
+        "certificate_expiring" => "Certificate Expiring",
         "test" => "Test",
         _ => alert_type,
     }
@@ -72,7 +78,7 @@ fn humanize_alert_type(alert_type: &str) -> &str {
 /// Map alert type to ntfy priority (1-5).
 fn ntfy_priority(alert_type: &str) -> &str {
     match alert_type {
-        "device_offline" | "agent_offline" => "4",
+        "device_offline" | "agent_offline" | "certificate_expiring" => "4",
         "new_device" | "high_bandwidth" => "3",
         "device_online" | "test" => "3",
         _ => "3",
@@ -87,6 +93,7 @@ fn ntfy_tags(alert_type: &str) -> &str {
         "device_offline" => "warning",
         "agent_offline" => "rotating_light",
         "high_bandwidth" => "chart_with_upwards_trend",
+        "certificate_expiring" => "lock",
         "test" => "bell",
         _ => "bell",
     }

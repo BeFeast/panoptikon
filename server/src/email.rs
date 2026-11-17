@@ -76,6 +76,14 @@ fn format_email_body(alert_type: &str, data: &Value) -> String {
             let name = data["name"].as_str().unwrap_or(mac);
             format!("Agent {name} went offline.\n\n— Panoptikon")
         }
+        "certificate_expiring" => {
+            let domain = data["domain"].as_str().unwrap_or("unknown");
+            let days = data["days_remaining"].as_i64().unwrap_or_default();
+            let not_after = data["not_after"].as_str().unwrap_or("unknown");
+            format!(
+                "Certificate for {domain} expires in {days} days ({not_after}).\n\n— Panoptikon"
+            )
+        }
         "test" => data["message"]
             .as_str()
             .unwrap_or("Panoptikon email test — if you see this, email alerts are working!")
@@ -92,6 +100,7 @@ fn email_subject(alert_type: &str) -> String {
         "device_offline" => "Device Offline",
         "agent_offline" => "Agent Offline",
         "high_bandwidth" => "High Bandwidth Alert",
+        "certificate_expiring" => "Certificate Expiring",
         "test" => "Test Email",
         _ => alert_type,
     };
