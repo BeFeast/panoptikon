@@ -531,6 +531,22 @@ export function updateSettings(body: {
   mikrotik_enabled?: boolean;
   unbound_control_path?: string;
   caddy_admin_url?: string;
+  caddy_managed?: boolean;
+  caddy_admin_user?: string;
+  caddy_admin_password?: string;
+  caddy_admin_listen?: string;
+  caddy_lan_ip?: string;
+  caddy_admin_resolve_ip?: string;
+  caddy_admin_gate_port?: number;
+  caddy_admin_allowed_ranges?: string;
+  caddy_acme_email?: string;
+  caddy_acme_ca?: string;
+  caddy_acme_zones?: string;
+  caddy_dns_provider?: string;
+  caddy_dns_token_env?: string;
+  caddy_dns_token_placeholder?: string;
+  caddy_dns_resolvers?: string;
+  caddy_dns_propagation_delay?: string;
   xiaomi_mesh_enabled?: boolean;
   xiaomi_mesh_ip?: string;
   xiaomi_mesh_password?: string;
@@ -1530,8 +1546,13 @@ export function toggleCaddyProxyHost(
   });
 }
 
-export function syncCaddyConfig(): Promise<void> {
-  return apiPost<void>("/api/v1/caddy/sync");
+export function syncCaddyConfig(body?: {
+  confirm_gate_change?: boolean;
+}): Promise<import("./types").CaddySyncReport> {
+  return apiPost<import("./types").CaddySyncReport>(
+    "/api/v1/caddy/sync",
+    body ?? {},
+  );
 }
 
 export function testCaddyConnection(): Promise<

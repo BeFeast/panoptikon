@@ -146,7 +146,7 @@ test.describe("Caddy Reverse Proxy page", () => {
     await expect(saveBtn).toBeEnabled({ timeout: 3000 });
     await saveBtn.click();
 
-    await expect(page.getByText("Caddy admin URL saved")).toBeVisible({
+    await expect(page.getByText("Caddy settings saved")).toBeVisible({
       timeout: 10000,
     });
 
@@ -165,7 +165,7 @@ test.describe("Caddy Reverse Proxy page", () => {
     await page.locator("#admin-url").fill("http://localhost:2019");
     await expect(saveBtn).toBeEnabled({ timeout: 3000 });
     await saveBtn.click();
-    await expect(page.getByText("Caddy admin URL saved")).toBeVisible({
+    await expect(page.getByText("Caddy settings saved")).toBeVisible({
       timeout: 10000,
     });
   });

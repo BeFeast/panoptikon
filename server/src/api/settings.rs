@@ -1,4 +1,7 @@
+use std::net::IpAddr;
+
 use axum::{extract::State, http::StatusCode, Json};
+use ipnetwork::IpNetwork;
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
@@ -39,6 +42,26 @@ pub struct SettingsResponse {
     pub unbound_control_path: Option<String>,
     // --- Caddy Reverse Proxy ---
     pub caddy_admin_url: Option<String>,
+    pub caddy_managed: bool,
+    pub caddy_admin_user: Option<String>,
+    /// Never return either the plaintext password or its bcrypt hash.
+    pub caddy_admin_password_set: bool,
+    pub caddy_admin_listen: Option<String>,
+    pub caddy_lan_ip: Option<String>,
+    /// Optional local address used to resolve a non-DNS admin-gate hostname.
+    pub caddy_admin_resolve_ip: Option<String>,
+    pub caddy_admin_gate_port: Option<u16>,
+    pub caddy_admin_allowed_ranges: Option<String>,
+    pub caddy_acme_email: Option<String>,
+    pub caddy_acme_ca: Option<String>,
+    pub caddy_acme_zones: Option<String>,
+    pub caddy_dns_provider: Option<String>,
+    /// Legacy env-name setting kept for API compatibility.
+    pub caddy_dns_token_env: Option<String>,
+    /// Complete Caddy placeholder; production may use `{file...}`.
+    pub caddy_dns_token_placeholder: Option<String>,
+    pub caddy_dns_resolvers: Option<String>,
+    pub caddy_dns_propagation_delay: Option<String>,
     // --- Xiaomi Mesh ---
     pub xiaomi_mesh_enabled: bool,
     pub xiaomi_mesh_ip: Option<String>,
@@ -112,6 +135,24 @@ pub struct UpdateSettingsRequest {
     pub unbound_control_path: Option<String>,
     // --- Caddy Reverse Proxy ---
     pub caddy_admin_url: Option<String>,
+    pub caddy_managed: Option<bool>,
+    pub caddy_admin_user: Option<String>,
+    pub caddy_admin_password: Option<String>,
+    pub caddy_admin_listen: Option<String>,
+    pub caddy_lan_ip: Option<String>,
+    pub caddy_admin_resolve_ip: Option<String>,
+    /// A wider request type lets invalid values produce the documented 400
+    /// validation response instead of failing JSON deserialization.
+    pub caddy_admin_gate_port: Option<u32>,
+    pub caddy_admin_allowed_ranges: Option<String>,
+    pub caddy_acme_email: Option<String>,
+    pub caddy_acme_ca: Option<String>,
+    pub caddy_acme_zones: Option<String>,
+    pub caddy_dns_provider: Option<String>,
+    pub caddy_dns_token_env: Option<String>,
+    pub caddy_dns_token_placeholder: Option<String>,
+    pub caddy_dns_resolvers: Option<String>,
+    pub caddy_dns_propagation_delay: Option<String>,
     // --- Xiaomi Mesh ---
     pub xiaomi_mesh_enabled: Option<bool>,
     pub xiaomi_mesh_ip: Option<String>,
@@ -246,6 +287,44 @@ pub async fn get_settings(
 
     // Caddy settings.
     let caddy_admin_url = get_setting(&state, "caddy_admin_url").await;
+    let caddy_managed = get_setting(&state, "caddy_managed")
+        .await
+        .is_some_and(|value| value == "1" || value.eq_ignore_ascii_case("true"));
+    let caddy_admin_user = get_setting(&state, "caddy_admin_user").await;
+    let caddy_admin_password_set = get_setting(&state, "caddy_admin_password").await.is_some();
+    let caddy_admin_listen = get_setting(&state, "caddy_admin_listen")
+        .await
+        .or(Some("127.0.0.1:2019".to_string()));
+    let caddy_lan_ip = get_setting(&state, "caddy_lan_ip").await;
+    let caddy_admin_resolve_ip = get_setting(&state, "caddy_admin_resolve_ip").await;
+    let caddy_admin_gate_port = get_setting(&state, "caddy_admin_gate_port")
+        .await
+        .and_then(|value| value.parse().ok())
+        .or(Some(2019));
+    let caddy_admin_allowed_ranges = get_setting(&state, "caddy_admin_allowed_ranges").await;
+    let caddy_acme_email = get_setting(&state, "caddy_acme_email").await;
+    let caddy_acme_ca = get_setting(&state, "caddy_acme_ca").await;
+    let caddy_acme_zones = get_setting(&state, "caddy_acme_zones").await;
+    let caddy_dns_provider = get_setting(&state, "caddy_dns_provider")
+        .await
+        .or(Some("cloudflare".to_string()));
+    let caddy_dns_token_env = get_setting(&state, "caddy_dns_token_env")
+        .await
+        .or(Some("CLOUDFLARE_API_TOKEN".to_string()));
+    let caddy_dns_token_placeholder = get_setting(&state, "caddy_dns_token_placeholder")
+        .await
+        .or_else(|| {
+            caddy_dns_token_env
+                .as_ref()
+                .map(|name| format!("{{env.{name}}}"))
+        })
+        .or(Some("{env.CLOUDFLARE_API_TOKEN}".to_string()));
+    let caddy_dns_resolvers = get_setting(&state, "caddy_dns_resolvers")
+        .await
+        .or(Some("1.1.1.1:53,8.8.8.8:53".to_string()));
+    let caddy_dns_propagation_delay = get_setting(&state, "caddy_dns_propagation_delay")
+        .await
+        .or(Some("20s".to_string()));
 
     // Xiaomi Mesh settings.
     let xiaomi_mesh_enabled = get_setting(&state, "xiaomi_mesh_enabled")
@@ -351,6 +430,22 @@ pub async fn get_settings(
         mikrotik_enabled,
         unbound_control_path,
         caddy_admin_url,
+        caddy_managed,
+        caddy_admin_user,
+        caddy_admin_password_set,
+        caddy_admin_listen,
+        caddy_lan_ip,
+        caddy_admin_resolve_ip,
+        caddy_admin_gate_port,
+        caddy_admin_allowed_ranges,
+        caddy_acme_email,
+        caddy_acme_ca,
+        caddy_acme_zones,
+        caddy_dns_provider,
+        caddy_dns_token_env,
+        caddy_dns_token_placeholder,
+        caddy_dns_resolvers,
+        caddy_dns_propagation_delay,
         xiaomi_mesh_enabled,
         xiaomi_mesh_ip,
         xiaomi_mesh_password_set,
@@ -388,6 +483,18 @@ pub async fn update_settings(
     State(state): State<AppState>,
     Json(body): Json<UpdateSettingsRequest>,
 ) -> Result<Json<SettingsResponse>, AppError> {
+    // Validate the complete Caddy subset before writing any setting. This is
+    // intentionally first so a request that mixes valid and invalid keys can
+    // never partially persist the valid portion.
+    validate_caddy_update(&body)?;
+    let caddy_password_hash = body
+        .caddy_admin_password
+        .as_deref()
+        .filter(|password| !password.is_empty())
+        .map(|password| bcrypt::hash(password, bcrypt::DEFAULT_COST))
+        .transpose()
+        .map_err(|error| AppError::Internal(format!("failed to hash Caddy password: {error}")))?;
+
     if let Some(ref url) = body.webhook_url {
         upsert_setting(&state, "webhook_url", url).await?;
         info!(webhook_url = %url, "Webhook URL updated");
@@ -531,6 +638,76 @@ pub async fn update_settings(
     if let Some(ref url) = body.caddy_admin_url {
         upsert_setting(&state, "caddy_admin_url", url).await?;
         info!(caddy_admin_url = %url, "Caddy admin URL updated");
+    }
+
+    if let Some(managed) = body.caddy_managed {
+        upsert_setting(
+            &state,
+            "caddy_managed",
+            if managed { "true" } else { "false" },
+        )
+        .await?;
+        info!(caddy_managed = managed, "Caddy managed mode updated");
+    }
+
+    if let Some(ref user) = body.caddy_admin_user {
+        upsert_setting(&state, "caddy_admin_user", user).await?;
+        info!("Caddy admin user updated");
+    }
+
+    if let Some(ref password) = body.caddy_admin_password {
+        if !password.is_empty() {
+            upsert_setting(&state, "caddy_admin_password", password).await?;
+            upsert_setting(
+                &state,
+                "caddy_admin_password_hash",
+                caddy_password_hash
+                    .as_deref()
+                    .expect("non-empty password was hashed"),
+            )
+            .await?;
+            info!("Caddy admin password and bcrypt hash updated");
+        }
+    }
+
+    if let Some(ref listen) = body.caddy_admin_listen {
+        upsert_setting(&state, "caddy_admin_listen", listen).await?;
+    }
+    if let Some(ref ip) = body.caddy_lan_ip {
+        upsert_setting(&state, "caddy_lan_ip", ip).await?;
+    }
+    if let Some(ref ip) = body.caddy_admin_resolve_ip {
+        upsert_setting(&state, "caddy_admin_resolve_ip", ip).await?;
+    }
+    if let Some(port) = body.caddy_admin_gate_port {
+        upsert_setting(&state, "caddy_admin_gate_port", &port.to_string()).await?;
+    }
+    if let Some(ref ranges) = body.caddy_admin_allowed_ranges {
+        upsert_setting(&state, "caddy_admin_allowed_ranges", ranges).await?;
+    }
+    if let Some(ref email) = body.caddy_acme_email {
+        upsert_setting(&state, "caddy_acme_email", email).await?;
+    }
+    if let Some(ref ca) = body.caddy_acme_ca {
+        upsert_setting(&state, "caddy_acme_ca", ca).await?;
+    }
+    if let Some(ref zones) = body.caddy_acme_zones {
+        upsert_setting(&state, "caddy_acme_zones", zones).await?;
+    }
+    if let Some(ref provider) = body.caddy_dns_provider {
+        upsert_setting(&state, "caddy_dns_provider", provider).await?;
+    }
+    if let Some(ref env_name) = body.caddy_dns_token_env {
+        upsert_setting(&state, "caddy_dns_token_env", env_name).await?;
+    }
+    if let Some(ref placeholder) = body.caddy_dns_token_placeholder {
+        upsert_setting(&state, "caddy_dns_token_placeholder", placeholder).await?;
+    }
+    if let Some(ref resolvers) = body.caddy_dns_resolvers {
+        upsert_setting(&state, "caddy_dns_resolvers", resolvers).await?;
+    }
+    if let Some(ref delay) = body.caddy_dns_propagation_delay {
+        upsert_setting(&state, "caddy_dns_propagation_delay", delay).await?;
     }
 
     // --- Xiaomi Mesh settings ---
@@ -818,6 +995,70 @@ pub async fn vacuum(State(state): State<AppState>) -> Result<StatusCode, AppErro
 
     info!("Manual VACUUM completed successfully");
     Ok(StatusCode::NO_CONTENT)
+}
+
+fn validate_caddy_update(body: &UpdateSettingsRequest) -> Result<(), AppError> {
+    if let Some(provider) = body.caddy_dns_provider.as_deref() {
+        if provider != "cloudflare" {
+            return Err(AppError::Validation(
+                "caddy_dns_provider must be cloudflare".into(),
+            ));
+        }
+    }
+
+    if let Some(name) = body.caddy_dns_token_env.as_deref() {
+        let mut bytes = name.bytes();
+        let valid = bytes.next().is_some_and(|byte| byte.is_ascii_uppercase())
+            && bytes.all(|byte| byte.is_ascii_uppercase() || byte.is_ascii_digit() || byte == b'_');
+        if !valid {
+            return Err(AppError::Validation(
+                "caddy_dns_token_env must match ^[A-Z][A-Z0-9_]*$".into(),
+            ));
+        }
+    }
+
+    if let Some(ip) = body
+        .caddy_lan_ip
+        .as_deref()
+        .filter(|value| !value.is_empty())
+    {
+        ip.parse::<IpAddr>()
+            .map_err(|_| AppError::Validation("caddy_lan_ip must be a valid IP address".into()))?;
+    }
+    if let Some(ip) = body
+        .caddy_admin_resolve_ip
+        .as_deref()
+        .filter(|value| !value.is_empty())
+    {
+        ip.parse::<IpAddr>().map_err(|_| {
+            AppError::Validation("caddy_admin_resolve_ip must be a valid IP address".into())
+        })?;
+    }
+
+    if let Some(port) = body.caddy_admin_gate_port {
+        if !(1..=65_535).contains(&port) {
+            return Err(AppError::Validation(
+                "caddy_admin_gate_port must be between 1 and 65535".into(),
+            ));
+        }
+    }
+
+    if let Some(ranges) = body
+        .caddy_admin_allowed_ranges
+        .as_deref()
+        .filter(|value| !value.is_empty())
+    {
+        for range in ranges.split(',') {
+            let range = range.trim();
+            if range.is_empty() || range.parse::<IpNetwork>().is_err() {
+                return Err(AppError::Validation(format!(
+                    "caddy_admin_allowed_ranges contains an invalid CIDR: {range}"
+                )));
+            }
+        }
+    }
+
+    Ok(())
 }
 
 /// Helper to upsert a key-value pair into the settings table.
