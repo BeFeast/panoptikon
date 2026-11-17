@@ -3,7 +3,7 @@
 # Replaces .github/workflows/ci.yml. Same coverage, Forgejo-native mechanics:
 #
 #   rust      fmt, clippy, release build, unit + integration tests, and the Caddy
-#             integration suite (C-01..C-24) against a real Caddy 2.11.x with the
+#             integration suite (C-01..C-28) against a real Caddy 2.11.x with the
 #             cloudflare DNS module. Publishes the release binary as an artifact.
 #   frontend  design-token guard, eslint, `next build` (static export).
 #   e2e       mandatory Playwright gate against the binary built by `rust`.
@@ -290,6 +290,10 @@ jobs:
         run: cargo test --lib --bins --test integration
 
       - name: Test (Caddy integration, sequential — shared Caddy state)
+        env:
+          # Caddy runs directly in this job rather than behind Docker's
+          # `-p 8443:443`, so the probe test listener binds the host port.
+          CADDY_PROBE_LISTEN_PORT: "8443"
         run: cargo test --test caddy_integration -- --test-threads=1
 
       - name: Show Caddy log on failure

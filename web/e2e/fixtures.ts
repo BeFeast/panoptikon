@@ -76,6 +76,26 @@ export async function rect(page: Page, selector: string) {
   return page.locator(selector).boundingBox();
 }
 
+/** Create a Caddy proxy host through the production Add Host dialog. */
+export async function createCaddyHost(
+  page: Page,
+  domain: string,
+  host: string,
+  port: string,
+  tls = false,
+) {
+  await page.getByRole("button", { name: "Add Host" }).click();
+  await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 3000 });
+  await page.locator("#domain").fill(domain);
+  await page.locator("#forward-host").fill(host);
+  await page.locator("#forward-port").fill(port);
+  if (tls) await page.locator("#tls-enabled").click();
+  await page.getByRole("button", { name: "Create" }).click();
+  await expect(page.locator('[role="dialog"]')).not.toBeVisible({
+    timeout: 20000,
+  });
+}
+
 /**
  * Extended Playwright test that provides an `authenticatedPage` fixture.
  * The fixture logs in once before each test, so individual tests don't need

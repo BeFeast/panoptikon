@@ -2,6 +2,7 @@
 // error response is churn for no runtime gain, so the lint is allowed crate-wide.
 #![allow(clippy::result_large_err)]
 pub mod api;
+pub mod caddy_probe;
 pub mod config;
 pub mod db;
 pub mod device_resolver;

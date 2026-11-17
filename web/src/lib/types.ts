@@ -229,7 +229,13 @@ export interface AgentReport {
 
 export interface Alert {
   id: string;
-  type: "device_online" | "device_offline" | "new_device" | "high_bandwidth" | "agent_offline";
+  type:
+    | "device_online"
+    | "device_offline"
+    | "new_device"
+    | "high_bandwidth"
+    | "agent_offline"
+    | "certificate_expiring";
   device_id: string | null;
   agent_id: string | null;
   message: string;
@@ -606,6 +612,10 @@ export interface SettingsData {
   unbound_control_path: string | null;
   // Caddy Reverse Proxy
   caddy_admin_url: string | null;
+  caddy_cert_probe_host: string | null;
+  caddy_cert_probe_port: number | null;
+  caddy_cert_probe_interval_secs: number | null;
+  caddy_cert_expiry_threshold_days: number | null;
   // Xiaomi Mesh
   xiaomi_mesh_enabled: boolean;
   xiaomi_mesh_ip: string | null;
@@ -1673,6 +1683,33 @@ export interface CaddyStatus {
 export interface CaddyTestConnectionResponse {
   success: boolean;
   message: string;
+}
+
+export interface CaddyCertificate {
+  domain: string;
+  proxy_host_id: string | null;
+  issuer: string | null;
+  subject: string | null;
+  sans: string[];
+  not_before: string | null;
+  not_after: string | null;
+  serial: string | null;
+  fingerprint_sha256: string | null;
+  chain_valid: boolean | null;
+  days_remaining: number | null;
+  status: "ok" | "expiring" | "expired" | "error";
+  error: string | null;
+  probed_at: string;
+}
+
+export interface CaddyCertificatesResponse {
+  probe_running: boolean;
+  last_probe_at: string | null;
+  interval_secs: number;
+  probe_host: string;
+  probe_port: number;
+  threshold_days: number;
+  certificates: CaddyCertificate[];
 }
 
 // ─── DNS Query Log ──────────────────────────────────────

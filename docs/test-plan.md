@@ -24,7 +24,7 @@ not the planned Gateway fabric:
 
 - **MikroTik CHR:** 10.10.0.125 (RouterOS 7+, REST API enabled)
 - **Panoptikon server:** localhost:8080 (or 10.10.0.14:8080 on LAN)
-- **Caddy admin API:** localhost:2019 (Docker container locally; a plain Caddy 2.11.x binary with the `cloudflare` DNS module in CI)
+- **Caddy admin API:** localhost:2019 (`docker run -d --name caddy-test -p 2019:2019 -p 8443:443 caddy:2-alpine` locally; a Caddy 2.11.x binary with the `cloudflare` DNS module in CI)
 - **Xiaomi mesh main (CAP):** 10.10.0.199
 - **Xiaomi satellites:** 10.10.0.52, 10.10.0.53, 10.10.0.54
 - **Test containers:** See [test-environment.md](./test-environment.md) for Proxmox LXC setup
@@ -166,7 +166,7 @@ support matrix.
 
 ## 2. Caddy Reverse Proxy
 
-> Cases C-01..C-24 are automated in `server/tests/caddy_integration.rs` and run on Forgejo
+> Cases C-01..C-28 are automated in `server/tests/caddy_integration.rs` and run on Forgejo
 > Actions (`.forgejo/workflows/ci.yml`) against a real Caddy 2.11.x for every push to `main`
 > and every pull request. The Docker-specific steps (e.g. C-03 "stop Caddy container") describe
 > the manual lab environment.
@@ -206,6 +206,15 @@ support matrix.
 | C-30 | Proxy page navigation | Navigate to /proxy | Lists all proxy hosts with domain, upstream, status |
 | C-31 | Create proxy from UI | Click Add → fill domain/upstream → Save | New proxy host appears in list |
 | C-32 | Delete proxy from UI | Click Delete on a proxy host → confirm | Host removed from list |
+
+### 2.5 Certificate Probe
+
+| # | Test Case | Steps | Expected Result |
+|---|-----------|-------|-----------------|
+| C-25 | Record served certificate | Probe `probe-test.internal` from the Caddy HTTPS listener | Leaf metadata is cached and an internal-CA chain is recorded as untrusted |
+| C-26 | Record unreachable target | Probe an unused TCP port | Host remains visible with a connection error and cleared certificate fields |
+| C-27 | Raise expiry alert | Probe a short-lived certificate twice | Certificate is expiring and creates at most one alert per 24 hours |
+| C-28 | Serialize and suppress alerts | Start concurrent probes, then set threshold to zero | Second request conflicts and further expiry alerts are suppressed |
 
 ---
 

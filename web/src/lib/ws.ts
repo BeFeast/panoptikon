@@ -16,6 +16,7 @@ export type WsEventType =
   | "new_device"
   | "agent_online"
   | "agent_offline"
+  | "certificate_expiring"
   | "agent_report"
   | "ssh_report";
 

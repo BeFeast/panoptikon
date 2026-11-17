@@ -143,6 +143,9 @@ async fn main() -> Result<()> {
     // Sync proxy host config to Caddy on startup.
     api::caddy::start_caddy_sync_task(state.clone());
 
+    // Periodically inspect the leaf certificates served for TLS-enabled hosts.
+    panoptikon_server::caddy_probe::start_cert_probe_task(state.clone());
+
     // Build the application router.
     let app = api::router(state);
 

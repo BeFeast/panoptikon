@@ -106,6 +106,9 @@ const FASTFETCH_DATA_MIGRATION: &str = include_str!("migrations/031_fastfetch_da
 /// Migration 032: RBAC multi-user, SMTP email notifications, SNMP management.
 const RBAC_SMTP_SNMP_MIGRATION: &str = include_str!("migrations/032_rbac_smtp_snmp.sql");
 
+/// Migration 033: cache of certificates served by Caddy proxy hosts.
+const CADDY_CERTIFICATES_MIGRATION: &str = include_str!("migrations/033_caddy_certificates.sql");
+
 /// Initialize the SQLite database pool and run migrations.
 pub async fn init(database_url: &str) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::from_str(database_url)?
@@ -813,6 +816,33 @@ pub(crate) async fn run_migrations(pool: &SqlitePool) -> Result<()> {
         info!("Applied migration 032_rbac_smtp_snmp.sql");
     }
 
+    // Migration 033: cache certificates served by TLS-enabled Caddy proxy hosts.
+    let applied_33: bool = sqlx::query("SELECT 1 FROM _migrations WHERE version = 33")
+        .fetch_optional(pool)
+        .await?
+        .is_some();
+
+    if !applied_33 {
+        for statement in CADDY_CERTIFICATES_MIGRATION.split(';') {
+            let code = statement
+                .lines()
+                .skip_while(|line| line.trim().starts_with("--") || line.trim().is_empty())
+                .collect::<Vec<_>>()
+                .join("\n");
+            let stmt = code.trim();
+            if stmt.is_empty() {
+                continue;
+            }
+            sqlx::query(stmt).execute(pool).await?;
+        }
+
+        sqlx::query("INSERT INTO _migrations (version) VALUES (33)")
+            .execute(pool)
+            .await?;
+
+        info!("Applied migration 033_caddy_certificates.sql");
+    }
+
     // Purge expired sessions on startup.
     let deleted = sqlx::query("DELETE FROM sessions WHERE expires_at <= datetime('now')")
         .execute(pool)
@@ -867,6 +897,7 @@ mod tests {
             "assets",
             "alert_rules",
             "caddy_proxy_hosts",
+            "caddy_certificates",
             "unbound_dns_records",
             "dns_query_log",
             "dns_blocklists",
@@ -896,6 +927,30 @@ mod tests {
         run_migrations(&pool)
             .await
             .expect("Second migration run should succeed");
+    }
+
+    #[tokio::test]
+    async fn test_caddy_certificate_migration_applies_after_032() {
+        let pool = init(":memory:").await.expect("initial migrations");
+        sqlx::query("DROP TABLE caddy_certificates")
+            .execute(&pool)
+            .await
+            .expect("remove migration 033 table");
+        sqlx::query("DELETE FROM _migrations WHERE version = 33")
+            .execute(&pool)
+            .await
+            .expect("rewind migration marker");
+
+        run_migrations(&pool)
+            .await
+            .expect("migration 033 should apply after 032");
+        let table_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = 'caddy_certificates'",
+        )
+        .fetch_one(&pool)
+        .await
+        .expect("query migrated table");
+        assert_eq!(table_count, 1);
     }
 
     #[tokio::test]

@@ -26,6 +26,7 @@ pub mod assets;
 pub mod audit;
 pub mod auth;
 pub mod caddy;
+pub mod caddy_certificates;
 pub mod cloudflare_tunnel;
 pub mod config_backups;
 pub mod dashboard;
@@ -80,6 +81,8 @@ pub struct AppState {
     pub mikrotik_cache: Arc<crate::mikrotik::client::MikrotikCache>,
     /// Shared reqwest::Client for Caddy Admin API.
     pub caddy_http: reqwest::Client,
+    /// Shared state for serializing Caddy certificate probe cycles.
+    pub caddy_probe: Arc<crate::caddy_probe::ProbeState>,
     /// Shared reqwest::Client for Xiaomi MiWiFi API.
     pub xiaomi_http: reqwest::Client,
     /// Shared reqwest::Client for Xiaomi Mesh test-connection.
@@ -103,6 +106,7 @@ impl AppState {
                 .timeout(std::time::Duration::from_secs(10))
                 .build()
                 .expect("caddy HTTP client"),
+            caddy_probe: Arc::new(crate::caddy_probe::ProbeState::default()),
             xiaomi_http: crate::xiaomi::client::shared_http_client(),
             xiaomi_mesh_http: reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(10))
@@ -285,6 +289,11 @@ pub fn router(state: AppState) -> Router {
         .route("/caddy/proxy-hosts/{id}/toggle", post(caddy::toggle))
         .route("/caddy/sync", post(caddy::sync))
         .route("/caddy/test-connection", post(caddy::test_connection))
+        .route("/caddy/certificates", get(caddy_certificates::list))
+        .route(
+            "/caddy/certificates/probe",
+            post(caddy_certificates::probe_now),
+        )
         // Unbound DNS
         .route("/unbound/dns-records", get(unbound::list))
         .route("/unbound/dns-records", post(unbound::create))

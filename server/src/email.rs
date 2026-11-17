@@ -76,6 +76,14 @@ fn format_email_body(alert_type: &str, data: &Value) -> String {
             let name = data["name"].as_str().unwrap_or(mac);
             format!("Agent {name} went offline.\n\n— Panoptikon")
         }
+        "certificate_expiring" => {
+            let domain = data["domain"].as_str().unwrap_or("unknown");
+            let days_remaining = data["days_remaining"].as_i64().unwrap_or(0);
+            let not_after = data["not_after"].as_str().unwrap_or("unknown");
+            format!(
+                "Certificate for {domain} expires in {days_remaining} days ({not_after}).\n\n— Panoptikon"
+            )
+        }
         "test" => data["message"]
             .as_str()
             .unwrap_or("Panoptikon email test — if you see this, email alerts are working!")
@@ -92,6 +100,7 @@ fn email_subject(alert_type: &str) -> String {
         "device_offline" => "Device Offline",
         "agent_offline" => "Agent Offline",
         "high_bandwidth" => "High Bandwidth Alert",
+        "certificate_expiring" => "Certificate Expiring",
         "test" => "Test Email",
         _ => alert_type,
     };
@@ -171,4 +180,27 @@ pub fn dispatch_email(db: &SqlitePool, alert_type: &str, data: Value) {
             send_alert_email(&config, &alert_type, &data).await;
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn certificate_expiring_email_mapping() {
+        let data = json!({
+            "domain": "app.example.com",
+            "days_remaining": 7,
+            "not_after": "2026-09-13T00:00:00Z"
+        });
+        assert_eq!(
+            format_email_body("certificate_expiring", &data),
+            "Certificate for app.example.com expires in 7 days (2026-09-13T00:00:00Z).\n\n— Panoptikon"
+        );
+        assert_eq!(
+            email_subject("certificate_expiring"),
+            "[Panoptikon] Certificate Expiring"
+        );
+    }
 }

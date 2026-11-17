@@ -1,11 +1,11 @@
-//! Caddy integration tests (C-01 .. C-24).
+//! Caddy integration tests (C-01 .. C-28).
 //!
 //! These tests spin up a Panoptikon server *and* require a real Caddy instance
 //! with its admin API accessible at `http://localhost:2019`.
 //!
 //! Start Caddy before running:
 //! ```bash
-//! docker run -d --name caddy-test -p 2019:2019 -p 8880:80 \
+//! docker run -d --name caddy-test -p 2019:2019 -p 8443:443 \
 //!   -v /tmp/caddy-test.json:/etc/caddy/caddy.json \
 //!   caddy:2-alpine caddy run --config /etc/caddy/caddy.json
 //! ```
@@ -21,6 +21,7 @@ use std::net::SocketAddr;
 use panoptikon_server::{api, config, db};
 use reqwest::StatusCode;
 use serde_json::Value;
+use sqlx::SqlitePool;
 
 const CADDY_ADMIN_URL: &str = "http://localhost:2019";
 
@@ -79,6 +80,189 @@ async fn spawn_with_caddy() -> (reqwest::Client, String) {
     (client, base_url)
 }
 
+/// Spawn a server for certificate probe tests without allowing proxy-host CRUD
+/// to overwrite the dedicated Caddy probe configuration.
+async fn spawn_probe_server() -> (reqwest::Client, String, SqlitePool) {
+    require_caddy().await;
+    reset_caddy().await;
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("bind random port");
+    let addr = listener.local_addr().expect("listener address");
+    let base_url = format!("http://{addr}");
+    let pool = db::init(":memory:").await.expect("in-memory DB");
+
+    for (key, value) in [
+        ("caddy_admin_url", "http://127.0.0.1:29999"),
+        ("caddy_cert_probe_host", "127.0.0.1"),
+        ("caddy_cert_probe_port", "8443"),
+    ] {
+        sqlx::query("INSERT INTO settings (key, value) VALUES (?, ?)")
+            .bind(key)
+            .bind(value)
+            .execute(&pool)
+            .await
+            .expect("seed probe setting");
+    }
+
+    let state = api::AppState::new(pool.clone(), config::AppConfig::default());
+    let app = api::router(state);
+    tokio::spawn(async move {
+        axum::serve(
+            listener,
+            app.into_make_service_with_connect_info::<SocketAddr>(),
+        )
+        .await
+        .expect("server error");
+    });
+
+    let client = reqwest::Client::builder()
+        .cookie_store(true)
+        .build()
+        .expect("build reqwest client");
+    let response = client
+        .post(format!("{base_url}/api/v1/setup"))
+        .json(&serde_json::json!({"password": "caddy_probe_password"}))
+        .send()
+        .await
+        .expect("setup failed");
+    assert_eq!(response.status(), StatusCode::OK);
+
+    (client, base_url, pool)
+}
+
+async fn push_probe_config() {
+    let listen_port = std::env::var("CADDY_PROBE_LISTEN_PORT")
+        .ok()
+        .and_then(|value| value.parse::<u16>().ok())
+        .unwrap_or(443);
+    let config = serde_json::json!({
+        "http": {
+            "servers": {
+                "probe": {
+                    "listen": [format!(":{listen_port}")],
+                    "routes": [
+                        {
+                            "match": [{"host": ["probe-test.internal"]}],
+                            "handle": [{
+                                "handler": "reverse_proxy",
+                                "upstreams": [{"dial": "127.0.0.1:9"}]
+                            }]
+                        },
+                        {
+                            "match": [{"host": ["expiring.internal"]}],
+                            "handle": [{
+                                "handler": "reverse_proxy",
+                                "upstreams": [{"dial": "127.0.0.1:9"}]
+                            }]
+                        }
+                    ]
+                }
+            }
+        },
+        "tls": {
+            "certificates": {"automate": ["probe-test.internal", "expiring.internal"]},
+            "automation": {
+                "policies": [
+                    {
+                        "subjects": ["expiring.internal"],
+                        "issuers": [{"module": "internal", "ca": "probe-ca", "lifetime": "48h"}]
+                    },
+                    {
+                        "subjects": ["probe-test.internal"],
+                        "issuers": [{"module": "internal", "ca": "probe-ca", "lifetime": "720h"}]
+                    }
+                ]
+            }
+        },
+        "pki": {
+            "certificate_authorities": {
+                "probe-ca": {
+                    "name": "Panoptikon Probe CA",
+                    "intermediate_lifetime": "2160h",
+                    "install_trust": false
+                },
+                "local": {"install_trust": false}
+            }
+        }
+    });
+    let response = reqwest::Client::new()
+        .post(format!("{CADDY_ADMIN_URL}/config/apps"))
+        .json(&config)
+        .send()
+        .await
+        .expect("push probe config");
+    assert!(
+        response.status().is_success(),
+        "Caddy rejected probe config: {}",
+        response.text().await.unwrap_or_default()
+    );
+
+    for _ in 0..30 {
+        if panoptikon_server::caddy_probe::probe_tls(
+            "127.0.0.1",
+            8443,
+            "probe-test.internal",
+            std::time::Duration::from_secs(2),
+        )
+        .await
+        .is_ok()
+        {
+            return;
+        }
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+    }
+    panic!("Caddy did not provision the probe certificate within 30 seconds");
+}
+
+async fn seed_probe_host(pool: &SqlitePool, domain: &str) {
+    sqlx::query(
+        "INSERT INTO caddy_proxy_hosts \
+         (id, domain, forward_host, forward_port, forward_scheme, enabled, tls_enabled, created_at, updated_at) \
+         VALUES (?, ?, '127.0.0.1', 9, 'http', 1, 1, datetime('now'), datetime('now'))",
+    )
+    .bind(format!("probe-{domain}"))
+    .bind(domain)
+    .execute(pool)
+    .await
+    .expect("seed TLS proxy host");
+}
+
+async fn start_probe(client: &reqwest::Client, base_url: &str) -> StatusCode {
+    client
+        .post(format!("{base_url}/api/v1/caddy/certificates/probe"))
+        .send()
+        .await
+        .expect("start probe")
+        .status()
+}
+
+async fn wait_for_probe(client: &reqwest::Client, base_url: &str) -> Value {
+    for _ in 0..100 {
+        let response = client
+            .get(format!("{base_url}/api/v1/caddy/certificates"))
+            .send()
+            .await
+            .expect("get probe state");
+        assert_eq!(response.status(), StatusCode::OK);
+        let body: Value = response.json().await.expect("probe state JSON");
+        if body["probe_running"] == false {
+            return body;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    }
+    panic!("certificate probe did not finish within 30 seconds");
+}
+
+async fn assert_probe_config_preserved() {
+    let config = caddy_http_config().await.expect("Caddy HTTP config");
+    assert!(
+        config["servers"]["probe"].is_object(),
+        "certificate probing must not mutate Caddy configuration"
+    );
+}
+
 /// Reset the Caddy config to a blank state (no routes).
 async fn reset_caddy() {
     let http = reqwest::Client::new();
@@ -111,7 +295,7 @@ async fn require_caddy() {
         Ok(resp) if resp.status().is_success() => {}
         _ => panic!(
             "Caddy admin API not reachable at {CADDY_ADMIN_URL}. \
-             Start with: docker run -d --name caddy-test -p 2019:2019 caddy:2-alpine"
+             Start with: docker run -d --name caddy-test -p 2019:2019 -p 8443:443 caddy:2-alpine"
         ),
     }
 }
@@ -716,4 +900,176 @@ async fn c24_startup_sync() {
         routes[0]["handle"][0]["upstreams"][0]["dial"], "10.0.0.99:80",
         "C-24: upstream should match DB"
     );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 2.5 — Certificate Probe (C-25 .. C-28)
+// ═══════════════════════════════════════════════════════════════
+
+/// C-25: a served internal-CA leaf is recorded even though its chain is untrusted.
+#[tokio::test]
+async fn c25_probe_records_internal_ca_cert() {
+    let (client, base_url, pool) = spawn_probe_server().await;
+    push_probe_config().await;
+    seed_probe_host(&pool, "probe-test.internal").await;
+
+    let unauthenticated = reqwest::Client::new();
+    assert_eq!(
+        unauthenticated
+            .get(format!("{base_url}/api/v1/caddy/certificates"))
+            .send()
+            .await
+            .expect("unauthenticated list")
+            .status(),
+        StatusCode::UNAUTHORIZED
+    );
+    assert_eq!(
+        unauthenticated
+            .post(format!("{base_url}/api/v1/caddy/certificates/probe"))
+            .send()
+            .await
+            .expect("unauthenticated probe")
+            .status(),
+        StatusCode::UNAUTHORIZED
+    );
+
+    assert_eq!(start_probe(&client, &base_url).await, StatusCode::ACCEPTED);
+    let body = wait_for_probe(&client, &base_url).await;
+    let certificates = body["certificates"].as_array().expect("certificates");
+    assert_eq!(certificates.len(), 1);
+    let certificate = &certificates[0];
+    assert_eq!(certificate["domain"], "probe-test.internal");
+    assert!(certificate["error"].is_null());
+    assert!(certificate["issuer"]
+        .as_str()
+        .expect("issuer")
+        .contains("Panoptikon Probe CA"));
+    assert!(certificate["sans"]
+        .as_array()
+        .expect("SANs")
+        .iter()
+        .any(|san| san == "probe-test.internal"));
+    assert_eq!(certificate["chain_valid"], false);
+    assert_eq!(certificate["status"], "ok");
+    assert!((28..=30).contains(
+        &certificate["days_remaining"]
+            .as_i64()
+            .expect("days remaining")
+    ));
+    assert!(!body["last_probe_at"].is_null());
+    assert_eq!(body["probe_host"], "127.0.0.1");
+    assert_eq!(body["probe_port"], 8443);
+    assert_probe_config_preserved().await;
+}
+
+/// C-26: an unreachable TLS target remains visible as a probe error.
+#[tokio::test]
+async fn c26_probe_unreachable_target_records_error() {
+    let (client, base_url, pool) = spawn_probe_server().await;
+    push_probe_config().await;
+    seed_probe_host(&pool, "probe-test.internal").await;
+    sqlx::query("UPDATE settings SET value = '1' WHERE key = 'caddy_cert_probe_port'")
+        .execute(&pool)
+        .await
+        .expect("set unreachable probe port");
+
+    assert_eq!(start_probe(&client, &base_url).await, StatusCode::ACCEPTED);
+    let body = wait_for_probe(&client, &base_url).await;
+    let certificate = &body["certificates"][0];
+    assert_eq!(certificate["status"], "error");
+    assert!(certificate["error"]
+        .as_str()
+        .expect("probe error")
+        .starts_with("connect failed:"));
+    for field in [
+        "issuer",
+        "subject",
+        "not_before",
+        "not_after",
+        "serial",
+        "fingerprint_sha256",
+        "chain_valid",
+    ] {
+        assert!(certificate[field].is_null(), "{field} should be null");
+    }
+    assert_probe_config_preserved().await;
+}
+
+/// C-27: only the short-lived served leaf creates a deduplicated expiry alert.
+#[tokio::test]
+async fn c27_short_lived_cert_raises_expiring_alert() {
+    let (client, base_url, pool) = spawn_probe_server().await;
+    push_probe_config().await;
+    seed_probe_host(&pool, "probe-test.internal").await;
+    seed_probe_host(&pool, "expiring.internal").await;
+
+    assert_eq!(start_probe(&client, &base_url).await, StatusCode::ACCEPTED);
+    let body = wait_for_probe(&client, &base_url).await;
+    let expiring = body["certificates"]
+        .as_array()
+        .expect("certificates")
+        .iter()
+        .find(|certificate| certificate["domain"] == "expiring.internal")
+        .expect("expiring certificate");
+    assert_eq!(expiring["status"], "expiring");
+    assert!((0..=2).contains(&expiring["days_remaining"].as_i64().expect("days remaining")));
+
+    assert_expiring_alert(&client, &base_url, 1).await;
+    assert_eq!(start_probe(&client, &base_url).await, StatusCode::ACCEPTED);
+    wait_for_probe(&client, &base_url).await;
+    assert_expiring_alert(&client, &base_url, 1).await;
+    assert_probe_config_preserved().await;
+}
+
+async fn assert_expiring_alert(client: &reqwest::Client, base_url: &str, count: usize) {
+    let response = client
+        .get(format!(
+            "{base_url}/api/v1/alerts?type=certificate_expiring"
+        ))
+        .send()
+        .await
+        .expect("list certificate alerts");
+    assert_eq!(response.status(), StatusCode::OK);
+    let alerts: Vec<Value> = response.json().await.expect("alerts JSON");
+    assert_eq!(alerts.len(), count);
+    if let Some(alert) = alerts.first() {
+        let details: Value =
+            serde_json::from_str(alert["details"].as_str().expect("serialized alert details"))
+                .expect("alert details JSON");
+        assert_eq!(details["domain"], "expiring.internal");
+    }
+}
+
+/// C-28: concurrent manual probes conflict and threshold zero suppresses alerts.
+#[tokio::test]
+async fn c28_probe_while_running_returns_409_and_threshold_zero_suppresses() {
+    let (client, base_url, pool) = spawn_probe_server().await;
+    push_probe_config().await;
+    seed_probe_host(&pool, "expiring.internal").await;
+
+    assert_eq!(start_probe(&client, &base_url).await, StatusCode::ACCEPTED);
+    assert_eq!(start_probe(&client, &base_url).await, StatusCode::CONFLICT);
+    wait_for_probe(&client, &base_url).await;
+
+    let response = client
+        .patch(format!("{base_url}/api/v1/settings"))
+        .json(&serde_json::json!({"caddy_cert_expiry_threshold_days": 0}))
+        .send()
+        .await
+        .expect("disable certificate expiry alerts");
+    assert_eq!(response.status(), StatusCode::OK);
+    let response = client
+        .delete(format!("{base_url}/api/v1/alerts"))
+        .send()
+        .await
+        .expect("delete alerts");
+    assert_eq!(response.status(), StatusCode::NO_CONTENT);
+
+    assert_eq!(start_probe(&client, &base_url).await, StatusCode::ACCEPTED);
+    let body = wait_for_probe(&client, &base_url).await;
+    let certificate = &body["certificates"][0];
+    assert_eq!(certificate["domain"], "expiring.internal");
+    assert_eq!(certificate["status"], "expiring");
+    assert_expiring_alert(&client, &base_url, 0).await;
+    assert_probe_config_preserved().await;
 }

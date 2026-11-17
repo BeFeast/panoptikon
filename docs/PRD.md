@@ -264,6 +264,7 @@ unprivileged control plane and privileged packet-path executor into one process.
 - Full integration with Caddy Admin API
 - Proxy host management (create, update, delete)
 - Automatic HTTPS via Caddy's built-in ACME
+- SSL certificate visibility via TLS probe (issuer / expiry / chain status per proxied host, expiry alerts)
 - Live configuration reload without downtime
 - Part of the embedded Docker Compose stack (replaces NPM as the primary reverse proxy)
 
